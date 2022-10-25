@@ -20,7 +20,6 @@ from paddle.distributed import fleet
 
 
 class AscendTranspiler(collective.Collective):
-
     def __init__(self, startup_program, main_program):
         self.nrings = 1
         super(AscendTranspiler, self).__init__(self.nrings)
@@ -32,8 +31,10 @@ class AscendTranspiler(collective.Collective):
         ring_id = -1
         grad = None
         for idx, op in reversed(list(enumerate(block.ops))):
-            if self._is_backward_op(op) and \
-                    self.op_role_var_key in op.attr_names:
+            if (
+                self._is_backward_op(op)
+                and self.op_role_var_key in op.attr_names
+            ):
                 op_role_var = op.all_attrs()[self.op_role_var_key]
 
                 if len(op_role_var) == 0:
@@ -50,22 +51,26 @@ class AscendTranspiler(collective.Collective):
                     # As we search ops reversedly, we should insert c_allreduce_sum
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
-                    block._insert_op(offset + 1,
-                                     type='c_allreduce_sum',
-                                     inputs={'X': grad},
-                                     outputs={'Out': grad},
-                                     attrs={
-                                         'ring_id': ring_id,
-                                         self.op_role_key: OpRole.Backward
-                                     })
-                    block._insert_op(offset + 2,
-                                     type='scale',
-                                     inputs={'X': grad},
-                                     outputs={'Out': grad},
-                                     attrs={
-                                         'scale': 1.0 / fleet.worker_num(),
-                                         self.op_role_key: OpRole.Backward
-                                     })
+                    block._insert_op(
+                        offset + 1,
+                        type='c_allreduce_sum',
+                        inputs={'X': grad},
+                        outputs={'Out': grad},
+                        attrs={
+                            'ring_id': ring_id,
+                            self.op_role_key: OpRole.Backward,
+                        },
+                    )
+                    block._insert_op(
+                        offset + 2,
+                        type='scale',
+                        inputs={'X': grad},
+                        outputs={'Out': grad},
+                        attrs={
+                            'scale': 1.0 / fleet.worker_num(),
+                            self.op_role_key: OpRole.Backward,
+                        },
+                    )
 
         if grad is None:
             return

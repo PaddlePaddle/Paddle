@@ -19,7 +19,6 @@ __all__ = []
 
 
 class DGCOptimizer(MetaOptimizerBase):
-
     def __init__(self, optimizer):
         super(DGCOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
@@ -28,11 +27,12 @@ class DGCOptimizer(MetaOptimizerBase):
         self.meta_optimizers_white_list = []
         self.meta_optimizers_black_list = []
 
-    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
-                        user_defined_strategy):
-        super(DGCOptimizer,
-              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
-                                    user_defined_strategy)
+    def _set_basic_info(
+        self, loss, role_maker, user_defined_optimizer, user_defined_strategy
+    ):
+        super(DGCOptimizer, self)._set_basic_info(
+            loss, role_maker, user_defined_optimizer, user_defined_strategy
+        )
 
     def _init_dgc_opt(self):
         if self.dgc_opt is not None:
@@ -62,7 +62,8 @@ class DGCOptimizer(MetaOptimizerBase):
             num_trainers=self.role_maker._worker_num(),
             regularization=opt.regularization,
             grad_clip=opt._grad_clip,
-            name=opt._name)
+            name=opt._name,
+        )
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
@@ -88,15 +89,18 @@ class DGCOptimizer(MetaOptimizerBase):
         dist_strategy.dgc = True
         dist_strategy.dgc_configs = {"rampup_begin_step": 0, "rampup_step": 1}
 
-    def backward(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None,
-                 callbacks=None):
+    def backward(
+        self,
+        loss,
+        startup_program=None,
+        parameter_list=None,
+        no_grad_set=None,
+        callbacks=None,
+    ):
         self._init_dgc_opt()
-        return self.dgc_opt.backward(loss, startup_program, parameter_list,
-                                     no_grad_set, callbacks)
+        return self.dgc_opt.backward(
+            loss, startup_program, parameter_list, no_grad_set, callbacks
+        )
 
     def apply_gradients(self, params_grads):
         self._init_dgc_opt()
@@ -104,17 +108,15 @@ class DGCOptimizer(MetaOptimizerBase):
 
     def apply_optimize(self, loss, startup_program, params_grads):
         self._init_dgc_opt()
-        return self.dgc_opt.apply_optimize(loss,
-                                           startup_program=startup_program,
-                                           params_grads=params_grads)
+        return self.dgc_opt.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads
+        )
 
-    def minimize_impl(self,
-                      loss,
-                      startup_program=None,
-                      parameter_list=None,
-                      no_grad_set=None):
+    def minimize_impl(
+        self, loss, startup_program=None, parameter_list=None, no_grad_set=None
+    ):
         self._init_dgc_opt()
-        optimize_ops, params_grads = \
-            self.dgc_opt.minimize(loss, startup_program,
-                                  parameter_list, no_grad_set)
+        optimize_ops, params_grads = self.dgc_opt.minimize(
+            loss, startup_program, parameter_list, no_grad_set
+        )
         return optimize_ops, params_grads

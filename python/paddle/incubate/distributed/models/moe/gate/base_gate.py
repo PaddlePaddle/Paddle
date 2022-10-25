@@ -23,7 +23,6 @@ import paddle.nn as nn
 
 
 class BaseGate(nn.Layer):
-
     def __init__(self, num_expert, world_size):
         super().__init__()
         self.world_size = world_size

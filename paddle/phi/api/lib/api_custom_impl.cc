@@ -99,8 +99,15 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     (*kernel_fn)(*dev_ctx, input_x, kernel_out);
   } else {
     std::vector<const phi::TensorBase*> input_x(x.size());
+    std::vector<std::shared_ptr<phi::DenseTensor>> temp_dense_tensots;
+    temp_dense_tensots.reserve(x.size());
     for (size_t i = 0; i < input_x.size(); ++i) {
-      input_x[i] = x[i].impl().get();
+      if (phi::DenseTensor::classof(x[i].impl().get())) {
+        temp_dense_tensots.push_back(PrepareData(x[i], kernel.InputAt(0), {}));
+        input_x[i] = temp_dense_tensots.back().get();
+      } else {
+        input_x[i] = x[i].impl().get();
+      }
     }
     auto x_meta_vec = MakeMetaTensor(input_x);
     std::vector<const phi::MetaTensor*> x_metas(x_meta_vec.size());
@@ -118,6 +125,9 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 
     (*kernel_fn)(*dev_ctx, input_x, kernel_out);
+    if (kernel_result.has_fallback_cpu) {
+      TransDataBackend(kernel_out, kernel_backend, kernel_out);
+    }
   }
 
   return api_output;

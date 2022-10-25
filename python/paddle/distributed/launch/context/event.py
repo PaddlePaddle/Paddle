@@ -14,7 +14,6 @@
 
 
 class Event(object):
-
     def __init__(self, kind="status", message="", fatal=False):
         self.kind = kind
         self.message = message

@@ -33,7 +33,6 @@ EXP_MAX_INPUT = 40.0
 
 
 class RandomWeight:
-
     def __init__(self):
         pass
 
@@ -43,34 +42,29 @@ class RandomWeight:
         self.input_size = input_size
         self.dtype = dtype
 
-        self.weight_ih = np.random.uniform(low=-std,
-                                           high=std,
-                                           size=(4 * self.hidden_size,
-                                                 self.input_size)).astype(dtype)
+        self.weight_ih = np.random.uniform(
+            low=-std, high=std, size=(4 * self.hidden_size, self.input_size)
+        ).astype(dtype)
         self.weight_hh = np.random.uniform(
-            low=-std, high=std,
-            size=(4 * self.hidden_size, self.hidden_size)).astype(dtype)
-        self.bias_ih = np.random.uniform(low=-std,
-                                         high=std,
-                                         size=(4 *
-                                               self.hidden_size)).astype(dtype)
-        self.bias_hh = np.random.uniform(low=-std,
-                                         high=std,
-                                         size=(4 *
-                                               self.hidden_size)).astype(dtype)
+            low=-std, high=std, size=(4 * self.hidden_size, self.hidden_size)
+        ).astype(dtype)
+        self.bias_ih = np.random.uniform(
+            low=-std, high=std, size=(4 * self.hidden_size)
+        ).astype(dtype)
+        self.bias_hh = np.random.uniform(
+            low=-std, high=std, size=(4 * self.hidden_size)
+        ).astype(dtype)
 
 
 weight = RandomWeight()
 
 
 class LayerMixin(object):
-
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
 
 class LayerListMixin(LayerMixin):
-
     def __init__(self, layers=None):
         self._layers = list(layers) if layers else []
 
@@ -82,7 +76,6 @@ class LayerListMixin(LayerMixin):
 
 
 class LSTMCell(LayerMixin):
-
     def __init__(self, input_size, hidden_size, bias=True):
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -145,12 +138,14 @@ def update_state(mask, new, old):
         return tuple(map(lambda x, y: np.where(mask, x, y), new, old))
 
 
-def rnn(cell,
-        inputs,
-        initial_states,
-        sequence_length=None,
-        time_major=False,
-        is_reverse=False):
+def rnn(
+    cell,
+    inputs,
+    initial_states,
+    sequence_length=None,
+    time_major=False,
+    is_reverse=False,
+):
     if not time_major:
         inputs = np.transpose(inputs, [1, 0, 2])
     if is_reverse:
@@ -172,7 +167,7 @@ def rnn(cell,
         if mask is not None:
             m_t = mask[t]
             y, new_state = cell(x_t, state)
-            y = np.where(m_t, y, 0.)
+            y = np.where(m_t, y, 0.0)
             outputs.append(y)
             state = update_state(m_t, new_state, state)
         else:
@@ -190,25 +185,27 @@ def rnn(cell,
     return outputs, final_state
 
 
-def birnn(cell_fw,
-          cell_bw,
-          inputs,
-          initial_states,
-          sequence_length=None,
-          time_major=False):
+def birnn(
+    cell_fw,
+    cell_bw,
+    inputs,
+    initial_states,
+    sequence_length=None,
+    time_major=False,
+):
     states_fw, states_bw = initial_states
-    outputs_fw, states_fw = rnn(cell_fw,
-                                inputs,
-                                states_fw,
-                                sequence_length,
-                                time_major=time_major)
+    outputs_fw, states_fw = rnn(
+        cell_fw, inputs, states_fw, sequence_length, time_major=time_major
+    )
 
-    outputs_bw, states_bw = rnn(cell_bw,
-                                inputs,
-                                states_bw,
-                                sequence_length,
-                                time_major=time_major,
-                                is_reverse=True)
+    outputs_bw, states_bw = rnn(
+        cell_bw,
+        inputs,
+        states_bw,
+        sequence_length,
+        time_major=time_major,
+        is_reverse=True,
+    )
 
     outputs = np.concatenate((outputs_fw, outputs_bw), -1)
     final_states = (states_fw, states_bw)
@@ -271,7 +268,6 @@ def concat_states(states, bidirectional=False, state_components=1):
 
 
 class RNN(LayerMixin):
-
     def __init__(self, cell, is_reverse=False, time_major=False):
         super(RNN, self).__init__()
         self.cell = cell
@@ -282,59 +278,69 @@ class RNN(LayerMixin):
         self.time_major = time_major
 
     def forward(self, inputs, initial_states=None, sequence_length=None):
-        final_outputs, final_states = rnn(self.cell,
-                                          inputs,
-                                          initial_states=initial_states,
-                                          sequence_length=sequence_length,
-                                          time_major=self.time_major,
-                                          is_reverse=self.is_reverse)
+        final_outputs, final_states = rnn(
+            self.cell,
+            inputs,
+            initial_states=initial_states,
+            sequence_length=sequence_length,
+            time_major=self.time_major,
+            is_reverse=self.is_reverse,
+        )
         return final_outputs, final_states
 
 
 class BiRNN(LayerMixin):
-
     def __init__(self, cell_fw, cell_bw, time_major=False):
         super(BiRNN, self).__init__()
         self.cell_fw = cell_fw
         self.cell_bw = cell_bw
         self.time_major = time_major
 
-    def forward(self,
-                inputs,
-                initial_states=None,
-                sequence_length=None,
-                **kwargs):
+    def forward(
+        self, inputs, initial_states=None, sequence_length=None, **kwargs
+    ):
         if isinstance(initial_states, (list, tuple)):
-            assert len(initial_states) == 2, \
-                "length of initial_states should be 2 when it is a list/tuple"
+            assert (
+                len(initial_states) == 2
+            ), "length of initial_states should be 2 when it is a list/tuple"
         else:
             initial_states = [initial_states, initial_states]
 
-        outputs, final_states = birnn(self.cell_fw, self.cell_bw, inputs,
-                                      initial_states, sequence_length,
-                                      self.time_major)
+        outputs, final_states = birnn(
+            self.cell_fw,
+            self.cell_bw,
+            inputs,
+            initial_states,
+            sequence_length,
+            self.time_major,
+        )
         return outputs, final_states
 
 
 class RNNMixin(LayerListMixin):
-
     def forward(self, inputs, initial_states=None, sequence_length=None):
         batch_index = 1 if self.time_major else 0
         batch_size = inputs.shape[batch_index]
         dtype = inputs.dtype
         if initial_states is None:
-            state_shape = (self.num_layers * self.num_directions, batch_size,
-                           self.hidden_size)
+            state_shape = (
+                self.num_layers * self.num_directions,
+                batch_size,
+                self.hidden_size,
+            )
             if self.state_components == 1:
                 initial_states = np.zeros(state_shape, dtype)
             else:
-                initial_states = tuple([
-                    np.zeros(state_shape, dtype)
-                    for _ in range(self.state_components)
-                ])
+                initial_states = tuple(
+                    [
+                        np.zeros(state_shape, dtype)
+                        for _ in range(self.state_components)
+                    ]
+                )
 
-        states = split_states(initial_states, self.num_directions == 2,
-                              self.state_components)
+        states = split_states(
+            initial_states, self.num_directions == 2, self.state_components
+        )
         final_states = []
 
         for i, rnn_layer in enumerate(self):
@@ -344,20 +350,22 @@ class RNNMixin(LayerListMixin):
             final_states.append(final_state)
             inputs = outputs
 
-        final_states = concat_states(final_states, self.num_directions == 2,
-                                     self.state_components)
+        final_states = concat_states(
+            final_states, self.num_directions == 2, self.state_components
+        )
         return outputs, final_states
 
 
 class LSTM(RNNMixin):
-
-    def __init__(self,
-                 input_size,
-                 hidden_size,
-                 num_layers=1,
-                 direction="forward",
-                 dropout=0.,
-                 time_major=False):
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        num_layers=1,
+        direction="forward",
+        dropout=0.0,
+        time_major=False,
+    ):
         super(LSTM, self).__init__()
 
         if direction in ["forward", "backward"]:
@@ -378,7 +386,8 @@ class LSTM(RNNMixin):
         else:
             raise ValueError(
                 "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction))
+                "received direction = {}".format(direction)
+            )
 
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -389,10 +398,10 @@ class LSTM(RNNMixin):
         self.state_components = 2
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNLstmOp(OpTest):
-
     def get_weight_names(self):
         weight_names = []
         for i in range(2 * self.num_layers):
@@ -404,8 +413,11 @@ class TestCUDNNLstmOp(OpTest):
     def setUp(self):
         self.op_type = "cudnn_lstm"
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
-        self.sequence_length = None if core.is_compiled_with_rocm(
-        ) else np.array([12, 11, 10, 9, 8], dtype=np.int32)
+        self.sequence_length = (
+            None
+            if core.is_compiled_with_rocm()
+            else np.array([12, 11, 10, 9, 8], dtype=np.int32)
+        )
         self.num_layers = 1
         self.set_attrs()
 
@@ -414,24 +426,26 @@ class TestCUDNNLstmOp(OpTest):
         input_size = 21
         hidden_size = 21
 
-        input = np.random.uniform(low=-0.1,
-                                  high=0.1,
-                                  size=(seq_length, batch_size,
-                                        input_size)).astype(self.dtype)
+        input = np.random.uniform(
+            low=-0.1, high=0.1, size=(seq_length, batch_size, input_size)
+        ).astype(self.dtype)
         input[11][1:][:] = 0
         input[10][2:][:] = 0
         input[9][3:][:] = 0
         input[8][4:][:] = 0
 
         weight.updata_weight(hidden_size, input_size, self.dtype)
-        rnn1 = LSTM(input_size,
-                    hidden_size,
-                    num_layers=self.num_layers,
-                    time_major=True,
-                    direction="forward")
+        rnn1 = LSTM(
+            input_size,
+            hidden_size,
+            num_layers=self.num_layers,
+            time_major=True,
+            direction="forward",
+        )
 
-        output, (last_hidden,
-                 last_cell) = rnn1(input, sequence_length=self.sequence_length)
+        output, (last_hidden, last_cell) = rnn1(
+            input, sequence_length=self.sequence_length
+        )
 
         flat_w = []
         num = 0
@@ -455,10 +469,12 @@ class TestCUDNNLstmOp(OpTest):
             bias_hh = weight.bias_hh
             flat_w.append(("bias" + str(num), bias_hh))
             num += 1
-        init_h = np.zeros(
-            (self.num_layers, batch_size, hidden_size)).astype(self.dtype)
-        init_c = np.zeros(
-            (self.num_layers, batch_size, hidden_size)).astype(self.dtype)
+        init_h = np.zeros((self.num_layers, batch_size, hidden_size)).astype(
+            self.dtype
+        )
+        init_c = np.zeros((self.num_layers, batch_size, hidden_size)).astype(
+            self.dtype
+        )
         state_out = np.ndarray((300)).astype("uint8")
 
         if core.is_compiled_with_rocm():
@@ -473,7 +489,7 @@ class TestCUDNNLstmOp(OpTest):
             'WeightList': flat_w,
             'InitH': init_h,
             'InitC': init_c,
-            'SequenceLength': self.sequence_length
+            'SequenceLength': self.sequence_length,
         }
         if self.sequence_length is None:
             self.inputs = {
@@ -494,7 +510,7 @@ class TestCUDNNLstmOp(OpTest):
             "LastH": last_hidden,
             'LastC': last_cell,
             'Reserve': np.ndarray((400)).astype("uint8"),
-            'StateOut': state_out
+            'StateOut': state_out,
         }
 
     def set_attrs(self):
@@ -503,26 +519,29 @@ class TestCUDNNLstmOp(OpTest):
     def test_output_with_place(self):
         place = core.CUDAPlace(0)
         if core.is_compiled_with_rocm():
-            self.check_output_with_place(place,
-                                         atol=1e-5,
-                                         no_check_set=['Reserve', 'StateOut'])
+            self.check_output_with_place(
+                place, atol=1e-5, no_check_set=['Reserve', 'StateOut']
+            )
         else:
-            self.check_output_with_place(place,
-                                         no_check_set=['Reserve', 'StateOut'])
+            self.check_output_with_place(
+                place, no_check_set=['Reserve', 'StateOut']
+            )
 
     def test_grad_with_place(self):
         place = core.CUDAPlace(0)
         var_name_list = self.get_weight_names()
         for var_name in var_name_list:
             self.check_grad_with_place(
-                place, set(['Input', var_name, 'InitH', 'InitC']),
-                ['Out', 'LastH', 'LastC'])
+                place,
+                set(['Input', var_name, 'InitH', 'InitC']),
+                ['Out', 'LastH', 'LastC'],
+            )
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNlstmAPI(unittest.TestCase):
-
     def test_lstm(self):
         seq_len = 20
         batch_size = 5
@@ -530,31 +549,41 @@ class TestCUDNNlstmAPI(unittest.TestCase):
         dropout_prob = 0.0
         num_layers = 1
         dtype = 'float32' if core.is_compiled_with_rocm() else 'float64'
-        input = fluid.data(name='input',
-                           shape=[seq_len, batch_size, hidden_size],
-                           dtype=dtype)
-        init_h = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      dtype, 0.0)
-        init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      dtype, 0.0)
-        rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
-                                              hidden_size, num_layers,
-                                              dropout_prob, False)
+        input = fluid.data(
+            name='input', shape=[seq_len, batch_size, hidden_size], dtype=dtype
+        )
+        init_h = layers.fill_constant(
+            [num_layers, batch_size, hidden_size], dtype, 0.0
+        )
+        init_c = layers.fill_constant(
+            [num_layers, batch_size, hidden_size], dtype, 0.0
+        )
+        rnn_out, last_h, last_c = layers.lstm(
+            input,
+            init_h,
+            init_c,
+            seq_len,
+            hidden_size,
+            num_layers,
+            dropout_prob,
+            False,
+        )
         exe = fluid.Executor(fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
-        input_i = np.random.uniform(low=-0.1,
-                                    high=0.1,
-                                    size=(seq_len, batch_size,
-                                          hidden_size)).astype("float64")
-        out = exe.run(fluid.default_main_program(),
-                      feed={'input': input_i},
-                      fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'])
+        input_i = np.random.uniform(
+            low=-0.1, high=0.1, size=(seq_len, batch_size, hidden_size)
+        ).astype("float64")
+        out = exe.run(
+            fluid.default_main_program(),
+            feed={'input': input_i},
+            fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'],
+        )
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNlstmAPI(unittest.TestCase):
-
     def test_lstm(self):
         seq_len = 20
         batch_size = 5
@@ -562,25 +591,36 @@ class TestCUDNNlstmAPI(unittest.TestCase):
         dropout_prob = 0.0
         num_layers = 2
         dtype = 'float32' if core.is_compiled_with_rocm() else 'float64'
-        input = fluid.data(name='input',
-                           shape=[seq_len, batch_size, hidden_size],
-                           dtype=dtype)
-        init_h = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      dtype, 0.0)
-        init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
-                                      dtype, 0.0)
-        rnn_out, last_h, last_c = layers.lstm(input, init_h, init_c, seq_len,
-                                              hidden_size, num_layers,
-                                              dropout_prob, False, True)
+        input = fluid.data(
+            name='input', shape=[seq_len, batch_size, hidden_size], dtype=dtype
+        )
+        init_h = layers.fill_constant(
+            [num_layers, batch_size, hidden_size], dtype, 0.0
+        )
+        init_c = layers.fill_constant(
+            [num_layers, batch_size, hidden_size], dtype, 0.0
+        )
+        rnn_out, last_h, last_c = layers.lstm(
+            input,
+            init_h,
+            init_c,
+            seq_len,
+            hidden_size,
+            num_layers,
+            dropout_prob,
+            False,
+            True,
+        )
         exe = fluid.Executor(fluid.CUDAPlace(0))
         exe.run(fluid.default_startup_program())
-        input_i = np.random.uniform(low=-0.1,
-                                    high=0.1,
-                                    size=(seq_len, batch_size,
-                                          hidden_size)).astype(dtype)
-        out = exe.run(fluid.default_main_program(),
-                      feed={'input': input_i},
-                      fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'])
+        input_i = np.random.uniform(
+            low=-0.1, high=0.1, size=(seq_len, batch_size, hidden_size)
+        ).astype(dtype)
+        out = exe.run(
+            fluid.default_main_program(),
+            feed={'input': input_i},
+            fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'],
+        )
 
 
 if __name__ == '__main__':

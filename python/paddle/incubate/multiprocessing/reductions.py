@@ -35,16 +35,17 @@ def _supported_check():
         return False
 
     if not sys.version_info >= (3, 4):
-        warnings.warn("Use `paddle.multiprocessing` to share paddle tensor "
-                      "requires python version greater than 3.4 ."
-                      " `paddle.multiprocessing` will not take any effect !!!")
+        warnings.warn(
+            "Use `paddle.multiprocessing` to share paddle tensor "
+            "requires python version greater than 3.4 ."
+            " `paddle.multiprocessing` will not take any effect !!!"
+        )
         return False
 
     return True
 
 
 class LRUSharedCache(OrderedDict):
-
     def __init__(self):
         self.limit = 128
         self._after_fork()
@@ -84,9 +85,9 @@ def cuda_from_cache(key):
 
 def rebuild_tensor(cls, lodtensor, metadata):
     if cls == paddle.fluid.framework.ParamBase:
-        tensor = paddle.fluid.framework.ParamBase(lodtensor.shape(),
-                                                  lodtensor._dtype(),
-                                                  **metadata)
+        tensor = paddle.fluid.framework.ParamBase(
+            lodtensor.shape(), lodtensor._dtype(), **metadata
+        )
         tensor.value().get_tensor()._share_data_with(lodtensor)
     else:
         size, stop_gradient = metadata
@@ -107,8 +108,11 @@ def reduce_tensor(tensor):
             "Refusing to serialize non-leaf tensor which not stop_gradient, you can detach it!"
         )
     # TODO: add serializing name and  hooks check
-    if tensor.place.is_cpu_place() or tensor.place.is_gpu_place(
-    ) or tensor.place.is_cuda_pinned_place():
+    if (
+        tensor.place.is_cpu_place()
+        or tensor.place.is_gpu_place()
+        or tensor.place.is_cuda_pinned_place()
+    ):
         if type(tensor) == paddle.fluid.framework.ParamBase:
             metadata = copy.deepcopy(tensor.__dict__)
         else:
@@ -118,7 +122,8 @@ def reduce_tensor(tensor):
     else:
         raise ValueError(
             "Only support tensors of CPU/CUDA/CUDAPinned Place, Not support %s for now!"
-            % tensor.place)
+            % tensor.place
+        )
 
 
 def rebuild_lodtensor_filename(cls, ipc_name, size, type_idx, dims, lod):
@@ -127,12 +132,14 @@ def rebuild_lodtensor_filename(cls, ipc_name, size, type_idx, dims, lod):
     return lodtensor
 
 
-def rebuild_cuda_tensor(cls, handle, offset_bytes, size, type_idx, dims, lod,
-                        device_idx):
+def rebuild_cuda_tensor(
+    cls, handle, offset_bytes, size, type_idx, dims, lod, device_idx
+):
     cache_tensor = cuda_from_cache((handle, offset_bytes))
     if cache_tensor is None:
         lodtensor = cls._new_shared_cuda(
-            (handle, offset_bytes, size, type_idx, dims, lod, device_idx))
+            (handle, offset_bytes, size, type_idx, dims, lod, device_idx)
+        )
         # We only cache cuda shared tensor here.
         # The opening cost of cudaIpcMemoryHandle is very high.
         # Since we cache the recived tensor directly,
@@ -141,28 +148,32 @@ def rebuild_cuda_tensor(cls, handle, offset_bytes, size, type_idx, dims, lod,
         shared_cache[(handle, offset_bytes)] = lodtensor
     else:
         lodtensor = paddle.fluid.core.LoDTensor()
-        lodtensor._share_buffer_with(cache_tensor,
-                                     (size, type_idx, dims, lod, device_idx))
+        lodtensor._share_buffer_with(
+            cache_tensor, (size, type_idx, dims, lod, device_idx)
+        )
 
     return lodtensor
 
 
 def rebuild_lodtensor_empty(cls):
-    #TODO: check if tensor initialized
-    #TODO: handle the dtype of empty tensor
+    # TODO: check if tensor initialized
+    # TODO: handle the dtype of empty tensor
     return cls()
 
 
 def reduce_lodtensor(lodtensor):
-    if lodtensor._place().is_cpu_place() or lodtensor._place(
-    ).is_cuda_pinned_place():
+    if (
+        lodtensor._place().is_cpu_place()
+        or lodtensor._place().is_cuda_pinned_place()
+    ):
         for dim in lodtensor.shape():
             if dim == 0:
                 # Empty tensors have nothing be mmapped.
-                return (rebuild_lodtensor_empty, (type(lodtensor), ))
+                return (rebuild_lodtensor_empty, (type(lodtensor),))
 
         # Default use share filename stratege
-        metadata = lodtensor._share_filename(
+        metadata = (
+            lodtensor._share_filename()
         )  # ipc_name, size, type_idx, dims, lod
         rebuild = rebuild_lodtensor_filename
         lodtensor._shared_incref()
@@ -174,7 +185,7 @@ def reduce_lodtensor(lodtensor):
     else:
         raise RuntimeError("We only support pass cpu/gpu lodtensor for now!")
 
-    return (rebuild, (type(lodtensor), ) + metadata)
+    return (rebuild, (type(lodtensor),) + metadata)
 
 
 def init_reductions():

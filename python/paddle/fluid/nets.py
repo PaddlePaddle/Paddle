@@ -25,24 +25,26 @@ __all__ = [
 ]
 
 
-def simple_img_conv_pool(input,
-                         num_filters,
-                         filter_size,
-                         pool_size,
-                         pool_stride,
-                         pool_padding=0,
-                         pool_type='max',
-                         global_pooling=False,
-                         conv_stride=1,
-                         conv_padding=0,
-                         conv_dilation=1,
-                         conv_groups=1,
-                         param_attr=None,
-                         bias_attr=None,
-                         act=None,
-                         use_cudnn=True):
+def simple_img_conv_pool(
+    input,
+    num_filters,
+    filter_size,
+    pool_size,
+    pool_stride,
+    pool_padding=0,
+    pool_type='max',
+    global_pooling=False,
+    conv_stride=1,
+    conv_padding=0,
+    conv_dilation=1,
+    conv_groups=1,
+    param_attr=None,
+    bias_attr=None,
+    act=None,
+    use_cudnn=True,
+):
     r"""
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     The simple_img_conv_pool api is composed of :ref:`api_fluid_layers_conv2d` and :ref:`api_fluid_layers_pool2d` .
 
@@ -115,42 +117,48 @@ def simple_img_conv_pool(input,
                                                         pool_stride=2,
                                                         act="relu")
     """
-    conv_out = layers.conv2d(input=input,
-                             num_filters=num_filters,
-                             filter_size=filter_size,
-                             stride=conv_stride,
-                             padding=conv_padding,
-                             dilation=conv_dilation,
-                             groups=conv_groups,
-                             param_attr=param_attr,
-                             bias_attr=bias_attr,
-                             act=act,
-                             use_cudnn=use_cudnn)
+    conv_out = layers.conv2d(
+        input=input,
+        num_filters=num_filters,
+        filter_size=filter_size,
+        stride=conv_stride,
+        padding=conv_padding,
+        dilation=conv_dilation,
+        groups=conv_groups,
+        param_attr=param_attr,
+        bias_attr=bias_attr,
+        act=act,
+        use_cudnn=use_cudnn,
+    )
 
-    pool_out = layers.pool2d(input=conv_out,
-                             pool_size=pool_size,
-                             pool_type=pool_type,
-                             pool_stride=pool_stride,
-                             pool_padding=pool_padding,
-                             global_pooling=global_pooling,
-                             use_cudnn=use_cudnn)
+    pool_out = layers.pool2d(
+        input=conv_out,
+        pool_size=pool_size,
+        pool_type=pool_type,
+        pool_stride=pool_stride,
+        pool_padding=pool_padding,
+        global_pooling=global_pooling,
+        use_cudnn=use_cudnn,
+    )
     return pool_out
 
 
-def img_conv_group(input,
-                   conv_num_filter,
-                   pool_size,
-                   conv_padding=1,
-                   conv_filter_size=3,
-                   conv_act=None,
-                   param_attr=None,
-                   conv_with_batchnorm=False,
-                   conv_batchnorm_drop_rate=0.0,
-                   pool_stride=1,
-                   pool_type="max",
-                   use_cudnn=True):
+def img_conv_group(
+    input,
+    conv_num_filter,
+    pool_size,
+    conv_padding=1,
+    conv_filter_size=3,
+    conv_act=None,
+    param_attr=None,
+    conv_with_batchnorm=False,
+    conv_batchnorm_drop_rate=0.0,
+    pool_stride=1,
+    pool_type="max",
+    use_cudnn=True,
+):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     The Image Convolution Group is composed of Convolution2d, BatchNorm, DropOut,
     and Pool2D. According to the input arguments, img_conv_group will do serials of
@@ -210,8 +218,9 @@ def img_conv_group(input,
                                                   pool_stride=2)
     """
     tmp = input
-    assert isinstance(conv_num_filter, list) or \
-        isinstance(conv_num_filter, tuple)
+    assert isinstance(conv_num_filter, list) or isinstance(
+        conv_num_filter, tuple
+    )
 
     def __extend_list__(obj):
         if not hasattr(obj, '__len__'):
@@ -231,13 +240,15 @@ def img_conv_group(input,
         if conv_with_batchnorm[i]:
             local_conv_act = None
 
-        tmp = layers.conv2d(input=tmp,
-                            num_filters=conv_num_filter[i],
-                            filter_size=conv_filter_size[i],
-                            padding=conv_padding[i],
-                            param_attr=param_attr[i],
-                            act=local_conv_act,
-                            use_cudnn=use_cudnn)
+        tmp = layers.conv2d(
+            input=tmp,
+            num_filters=conv_num_filter[i],
+            filter_size=conv_filter_size[i],
+            padding=conv_padding[i],
+            param_attr=param_attr[i],
+            act=local_conv_act,
+            use_cudnn=use_cudnn,
+        )
 
         if conv_with_batchnorm[i]:
             tmp = layers.batch_norm(input=tmp, act=conv_act)
@@ -245,23 +256,27 @@ def img_conv_group(input,
             if abs(drop_rate) > 1e-5:
                 tmp = layers.dropout(x=tmp, dropout_prob=drop_rate)
 
-    pool_out = layers.pool2d(input=tmp,
-                             pool_size=pool_size,
-                             pool_type=pool_type,
-                             pool_stride=pool_stride,
-                             use_cudnn=use_cudnn)
+    pool_out = layers.pool2d(
+        input=tmp,
+        pool_size=pool_size,
+        pool_type=pool_type,
+        pool_stride=pool_stride,
+        use_cudnn=use_cudnn,
+    )
     return pool_out
 
 
-def sequence_conv_pool(input,
-                       num_filters,
-                       filter_size,
-                       param_attr=None,
-                       act="sigmoid",
-                       pool_type="max",
-                       bias_attr=None):
+def sequence_conv_pool(
+    input,
+    num_filters,
+    filter_size,
+    param_attr=None,
+    act="sigmoid",
+    pool_type="max",
+    bias_attr=None,
+):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     **This api takes input as an LoDTensor. If input is a Tensor, please use**
     :ref:`api_fluid_nets_simple_img_conv_pool` **instead**
@@ -315,12 +330,14 @@ def sequence_conv_pool(input,
     """
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'input')
-    conv_out = layers.sequence_conv(input=input,
-                                    num_filters=num_filters,
-                                    filter_size=filter_size,
-                                    param_attr=param_attr,
-                                    bias_attr=bias_attr,
-                                    act=act)
+    conv_out = layers.sequence_conv(
+        input=input,
+        num_filters=num_filters,
+        filter_size=filter_size,
+        param_attr=param_attr,
+        bias_attr=bias_attr,
+        act=act,
+    )
 
     pool_out = layers.sequence_pool(input=conv_out, pool_type=pool_type)
     return pool_out
@@ -329,7 +346,7 @@ def sequence_conv_pool(input,
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.glu")
 def glu(input, dim=-1):
     r"""
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` ,
     :ref:`api_fluid_layers_sigmoid`  and :ref:`api_fluid_layers_elementwise_mul` .
@@ -366,19 +383,18 @@ def glu(input, dim=-1):
             # shape of output: [-1, 3, 3, 9]
             output = fluid.nets.glu(input=data, dim=1)
     """
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             "glu")
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64'], "glu"
+    )
     a, b = layers.split(input, num_or_sections=2, dim=dim)
     act_b = layers.sigmoid(x=b)
     out = layers.elementwise_mul(x=a, y=act_b)
     return out
 
 
-def scaled_dot_product_attention(queries,
-                                 keys,
-                                 values,
-                                 num_heads=1,
-                                 dropout_rate=0.):
+def scaled_dot_product_attention(
+    queries, keys, values, num_heads=1, dropout_rate=0.0
+):
     r"""
 	:api_attr: Static Graph
 
@@ -449,46 +465,63 @@ def scaled_dot_product_attention(queries,
             contexts = fluid.nets.scaled_dot_product_attention(queries, keys, values)
             contexts.shape  # [3, 5, 10]
     """
-    check_variable_and_dtype(queries, 'queries', ['float32', 'float64'],
-                             "scaled_dot_product_attention")
-    check_variable_and_dtype(keys, 'keys', ['float32', 'float64'],
-                             "scaled_dot_product_attention")
-    check_variable_and_dtype(values, 'values', ['float32', 'float64'],
-                             "scaled_dot_product_attention")
+    check_variable_and_dtype(
+        queries,
+        'queries',
+        ['float32', 'float64'],
+        "scaled_dot_product_attention",
+    )
+    check_variable_and_dtype(
+        keys, 'keys', ['float32', 'float64'], "scaled_dot_product_attention"
+    )
+    check_variable_and_dtype(
+        values, 'values', ['float32', 'float64'], "scaled_dot_product_attention"
+    )
 
     if not (queries.dtype == keys.dtype == values.dtype):
         raise TypeError(
             "The dtype of keys, values and queries should be the same."
             "But received queries.dtype = %s, "
-            " keys.dtype = %s, values.dtype) = %s." %
-            (convert_dtype(queries.dtype), convert_dtype(
-                keys.dtype), convert_dtype(values.dtype)))
+            " keys.dtype = %s, values.dtype) = %s."
+            % (
+                convert_dtype(queries.dtype),
+                convert_dtype(keys.dtype),
+                convert_dtype(values.dtype),
+            )
+        )
 
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
             "Inputs queries, keys and values should all be 3-D tensors."
             "But received len(queries.shape) = %d, "
-            "len(keys.shape) = %d, len(values.shape) = %d." %
-            (len(queries.shape), len(keys.shape), len(values.shape)))
+            "len(keys.shape) = %d, len(values.shape) = %d."
+            % (len(queries.shape), len(keys.shape), len(values.shape))
+        )
 
     if queries.shape[-1] != keys.shape[-1]:
         raise ValueError(
             "The hidden size of queries and keys should be the same."
             "But received queries' hidden size = %d and keys' hidden size = %d."
-            % (queries.shape[-1], keys.shape[-1]))
+            % (queries.shape[-1], keys.shape[-1])
+        )
     if keys.shape[-2] != values.shape[-2]:
         raise ValueError(
             "The max sequence length in value batch and in key batch "
             "should be the same. But received max sequence length in value batch "
-            "= %d, in key batch = %d." % (values.shape[-2], keys.shape[-2]))
+            "= %d, in key batch = %d." % (values.shape[-2], keys.shape[-2])
+        )
     if keys.shape[-1] % num_heads != 0:
-        raise ValueError("The hidden size of keys (%d) must be divisible "
-                         "by the number of attention heads (%d)." %
-                         (keys.shape[-1], num_heads))
+        raise ValueError(
+            "The hidden size of keys (%d) must be divisible "
+            "by the number of attention heads (%d)."
+            % (keys.shape[-1], num_heads)
+        )
     if values.shape[-1] % num_heads != 0:
-        raise ValueError("The hidden size of values (%d) must be divisible "
-                         "by the number of attention heads (%d)." %
-                         (values.shape[-1], num_heads))
+        raise ValueError(
+            "The hidden size of values (%d) must be divisible "
+            "by the number of attention heads (%d)."
+            % (values.shape[-1], num_heads)
+        )
 
     def __compute_qkv(queries, keys, values, num_heads):
         """
@@ -535,9 +568,10 @@ def scaled_dot_product_attention(queries,
         # reshape the 3-D input: [batch_size, max_sequence_length, hidden_dim]
         # into a 4-D output:
         # [batch_size, max_sequence_length, num_heads, hidden_size_per_head].
-        reshaped = layers.reshape(x=x,
-                                  shape=list(x.shape[:-1]) +
-                                  [num_heads, hidden_size // num_heads])
+        reshaped = layers.reshape(
+            x=x,
+            shape=list(x.shape[:-1]) + [num_heads, hidden_size // num_heads],
+        )
 
         # permute the dimensions into:
         # [batch_size, num_heads, max_sequence_len, hidden_size_per_head]
@@ -557,17 +591,25 @@ def scaled_dot_product_attention(queries,
                     [bs, max_sequence_length, num_heads * hidden_dim].
         """
 
-        if len(x.shape) == 3: return x
+        if len(x.shape) == 3:
+            return x
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
         trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
-        return layers.reshape(x=trans_x,
-                              shape=list(
-                                  map(int, [
-                                      trans_x.shape[0], trans_x.shape[1],
-                                      trans_x.shape[2] * trans_x.shape[3]
-                                  ])))
+        return layers.reshape(
+            x=trans_x,
+            shape=list(
+                map(
+                    int,
+                    [
+                        trans_x.shape[0],
+                        trans_x.shape[1],
+                        trans_x.shape[2] * trans_x.shape[3],
+                    ],
+                )
+            ),
+        )
 
     q, k, v = __compute_qkv(queries, keys, values, num_heads)
 
@@ -579,13 +621,15 @@ def scaled_dot_product_attention(queries,
     scaled_q = layers.scale(x=q, scale=key_dim_per_head**-0.5)
     product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
 
-    weights = layers.reshape(x=layers.reshape(x=product,
-                                              shape=[-1, product.shape[-1]],
-                                              act="softmax"),
-                             shape=product.shape)
+    weights = layers.reshape(
+        x=layers.reshape(
+            x=product, shape=[-1, product.shape[-1]], act="softmax"
+        ),
+        shape=product.shape,
+    )
     if dropout_rate:
-        weights = layers.dropout(weights,
-                                 dropout_prob=dropout_rate,
-                                 is_test=False)
+        weights = layers.dropout(
+            weights, dropout_prob=dropout_rate, is_test=False
+        )
     ctx_multiheads = layers.matmul(weights, v)
     return __combine_heads(ctx_multiheads)

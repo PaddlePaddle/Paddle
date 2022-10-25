@@ -27,36 +27,41 @@ def make_program_lookup_table_v1_mp_dp():
     block = main_program.global_block()
     with paddle.static.program_guard(main_program, start_program):
 
-        src_ids = paddle.static.data(name='src_ids',
-                                     shape=[12, 512, 1],
-                                     dtype='int64')
+        src_ids = paddle.static.data(
+            name='src_ids', shape=[12, 512, 1], dtype='int64'
+        )
         src_ids.stop_gradient = True
         emb_out = paddle.fluid.layers.embedding(
             input=src_ids,
             size=[64, 128],
             param_attr=paddle.fluid.ParamAttr(name="emb_weight"),
             dtype="float32",
-            is_sparse=False)
+            is_sparse=False,
+        )
         loss = paddle.fluid.layers.reduce_mean(emb_out)
 
         auto.shard_tensor(
-            src_ids, auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"]),
-            ["x", None, None])
+            src_ids,
+            auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"]),
+            ["x", None, None],
+        )
         emb_weight = block.vars["emb_weight"]
         auto.shard_tensor(
-            emb_weight, auto.ProcessMesh([[0, 1], [2, 3]],
-                                         dim_names=["x", "y"]), ["y", None])
+            emb_weight,
+            auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"]),
+            ["y", None],
+        )
 
     return main_program, start_program, loss
 
 
 class TestDistPNorm(unittest.TestCase):
-
     def test_lookup_table_v1_mp_dp(self):
 
         for rank in range(4):
             dist_main_prog, dist_context = parallelizer(
-                make_program_lookup_table_v1_mp_dp, rank)
+                make_program_lookup_table_v1_mp_dp, rank
+            )
             ops = dist_main_prog.global_block().ops
 
             op_types = []
@@ -64,9 +69,16 @@ class TestDistPNorm(unittest.TestCase):
                 op_types.append(op.type)
 
             assert op_types == [
-                'reshape2', 'c_embedding', 'c_allreduce_sum', 'reduce_mean',
-                'fill_constant', 'reduce_mean_grad', 'c_identity',
-                'c_embedding_grad', 'c_allreduce_sum', 'scale'
+                'reshape2',
+                'c_embedding',
+                'c_allreduce_sum',
+                'reduce_mean',
+                'fill_constant',
+                'reduce_mean_grad',
+                'c_identity',
+                'c_embedding_grad',
+                'c_allreduce_sum',
+                'scale',
             ]
 
 

@@ -37,10 +37,9 @@ def case2(x):
         place = paddle.CUDAPlace(0)
     else:
         place = paddle.CPUPlace()
-    a = paddle.to_tensor([1.0, 2.0, 3.0],
-                         place=place,
-                         dtype="int64",
-                         stop_gradient=False)
+    a = paddle.to_tensor(
+        [1.0, 2.0, 3.0], place=place, dtype="int64", stop_gradient=False
+    )
 
     return a
 
@@ -84,7 +83,6 @@ def case6(x):
 
 
 class TestToTensorReturnVal(unittest.TestCase):
-
     def test_to_tensor_badreturn(self):
         paddle.disable_static()
         x = paddle.to_tensor([3])
@@ -133,7 +131,6 @@ class TestToTensorReturnVal(unittest.TestCase):
 
 
 class TestStatic(unittest.TestCase):
-
     def test_static(self):
         paddle.enable_static()
         main_prog = Program()
@@ -144,10 +141,12 @@ class TestStatic(unittest.TestCase):
             else:
                 place = paddle.CPUPlace()
 
-            x = paddle.to_tensor(paddle.randn([5, 2]),
-                                 dtype='float64',
-                                 stop_gradient=False,
-                                 place=place)
+            x = paddle.to_tensor(
+                paddle.randn([5, 2]),
+                dtype='float64',
+                stop_gradient=False,
+                place=place,
+            )
 
             out = paddle.static.nn.fc(x, 1)
 

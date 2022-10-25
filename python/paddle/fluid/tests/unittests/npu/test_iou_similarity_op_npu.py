@@ -28,7 +28,6 @@ np.random.seed(2021)
 
 
 class TestNpuIouSimilarityOp(OpTest):
-
     def setUp(self):
         self.op_type = "iou_similarity"
         self.set_npu()
@@ -58,7 +57,7 @@ class TestNpuIouSimilarityOp(OpTest):
             self.boxes1_lod = [[1 for _ in range(self.N)]]
             self.inputs = {
                 'X': (self.boxes1, self.boxes1_lod),
-                'Y': self.boxes2
+                'Y': self.boxes2,
             }
         else:
             self.inputs = {'X': self.boxes1, 'Y': self.boxes2}
@@ -74,7 +73,9 @@ class TestNpuIouSimilarityOp(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
-    def _compute_iou(self, ):
+    def _compute_iou(
+        self,
+    ):
         for row in range(self.boxes1.shape[0]):
             for col in range(self.boxes2.shape[0]):
                 xmin1, ymin1, xmax1, ymax1 = self.boxes1[row]
@@ -104,7 +105,6 @@ class TestNpuIouSimilarityOp(OpTest):
 
 
 class TestNpuIouSimilarityOpWithLoD(TestNpuIouSimilarityOp):
-
     def set_init_config(self):
         super(TestNpuIouSimilarityOpWithLoD, self).set_init_config()
         self.box_normalized = True
@@ -112,7 +112,6 @@ class TestNpuIouSimilarityOpWithLoD(TestNpuIouSimilarityOp):
 
 
 class TestNpuIouSimilarityOpWithBoxNormalized(TestNpuIouSimilarityOp):
-
     def set_init_config(self):
         super(TestNpuIouSimilarityOpWithBoxNormalized, self).set_init_config()
         self.box_normalized = True
@@ -120,7 +119,6 @@ class TestNpuIouSimilarityOpWithBoxNormalized(TestNpuIouSimilarityOp):
 
 
 def TestNpuIouSimilarityOpFp16(TestNpuIouSimilarityOp):
-
     def init_dtype(self):
         self.dtype = np.float16
 
