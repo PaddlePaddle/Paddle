@@ -425,6 +425,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("scale_matmul_fuse_pass");
     passes_.push_back("reshape_transpose_matmul_mkldnn_fuse_pass");
     passes_.push_back("matmul_elementwise_add_mkldnn_fuse_pass");
+    passes_.push_back("operator_scale_onednn_fuse_pass");
     passes_.push_back("cpu_quantize_placement_pass");
     passes_.push_back("cpu_quantize_pass");
     passes_.push_back("cpu_quantize_squash_pass");

@@ -23,13 +23,6 @@ import hypothesis.strategies as st
 class TestFCActivationOneDNNFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         activation_type = draw(
-<<<<<<< HEAD
-            st.sampled_from([
-                'relu', 'gelu', 'swish', 'mish', 'sqrt', 'hard_swish',
-                'sigmoid', 'abs', 'relu6', 'clip', 'tanh', 'hard_sigmoid',
-                'leaky_relu', 'scale'
-            ]))
-=======
             st.sampled_from(
                 [
                     'relu',
@@ -45,10 +38,10 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                     'tanh',
                     'hard_sigmoid',
                     'leaky_relu',
+                    'scale',
                 ]
             )
         )
->>>>>>> develop
 
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
@@ -91,26 +84,18 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                 alpha=draw(st.floats(min_value=0.1, max_value=1.0)),
             )
         elif activation_type == "relu6":
-<<<<<<< HEAD
-            activation_op = OpConfig(activation_type,
-                                     inputs={"X": ["fc_output"]},
-                                     outputs={"Out": ["activation_output"]},
-                                     threshold=6)
-        elif activation_type == "scale":
-            activation_op = OpConfig(activation_type,
-                                     inputs={"X": ["fc_output"]},
-                                     outputs={"Out": ["activation_output"]},
-                                     scale=draw(
-                                         st.sampled_from([0.125, 0.4, 0.875,
-                                                          2])))
-=======
             activation_op = OpConfig(
                 activation_type,
                 inputs={"X": ["fc_output"]},
                 outputs={"Out": ["activation_output"]},
                 threshold=6,
             )
->>>>>>> develop
+        elif activation_type == "scale":
+            activation_op = OpConfig(
+                activation_type,
+                inputs={"X": ["fc_output"]},
+                outputs={"Out": ["activation_output"]},
+                scale=draw(st.sampled_from([0.125, 0.4, 0.875, 2])))
         elif activation_type == "swish":
             activation_op = OpConfig(
                 activation_type,
@@ -130,28 +115,17 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
         program_config = ProgramConfig(
             ops=model_net,
             weights={
-<<<<<<< HEAD
-                "fc_weight":
-                TensorConfig(data_gen=partial(generate_input, [64, 64])),
-                "fc_bias":
-                TensorConfig(data_gen=partial(generate_input, [64])),
-            },
-            inputs={
-                "fc_input":
-                TensorConfig(data_gen=partial(generate_input, [32, 64]))
-=======
                 "fc_weight": TensorConfig(
-                    data_gen=partial(generate_input, [fc_wei, fc_wei])
+                    data_gen=partial(generate_input, [64, 64])
                 ),
                 "fc_bias": TensorConfig(
-                    data_gen=partial(generate_input, [fc_wei])
+                    data_gen=partial(generate_input, [64])
                 ),
             },
             inputs={
                 "fc_input": TensorConfig(
-                    data_gen=partial(generate_input, [fc_in, fc_wei])
+                    data_gen=partial(generate_input, [32, 64])
                 )
->>>>>>> develop
             },
             outputs=["activation_output"],
         )
@@ -160,15 +134,10 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-<<<<<<< HEAD
             use_mkldnn=True,
             passes=[
                 "fc_act_mkldnn_fuse_pass", "operator_scale_onednn_fuse_pass"
             ])
-=======
-            use_mkldnn=True, passes=["fc_act_mkldnn_fuse_pass"]
-        )
->>>>>>> develop
         yield config, ["fc"], (1e-5, 1e-5)
 
     def test(self):
