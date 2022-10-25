@@ -460,9 +460,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
           plugin_inputs.emplace_back(mask_tensor);
           // input_2 for plugin
           std::vector<int> pos_id = {0};
-          int max_batch = 500;
+          int max_batch = 512;
+          int length = (input_dims.d[1] == -1) ? 1 : input_dims.d[1];
           for (int i = 1; i < max_batch; i++) {
-            pos_id.push_back(i);
+            pos_id.push_back(i * length);
           }
           nvinfer1::ITensor* fake_pos_id_tensor = Add1DConstantLayer(pos_id);
           nvinfer1::ITensor* length_tensor =
@@ -497,18 +498,26 @@ class MultiheadMatMulOpConverter : public OpConverter {
           stride.d[0] = 1;
           size.d[0] = 1;
 
+          nvinfer1::ITensor* pos_id_tensor = (input_dims.d[1] == -1)
+                                                 ? pos_id_layer->getOutput(0)
+                                                 : fake_pos_id_tensor;
+
           auto* slice_pos_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Slice, *pos_id_layer->getOutput(0), start, size, stride);
+              engine_, Slice, *pos_id_tensor, start, size, stride);
           slice_pos_layer->setInput(2, *size_layer->getOutput(0));
           plugin_inputs.emplace_back(slice_pos_layer->getOutput(0));
 
           // input_3 for plugin
-          std::vector<int> data(500, 1);
+          int max_length = (input_dims.d[1] == -1) ? 512 : input_dims.d[1];
+          std::vector<int> data(max_length, 1);
           nvinfer1::ITensor* fake_max_seqlen_tensor = Add1DConstantLayer(data);
           auto* slice_max_layer = TRT_ENGINE_ADD_LAYER(
               engine_, Slice, *fake_max_seqlen_tensor, start, size, stride);
           slice_max_layer->setInput(2, *length_tensor);
-          plugin_inputs.emplace_back(slice_max_layer->getOutput(0));
+          nvinfer1::ITensor* max_seqlen_tensor =
+              (input_dims.d[1] == -1) ? slice_max_layer->getOutput(0)
+                                      : fake_max_seqlen_tensor;
+          plugin_inputs.emplace_back(max_seqlen_tensor);
           // plugin_layer
           auto plugin_layer = engine_->network()->addPluginV2(
               plugin_inputs.data(), plugin_inputs.size(), *plugin);

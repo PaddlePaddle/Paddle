@@ -230,6 +230,7 @@ from .tensor.math import sqrt  # noqa: F401
 from .tensor.math import square  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
+from .tensor.math import nan_to_num  # noqa: F401
 from .tensor.math import nansum  # noqa: F401
 from .tensor.math import nanmean  # noqa: F401
 from .tensor.math import count_nonzero  # noqa: F401
@@ -666,6 +667,7 @@ __all__ = [  # noqa
     'renorm',
     'take_along_axis',
     'put_along_axis',
+    'nan_to_num',
     'heaviside',
     'tril_indices',
     'index_add',

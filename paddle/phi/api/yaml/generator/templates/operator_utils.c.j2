@@ -274,7 +274,7 @@ DECLARE_INFER_SHAPE_FUNCTOR({{api["op_name"]}}, {{api["op_name"] | to_pascal_cas
 {% if api["inplace"] is not none %}
   {% set inplace_map %}
   {% for source, target in api["inplace"].items() %}
-{{"{"}}{{source | to_opmaker_name}}, {{target | to_opmaker_name}}{{"}"}}{{", " if not loop.last}}
+{{"{"}}{{target | to_opmaker_name}}, {{source | to_opmaker_name}}{{"}"}}{{", " if not loop.last}}
   {%- endfor %}
   {%- endset %}
 DECLARE_INPLACE_OP_INFERER({{api["op_name"] | to_pascal_case}}InplaceInferer,

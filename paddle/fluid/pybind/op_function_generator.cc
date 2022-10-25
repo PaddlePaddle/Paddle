@@ -447,6 +447,11 @@ GenerateOpFunctions(int split_count) {
         !phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type)) {
       continue;
     }
+    // Skip the sparse op
+    if (op_type.compare(0, 7, "sparse_") == 0 && op_type != "sparse_momentum" &&
+        op_type != "sparse_attention") {
+      continue;
+    }
 
     op_info_map_need_gen.emplace(pair);
   }

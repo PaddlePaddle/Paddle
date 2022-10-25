@@ -221,19 +221,17 @@ class Conv3D(_Conv3D):
         .. code-block:: python
 
           import paddle
-          from paddle.fluid.framework import _test_eager_guard
 
-          with _test_eager_guard():
-            indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-            values = [[1], [2], [3], [4]]
-            indices = paddle.to_tensor(indices, dtype='int32')
-            values = paddle.to_tensor(values, dtype='float32')
-            dense_shape = [1, 1, 3, 4, 1]
-            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
-            conv = paddle.sparse.nn.Conv3D(1, 1, (1, 3, 3))
-            y = conv(sparse_x)
-            print(y.shape)
-            # (1, 1, 1, 2, 1)
+          indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+          values = [[1], [2], [3], [4]]
+          indices = paddle.to_tensor(indices, dtype='int32')
+          values = paddle.to_tensor(values, dtype='float32')
+          dense_shape = [1, 1, 3, 4, 1]
+          sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+          conv = paddle.sparse.nn.Conv3D(1, 1, (1, 3, 3))
+          y = conv(sparse_x)
+          print(y.shape)
+          # (1, 1, 1, 2, 1)
     """
 
     def __init__(
@@ -269,8 +267,8 @@ class Conv3D(_Conv3D):
 
 class SubmConv3D(_Conv3D):
     r"""
-    **Sparse Submanifold Convlution3d Layer**
-    The Sparse submanifold convolution3d layer calculates the output based on the input, filter
+    **Submanifold Sparse Convlution3d Layer**
+    The submanifold sparse convolution3d layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
     Output(Output) are multidimensional SparseCooTensors with a shape of
     :math:`[N, D, H, W, C]` . Where N is batch size, C is the number of
@@ -281,7 +279,7 @@ class SubmConv3D(_Conv3D):
 
     ..  math::
 
-        Out =(W \ast X + b
+        Out = W \ast X + b
 
     In the above equation:
 
@@ -362,19 +360,17 @@ class SubmConv3D(_Conv3D):
         .. code-block:: python
 
           import paddle
-          from paddle.fluid.framework import _test_eager_guard
 
-          with _test_eager_guard():
-            indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-            values = [[1], [2], [3], [4]]
-            dense_shape = [1, 1, 3, 4, 1]
-            indices = paddle.to_tensor(indices, dtype='int32')
-            values = paddle.to_tensor(values, dtype='float32')
-            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
-            subm_conv = paddle.sparse.nn.SubmConv3D(1, 1, (1, 3, 3))
-            y = subm_conv(sparse_x)
-            print(y.shape)
-            # (1, 1, 3, 4, 1)
+          indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+          values = [[1], [2], [3], [4]]
+          dense_shape = [1, 1, 3, 4, 1]
+          indices = paddle.to_tensor(indices, dtype='int32')
+          values = paddle.to_tensor(values, dtype='float32')
+          sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+          subm_conv = paddle.sparse.nn.SubmConv3D(1, 1, (1, 3, 3))
+          y = subm_conv(sparse_x)
+          print(y.shape)
+          # (1, 1, 3, 4, 1)
     """
 
     def __init__(
