@@ -2371,10 +2371,7 @@ Scope* OperatorWithKernel::PrepareData(
   };
 
   if (run_phi_kernel_) {
-    std::vector<std::string> input_names;
-    for (auto& input_name : kernel_signature_->input_names) {
-      input_names.emplace_back(input_name);
-    }
+    const auto& input_names = kernel_signature_->input_names;
     const auto& input_defs = phi_kernel_->args_def().input_defs();
     PADDLE_ENFORCE_EQ(input_names.size(),
                       input_defs.size(),
@@ -2384,7 +2381,6 @@ Scope* OperatorWithKernel::PrepareData(
                           input_names.size(),
                           input_defs.size()));
     for (size_t i = 0; i < input_defs.size(); ++i) {
-      const auto& input_defs = phi_kernel_->args_def().input_defs();
       auto& in_def = input_defs.at(i);
       std::string input_name = input_names[i];
       auto iter = ctx->inputs.find(input_name);
@@ -2396,19 +2392,18 @@ Scope* OperatorWithKernel::PrepareData(
           no_buffer_ins && no_buffer_ins->count(input_name) > 0;
       prepare_input_data(input_name, &ins_vector, &in_def, should_skip_input);
     }
-    // For input that is Extra
-    for (auto& var_name_item : Inputs()) {
-      if (std::find(input_names.begin(),
-                    input_names.end(),
-                    var_name_item.first) == input_names.end()) {
-        bool should_skip_input =
-            no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
-        std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
-        prepare_input_data(
-            var_name_item.first, &input_vars, nullptr, should_skip_input);
-      }
+#ifdef PADDLE_WITH_MKLDNN
+    // For input that is Extra, only MKLDNN will use Extra Inputs
+    auto& extra_input_names =
+        paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(
+            Type());
+    for (const auto& input_name : extra_input_names) {
+      bool should_skip_input =
+          no_buffer_ins && no_buffer_ins->count(input_name) > 0;
+      std::vector<Variable*>& input_vars = ctx->inputs[input_name];
+      prepare_input_data(input_name, &input_vars, nullptr, should_skip_input);
     }
-
+#endif
   } else {
     for (auto& var_name_item : Inputs()) {
       bool should_skip_input =

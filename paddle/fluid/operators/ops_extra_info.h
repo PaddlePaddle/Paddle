@@ -88,9 +88,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"use_cudnn", ExtraAttrProperty::SCHEDULE},
         {"use_mkldnn", ExtraAttrProperty::SCHEDULE},
         // ONEDNN dedicated attributes
-        {"Activation_scale", ExtraAttrProperty::ONEDNN},
         {"Bias", ExtraAttrProperty::ONEDNN},
-        {"Bias_scales", ExtraAttrProperty::ONEDNN},
         {"data_format", ExtraAttrProperty::ONEDNN},
         {"force_fp32_output", ExtraAttrProperty::ONEDNN},
         {"fuse_activation", ExtraAttrProperty::ONEDNN},
@@ -112,7 +110,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fused_transpose_X", ExtraAttrProperty::ONEDNN},
         {"fused_transpose_Y", ExtraAttrProperty::ONEDNN},
         {"mkldnn_data_type", ExtraAttrProperty::ONEDNN},
-        {"Output_shift_scale", ExtraAttrProperty::ONEDNN},
         {"ResidualData", ExtraAttrProperty::ONEDNN},
         {"scale_x", ExtraAttrProperty::ONEDNN},
         {"scale_y", ExtraAttrProperty::ONEDNN},
@@ -123,9 +120,13 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"Scale_y", ExtraAttrProperty::ONEDNN},
         {"Scale_out", ExtraAttrProperty::ONEDNN},
         {"Scale_weights", ExtraAttrProperty::ONEDNN},
-        {"Sum_scale", ExtraAttrProperty::ONEDNN},
         {"x_data_format", ExtraAttrProperty::ONEDNN},
         {"y_data_format", ExtraAttrProperty::ONEDNN},
+        // ONEDNN pass dedicated attributes
+        {"Activation_scale", ExtraAttrProperty::ONEDNN},
+        {"Bias_scales", ExtraAttrProperty::ONEDNN},
+        {"Output_shift_scale", ExtraAttrProperty::ONEDNN},
+        {"Sum_scale", ExtraAttrProperty::ONEDNN},
         // GPUDNN dedicated attributes
         {"exhaustive_search", ExtraAttrProperty::GPUDNN},
         {"fuse_relu_before_depthwise_conv", ExtraAttrProperty::GPUDNN},
@@ -220,6 +221,7 @@ class ExtraInfoUtils {
   std::vector<std::function<void(framework::AttributeMap*, bool)>>
       empty_extra_attrs_checker_{};
 
+  // TODO(chenweihang): move these extra inputs into op_compat.yaml
   std::unordered_map<std::string, std::vector<std::string>>
       g_extra_input_names_map_ = {{"conv2d", {"Bias", "ResidualData"}},
                                   {"conv2d_grad", {"Bias"}}};
