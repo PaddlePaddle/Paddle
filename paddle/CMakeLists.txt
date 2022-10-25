@@ -69,6 +69,9 @@ if(${len} GREATER_EQUAL 1)
         target_link_libraries(${test_name} ${CUDA_CUDART_LIBRARY}
                               "-Wl,--as-needed")
       endif()
+      if(WITH_ROCM)
+        target_link_libraries(${test_name} ${ROCM_HIPRTC_LIB})
+      endif()
       if(NOT
          ("${test_name}" STREQUAL "c_broadcast_op_npu_test"
           OR "${test_name}" STREQUAL "c_allreduce_sum_op_npu_test"
