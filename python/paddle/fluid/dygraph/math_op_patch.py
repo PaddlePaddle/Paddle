@@ -487,7 +487,8 @@ def monkey_patch_math_varbase():
         '__floordiv__',
         '__pow__',
         '__rpow__',
-        '__eq__' '__ne__',
+        '__eq__',
+        '__ne__',
     ]
 
     global _already_patch_varbase
