@@ -260,8 +260,6 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           }
 
           // where to insert roformer kernel
-          // std::cout<<"****************************************"<<std::endl;
-          // std::cout<<"begin to add roformer layer"<<std::endl;
           std::vector<nvinfer1::ITensor*> roformerplugin_inputs;
           roformerplugin_inputs.push_back(fc_layer->getOutput(0));
           roformerplugin_inputs.push_back(input_cos);
@@ -274,8 +272,6 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           roformerlayer->setName(
               ("roformerlayer(Output: " + output_name + ")").c_str());
           roformerlayer->setPrecision(nvinfer1::DataType::kHALF);
-          std::cout << "****************************************" << std::endl;
-          std::cout << "print add roformer layer success" << std::endl;
 
           auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
 

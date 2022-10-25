@@ -478,19 +478,7 @@ int RoformerNovarlenPlugin::enqueue(
 
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
-    std::cout << "**********intput0 float type *************" << std::endl;
-    if (input_desc[1].type == nvinfer1::DataType::kFLOAT) {
-      std::cout << "cos mat float type" << std::endl;
-    } else {
-      std::cout << "cos mat half type" << std::endl;
-    }
-    if (input_desc[2].type == nvinfer1::DataType::kFLOAT) {
-      std::cout << "sin mat float type" << std::endl;
-    } else {
-      std::cout << "sin mat half type" << std::endl;
-    }
-
-    VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp32";
+    VLOG(1) << "TRT Plugin DataType selected. RoformerQkvToContext-->fp32";
     auto *multihead_temp_data = multihead_temp_tensor.mutable_data<float>(
         platform::CUDAPlace(device_id));
     auto *temp_roformer_data =
@@ -528,8 +516,6 @@ int RoformerNovarlenPlugin::enqueue(
                     tmp_roformer_ptr,
                     stream);
 
-    // where to insert
-    //********************
     int n_q = seq_len * head_number_ * head_size_ * batch;
     constexpr int threads = 128;
     int blocks = (n_q + threads - 1) / threads;
@@ -573,18 +559,6 @@ int RoformerNovarlenPlugin::enqueue(
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-
-    std::cout << "**********intput0 half type *************" << std::endl;
-    if (input_desc[1].type == nvinfer1::DataType::kFLOAT) {
-      std::cout << "cos mat float type" << std::endl;
-    } else {
-      std::cout << "cos mat half type" << std::endl;
-    }
-    if (input_desc[2].type == nvinfer1::DataType::kFLOAT) {
-      std::cout << "sin mat float type" << std::endl;
-    } else {
-      std::cout << "sin mat half type" << std::endl;
-    }
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
     auto *multihead_temp_data =
         multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
