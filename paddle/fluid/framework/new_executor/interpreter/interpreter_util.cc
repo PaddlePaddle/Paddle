@@ -217,11 +217,6 @@ void BuildVariableScope(const framework::BlockDesc& block,
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
 
-  const Scope* ancestor_scope = inner_scope;
-  while (ancestor_scope->parent()) {
-    ancestor_scope = ancestor_scope->parent();
-  }
-
   for (auto& var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
     // TODO(xiongkun): user may create a variable with name that exists before.
@@ -232,6 +227,13 @@ void BuildVariableScope(const framework::BlockDesc& block,
     }
 
     if (var_desc->Persistable()) {
+      // In principle, we should put all trainable parameters in global scope,
+      // which means the root of the scope tree. Some cases like quantization
+      // will look up these parameters in global scope.
+      const Scope* ancestor_scope = inner_scope;
+      while (ancestor_scope->parent()) {
+        ancestor_scope = ancestor_scope->parent();
+      }
       auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var_name);
 
       VLOG(3) << "Initialize Variable " << var_name;
@@ -297,8 +299,7 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
     VariableScope* var_scope,
     Scope* local_scope,
     bool allow_var_not_in_program = false,
-    bool allow_var_not_in_scope = false,
-    bool used_for_control_flow_op = false) {
+    bool allow_var_not_in_scope = false) {
   VariableValueMap name2var;
   VariableIdMap name2id;
   for (auto& item : var_name_map) {
@@ -313,25 +314,12 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
         if (allow_var_not_in_program && var) {
           VLOG(3) << "Add " << var_name << " to var_scope";
           var_scope->AddVar(var_name, nullptr);
-
-          // NOTE(lvyongkang): ops in the control flow block may not find its
-          // inputs or outputs in VariableScope of the sub-block, but it's not a
-          // control flow op. So allow_var_not_in_scope won't be set, it only
-          // works for control flow op in global block.
-        } else if (used_for_control_flow_op && var) {
-          VLOG(4) << "[build_variable_map] insert " << var_name
-                  << " for use of control flow op";
-          var_scope->AddVar(var_name, nullptr);
         } else if (allow_var_not_in_scope) {
           VLOG(4) << var_name << " don't exist in variable scope, skip it!";
           continue;
         }
       }
-      VLOG(4) << "[build_variable_map] local scope find: " << var_name << " "
-              << var;
       auto var_id = var_scope->VarId(var_name);
-      VLOG(4) << "[build_variable_map] var scope add: " << var_name << "("
-              << var_id << ")";
       vars.push_back(var);
       ids.push_back(var_id);
     }
@@ -499,8 +487,11 @@ void BuildOpFuncList(const platform::Place& place,
         "while_grad"};
     bool allow_var_not_in_program = ops_with_var_not_in_program.count(op_type);
     bool allow_var_not_in_scope = ops_with_var_not_in_scope.count(op_type);
-    VLOG(10) << op_type << " " << allow_var_not_in_program << " "
-             << allow_var_not_in_scope;
+
+    // ops in the control flow block may not find its inputs or outputs
+    // in VariableScope of the sub-block, so we need search it in parent scope.
+    allow_var_not_in_program =
+        used_for_control_flow_op || allow_var_not_in_program;
 
     framework::VariableNameMap& input_name_map = op->Inputs();
     VariableValueMap ins_map;
@@ -509,8 +500,7 @@ void BuildOpFuncList(const platform::Place& place,
                                                       var_scope,
                                                       local_scope,
                                                       allow_var_not_in_program,
-                                                      allow_var_not_in_scope,
-                                                      used_for_control_flow_op);
+                                                      allow_var_not_in_scope);
 
     framework::VariableNameMap& output_name_map = op->Outputs();
     VariableValueMap outs_map;
@@ -519,9 +509,8 @@ void BuildOpFuncList(const platform::Place& place,
         BuildVariableMap(output_name_map,
                          var_scope,
                          local_scope,
-                         /*allow_var_not_in_program=*/false,
-                         allow_var_not_in_scope,
-                         used_for_control_flow_op);
+                         allow_var_not_in_program,
+                         allow_var_not_in_scope);
 
     // step 1: build OpFuncNode
     OpFuncNode op_func_node;

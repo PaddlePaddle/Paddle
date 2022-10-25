@@ -112,7 +112,7 @@ class ConditionalBlockOp : public ConditionalOp {
           platform::errors::PreconditionNotMet(
               "Expect Scope variable to be set in conditional_block_op, but "
               "got a null Scope variable. Please set the Scope variable."));
-      // PE call executor, cannot know which call this
+
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
 
       if (scopes->size() == 0 || !FLAGS_control_flow_use_new_executor ||
@@ -133,7 +133,8 @@ class ConditionalBlockOp : public ConditionalOp {
       platform::DontClearMKLDNNCache(dev_place);
 #endif
       auto *block = Attr<framework::BlockDesc *>("sub_block");
-      // framework::StandaloneExecutor exec(dev_place, *block->Program());
+      VLOG(3) << "Conditional block.idx = " << block->ID()
+              << ", scope = " << &cur_scope;
 
       auto &skip_vars =
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
