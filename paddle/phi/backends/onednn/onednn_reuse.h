@@ -897,7 +897,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
       auto src1_dims = src1_md.dims();
 
       bool can_squeeze = src0_dims[0] == src1_dims[0] &&
-                         src0_dims[2] == src1_dims[2] &&
+                         src0_dims[1] == src1_dims[1] &&
                          src0_dims[3] == src1_dims[3];
 
       if (can_squeeze && are_strides_plain(src0_strides, 4) &&
