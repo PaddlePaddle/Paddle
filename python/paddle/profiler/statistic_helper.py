@@ -16,7 +16,7 @@
 def sum_ranges(ranges):
     result = 0
     for time_range in ranges:
-        result += (time_range[1] - time_range[0])
+        result += time_range[1] - time_range[0]
     return result
 
 
@@ -30,11 +30,14 @@ def merge_self_ranges(src_ranges, is_sorted=False):
         for cur_indx in range(1, len(src_ranges)):
             if src_ranges[cur_indx][1] > merged_ranges[-1][1]:
                 if src_ranges[cur_indx][0] <= merged_ranges[-1][1]:
-                    merged_ranges[-1] = (merged_ranges[-1][0],
-                                         src_ranges[cur_indx][1])
+                    merged_ranges[-1] = (
+                        merged_ranges[-1][0],
+                        src_ranges[cur_indx][1],
+                    )
                 else:
                     merged_ranges.append(
-                        (src_ranges[cur_indx][0], src_ranges[cur_indx][1]))
+                        (src_ranges[cur_indx][0], src_ranges[cur_indx][1])
+                    )
     return merged_ranges
 
 
@@ -129,7 +132,7 @@ def intersection_ranges(range_list1, range_list2, is_sorted=False):
             range2 = range_list2[indx2]
 
         elif range2[0] <= range1[0] and range2[1] < range1[1]:
-            assert (range2[1] > range1[0])
+            assert range2[1] > range1[0]
             result_range.append((range1[0], range2[1]))
             range1 = (range2[1], range1[1])
             indx2 += 1
@@ -138,7 +141,7 @@ def intersection_ranges(range_list1, range_list2, is_sorted=False):
             range2 = range_list2[indx2]
 
         elif range2[0] <= range1[0]:
-            assert (range2[1] >= range1[1])
+            assert range2[1] >= range1[1]
             result_range.append(range1)
             range2 = (range1[1], range2[1])
             indx1 += 1
@@ -147,7 +150,7 @@ def intersection_ranges(range_list1, range_list2, is_sorted=False):
             range1 = range_list1[indx1]
 
         elif range2[1] < range1[1]:
-            assert (range2[0] > range1[0])
+            assert range2[0] > range1[0]
             result_range.append(range2)
             range1 = (range2[1], range1[1])
             indx2 += 1
@@ -156,7 +159,7 @@ def intersection_ranges(range_list1, range_list2, is_sorted=False):
             range2 = range_list2[indx2]
 
         elif range2[0] < range1[1]:
-            assert (range2[1] >= range1[1])
+            assert range2[1] >= range1[1]
             result_range.append((range2[0], range1[1]))
             range2 = (range1[1], range2[1])
             indx1 += 1
@@ -165,7 +168,7 @@ def intersection_ranges(range_list1, range_list2, is_sorted=False):
             range1 = range_list1[indx1]
 
         else:
-            assert (range2[0] >= range1[1])
+            assert range2[0] >= range1[1]
             indx1 += 1
             if indx1 == len1:
                 break
@@ -207,17 +210,17 @@ def subtract_ranges(range_list1, range_list2, is_sorted=False):
             if indx2 != len2:
                 range2 = range_list2[indx2]
         elif range2[0] <= range1[0]:
-            assert (range2[1] >= range1[1])
+            assert range2[1] >= range1[1]
             range2 = (range1[1], range2[1])
             indx1 += 1
             if indx1 != len1:
                 range1 = range_list1[indx1]
         elif range2[0] < range1[1]:
-            assert (range2[0] > range1[0])
+            assert range2[0] > range1[0]
             result_range.append((range1[0], range2[0]))
             range1 = (range2[0], range1[1])
         else:
-            assert (range2[0] >= range1[1])
+            assert range2[0] >= range1[1]
             result_range.append(range1)
             indx1 += 1
             if indx1 != len1:

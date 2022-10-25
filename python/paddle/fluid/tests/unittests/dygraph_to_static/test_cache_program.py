@@ -26,7 +26,6 @@ from test_fetch_feed import Pool2D, Linear
 
 
 class TestCacheProgram(unittest.TestCase):
-
     def setUp(self):
         self.batch_num = 5
         self.dygraph_class = Pool2D
@@ -44,26 +43,35 @@ class TestCacheProgram(unittest.TestCase):
                 cur_out = out
                 # Check forward ops
                 prev_ops = cur_ops
-                cur_ops = Counter([
-                    op.type for op in fluid.default_main_program().block(0).ops
-                ])
+                cur_ops = Counter(
+                    [
+                        op.type
+                        for op in fluid.default_main_program().block(0).ops
+                    ]
+                )
                 if batch_id > 0:
-                    prev_out_numpy = prev_out[0].numpy() if isinstance(
-                        prev_out, (tuple, list)) else prev_out.numpy()
-                    cur_out_numpy = cur_out[0].numpy() if isinstance(
-                        cur_out, (tuple, list)) else cur_out.numpy()
+                    prev_out_numpy = (
+                        prev_out[0].numpy()
+                        if isinstance(prev_out, (tuple, list))
+                        else prev_out.numpy()
+                    )
+                    cur_out_numpy = (
+                        cur_out[0].numpy()
+                        if isinstance(cur_out, (tuple, list))
+                        else cur_out.numpy()
+                    )
                     np.testing.assert_allclose(
                         prev_out_numpy,
                         cur_out_numpy,
                         rtol=1e-05,
-                        err_msg=
-                        'Output in previous batch is {}\n Output in current batch is \n{}'
-                        .format(prev_out_numpy, cur_out_numpy))
+                        err_msg='Output in previous batch is {}\n Output in current batch is \n{}'.format(
+                            prev_out_numpy, cur_out_numpy
+                        ),
+                    )
                     self.assertEqual(prev_ops, cur_ops)
 
 
 class TestCacheProgram2(TestCacheProgram):
-
     def setUp(self):
         self.batch_num = 5
         self.dygraph_class = Linear
@@ -71,7 +79,6 @@ class TestCacheProgram2(TestCacheProgram):
 
 
 class TestCacheProgramWithOptimizer(unittest.TestCase):
-
     def setUp(self):
         self.dygraph_class = Linear
         self.data = np.random.random((4, 10)).astype('float32')
@@ -90,7 +97,8 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             dygraph_net = self.dygraph_class()
             adam = fluid.optimizer.AdamOptimizer(
-                learning_rate=0.001, parameter_list=dygraph_net.parameters())
+                learning_rate=0.001, parameter_list=dygraph_net.parameters()
+            )
             loss_data = []
             for batch_id in range(self.batch_num):
                 input = fluid.dygraph.to_variable(self.data)
@@ -111,7 +119,9 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
             static_loss,
             rtol=1e-05,
             err_msg='dygraph is {}\n static_res is \n{}'.format(
-                dygraph_loss, static_loss))
+                dygraph_loss, static_loss
+            ),
+        )
 
 
 def simple_func(x):
@@ -121,7 +131,6 @@ def simple_func(x):
 
 
 class TestConvertWithCache(unittest.TestCase):
-
     def test_cache(self):
         static_func = convert_to_static(simple_func)
         # Get transformed function from cache.
@@ -152,7 +161,6 @@ def sum_under_while(limit):
 
 
 class TestToOutputWithCache(unittest.TestCase):
-
     def test_output(self):
         with fluid.dygraph.guard():
             ret = sum_even_until_limit(80, 10)

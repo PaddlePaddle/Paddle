@@ -86,7 +86,6 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Softplus,
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu, "relu", );               // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Tanh, "tanh", );               // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sigmoid, "sigmoid", );         // NOLINT
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Exp, "exp", );                 // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Expm1, "expm1", );             // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Reciprocal, "reciprocal", );   // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sqrt, "sqrt", );               // NOLINT
@@ -254,7 +253,6 @@ PD_REGISTER_ARG_MAPPING_FN(acosh_grad, phi::AcoshGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(atanh_grad, phi::AtanhGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(relu_grad, phi::ReluGradOpArgumentMapping);
 
-PD_REGISTER_ARG_MAPPING_FN(exp_grad, phi::ExpGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(expm1_grad, phi::Expm1GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(square_grad, phi::SquareGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reciprocal_grad,

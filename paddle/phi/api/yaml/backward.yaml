@@ -115,6 +115,17 @@
   kernel :
     func : erfinv_grad
 
+- backward_op : exp_grad
+  forward : exp (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : exp_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : fft_c2c_grad
   forward: fft_c2c(Tensor x, int64_t[] axes, str normalization, bool forward) -> Tensor(out)
   args : (Tensor out_grad, int64_t[] axes, str normalization, bool forward)

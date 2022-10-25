@@ -68,27 +68,69 @@ def fused_multi_transformer_int8(
     ffn1_in_scale=[],
     ffn2_in_scale=[],
 ):
-    mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+    mode = (
+        'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
+    )  # semantic transfer
 
     cache_kv_out, final_out = _legacy_C_ops.fused_multi_transformer_int8(
-        x, ln_scales, ln_biases, qkv_weights, qkv_biases, cache_kvs, time_step,
-        attn_mask, linear_weights, linear_biases, ffn_ln_scales, ffn_ln_biases,
-        ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases, qkv_out_scales,
-        out_linear_out_scales, ffn1_out_scales, ffn2_out_scales, cache_kvs,
-        'num_head', num_head, 'dim_head', dim_head, 'dim_ffn', dim_ffn,
-        'qkv_in_scale', qkv_in_scale, 'out_linear_in_scale',
-        out_linear_in_scale, 'ffn1_in_scale', ffn1_in_scale, 'ffn2_in_scale',
-        ffn2_in_scale, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
-        'dropout_rate', dropout_rate, 'is_test', not training,
-        'dropout_implementation', mode, 'act_method', activation, 'trans_qkvw',
-        trans_qkvw, 'ring_id', ring_id)
+        x,
+        ln_scales,
+        ln_biases,
+        qkv_weights,
+        qkv_biases,
+        cache_kvs,
+        time_step,
+        attn_mask,
+        linear_weights,
+        linear_biases,
+        ffn_ln_scales,
+        ffn_ln_biases,
+        ffn1_weights,
+        ffn1_biases,
+        ffn2_weights,
+        ffn2_biases,
+        qkv_out_scales,
+        out_linear_out_scales,
+        ffn1_out_scales,
+        ffn2_out_scales,
+        cache_kvs,
+        'num_head',
+        num_head,
+        'dim_head',
+        dim_head,
+        'dim_ffn',
+        dim_ffn,
+        'qkv_in_scale',
+        qkv_in_scale,
+        'out_linear_in_scale',
+        out_linear_in_scale,
+        'ffn1_in_scale',
+        ffn1_in_scale,
+        'ffn2_in_scale',
+        ffn2_in_scale,
+        'pre_layer_norm',
+        pre_layer_norm,
+        'epsilon',
+        epsilon,
+        'dropout_rate',
+        dropout_rate,
+        'is_test',
+        not training,
+        'dropout_implementation',
+        mode,
+        'act_method',
+        activation,
+        'trans_qkvw',
+        trans_qkvw,
+        'ring_id',
+        ring_id,
+    )
     if cache_kvs is not None:
         return final_out, cache_kv_out
     return final_out
 
 
 class TestFusedMultiTransformerInt8Op(unittest.TestCase):
-
     def setUp(self):
         self.config()
         self.generate_input_data()
@@ -110,12 +152,12 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
         self.__class__.no_need_check_grad = True
 
         paddle.set_default_dtype(np.float32)
-        self.norm = LayerNorm(self.embed_dim,
-                              weight_attr=False,
-                              bias_attr=False)
-        self.ffn_norm = LayerNorm(self.embed_dim,
-                                  weight_attr=False,
-                                  bias_attr=False)
+        self.norm = LayerNorm(
+            self.embed_dim, weight_attr=False, bias_attr=False
+        )
+        self.ffn_norm = LayerNorm(
+            self.embed_dim, weight_attr=False, bias_attr=False
+        )
 
         paddle.set_default_dtype(self.x_type)
         self.dropout = Dropout(self.dropout_prob, mode="upscale_in_train")
@@ -127,7 +169,7 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
 
         self.x_type = np.float32
         self.attn_mask_type = np.float64
-        #self.attn_mask_type = np.bool
+        # self.attn_mask_type = np.bool
         self.pre_layer_norm = True
         self.has_attn_mask = True
 
@@ -154,31 +196,38 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
         self.weight_attr = None
         self.bias_attr = None
         self.kdim, self.vdim = self.embed_dim, self.embed_dim
-        self.key_length, self.value_length = self.query_length, self.query_length
+        self.key_length, self.value_length = (
+            self.query_length,
+            self.query_length,
+        )
 
     def generate_input_data(self):
-        self.query = np.random.rand(self.batch_size, self.query_length,
-                                    self.embed_dim).astype(self.x_type)
-        q_weight = np.random.randint(-64, 64, [self.embed_dim, self.embed_dim],
-                                     np.int32).astype('float64')
-        k_weight = np.random.randint(-64, 64, [self.kdim, self.embed_dim],
-                                     np.int32).astype('float64')
-        v_weight = np.random.randint(-64, 64, [self.vdim, self.embed_dim],
-                                     np.int32).astype('float64')
+        self.query = np.random.rand(
+            self.batch_size, self.query_length, self.embed_dim
+        ).astype(self.x_type)
+        q_weight = np.random.randint(
+            -64, 64, [self.embed_dim, self.embed_dim], np.int32
+        ).astype('float64')
+        k_weight = np.random.randint(
+            -64, 64, [self.kdim, self.embed_dim], np.int32
+        ).astype('float64')
+        v_weight = np.random.randint(
+            -64, 64, [self.vdim, self.embed_dim], np.int32
+        ).astype('float64')
 
         self.q_weight_tensor = paddle.to_tensor(q_weight)
         self.k_weight_tensor = paddle.to_tensor(k_weight)
         self.v_weight_tensor = paddle.to_tensor(v_weight)
 
-        out_weight = np.random.randint(-64, 64,
-                                       [self.embed_dim, self.embed_dim],
-                                       np.int32).astype('float64')
-        ffn1_weight = np.random.randint(-64, 64,
-                                        [self.embed_dim, 4 * self.embed_dim],
-                                        np.int32).astype('float64')
-        ffn2_weight = np.random.randint(-64, 64,
-                                        [4 * self.embed_dim, self.embed_dim],
-                                        np.int32).astype('float64')
+        out_weight = np.random.randint(
+            -64, 64, [self.embed_dim, self.embed_dim], np.int32
+        ).astype('float64')
+        ffn1_weight = np.random.randint(
+            -64, 64, [self.embed_dim, 4 * self.embed_dim], np.int32
+        ).astype('float64')
+        ffn2_weight = np.random.randint(
+            -64, 64, [4 * self.embed_dim, self.embed_dim], np.int32
+        ).astype('float64')
 
         self.out_weight_tensor = paddle.to_tensor(out_weight)
         self.ffn1_weight_tensor = paddle.to_tensor(ffn1_weight)
@@ -193,12 +242,14 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
         self.v_proj_bias_tensor = paddle.to_tensor(v_proj_bias)
 
         out_linear_proj_bias = np.random.rand(self.embed_dim).astype(
-            self.x_type)
+            self.x_type
+        )
         ffn1_proj_bias = np.random.rand(4 * self.embed_dim).astype(self.x_type)
         ffn2_proj_bias = np.random.rand(self.embed_dim).astype(self.x_type)
 
         self.out_linear_proj_bias_tensor = paddle.to_tensor(
-            out_linear_proj_bias)
+            out_linear_proj_bias
+        )
         self.ffn1_proj_bias_tensor = paddle.to_tensor(ffn1_proj_bias)
         self.ffn2_proj_bias_tensor = paddle.to_tensor(ffn2_proj_bias)
 
@@ -214,9 +265,13 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
         self.ffn2_out_scales = []
 
         if self.has_cache_kv:
-            self.cache_kv = np.random.rand(2, self.batch_size, self.num_heads,
-                                           self.cache_length,
-                                           self.head_dim).astype(self.x_type)
+            self.cache_kv = np.random.rand(
+                2,
+                self.batch_size,
+                self.num_heads,
+                self.cache_length,
+                self.head_dim,
+            ).astype(self.x_type)
 
             if self.gen_cache_kv:
                 self.cache_kv[:] = 0
@@ -229,7 +284,8 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             # [B, n_head, seq_len, out_seq_len]
             self.attn_mask = np.ones(
                 (self.batch_size, 1, self.query_length, out_seq_len),
-                dtype=self.attn_mask_type)
+                dtype=self.attn_mask_type,
+            )
             if self.attn_mask_type == np.int64:
                 self.attn_mask = np.tril(self.attn_mask)
             elif self.attn_mask_type == np.float64:
@@ -246,7 +302,8 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
                     self.attn_mask = np.tril(self.attn_mask)
             else:
                 raise ValueError(
-                    "'attn_mask_type' should be 'int64' or 'float64'.")
+                    "'attn_mask_type' should be 'int64' or 'float64'."
+                )
         else:
             self.attn_mask = None
 
@@ -289,8 +346,11 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             q = paddle.nn.functional.linear(ln1_out, self.q_weight_tensor)
             # de quant
             q = paddle.cast(
-                paddle.cast(q, 'float32') * self.qkv_in_scales[i] /
-                self.qkv_out_scales[i], self.x_type)
+                paddle.cast(q, 'float32')
+                * self.qkv_in_scales[i]
+                / self.qkv_out_scales[i],
+                self.x_type,
+            )
 
             q = q + self.q_proj_bias_tensor
             q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
@@ -298,13 +358,19 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
 
             k = paddle.nn.functional.linear(ln1_out, self.k_weight_tensor)
             k = paddle.cast(
-                paddle.cast(k, 'float32') * self.qkv_in_scales[i] /
-                self.qkv_out_scales[i], self.x_type)
+                paddle.cast(k, 'float32')
+                * self.qkv_in_scales[i]
+                / self.qkv_out_scales[i],
+                self.x_type,
+            )
             k = k + self.k_proj_bias_tensor
             v = paddle.nn.functional.linear(ln1_out, self.v_weight_tensor)
             v = paddle.cast(
-                paddle.cast(v, 'float32') * self.qkv_in_scales[i] /
-                self.qkv_out_scales[i], self.x_type)
+                paddle.cast(v, 'float32')
+                * self.qkv_in_scales[i]
+                / self.qkv_out_scales[i],
+                self.x_type,
+            )
             v = v + self.v_proj_bias_tensor
 
             k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
@@ -332,10 +398,9 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
 
             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
             # --> [B, n_head, seq_len, out_seq_len]
-            qk_out = layers.matmul(x=q_out,
-                                   y=k_out,
-                                   transpose_y=True,
-                                   alpha=self.head_dim**-0.5)
+            qk_out = layers.matmul(
+                x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5
+            )
 
             if self.debug:
                 print('qk out is')
@@ -355,10 +420,12 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
                 print('softmax out is')
                 print(softmax_out[0][0][0])
             if self.dropout_prob:
-                dropout_out = F.dropout(softmax_out,
-                                        self.dropout_prob,
-                                        training=self.training,
-                                        mode="upscale_in_train")
+                dropout_out = F.dropout(
+                    softmax_out,
+                    self.dropout_prob,
+                    training=self.training,
+                    mode="upscale_in_train",
+                )
                 # [B, n_head, seq_len, out_seq_len] * [B, n_head, out_seq_len, head_dim]
                 # --> [B, n_head, seq_len, head_dim]
                 qktv_out = tensor.matmul(dropout_out, v_out)
@@ -370,23 +437,30 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
                 print('fmha out is')
                 print(fmha_out[0][0][0])
             out_linear_in = tensor.reshape(
-                x=fmha_out, shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]])
+                x=fmha_out, shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]]
+            )
 
-            max_v = paddle.max(paddle.abs(paddle.cast(out_linear_in,
-                                                      'float32')))[0]
+            max_v = paddle.max(
+                paddle.abs(paddle.cast(out_linear_in, 'float32'))
+            )[0]
             # self.out_linear_in_scales.append(127.0 / max_v)
 
             self.out_linear_in_scales.append(max_v)
             self.out_linear_out_scales.append((127.0 * 127.0))
-            out_linear_in = self.fake_quant(out_linear_in,
-                                            self.out_linear_in_scales[i])
+            out_linear_in = self.fake_quant(
+                out_linear_in, self.out_linear_in_scales[i]
+            )
 
-            out = paddle.nn.functional.linear(out_linear_in,
-                                              self.out_weight_tensor)
+            out = paddle.nn.functional.linear(
+                out_linear_in, self.out_weight_tensor
+            )
 
             out = paddle.cast(
-                paddle.cast(out, 'float32') * self.out_linear_in_scales[i] /
-                self.out_linear_out_scales[i], self.x_type)
+                paddle.cast(out, 'float32')
+                * self.out_linear_in_scales[i]
+                / self.out_linear_out_scales[i],
+                self.x_type,
+            )
 
             out = out + self.out_linear_proj_bias_tensor
 
@@ -400,18 +474,23 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             if self.pre_layer_norm:
                 ffn_ln_out = self.ffn_norm(attn_out)
 
-            max_v = paddle.max(paddle.abs(paddle.cast(ffn_ln_out,
-                                                      'float32')))[0]
+            max_v = paddle.max(paddle.abs(paddle.cast(ffn_ln_out, 'float32')))[
+                0
+            ]
             self.ffn1_in_scales.append(max_v)
             self.ffn1_out_scales.append((127.0 * 127.0))
             ffn_ln_out = self.fake_quant(ffn_ln_out, self.ffn1_in_scales[i])
 
-            ffn1_out = paddle.nn.functional.linear(ffn_ln_out,
-                                                   self.ffn1_weight_tensor)
+            ffn1_out = paddle.nn.functional.linear(
+                ffn_ln_out, self.ffn1_weight_tensor
+            )
 
             ffn1_out = paddle.cast(
-                paddle.cast(ffn1_out, 'float32') * self.ffn1_in_scales[i] /
-                self.ffn1_out_scales[i], self.x_type)
+                paddle.cast(ffn1_out, 'float32')
+                * self.ffn1_in_scales[i]
+                / self.ffn1_out_scales[i],
+                self.x_type,
+            )
 
             ffn1_out = ffn1_out + self.ffn1_proj_bias_tensor
             ffn1_out = self.dropout(self.activation(ffn1_out))
@@ -423,12 +502,16 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             # print('ffn2_in_scales ', i, self.ffn2_in_scales[i])
             ffn1_out = self.fake_quant(ffn1_out, self.ffn2_in_scales[i])
 
-            ffn2_out = paddle.nn.functional.linear(ffn1_out,
-                                                   self.ffn2_weight_tensor)
+            ffn2_out = paddle.nn.functional.linear(
+                ffn1_out, self.ffn2_weight_tensor
+            )
 
             ffn2_out = paddle.cast(
-                paddle.cast(ffn2_out, 'float32') * self.ffn2_in_scales[i] /
-                self.ffn2_out_scales[i], self.x_type)
+                paddle.cast(ffn2_out, 'float32')
+                * self.ffn2_in_scales[i]
+                / self.ffn2_out_scales[i],
+                self.x_type,
+            )
             ffn2_out = ffn2_out + self.ffn2_proj_bias_tensor
 
             residual_out = attn_out + self.dropout(ffn2_out)
@@ -456,26 +539,35 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
         k_proj_weight = self.k_weight_tensor.numpy().transpose((1, 0))
         v_proj_weight = self.v_weight_tensor.numpy().transpose((1, 0))
         qkv_weight = np.concatenate(
-            (q_proj_weight, k_proj_weight, v_proj_weight))
+            (q_proj_weight, k_proj_weight, v_proj_weight)
+        )
         qkv_weight = qkv_weight.reshape(
-            (3, self.num_heads, self.head_dim, self.embed_dim))
+            (3, self.num_heads, self.head_dim, self.embed_dim)
+        )
 
         qkv_weight_tensor = paddle.to_tensor(qkv_weight)
         qkv_weight_tensor = paddle.cast(qkv_weight_tensor, 'int8')
 
         out_weight_tensor = paddle.cast(
             paddle.to_tensor(self.out_weight_tensor.numpy().transpose((1, 0))),
-            'int8')
+            'int8',
+        )
         ffn1_weight_tensor = paddle.cast(
             paddle.to_tensor(self.ffn1_weight_tensor.numpy().transpose((1, 0))),
-            'int8')
+            'int8',
+        )
         ffn2_weight_tensor = paddle.cast(
             paddle.to_tensor(self.ffn2_weight_tensor.numpy().transpose((1, 0))),
-            'int8')
+            'int8',
+        )
 
         qkv_bias = np.concatenate(
-            (self.q_proj_bias_tensor.numpy(), self.k_proj_bias_tensor.numpy(),
-             self.v_proj_bias_tensor.numpy()))
+            (
+                self.q_proj_bias_tensor.numpy(),
+                self.k_proj_bias_tensor.numpy(),
+                self.v_proj_bias_tensor.numpy(),
+            )
+        )
         qkv_bias = qkv_bias.reshape((3, self.num_heads, self.head_dim))
         qkv_bias_tensor = paddle.to_tensor(qkv_bias)
 
@@ -486,11 +578,16 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             cache_kvs = []
 
             max_seq_length = (self.cache_length + 128) // 128 * 128
-            cache_kv = np.zeros([
-                2, self.batch_size, self.num_heads, max_seq_length,
-                self.head_dim
-            ],
-                                dtype=self.x_type)
+            cache_kv = np.zeros(
+                [
+                    2,
+                    self.batch_size,
+                    self.num_heads,
+                    max_seq_length,
+                    self.head_dim,
+                ],
+                dtype=self.x_type,
+            )
 
             elems = 4
             if self.x_type is np.float16:
@@ -502,25 +599,36 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             # [B, num_head, 128, head_dim]
             # cache_k_tmp = self.cache_kv[0, :]
             # [B, num_head, 128, head_dim / 4, 4]
-            cache_k_tmp = self.cache_kv[0].reshape([
-                self.batch_size, self.num_heads, self.cache_length, v_elems,
-                elems
-            ])
+            cache_k_tmp = self.cache_kv[0].reshape(
+                [
+                    self.batch_size,
+                    self.num_heads,
+                    self.cache_length,
+                    v_elems,
+                    elems,
+                ]
+            )
             # [B, num_head, head_dim / 4, 128, 4]
             cache_k_tmp = cache_k_tmp.transpose([0, 1, 3, 2, 4])
 
-            cache_kv[0, :].reshape([
-                self.batch_size, self.num_heads, v_elems, max_seq_length, elems
-            ])[:, :, :, :self.cache_length, :] = cache_k_tmp
+            cache_kv[0, :].reshape(
+                [
+                    self.batch_size,
+                    self.num_heads,
+                    v_elems,
+                    max_seq_length,
+                    elems,
+                ]
+            )[:, :, :, : self.cache_length, :] = cache_k_tmp
 
-            cache_kv[1, :, :, :self.cache_length, :] = self.cache_kv[1]
+            cache_kv[1, :, :, : self.cache_length, :] = self.cache_kv[1]
             if self.gen_cache_kv:
                 assert self.query_length == self.cache_length
                 cache_kv[:] = 0
             else:
-                time_step = paddle.to_tensor([self.cache_length],
-                                             dtype='int32',
-                                             place=paddle.CPUPlace())
+                time_step = paddle.to_tensor(
+                    [self.cache_length], dtype='int32', place=paddle.CPUPlace()
+                )
         if self.has_attn_mask:
             attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=True)
         else:
@@ -542,14 +650,18 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
         ffn1_in_scale = []
         ffn2_in_scale = []
 
-        qkv_out_scales_tensor = paddle.ones([self.layers, 3 * self.embed_dim],
-                                            'float32')
+        qkv_out_scales_tensor = paddle.ones(
+            [self.layers, 3 * self.embed_dim], 'float32'
+        )
         out_linear_out_scales_tensor = paddle.ones(
-            [self.layers, self.embed_dim], 'float32')
-        ffn1_out_scales_tensor = paddle.ones([self.layers, 4 * self.embed_dim],
-                                             'float32')
-        ffn2_out_scales_tensor = paddle.ones([self.layers, self.embed_dim],
-                                             'float32')
+            [self.layers, self.embed_dim], 'float32'
+        )
+        ffn1_out_scales_tensor = paddle.ones(
+            [self.layers, 4 * self.embed_dim], 'float32'
+        )
+        ffn2_out_scales_tensor = paddle.ones(
+            [self.layers, self.embed_dim], 'float32'
+        )
 
         for i in range(self.layers):
             qkv_weights.append(qkv_weight_tensor)
@@ -612,7 +724,8 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             qkv_in_scale=qkv_in_scale,
             out_linear_in_scale=out_linear_in_scale,
             ffn1_in_scale=ffn1_in_scale,
-            ffn2_in_scale=ffn2_in_scale)
+            ffn2_in_scale=ffn2_in_scale,
+        )
 
         if self.has_cache_kv:
             return final_out[0], final_out[1]
@@ -634,9 +747,11 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
 
             if self.debug:
                 print("cache_k out timestep=128")
-                print(cache_kv_out[0].reshape(
-                    [2, bsz, num_head, v_elems, max_seq_len,
-                     elems])[0, 0, 0, :, self.cache_length, :])
+                print(
+                    cache_kv_out[0].reshape(
+                        [2, bsz, num_head, v_elems, max_seq_len, elems]
+                    )[0, 0, 0, :, self.cache_length, :]
+                )
 
                 print("cache_v out timestep=128")
                 print(cache_kv_out[0][1, 0, 0, self.cache_length, :])
@@ -649,33 +764,31 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
 
                     cache_k = cache_kv_out[i][0, :]
                     cache_k = cache_k.reshape(
-                        [bsz, num_head, v_elems, max_seq_len, elems])
-                    cache_k = cache_k[:, :, :, :self.cache_length, :]
+                        [bsz, num_head, v_elems, max_seq_len, elems]
+                    )
+                    cache_k = cache_k[:, :, :, : self.cache_length, :]
                     cache_k = cache_k.transpose([0, 1, 3, 2, 4])
                     cache_k = cache_k.reshape(
-                        [bsz, num_head, self.cache_length, head_dim])
+                        [bsz, num_head, self.cache_length, head_dim]
+                    )
 
-                    cache_v = cache_kv_out[i][1, :, :, :self.cache_length, :]
+                    cache_v = cache_kv_out[i][1, :, :, : self.cache_length, :]
 
-                    np.testing.assert_allclose(cache_k_ref,
-                                               cache_k,
-                                               rtol=self.rtol,
-                                               atol=self.atol)
-                    np.testing.assert_allclose(cache_v_ref,
-                                               cache_v,
-                                               rtol=self.rtol,
-                                               atol=self.atol)
+                    np.testing.assert_allclose(
+                        cache_k_ref, cache_k, rtol=self.rtol, atol=self.atol
+                    )
+                    np.testing.assert_allclose(
+                        cache_v_ref, cache_v, rtol=self.rtol, atol=self.atol
+                    )
                     if i == 0:
                         break
 
-        np.testing.assert_allclose(final_out_ref,
-                                   final_out,
-                                   rtol=self.rtol,
-                                   atol=self.atol)
+        np.testing.assert_allclose(
+            final_out_ref, final_out, rtol=self.rtol, atol=self.atol
+        )
 
 
 class TestFusedMultiTransformerInt8OpFp16(TestFusedMultiTransformerInt8Op):
-
     def config(self):
         super().config()
         self.x_type = np.float16
@@ -683,7 +796,6 @@ class TestFusedMultiTransformerInt8OpFp16(TestFusedMultiTransformerInt8Op):
 
 
 class TestFusedMultiTransformerInt8OpCacheKV(TestFusedMultiTransformerInt8Op):
-
     def config(self):
         super().config()
         super().generate_input_data()
@@ -693,9 +805,9 @@ class TestFusedMultiTransformerInt8OpCacheKV(TestFusedMultiTransformerInt8Op):
         self.layers = 3  # odd layers
 
 
-class TestFusedMultiTransformerInt8OpCacheKVFp16(TestFusedMultiTransformerInt8Op
-                                                 ):
-
+class TestFusedMultiTransformerInt8OpCacheKVFp16(
+    TestFusedMultiTransformerInt8Op
+):
     def config(self):
         super().config()
         self.has_cache_kv = True
@@ -704,9 +816,9 @@ class TestFusedMultiTransformerInt8OpCacheKVFp16(TestFusedMultiTransformerInt8Op
         self.x_type = np.float16
 
 
-class TestFusedMultiTransformerInt8OpGenCacheKV(TestFusedMultiTransformerInt8Op
-                                                ):
-
+class TestFusedMultiTransformerInt8OpGenCacheKV(
+    TestFusedMultiTransformerInt8Op
+):
     def config(self):
         super().config()
         self.has_cache_kv = True
@@ -714,8 +826,8 @@ class TestFusedMultiTransformerInt8OpGenCacheKV(TestFusedMultiTransformerInt8Op
 
 
 class TestFusedMultiTransformerInt8OpGenCacheKVFp16(
-        TestFusedMultiTransformerInt8Op):
-
+    TestFusedMultiTransformerInt8Op
+):
     def config(self):
         super().config()
         self.has_cache_kv = True
@@ -725,8 +837,8 @@ class TestFusedMultiTransformerInt8OpGenCacheKVFp16(
 
 
 class TestFusedMultiTransformerInt8OpPostLayerNormFp16(
-        TestFusedMultiTransformerInt8Op):
-
+    TestFusedMultiTransformerInt8Op
+):
     def config(self):
         super().config()
         self.x_type = np.float16
@@ -735,8 +847,8 @@ class TestFusedMultiTransformerInt8OpPostLayerNormFp16(
 
 
 class TestFusedMultiTransformerInt8OpCacheKVPostLayerNorm(
-        TestFusedMultiTransformerInt8Op):
-
+    TestFusedMultiTransformerInt8Op
+):
     def config(self):
         super().config()
         self.has_cache_kv = True
@@ -747,8 +859,8 @@ class TestFusedMultiTransformerInt8OpCacheKVPostLayerNorm(
 
 
 class TestFusedMultiTransformerInt8OpCacheKVPostLayerNormFp16(
-        TestFusedMultiTransformerInt8Op):
-
+    TestFusedMultiTransformerInt8Op
+):
     def config(self):
         super().config()
         self.has_cache_kv = True
@@ -759,8 +871,8 @@ class TestFusedMultiTransformerInt8OpCacheKVPostLayerNormFp16(
 
 
 class TestFusedMultiTransformerInt8OpGenCacheKVPostLayerNorm(
-        TestFusedMultiTransformerInt8Op):
-
+    TestFusedMultiTransformerInt8Op
+):
     def config(self):
         super().config()
         self.has_cache_kv = True
@@ -769,8 +881,8 @@ class TestFusedMultiTransformerInt8OpGenCacheKVPostLayerNorm(
 
 
 class TestFusedMultiTransformerInt8OpGenCacheKVPostLayerNormFp16(
-        TestFusedMultiTransformerInt8Op):
-
+    TestFusedMultiTransformerInt8Op
+):
     def config(self):
         super().config()
         self.has_cache_kv = True

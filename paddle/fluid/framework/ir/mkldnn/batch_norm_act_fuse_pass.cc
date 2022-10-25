@@ -144,7 +144,7 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
   gpd(graph, handler);
   AddStatis(found_bn_act_count);
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
-      found_bn_act_count > 0)
+      (found_bn_act_count > 0))
     PrettyLogDetail("---    fused %d batch norm with relu activation",
                     found_bn_act_count);
 }

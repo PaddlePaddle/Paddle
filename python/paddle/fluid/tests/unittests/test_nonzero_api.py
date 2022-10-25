@@ -20,7 +20,6 @@ from paddle.fluid import Program, program_guard
 
 
 class TestNonZeroAPI(unittest.TestCase):
-
     def test_nonzero_api_as_tuple(self):
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):
@@ -31,9 +30,9 @@ class TestNonZeroAPI(unittest.TestCase):
             z = fluid.layers.concat(list(y), axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
 
-            res, = exe.run(feed={'x': data},
-                           fetch_list=[z.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={'x': data}, fetch_list=[z.name], return_numpy=False
+            )
         expect_out = np.array([[0, 0], [1, 1]])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
@@ -45,9 +44,9 @@ class TestNonZeroAPI(unittest.TestCase):
             self.assertEqual(len(y), 1)
             z = fluid.layers.concat(list(y), axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': data},
-                           fetch_list=[z.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={'x': data}, fetch_list=[z.name], return_numpy=False
+            )
         expect_out = np.array([[0], [1]])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
@@ -57,9 +56,9 @@ class TestNonZeroAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[-1, 2])
             y = paddle.nonzero(x)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': data},
-                           fetch_list=[y.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={'x': data}, fetch_list=[y.name], return_numpy=False
+            )
         expect_out = np.array([[0, 0], [1, 1]])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
@@ -68,9 +67,9 @@ class TestNonZeroAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[-1])
             y = paddle.nonzero(x)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': data},
-                           fetch_list=[y.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={'x': data}, fetch_list=[y.name], return_numpy=False
+            )
         expect_out = np.array([[0], [1]])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 

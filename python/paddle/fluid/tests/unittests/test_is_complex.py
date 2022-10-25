@@ -18,7 +18,6 @@ import unittest
 
 
 class TestIsComplex(unittest.TestCase):
-
     def test_for_integer(self):
         x = paddle.arange(10)
         self.assertFalse(paddle.is_complex(x))

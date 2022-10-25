@@ -25,47 +25,52 @@ paddle.seed(2022)
 
 @param.param_cls(
     (param.TEST_CASE_NAME, 'is_discrete', 'event_rank', 'constraint'),
-    [('NotImplement', False, 0, constraint.Constraint())])
+    [('NotImplement', False, 0, constraint.Constraint())],
+)
 class TestVariable(unittest.TestCase):
-
     def setUp(self):
-        self._var = variable.Variable(self.is_discrete, self.event_rank,
-                                      self.constraint)
+        self._var = variable.Variable(
+            self.is_discrete, self.event_rank, self.constraint
+        )
 
-    @param.param_func([(1, )])
+    @param.param_func([(1,)])
     def test_costraint(self, value):
         with self.assertRaises(NotImplementedError):
             self._var.constraint(value)
 
 
-@param.param_cls((param.TEST_CASE_NAME, 'base', 'rank'),
-                 [('real_base', variable.real, 10)])
+@param.param_cls(
+    (param.TEST_CASE_NAME, 'base', 'rank'), [('real_base', variable.real, 10)]
+)
 class TestIndependent(unittest.TestCase):
-
     def setUp(self):
         self._var = variable.Independent(self.base, self.rank)
 
-    @param.param_func([
-        (paddle.rand([2, 3, 4]), ValueError),
-    ])
+    @param.param_func(
+        [
+            (paddle.rand([2, 3, 4]), ValueError),
+        ]
+    )
     def test_costraint(self, value, expect):
         with self.assertRaises(expect):
             self._var.constraint(value)
 
 
-@param.param_cls((param.TEST_CASE_NAME, 'vars', 'axis'),
-                 [('real_base', [variable.real], 10)])
+@param.param_cls(
+    (param.TEST_CASE_NAME, 'vars', 'axis'), [('real_base', [variable.real], 10)]
+)
 class TestStack(unittest.TestCase):
-
     def setUp(self):
         self._var = variable.Stack(self.vars, self.axis)
 
     def test_is_discrete(self):
         self.assertEqual(self._var.is_discrete, False)
 
-    @param.param_func([
-        (paddle.rand([2, 3, 4]), ValueError),
-    ])
+    @param.param_func(
+        [
+            (paddle.rand([2, 3, 4]), ValueError),
+        ]
+    )
     def test_costraint(self, value, expect):
         with self.assertRaises(expect):
             self._var.constraint(value)

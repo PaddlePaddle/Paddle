@@ -36,10 +36,10 @@ def _get_softmax_upper(x, fp16=True):
     return rst
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestSoftmaxMaskFuseOp(OpTest):
-
     def setUp(self):
         self.op_type = "fused_softmax_mask_upper_triangle"
         x = np.random.random((1, 4, 32, 32)).astype("float16")
@@ -54,10 +54,10 @@ class TestSoftmaxMaskFuseOp(OpTest):
         self.check_grad_with_place(core.CUDAPlace(0), ["X"], "Out")
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestSoftmaxMaskFuseOp1(OpTest):
-
     def setUp(self):
         self.op_type = "fused_softmax_mask_upper_triangle"
         x = np.random.random((1, 4, 32, 32))
@@ -78,8 +78,9 @@ class TestSoftmaxMaskFuseOp1(OpTest):
             pass
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestDropoutBiasFuseOp2(unittest.TestCase):
     # test the python side API for softmax_mask_fuse op
     def setUp(self):
@@ -89,18 +90,20 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
     def test_static(self):
         for dtype in self.dtypes:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                input_x = fluid.data(name="x",
-                                     shape=[1, 4, 32, 32],
-                                     dtype=dtype)
+                input_x = fluid.data(
+                    name="x", shape=[1, 4, 32, 32], dtype=dtype
+                )
                 rst = incubate.softmax_mask_fuse_upper_triangle(input_x)
 
                 x_in_np = np.random.random((1, 4, 32, 32)).astype(dtype)
                 rst_np = _get_softmax_upper(x_in_np, dtype == 'float16')
 
                 exe = fluid.Executor(fluid.CUDAPlace(0))
-                fetches = exe.run(fluid.default_main_program(),
-                                  feed={"x": x_in_np},
-                                  fetch_list=[rst])
+                fetches = exe.run(
+                    fluid.default_main_program(),
+                    feed={"x": x_in_np},
+                    fetch_list=[rst],
+                )
                 np.testing.assert_allclose(fetches[0], rst_np, rtol=1e-05)
 
     def test_dygraph(self):

@@ -19,11 +19,13 @@ import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from paddle.fluid.tests.unittests.test_uniform_random_op import output_hist, output_hist_diag
+from paddle.fluid.tests.unittests.test_uniform_random_op import (
+    output_hist,
+    output_hist_diag,
+)
 
 
 class TestUniformRandomOpBF16(OpTest):
-
     def setUp(self):
         self.op_type = "uniform_random"
         self.dtype = "uint16"
@@ -37,7 +39,7 @@ class TestUniformRandomOpBF16(OpTest):
             "min": -5.0,
             "max": 10.0,
             "seed": 10,
-            'dtype': int(core.VarDesc.VarType.BF16)
+            'dtype': int(core.VarDesc.VarType.BF16),
         }
         self.output_hist = output_hist
 
@@ -58,15 +60,15 @@ class TestUniformRandomOpBF16(OpTest):
 
 
 class TestUniformRandomOpBF16AttrTensorList(TestUniformRandomOpBF16):
-
     def setUp(self):
         self.op_type = "uniform_random"
         self.new_shape = (1000, 784)
         self.dtype = "uint16"
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
-            shape_tensor.append(("x" + str(index), np.ones(
-                (1)).astype("int64") * ele))
+            shape_tensor.append(
+                ("x" + str(index), np.ones((1)).astype("int64") * ele)
+            )
         self.inputs = {'ShapeTensorList': shape_tensor}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((1000, 784)).astype("uint16")}
@@ -76,14 +78,14 @@ class TestUniformRandomOpBF16AttrTensorList(TestUniformRandomOpBF16):
             "min": -5.0,
             "max": 10.0,
             "seed": 10,
-            'dtype': int(core.VarDesc.VarType.BF16)
+            'dtype': int(core.VarDesc.VarType.BF16),
         }
         self.output_hist = output_hist
 
 
 class TestUniformRandomOpBF16AttrTensorInt32(
-        TestUniformRandomOpBF16AttrTensorList):
-
+    TestUniformRandomOpBF16AttrTensorList
+):
     def setUp(self):
         self.op_type = "uniform_random"
         self.dtype = "uint16"
@@ -93,7 +95,6 @@ class TestUniformRandomOpBF16AttrTensorInt32(
 
 
 class TestUniformRandomOpBF16WithDiagInit(TestUniformRandomOpBF16):
-
     def init_attrs(self):
         self.attrs = {
             "shape": [1000, 784],
@@ -103,13 +104,12 @@ class TestUniformRandomOpBF16WithDiagInit(TestUniformRandomOpBF16):
             "diag_num": 784,
             "diag_step": 784,
             "diag_val": 1.0,
-            'dtype': int(core.VarDesc.VarType.BF16)
+            'dtype': int(core.VarDesc.VarType.BF16),
         }
         self.output_hist = output_hist_diag
 
 
 class TestUniformRandomOpBF16SelectedRows(unittest.TestCase):
-
     def test_check_output(self):
         self.check_with_place(core.CPUPlace())
 
@@ -117,13 +117,15 @@ class TestUniformRandomOpBF16SelectedRows(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         paddle.seed(10)
-        op = Operator("uniform_random",
-                      Out="X",
-                      shape=[1000, 784],
-                      min=-5.0,
-                      max=10.0,
-                      seed=10,
-                      dtype=int(core.VarDesc.VarType.BF16))
+        op = Operator(
+            "uniform_random",
+            Out="X",
+            shape=[1000, 784],
+            min=-5.0,
+            max=10.0,
+            seed=10,
+            dtype=int(core.VarDesc.VarType.BF16),
+        )
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         result = convert_uint16_to_float(np.array(out.get_tensor()))
@@ -132,22 +134,24 @@ class TestUniformRandomOpBF16SelectedRows(unittest.TestCase):
 
 
 class TestUniformRandomOpBF16SelectedRowsWithDiagInit(
-        TestUniformRandomOpBF16SelectedRows):
-
+    TestUniformRandomOpBF16SelectedRows
+):
     def check_with_place(self, place):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         paddle.seed(10)
-        op = Operator("uniform_random",
-                      Out="X",
-                      shape=[500, 784],
-                      min=-5.0,
-                      max=10.0,
-                      seed=10,
-                      diag_num=500,
-                      diag_step=784,
-                      diag_val=1.0,
-                      dtype=int(core.VarDesc.VarType.BF16))
+        op = Operator(
+            "uniform_random",
+            Out="X",
+            shape=[500, 784],
+            min=-5.0,
+            max=10.0,
+            seed=10,
+            diag_num=500,
+            diag_step=784,
+            diag_val=1.0,
+            dtype=int(core.VarDesc.VarType.BF16),
+        )
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [500, 784])
         result = convert_uint16_to_float(np.array(out.get_tensor()))
@@ -156,14 +160,14 @@ class TestUniformRandomOpBF16SelectedRowsWithDiagInit(
 
 
 class TestUniformRandomOpBF16AttrTensorAPI(unittest.TestCase):
-
     def test_attr_tensor_API(self):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             dim_tensor = fluid.layers.fill_constant([1], "int64", 3)
-            ret = fluid.layers.nn.uniform_random([1, dim_tensor, 2],
-                                                 dtype=np.uint16)
+            ret = fluid.layers.nn.uniform_random(
+                [1, dim_tensor, 2], dtype=np.uint16
+            )
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -173,7 +177,6 @@ class TestUniformRandomOpBF16AttrTensorAPI(unittest.TestCase):
 
 
 class TestUniformRandomOpAPISeed(unittest.TestCase):
-
     def test_attr_tensor_API(self):
         _seed = 10
         gen = paddle.seed(_seed)
@@ -183,14 +186,12 @@ class TestUniformRandomOpAPISeed(unittest.TestCase):
             _min = 5
             _max = 10
 
-            ret = fluid.layers.nn.uniform_random([2, 3, 2],
-                                                 min=_min,
-                                                 max=_max,
-                                                 seed=_seed)
-            ret_2 = fluid.layers.nn.uniform_random([2, 3, 2],
-                                                   min=_min,
-                                                   max=_max,
-                                                   seed=_seed)
+            ret = fluid.layers.nn.uniform_random(
+                [2, 3, 2], min=_min, max=_max, seed=_seed
+            )
+            ret_2 = fluid.layers.nn.uniform_random(
+                [2, 3, 2], min=_min, max=_max, seed=_seed
+            )
             res = fluid.layers.equal(ret, ret_2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -204,7 +205,6 @@ class TestUniformRandomOpAPISeed(unittest.TestCase):
 
 
 class TestUniformRandomOpBF16SelectedRowsShapeTensor(unittest.TestCase):
-
     def test_check_output(self):
         place = core.CPUPlace()
         scope = core.Scope()
@@ -212,13 +212,15 @@ class TestUniformRandomOpBF16SelectedRowsShapeTensor(unittest.TestCase):
         shape_tensor = scope.var("Shape").get_tensor()
         shape_tensor.set(np.array([1000, 784]).astype("int64"), place)
         paddle.seed(10)
-        op = Operator("uniform_random",
-                      ShapeTensor="Shape",
-                      Out="X",
-                      min=-5.0,
-                      max=10.0,
-                      seed=10,
-                      dtype=int(core.VarDesc.VarType.BF16))
+        op = Operator(
+            "uniform_random",
+            ShapeTensor="Shape",
+            Out="X",
+            min=-5.0,
+            max=10.0,
+            seed=10,
+            dtype=int(core.VarDesc.VarType.BF16),
+        )
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         result = convert_uint16_to_float(np.array(out.get_tensor()))
@@ -227,8 +229,8 @@ class TestUniformRandomOpBF16SelectedRowsShapeTensor(unittest.TestCase):
 
 
 class TestUniformRandomOpBF16SelectedRowsShapeTensorList(
-        TestUniformRandomOpBF16SelectedRowsShapeTensor):
-
+    TestUniformRandomOpBF16SelectedRowsShapeTensor
+):
     def test_check_output(self):
         place = core.CPUPlace()
         scope = core.Scope()
@@ -238,13 +240,15 @@ class TestUniformRandomOpBF16SelectedRowsShapeTensorList(
         shape_2 = scope.var("shape2").get_tensor()
         shape_2.set(np.array([784]).astype("int64"), place)
         paddle.seed(10)
-        op = Operator("uniform_random",
-                      ShapeTensorList=["shape1", "shape2"],
-                      Out="X",
-                      min=-5.0,
-                      max=10.0,
-                      seed=10,
-                      dtype=int(core.VarDesc.VarType.BF16))
+        op = Operator(
+            "uniform_random",
+            ShapeTensorList=["shape1", "shape2"],
+            Out="X",
+            min=-5.0,
+            max=10.0,
+            seed=10,
+            dtype=int(core.VarDesc.VarType.BF16),
+        )
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         result = convert_uint16_to_float(np.array(out.get_tensor()))
@@ -253,14 +257,14 @@ class TestUniformRandomOpBF16SelectedRowsShapeTensorList(
 
 
 class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):
-
     def test_attr_tensorlist_int32_API(self):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             input = fluid.data(name="input", shape=[1, 3], dtype='uint16')
             out_1 = fluid.layers.uniform_random_batch_size_like(
-                input, [2, 4], dtype=np.uint16)  # out_1.shape=[1, 4]
+                input, [2, 4], dtype=np.uint16
+            )  # out_1.shape=[1, 4]
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -271,5 +275,6 @@ class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):
 
 if __name__ == "__main__":
     from paddle import enable_static
+
     enable_static()
     unittest.main()
