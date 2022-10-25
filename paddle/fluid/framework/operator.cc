@@ -2398,9 +2398,13 @@ Scope* OperatorWithKernel::PrepareData(
         paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(
             Type());
     for (const auto& input_name : extra_input_names) {
+      auto iter = ctx->inputs.find(input_name);
+      if (iter == ctx->inputs.end()) {
+        continue;
+      }
       bool should_skip_input =
           no_buffer_ins && no_buffer_ins->count(input_name) > 0;
-      std::vector<Variable*>& input_vars = ctx->inputs[input_name];
+      std::vector<Variable*>& input_vars = iter->second;
       prepare_input_data(input_name, &input_vars, nullptr, should_skip_input);
     }
 #endif
