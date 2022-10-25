@@ -282,7 +282,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             not use_multi_tesnor_adam, use_adamw
         )
         for i, j in zip(parameters, parameters_1):
-            self.assertTrue(np.array_equal(i.numpy(), j.numpy()))
+            np.testing.assert_array_equal(i.numpy(), j.numpy())
 
     def run_adam_or_adamw_fp16(self, use_adamw):
         use_multi_tesnor_adam = True
@@ -293,7 +293,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             not use_multi_tesnor_adam, use_adamw
         )
         for i, j in zip(parameters, parameters_1):
-            self.assertTrue(np.array_equal(i.numpy(), j.numpy()))
+            np.testing.assert_array_equal(i.numpy(), j.numpy())
 
     def run_adam_or_adamw_dict(self, use_adamw):
         use_multi_tesnor_adam = True
@@ -304,7 +304,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             not use_multi_tesnor_adam, use_adamw
         )
         for i, j in zip(parameters, parameters_1):
-            self.assertTrue(np.array_equal(i.numpy(), j.numpy()))
+            np.testing.assert_array_equal(i.numpy(), j.numpy())
 
     def run_adam_or_adamw_dict_fp16(self, use_adamw):
         use_multi_tesnor_adam = True
@@ -315,7 +315,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             not use_multi_tesnor_adam, use_adamw
         )
         for i, j in zip(parameters, parameters_1):
-            self.assertTrue(np.array_equal(i.numpy(), j.numpy()))
+            np.testing.assert_array_equal(i.numpy(), j.numpy())
 
     def test_main(self):
         for use_adamw in [True, False]:

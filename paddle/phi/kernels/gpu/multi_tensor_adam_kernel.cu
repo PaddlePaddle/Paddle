@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/multi_tensor_adam_kernel.h"
 #include <vector>
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
@@ -187,13 +186,14 @@ void MultiTensorAdamKernel(
         1,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
-    std::vector<bool> skip_update_vec;
-    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
-    skip_update_value = skip_update_vec[0];
+    DenseTensor skip_update_tensor;
+    phi::Copy(
+        dev_ctx, skip_update.get(), CPUPlace(), false, &skip_update_tensor);
+    skip_update_value = skip_update_tensor.data<bool>()[0];
+    VLOG(4) << "skip_update_value:" << skip_update_value << std::endl;
   }
 
   // skip_update=true
-  // mutable_data
   if (skip_update_value) {
     VLOG(4) << "Adam skip update";
     for (size_t i = 0; i < params.size(); i++) {
