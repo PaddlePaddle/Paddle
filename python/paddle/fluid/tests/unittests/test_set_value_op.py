@@ -1316,7 +1316,7 @@ class TestGradientTruncated(unittest.TestCase):
     def test_static_graph(self):
         paddle.enable_static()
 
-        to_string = lambda x, i,: x + '_' + str(i)
+        to_string = lambda x, i: x + '_' + str(i)
         numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape)
 
         def op1(x):
