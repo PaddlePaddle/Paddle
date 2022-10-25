@@ -42,9 +42,12 @@ void SoftmaxKernel(const Context& dev_ctx,
       astream, {{DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}});
   astream.wait();
 
-  if (dev_ctx.HasDnnAttr("is_test") && !(dev_ctx.GetDnnAttr("is_test"))) {
-    dev_ctx.template Alloc<T>(output_data);
-    std::for_each(output_data, &output_data[output->numel()], [](T& val) {
+  bool is_test = dev_ctx.HasDnnAttr("is_test")
+                     ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
+                     : false;
+  if (!is_test) {
+    T* out_data = dev_ctx.template Alloc<T>(out);
+    std::for_each(out_data, &out_data[out->numel()], [](T& val) {
       val = std::max(val, static_cast<T>(exp(-64)));
     });
   }
