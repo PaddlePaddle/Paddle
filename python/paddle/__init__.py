@@ -61,7 +61,6 @@ else:
     from .framework import VarBase as Tensor  # noqa: F401
 
 Tensor.__qualname__ = 'Tensor'  # noqa: F401
-import paddle.compat  # noqa: F401
 import paddle.distributed  # noqa: F401
 import paddle.sysconfig  # noqa: F401
 import paddle.distribution  # noqa: F401
