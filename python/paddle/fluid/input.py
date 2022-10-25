@@ -25,8 +25,8 @@ __all__ = ['one_hot', 'embedding']
 def one_hot(input, depth, allow_out_of_range=False):
     """
     :alias_main: paddle.nn.functional.one_hot
-	:alias: paddle.nn.functional.one_hot,paddle.nn.functional.common.one_hot
-	:old_api: paddle.fluid.one_hot
+        :alias: paddle.nn.functional.one_hot,paddle.nn.functional.common.one_hot
+        :old_api: paddle.fluid.one_hot
 
     The operator converts each id in the input to an one-hot vector with a
     depth length. The value in the vector dimension corresponding to the id
@@ -122,23 +122,27 @@ def one_hot(input, depth, allow_out_of_range=False):
             depth.stop_gradient = True
             inputs = {'X': input, 'depth_tensor': depth}
             attrs = {'allow_out_of_range': allow_out_of_range}
-    helper.append_op(type="one_hot_v2",
-                     inputs=inputs,
-                     attrs=attrs,
-                     outputs={'Out': one_hot_out},
-                     stop_gradient=True)
+    helper.append_op(
+        type="one_hot_v2",
+        inputs=inputs,
+        attrs=attrs,
+        outputs={'Out': one_hot_out},
+        stop_gradient=True,
+    )
     return one_hot_out
 
 
 @static_only
 @deprecated(since='2.0.0', update_to='paddle.nn.functional.embedding')
-def embedding(input,
-              size,
-              is_sparse=False,
-              is_distributed=False,
-              padding_idx=None,
-              param_attr=None,
-              dtype='float32'):
+def embedding(
+    input,
+    size,
+    is_sparse=False,
+    is_distributed=False,
+    padding_idx=None,
+    param_attr=None,
+    dtype='float32',
+):
     r"""
     :api_attr: Static Graph
 
@@ -310,28 +314,35 @@ def embedding(input,
 
     helper = LayerHelper('embedding', **locals())
     check_variable_and_dtype(input, 'input', ['int64'], 'fluid.embedding')
-    check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64', 'uint16'],
-                'fluid.embedding')
+    check_dtype(
+        dtype,
+        'dtype',
+        ['float16', 'float32', 'float64', 'uint16'],
+        'fluid.embedding',
+    )
     remote_prefetch = is_sparse and (not is_distributed)
     if remote_prefetch:
         assert is_sparse is True and is_distributed is False
-    w = helper.create_parameter(attr=helper.param_attr,
-                                shape=size,
-                                dtype=dtype,
-                                is_bias=False)
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False
+    )
     tmp = helper.create_variable_for_type_inference(dtype)
-    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-        size[0] + padding_idx)
-    helper.append_op(type='lookup_table_v2',
-                     inputs={
-                         'Ids': input,
-                         'W': w
-                     },
-                     outputs={'Out': tmp},
-                     attrs={
-                         'is_sparse': is_sparse,
-                         'is_distributed': is_distributed,
-                         'remote_prefetch': remote_prefetch,
-                         'padding_idx': padding_idx
-                     })
+    padding_idx = (
+        -1
+        if padding_idx is None
+        else padding_idx
+        if padding_idx >= 0
+        else (size[0] + padding_idx)
+    )
+    helper.append_op(
+        type='lookup_table_v2',
+        inputs={'Ids': input, 'W': w},
+        outputs={'Out': tmp},
+        attrs={
+            'is_sparse': is_sparse,
+            'is_distributed': is_distributed,
+            'remote_prefetch': remote_prefetch,
+            'padding_idx': padding_idx,
+        },
+    )
     return tmp

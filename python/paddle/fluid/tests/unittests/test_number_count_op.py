@@ -22,17 +22,17 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 def count(x, upper_num):
-    res = np.zeros((upper_num, )).astype(int)
+    res = np.zeros((upper_num,)).astype(int)
     for i in x.reshape(-1):
         if i >= 0 and i < len(res):
             res[i] += 1
     return res
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestNumberCountOpInt64(op_test.OpTest):
-
     def setUp(self):
         upper_num = 16
         self.op_type = "number_count"
@@ -45,14 +45,15 @@ class TestNumberCountOpInt64(op_test.OpTest):
         self.check_output_with_place(paddle.CUDAPlace(0))
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestNumberCountAPI(unittest.TestCase):
-
     def setUp(self):
         self.upper_num = 320
-        self.x = np.random.randint(-1, self.upper_num,
-                                   size=(6000, 200)).astype('int64')
+        self.x = np.random.randint(-1, self.upper_num, size=(6000, 200)).astype(
+            'int64'
+        )
         self.out = count(self.x, self.upper_num)
         self.place = paddle.CUDAPlace(0)
 

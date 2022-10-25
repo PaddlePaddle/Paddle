@@ -14,8 +14,10 @@
 
 #pragma once
 
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/slice_grad_kernel.h"
 
@@ -348,6 +350,64 @@ void SliceGradRawKernel(const Context& ctx,
       PADDLE_THROW(phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
   }
+}
+
+template <typename T, typename Context>
+void SliceArrayGradKernel(const Context& dev_ctx,
+                          const TensorArray& input,
+                          const TensorArray& out_grad,
+                          const IntArray& starts,
+                          const IntArray& ends,
+                          TensorArray* input_grad) {
+  int64_t d_in_size = input.size();
+  input_grad->resize(d_in_size);
+  // If the input is TensorArray, the rank of input is 1.
+  // So only use the 0th element of starts.
+  int64_t start = starts[0] < 0 ? (starts[0] + d_in_size) : starts[0];
+  start = std::max(start, static_cast<int64_t>(0));
+  // set zero
+  phi::funcs::SetConstant<Context, T> functor;
+  for (int i = 0; i < d_in_size; ++i) {
+    const auto& dim = input.at(i).dims();
+    auto* in_grad_tensor = &input_grad->at(i);
+    in_grad_tensor->Resize(dim);
+    dev_ctx.template Alloc<T>(in_grad_tensor);
+    functor(dev_ctx, in_grad_tensor, static_cast<T>(0));
+  }
+
+  int d_out_size = out_grad.size();
+  for (int i = 0; i < d_out_size; ++i) {
+    phi::Copy<Context>(dev_ctx,
+                       out_grad[i],
+                       dev_ctx.GetPlace(),
+                       false,
+                       &input_grad->at(start + i));
+  }
+}
+
+template <typename T, typename Context>
+void SliceArrayDenseGradKernel(const Context& dev_ctx,
+                               const TensorArray& input,
+                               const DenseTensor& out_grad,
+                               const IntArray& starts,
+                               TensorArray* input_grad) {
+  int64_t d_in_size = input.size();
+  input_grad->resize(d_in_size);
+  // If the input is TensorArray, the rank of input is 1.
+  // So only use the 0th element of starts.
+  int64_t start = starts[0] < 0 ? (starts[0] + d_in_size) : starts[0];
+  start = std::max(start, static_cast<int64_t>(0));
+  // set zero
+  phi::funcs::SetConstant<Context, T> functor;
+  for (int i = 0; i < d_in_size; ++i) {
+    const auto& dim = input.at(i).dims();
+    auto* in_grad_tensor = &input_grad->at(i);
+    in_grad_tensor->Resize(dim);
+    dev_ctx.template Alloc<T>(in_grad_tensor);
+    functor(dev_ctx, in_grad_tensor, static_cast<T>(0));
+  }
+  phi::Copy<Context>(
+      dev_ctx, out_grad, dev_ctx.GetPlace(), false, &input_grad->at(start));
 }
 
 }  // namespace phi

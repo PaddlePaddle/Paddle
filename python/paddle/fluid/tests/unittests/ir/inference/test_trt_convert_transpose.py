@@ -22,7 +22,6 @@ import unittest
 
 
 class TrtConvertTransposeTest(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -32,14 +31,13 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        #The shape of input and axis should be equal.
+        # The shape of input and axis should be equal.
         if len(inputs['transpose_input'].shape) != len(attrs[0]['axis']):
             return False
 
         return True
 
     def sample_program_configs(self):
-
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(np.float32)
@@ -50,37 +48,43 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
 
         for dims in [2, 3, 4]:
             for batch in [1, 2, 4]:
-                for axis in [[0, 1, 3, 2], [0, 3, 2, 1], [3, 2, 0, 1],
-                             [0, 1, 2, 3], [0, 1, 2], [2, 0, 1], [1, 0], [0,
-                                                                          1]]:
+                for axis in [
+                    [0, 1, 3, 2],
+                    [0, 3, 2, 1],
+                    [3, 2, 0, 1],
+                    [0, 1, 2, 3],
+                    [0, 1, 2],
+                    [2, 0, 1],
+                    [1, 0],
+                    [0, 1],
+                ]:
                     self.dims = dims
                     dics = [{"axis": axis}, {}]
-                    ops_config = [{
-                        "op_type": "transpose",
-                        "op_inputs": {
-                            "X": ["transpose_input"]
-                        },
-                        "op_outputs": {
-                            "Out": ["transpose_out"]
-                        },
-                        "op_attrs": dics[0]
-                    }]
+                    ops_config = [
+                        {
+                            "op_type": "transpose",
+                            "op_inputs": {"X": ["transpose_input"]},
+                            "op_outputs": {"Out": ["transpose_out"]},
+                            "op_attrs": dics[0],
+                        }
+                    ]
                     ops = self.generate_op_config(ops_config)
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
-                            "transpose_input":
-                            TensorConfig(
-                                data_gen=partial(generate_input1, dics, batch))
+                            "transpose_input": TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch)
+                            )
                         },
-                        outputs=["transpose_out"])
+                        outputs=["transpose_out"],
+                    )
 
                     yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -134,19 +138,23 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-3
 
     def test(self):
         self.run_test()

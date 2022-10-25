@@ -24,14 +24,12 @@ def dyfunc_generator():
 
 
 def main_func():
-    """ Error will raise, but we only report a warning not intercept
-     """
+    """Error will raise, but we only report a warning not intercept"""
     for i in dyfunc_generator():
         print(i)
 
 
 class TestConvertGenerator(unittest.TestCase):
-
     def test_raise_error(self):
         with self.assertRaises(Exception):
             to_static(main_func)()

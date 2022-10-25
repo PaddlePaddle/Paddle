@@ -31,7 +31,9 @@ def apply_pass(use_amp=False, level=None):
         amp.enable = True
         amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
         amp.custom_black_list = [
-            'c_softmax_with_cross_entropy', 'elementwise_div', 'reduce_sum'
+            'c_softmax_with_cross_entropy',
+            'elementwise_div',
+            'reduce_sum',
         ]
         amp.init_loss_scaling = 32768
         amp.use_fp16_guard = False
@@ -47,7 +49,6 @@ def reset_prog():
 
 
 class TestAMPPass(unittest.TestCase):
-
     def setUp(self):
         self.rtol = 1e-5
         self.atol = 1e-8
@@ -82,32 +83,34 @@ class TestAMPPass(unittest.TestCase):
             rtol=rtol or self.rtol,
             atol=atol or self.atol,
             err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses))
+                __class__, ref_losses, check_losses, ref_losses - check_losses
+            ),
+        )
 
     def test_amp_pass(self):
         # mp2 training
         mp_engine = self.get_engine()
-        outs = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        mp_losses = np.array(outs["loss"])
+        history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        mp_losses = np.array(history.history["loss"])
 
         # mp2 amp-o1 training
         amp_o1_engine = self.get_engine(True, "o1")
-        outs = amp_o1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        amp_o1_losses = np.array(outs["loss"])
+        history = amp_o1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o1_losses = np.array(history.history["loss"])
         amp_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o1_losses)
 
         # mp2 amp-o2 training
         amp_o2_engine = self.get_engine(True, "o2")
-        outs = amp_o2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        amp_o2_losses = np.array(outs["loss"])
+        history = amp_o2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o2_losses = np.array(history.history["loss"])
         amp_o2_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o2_losses)
 
         # mp2 amp-o3 training
         amp_o3_engine = self.get_engine(True, "o3")
-        outs = amp_o3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        amp_o3_losses = np.array(outs["loss"])
+        history = amp_o3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o3_losses = np.array(history.history["loss"])
         amp_o3_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o3_losses)
 

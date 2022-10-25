@@ -28,21 +28,21 @@ def test_convert():
         tensor_name: {
             "process_shape": [2],
             "process_group": [0, 1],
-            "dims_mapping": [-1, -1]
+            "dims_mapping": [-1, -1],
         }
     }
     row_strategy = {
         tensor_name: {
             "process_shape": [2],
             "process_group": [0, 1],
-            "dims_mapping": [0, -1]
+            "dims_mapping": [0, -1],
         }
     }
     col_strategy = {
         tensor_name: {
             "process_shape": [2],
             "process_group": [0, 1],
-            "dims_mapping": [-1, 0]
+            "dims_mapping": [-1, 0],
         }
     }
 
@@ -70,7 +70,7 @@ def test_convert():
         new_name: {
             "process_shape": [2],
             "process_group": [0, 1],
-            "dims_mapping": [0, -1]
+            "dims_mapping": [0, -1],
         }
     }
     converter = Converter(tensor_dict, col_strategy, row_strategy)
@@ -84,14 +84,14 @@ def test_convert():
         "tensor_2": {
             "process_shape": [2],
             "process_group": [0, 1],
-            "dims_mapping": [-1, -1]
+            "dims_mapping": [-1, -1],
         }
     }
     row_strategy = {
         "tensor_2": {
             "process_shape": [2],
             "process_group": [0, 1],
-            "dims_mapping": [0, -1]
+            "dims_mapping": [0, -1],
         }
     }
     tensor_dict = {"tensor_2": [complete_tensor]}
