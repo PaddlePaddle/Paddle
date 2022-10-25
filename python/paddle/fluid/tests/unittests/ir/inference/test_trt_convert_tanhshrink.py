@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import List, Dict, Any
 import unittest
 
 
@@ -42,7 +42,7 @@ class TrtConvertTanhshrinkTest(TrtLayerAutoScanTest):
             self.dims = dims
 
             ops_config = [{
-                "op_type": "tanhshrink",
+                "op_type": "tanh_shrink",
                 "op_inputs": {
                     "X": ["input_data"],
                 },

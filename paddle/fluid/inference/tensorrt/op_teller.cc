@@ -86,7 +86,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         "cosh",      "asin",  "acos",
         "atan",      "asinh", "atanh",
         "ceil",      "floor", "erf",
-        "silu",      "celu",  "tanhshrink",
+        "silu",      "celu",  "tanh_shrink",
         "logsigmoid"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
@@ -2261,7 +2261,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "layernorm_shift_partition",
-      "tanhshrink",
+      "tanh_shrink",
       "logsigmoid",
       "lookup_table",
       "lookup_table_v2",
@@ -2381,7 +2381,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
-      "tanhshrink",
+      "tanh_shrink",
       "logsigmoid",
       "merge_layernorm",
       "lookup_table",

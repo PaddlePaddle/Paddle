@@ -68,7 +68,7 @@ class TanhshrinkOpConverter : public OpConverter {
                                  *(tanh->getOutput(0)),
                                  nvinfer1::ElementWiseOperation::kSUB);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "tanhshrink", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "tanh_shrink", {output_name}, test_mode);
   }
 };
 
@@ -76,4 +76,4 @@ class TanhshrinkOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(tanhshrink, TanhshrinkOpConverter);
+REGISTER_TRT_OP_CONVERTER(tanh_shrink, TanhshrinkOpConverter);
