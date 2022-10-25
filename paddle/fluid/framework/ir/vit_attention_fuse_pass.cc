@@ -56,6 +56,22 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+bool HasScale(OpDesc* const op_ptr,
+              std::string* name,
+              std::string regexp = "Input_scale_") {
+  name->clear();
+  std::unordered_map<std::string, Attribute> attr_map = op_ptr->GetAttrMap();
+  std::unordered_map<std::string, Attribute>::iterator iter;
+  int len = regexp.size();
+  for (iter = attr_map.begin(); iter != attr_map.end(); iter++) {
+    if (regexp == iter->first.substr(0, len)) {
+      *name = iter->first;
+      return true;
+    }
+  }
+  return false;
+}
+
 void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   const std::string pattern_name = "vit_attention_fuse";
@@ -102,6 +118,30 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
     desc.SetAttr("head_number", static_cast<int>(shape[1]));
     float alpha = PADDLE_GET_CONST(float, scale1_op->Op()->GetAttr("scale"));
     desc.SetAttr("alpha", alpha);
+
+    // int8 for fc
+    std::string scale_name;
+    if (HasScale(matmul0_op->Op(), &scale_name)) {
+      desc.SetAttr("Input_scale", matmul0_op->Op()->GetAttr(scale_name));
+    }
+    if (HasScale(elementwise0_op->Op(), &scale_name, "Out")) {
+      desc.SetAttr("fc_out_threshold",
+                   elementwise0_op->Op()->GetAttr(scale_name));
+    }
+    // int8 for qkv
+    if (HasScale(matmul1_op->Op(), &scale_name)) {
+      desc.SetAttr("qkv2context_plugin_int8", true);
+      if (softmax1_op->Op()->HasAttr("out_threshold")) {
+        auto qkv_plugin_scale = PADDLE_GET_CONST(
+            float, softmax1_op->Op()->GetAttr("out_threshold"));
+        desc.SetAttr("dp_probs", qkv_plugin_scale);
+      }
+      if (reshape2_op->Op()->HasAttr("out_threshold")) {
+        auto qkv_out_scale = PADDLE_GET_CONST(
+            float, reshape2_op->Op()->GetAttr("out_threshold"));
+        desc.SetAttr("out_threshold", qkv_out_scale);
+      }
+    }
 
     // Create a new node for the fused op.
     auto vit_attention_node = graph->CreateOpNode(&desc);

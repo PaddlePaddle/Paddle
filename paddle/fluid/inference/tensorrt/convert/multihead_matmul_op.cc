@@ -398,13 +398,37 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           // add fc layer
           nvinfer1::ILayer* fc_layer = nullptr;
-          fc_layer =
-              TRT_ENGINE_ADD_LAYER(engine_,
-                                   FullyConnected,
-                                   *reshape_before_fc_layer->getOutput(0),
-                                   n,
-                                   weight,
-                                   bias);
+          if (op_desc.HasAttr("Input_scale")) {
+            engine_->SetTensorDynamicRange(
+                reshape_before_fc_layer->getOutput(0), in_scale);
+            nvinfer1::DimsHW nv_ksize(1, 1);
+            fc_layer =
+                TRT_ENGINE_ADD_LAYER(engine_,
+                                     Convolution,
+                                     *reshape_before_fc_layer->getOutput(0),
+                                     n,
+                                     nv_ksize,
+                                     weight,
+                                     bias);
+            PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
+                              true,
+                              platform::errors::InvalidArgument(
+                                  "must have out threshold in multihead layers "
+                                  "in int8 mode"));
+            float out_scale =
+                PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+            engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
+          } else {
+            fc_layer =
+                TRT_ENGINE_ADD_LAYER(engine_,
+                                     FullyConnected,
+                                     *reshape_before_fc_layer->getOutput(0),
+                                     n,
+                                     weight,
+                                     bias);
+          }
+          fc_layer->setName(
+              ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
 
           // add shuffle for CustomQKVToContextPluginDynamic layer
           auto* reshape_after_fc_layer =
@@ -426,8 +450,13 @@ class MultiheadMatMulOpConverter : public OpConverter {
           assert(creator != nullptr);
           // set the attributes of mha_plugin
           int type = static_cast<int>(nvinfer1::DataType::kHALF);
+          if (qkv2context_plugin_int8 &&
+              (engine_->precision() == AnalysisConfig::Precision::kInt8)) {
+            type = static_cast<int>(nvinfer1::DataType::kINT8);
+          }
           int var_seqlen = 1;
           bool has_mask = true;
+          float dp_probs = 1.0 / 127.0;
           std::vector<nvinfer1::PluginField> fields{
               {"hidden_size",
                &hidden_out,
@@ -440,6 +469,14 @@ class MultiheadMatMulOpConverter : public OpConverter {
                &var_seqlen,
                nvinfer1::PluginFieldType::kINT32,
                1}};
+          if (qkv2context_plugin_int8) {
+            dp_probs =
+                PADDLE_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
+            fields.push_back({"dq_probs",
+                              &dp_probs,
+                              nvinfer1::PluginFieldType::kFLOAT32,
+                              1});
+          }
           nvinfer1::PluginFieldCollection* plugin_collection =
               static_cast<nvinfer1::PluginFieldCollection*>(malloc(
                   sizeof(*plugin_collection) +
