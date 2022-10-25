@@ -26,36 +26,33 @@ void SoftmaxKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   funcs::SoftmaxOneDNNHandler<T> handler(
       dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, out);
- 
-    auto src_memory_p = handler.AcquireSrcMemory(&x);
-    std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
-    if (x.IsSharedBufferWith(*out)) {
-      dst_memory_p = src_memory_p;
-      dev_ctx.template Alloc<T>(out);
-    } else {
-      dst_memory_p = handler.AcquireDstMemory(out);
-    }
-    auto softmax_p = handler.AcquireForwardPrimitive();
 
-    auto& astream = OneDNNContext::tls().get_stream();
-    softmax_p->execute(astream,
-                       {{DNNL_ARG_SRC, *src_memory_p},
-                        {DNNL_ARG_DST, *dst_memory_p}});
-    astream.wait();
-
-    // Find a way to get attribute 
-    // const bool is_test = ctx.Attr<bool>("is_test");
-    // if (!is_test) {
-    //   T* output_data = out->mutable_data<T>(ctx.GetPlace());
-    //   std::for_each(output_data, &output_data[out->numel()], [](T& val) {
-    //     val = std::max(val, static_cast<T>(exp(-64)));
-    //   });
-    // }
-
-    out->set_mem_desc(dst_memory_p->get_desc());
+  auto src_memory_p = handler.AcquireSrcMemory(&x);
+  std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
+  if (x.IsSharedBufferWith(*out)) {
+    dst_memory_p = src_memory_p;
+    dev_ctx.template Alloc<T>(out);
+  } else {
+    dst_memory_p = handler.AcquireDstMemory(out);
   }
+  auto softmax_p = handler.AcquireForwardPrimitive();
+
+  auto& astream = OneDNNContext::tls().get_stream();
+  softmax_p->execute(
+      astream, {{DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}});
+  astream.wait();
+
+  if (dev_ctx.HasDnnAttr("is_test") && !(dev_ctx.GetDnnAttr("is_test"))) {
+    dev_ctx.template Alloc<T>(output_data);
+    std::for_each(output_data, &output_data[output->numel()], [](T& val) {
+      val = std::max(val, static_cast<T>(exp(-64)));
+    });
+  }
+
+  out->set_mem_desc(dst_memory_p->get_desc());
+}
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    softmax, OneDNN, ALL_LAYOUT, phi::SoftmaxKernel, float, phi::dtype::bfloat16) {}
+    softmax, OneDNN, ONEDNN, phi::SoftmaxKernel, float, phi::dtype::bfloat16) {}
