@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/tensor_utils.h"
 
