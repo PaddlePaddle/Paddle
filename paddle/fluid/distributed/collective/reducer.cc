@@ -16,6 +16,8 @@
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
 
+DECLARE_bool(use_stream_safe_cuda_allocator);
+
 namespace paddle {
 namespace distributed {
 
@@ -335,13 +337,20 @@ void EagerGroup::ConcatTensors(const platform::Place &place) {
   }
 }
 
-void EagerGroup::SplitTensors(const platform::Place &place) {
+void EagerGroup::SplitTensorsDev(const platform::DeviceContext &context) {
+  auto place = context.GetPlace();
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto *default_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(place));
+    auto &gpu_context = static_cast<const phi::GPUContext &>(context);
     SplitTensorsWithType(
-        *default_ctx, &dense_contents_, &dense_tensors_, dtype_);
+        gpu_context, &dense_contents_, &dense_tensors_, dtype_);
+    if (FLAGS_use_stream_safe_cuda_allocator) {
+      auto dense_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(dense_contents_.impl());
+      VLOG(3) << "Free dense_contents_ " << dense_contents_.numel();
+      memory::RecordStream(dense_tensor->Holder(), gpu_context.stream());
+      dense_contents_.reset();
+    }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't split grad tensor since it's not compiled with NCCL,"
@@ -349,10 +358,11 @@ void EagerGroup::SplitTensors(const platform::Place &place) {
 #endif
   } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    auto *default_ctx = static_cast<platform::CustomDeviceContext *>(
-        platform::DeviceContextPool::Instance().Get(place));
     SplitTensorsWithType(
-        *default_ctx, &dense_contents_, &dense_tensors_, dtype_);
+        static_cast<const platform::CustomDeviceContext &>(context),
+        &dense_contents_,
+        &dense_tensors_,
+        dtype_);
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't split grad tensor since it's not compiled with "
@@ -360,10 +370,10 @@ void EagerGroup::SplitTensors(const platform::Place &place) {
         "Please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
-    auto *default_ctx = static_cast<phi::CPUContext *>(
-        platform::DeviceContextPool::Instance().Get(place));
-    SplitTensorsWithType(
-        *default_ctx, &dense_contents_, &dense_tensors_, dtype_);
+    SplitTensorsWithType(static_cast<const phi::CPUContext &>(context),
+                         &dense_contents_,
+                         &dense_tensors_,
+                         dtype_);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Split grad tensor not supported on place (%s)", place));
@@ -919,7 +929,6 @@ void EagerReducer::FinalizeBackward() {
 
   for (auto &group : groups_) {
     if (!group.is_sparse_ && grad_need_hooks_) {
-      group.SplitTensors(inner_place_);
       group.dense_contents_.reset();
     }
   }
@@ -958,6 +967,9 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
   }
   group->task = process_group_->AllReduce(in_out, in_out, opts);
 
+  const auto &context = process_group_->GetDeviceContext(inner_place_);
+  group->SplitTensorsDev(context);
+  group->task->UpdateWaitChain(context);
   // split in FinalizeBackward()
 }
 
