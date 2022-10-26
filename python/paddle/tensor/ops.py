@@ -18,8 +18,10 @@ from .layer_function_generator import (
     generate_inplace_fn,
     add_sample_code,
 )
-from ..fluid.framework import in_dygraph_mode
-from .. import _C_ops
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from ..framework import LayerHelper
+from .. import _C_ops, _legacy_C_ops
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',
@@ -37,7 +39,6 @@ __activations_noattr__ = [
 ]
 
 __unary_func__ = [
-    'exp',
     'expm1',
     'atan',
     'sqrt',
@@ -154,22 +155,6 @@ Examples:
         out = F.log_sigmoid(x)
         print(out)
         # [-0.91301525 -0.79813887 -0.64439666 -0.55435524]
-
-""",
-)
-
-add_sample_code(
-    globals()["exp"],
-    r"""
-Examples:
-    .. code-block:: python
-
-        import paddle
-
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = paddle.exp(x)
-        print(out)
-        # [0.67032005 0.81873075 1.10517092 1.34985881]
 
 """,
 )
@@ -560,6 +545,58 @@ Examples:
 
 """,
 )
+
+
+def exp(x, name=None):
+    """
+
+    Computes exp of x element-wise with a natural number `e` as the base.
+
+    .. math::
+        out = e^x
+
+    Args:
+        x (Tensor): Input of Exp operator, an N-D Tensor, with data type float32, float64 or float16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Exp operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = paddle.exp(x)
+            print(out)
+            # [0.67032005 0.81873075 1.10517092 1.34985881]
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.exp(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.exp(x)
+
+    check_variable_and_dtype(
+        x,
+        'x',
+        [
+            'int32',
+            'int64',
+            'float16',
+            'float32',
+            'float64',
+            'complex64',
+            'complex128',
+        ],
+        'exp',
+    )
+    helper = LayerHelper('exp', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='exp', inputs={"X": x}, outputs={"Out": out})
+    return out
+
 
 __all__ += ['erf']
 

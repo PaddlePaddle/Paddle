@@ -49,6 +49,24 @@ class TestGumbelSoftmaxOp(OpTest):
         self.check_grad(["X"], "Out")
 
 
+class TestGumbelSoftmax_ZeroDim(OpTest):
+    def setUp(self):
+        self.op_type = "gumbel_softmax"
+        self.dtype = "float64"
+        x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        out = np.array(1.0).astype(self.dtype)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {"hard": True, "axis": -1}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
+
 class TestGumbelSoftmaxOp2(TestGumbelSoftmaxOp):
     def init_attrs(self):
         self.shape = [20, 10]
