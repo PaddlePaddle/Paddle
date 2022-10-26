@@ -539,9 +539,11 @@ class ShardingPass(PassBase):
             _fuse_overlap_gradient_comm()
             # TODO support multiple sub_blocks
             if self.stage == 2:
-                _fuse_overlap_parameter_comm_stage_two(self.sharding_infos)
+                _fuse_overlap_parameter_comm_stage_two(self.sharding_infos,
+                                                       fuse_size=1024)
             elif self.stage == 3:
-                _fuse_overlap_parameter_comm_stage_three(self.sharding_infos)
+                _fuse_overlap_parameter_comm_stage_three(self.sharding_infos,
+                                                         fuse_size=1024)
 
 
 def _insert_init_and_broadcast_op(block, insert_idx, varname, local_rank,
