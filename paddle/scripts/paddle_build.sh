@@ -1829,7 +1829,6 @@ function precise_card_test_single {
     do
         cd ${PADDLE_ROOT}/build
         precise_card_test "^${case}$" $num
-        
         # c++
         if [ ! -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
             mkdir ${PADDLE_ROOT}/build/ut_map/$case
