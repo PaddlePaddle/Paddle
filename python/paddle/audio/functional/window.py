@@ -349,9 +349,18 @@ def get_window(window: Union[str, Tuple[str, float]],
                          str(type(window)))
 
     if winstr not in [
-            'hamming', 'hann', 'kaiser', 'gaussian', 'general_gaussian',
-            'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey',
-            'taylor'
+        'hamming', 
+        'hann',
+        'kaiser',
+        'gaussian',
+        'general_gaussian',
+        'exponential',
+        'triang',
+        'bohman', 
+        'blackman',
+        'cosine',
+        'tukey',
+        'taylor'
     ]:
         raise ValueError("%s as window type is not supported." % str(winstr))
 
