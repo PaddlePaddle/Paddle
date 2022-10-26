@@ -15,7 +15,6 @@
 #pragma once
 
 #include <thread>
-#include <vector>
 #include "dnnl.hpp"  // NOLINT
 #include "glog/logging.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
