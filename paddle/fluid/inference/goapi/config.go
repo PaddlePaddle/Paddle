@@ -199,8 +199,9 @@ func (config *Config) EnableORTOptimization() {
 /// \param autotune_file Specify the path of the autotune file. If autotune_file is specified, the algorithm specified in the file will be used and autotune will not be performed again.
 /// \param precision Calculation accuracy of multi_encoder
 /// \param adaptive_seqlen Is the input of multi_encoder variable length
+/// \param enable_multi_stream Whether to enable the multi stream of xpu
 ///
-func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool) {
+func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool, enableMultiStream bool) {
 	cAutotuneFile := C.CString(autotuneFile)
 	cPrecision := C.CString(precision)
 	defer func() {
@@ -208,7 +209,7 @@ func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune boo
 		C.free(unsafe.Pointer(cPrecision))
 	}()
 	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3WorkspaceSize), cvtGoBoolToPD(locked), cvtGoBoolToPD(autotune),
-		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen))
+		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen), cvtGoBoolToPD(enableMultiStream))
 }
 
 ///
