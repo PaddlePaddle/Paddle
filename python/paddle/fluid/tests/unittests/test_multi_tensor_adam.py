@@ -41,119 +41,14 @@ class MLPLayer(nn.Layer):
 class TestMultiTensorAdam(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        self.input_size = 8
-        self.hidden_size = 5
-        self.output_size = 7
-        self.n = 1
+        self.input_size = 800
+        self.hidden_size = 500
+        self.output_size = 700
+        self.n = 10
 
-    def get_adam_or_adamw_out(self, use_multi_tesnor_adam, use_adamw):
-
-        paddle.seed(10)
-
-        model = MLPLayer(
-            self.input_size, self.hidden_size, self.output_size, self.n
-        )
-
-        inp = paddle.uniform([10, self.input_size], dtype="float32")
-
-        out = model(inp)
-
-        beta1 = paddle.to_tensor([0.9], dtype="float32")
-        beta2 = paddle.to_tensor([0.99], dtype="float32")
-
-        if use_multi_tesnor_adam:
-            opt = paddle.incubate.optimizer.MultiTensorAdam(
-                learning_rate=0.1,
-                parameters=model.parameters(),
-                weight_decay=0.01,
-                beta1=beta1,
-                beta2=beta2,
-                use_adamw=use_adamw,
-            )
-        else:
-            if not use_adamw:
-                opt = paddle.optimizer.Adam(
-                    learning_rate=0.1,
-                    parameters=model.parameters(),
-                    weight_decay=0.01,
-                    beta1=beta1,
-                    beta2=beta2,
-                )
-            else:
-                opt = paddle.optimizer.AdamW(
-                    learning_rate=0.1,
-                    parameters=model.parameters(),
-                    weight_decay=0.01,
-                    beta1=beta1,
-                    beta2=beta2,
-                )
-        out.backward()
-        opt.step()
-        opt.clear_grad()
-
-        return model.parameters()
-
-    def get_adam_or_adamw_dict_out(self, use_multi_tesnor_adam, use_adamw):
-
-        paddle.seed(10)
-
-        model = MLPLayer(
-            self.input_size, self.hidden_size, self.output_size, self.n
-        )
-
-        inp = paddle.uniform([10, self.input_size], dtype="float32")
-
-        out = model(inp)
-
-        beta1 = paddle.to_tensor([0.9], dtype="float32")
-        beta2 = paddle.to_tensor([0.99], dtype="float32")
-
-        paramters_dict_list = []
-        i = 0
-        for param in model.parameters():
-            paramters_dict_list.append(
-                {
-                    'params': param,
-                    'weight_decay': 0.001 * i,
-                    'learning_rate': 0.01 * i,
-                    'beta1': 0.01 * i,
-                }
-            )
-            i = i + 1
-
-        if use_multi_tesnor_adam:
-            opt = paddle.incubate.optimizer.MultiTensorAdam(
-                learning_rate=0.1,
-                parameters=paramters_dict_list,
-                weight_decay=0.01,
-                beta1=beta1,
-                beta2=beta2,
-                use_adamw=use_adamw,
-            )
-        else:
-            if not use_adamw:
-                opt = paddle.optimizer.Adam(
-                    learning_rate=0.1,
-                    parameters=paramters_dict_list,
-                    weight_decay=0.01,
-                    beta1=beta1,
-                    beta2=beta2,
-                )
-            else:
-                opt = paddle.optimizer.AdamW(
-                    learning_rate=0.1,
-                    parameters=paramters_dict_list,
-                    weight_decay=0.01,
-                    beta1=beta1,
-                    beta2=beta2,
-                )
-        out.backward()
-        opt.step()
-        opt.clear_grad()
-
-        return model.parameters()
-
-    def get_adam_or_adamw_fp16_out(self, use_multi_tesnor_adam, use_adamw):
+    def get_adam_or_adamw_out(
+        self, use_multi_tensor_adam, use_adamw, test_dict, test_fp16
+    ):
 
         paddle.seed(10)
         np.random.seed(10)
@@ -161,96 +56,60 @@ class TestMultiTensorAdam(unittest.TestCase):
         model = MLPLayer(
             self.input_size, self.hidden_size, self.output_size, self.n
         )
-        model = paddle.amp.decorate(models=model, level='O2')
-        scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-        inp = np.random.random((10, self.input_size)).astype("float16")
-        inp = paddle.to_tensor(inp)
-
-        beta1 = paddle.to_tensor([0.9], dtype="float32")
-        beta2 = paddle.to_tensor([0.99], dtype="float32")
-
-        if use_multi_tesnor_adam:
-            opt = paddle.incubate.optimizer.MultiTensorAdam(
-                learning_rate=0.1,
-                parameters=model.parameters(),
-                weight_decay=0.01,
-                beta1=beta1,
-                beta2=beta2,
-                use_adamw=use_adamw,
-            )
+        if test_fp16:
+            model = paddle.amp.decorate(models=model, level='O2')
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            inp = np.random.random((10, self.input_size)).astype("float16")
+            inp = paddle.to_tensor(inp)
         else:
-            if not use_adamw:
-                opt = paddle.optimizer.Adam(
-                    learning_rate=0.1,
-                    parameters=model.parameters(),
-                    weight_decay=0.01,
-                    beta1=beta1,
-                    beta2=beta2,
-                )
-            else:
-                opt = paddle.optimizer.AdamW(
-                    learning_rate=0.1,
-                    parameters=model.parameters(),
-                    weight_decay=0.01,
-                    beta1=beta1,
-                    beta2=beta2,
-                )
-
-        with paddle.amp.auto_cast(level='O2'):
+            inp = paddle.uniform([10, self.input_size], dtype="float32")
             out = model(inp)
-            loss = paddle.mean(out)
-        scaled = scaler.scale(loss)
-        scaled.backward()
-        scaler.step(opt)
-        opt.clear_grad()
-
-        return model.parameters()
-
-    def get_adam_or_adamw_dict_fp16_out(self, use_multi_tesnor_adam, use_adamw):
-
-        paddle.seed(10)
-        np.random.seed(10)
-
-        model = MLPLayer(
-            self.input_size, self.hidden_size, self.output_size, self.n
-        )
-        model = paddle.amp.decorate(models=model, level='O2')
-        scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-
-        inp = np.random.random((10, self.input_size)).astype("float16")
-        inp = paddle.to_tensor(inp)
 
         beta1 = paddle.to_tensor([0.9], dtype="float32")
         beta2 = paddle.to_tensor([0.99], dtype="float32")
 
         paramters_dict_list = []
-        i = 0
-        for param in model.parameters():
-            paramters_dict_list.append(
-                {
-                    'params': param,
-                    'weight_decay': 0.001 * i,
-                    'learning_rate': 0.01 * i,
-                    'beta1': 0.01 * i,
-                }
-            )
-            i = i + 1
 
-        if use_multi_tesnor_adam:
-            opt = paddle.incubate.optimizer.MultiTensorAdam(
-                learning_rate=0.1,
-                parameters=paramters_dict_list,
-                weight_decay=0.01,
-                beta1=beta1,
-                beta2=beta2,
-                use_adamw=use_adamw,
-            )
+        input_paramters = model.parameters()
+
+        if test_dict:
+            i = 0
+            for param in model.parameters():
+                paramters_dict_list.append(
+                    {
+                        'params': param,
+                        'weight_decay': 0.001 * i,
+                        'learning_rate': 0.01 * i,
+                        'beta1': 0.01 * i,
+                    }
+                )
+                i = i + 1
+
+                input_paramters = paramters_dict_list
+
+        if use_multi_tensor_adam:
+            if not use_adamw:
+                opt = paddle.incubate.optimizer.MultiTensorAdam(
+                    learning_rate=0.1,
+                    parameters=input_paramters,
+                    weight_decay=0.01,
+                    beta1=beta1,
+                    beta2=beta2,
+                )
+            else:
+                opt = paddle.incubate.optimizer.MultiTensorAdamW(
+                    learning_rate=0.1,
+                    parameters=input_paramters,
+                    weight_decay=0.01,
+                    beta1=beta1,
+                    beta2=beta2,
+                )
         else:
             if not use_adamw:
                 opt = paddle.optimizer.Adam(
                     learning_rate=0.1,
-                    parameters=paramters_dict_list,
+                    parameters=input_paramters,
                     weight_decay=0.01,
                     beta1=beta1,
                     beta2=beta2,
@@ -258,72 +117,55 @@ class TestMultiTensorAdam(unittest.TestCase):
             else:
                 opt = paddle.optimizer.AdamW(
                     learning_rate=0.1,
-                    parameters=paramters_dict_list,
+                    parameters=input_paramters,
                     weight_decay=0.01,
                     beta1=beta1,
                     beta2=beta2,
                 )
-        with paddle.amp.auto_cast(level='O2'):
-            out = model(inp)
-            loss = paddle.mean(out)
-        scaled = scaler.scale(loss)
-        scaled.backward()
-        scaler.step(opt)
-        opt.clear_grad()
+
+        if not test_fp16:
+            out.backward()
+            opt.step()
+            opt.clear_grad()
+        else:
+            with paddle.amp.auto_cast(level='O2'):
+                out = model(inp)
+                loss = paddle.mean(out)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.step(opt)
+            opt.clear_grad()
 
         return model.parameters()
 
-    def run_adam_or_adamw(self, use_adamw):
-        use_multi_tesnor_adam = True
+    def run_adam_or_adamw(self, use_adamw, test_dict, test_fp16):
+        use_multi_tensor_adam = True
         parameters = self.get_adam_or_adamw_out(
-            use_multi_tesnor_adam, use_adamw
+            use_multi_tensor_adam, use_adamw, test_dict, test_fp16
         )
         parameters_1 = self.get_adam_or_adamw_out(
-            not use_multi_tesnor_adam, use_adamw
-        )
-        for i, j in zip(parameters, parameters_1):
-            np.testing.assert_array_equal(i.numpy(), j.numpy())
-
-    def run_adam_or_adamw_fp16(self, use_adamw):
-        use_multi_tesnor_adam = True
-        parameters = self.get_adam_or_adamw_fp16_out(
-            use_multi_tesnor_adam, use_adamw
-        )
-        parameters_1 = self.get_adam_or_adamw_fp16_out(
-            not use_multi_tesnor_adam, use_adamw
-        )
-        for i, j in zip(parameters, parameters_1):
-            np.testing.assert_array_equal(i.numpy(), j.numpy())
-
-    def run_adam_or_adamw_dict(self, use_adamw):
-        use_multi_tesnor_adam = True
-        parameters = self.get_adam_or_adamw_dict_out(
-            use_multi_tesnor_adam, use_adamw
-        )
-        parameters_1 = self.get_adam_or_adamw_dict_out(
-            not use_multi_tesnor_adam, use_adamw
-        )
-        for i, j in zip(parameters, parameters_1):
-            np.testing.assert_array_equal(i.numpy(), j.numpy())
-
-    def run_adam_or_adamw_dict_fp16(self, use_adamw):
-        use_multi_tesnor_adam = True
-        parameters = self.get_adam_or_adamw_dict_fp16_out(
-            use_multi_tesnor_adam, use_adamw
-        )
-        parameters_1 = self.get_adam_or_adamw_dict_fp16_out(
-            not use_multi_tesnor_adam, use_adamw
+            not use_multi_tensor_adam, use_adamw, test_dict, test_fp16
         )
         for i, j in zip(parameters, parameters_1):
             np.testing.assert_array_equal(i.numpy(), j.numpy())
 
     def test_main(self):
-        for use_adamw in [False]:
-            self.run_adam_or_adamw(use_adamw)
-            self.run_adam_or_adamw_dict(use_adamw)
-            if paddle.device.get_device() != "cpu":
-                self.run_adam_or_adamw_fp16(use_adamw)
-                self.run_adam_or_adamw_dict_fp16(use_adamw)
+        old_device = paddle.get_device()
+        for use_gpu in [False, True]:
+            if use_gpu and not paddle.is_compiled_with_cuda():
+                continue
+            if use_gpu:
+                paddle.set_device("gpu")
+            else:
+                paddle.set_device("cpu")
+            for use_adamw in [True, False]:
+                for test_dict in [True, False]:
+                    test_fp16 = False
+                    self.run_adam_or_adamw(use_adamw, test_dict, test_fp16)
+                    if paddle.device.get_device() != "cpu":
+                        test_fp16 = True
+                        self.run_adam_or_adamw(use_adamw, test_dict, test_fp16)
+        paddle.set_device(old_device)
 
 
 if __name__ == "__main__":
