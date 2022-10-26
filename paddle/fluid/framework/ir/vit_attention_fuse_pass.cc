@@ -128,20 +128,6 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
       desc.SetAttr("fc_out_threshold",
                    elementwise0_op->Op()->GetAttr(scale_name));
     }
-    // int8 for qkv
-    if (HasScale(matmul1_op->Op(), &scale_name)) {
-      desc.SetAttr("qkv2context_plugin_int8", true);
-      if (softmax1_op->Op()->HasAttr("out_threshold")) {
-        auto qkv_plugin_scale = PADDLE_GET_CONST(
-            float, softmax1_op->Op()->GetAttr("out_threshold"));
-        desc.SetAttr("dp_probs", qkv_plugin_scale);
-      }
-      if (reshape2_op->Op()->HasAttr("out_threshold")) {
-        auto qkv_out_scale = PADDLE_GET_CONST(
-            float, reshape2_op->Op()->GetAttr("out_threshold"));
-        desc.SetAttr("out_threshold", qkv_out_scale);
-      }
-    }
 
     // Create a new node for the fused op.
     auto vit_attention_node = graph->CreateOpNode(&desc);
