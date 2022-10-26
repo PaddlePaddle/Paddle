@@ -15,9 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 
 #include <string>
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
