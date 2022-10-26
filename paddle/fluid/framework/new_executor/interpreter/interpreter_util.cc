@@ -557,7 +557,8 @@ void BuildOpFuncList(const platform::Place& place,
         auto expected_kernel_key =
             op_with_kernel->GetExpectedKernelType(exec_ctx);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        if (paddle::platform::CanCUDNNBeUsed(exec_ctx)) {
+        if (!op_with_kernel->DnnFallback() &&
+            paddle::platform::CanCUDNNBeUsed(exec_ctx)) {
           expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
         }
 #endif

@@ -208,7 +208,7 @@ PreparedOp PrepareImpl(
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (paddle::platform::CanCUDNNBeUsed(dygraph_exe_ctx)) {
+  if (!op.DnnFallback() && paddle::platform::CanCUDNNBeUsed(dygraph_exe_ctx)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
 #endif

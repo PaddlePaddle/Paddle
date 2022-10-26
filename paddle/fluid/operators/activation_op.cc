@@ -93,6 +93,14 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
   //     library = framework::LibraryType::kCUDNN;
   //   }
   // #endif
+
+  // NOTE(jiahongyu): Activation ops have attribute use_cudnn, but cudnn kernels
+  // are temporarily disabled. Therefore, cudnn kernel also needs to fallback to
+  // plain GPU kernel temporarily. When above codes are uncommented, below
+  // fallback codes can be deleted safely.
+  if (paddle::platform::is_gpu_place(ctx.GetPlace())) {
+    oper.SetDnnFallback(true);
+  }
   return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 

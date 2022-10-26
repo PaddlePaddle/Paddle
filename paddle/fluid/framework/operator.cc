@@ -1408,7 +1408,7 @@ bool OperatorWithKernel::SupportsKernelType(
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
+  if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kCUDNN;
     return kernels.find(tmp_kernel_type) != kernels.end();
@@ -1596,7 +1596,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
+      if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
         kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
       }
 #endif
@@ -1845,7 +1845,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (paddle::platform::CanCUDNNBeUsed(ctx)) {
+  if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(ctx)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
 #endif
