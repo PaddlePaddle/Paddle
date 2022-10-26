@@ -50,6 +50,32 @@ fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
     return cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8;
   }
 }
+fp32_gather_gemm_scatter getBestFp32Kernel(const int M,
+                                           const int N,
+                                           const int K) {
+  if (K == 4 && N == 16) {
+    return cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4;
+  }
+  if (K == 16 && N == 16) {
+    return cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4;
+  }
+  if (K == 16 && N == 32) {
+    if (M >= 10000) return cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4;
+    return cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4;
+  }
+  if (K == 32 && N == 32) {
+    if (M >= 10000) return cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4;
+    return cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4;
+  }
+  if (K == 32 && N == 64) {
+    if (M >= 10000) return cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4;
+    return cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4;
+  }
+  if (K == 64 && N == 64) {
+    if (M >= 15000) return cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4;
+    return cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4;
+  }
+}
 void cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8(
     const GPUContext& dev_ctx,
     const cutlass::half_t* const a,
@@ -883,6 +909,263 @@ void cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8(
                                            8,
                                            8,
                                            cutlass::arch::OpMultiplyAdd,
+                                           cutlass::ComplexTransform::kNone,
+                                           cutlass::ComplexTransform::kNone,
+                                           true,  /*GatherA*/
+                                           false, /*GatherB*/
+                                           true   /*ScatterD*/
+                                           >;
+
+  // ================================================================================
+  // Initialization setup
+
+  // Create a tuple of problem size for matrix multiplication
+  cutlass::gemm::GemmCoord problem_size_real({m, n, k});
+
+  // Split K dimension into 1 partitions
+  int split_k_slices = 1;
+
+  // Create a tuple of gemm kernel arguments. This is later passed as arguments
+  // to launch instantiated CUTLASS kernel
+  typename Gemm::Arguments arguments{
+      cutlass::gemm::GemmUniversalMode::kGemm,
+      problem_size_real,  // <- problem size of matrix multiplication
+      split_k_slices,     // <- k-dimension split factor
+      {alpha, beta},      // <- alpha, beta
+      a,                  // <- reference to matrix A on device
+      b,                  // <- reference to matrix B on device
+      c,                  // <- reference to matrix C on device
+      d,                  // <- reference to matrix D on device
+      cutlass::layout::RowMajor().capacity(problem_size_real.mk()),
+      cutlass::layout::RowMajor().capacity(problem_size_real.kn()),
+      cutlass::layout::RowMajor().capacity(problem_size_real.mn()),
+      cutlass::layout::RowMajor().capacity(problem_size_real.mn()),
+      problem_size_real.k(),
+      problem_size_real.n(),
+      problem_size_real.n(),
+      problem_size_real.n(),
+      a_indices,     // <- pointer to index vector to gather A on device
+      nullptr,       // <- pointer to index vector to gather B on device
+      c_d_indices};  // <- pointer to index vector to scatter D on device
+
+  // Using the arguments, query for extra workspace required for matrix
+  // multiplication computation
+  size_t workspace_size = Gemm::get_workspace_size(arguments);
+
+  // Allocate workspace memory
+  cutlass::device_memory::allocation<uint8_t> workspace(workspace_size);
+
+  // Instantiate CUTLASS kernel depending on templates
+  Gemm gemm_op;
+
+  // Check the problem size is supported or not
+  cutlass::Status status = gemm_op.can_implement(arguments);
+  CUTLASS_CHECK(status);
+
+  // Initialize CUTLASS kernel with arguments and workspace pointer
+  status = gemm_op.initialize(arguments, workspace.get());
+  CUTLASS_CHECK(status);
+
+  // CPU reference calculation
+
+  status = gemm_op(dev_ctx.stream());
+#if 0
+  cudaDeviceSynchronize();
+  CUTLASS_CHECK(status);
+#endif
+}
+void cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4(
+    const GPUContext& dev_ctx,
+    const float* const a,
+    const float* const b,
+    const float* const c,
+    float* const d,
+    const int m,
+    const int n,
+    const int k,
+    const int32_t* a_indices,
+    const int32_t* c_d_indices,
+    float const alpha,
+    float const beta) {
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // The code section below describes datatype for input, output matrices and
+  // computation between elements in input matrices.
+
+  // This code section describes whether you want to use tensor cores or regular
+  // SIMT cores on GPU SM
+  using MMAOp = cutlass::arch::OpClassTensorOp;
+
+  // This code section describes CUDA SM architecture number
+  using SmArch = cutlass::arch::Sm80;
+
+  // This code section describes how threadblocks are scheduled on GPU
+  using SwizzleThreadBlock =
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;  // <- ??
+
+  // Define the epilogue operation as LinearCombination. This is approximately
+  // equal to
+  //
+  //    d_ij = alpha * sum_k(a_ik * b_kj) + c_ij
+  //
+  using EpilogueOp =
+      cutlass::epilogue::thread::LinearCombination<float,  // <- data type of
+                                                           // output matrix
+                                                   4,
+                                                   float,
+                                                   float>;
+
+  // Number of pipelines you want to use
+  // Ampere -> 4/5
+  // Turing -> 2
+
+  using Gemm =
+      cutlass::gemm::device::GemmUniversal<float,
+                                           cutlass::layout::RowMajor,
+                                           float,
+                                           cutlass::layout::RowMajor,
+                                           float,
+                                           cutlass::layout::RowMajor,
+                                           float,
+                                           MMAOp,
+                                           SmArch,
+                                           cutlass::gemm::GemmShape<64, 64, 16>,
+                                           cutlass::gemm::GemmShape<32, 32, 16>,
+                                           cutlass::gemm::GemmShape<16, 8, 8>,
+                                           EpilogueOp,
+                                           SwizzleThreadBlock,
+                                           10,
+                                           4,
+                                           4,
+                                           cutlass::arch::OpMultiplyAddFastF16,
+                                           cutlass::ComplexTransform::kNone,
+                                           cutlass::ComplexTransform::kNone,
+                                           true,  /*GatherA*/
+                                           false, /*GatherB*/
+                                           true   /*ScatterD*/
+                                           >;
+
+  // ================================================================================
+  // Initialization setup
+
+  // Create a tuple of problem size for matrix multiplication
+  cutlass::gemm::GemmCoord problem_size_real({m, n, k});
+
+  // Split K dimension into 1 partitions
+  int split_k_slices = 1;
+
+  // Create a tuple of gemm kernel arguments. This is later passed as arguments
+  // to launch instantiated CUTLASS kernel
+  typename Gemm::Arguments arguments{
+      cutlass::gemm::GemmUniversalMode::kGemm,
+      problem_size_real,  // <- problem size of matrix multiplication
+      split_k_slices,     // <- k-dimension split factor
+      {alpha, beta},      // <- alpha, beta
+      a,                  // <- reference to matrix A on device
+      b,                  // <- reference to matrix B on device
+      c,                  // <- reference to matrix C on device
+      d,                  // <- reference to matrix D on device
+      cutlass::layout::RowMajor().capacity(problem_size_real.mk()),
+      cutlass::layout::RowMajor().capacity(problem_size_real.kn()),
+      cutlass::layout::RowMajor().capacity(problem_size_real.mn()),
+      cutlass::layout::RowMajor().capacity(problem_size_real.mn()),
+      problem_size_real.k(),
+      problem_size_real.n(),
+      problem_size_real.n(),
+      problem_size_real.n(),
+      a_indices,     // <- pointer to index vector to gather A on device
+      nullptr,       // <- pointer to index vector to gather B on device
+      c_d_indices};  // <- pointer to index vector to scatter D on device
+
+  // Using the arguments, query for extra workspace required for matrix
+  // multiplication computation
+  size_t workspace_size = Gemm::get_workspace_size(arguments);
+
+  // Allocate workspace memory
+  cutlass::device_memory::allocation<uint8_t> workspace(workspace_size);
+
+  // Instantiate CUTLASS kernel depending on templates
+  Gemm gemm_op;
+
+  // Check the problem size is supported or not
+  cutlass::Status status = gemm_op.can_implement(arguments);
+  CUTLASS_CHECK(status);
+
+  // Initialize CUTLASS kernel with arguments and workspace pointer
+  status = gemm_op.initialize(arguments, workspace.get());
+  CUTLASS_CHECK(status);
+
+  // CPU reference calculation
+
+  status = gemm_op(dev_ctx.stream());
+#if 0
+  cudaDeviceSynchronize();
+  CUTLASS_CHECK(status);
+#endif
+}
+void cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4(const GPUContext& dev_ctx,
+                                                     const float* const a,
+                                                     const float* const b,
+                                                     const float* const c,
+                                                     float* const d,
+                                                     const int m,
+                                                     const int n,
+                                                     const int k,
+                                                     const int32_t* a_indices,
+                                                     const int32_t* c_d_indices,
+                                                     float const alpha,
+                                                     float const beta) {
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // The code section below describes datatype for input, output matrices and
+  // computation between elements in input matrices.
+
+  // This code section describes whether you want to use tensor cores or regular
+  // SIMT cores on GPU SM
+  using MMAOp = cutlass::arch::OpClassTensorOp;
+
+  // This code section describes CUDA SM architecture number
+  using SmArch = cutlass::arch::Sm80;
+
+  // This code section describes how threadblocks are scheduled on GPU
+  using SwizzleThreadBlock =
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;  // <- ??
+
+  // Define the epilogue operation as LinearCombination. This is approximately
+  // equal to
+  //
+  //    d_ij = alpha * sum_k(a_ik * b_kj) + c_ij
+  //
+  using EpilogueOp =
+      cutlass::epilogue::thread::LinearCombination<float,  // <- data type of
+                                                           // output matrix
+                                                   4,
+                                                   float,
+                                                   float>;
+
+  // Number of pipelines you want to use
+  // Ampere -> 4/5
+  // Turing -> 2
+
+  using Gemm =
+      cutlass::gemm::device::GemmUniversal<float,
+                                           cutlass::layout::RowMajor,
+                                           float,
+                                           cutlass::layout::RowMajor,
+                                           float,
+                                           cutlass::layout::RowMajor,
+                                           float,
+                                           MMAOp,
+                                           SmArch,
+                                           cutlass::gemm::GemmShape<64, 64, 16>,
+                                           cutlass::gemm::GemmShape<32, 32, 16>,
+                                           cutlass::gemm::GemmShape<16, 8, 8>,
+                                           EpilogueOp,
+                                           SwizzleThreadBlock,
+                                           3,
+                                           4,
+                                           4,
+                                           cutlass::arch::OpMultiplyAddFastF32,
                                            cutlass::ComplexTransform::kNone,
                                            cutlass::ComplexTransform::kNone,
                                            true,  /*GatherA*/
