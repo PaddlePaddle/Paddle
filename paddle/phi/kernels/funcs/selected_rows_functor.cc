@@ -621,15 +621,35 @@ struct MergeAdd<phi::XPUContext, T> {
                          phi::CPUPlace(),
                          input_rows.data(),
                          xm * sizeof(int64_t));
-    int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
-                                            x_data,
-                                            y_data,
-                                            x_rows_data,
-                                            y_rows_data,
-                                            xm,
-                                            n,
-                                            ym);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "merge_dup_rows");
+    if (input.place() == CPUPlace()) {
+      int x_len = input.value().numel();
+      T* x_data_xpu = RAII_GUARD.alloc_l3_or_gm<T>(x_len);
+      paddle::memory::Copy(context.GetPlace(),
+                           x_data_xpu,
+                           phi::CPUPlace(),
+                           x_data,
+                           x_len * sizeof(T));
+      int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
+                                              x_data_xpu,
+                                              y_data,
+                                              x_rows_data,
+                                              y_rows_data,
+                                              xm,
+                                              n,
+                                              ym);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "merge_dup_rows");
+
+    } else {
+      int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
+                                              x_data,
+                                              y_data,
+                                              x_rows_data,
+                                              y_rows_data,
+                                              xm,
+                                              n,
+                                              ym);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "merge_dup_rows");
+    }
   }
 
   void operator()(const phi::XPUContext& context,

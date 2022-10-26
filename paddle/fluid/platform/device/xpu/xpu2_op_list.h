@@ -194,6 +194,8 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::FP16, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP64, XPUPlace())})},
+      {"embedding_sparse_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"equal",
        XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace()),
