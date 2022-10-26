@@ -66,6 +66,7 @@ class ProcessGroup {
     virtual bool IsCompleted();
     virtual bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
     virtual void Synchronize();
+    virtual void UpdateWaitChain(const phi::DeviceContext& ctx) {}
     bool IsSync() const { return sync_op_; }
 
    protected:

@@ -110,6 +110,11 @@ bool ProcessGroupNCCL::NCCLTask::IsCompleted() {
   return true;
 }
 
+void ProcessGroupNCCL::NCCLTask::UpdateWaitChain(
+    const phi::DeviceContext& ctx) {
+  control_events_[0].Record(*static_cast<const phi::GPUContext*>(&ctx));
+}
+
 void ProcessGroupNCCL::CheckSplitSizes(std::vector<int64_t>* split_sizes,
                                        std::vector<int64_t> tensor_shape) {
   int64_t len_size = (*split_sizes).size();

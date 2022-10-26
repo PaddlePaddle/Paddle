@@ -75,6 +75,8 @@ class ProcessGroupNCCL : public ProcessGroupStream {
 
     virtual ~NCCLTask();
 
+    void UpdateWaitChain(const phi::DeviceContext& ctx) override;
+
     std::vector<EventManager> control_events_;
     std::vector<phi::DenseTensor> barrierTensors_;
 
