@@ -22,6 +22,10 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#ifdef PADDLE_WITH_CUTLASS
+#include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
+#endif
+
 namespace phi {
 namespace sparse {
 
@@ -141,20 +145,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_CUTLASS
   if constexpr (std::is_same<T, phi::dtype::float16>::value &&
                 std::is_same<IntT, int32_t>::value) {
-    if (cutlass && in_channels % 8 == 0 && out_channels % 8 == 0) {
-      using ElementInputA = cutlass::half_t;
-      using ElementInputB = cutlass::half_t;
-      using ElementAccumulator = float;
-      using ElementComputeEpilogue = cutlass::half_t;
-      using ElementOutput = cutlass::half_t;
-      using LayoutInputA = cutlass::layout::RowMajor;
-      using LayoutInputB = cutlass::layout::RowMajor;
-      using LayoutOutput = cutlass::layout::RowMajor;
-      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<128, 128, 32>;
-      using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 64, 32>;
-      using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 16>;
-      constexpr int NumStages = 3;
-
+    if (cutlass && in_channels % 4 == 0 && out_channels % 4 == 0) {
       auto* out_values = out->mutable_non_zero_elements();
       T* out_values_ptr = out_values->data<T>();
       phi::funcs::SetConstant<GPUContext, T> set_zero;
@@ -174,33 +165,20 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         const IntT* scatter_indices =
             rulebook_ptr + rulebook_len + h_offsets_ptr[i];
 
-        gather_gemm_scatter<ElementInputA,
-                            ElementInputB,
-                            ElementAccumulator,
-                            ElementComputeEpilogue,
-                            ElementOutput,
-                            LayoutInputA,
-                            LayoutInputB,
-                            LayoutOutput,
-                            IntT,
-                            ShapeMMAThreadBlock,
-                            ShapeMMAWarp,
-                            ShapeMMAOp,
-                            NumStages>(
-            dev_ctx,
-            reinterpret_cast<const cutlass::half_t*>(
-                x.non_zero_elements().data<T>()),
-            reinterpret_cast<const cutlass::half_t*>(tmp_kernel_ptr),
-            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
-            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
-            M,
-            N,
-            K,
-            gather_indices,
-            scatter_indices,
-            h_counter_ptr[i],
-            static_cast<cutlass::half_t>(1),
-            static_cast<cutlass::half_t>(1));
+        fp16_gather_gemm_scatter my_kernel = getBestFp16Kernel(M, N, K);
+        my_kernel(dev_ctx,
+                  reinterpret_cast<const cutlass::half_t*>(
+                      x.non_zero_elements().data<T>()),
+                  reinterpret_cast<const cutlass::half_t*>(tmp_kernel_ptr),
+                  reinterpret_cast<cutlass::half_t*>(out_values_ptr),
+                  reinterpret_cast<cutlass::half_t*>(out_values_ptr),
+                  M,
+                  N,
+                  K,
+                  static_cast<const int32_t*>(gather_indices),
+                  static_cast<const int32_t*>(scatter_indices),
+                  static_cast<cutlass::half_t>(1),
+                  static_cast<cutlass::half_t>(1));
       }
     }
   }
@@ -215,10 +193,10 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       using LayoutInputA = cutlass::layout::RowMajor;
       using LayoutInputB = cutlass::layout::RowMajor;
       using LayoutOutput = cutlass::layout::RowMajor;
-      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<128, 128, 16>;
+      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<256, 64, 16>;
       using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 64, 16>;
       using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 8>;
-      constexpr int NumStages = 3;
+      constexpr int NumStages = 4;
 
       auto* out_values = out->mutable_non_zero_elements();
       T* out_values_ptr = out_values->data<T>();
@@ -238,32 +216,86 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
         const IntT* scatter_indices =
             rulebook_ptr + rulebook_len + h_offsets_ptr[i];
+        printf("\nM,N,K:%d,%d,%d\n", M, N, K);
 
-        gather_gemm_scatter<ElementInputA,
-                            ElementInputB,
-                            ElementAccumulator,
-                            ElementComputeEpilogue,
-                            ElementOutput,
-                            LayoutInputA,
-                            LayoutInputB,
-                            LayoutOutput,
-                            IntT,
-                            ShapeMMAThreadBlock,
-                            ShapeMMAWarp,
-                            ShapeMMAOp,
-                            NumStages>(dev_ctx,
-                                       x.non_zero_elements().data<T>(),
-                                       tmp_kernel_ptr,
-                                       out_values_ptr,
-                                       out_values_ptr,
-                                       M,
-                                       N,
-                                       K,
-                                       gather_indices,
-                                       scatter_indices,
-                                       h_counter_ptr[i],
-                                       static_cast<T>(1),
-                                       static_cast<T>(1));
+        if (M > 5000)
+          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<
+              ElementInputA,
+              ElementInputB,
+              ElementAccumulator,
+              ElementComputeEpilogue,
+              ElementOutput,
+              LayoutInputA,
+              LayoutInputB,
+              LayoutOutput,
+              IntT,
+              ShapeMMAThreadBlock,
+              ShapeMMAWarp,
+              ShapeMMAOp,
+              NumStages>(dev_ctx,
+                         x.non_zero_elements().data<T>(),
+                         tmp_kernel_ptr,
+                         out_values_ptr,
+                         out_values_ptr,
+                         M,
+                         N,
+                         K,
+                         gather_indices,
+                         scatter_indices,
+                         static_cast<T>(1),
+                         static_cast<T>(1));
+        else if (M > 3840)
+          cutlass_tensorop_s1688bf16gemm_256x64_16x4_nn_align4<
+              ElementInputA,
+              ElementInputB,
+              ElementAccumulator,
+              ElementComputeEpilogue,
+              ElementOutput,
+              LayoutInputA,
+              LayoutInputB,
+              LayoutOutput,
+              IntT,
+              ShapeMMAThreadBlock,
+              ShapeMMAWarp,
+              ShapeMMAOp,
+              NumStages>(dev_ctx,
+                         x.non_zero_elements().data<T>(),
+                         tmp_kernel_ptr,
+                         out_values_ptr,
+                         out_values_ptr,
+                         M,
+                         N,
+                         K,
+                         gather_indices,
+                         scatter_indices,
+                         static_cast<T>(1),
+                         static_cast<T>(1));
+        else
+          cutlass_tensorop_s1688f16gemm_128x64_32x3_nn_align4<
+              ElementInputA,
+              ElementInputB,
+              ElementAccumulator,
+              ElementComputeEpilogue,
+              ElementOutput,
+              LayoutInputA,
+              LayoutInputB,
+              LayoutOutput,
+              IntT,
+              ShapeMMAThreadBlock,
+              ShapeMMAWarp,
+              ShapeMMAOp,
+              NumStages>(dev_ctx,
+                         x.non_zero_elements().data<T>(),
+                         tmp_kernel_ptr,
+                         out_values_ptr,
+                         out_values_ptr,
+                         M,
+                         N,
+                         K,
+                         gather_indices,
+                         scatter_indices,
+                         static_cast<T>(1),
+                         static_cast<T>(1));
       }
     }
   }
