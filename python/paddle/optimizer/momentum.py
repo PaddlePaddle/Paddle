@@ -184,20 +184,12 @@ class Momentum(Optimizer):
         }
         self._use_multi_tensor = use_multi_tensor
         if self._use_multi_tensor:
-            self._param_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
-            self._velocity_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
-            self._master_weight_dict = {
-                'FP32_LODTensor': None,
-                'FP16_LODTensor': [],
-            }
-            self._regularization_method_dict = {
-                'FP32_LODTensor': [],
-                'FP16_LODTensor': [],
-            }
-            self._regularization_coeff_dict = {
-                'FP32_LODTensor': [],
-                'FP16_LODTensor': [],
-            }
+            self._param_dict = self._create_multi_tensor_dict()
+            self._velocity_dict = self._create_multi_tensor_dict()
+            self._master_weight_dict = self._create_multi_tensor_dict()
+            self._master_weight_dict['FP32_LODTensor'] = None
+            self._regularization_method_dict = self._create_multi_tensor_dict()
+            self._regularization_coeff_dict = self._create_multi_tensor_dict()
 
     def _update_regularization(self, weight_decay):
         reg_method = ""
@@ -420,7 +412,7 @@ class Momentum(Optimizer):
 
         return momentum_op
 
-    def _multi_tensor_init(self, target_block, parameters):
+    def _multi_tensor_init(self, target_block, parameters, param_group_idx):
         """
         All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, float32).
         This function will be overridden in the corresponding optimizer file.
@@ -445,37 +437,50 @@ class Momentum(Optimizer):
                     regularization_method = ""
                     regularization_coeff = 0.0
             if param.dtype == paddle.float32:
-                self._param_dict['FP32_LODTensor'].append(param)
-                self._velocity_dict['FP32_LODTensor'].append(velocity_acc)
+                self._param_dict['FP32_LODTensor'][param_group_idx].append(
+                    param
+                )
+                self._velocity_dict['FP32_LODTensor'][param_group_idx].append(
+                    velocity_acc
+                )
                 # fp32 no master weight
-                self._regularization_method_dict['FP32_LODTensor'].append(
-                    regularization_method
-                )
-                self._regularization_coeff_dict['FP32_LODTensor'].append(
-                    regularization_coeff
-                )
+                self._regularization_method_dict['FP32_LODTensor'][
+                    param_group_idx
+                ].append(regularization_method)
+                self._regularization_coeff_dict['FP32_LODTensor'][
+                    param_group_idx
+                ].append(regularization_coeff)
             elif param.dtype == paddle.float16:
-                self._param_dict['FP16_LODTensor'].append(param)
-                self._velocity_dict['FP16_LODTensor'].append(velocity_acc)
+                self._param_dict['FP16_LODTensor'][param_group_idx].append(
+                    param
+                )
+                self._velocity_dict['FP16_LODTensor'][param_group_idx].append(
+                    velocity_acc
+                )
                 if self._multi_precision:
-                    self._master_weight_dict['FP16_LODTensor'].append(
-                        self._master_weights[param.name]
-                    )
+                    self._master_weight_dict['FP16_LODTensor'][
+                        param_group_idx
+                    ].append(self._master_weights[param.name])
                 else:
-                    self._master_weight_dict['FP16_LODTensor'] = None
-                self._regularization_method_dict['FP16_LODTensor'].append(
-                    regularization_method
-                )
-                self._regularization_coeff_dict['FP16_LODTensor'].append(
-                    regularization_coeff
-                )
+                    self._master_weight_dict['FP16_LODTensor'][
+                        param_group_idx
+                    ] = None
+                self._regularization_method_dict['FP16_LODTensor'][
+                    param_group_idx
+                ].append(regularization_method)
+                self._regularization_coeff_dict['FP16_LODTensor'][
+                    param_group_idx
+                ].append(regularization_coeff)
             else:
                 raise ValueError(
                     "Now multi_tensor_momentum only support fp32 and fp16 parameters and grad is LOD_TENSOR."
                 )
 
     def _append_optimize_multi_tensor_op(
-        self, target_block, parameters_and_grads
+        self,
+        target_block,
+        parameters_and_grads,
+        param_group_idx,
     ):
         """
         For Multi Tensor, append optimize merged_operator to block.
@@ -540,71 +545,92 @@ class Momentum(Optimizer):
 
         multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
         for key in multi_tensor_list:
-            if len(self._param_dict[key]) > 0:
+            if len(self._param_dict[key][param_group_idx]) > 0:
                 find_master = self._multi_precision and key == 'FP16_LODTensor'
+
+                master_weight = self._master_weight_dict[key]
+                master_weight = (
+                    master_weight[param_group_idx]
+                    if master_weight is not None
+                    else None
+                )
 
                 if framework._non_static_mode():
                     if in_dygraph_mode():
                         _, _, _ = _C_ops.merged_momentum_(
-                            self._param_dict[key],
+                            self._param_dict[key][param_group_idx],
                             grad_dict[key],
-                            self._velocity_dict[key],
+                            self._velocity_dict[key][param_group_idx],
                             lr_dict[key],
-                            self._master_weight_dict[key],
+                            master_weight,
                             self._momentum,
                             self._use_nesterov,
-                            self._regularization_method_dict[key],
-                            self._regularization_coeff_dict[key],
+                            self._regularization_method_dict[key][
+                                param_group_idx
+                            ],
+                            self._regularization_coeff_dict[key][
+                                param_group_idx
+                            ],
                             find_master,
                             self._rescale_grad,
                         )
                     else:
                         _, _, _ = _legacy_C_ops.merged_momentum(
-                            self._param_dict[key],
+                            self._param_dict[key][param_group_idx],
                             grad_dict[key],
-                            self._velocity_dict[key],
+                            self._velocity_dict[key][param_group_idx],
                             lr_dict[key],
-                            self._master_weight_dict[key],
-                            self._param_dict[key],
-                            self._velocity_dict[key],
-                            self._master_weight_dict[key],
+                            master_weight,
+                            self._param_dict[key][param_group_idx],
+                            self._velocity_dict[key][param_group_idx],
+                            master_weight,
                             'mu',
                             self._momentum,
                             'use_nesterov',
                             self._use_nesterov,
                             'regularization_method',
-                            self._regularization_method_dict[key],
+                            self._regularization_method_dict[key][
+                                param_group_idx
+                            ],
                             'regularization_coeff',
-                            self._regularization_coeff_dict[key],
+                            self._regularization_coeff_dict[key][
+                                param_group_idx
+                            ],
                             'multi_precision',
                             find_master,
                         )
                 else:
                     inputs = {
-                        "Param": self._param_dict[key],
+                        "Param": self._param_dict[key][param_group_idx],
                         "Grad": grad_dict[key],
-                        "Velocity": self._velocity_dict[key],
+                        "Velocity": self._velocity_dict[key][param_group_idx],
                         "LearningRate": lr_dict[key],
                     }
                     outputs = {
-                        "ParamOut": self._param_dict[key],
-                        "VelocityOut": self._velocity_dict[key],
+                        "ParamOut": self._param_dict[key][param_group_idx],
+                        "VelocityOut": self._velocity_dict[key][
+                            param_group_idx
+                        ],
                     }
                     attrs = {
                         "mu": self._momentum,
                         "use_nesterov": self._use_nesterov,
                         "regularization_method": self._regularization_method_dict[
                             key
+                        ][
+                            param_group_idx
                         ],
                         "regularization_coeff": self._regularization_coeff_dict[
                             key
-                        ],
+                        ][param_group_idx],
                     }
                     if find_master:
-                        inputs["MasterParam"] = self._master_weight_dict[key]
+                        inputs["MasterParam"] = self._master_weight_dict[key][
+                            param_group_idx
+                        ]
                         outputs["MasterParamOut"] = self._master_weight_dict[
                             key
-                        ]
+                        ][param_group_idx]
                         attrs["multi_precision"] = find_master
                     target_block.append_op(
                         type="merged_momentum",

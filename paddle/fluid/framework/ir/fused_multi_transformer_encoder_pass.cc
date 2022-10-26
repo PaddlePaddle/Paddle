@@ -1100,12 +1100,12 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern::operator()() {
 }  // namespace patterns
 
 template <typename T>
-inline void QKVWeightsProcess(framework::LoDTensor* wq_tensor,
-                              framework::LoDTensor* wk_tensor,
-                              framework::LoDTensor* wv_tensor,
-                              framework::LoDTensor* bq_tensor,
-                              framework::LoDTensor* bk_tensor,
-                              framework::LoDTensor* bv_tensor,
+inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
+                              phi::DenseTensor* wk_tensor,
+                              phi::DenseTensor* wv_tensor,
+                              phi::DenseTensor* bq_tensor,
+                              phi::DenseTensor* bk_tensor,
+                              phi::DenseTensor* bv_tensor,
                               const int num_head,
                               const int dim_head,
                               const int dim_embed) {
@@ -1119,7 +1119,7 @@ inline void QKVWeightsProcess(framework::LoDTensor* wq_tensor,
   auto combined_w_dims = phi::make_ddim({3, num_head, dim_head, dim_embed});
   auto combined_bias_dims = phi::make_ddim({3, num_head, dim_head});
 
-  framework::LoDTensor tmp_combined_w_tensor;
+  phi::DenseTensor tmp_combined_w_tensor;
   tmp_combined_w_tensor.Resize(combined_w_dims);
   auto* tmp_combined_w_data =
       tmp_combined_w_tensor.mutable_data<T>(platform::CPUPlace());
@@ -1144,7 +1144,7 @@ inline void QKVWeightsProcess(framework::LoDTensor* wq_tensor,
   memcpy(
       new_combined_w_data, tmp_combined_w_data, sizeof(T) * wq_tensor->numel());
 
-  framework::LoDTensor tmp_combined_bias_tensor;
+  phi::DenseTensor tmp_combined_bias_tensor;
   tmp_combined_bias_tensor.Resize(combined_bias_dims);
   auto* tmp_combined_bias_data =
       tmp_combined_bias_tensor.mutable_data<T>(platform::CPUPlace());
@@ -1164,15 +1164,15 @@ inline void QKVWeightsProcess(framework::LoDTensor* wq_tensor,
 }
 
 template <typename T>
-inline void QKVWeightsProcessFuseQKV(framework::LoDTensor* qkv_w_tensor,
-                                     framework::LoDTensor* qkv_b_tensor,
+inline void QKVWeightsProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
+                                     phi::DenseTensor* qkv_b_tensor,
                                      const int num_head,
                                      const int dim_head,
                                      const int dim_embed) {
   auto* qkv_w_data = qkv_w_tensor->mutable_data<T>(platform::CPUPlace());
   auto transpose_w_dims = phi::make_ddim({3, num_head, dim_head, dim_embed});
 
-  framework::LoDTensor tmp_transpose_w_tensor;
+  phi::DenseTensor tmp_transpose_w_tensor;
   tmp_transpose_w_tensor.Resize(transpose_w_dims);
   auto* tmp_transpose_w_data =
       tmp_transpose_w_tensor.mutable_data<T>(platform::CPUPlace());
@@ -1202,7 +1202,7 @@ inline void QKVWeightsProcessFuseQKV(framework::LoDTensor* qkv_w_tensor,
   auto* qkv_b_data = qkv_b_tensor->mutable_data<T>(platform::CPUPlace());
   auto transpose_b_dims = phi::make_ddim({3, num_head, dim_head});
 
-  framework::LoDTensor tmp_transpose_b_tensor;
+  phi::DenseTensor tmp_transpose_b_tensor;
   tmp_transpose_b_tensor.Resize(transpose_b_dims);
   auto* tmp_transpose_b_data =
       tmp_transpose_b_tensor.mutable_data<T>(platform::CPUPlace());
@@ -1289,18 +1289,18 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
     int layer_idx = atoi(ln_idx_str.c_str()) / 2;
 
     auto* wq_tensor =
-        scope->FindVar(matmul0_w->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(matmul0_w->Name())->GetMutable<phi::DenseTensor>();
     auto* wk_tensor =
-        scope->FindVar(matmul1_w->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(matmul1_w->Name())->GetMutable<phi::DenseTensor>();
     auto* wv_tensor =
-        scope->FindVar(matmul2_w->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(matmul2_w->Name())->GetMutable<phi::DenseTensor>();
 
     auto* bq_tensor =
-        scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
     auto* bk_tensor =
-        scope->FindVar(eltadd1_b->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltadd1_b->Name())->GetMutable<phi::DenseTensor>();
     auto* bv_tensor =
-        scope->FindVar(eltadd2_b->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
 
     if (wq_tensor->dtype() == phi::DataType::FLOAT32) {
       QKVWeightsProcess<float>(wq_tensor,
@@ -2053,9 +2053,9 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     int layer_idx = atoi(ln_idx_str.c_str()) / 2;
 
     auto* qkv_w_tensor =
-        scope->FindVar(matmul0_w->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(matmul0_w->Name())->GetMutable<phi::DenseTensor>();
     auto* qkv_b_tensor =
-        scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
 
     if (qkv_w_tensor->dtype() == phi::DataType::FLOAT32) {
       QKVWeightsProcessFuseQKV<float>(
@@ -2736,9 +2736,9 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     int layer_idx = atoi(ln_idx_str.c_str()) / 2;
 
     auto* qkv_w_tensor =
-        scope->FindVar(matmul0_w->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(matmul0_w->Name())->GetMutable<phi::DenseTensor>();
     auto* qkv_b_tensor =
-        scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
 
     int dim_embed = qkv_w_tensor->dims()[0];
 

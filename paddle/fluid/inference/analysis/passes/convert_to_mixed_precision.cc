@@ -814,7 +814,7 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
           scope_.FindVar(param),
           platform::errors::NotFound(
               "Block should already have a '%s' variable", param));
-      auto* tensor = scope_.FindVar(param)->GetMutable<framework::LoDTensor>();
+      auto* tensor = scope_.FindVar(param)->GetMutable<phi::DenseTensor>();
       framework::SerializeToStream(os, *tensor, ctx);
     }
     return os.str();
