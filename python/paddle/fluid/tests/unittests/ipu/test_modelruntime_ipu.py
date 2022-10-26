@@ -21,13 +21,11 @@ from op_test_ipu import IPUOpTest
 
 
 class SimpleLayer(paddle.nn.Layer):
-
     def __init__(self):
         super(SimpleLayer, self).__init__()
-        self.conv = paddle.nn.Conv2D(in_channels=3,
-                                     out_channels=1,
-                                     kernel_size=2,
-                                     stride=1)
+        self.conv = paddle.nn.Conv2D(
+            in_channels=3, out_channels=1, kernel_size=2, stride=1
+        )
 
     def forward(self, x, target=None):
         x = self.conv(x)
@@ -40,7 +38,6 @@ class SimpleLayer(paddle.nn.Layer):
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.ipu_model = None
         self.set_attrs()
@@ -60,17 +57,17 @@ class TestBase(IPUOpTest):
     def generate_feed(self):
         return {
             "X": np.random.rand(8, 3, 10, 10).astype(np.float32),
-            "Y": np.random.randint(0, 10, [8], dtype="int64")
+            "Y": np.random.randint(0, 10, [8], dtype="int64"),
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name='X',
-                               shape=[self.batch_size, 3, 10, 10],
-                               dtype='float32')
-        label = paddle.static.data(name='Y',
-                                   shape=[self.batch_size],
-                                   dtype='int64')
+        x = paddle.static.data(
+            name='X', shape=[self.batch_size, 3, 10, 10], dtype='float32'
+        )
+        label = paddle.static.data(
+            name='Y', shape=[self.batch_size], dtype='int64'
+        )
         model = SimpleLayer()
         pred, loss = model(x, label)
         self.feed_list = [x.name, label.name]
@@ -94,18 +91,21 @@ class TestBase(IPUOpTest):
         if use_ipu:
             paddle.set_device('ipu')
             ipu_strategy = paddle.static.IpuStrategy()
-            ipu_strategy.set_graph_config(num_ipus=1,
-                                          is_training=False,
-                                          micro_batch_size=self.batch_size,
-                                          enable_manual_shard=False)
-            ipu_strategy.set_options({
-                'enable_model_runtime_executor': True,
-                'timeout_ms': self.timeout
-            })
+            ipu_strategy.set_graph_config(
+                num_ipus=1,
+                is_training=False,
+                micro_batch_size=self.batch_size,
+                enable_manual_shard=False,
+            )
+            ipu_strategy.set_options(
+                {
+                    'enable_model_runtime_executor': True,
+                    'timeout_ms': self.timeout,
+                }
+            )
             program = paddle.static.IpuCompiledProgram(
-                self.main_prog,
-                ipu_strategy=ipu_strategy).compile(self.feed_list,
-                                                   self.fetch_list)
+                self.main_prog, ipu_strategy=ipu_strategy
+            ).compile(self.feed_list, self.fetch_list)
         else:
             program = self.main_prog
 
@@ -119,13 +119,17 @@ class TestBase(IPUOpTest):
                 # padding inputs
                 pad_batch = self.batch_size - dy_batch
                 for k, v in feed.items():
-                    pad_size = tuple(((0, 0 if i != 0 else pad_batch)
-                                      for i in range(len(v.shape))))
+                    pad_size = tuple(
+                        (
+                            (0, 0 if i != 0 else pad_batch)
+                            for i in range(len(v.shape))
+                        )
+                    )
                     feed[k] = np.pad(v, pad_size, 'constant', constant_values=0)
 
-            pred, loss = executor.run(program,
-                                      feed=feed,
-                                      fetch_list=self.fetch_list)
+            pred, loss = executor.run(
+                program, feed=feed, fetch_list=self.fetch_list
+            )
             if not use_ipu:
                 pred = pred[0:dy_batch]
                 loss = loss[0:dy_batch]
@@ -139,18 +143,15 @@ class TestBase(IPUOpTest):
         self.build_model()
         ipu_pred, ipu_loss = self._test(True)
         cpu_pred, cpu_loss = self._test(False)
-        np.testing.assert_allclose(ipu_pred.flatten(),
-                                   cpu_pred.flatten(),
-                                   rtol=1e-05,
-                                   atol=1e-4)
-        np.testing.assert_allclose(ipu_loss.flatten(),
-                                   cpu_loss.flatten(),
-                                   rtol=1e-05,
-                                   atol=1e-4)
+        np.testing.assert_allclose(
+            ipu_pred.flatten(), cpu_pred.flatten(), rtol=1e-05, atol=1e-4
+        )
+        np.testing.assert_allclose(
+            ipu_loss.flatten(), cpu_loss.flatten(), rtol=1e-05, atol=1e-4
+        )
 
 
 class TestAutoBatch(TestBase):
-
     def set_attrs(self):
         self.timeout = 0.01
         # fixed batch
@@ -161,7 +162,7 @@ class TestAutoBatch(TestBase):
         batch = np.random.randint(1, self.batch_size)
         return {
             "X": np.random.rand(batch, 3, 10, 10).astype(np.float32),
-            "Y": np.random.randint(0, 10, [batch], dtype="int64")
+            "Y": np.random.randint(0, 10, [batch], dtype="int64"),
         }
 
 
