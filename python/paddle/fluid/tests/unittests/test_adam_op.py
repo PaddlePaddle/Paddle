@@ -1106,14 +1106,22 @@ class TestMultiTensorAdam(unittest.TestCase):
                 multi_precision=use_amp,
             )
         else:
+            parameters = list(model.parameters())
+            param_num = len(parameters)
             optimizer = paddle.optimizer.Adam(
                 parameters=[
                     {
-                        'params': model.parameters(),
+                        'params': parameters[: int(param_num / 2)],
                         'weight_decay': 0.001,
                         'beta1': 0.1,
                         'beta2': 0.99,
-                    }
+                    },
+                    {
+                        'params': parameters[int(param_num / 2) :],
+                        'weight_decay': 0.001,
+                        'beta1': 0.1,
+                        'beta2': 0.99,
+                    },
                 ],
                 use_multi_tensor=use_multi_tensor,
                 multi_precision=use_amp,

@@ -891,14 +891,22 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 multi_precision=use_amp,
             )
         else:
+            parameters = list(model.parameters())
+            n = len(parameters)
             optimizer = paddle.optimizer.Momentum(
                 parameters=[
                     {
-                        'params': model.parameters(),
+                        'params': parameters[: int(n / 2)],
                         'weight_decay': 0.001,
                         'learning_rate': 0.1,
                         'momentum': 0.99,
-                    }
+                    },
+                    {
+                        'params': parameters[int(n / 2) :],
+                        'weight_decay': 0.001,
+                        'learning_rate': 0.1,
+                        'momentum': 0.99,
+                    },
                 ],
                 use_multi_tensor=use_multi_tensor,
                 multi_precision=use_amp,
