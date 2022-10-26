@@ -2851,7 +2851,30 @@ class Operator(object):
             else:
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
                 op_attrs[callstack_var_name] = []
+
+                _IGNORE_PATHS = [
+                    os.path.abspath(os.path.join(__file__, '..', '..')),
+                ]
+
+                _DY2STATIC_PATHS = [
+                    os.path.abspath(
+                        os.path.join(
+                            __file__, '..', 'dygraph', 'dygraph_to_static'
+                        )
+                    )
+                ]
+
+                def include_in_paths(file, paths):
+                    for p in paths:
+                        if p in file:
+                            return True
+                    return False
+
                 for frame in traceback.extract_stack():
+                    if include_in_paths(
+                        frame[0], _IGNORE_PATHS
+                    ) and not include_in_paths(frame[0], _DY2STATIC_PATHS):
+                        continue
                     op_attrs[callstack_var_name].append(
                         '  File "{}", line {}, in {}'.format(
                             frame[0], frame[1], frame[2]
