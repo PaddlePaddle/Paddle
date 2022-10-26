@@ -25,7 +25,6 @@ paddle.enable_static()
 
 
 class TestFloor(OpTest):
-
     def setUp(self):
         self.op_type = "floor"
         self.place = paddle.device.MLUPlace(0)
@@ -49,7 +48,6 @@ class TestFloor(OpTest):
 
 
 class TestFloorFP16(TestFloor):
-
     def init_dtype(self):
         self.dtype = np.float16
 

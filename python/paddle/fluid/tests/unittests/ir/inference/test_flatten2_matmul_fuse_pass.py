@@ -44,9 +44,10 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of flatten2
         x_shape = draw(
-            st.lists(st.integers(min_value=1, max_value=10),
-                     min_size=4,
-                     max_size=4))
+            st.lists(
+                st.integers(min_value=1, max_value=10), min_size=4, max_size=4
+            )
+        )
         # [a, b, c, d] => [a, b*c*d]
         flatten_axis = 1
         flatten_shape = [x_shape[0], x_shape[1] * x_shape[2] * x_shape[3]]
@@ -58,9 +59,10 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
 
         # 3. Generate legal shape of input:Y of matmul
         y_shape = draw(
-            st.lists(st.integers(min_value=1, max_value=8),
-                     min_size=2,
-                     max_size=2))
+            st.lists(
+                st.integers(min_value=1, max_value=8), min_size=2, max_size=2
+            )
+        )
         y_shape[0] = flatten_shape[1]
 
         # 4. Generate legal attr:axis of elementwise_add
@@ -82,17 +84,11 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
                 "X": ["flatten2_x"],
             },
             axis=flatten_axis,
-            outputs={
-                "Out": ["flatten2_out"],
-                "XShape": ["xshape"]
-            },
+            outputs={"Out": ["flatten2_out"], "XShape": ["xshape"]},
         )
         matmul_op = OpConfig(
             "matmul",
-            inputs={
-                "X": ["flatten2_out"],
-                "Y": ["matmul_y"]
-            },
+            inputs={"X": ["flatten2_out"], "Y": ["matmul_y"]},
             outputs={"Out": ["matmul_out"]},
             alpha=alpha,
             transpose_X=transpose_X,
@@ -107,10 +103,7 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
 
         add_op = OpConfig(
             "elementwise_add",
-            inputs={
-                "X": ["matmul_out"],
-                "Y": ["bias"]
-            },
+            inputs={"X": ["matmul_out"], "Y": ["bias"]},
             outputs={"Out": ["add_out"]},
             axis=axis,
         )
@@ -143,10 +136,12 @@ class TestFlatten2MatmulFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            max_examples=50,
-                            max_duration=1000,
-                            passes=["gpu_cpu_flatten2_matmul_fuse_pass"])
+        self.run_and_statis(
+            quant=False,
+            max_examples=50,
+            max_duration=1000,
+            passes=["gpu_cpu_flatten2_matmul_fuse_pass"],
+        )
 
 
 if __name__ == "__main__":

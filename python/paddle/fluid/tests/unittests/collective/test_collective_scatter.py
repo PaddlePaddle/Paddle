@@ -21,7 +21,6 @@ paddle.enable_static()
 
 
 class TestCScatterOp(TestDistBase):
-
     def _setup_config(self):
         pass
 

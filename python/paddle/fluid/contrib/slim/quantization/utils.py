@@ -18,8 +18,12 @@ from ....framework import IrNode
 from ....framework import Operator
 
 _weight_supported_quantizable_op_type = [
-    'conv2d', 'depthwise_conv2d', 'conv2d_transpose', 'mul', 'matmul',
-    'matmul_v2'
+    'conv2d',
+    'depthwise_conv2d',
+    'conv2d_transpose',
+    'mul',
+    'matmul',
+    'matmul_v2',
 ]
 
 _act_supported_quantizable_op_type = [
@@ -114,13 +118,19 @@ _act_supported_quantizable_op_type = [
 ]
 
 QUANT_SUPPORTED_OP_TYPE_LIST = list(
-    set(_weight_supported_quantizable_op_type +
-        _act_supported_quantizable_op_type))
+    set(
+        _weight_supported_quantizable_op_type
+        + _act_supported_quantizable_op_type
+    )
+)
 
 _out_scale_op_list = QUANT_SUPPORTED_OP_TYPE_LIST
 
 _channelwise_quant_axis1_ops = [
-    'conv2d_transpose', 'mul', 'matmul', 'matmul_v2'
+    'conv2d_transpose',
+    'mul',
+    'matmul',
+    'matmul_v2',
 ]
 
 # list op real input and output names, to avoid processing input such as AxisTensor.
@@ -230,11 +240,11 @@ def _get_op_input_var_names(op):
     Returns:
         input_var_names or None.
     """
-    assert isinstance(op, (IrNode, Operator)), \
-        "The input op should be IrNode or Operator."
+    assert isinstance(
+        op, (IrNode, Operator)
+    ), "The input op should be IrNode or Operator."
     var_names = []
-    op_name = op.name() if isinstance(op, IrNode) \
-        else op.type
+    op_name = op.name() if isinstance(op, IrNode) else op.type
     if op_name not in _op_real_in_out_name:
         return []
 
@@ -250,11 +260,11 @@ def _get_op_input_var_names(op):
 
 def _get_op_output_var_names(op):
     """ """
-    assert isinstance(op, (IrNode, Operator)), \
-        "The input op should be IrNode or Operator."
+    assert isinstance(
+        op, (IrNode, Operator)
+    ), "The input op should be IrNode or Operator."
     var_names = []
-    op_name = op.name() if isinstance(op, IrNode) \
-        else op.type
+    op_name = op.name() if isinstance(op, IrNode) else op.type
     if op_name not in _op_real_in_out_name:
         return []
 
@@ -270,10 +280,10 @@ def _get_op_output_var_names(op):
 
 def _get_input_name_index(op, input_var_name):
     """Get the input name and index of the var_name in the op"""
-    assert isinstance(op, (IrNode, Operator)), \
-        "The input op should be IrNode or Operator."
-    op_name = op.name() if isinstance(op, IrNode) \
-        else op.type
+    assert isinstance(
+        op, (IrNode, Operator)
+    ), "The input op should be IrNode or Operator."
+    op_name = op.name() if isinstance(op, IrNode) else op.type
     if op_name not in _op_real_in_out_name:
         return None
 
@@ -288,10 +298,10 @@ def _get_input_name_index(op, input_var_name):
 
 def _get_output_name_index(op, output_var_name):
     """Get the output name and index of the var_name in the op"""
-    assert isinstance(op, (IrNode, Operator)), \
-        "The input op should be IrNode or Operator."
-    op_name = op.name() if isinstance(op, IrNode) \
-        else op.type
+    assert isinstance(
+        op, (IrNode, Operator)
+    ), "The input op should be IrNode or Operator."
+    op_name = op.name() if isinstance(op, IrNode) else op.type
     if op_name not in _op_real_in_out_name:
         return None
 
@@ -310,8 +320,7 @@ def load_variable_data(scope, var_name):
     Load variable value from scope
     '''
     var_node = scope.find_var(var_name)
-    assert var_node is not None, \
-        "Cannot find " + var_name + " in scope."
+    assert var_node is not None, "Cannot find " + var_name + " in scope."
     return np.array(var_node.get_tensor())
 
 
@@ -319,8 +328,9 @@ def set_variable_data(scope, place, var_name, np_value):
     '''
     Set the value of var node by name, if the node exits,
     '''
-    assert isinstance(np_value, np.ndarray), \
-       'The type of value should be numpy array.'
+    assert isinstance(
+        np_value, np.ndarray
+    ), 'The type of value should be numpy array.'
     var_node = scope.find_var(var_name)
     if var_node != None:
         tensor = var_node.get_tensor()
@@ -405,10 +415,12 @@ def bias_correction_w(x, x_quant, scale_v, quant_axis, weight_bits=8):
                 x_dequant[:, i] = x_quant[:, i] * s / bnt
             quant_bias = x - x_dequant
             mean_bias = np.array(
-                [quant_bias[:, i].mean() for i in range(quant_bias.shape[1])])
+                [quant_bias[:, i].mean() for i in range(quant_bias.shape[1])]
+            )
             std_orig = np.array([x[:, i].std() for i in range(x.shape[1])])
             std_quant = np.array(
-                [x_dequant[:, i].std() for i in range(x_dequant.shape[1])])
+                [x_dequant[:, i].std() for i in range(x_dequant.shape[1])]
+            )
             std_bias = std_orig / (std_quant + eps)
     else:
         x_dequant = x_quant * scale_v / bnt
@@ -419,8 +431,9 @@ def bias_correction_w(x, x_quant, scale_v, quant_axis, weight_bits=8):
         mean_bias = np.resize(mean_bias, x.shape)
 
     x_dequant = (mean_bias + x_dequant) * std_bias
-    quantized_param_v = quant_tensor(x_dequant, scale_v, quant_axis,
-                                     weight_bits)
+    quantized_param_v = quant_tensor(
+        x_dequant, scale_v, quant_axis, weight_bits
+    )
     return quantized_param_v
 
 
@@ -430,8 +443,10 @@ def stable_sigmoid(x):
 
 
 def calculate_quant_cos_error(orig_tensor, qdq_tensor):
-    cos_sim = np.inner(orig_tensor.flatten(), qdq_tensor.flatten()) \
-              / (np.linalg.norm(orig_tensor.flatten()) * np.linalg.norm(qdq_tensor.flatten()))
+    cos_sim = np.inner(orig_tensor.flatten(), qdq_tensor.flatten()) / (
+        np.linalg.norm(orig_tensor.flatten())
+        * np.linalg.norm(qdq_tensor.flatten())
+    )
     return cos_sim
 
 
@@ -454,11 +469,10 @@ def move_persistable_var_to_global_block(program):
 
 
 def l2_loss(gt, pred):
-    return ((gt - pred)**2).mean()
+    return ((gt - pred) ** 2).mean()
 
 
 class tqdm(object):
-
     def __init__(self, total, bar_format='Loading|{bar}', ncols=80):
         self.total = total
         self.bar_format = bar_format
@@ -470,8 +484,9 @@ class tqdm(object):
         a = "=" * round((self.n / self.total) * self.ncols)
         b = " " * (self.ncols - len(a))
         prefix = self.bar_format.split('|')[0]
-        sys.stderr.write("\r{}|{}=>{}| {}/{}".format(prefix, a, b, self.n,
-                                                     self.total))
+        sys.stderr.write(
+            "\r{}|{}=>{}| {}/{}".format(prefix, a, b, self.n, self.total)
+        )
         sys.stderr.flush()
 
     def __enter__(self):

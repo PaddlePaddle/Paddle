@@ -50,7 +50,9 @@ class Fixed(TunableVariable):
         if not isinstance(default, (str, int, float, bool)):
             raise ValueError(
                 "Fixed must be an str, int, float or bool, but found {}".format(
-                    default))
+                    default
+                )
+            )
         self._default = default
 
     def random(self, seed=None):
@@ -69,7 +71,8 @@ class Boolean(TunableVariable):
         super(Boolean, self).__init__(name=name, default=default)
         if default not in {True, False}:
             raise ValueError(
-                "default must be a Python boolean, but got {}".format(default))
+                "default must be a Python boolean, but got {}".format(default)
+            )
 
     def random(self, seed=None):
         rng = np.random.default_rng(seed)
@@ -77,19 +80,21 @@ class Boolean(TunableVariable):
 
     def __repr__(self):
         return 'Boolean(name: "{}", default: {})'.format(
-            self.name, self.default)
+            self.name, self.default
+        )
 
 
 class Choice(TunableVariable):
-
     def __init__(self, name, values, default=None):
         super(Choice, self).__init__(name=name, default=default)
 
         types = set(type(v) for v in values)
         if len(types) > 1:
             raise TypeError(
-                "Choice can contain only one type of value, but found values: {} with types: {}."
-                .format(str(values), str(types)))
+                "Choice can contain only one type of value, but found values: {} with types: {}.".format(
+                    str(values), str(types)
+                )
+            )
         self._is_unknown_type = False
 
         if isinstance(values[0], str):
@@ -115,8 +120,10 @@ class Choice(TunableVariable):
 
         if default is not None and default not in values:
             raise ValueError(
-                "The default value should be one of the choices {}, but found {}"
-                .format(values, default))
+                "The default value should be one of the choices {}, but found {}".format(
+                    values, default
+                )
+            )
         self._default = default
 
     @property
@@ -142,7 +149,8 @@ class Choice(TunableVariable):
 
     def __repr__(self):
         return 'Choice(name: "{}", values: {}, default: {})'.format(
-            self.name, self.values, self.default)
+            self.name, self.values, self.default
+        )
 
 
 class IntRange(TunableVariable):
@@ -187,13 +195,15 @@ class IntRange(TunableVariable):
     def _check_int(self, val):
         int_val = int(val)
         if int_val != val:
-            raise ValueError("Expects val is an int, but found: {}.".format(
-                str(val)))
+            raise ValueError(
+                "Expects val is an int, but found: {}.".format(str(val))
+            )
         return int_val
 
     def __repr__(self):
         return "IntRange(name: {}, start: {}, stop: {}, step: {}, default: {})".format(
-            self.name, self.start, self.stop, self.step, self.default)
+            self.name, self.start, self.stop, self.step, self.default
+        )
 
 
 class FloatRange(TunableVariable):
@@ -201,13 +211,9 @@ class FloatRange(TunableVariable):
     Float range.
     """
 
-    def __init__(self,
-                 name,
-                 start,
-                 stop,
-                 step=None,
-                 default=None,
-                 endpoint=False):
+    def __init__(
+        self, name, start, stop, step=None, default=None, endpoint=False
+    ):
         super(FloatRange, self).__init__(name=name, default=default)
         self.stop = float(stop)
         self.start = float(start)
@@ -246,5 +252,10 @@ class FloatRange(TunableVariable):
 
     def __repr__(self):
         return "FloatRange(name: {}, start: {}, stop: {}, step: {}, default: {}, endpoint: {})".format(
-            self.name, self.start, self.stop, self.step, self.default,
-            self.endpoint)
+            self.name,
+            self.start,
+            self.stop,
+            self.step,
+            self.default,
+            self.endpoint,
+        )

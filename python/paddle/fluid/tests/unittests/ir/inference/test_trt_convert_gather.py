@@ -22,7 +22,6 @@ import unittest
 
 
 class TrtConvertGatherTest(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         attrs = [
@@ -34,7 +33,6 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-
         def generate_input1(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -51,112 +49,126 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             for index in [[1, 4], [4, 8]]:
                 for axis in [0, 1, 2, 3]:
                     for overwrite in [True, False]:
-                        for input in [{
-                                "X": ["input_data"],
-                                "Index": ["index_data"]
-                        }, {
+                        for input in [
+                            {"X": ["input_data"], "Index": ["index_data"]},
+                            {
                                 "X": ["input_data"],
                                 "Index": ["index_data"],
-                                "Axis": ["axis_data"]
-                        }]:
+                                "Axis": ["axis_data"],
+                            },
+                        ]:
                             for index_type_int32 in [True, False]:
                                 self.shape = shape
                                 self.axis = axis
                                 self.input_num = len(input)
                                 self.index_type_int32 = index_type_int32
                                 dics = [{"overwrite": overwrite, "axis": axis}]
-                                ops_config = [{
-                                    "op_type": "gather",
-                                    "op_inputs": input,
-                                    "op_outputs": {
-                                        "Out": ["output_data"]
-                                    },
-                                    "op_attrs": dics[0]
-                                }]
+                                ops_config = [
+                                    {
+                                        "op_type": "gather",
+                                        "op_inputs": input,
+                                        "op_outputs": {"Out": ["output_data"]},
+                                        "op_attrs": dics[0],
+                                    }
+                                ]
                                 ops = self.generate_op_config(ops_config)
 
                                 program_config = ProgramConfig(
                                     ops=ops,
                                     weights={},
                                     inputs={
-                                        "input_data":
-                                        TensorConfig(data_gen=partial(
-                                            generate_input1, shape)),
-                                        "index_data":
-                                        TensorConfig(data_gen=partial(
-                                            generate_input2
-                                            if index_type_int32 ==
-                                            True else generate_input4, index)),
-                                    } if len(input) == 2 else {
-                                        "input_data":
-                                        TensorConfig(data_gen=partial(
-                                            generate_input1, shape)),
-                                        "index_data":
-                                        TensorConfig(data_gen=partial(
-                                            generate_input2, index)),
-                                        "axis_data":
-                                        TensorConfig(data_gen=partial(
-                                            generate_input3, axis)),
+                                        "input_data": TensorConfig(
+                                            data_gen=partial(
+                                                generate_input1, shape
+                                            )
+                                        ),
+                                        "index_data": TensorConfig(
+                                            data_gen=partial(
+                                                generate_input2
+                                                if index_type_int32 == True
+                                                else generate_input4,
+                                                index,
+                                            )
+                                        ),
+                                    }
+                                    if len(input) == 2
+                                    else {
+                                        "input_data": TensorConfig(
+                                            data_gen=partial(
+                                                generate_input1, shape
+                                            )
+                                        ),
+                                        "index_data": TensorConfig(
+                                            data_gen=partial(
+                                                generate_input2, index
+                                            )
+                                        ),
+                                        "axis_data": TensorConfig(
+                                            data_gen=partial(
+                                                generate_input3, axis
+                                            )
+                                        ),
                                     },
-                                    outputs=["output_data"])
+                                    outputs=["output_data"],
+                                )
 
                                 yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             if len(self.shape) == 1:
                 self.dynamic_shape.min_input_shape = {
                     "input_data": [4],
-                    "index_data": [1]
+                    "index_data": [1],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input_data": [128],
-                    "index_data": [4]
+                    "index_data": [4],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data": [16],
-                    "index_data": [2]
+                    "index_data": [2],
                 }
             elif len(self.shape) == 2:
                 self.dynamic_shape.min_input_shape = {
                     "input_data": [2, 4],
-                    "index_data": [1]
+                    "index_data": [1],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input_data": [256, 256],
-                    "index_data": [4]
+                    "index_data": [4],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data": [64, 32],
-                    "index_data": [2]
+                    "index_data": [2],
                 }
             elif len(self.shape) == 3:
                 self.dynamic_shape.min_input_shape = {
                     "input_data": [2, 4, 4],
-                    "index_data": [1]
+                    "index_data": [1],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input_data": [128, 256, 256],
-                    "index_data": [4]
+                    "index_data": [4],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data": [16, 64, 32],
-                    "index_data": [2]
+                    "index_data": [2],
                 }
             elif len(self.shape) == 4:
                 self.dynamic_shape.min_input_shape = {
                     "input_data": [2, 4, 4, 2],
-                    "index_data": [1]
+                    "index_data": [1],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input_data": [128, 256, 64, 128],
-                    "index_data": [4]
+                    "index_data": [4],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data": [16, 64, 16, 32],
-                    "index_data": [2]
+                    "index_data": [2],
                 }
 
         def clear_dynamic_shape():
@@ -181,10 +193,12 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            False), 1e-5
+            False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            False), 1e-3
+            False
+        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -200,14 +214,17 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             def teller1(program_config, predictor_config):
                 if len(self.dynamic_shape.min_input_shape) != 0:
                     inputs = program_config.inputs
-                    if len(inputs['input_data'].shape) == 1 or len(
-                            inputs['index_data'].shape) == 1:
+                    if (
+                        len(inputs['input_data'].shape) == 1
+                        or len(inputs['index_data'].shape) == 1
+                    ):
                         return True
                 return False
 
             self.add_skip_case(
-                teller1, SkipReasons.TRT_NOT_SUPPORT,
-                "Need to repair the case: trt reshape out failed for dynamic shape mode when inputs' dims==1. under trt7.0 "
+                teller1,
+                SkipReasons.TRT_NOT_SUPPORT,
+                "Need to repair the case: trt reshape out failed for dynamic shape mode when inputs' dims==1. under trt7.0 ",
             )
 
     def test(self):

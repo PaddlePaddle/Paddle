@@ -19,12 +19,15 @@ import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
 import paddle.distributed as dist
-from paddle.distributed.spawn import _get_subprocess_env_list, _options_valid_check, _get_default_nprocs
+from paddle.distributed.spawn import (
+    _get_subprocess_env_list,
+    _options_valid_check,
+    _get_default_nprocs,
+)
 from paddle.fluid import core
 
 
 class LinearNet(nn.Layer):
-
     def __init__(self):
         super(LinearNet, self).__init__()
         self._linear1 = nn.Linear(10, 10)
@@ -62,7 +65,6 @@ def train(print_result=False):
 
 
 class TestSpawn(unittest.TestCase):
-
     def test_nprocs_greater_than_device_num_error(self):
         with self.assertRaises(RuntimeError):
             _get_subprocess_env_list(nprocs=100, options=dict())

@@ -19,13 +19,13 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestImperativeContainerSequential(unittest.TestCase):
-
     def func_sequential(self):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
-            model1 = fluid.dygraph.Sequential(fluid.Linear(10, 1),
-                                              fluid.Linear(1, 2))
+            model1 = fluid.dygraph.Sequential(
+                fluid.Linear(10, 1), fluid.Linear(1, 2)
+            )
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 2])
             model1[1] = fluid.Linear(1, 3)
@@ -64,8 +64,9 @@ class TestImperativeContainerSequential(unittest.TestCase):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
-            model1 = fluid.dygraph.Sequential(fluid.Linear(10, 1),
-                                              fluid.Linear(1, 2))
+            model1 = fluid.dygraph.Sequential(
+                fluid.Linear(10, 1), fluid.Linear(1, 2)
+            )
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 2])
             model1[1] = fluid.Linear(1, 3)

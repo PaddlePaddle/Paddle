@@ -25,7 +25,7 @@ import numpy as np
 BATCH_NUM = 4
 BATCH_SIZE = 1
 
-#IMAGE_SIZE = 128
+# IMAGE_SIZE = 128
 CLASS_NUM = 2
 
 USE_GPU = False  # whether use GPU to run model
@@ -47,7 +47,6 @@ def get_random_images_and_labels(image_shape, label_shape):
 
 
 def sample_list_generator_creator():
-
     def __reader__():
         for _ in range(BATCH_NUM):
             sample_list = []
@@ -61,21 +60,17 @@ def sample_list_generator_creator():
 
 
 class AutoCheckpointBase(unittest.TestCase):
-
-    def _init_env(self,
-                  exe,
-                  main_prog,
-                  startup_prog,
-                  minimize=True,
-                  iterable=True):
-
+    def _init_env(
+        self, exe, main_prog, startup_prog, minimize=True, iterable=True
+    ):
         def simple_net():
             image = fluid.data(name='image', shape=[-1, 4, 4], dtype='float32')
             label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
 
             fc_tmp = fluid.layers.fc(image, size=CLASS_NUM)
             cross_entropy = fluid.layers.softmax_with_cross_entropy(
-                fc_tmp, label)
+                fc_tmp, label
+            )
             loss = fluid.layers.reduce_mean(cross_entropy)
             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
             if minimize:
@@ -87,17 +82,20 @@ class AutoCheckpointBase(unittest.TestCase):
 
             if minimize:
                 compiled = fluid.CompiledProgram(main_prog).with_data_parallel(
-                    loss_name=loss.name)
+                    loss_name=loss.name
+                )
             else:
                 compiled = None
             loader = fluid.io.DataLoader.from_generator(
                 feed_list=[image, label],
                 capacity=64,
                 use_double_buffer=True,
-                iterable=iterable)
+                iterable=iterable,
+            )
 
-            loader.set_sample_list_generator(sample_list_generator_creator(),
-                                             places[0])
+            loader.set_sample_list_generator(
+                sample_list_generator_creator(), places[0]
+            )
 
         if minimize:
             exe.run(startup_prog)

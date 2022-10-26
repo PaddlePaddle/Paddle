@@ -21,14 +21,13 @@ from paddle.fluid import Program, program_guard
 
 
 class TestCrossOp(OpTest):
-
     def setUp(self):
         self.op_type = "cross"
         self.python_api = paddle.cross
         self.initTestCase()
         self.inputs = {
             'X': np.random.random(self.shape).astype(self.dtype),
-            'Y': np.random.random(self.shape).astype(self.dtype)
+            'Y': np.random.random(self.shape).astype(self.dtype),
         }
         self.init_output()
 
@@ -53,7 +52,6 @@ class TestCrossOp(OpTest):
 
 
 class TestCrossOpCase1(TestCrossOp):
-
     def initTestCase(self):
         self.shape = (2048, 3)
         self.dtype = np.float32
@@ -66,12 +64,13 @@ class TestCrossOpCase1(TestCrossOp):
 
 
 class TestCrossAPI(unittest.TestCase):
-
     def input_data(self):
-        self.data_x = np.array([[1.0, 1.0, 1.0], [2.0, 2.0, 2.0],
-                                [3.0, 3.0, 3.0]])
-        self.data_y = np.array([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0],
-                                [1.0, 1.0, 1.0]])
+        self.data_x = np.array(
+            [[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0]]
+        )
+        self.data_y = np.array(
+            [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
+        )
 
     def test_cross_api(self):
         self.input_data()
@@ -82,14 +81,14 @@ class TestCrossAPI(unittest.TestCase):
             y = fluid.layers.data(name='y', shape=[-1, 3])
             z = paddle.cross(x, y, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={
-                'x': self.data_x,
-                'y': self.data_y
-            },
-                           fetch_list=[z.name],
-                           return_numpy=False)
-        expect_out = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
-                               [0.0, 0.0, 0.0]])
+            (res,) = exe.run(
+                feed={'x': self.data_x, 'y': self.data_y},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
+        expect_out = np.array(
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+        )
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
@@ -98,14 +97,14 @@ class TestCrossAPI(unittest.TestCase):
             y = fluid.layers.data(name='y', shape=[-1, 3])
             z = paddle.cross(x, y)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={
-                'x': self.data_x,
-                'y': self.data_y
-            },
-                           fetch_list=[z.name],
-                           return_numpy=False)
-        expect_out = np.array([[-1.0, -1.0, -1.0], [2.0, 2.0, 2.0],
-                               [-1.0, -1.0, -1.0]])
+            (res,) = exe.run(
+                feed={'x': self.data_x, 'y': self.data_y},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
+        expect_out = np.array(
+            [[-1.0, -1.0, -1.0], [2.0, 2.0, 2.0], [-1.0, -1.0, -1.0]]
+        )
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 3:
@@ -134,8 +133,9 @@ class TestCrossAPI(unittest.TestCase):
             y = fluid.dygraph.to_variable(self.data_y)
             z = paddle.cross(x, y, axis=1)
             np_z = z.numpy()
-        expect_out = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
-                               [0.0, 0.0, 0.0]])
+        expect_out = np.array(
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+        )
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 

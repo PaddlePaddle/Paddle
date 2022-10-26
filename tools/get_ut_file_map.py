@@ -35,7 +35,8 @@ def get_all_uts(rootPath):
     all_uts_paddle = '%s/build/all_uts_paddle' % rootPath
     os.system(
         r'cd %s/build && ctest -N -V | grep -Ei "Test[ \t]+#" | grep -oEi "\w+$" > %s'
-        % (rootPath, all_uts_paddle))
+        % (rootPath, all_uts_paddle)
+    )
 
 
 def remove_useless_file(rootPath):
@@ -61,7 +62,7 @@ def handle_ut_file_map(rootPath):
     ut_file_map = {}
     count = 0
     not_success_file = open("%s/build/prec_delta" % rootPath, 'w')
-    #if testdir is not made,write the test into prec_delta
+    # if testdir is not made,write the test into prec_delta
     get_all_uts(rootPath)
     all_ut = '%s/build/all_uts_paddle' % rootPath
     with open(all_ut, 'r') as f:
@@ -75,7 +76,7 @@ def handle_ut_file_map(rootPath):
         if not os.path.exists(filedir):
             not_success_file.write('%s\n' % ut)
             utNotSuccess_list.append(ut)
-    #if fnda.tmp not exists,write the test into prec_delta
+    # if fnda.tmp not exists,write the test into prec_delta
     for ut in files:
         count = count + 1
         print("ut %s: %s" % (count, ut))
@@ -95,10 +96,11 @@ def handle_ut_file_map(rootPath):
                     continue
                 elif line.startswith('/paddle/build'):
                     source_file = line.replace('/build', '')
-                    #source_file = re.sub('.pb.*', '.proto', source_file)
+                    # source_file = re.sub('.pb.*', '.proto', source_file)
                 elif 'precise test map fileeee:' in line:
-                    source_file = line.split(
-                        'precise test map fileeee:')[1].strip()
+                    source_file = line.split('precise test map fileeee:')[
+                        1
+                    ].strip()
                 else:
                     source_file = line
                 if source_file not in ut_file_map:
@@ -217,8 +219,10 @@ def ut_file_map_supplement(rootPath):
             if not os.path.exists(filename) and ut not in prec_delta_new_list:
                 prec_delta_new_list.append(ut)
     prec_delta_new_list.append(
-        'test_py_reader_error_msg')  #add a python case for pycoverage
+        'test_py_reader_error_msg'
+    )  # add a python case for pycoverage
     prec_delta_file = open("/pre_test_tmp/prec_delta", 'w')
+
     for ut in prec_delta_new_list:
         prec_delta_file.write(ut + '\n')
     print("prec_delta_file success!!")

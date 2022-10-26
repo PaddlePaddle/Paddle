@@ -24,18 +24,20 @@ import paddle
 np.random.seed(123)
 
 
-def trilinear_interp_test(x,
-                          OutSize=None,
-                          SizeTensor=None,
-                          Scale=None,
-                          data_layout='NCHW',
-                          out_d=-1,
-                          out_h=-1,
-                          out_w=-1,
-                          scale=[],
-                          interp_method='trilinear',
-                          align_corners=True,
-                          align_mode=0):
+def trilinear_interp_test(
+    x,
+    OutSize=None,
+    SizeTensor=None,
+    Scale=None,
+    data_layout='NCHW',
+    out_d=-1,
+    out_h=-1,
+    out_w=-1,
+    scale=[],
+    interp_method='trilinear',
+    align_corners=True,
+    align_mode=0,
+):
     if isinstance(scale, float) or isinstance(scale, int):
         scale_list = []
         for _ in range(len(x.shape) - 2):
@@ -45,26 +47,39 @@ def trilinear_interp_test(x,
         scale = list(map(float, scale))
     if SizeTensor is not None:
         if not isinstance(SizeTensor, list) and not isinstance(
-                SizeTensor, tuple):
+            SizeTensor, tuple
+        ):
             SizeTensor = [SizeTensor]
-    return paddle._C_ops.trilinear_interp(x, OutSize, SizeTensor, Scale,
-                                          data_layout, out_d, out_h, out_w,
-                                          scale, interp_method, align_corners,
-                                          align_mode)
+    return paddle._C_ops.trilinear_interp(
+        x,
+        OutSize,
+        SizeTensor,
+        Scale,
+        data_layout,
+        out_d,
+        out_h,
+        out_w,
+        scale,
+        interp_method,
+        align_corners,
+        align_mode,
+    )
 
 
-def trilinear_interp_np(input,
-                        out_d,
-                        out_h,
-                        out_w,
-                        scale_d=0,
-                        scale_h=0,
-                        scale_w=0,
-                        out_size=None,
-                        actual_shape=None,
-                        align_corners=True,
-                        align_mode=0,
-                        data_layout='NCDHW'):
+def trilinear_interp_np(
+    input,
+    out_d,
+    out_h,
+    out_w,
+    scale_d=0,
+    scale_h=0,
+    scale_w=0,
+    out_size=None,
+    actual_shape=None,
+    align_corners=True,
+    align_mode=0,
+    data_layout='NCDHW',
+):
     """trilinear interpolation implement in shape [N, C, D, H, W]"""
     if data_layout == "NDHWC":
         input = np.transpose(input, (0, 4, 1, 2, 3))  # NDHWC => NCDHW
@@ -80,7 +95,7 @@ def trilinear_interp_np(input,
 
     ratio_d = ratio_h = ratio_w = 0.0
     if out_d > 1:
-        if (align_corners):
+        if align_corners:
             ratio_d = (in_d - 1.0) / (out_d - 1.0)
         else:
             if scale_d > 0:
@@ -88,7 +103,7 @@ def trilinear_interp_np(input,
             else:
                 ratio_d = 1.0 * in_d / out_d
     if out_h > 1:
-        if (align_corners):
+        if align_corners:
             ratio_h = (in_h - 1.0) / (out_h - 1.0)
         else:
             if scale_h > 0:
@@ -96,7 +111,7 @@ def trilinear_interp_np(input,
             else:
                 ratio_h = 1.0 * in_h / out_h
     if out_w > 1:
-        if (align_corners):
+        if align_corners:
             ratio_w = (in_w - 1.0) / (out_w - 1.0)
         else:
             if scale_w > 0:
@@ -107,14 +122,14 @@ def trilinear_interp_np(input,
     out = np.zeros((batch_size, channel, out_d, out_h, out_w))
 
     for i in range(out_d):
-        if (align_mode == 0 and not align_corners):
+        if align_mode == 0 and not align_corners:
             d = int(ratio_d * (i + 0.5) - 0.5)
         else:
             d = int(ratio_d * i)
 
         d = max(0, d)
         did = 1 if d < in_d - 1 else 0
-        if (align_mode == 0 and not align_corners):
+        if align_mode == 0 and not align_corners:
             idx_src_d = max(ratio_d * (i + 0.5) - 0.5, 0)
             d1lambda = idx_src_d - d
         else:
@@ -122,14 +137,14 @@ def trilinear_interp_np(input,
         d2lambda = 1.0 - d1lambda
 
         for j in range(out_h):
-            if (align_mode == 0 and not align_corners):
+            if align_mode == 0 and not align_corners:
                 h = int(ratio_h * (j + 0.5) - 0.5)
             else:
                 h = int(ratio_h * j)
 
             h = max(0, h)
             hid = 1 if h < in_h - 1 else 0
-            if (align_mode == 0 and not align_corners):
+            if align_mode == 0 and not align_corners:
                 idx_src_h = max(ratio_h * (j + 0.5) - 0.5, 0)
                 h1lambda = idx_src_h - h
             else:
@@ -137,30 +152,42 @@ def trilinear_interp_np(input,
             h2lambda = 1.0 - h1lambda
 
             for k in range(out_w):
-                if (align_mode == 0 and not align_corners):
+                if align_mode == 0 and not align_corners:
                     w = int(ratio_w * (k + 0.5) - 0.5)
                 else:
                     w = int(ratio_w * k)
                 w = max(0, w)
                 wid = 1 if w < in_w - 1 else 0
-                if (align_mode == 0 and not align_corners):
+                if align_mode == 0 and not align_corners:
                     idx_src_w = max(ratio_w * (k + 0.5) - 0.5, 0)
                     w1lambda = idx_src_w - w
                 else:
                     w1lambda = ratio_w * k - w
                 w2lambda = 1.0 - w1lambda
 
-                out[:, :, i, j, k] = \
-                    d2lambda * \
-                    (h2lambda * (w2lambda * input[:, :, d, h, w] +
-                                 w1lambda * input[:, :, d, h, w+wid]) +
-                     h1lambda * (w2lambda * input[:, :, d, h+hid, w] +
-                                 w1lambda * input[:, :, d, h+hid, w+wid])) + \
-                    d1lambda * \
-                    (h2lambda * (w2lambda * input[:, :, d+did, h, w] +
-                                 w1lambda * input[:, :, d+did, h, w+wid]) +
-                     h1lambda * (w2lambda * input[:, :, d+did, h+hid, w] +
-                                 w1lambda * input[:, :, d+did, h+hid, w+wid]))
+                out[:, :, i, j, k] = d2lambda * (
+                    h2lambda
+                    * (
+                        w2lambda * input[:, :, d, h, w]
+                        + w1lambda * input[:, :, d, h, w + wid]
+                    )
+                    + h1lambda
+                    * (
+                        w2lambda * input[:, :, d, h + hid, w]
+                        + w1lambda * input[:, :, d, h + hid, w + wid]
+                    )
+                ) + d1lambda * (
+                    h2lambda
+                    * (
+                        w2lambda * input[:, :, d + did, h, w]
+                        + w1lambda * input[:, :, d + did, h, w + wid]
+                    )
+                    + h1lambda
+                    * (
+                        w2lambda * input[:, :, d + did, h + hid, w]
+                        + w1lambda * input[:, :, d + did, h + hid, w + wid]
+                    )
+                )
     if data_layout == "NDHWC":
         out = np.transpose(out, (0, 2, 3, 4, 1))  # NCDHW => NDHWC
 
@@ -168,7 +195,6 @@ def trilinear_interp_np(input,
 
 
 class TestTrilinearInterpOp(OpTest):
-
     def setUp(self):
         self.python_api = trilinear_interp_test
         self.out_size = None
@@ -211,10 +237,20 @@ class TestTrilinearInterpOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = trilinear_interp_np(input_np, out_d, out_h, out_w, scale_d,
-                                        scale_h, scale_w, self.out_size,
-                                        self.actual_shape, self.align_corners,
-                                        self.align_mode, self.data_layout)
+        output_np = trilinear_interp_np(
+            input_np,
+            out_d,
+            out_h,
+            out_w,
+            scale_d,
+            scale_h,
+            scale_w,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+            self.align_mode,
+            self.data_layout,
+        )
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -234,7 +270,7 @@ class TestTrilinearInterpOp(OpTest):
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
             'align_mode': self.align_mode,
-            'data_layout': data_layout
+            'data_layout': data_layout,
         }
         if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
@@ -249,10 +285,9 @@ class TestTrilinearInterpOp(OpTest):
         self.check_output(check_eager=self.check_eager)
 
     def test_check_grad(self):
-        self.check_grad(['X'],
-                        'Out',
-                        in_place=True,
-                        check_eager=self.check_eager)
+        self.check_grad(
+            ['X'], 'Out', in_place=True, check_eager=self.check_eager
+        )
 
     def init_test_case(self):
         self.interp_method = 'trilinear'
@@ -267,7 +302,6 @@ class TestTrilinearInterpOp(OpTest):
 
 
 class TestTrilinearInterpCase1(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 1, 7, 8, 9]
@@ -280,7 +314,6 @@ class TestTrilinearInterpCase1(TestTrilinearInterpOp):
 
 
 class TestTrilinearInterpCase2(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 9, 6, 8]
@@ -293,7 +326,6 @@ class TestTrilinearInterpCase2(TestTrilinearInterpOp):
 
 
 class TestTrilinearInterpCase3(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [3, 2, 16, 8, 4]
@@ -306,7 +338,6 @@ class TestTrilinearInterpCase3(TestTrilinearInterpOp):
 
 
 class TestTrilinearInterpCase4(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [4, 1, 7, 8, 9]
@@ -320,7 +351,6 @@ class TestTrilinearInterpCase4(TestTrilinearInterpOp):
 
 
 class TestTrilinearInterpCase5(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [3, 3, 9, 6, 8]
@@ -334,7 +364,6 @@ class TestTrilinearInterpCase5(TestTrilinearInterpOp):
 
 
 class TestTrilinearInterpCase6(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [1, 1, 16, 8, 4]
@@ -348,7 +377,6 @@ class TestTrilinearInterpCase6(TestTrilinearInterpOp):
 
 
 class TestTrilinearInterpSame(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [1, 1, 16, 8, 4]
@@ -361,7 +389,6 @@ class TestTrilinearInterpSame(TestTrilinearInterpOp):
 
 
 class TestTrilinearInterpSameHW(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [1, 1, 16, 8, 4]
@@ -374,7 +401,6 @@ class TestTrilinearInterpSameHW(TestTrilinearInterpOp):
 
 
 class TestTrilinearInterpActualShape(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [3, 2, 16, 8, 4]
@@ -388,7 +414,6 @@ class TestTrilinearInterpActualShape(TestTrilinearInterpOp):
 
 
 class TestTrilinearInterpDatalayout(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 4, 4, 4, 3]
@@ -403,7 +428,6 @@ class TestTrilinearInterpDatalayout(TestTrilinearInterpOp):
 
 
 class TestTrilinearInterpOpUint8(OpTest):
-
     def setUp(self):
         self.python_api = trilinear_interp_test
         self.out_size = None
@@ -411,8 +435,9 @@ class TestTrilinearInterpOpUint8(OpTest):
         self.init_test_case()
         self.op_type = "trilinear_interp_v2"
         self.check_eager = True
-        input_np = np.random.randint(low=0, high=256,
-                                     size=self.input_shape).astype("uint8")
+        input_np = np.random.randint(
+            low=0, high=256, size=self.input_shape
+        ).astype("uint8")
 
         if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
@@ -432,9 +457,19 @@ class TestTrilinearInterpOpUint8(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = trilinear_interp_np(input_np, out_d, out_h, out_w, 0, 0, 0,
-                                        self.out_size, self.actual_shape,
-                                        self.align_corners, self.align_mode)
+        output_np = trilinear_interp_np(
+            input_np,
+            out_d,
+            out_h,
+            out_w,
+            0,
+            0,
+            0,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+            self.align_mode,
+        )
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -446,7 +481,7 @@ class TestTrilinearInterpOpUint8(OpTest):
             'out_w': self.out_w,
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
-            'align_mode': self.align_mode
+            'align_mode': self.align_mode,
         }
         if self.scale:
             if isinstance(self.scale, float) or isinstance(self.scale, int):
@@ -458,9 +493,9 @@ class TestTrilinearInterpOpUint8(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(place=core.CPUPlace(),
-                                     atol=1,
-                                     check_eager=self.check_eager)
+        self.check_output_with_place(
+            place=core.CPUPlace(), atol=1, check_eager=self.check_eager
+        )
 
     def init_test_case(self):
         self.interp_method = 'trilinear'
@@ -474,7 +509,6 @@ class TestTrilinearInterpOpUint8(OpTest):
 
 
 class TestTrilinearInterpCase1Uint8(TestTrilinearInterpOpUint8):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 16, 8, 4]
@@ -487,7 +521,6 @@ class TestTrilinearInterpCase1Uint8(TestTrilinearInterpOpUint8):
 
 
 class TestTrilinearInterpCase2Uint8(TestTrilinearInterpOpUint8):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [4, 1, 7, 8, 9]
@@ -501,54 +534,48 @@ class TestTrilinearInterpCase2Uint8(TestTrilinearInterpOpUint8):
 
 
 class TestTrilinearInterpOtherMethod1(TestTrilinearInterpOp):
-
     def set_align_mode(self):
         self.align_corners = False
         self.align_mode = 1
 
 
 class TestTrilinearInterpWithMethod2(TestTrilinearInterpOp):
-
     def set_align_mode(self):
         self.align_corners = False
         self.align_mode = 0
 
 
 class TestTrilinearInterpWithMethod3(TestTrilinearInterpOp):
-
     def set_align_mode(self):
         self.align_corners = True
         self.align_mode = 0
 
 
 class TestTrilinearInterpScale1(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 9]
         self.out_d = 19
         self.out_h = 15
         self.out_w = 8
-        self.scale = 2.
+        self.scale = 2.0
         self.align_corners = True
         self.align_mode = 1
 
 
 class TestTrilinearInterpScale2(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 9]
         self.out_d = 30
         self.out_h = 20
         self.out_w = 25
-        self.scale = 1.
+        self.scale = 1.0
         self.align_corners = True
         self.align_mode = 1
 
 
 class TestTrilinearInterpScale3(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 9]
@@ -561,7 +588,6 @@ class TestTrilinearInterpScale3(TestTrilinearInterpOp):
 
 
 class TestTrilinearInterpZero(TestTrilinearInterpOp):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 11]
@@ -574,7 +600,6 @@ class TestTrilinearInterpZero(TestTrilinearInterpOp):
 
 
 class TestTrilinearInterpOp_attr_tensor(OpTest):
-
     def setUp(self):
         self.python_api = trilinear_interp_test
         self.out_size = None
@@ -587,7 +612,7 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         self.attrs = {
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
-            'align_mode': self.align_mode
+            'align_mode': self.align_mode,
         }
 
         input_np = np.random.random(self.input_shape).astype("float32")
@@ -619,8 +644,9 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         elif self.out_size is not None:
             size_tensor = []
             for index, ele in enumerate(self.out_size):
-                size_tensor.append(("x" + str(index), np.ones(
-                    (1)).astype('int32') * ele))
+                size_tensor.append(
+                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                )
             self.inputs['SizeTensor'] = size_tensor
             self.check_eager = False
 
@@ -634,19 +660,28 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
             if isinstance(self.scale, list) and len(self.scale) == 1:
                 self.scale = [self.scale[0], self.scale[0], self.scale[0]]
             self.attrs['scale'] = self.scale
-        output_np = trilinear_interp_np(input_np, out_d, out_h, out_w, 0, 0, 0,
-                                        self.out_size, self.actual_shape,
-                                        self.align_corners, self.align_mode)
+        output_np = trilinear_interp_np(
+            input_np,
+            out_d,
+            out_h,
+            out_w,
+            0,
+            0,
+            0,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+            self.align_mode,
+        )
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
         self.check_output(check_eager=self.check_eager)
 
     def test_check_grad(self):
-        self.check_grad(['X'],
-                        'Out',
-                        in_place=True,
-                        check_eager=self.check_eager)
+        self.check_grad(
+            ['X'], 'Out', in_place=True, check_eager=self.check_eager
+        )
 
     def init_test_case(self):
         self.interp_method = 'trilinear'
@@ -662,7 +697,6 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
 
 # out_size is a 1-D tensor
 class TestTrilinearInterp_attr_tensor_Case1(TestTrilinearInterpOp_attr_tensor):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [3, 2, 9, 6, 8]
@@ -677,7 +711,6 @@ class TestTrilinearInterp_attr_tensor_Case1(TestTrilinearInterpOp_attr_tensor):
 
 # scale is a 1-D tensor
 class TestTrilinearInterp_attr_tensor_Case2(TestTrilinearInterpOp_attr_tensor):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 8, 8, 4]
@@ -693,7 +726,6 @@ class TestTrilinearInterp_attr_tensor_Case2(TestTrilinearInterpOp_attr_tensor):
 
 # scale is a 1-D tensor
 class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 8, 8, 4]
@@ -708,7 +740,6 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
 
 
 class TestTrilinearInterpAPI(unittest.TestCase):
-
     def test_imperative_case(self):
         with _test_eager_guard():
             self.func_case()
@@ -721,31 +752,28 @@ class TestTrilinearInterpAPI(unittest.TestCase):
         dim = fluid.data(name="dim", shape=[1], dtype="int32")
         shape_tensor = fluid.data(name="shape_tensor", shape=[3], dtype="int32")
         actual_size = fluid.data(name="actual_size", shape=[3], dtype="int32")
-        scale_tensor = fluid.data(name="scale_tensor",
-                                  shape=[1],
-                                  dtype="float32")
+        scale_tensor = fluid.data(
+            name="scale_tensor", shape=[1], dtype="float32"
+        )
 
-        out1 = fluid.layers.resize_trilinear(y,
-                                             out_shape=[12, 18, 8],
-                                             data_format='NDHWC')
+        out1 = fluid.layers.resize_trilinear(
+            y, out_shape=[12, 18, 8], data_format='NDHWC'
+        )
         out2 = fluid.layers.resize_trilinear(x, out_shape=[12, dim, 8])
         out3 = fluid.layers.resize_trilinear(x, out_shape=shape_tensor)
-        out4 = fluid.layers.resize_trilinear(x,
-                                             out_shape=[4, 4, 8],
-                                             actual_shape=actual_size)
+        out4 = fluid.layers.resize_trilinear(
+            x, out_shape=[4, 4, 8], actual_shape=actual_size
+        )
         out5 = fluid.layers.resize_trilinear(x, scale=scale_tensor)
-        out6 = interpolate(x,
-                           scale_factor=scale_tensor,
-                           mode='trilinear',
-                           data_format="NCDHW")
-        out7 = interpolate(x,
-                           size=[4, 4, 8],
-                           mode='trilinear',
-                           data_format="NCDHW")
-        out8 = interpolate(x,
-                           size=shape_tensor,
-                           mode='trilinear',
-                           data_format="NCDHW")
+        out6 = interpolate(
+            x, scale_factor=scale_tensor, mode='trilinear', data_format="NCDHW"
+        )
+        out7 = interpolate(
+            x, size=[4, 4, 8], mode='trilinear', data_format="NCDHW"
+        )
+        out8 = interpolate(
+            x, size=shape_tensor, mode='trilinear', data_format="NCDHW"
+        )
 
         x_data = np.random.random((2, 3, 6, 9, 4)).astype("float32")
         dim_data = np.array([18]).astype("int32")
@@ -759,26 +787,26 @@ class TestTrilinearInterpAPI(unittest.TestCase):
             place = core.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        results = exe.run(fluid.default_main_program(),
-                          feed={
-                              "x": x_data,
-                              "y": np.transpose(x_data, (0, 2, 3, 4, 1)),
-                              "dim": dim_data,
-                              "shape_tensor": shape_data,
-                              "actual_size": actual_size_data,
-                              "scale_tensor": scale_data
-                          },
-                          fetch_list=[out1, out2, out3, out4, out5],
-                          return_numpy=True)
+        results = exe.run(
+            fluid.default_main_program(),
+            feed={
+                "x": x_data,
+                "y": np.transpose(x_data, (0, 2, 3, 4, 1)),
+                "dim": dim_data,
+                "shape_tensor": shape_data,
+                "actual_size": actual_size_data,
+                "scale_tensor": scale_data,
+            },
+            fetch_list=[out1, out2, out3, out4, out5],
+            return_numpy=True,
+        )
 
-        expect_res = trilinear_interp_np(x_data,
-                                         out_d=12,
-                                         out_h=18,
-                                         out_w=8,
-                                         align_mode=1)
-        np.testing.assert_allclose(results[0],
-                                   np.transpose(expect_res, (0, 2, 3, 4, 1)),
-                                   rtol=1e-05)
+        expect_res = trilinear_interp_np(
+            x_data, out_d=12, out_h=18, out_w=8, align_mode=1
+        )
+        np.testing.assert_allclose(
+            results[0], np.transpose(expect_res, (0, 2, 3, 4, 1)), rtol=1e-05
+        )
         for i in range(len(results) - 1):
             np.testing.assert_allclose(results[i + 1], expect_res, rtol=1e-05)
 
@@ -787,30 +815,28 @@ class TestTrilinearInterpAPI(unittest.TestCase):
         # Preceding PR link: https://github.com/PaddlePaddle/Paddle/pull/26520/files#diff-ee0c2b73d08659e90a8f3ac48451a6588d35e1613742f864f9aad4394e12c290
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(x_data)
-            out9 = interpolate(x,
-                               size=[12, 18, 8],
-                               mode='trilinear',
-                               data_format="NCDHW")
+            out9 = interpolate(
+                x, size=[12, 18, 8], mode='trilinear', data_format="NCDHW"
+            )
 
 
 class TestTrilinearInterpOpException(unittest.TestCase):
-
     def test_exception(self):
         input = fluid.data(name="input", shape=[2, 3, 6, 9, 4], dtype="float32")
 
         def attr_data_format():
             # for 5-D input, data_format only can be NCDHW or NDHWC
-            out = fluid.layers.resize_trilinear(input,
-                                                out_shape=[4, 8, 4],
-                                                data_format='NHWC')
+            out = fluid.layers.resize_trilinear(
+                input, out_shape=[4, 8, 4], data_format='NHWC'
+            )
 
         self.assertRaises(ValueError, attr_data_format)
 
 
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestTrilinearInterpOpForFloat16(unittest.TestCase):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 4, 4, 4]
@@ -824,12 +850,14 @@ class TestTrilinearInterpOpForFloat16(unittest.TestCase):
         x_np = x_np.astype(dtype)
         x = paddle.to_tensor(x_np)
         x.stop_gradient = False
-        y = interpolate(x,
-                        size=self.out_size.tolist(),
-                        mode=self.interp_method,
-                        align_corners=self.align_corners,
-                        align_mode=self.align_mode,
-                        data_format=self.data_layout)
+        y = interpolate(
+            x,
+            size=self.out_size.tolist(),
+            mode=self.interp_method,
+            align_corners=self.align_corners,
+            align_mode=self.align_mode,
+            data_format=self.data_layout,
+        )
         x_g = paddle.grad(y, x)
         y_np = y[0].numpy().astype('float32')
         x_g_np = x_g[0].numpy().astype('float32')
@@ -848,10 +876,10 @@ class TestTrilinearInterpOpForFloat16(unittest.TestCase):
         np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=1e-05)
 
 
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestTrilinearInterpDatalayoutForFloat16(TestTrilinearInterpOpForFloat16):
-
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 4, 4, 4, 3]
