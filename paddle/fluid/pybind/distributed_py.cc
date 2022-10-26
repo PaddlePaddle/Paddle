@@ -1405,11 +1405,14 @@ void BindDistributed(py::module *m) {
       .def(py::init(&CreateEagerReducer))
       .def(
           "prepare_for_backward",
-          [](distributed::EagerReducer &self, py::handle py_tensors) {
+          [](distributed::EagerReducer &self,
+             py::handle py_tensors,
+             bool is_sync) {
             auto params = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
-            self.PrepareForBackward(params);
+            self.PrepareForBackward(params, is_sync);
           },
           py::arg("tensors"),
+          py::arg("is_sync"),
           py::call_guard<py::gil_scoped_release>());
 }
 
