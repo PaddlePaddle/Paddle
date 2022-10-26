@@ -61,7 +61,7 @@ class TestUVATensorFromNumpy(unittest.TestCase):
                 np.testing.assert_allclose(tensor.numpy(), data, rtol=1e-05)
                 np.testing.assert_allclose(tensor2.numpy(), data, rtol=1e-05)
 
-    def test_uva_tensor_corectness(self):
+    def test_uva_tensor_correctness(self):
         if paddle.fluid.core.is_compiled_with_cuda():
             a = np.arange(0, 100, dtype="int32")
             a = a.reshape([10, 10])
@@ -71,6 +71,39 @@ class TestUVATensorFromNumpy(unittest.TestCase):
             np.testing.assert_allclose(
                 tensor1.numpy(), tensor2.numpy(), rtol=1e-05
             )
+
+    def test_uva_tensor_creation(self):
+        with _test_eager_guard():
+            self.func_uva_tensor_creation()
+        self.func_uva_tensor_creation()
+
+
+class TestGeometricUVATensor(unittest.TestCase):
+    def func_uva_tensor_creation(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            dtype_list = [
+                "int32",
+                "int64",
+                "float32",
+                "float64",
+                "float16",
+                "int8",
+                "int16",
+                "bool",
+            ]
+            for dtype in dtype_list:
+                data = np.random.randint(10, size=[4, 5]).astype(dtype)
+                if _in_legacy_dygraph():
+                    tensor = paddle.fluid.core.to_uva_tensor(data, 0)
+                    tensor2 = paddle.fluid.core.to_uva_tensor(data)
+                else:
+                    tensor = core.eager.to_uva_tensor(data, 0)
+                    tensor2 = core.eager.to_uva_tensor(data)
+
+                self.assertTrue(tensor.place.is_gpu_place())
+                self.assertTrue(tensor2.place.is_gpu_place())
+                np.testing.assert_allclose(tensor.numpy(), data, rtol=1e-05)
+                np.testing.assert_allclose(tensor2.numpy(), data, rtol=1e-05)
 
     def test_uva_tensor_creation(self):
         with _test_eager_guard():
