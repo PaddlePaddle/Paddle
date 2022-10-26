@@ -41,6 +41,8 @@ bool ProcessGroup::Task::Wait(std::chrono::milliseconds timeout) {
 
 void ProcessGroup::Task::Synchronize() {}
 
+void ProcessGroup::Task::UpdateWaitChain(const phi::DeviceContext& ctx) {}
+
 ProcessGroup::ProcessGroup(int rank,
                            int size,
                            const platform::Place& place,
