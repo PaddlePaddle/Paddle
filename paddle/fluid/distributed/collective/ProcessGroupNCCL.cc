@@ -1596,15 +1596,15 @@ ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
   return iter->second[0]->GetNcclComm();
 }
 
-phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
+const phi::DeviceContext& ProcessGroupNCCL::GetDeviceContext(
     const Place& place) const {
   return GetDeviceContext(place, /*use_calc_stream*/ false);
 }
 
-phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
+const phi::DeviceContext& ProcessGroupNCCL::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
   if (use_calc_stream) {
-    return platform::DeviceContextPool::Instance().Get(place);
+    return *platform::DeviceContextPool::Instance().Get(place);
   } else {
     std::vector<Place> places = {place};
     const auto& iter = places_to_ctx_.find(GetKeyFromPlaces(places));
@@ -1612,7 +1612,7 @@ phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
                       places_to_ctx_.end(),
                       platform::errors::InvalidArgument(
                           "Cannot find device context in process group."));
-    return iter->second[0].get();
+    return *iter->second[0];
   }
 }
 
