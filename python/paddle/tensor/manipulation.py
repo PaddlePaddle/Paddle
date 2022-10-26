@@ -1227,7 +1227,7 @@ def broadcast_tensors(input, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        list(Tensor): The list of broadcasted tensors following the same order as ``input``.
+        list(Tensor), The list of broadcasted tensors following the same order as ``input``.
 
     Examples:
         .. code-block:: python
