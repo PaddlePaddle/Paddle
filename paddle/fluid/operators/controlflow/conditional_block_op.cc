@@ -49,16 +49,16 @@ static void BuildScopeForConditionalBlockOp(
     if (var_name == framework::kEmptyVarName) {
       continue;
     }
-    VLOG(10) << "[BuildScopeForConditionalBlockOp]"
-             << "start:" << var_name;
+    VLOG(5) << "[BuildScopeForConditionalBlockOp]"
+            << "start:" << var_name;
     if (var_desc->Persistable()) {
-      VLOG(10) << "[BuildScopeForConditionalBlockOp]"
-               << "Don't process persistent: " << var_name;
+      VLOG(5) << "[BuildScopeForConditionalBlockOp]"
+              << "Don't process persistent: " << var_name;
     } else {
       auto *ptr = scope->Var(var_name);
       InitializeVariable(ptr, var_desc->GetType());
-      VLOG(10) << "[BuildScopeForConditionalBlockOp]"
-               << "Not Found locally and created: " << var_name;
+      VLOG(5) << "[BuildScopeForConditionalBlockOp]"
+              << "Not Found locally and created: " << var_name;
     }
   }
 
@@ -121,6 +121,8 @@ class ConditionalBlockOp : public ConditionalOp {
         scopes->front() = &scope.NewScope();
       }
 
+      // We need to know whether the scope we cached is still valid.
+      // If not, we need to create a new one.
       if (scope.kids().size() == 0) {
         scopes->front() = &scope.NewScope();
       }
@@ -141,9 +143,6 @@ class ConditionalBlockOp : public ConditionalOp {
 
       if (FLAGS_control_flow_use_new_executor) {
         std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
-        bool old_flag_new_executor_use_loacl_scope =
-            FLAGS_new_executor_use_local_scope;
-        FLAGS_new_executor_use_local_scope = false;
 
         if (!core || !platform::is_same_place(core->GetPlace(), dev_place) ||
             !FLAGS_control_flow_use_new_executor_cache) {
@@ -151,9 +150,12 @@ class ConditionalBlockOp : public ConditionalOp {
           VLOG_IF(10, core)
               << platform::is_same_place(core->GetPlace(), dev_place);
           VLOG(10) << FLAGS_control_flow_use_new_executor_cache;
-          core.reset(new InterpreterCore(
-              dev_place, *block, skip_gc_vars, &cur_scope, false));
-          core->SetUsedForControlFlowOp(true);
+          core.reset(new InterpreterCore(dev_place,
+                                         *block,
+                                         skip_gc_vars,
+                                         &cur_scope,
+                                         /* used_for_jit */ false,
+                                         /* used_for_control_flow_op */ true));
           VLOG(10) << "[interpreterCore cache]"
                    << "new created:" << core;
         } else {
@@ -162,9 +164,6 @@ class ConditionalBlockOp : public ConditionalOp {
         }
 
         core->Run({}, false);
-
-        FLAGS_new_executor_use_local_scope =
-            old_flag_new_executor_use_loacl_scope;
 
       } else {
         if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
@@ -257,9 +256,6 @@ class ConditionalBlockGradOp : public ConditionalOp {
       if (FLAGS_control_flow_use_new_executor) {
         std::set<std::string> skip_gc_vars(inside_grads.begin(),
                                            inside_grads.end());
-        bool old_flag_new_executor_use_loacl_scope =
-            FLAGS_new_executor_use_local_scope;
-        FLAGS_new_executor_use_local_scope = false;
 
         if (!core || !platform::is_same_place(core->GetPlace(), dev_place) ||
             !FLAGS_control_flow_use_new_executor_cache) {
@@ -267,9 +263,12 @@ class ConditionalBlockGradOp : public ConditionalOp {
           VLOG_IF(10, core)
               << platform::is_same_place(core->GetPlace(), dev_place);
           VLOG(10) << FLAGS_control_flow_use_new_executor_cache;
-          core.reset(new InterpreterCore(
-              dev_place, *block, skip_gc_vars, &cur_scope, false));
-          core->SetUsedForControlFlowOp(true);
+          core.reset(new InterpreterCore(dev_place,
+                                         *block,
+                                         skip_gc_vars,
+                                         &cur_scope,
+                                         /* used_for_jit */ false,
+                                         /* used_for_control_flow_op */ true));
           VLOG(10) << "[interpreterCore cache]"
                    << "new created:" << core;
         } else {
@@ -277,9 +276,6 @@ class ConditionalBlockGradOp : public ConditionalOp {
           core->reset_scope(&cur_scope);
         }
         core->Run({}, false);
-
-        FLAGS_new_executor_use_local_scope =
-            old_flag_new_executor_use_loacl_scope;
 
       } else {
         if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {

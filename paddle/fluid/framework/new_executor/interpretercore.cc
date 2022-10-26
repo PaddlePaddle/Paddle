@@ -115,7 +115,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
                                  const std::set<std::string>& skip_gc_vars,
                                  framework::Scope* scope,
-                                 bool used_for_jit)
+                                 bool used_for_jit,
+                                 bool used_for_control_flow_op)
     : place_(place),
       block_(block),
       execution_config_(place, block.OpSize()),
@@ -127,8 +128,10 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
   execution_config_.used_for_jit = used_for_jit;
-  execution_config_.create_local_scope =
-      !used_for_jit && FLAGS_new_executor_use_local_scope;
+  execution_config_.used_for_control_flow_op = used_for_control_flow_op;
+  execution_config_.create_local_scope = !used_for_jit &&
+                                         FLAGS_new_executor_use_local_scope &&
+                                         !used_for_control_flow_op;
   execution_config_.skip_gc_vars = skip_gc_vars;
   execution_config_.Log(/*log_level=*/8);
 
@@ -251,9 +254,8 @@ paddle::framework::FetchList InterpreterCore::Run(
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
-        HasLocalScope(),
-        execution_config_.used_for_jit,
-        execution_config_.used_for_control_flow_op);
+        execution_config_,
+        HasLocalScope());
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
@@ -1121,9 +1123,8 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
-        HasLocalScope(),
-        execution_config_.used_for_jit,
-        execution_config_.used_for_control_flow_op);
+        execution_config_,
+        HasLocalScope());
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);

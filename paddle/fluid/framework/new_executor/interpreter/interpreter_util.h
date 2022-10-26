@@ -24,6 +24,7 @@
 
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
@@ -75,9 +76,8 @@ void BuildOpFuncList(const platform::Place& place,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
                      VariableScope* scope,
-                     bool use_local_scope = true,
-                     bool used_for_jit = false,
-                     bool used_for_control_flow_op = false);
+                     ExecutionConfig execution_config,
+                     bool use_local_scope = true);
 
 void AddFetch(const std::vector<std::string>& fetch_names,
               framework::BlockDesc* block);

@@ -47,7 +47,8 @@ class InterpreterCore {
                   const BlockDesc& block,
                   const std::set<std::string>& skip_gc_vars,
                   Scope* scope,
-                  bool used_for_jit = false);
+                  bool used_for_jit = false,
+                  bool used_for_control_flow_op = false);
 
   ~InterpreterCore();
 
@@ -73,13 +74,6 @@ class InterpreterCore {
   void reset_scope(Scope* new_scope);
 
   const platform::Place& GetPlace() const { return place_; }
-
-  void SetUsedForControlFlowOp(bool new_value) {
-    execution_config_.used_for_control_flow_op = new_value;
-  }
-  bool UsedForControlFlowOp() const {
-    return execution_config_.used_for_control_flow_op;
-  }
 
  private:
   // build graph
