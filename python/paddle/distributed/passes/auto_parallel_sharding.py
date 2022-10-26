@@ -15,6 +15,7 @@
 from functools import reduce
 import logging
 
+import paddle
 from paddle.framework import core
 from paddle.fluid import unique_name
 from .pass_base import PassBase, register_pass
