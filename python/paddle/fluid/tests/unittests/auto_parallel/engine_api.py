@@ -419,6 +419,7 @@ def get_cost():
         startup_program=startup_program,
         inputs=[input],
         labels=[label],
+        mode="train",
     )
     engine.cost()
 

@@ -16,6 +16,7 @@ import os
 import copy
 import logging
 import random
+import numbers
 import numpy as np
 from collections import defaultdict
 
@@ -163,9 +164,12 @@ class Engine:
 
         metrics = metrics or []
         for metric in to_list(metrics):
-            assert isinstance(
-                metric, Metric
-            ), "{} is not sub class of Metric".format(metric.__class__.__name__)
+            if metric and not isinstance(metric, Metric):
+                raise TypeError(
+                    "{} is not sub class of Metric".format(
+                        metric.__class__.__name__
+                    )
+                )
         self._metrics = to_list(metrics)
 
         if cluster and not isinstance(cluster, Cluster):
@@ -217,12 +221,12 @@ class Engine:
         self._labels = []
         self._losses = []
 
+        self._mode = None
         self._skip_build = False
         self._outside_dataloader = False
         self._planned_mode = None
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
-        self._mode = None
 
         self.history = None
 
@@ -244,7 +248,7 @@ class Engine:
                 inputs = sample[:split]
                 labels = sample[split:]
         else:
-            raise ValueError(
+            raise TypeError(
                 "Data should be a Dataset or IterableDatset, but received {}.".format(
                     type(data).__name__
                 )
@@ -273,8 +277,14 @@ class Engine:
                     specs.append(spec)
                 else:
                     specs.append(spec.batch(batch_size))
-            else:
+            elif isinstance(item, numbers.Number):
                 specs.append(InputSpec([batch_size], type(item), name))
+            else:
+                raise TypeError(
+                    "The sample's dtype returned of dataset should be number, np.ndarray or Tensor, but got {}".format(
+                        type(item).__name__
+                    )
+                )
 
         if inputs is not None:
             for i, item in enumerate(inputs):
@@ -304,7 +314,9 @@ class Engine:
             assert isinstance(
                 inputs, list
             ), "inputs should be list, but received {}".format(type(inputs))
-            assert len(inputs_spec) == len(inputs)
+            assert len(inputs_spec) == len(
+                inputs
+            ), "the number of `inputs_spec` should be equal to `inputs`'s."
             for input_spec, input in zip(inputs_spec, inputs):
                 if input_spec.shape != input.shape:
                     input.desc.set_shape(input_spec.shape)
@@ -317,11 +329,14 @@ class Engine:
             assert isinstance(
                 labels, list
             ), "labels should be list, but received {}".format(type(labels))
-            assert len(labels_spec) == len(labels)
+            assert len(labels_spec) == len(
+                labels
+            ), "the number of `labels_spec` should be equal to `labels`'s."
             for label_spec, label in zip(labels_spec, labels):
                 if label_spec.shape != label.shape:
                     label.desc.set_shape(label_spec.shape)
-        return inputs or [], labels or []
+
+        return inputs, labels
 
     def _prepare_reader(self):
         dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
@@ -499,17 +514,17 @@ class Engine:
         self._has_prepared[mode] = True
 
     def _build(self, mode):
-        inputs_spec = self._inputs_spec
-        labels_spec = self._labels_spec if self._labels_spec else []
         if _non_static_mode() or self._dygraph_mode:
             paddle.disable_static()
             self._dygraph_mode = True
             self._logger.info("Building model with 'to_static' method.")
 
-            inputs_spec = self._inputs_spec
-            labels_spec = self._labels_spec if self._labels_spec else []
             self.program_helper = ProgramHelper(
-                self._model, self._loss, self._metrics, inputs_spec, labels_spec
+                self._model,
+                self._loss,
+                self._metrics,
+                self._inputs_spec,
+                self._labels_spec,
             )
             # build forward main program
             self.program_helper.build_program(mode)
@@ -540,8 +555,12 @@ class Engine:
                 with static.program_guard(
                     serial_main_prog, serial_startup_prog
                 ), utils.unique_name.guard():
-                    self._inputs = [s._create_feed_layer() for s in inputs_spec]
-                    self._labels = [s._create_feed_layer() for s in labels_spec]
+                    self._inputs = [
+                        s._create_feed_layer() for s in self._inputs_spec
+                    ]
+                    self._labels = [
+                        s._create_feed_layer() for s in self._labels_spec
+                    ]
 
                     outputs = to_list(self._model(*self._inputs))
 
@@ -566,7 +585,6 @@ class Engine:
                 assert isinstance(
                     self._loss, Variable
                 ), "the type of `loss` of the Engine arguments should be Variable."
-                assert self._inputs or self._labels
                 self._losses = to_list(self._loss)
 
         default_ctx = get_default_distributed_context()
@@ -1249,8 +1267,18 @@ class Engine:
         if mode is not None:
             self.to_mode(mode)
 
+        if not self._mode:
+            raise ValueError(
+                "Please set mode to be prepared with `prepare(mode=...)`"
+            )
+
         if self._has_prepared[self._mode]:
             return
+
+        inputs_spec = self._validate_spec(inputs_spec)
+        labels_spec = self._validate_spec(labels_spec)
+        inputs = self._validate_vars(inputs)
+        labels = self._validate_vars(labels)
 
         self._orig_main_prog = main_program
         self._orig_startup_prog = startup_program
@@ -1450,7 +1478,10 @@ class Engine:
         self._k_steps = self._strategy.gradient_merge.k_steps
         if specs is not None:
             for i, spec in enumerate(specs):
-                assert isinstance(spec, InputSpec)
+                if not isinstance(spec, InputSpec):
+                    raise TypeError(
+                        "'spec' must be object of class `paddle.static.InputSpec`."
+                    )
                 if spec.name is None:
                     raise ValueError(
                         "Requires Input[{}].name != None, but receive `None` with {}.".format(
@@ -1467,6 +1498,14 @@ class Engine:
                     shape[0] //= self._k_steps
                     spec.shape = shape
         return specs or []
+
+    def _validate_vars(self, vars):
+        vars = to_list(vars)
+        if vars is not None:
+            for i, var in enumerate(vars):
+                if not isinstance(var, Variable):
+                    raise TypeError("'var' must be a `Variable`.")
+        return vars or []
 
     def _is_local_var(self, var):
         var_name = _to_name_str(var)
@@ -1691,7 +1730,8 @@ class Engine:
         self.to_mode(mode)
 
         if inputs_spec is not None and not self._has_prepared[mode]:
-            self._inputs_spec, self._labels_spec = inputs_spec, labels_spec
+            self._inputs_spec = self._validate_spec(inputs_spec)
+            self._labels_spec = self._validate_spec(labels_spec)
             self._build(mode)
             self._plan(mode)
         else:
