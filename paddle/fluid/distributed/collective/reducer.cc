@@ -583,8 +583,6 @@ void EagerReducer::PrepareForBackward(const std::vector<Tensor> &outputs,
   VLOG(3) << "after forward, then reset count for backward.";
   grad_need_hooks_ = is_sync;
 
-  VLOG(0) << "1 grad_need_hooks_ : " << grad_need_hooks_;
-
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](EagerGroup &group) {
     group.pending_ = group.tensor_indices_.size();
@@ -817,8 +815,6 @@ void EagerReducer::MarkGroupReady(size_t group_index) {
     return;
   }
 
-  VLOG(0) << "2 grad_need_hooks_ : " << grad_need_hooks_;
-
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
     UNUSED auto &group = groups_[next_group_];
@@ -914,7 +910,6 @@ void EagerReducer::ProcessUnusedDenseVars() {
 }
 
 void EagerReducer::FinalizeBackward() {
-  VLOG(0) << "3 grad_need_hooks_ : " << grad_need_hooks_;
   groups_need_finalize_ = false;
   for (auto &group : groups_) {
     if (!group.is_sparse_ && grad_need_hooks_) {
@@ -937,7 +932,6 @@ void EagerReducer::FinalizeBackward() {
   }
 
   grad_need_hooks_ = false;
-  VLOG(0) << "4 grad_need_hooks_ : " << grad_need_hooks_;
   VLOG(3) << "In the batch, Reducer is finished.";
 }
 
