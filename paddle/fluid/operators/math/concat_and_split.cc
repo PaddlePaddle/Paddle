@@ -78,6 +78,7 @@ class ConcatFunctor<platform::XPUDeviceContext, T> {
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
                   phi::DenseTensor* output) {
+    using XPUType = typename XPUTypeTrait<T>::Type;
     int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
@@ -93,13 +94,16 @@ class ConcatFunctor<platform::XPUDeviceContext, T> {
       xdims_list[i] = tmp_dims;
     }
 
-    std::vector<const T*> ptrs;
+    std::vector<const XPUType*> ptrs;
     for (int i = 0; i < num; ++i) {
-      ptrs.push_back(input[i].data<T>());
+      ptrs.push_back(reinterpret_cast<const XPUType*>(input[i].data<T>()));
     }
 
-    auto r = xpu::concat<T>(
-        context.x_context(), ptrs, output->data<T>(), xdims_list, axis);
+    auto r = xpu::concat<XPUType>(context.x_context(),
+                                  ptrs,
+                                  reinterpret_cast<XPUType*>(output->data<T>()),
+                                  xdims_list,
+                                  axis);
     PADDLE_ENFORCE_EQ(
         r,
         XPU_SUCCESS,
@@ -119,6 +123,7 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
                   const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
                   std::vector<phi::DenseTensor*>* outputs) {
+    using XPUType = typename XPUTypeTrait<T>::Type;
     int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
@@ -140,17 +145,18 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
     }
     xdims_list[axis] = total_length;
 
-    std::vector<T*> ptrs(num);
+    std::vector<XPUType*> ptrs(num);
     for (int i = 0; i < num; ++i) {
-      ptrs[i] = outputs->at(i)->data<T>();
+      ptrs[i] = reinterpret_cast<XPUType*>(outputs->at(i)->data<T>());
     }
 
-    auto r = xpu::split<T>(context.x_context(),
-                           input.data<T>(),
-                           ptrs,
-                           xdims_list,
-                           split_list,
-                           axis);
+    auto r =
+        xpu::split<XPUType>(context.x_context(),
+                            reinterpret_cast<const XPUType*>(input.data<T>()),
+                            ptrs,
+                            xdims_list,
+                            split_list,
+                            axis);
     PADDLE_ENFORCE_EQ(
         r,
         XPU_SUCCESS,
