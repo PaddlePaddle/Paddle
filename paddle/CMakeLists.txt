@@ -72,6 +72,10 @@ if(${len} GREATER_EQUAL 1)
       if(WITH_ROCM)
         target_link_libraries(${test_name} ${ROCM_HIPRTC_LIB})
       endif()
+      if(APPLE)
+        target_link_libraries(${test_name}
+                              "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}>")
+      endif()
       if(NOT
          ("${test_name}" STREQUAL "c_broadcast_op_npu_test"
           OR "${test_name}" STREQUAL "c_allreduce_sum_op_npu_test"
