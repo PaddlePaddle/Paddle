@@ -32,7 +32,7 @@
 - op : angle
   backward : angle_grad
   extra :
-    attrs : [bool use_cudnn = false, bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : asinh
   backward : asinh_grad
