@@ -48,10 +48,25 @@ typedef void (*fp32_gather_gemm_scatter)(const GPUContext& dev_ctx,
                                          const int32_t* c_d_indices,
                                          float const alpha,
                                          float const beta);
+typedef void (*fp64_gather_gemm_scatter)(const GPUContext& dev_ctx,
+                                         const double* const a,
+                                         const double* const b,
+                                         const double* const c,
+                                         double* const d,
+                                         const int m,
+                                         const int n,
+                                         const int k,
+                                         const int32_t* a_indices,
+                                         const int32_t* c_d_indices,
+                                         double const alpha,
+                                         double const beta);
 fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
                                            const int K,
                                            const int N);
 fp32_gather_gemm_scatter getBestFp32Kernel(const int M,
+                                           const int K,
+                                           const int N);
+fp64_gather_gemm_scatter getBestFp64Kernel(const int M,
                                            const int K,
                                            const int N);
 void cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8(
@@ -145,18 +160,6 @@ void cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8(
     const int32_t* c_d_indices,
     cutlass::half_t const alpha,
     cutlass::half_t const beta);
-void cutlass_simt_sgemm_128x32_8x2_nn_align1(const GPUContext& dev_ctx,
-                                             const float* const a,
-                                             const float* const b,
-                                             const float* const c,
-                                             float* const d,
-                                             const int m,
-                                             const int n,
-                                             const int k,
-                                             const int32_t* a_indices,
-                                             const int32_t* c_d_indices,
-                                             float const alpha,
-                                             float const beta);
 void cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4(
     const GPUContext& dev_ctx,
     const float* const a,
@@ -182,5 +185,29 @@ void cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4(const GPUContext& dev_ctx,
                                                      const int32_t* c_d_indices,
                                                      float const alpha,
                                                      float const beta);
+void cutlass_tensorop_d884gemm_16x32_16x5_nn_align1(const GPUContext& dev_ctx,
+                                                    const double* const a,
+                                                    const double* const b,
+                                                    const double* const c,
+                                                    double* const d,
+                                                    const int m,
+                                                    const int n,
+                                                    const int k,
+                                                    const int32_t* a_indices,
+                                                    const int32_t* c_d_indices,
+                                                    double const alpha,
+                                                    double const beta);
+void cutlass_tensorop_d884gemm_32x16_16x5_nn_align1(const GPUContext& dev_ctx,
+                                                    const double* const a,
+                                                    const double* const b,
+                                                    const double* const c,
+                                                    double* const d,
+                                                    const int m,
+                                                    const int n,
+                                                    const int k,
+                                                    const int32_t* a_indices,
+                                                    const int32_t* c_d_indices,
+                                                    double const alpha,
+                                                    double const beta);
 }  // namespace sparse
 }  // namespace phi

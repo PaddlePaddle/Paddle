@@ -235,19 +235,6 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   if constexpr (std::is_same<T, double>::value &&
                 std::is_same<IntT, int32_t>::value) {
     if (cutlass) {
-      using ElementInputA = T;
-      using ElementInputB = T;
-      using ElementAccumulator = T;
-      using ElementComputeEpilogue = T;
-      using ElementOutput = T;
-      using LayoutInputA = cutlass::layout::RowMajor;
-      using LayoutInputB = cutlass::layout::RowMajor;
-      using LayoutOutput = cutlass::layout::RowMajor;
-      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<32, 16, 16>;
-      using ShapeMMAWarp = cutlass::gemm::GemmShape<16, 16, 16>;
-      using ShapeMMAOp = cutlass::gemm::GemmShape<8, 8, 4>;
-      constexpr int NumStages = 5;
-
       auto* out_values = out->mutable_non_zero_elements();
       T* out_values_ptr = out_values->data<T>();
       phi::funcs::SetConstant<GPUContext, T> set_zero;
@@ -267,31 +254,19 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         const IntT* scatter_indices =
             rulebook_ptr + rulebook_len + h_offsets_ptr[i];
 
-        gather_gemm_scatter<ElementInputA,
-                            ElementInputB,
-                            ElementAccumulator,
-                            ElementComputeEpilogue,
-                            ElementOutput,
-                            LayoutInputA,
-                            LayoutInputB,
-                            LayoutOutput,
-                            IntT,
-                            ShapeMMAThreadBlock,
-                            ShapeMMAWarp,
-                            ShapeMMAOp,
-                            NumStages>(dev_ctx,
-                                       x.non_zero_elements().data<T>(),
-                                       tmp_kernel_ptr,
-                                       out_values_ptr,
-                                       out_values_ptr,
-                                       M,
-                                       N,
-                                       K,
-                                       gather_indices,
-                                       scatter_indices,
-                                       h_counter_ptr[i],
-                                       static_cast<T>(1),
-                                       static_cast<T>(1));
+        fp64_gather_gemm_scatter my_kernel = getBestFp64Kernel(M, N, K);
+        my_kernel(dev_ctx,
+                  x.non_zero_elements().data<T>(),
+                  tmp_kernel_ptr,
+                  out_values_ptr,
+                  out_values_ptr,
+                  M,
+                  N,
+                  K,
+                  gather_indices,
+                  scatter_indices,
+                  static_cast<T>(1),
+                  static_cast<T>(1));
       }
     }
   }
