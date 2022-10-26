@@ -907,7 +907,7 @@ def re_order_program(block, param_grads):
 
             assert len(op.input("Param")) == 1
             block.desc._remove_op(idx, idx + 1)
-            pname_to_op[op.input("Param")] = block.ops.pop(idx)
+            pname_to_op[op.input("Param")[0]] = block.ops.pop(idx)
         assert len(use_order) == len(pname_to_op)
 
         # re-append
