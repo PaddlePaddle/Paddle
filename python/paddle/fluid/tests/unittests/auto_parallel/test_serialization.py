@@ -21,8 +21,8 @@ import paddle.static as static
 import paddle.nn.functional as F
 from paddle.fluid.framework import Program
 
+import paddle.distributed.fleet as fleet
 from paddle.distributed.fleet import auto
-import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.dist_context import (
     DistributedContext,
     set_default_distributed_context,
