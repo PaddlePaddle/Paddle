@@ -25,7 +25,7 @@ feat_funcs = {
     'melspectrogram': MelSpectrogram,
     'mfcc': MFCC,
     'logmelspectrogram': LogMelSpectrogram,
-    'spectrogram': Spectrogram
+    'spectrogram': Spectrogram,
 }
 
 
@@ -34,12 +34,14 @@ class AudioClassificationDataset(paddle.io.Dataset):
     Base class of audio classification dataset.
     """
 
-    def __init__(self,
-                 files: List[str],
-                 labels: List[int],
-                 feat_type: str = 'raw',
-                 sample_rate: int = None,
-                 **kwargs):
+    def __init__(
+        self,
+        files: List[str],
+        labels: List[int],
+        feat_type: str = 'raw',
+        sample_rate: int = None,
+        **kwargs,
+    ):
         """
         Ags:
             files (:obj:`List[str]`): A list of absolute path of audio files.
@@ -59,7 +61,9 @@ class AudioClassificationDataset(paddle.io.Dataset):
 
         self.feat_type = feat_type
         self.sample_rate = sample_rate
-        self.feat_config = kwargs  # Pass keyword arguments to customize feature config
+        self.feat_config = (
+            kwargs  # Pass keyword arguments to customize feature config
+        )
 
     def _get_data(self, input_file: str):
         raise NotImplementedError
@@ -78,8 +82,9 @@ class AudioClassificationDataset(paddle.io.Dataset):
         if feat_func is not None:
             waveform = waveform.unsqueeze(0)  # (batch_size, T)
             if self.feat_type != 'spectrogram':
-                feature_extractor = feat_func(sr=self.sample_rate,
-                                              **self.feat_config)
+                feature_extractor = feat_func(
+                    sr=self.sample_rate, **self.feat_config
+                )
             else:
                 feature_extractor = feat_func(**self.feat_config)
             record['feat'] = feature_extractor(waveform).squeeze(0)

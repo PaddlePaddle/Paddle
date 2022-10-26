@@ -35,7 +35,7 @@ def _check_version(version: str) -> bool:
 
 
 def list_available_backends() -> List[str]:
-    """ List available backends, the backends in paddleaudio and the default backend.
+    """List available backends, the backends in paddleaudio and the default backend.
 
     Returns:
         List[str]: The list of available backends.
@@ -82,7 +82,8 @@ def list_available_backends() -> List[str]:
         if _check_version(version) == False:
             err_msg = (
                 "the version of paddleaudio installed is {},\n"
-                "please ensure the paddleaudio >= 1.0.2.").format(version)
+                "please ensure the paddleaudio >= 1.0.2."
+            ).format(version)
             raise ImportError(err_msg)
         backends = paddleaudio.backends.list_audio_backends()
     backends.append("wave_backend")
@@ -90,7 +91,7 @@ def list_available_backends() -> List[str]:
 
 
 def get_current_backend() -> str:
-    """ Get the name of the current audio backend
+    """Get the name of the current audio backend
 
     Returns:
         str: The name of the current backend,
@@ -124,6 +125,7 @@ def get_current_backend() -> str:
     current_backend = None
     if "paddleaudio" in sys.modules:
         import paddleaudio
+
         current_backend = paddleaudio.backends.get_audio_backend()
         if paddle.audio.load == paddleaudio.load:
             return current_backend
@@ -171,6 +173,7 @@ def set_backend(backend_name: str):
         module = wave_backend
     else:
         import paddleaudio
+
         paddleaudio.backends.set_audio_backend(backend_name)
         module = paddleaudio
 

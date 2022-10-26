@@ -24,19 +24,21 @@ import paddle.nn as nn
 from paddle.fluid import core
 from paddle.incubate.xpu.resnet_block import ResNetBasicBlock
 from paddle.fluid.framework import default_main_program
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = "resnet_basic_block"
         self.use_dynamic_create_class = False
 
     class TestResNetBasicBlockOp(OpTest):
-
         def setUp(self):
             paddle.disable_static()
             self.dtype = self.in_type
@@ -70,65 +72,86 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
 
             conv1_weight = fluid.ParamAttr(
                 initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
+                learning_rate=0.001,
+            )
             conv2_weight = fluid.ParamAttr(
                 initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
+                learning_rate=0.001,
+            )
             conv3_weight = fluid.ParamAttr(
                 initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
-            bn1_weight = fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=1.0))
-            bn1_bias = fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=0.0))
-            bn2_weight = fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=1.0))
-            bn2_bias = fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=0.0))
-            bn3_weight = fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=1.0))
-            bn3_bias = fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=0.0))
+                learning_rate=0.001,
+            )
+            bn1_weight = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=1.0)
+            )
+            bn1_bias = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.0)
+            )
+            bn2_weight = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=1.0)
+            )
+            bn2_bias = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.0)
+            )
+            bn3_weight = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=1.0)
+            )
+            bn3_bias = fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.0)
+            )
 
-            self.conv1 = nn.Conv2D(in_channels=self.in_channels,
-                                   out_channels=self.out_channels,
-                                   kernel_size=3,
-                                   stride=self.stride,
-                                   padding=1,
-                                   weight_attr=conv1_weight,
-                                   bias_attr=None,
-                                   data_format='NCHW')
-            self.bn1 = nn.BatchNorm(self.out_channels,
-                                    act='relu',
-                                    param_attr=bn1_weight,
-                                    bias_attr=bn1_bias,
-                                    data_layout='NCHW')
-            self.conv2 = nn.Conv2D(in_channels=self.out_channels,
-                                   out_channels=self.out_channels,
-                                   kernel_size=3,
-                                   stride=1,
-                                   padding=1,
-                                   weight_attr=conv2_weight,
-                                   bias_attr=None,
-                                   data_format='NCHW')
-            self.bn2 = nn.BatchNorm(self.out_channels,
-                                    act=None,
-                                    param_attr=bn2_weight,
-                                    bias_attr=bn2_bias,
-                                    data_layout='NCHW')
-            self.conv3 = nn.Conv2D(in_channels=self.in_channels,
-                                   out_channels=self.out_channels,
-                                   kernel_size=1,
-                                   stride=self.stride,
-                                   padding=0,
-                                   weight_attr=conv3_weight,
-                                   bias_attr=None,
-                                   data_format='NCHW')
-            self.bn3 = nn.BatchNorm(self.out_channels,
-                                    act=None,
-                                    param_attr=bn3_weight,
-                                    bias_attr=bn3_bias,
-                                    data_layout='NCHW')
+            self.conv1 = nn.Conv2D(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=3,
+                stride=self.stride,
+                padding=1,
+                weight_attr=conv1_weight,
+                bias_attr=None,
+                data_format='NCHW',
+            )
+            self.bn1 = nn.BatchNorm(
+                self.out_channels,
+                act='relu',
+                param_attr=bn1_weight,
+                bias_attr=bn1_bias,
+                data_layout='NCHW',
+            )
+            self.conv2 = nn.Conv2D(
+                in_channels=self.out_channels,
+                out_channels=self.out_channels,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                weight_attr=conv2_weight,
+                bias_attr=None,
+                data_format='NCHW',
+            )
+            self.bn2 = nn.BatchNorm(
+                self.out_channels,
+                act=None,
+                param_attr=bn2_weight,
+                bias_attr=bn2_bias,
+                data_layout='NCHW',
+            )
+            self.conv3 = nn.Conv2D(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=1,
+                stride=self.stride,
+                padding=0,
+                weight_attr=conv3_weight,
+                bias_attr=None,
+                data_format='NCHW',
+            )
+            self.bn3 = nn.BatchNorm(
+                self.out_channels,
+                act=None,
+                param_attr=bn3_weight,
+                bias_attr=bn3_bias,
+                data_layout='NCHW',
+            )
             self.relu = nn.ReLU()
 
             tensor_src = paddle.to_tensor(self.src, stop_gradient=False)
@@ -139,8 +162,9 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
             bn1_out = self.bn1(self.conv1(tensor_src))
             bn2_out = self.bn2(self.conv2(bn1_out))
             result = self.relu(bn2_out + z_out)
-            paddle.autograd.backward([result], [paddle.to_tensor(self.dout)],
-                                     True)
+            paddle.autograd.backward(
+                [result], [paddle.to_tensor(self.dout)], True
+            )
             return result, tensor_src.grad
 
         def FusedResNetBasicBlock(self):
@@ -148,25 +172,34 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
 
             fused_conv1_weight = fluid.ParamAttr(
                 initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
+                learning_rate=0.001,
+            )
             fused_conv2_weight = fluid.ParamAttr(
                 initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
+                learning_rate=0.001,
+            )
             fused_conv3_weight = fluid.ParamAttr(
                 initializer=fluid.initializer.Xavier(uniform=False),
-                learning_rate=0.001)
+                learning_rate=0.001,
+            )
             fused_bn1_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0))
+                initializer=fluid.initializer.Constant(value=1.0)
+            )
             fused_bn1_bias = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.0))
+                initializer=fluid.initializer.Constant(value=0.0)
+            )
             fused_bn2_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0))
+                initializer=fluid.initializer.Constant(value=1.0)
+            )
             fused_bn2_bias = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.0))
+                initializer=fluid.initializer.Constant(value=0.0)
+            )
             fused_bn3_weight = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0))
+                initializer=fluid.initializer.Constant(value=1.0)
+            )
             fused_bn3_bias = fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.0))
+                initializer=fluid.initializer.Constant(value=0.0)
+            )
 
             if self.has_shortcut:
                 self.resnet_basic_block = ResNetBasicBlock(
@@ -195,7 +228,8 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
                     padding1=1,
                     padding2=1,
                     padding3=0,
-                    has_shortcut=True)
+                    has_shortcut=True,
+                )
             else:
                 self.resnet_basic_block = ResNetBasicBlock(
                     num_channels1=self.in_channels,
@@ -223,7 +257,8 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
                     padding1=1,
                     padding2=1,
                     padding3=1,
-                    has_shortcut=False)
+                    has_shortcut=False,
+                )
 
             x = paddle.to_tensor(self.src, stop_gradient=False)
             out = self.resnet_basic_block.forward(x)
@@ -235,36 +270,46 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
             default_main_program().random_seed = 1
             base_out, base_grad = self.Base()
             fused_out, fused_grad = self.FusedResNetBasicBlock()
-            np.testing.assert_allclose(base_out.numpy(),
-                                       fused_out.numpy(),
-                                       rtol=self.rtol,
-                                       atol=self.atol)
-            np.testing.assert_allclose(base_grad.numpy(),
-                                       fused_grad.numpy(),
-                                       rtol=self.rtol,
-                                       atol=self.atol)
+            np.testing.assert_allclose(
+                base_out.numpy(),
+                fused_out.numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+            np.testing.assert_allclose(
+                base_grad.numpy(),
+                fused_grad.numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
 
         def test_out_and_grad(self):
             self.has_shortcut = False
             default_main_program().random_seed = 1
             base_out, base_grad = self.Base()
             fused_out, fused_grad = self.FusedResNetBasicBlock()
-            np.testing.assert_allclose(base_out.numpy(),
-                                       fused_out.numpy(),
-                                       rtol=self.rtol,
-                                       atol=self.atol)
-            np.testing.assert_allclose(base_grad.numpy(),
-                                       fused_grad.numpy(),
-                                       rtol=self.rtol,
-                                       atol=self.atol)
+            np.testing.assert_allclose(
+                base_out.numpy(),
+                fused_out.numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+            np.testing.assert_allclose(
+                base_grad.numpy(),
+                fused_grad.numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
 
 
 support_types = get_xpu_op_support_types('resnet_basic_block')
 for stype in support_types:
-    create_test_class(globals(),
-                      XPUTestResNetBasicBlockOp,
-                      stype,
-                      ignore_device_version=[core.XPUVersion.XPU1])
+    create_test_class(
+        globals(),
+        XPUTestResNetBasicBlockOp,
+        stype,
+        ignore_device_version=[core.XPUVersion.XPU1],
+    )
 
 if __name__ == '__main__':
     unittest.main()

@@ -25,9 +25,16 @@ from itertools import permutations
 import threading
 
 __all__ = [
-    'calculate_density', 'check_mask_1d', 'get_mask_1d', 'check_mask_2d',
-    'get_mask_2d_greedy', 'get_mask_2d_best', 'create_mask', 'check_sparsity',
-    'MaskAlgo', 'CheckMethod'
+    'calculate_density',
+    'check_mask_1d',
+    'get_mask_1d',
+    'check_mask_2d',
+    'get_mask_2d_greedy',
+    'get_mask_2d_best',
+    'create_mask',
+    'check_sparsity',
+    'MaskAlgo',
+    'CheckMethod',
 ]
 
 
@@ -74,8 +81,9 @@ class CheckMethod(Enum):
             CheckMethod.get_checking_method(MaskAlgo.MASK_2D_BEST)
             # CheckMethod.CHECK_2D
         """
-        assert isinstance(mask_algo, MaskAlgo), \
-               "mask_algo should be MaskAlgo type"
+        assert isinstance(
+            mask_algo, MaskAlgo
+        ), "mask_algo should be MaskAlgo type"
         if mask_algo == MaskAlgo.MASK_1D:
             return CheckMethod.CHECK_1D
         else:
@@ -124,7 +132,7 @@ def _reshape_1d(mat, m):
     remainder = mat.shape[1] % m
     if mat.shape[1] % m > 0:
         mat_padded = np.zeros((mat.shape[0], mat.shape[1] + (m - remainder)))
-        mat_padded[:, :mat.shape[1]] = mat
+        mat_padded[:, : mat.shape[1]] = mat
         shape = mat_padded.shape
         return mat_padded.reshape(-1, m), shape
     else:
@@ -211,7 +219,7 @@ def get_mask_1d(mat, n, m):
         min_order_indices = np.argsort(np.absolute(sub_mat))
         mask_flattern[i, min_order_indices[:n].tolist()] = 0
     mask_flattern = mask_flattern.reshape(shape)
-    mask[:, :] = mask_flattern[:, :mat.shape[1]]
+    mask[:, :] = mask_flattern[:, : mat.shape[1]]
     return mask
 
 
@@ -237,12 +245,12 @@ def _reshape_2d(mat, m):
     remainder_0 = mat.shape[0] % m
     remainder_1 = mat.shape[1] % m
 
-    new_shape = (mat.shape[0] if remainder_0 == 0 \
-                 else mat.shape[0] + (m - remainder_0),
-                 mat.shape[1] if remainder_1 == 0 \
-                 else mat.shape[1] + (m - remainder_1))
+    new_shape = (
+        mat.shape[0] if remainder_0 == 0 else mat.shape[0] + (m - remainder_0),
+        mat.shape[1] if remainder_1 == 0 else mat.shape[1] + (m - remainder_1),
+    )
     mat_padded = np.zeros(new_shape)
-    mat_padded[:mat.shape[0], :mat.shape[1]] = mat
+    mat_padded[: mat.shape[0], : mat.shape[1]] = mat
 
     mat_flattern = np.empty(new_shape).reshape(-1, m * m)
     curr_idx = 0
@@ -250,9 +258,9 @@ def _reshape_2d(mat, m):
         row_end = row_start + m
         for col_start in range(0, mat_padded.shape[1], m):
             col_end = col_start + m
-            sub_mat = np.squeeze(mat_padded[row_start:row_end, \
-                                            col_start:col_end] \
-                                            .reshape(-1))
+            sub_mat = np.squeeze(
+                mat_padded[row_start:row_end, col_start:col_end].reshape(-1)
+            )
             mat_flattern[curr_idx] = sub_mat
             curr_idx += 1
     return mat_flattern, mat_padded.shape
@@ -302,8 +310,9 @@ def check_mask_2d(mat, n, m):
     mat_padded, shape = _reshape_2d(mat, m)
     for sub_mat in mat_padded:
         sub_mask = np.absolute(np.squeeze(sub_mat.reshape(m, m))) > 0
-        if (np.sum(np.sum(sub_mask, axis=1) > (m-n)) != 0) and \
-            (np.sum(np.sum(sub_mask, axis=0) > (m-n)) != 0):
+        if (np.sum(np.sum(sub_mask, axis=1) > (m - n)) != 0) and (
+            np.sum(np.sum(sub_mask, axis=0) > (m - n)) != 0
+        ):
             return False
     return True
 
@@ -348,15 +357,17 @@ def get_mask_2d_greedy(mat, n, m):
         sub_mask = np.squeeze(mask_padded[idx])
 
         min_order_1d_indices = np.argsort(sub_mat)
-        min_order_2d_indices = [(int(x / m), x % m)
-                                for x in min_order_1d_indices]
+        min_order_2d_indices = [
+            (int(x / m), x % m) for x in min_order_1d_indices
+        ]
         row_counter = collections.Counter()
         col_counter = collections.Counter()
 
         for i in range(len(min_order_1d_indices) - 1, -1, -1):
             matrix_entry = min_order_2d_indices[i]
-            if (row_counter[matrix_entry[0]] == n) or \
-               (col_counter[matrix_entry[1]] == n):
+            if (row_counter[matrix_entry[0]] == n) or (
+                col_counter[matrix_entry[1]] == n
+            ):
                 continue
 
             sub_mask[matrix_entry[0], matrix_entry[1]] = 1.0
@@ -371,7 +382,7 @@ def get_mask_2d_greedy(mat, n, m):
             col_end = col_start + m
             mask[row_start:row_end, col_start:col_end] = mask_padded[curr_idx]
             curr_idx += 1
-    return mask[:mat.shape[0], :mat.shape[1]]
+    return mask[: mat.shape[0], : mat.shape[1]]
 
 
 _valid_2d_patterns_lock = threading.Lock()
@@ -404,8 +415,11 @@ def _compute_valid_2d_patterns(n, m):
         patterns = patterns + patterns
         patterns = np.asarray(list(set(permutations(patterns, m))))
 
-        valid = ((patterns.sum(axis=1) <= n).sum(
-            axis=1) == m).nonzero()[0].reshape(-1)
+        valid = (
+            ((patterns.sum(axis=1) <= n).sum(axis=1) == m)
+            .nonzero()[0]
+            .reshape(-1)
+        )
         valid_patterns = np.empty((valid.shape[0], m, m))
         valid_patterns[:] = patterns[valid[:]]
 
@@ -452,9 +466,10 @@ def get_mask_2d_best(mat, n, m):
 
     mat_flattern, shape = _reshape_2d(mat, m)
     mask_flattern = np.ones_like(mat_flattern).reshape(-1, m, m)
-    pmax = np.argmax(np.matmul(mat_flattern,
-                               patterns.reshape(patterns.shape[0], m * m).T),
-                     axis=1)
+    pmax = np.argmax(
+        np.matmul(mat_flattern, patterns.reshape(patterns.shape[0], m * m).T),
+        axis=1,
+    )
 
     mask_flattern[:] = patterns[pmax[:]]
     mask = np.empty(shape)
@@ -466,7 +481,7 @@ def get_mask_2d_best(mat, n, m):
             col_end = col_start + m
             mask[row_start:row_end, col_start:col_end] = mask_flattern[curr_idx]
             curr_idx += 1
-    return mask[:mat.shape[0], :mat.shape[1]]
+    return mask[: mat.shape[0], : mat.shape[1]]
 
 
 def create_mask(tensor, func_name=MaskAlgo.MASK_1D, n=2, m=4):
@@ -506,9 +521,10 @@ def create_mask(tensor, func_name=MaskAlgo.MASK_1D, n=2, m=4):
     dtype = tensor.dtype
     t = tensor.astype(float)
 
-    assert isinstance(func_name, MaskAlgo), \
-           "func_name argumet of create_mask is only accepted as type MaskAlgo. " \
-           "But got {}".format(type(func_name))
+    assert isinstance(func_name, MaskAlgo), (
+        "func_name argumet of create_mask is only accepted as type MaskAlgo. "
+        "But got {}".format(type(func_name))
+    )
     func = getattr(sys.modules[__name__], func_name.value, None)
     if len(shape) == 1:
         t = t.reshape(1, shape[0])
@@ -518,14 +534,20 @@ def create_mask(tensor, func_name=MaskAlgo.MASK_1D, n=2, m=4):
         t = t.reshape(shape[0] * shape[1], shape[2])
     # 4d-tensor conv (h, w, in, out) -> (h*w*out, in) in GemmConvKernel Op
     elif len(shape) == 4:
-        t = t.transpose([0, 1, 3, 2]).reshape(shape[0] * shape[1] * shape[3],
-                                              shape[2])
+        t = t.transpose([0, 1, 3, 2]).reshape(
+            shape[0] * shape[1] * shape[3], shape[2]
+        )
         mask = func(t, n=n, m=m)
-        return mask.reshape([shape[0], shape[1], shape[3],
-                             shape[2]]).transpose([0, 1, 3, 2]).astype(dtype)
+        return (
+            mask.reshape([shape[0], shape[1], shape[3], shape[2]])
+            .transpose([0, 1, 3, 2])
+            .astype(dtype)
+        )
     else:
-        raise ValueError("The dimension of input tensor is not supported in create_mask, " \
-                         "Only dimension < 4 is supported but got {}".format(len(shape)))
+        raise ValueError(
+            "The dimension of input tensor is not supported in create_mask, "
+            "Only dimension < 4 is supported but got {}".format(len(shape))
+        )
 
     mask = func(t, n=n, m=m)
     return mask.reshape(shape).astype(dtype)
@@ -564,9 +586,10 @@ def check_sparsity(tensor, func_name=CheckMethod.CHECK_1D, n=2, m=4):
     shape = tensor.shape
     t = tensor.astype(float)
 
-    assert type(func_name) == CheckMethod, \
-           "func_name argumet of check_sparsity is only accepted as type CheckMethod. " \
-           "But got {}".format(type(func_name))
+    assert type(func_name) == CheckMethod, (
+        "func_name argumet of check_sparsity is only accepted as type CheckMethod. "
+        "But got {}".format(type(func_name))
+    )
     func = getattr(sys.modules[__name__], func_name.value, None)
     if len(shape) == 1:
         t = t.reshape(1, shape[0])
@@ -576,10 +599,13 @@ def check_sparsity(tensor, func_name=CheckMethod.CHECK_1D, n=2, m=4):
         t = t.reshape(shape[0] * shape[1], shape[2])
     # 4d-tensor conv (h, w, in, out) -> (h*w*out, in) in GemmConvKernel Op
     elif len(shape) == 4:
-        t = t.transpose([0, 1, 3,
-                         2]).reshape([shape[0] * shape[1] * shape[3], shape[2]])
+        t = t.transpose([0, 1, 3, 2]).reshape(
+            [shape[0] * shape[1] * shape[3], shape[2]]
+        )
     else:
-        raise ValueError("The dimension of input tensor is not supported in create_mask, " \
-                         "Only dimension < 4 is supported but got {}".format(len(shape)))
+        raise ValueError(
+            "The dimension of input tensor is not supported in create_mask, "
+            "Only dimension < 4 is supported but got {}".format(len(shape))
+        )
 
     return func(t, n=n, m=m)

@@ -27,7 +27,6 @@ from paddle.vision.datasets import MNIST
 
 
 class MnistDataset(MNIST):
-
     def __init__(self, mode, return_label=True, sample_num=None):
         super(MnistDataset, self).__init__(mode=mode)
         self.return_label = return_label
@@ -40,14 +39,13 @@ class MnistDataset(MNIST):
         img = np.reshape(img, [1, 28, 28])
         if self.return_label:
             return img, np.array(self.labels[idx]).astype('int64')
-        return img,
+        return (img,)
 
     def __len__(self):
         return len(self.images)
 
 
 class TestCallbacks(unittest.TestCase):
-
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
 
@@ -64,14 +62,16 @@ class TestCallbacks(unittest.TestCase):
         lenet = Model(LeNet(), inputs)
         lenet.prepare()
 
-        cbks = config_callbacks(model=lenet,
-                                batch_size=128,
-                                epochs=epochs,
-                                steps=steps,
-                                log_freq=freq,
-                                verbose=self.verbose,
-                                metrics=['loss', 'acc'],
-                                save_dir=self.save_dir)
+        cbks = config_callbacks(
+            model=lenet,
+            batch_size=128,
+            epochs=epochs,
+            steps=steps,
+            log_freq=freq,
+            verbose=self.verbose,
+            metrics=['loss', 'acc'],
+            save_dir=self.save_dir,
+        )
         cbks.on_begin('train')
 
         logs = {'loss': 50.341673, 'acc': 0.00256}

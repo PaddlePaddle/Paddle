@@ -71,8 +71,7 @@ class TESS(AudioClassificationDataset):
     """
 
     archive = {
-        'url':
-        'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set.zip',
+        'url': 'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set.zip',
         'md5': '1465311b24d1de704c4c63e4ccc470c7',
     }
 
@@ -85,8 +84,9 @@ class TESS(AudioClassificationDataset):
         'ps',  # pleasant surprise
         'sad',
     ]
-    meta_info = collections.namedtuple('META_INFO',
-                                       ('speaker', 'word', 'emotion'))
+    meta_info = collections.namedtuple(
+        'META_INFO', ('speaker', 'word', 'emotion')
+    )
     audio_path = 'TESS_Toronto_emotional_speech_set'
 
     def __init__(self,
@@ -105,10 +105,9 @@ class TESS(AudioClassificationDataset):
         if archive is not None:
             self.archive = archive
         files, labels = self._get_data(mode, n_folds, split)
-        super(TESS, self).__init__(files=files,
-                                   labels=labels,
-                                   feat_type=feat_type,
-                                   **kwargs)
+        super(TESS, self).__init__(
+            files=files, labels=labels, feat_type=feat_type, **kwargs
+        )
 
     def _get_meta_info(self, files) -> List[collections.namedtuple]:
         ret = []
@@ -120,10 +119,12 @@ class TESS(AudioClassificationDataset):
     def _get_data(self, mode: str, n_folds: int,
                   split: int) -> Tuple[List[str], List[int]]:
         if not os.path.isdir(os.path.join(DATA_HOME, self.audio_path)):
-            download.get_path_from_url(self.archive['url'],
-                                       DATA_HOME,
-                                       self.archive['md5'],
-                                       decompress=True)
+            download.get_path_from_url(
+                self.archive['url'],
+                DATA_HOME,
+                self.archive['md5'],
+                decompress=True,
+            )
 
         wav_files = []
         for root, _, files in os.walk(os.path.join(DATA_HOME, self.audio_path)):

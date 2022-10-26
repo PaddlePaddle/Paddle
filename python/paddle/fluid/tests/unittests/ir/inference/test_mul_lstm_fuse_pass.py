@@ -22,7 +22,6 @@ import hypothesis.strategies as st
 
 
 class TestMulLstmFusePass(PassAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -34,7 +33,8 @@ class TestMulLstmFusePass(PassAutoScanTest):
         gate_activation = draw(st.sampled_from(["sigmoid"]))
         cell_activation = draw(st.sampled_from(["tanh", "relu", "identity"]))
         candidate_activation = draw(
-            st.sampled_from(["tanh", "relu", "identity"]))
+            st.sampled_from(["tanh", "relu", "identity"])
+        )
         batch_size = draw(st.integers(min_value=1, max_value=40))
 
         def generate_input():
@@ -44,47 +44,47 @@ class TestMulLstmFusePass(PassAutoScanTest):
         def generate_weight(shape):
             return np.full(shape, 0.0001).astype(np.float32)
 
-        im2sequence_op = OpConfig(type="im2sequence",
-                                  inputs={"X": ["input_data"]},
-                                  outputs={"Out": ["seq_out"]},
-                                  attrs={
-                                      "kernels": [6, 1],
-                                      "out_stride": [1, 1],
-                                      "paddings": [0, 0, 0, 0],
-                                      "strides": [1, 1]
-                                  })
+        im2sequence_op = OpConfig(
+            type="im2sequence",
+            inputs={"X": ["input_data"]},
+            outputs={"Out": ["seq_out"]},
+            attrs={
+                "kernels": [6, 1],
+                "out_stride": [1, 1],
+                "paddings": [0, 0, 0, 0],
+                "strides": [1, 1],
+            },
+        )
 
-        mul_op = OpConfig(type="mul",
-                          inputs={
-                              "X": ["seq_out"],
-                              "Y": ["mul_weight"]
-                          },
-                          outputs={"Out": ["mul_out"]},
-                          attrs={
-                              "x_num_col_dims": x_col,
-                              "y_num_col_dims": y_col
-                          })
+        mul_op = OpConfig(
+            type="mul",
+            inputs={"X": ["seq_out"], "Y": ["mul_weight"]},
+            outputs={"Out": ["mul_out"]},
+            attrs={"x_num_col_dims": x_col, "y_num_col_dims": y_col},
+        )
 
-        lstm_op = OpConfig(type="lstm",
-                           inputs={
-                               "Input": ["mul_out"],
-                               "Weight": ["lstm_weight"],
-                               "Bias": ["lstm_bias"]
-                           },
-                           outputs={
-                               "Hidden": ["lstm_hidden"],
-                               "Cell": ["lstm_cell"],
-                               "BatchGate": ["lstm_gate"],
-                               "BatchCellPreAct": ["lstm_batch_cell"]
-                           },
-                           attrs={
-                               'use_peepholes': use_peepholes,
-                               'is_reverse': is_reverse,
-                               'gate_activation': gate_activation,
-                               'cell_activation': cell_activation,
-                               'candidate_activation': candidate_activation,
-                               'is_test': True
-                           })
+        lstm_op = OpConfig(
+            type="lstm",
+            inputs={
+                "Input": ["mul_out"],
+                "Weight": ["lstm_weight"],
+                "Bias": ["lstm_bias"],
+            },
+            outputs={
+                "Hidden": ["lstm_hidden"],
+                "Cell": ["lstm_cell"],
+                "BatchGate": ["lstm_gate"],
+                "BatchCellPreAct": ["lstm_batch_cell"],
+            },
+            attrs={
+                'use_peepholes': use_peepholes,
+                'is_reverse': is_reverse,
+                'gate_activation': gate_activation,
+                'cell_activation': cell_activation,
+                'candidate_activation': candidate_activation,
+                'is_test': True,
+            },
+        )
 
         model_net = [im2sequence_op, mul_op, lstm_op]
 
@@ -96,17 +96,21 @@ class TestMulLstmFusePass(PassAutoScanTest):
         program_config = ProgramConfig(
             ops=model_net,
             weights={
-                "mul_weight":
-                TensorConfig(data_gen=partial(generate_weight, [768, 600])),
-                "lstm_weight":
-                TensorConfig(data_gen=partial(generate_weight, [150, 600])),
-                "lstm_bias":
-                TensorConfig(data_gen=partial(generate_weight, lstm_bias_shape))
+                "mul_weight": TensorConfig(
+                    data_gen=partial(generate_weight, [768, 600])
+                ),
+                "lstm_weight": TensorConfig(
+                    data_gen=partial(generate_weight, [150, 600])
+                ),
+                "lstm_bias": TensorConfig(
+                    data_gen=partial(generate_weight, lstm_bias_shape)
+                ),
             },
             inputs={
                 "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
-            outputs=["lstm_hidden"])
+            outputs=["lstm_hidden"],
+        )
 
         return program_config
 
@@ -115,9 +119,9 @@ class TestMulLstmFusePass(PassAutoScanTest):
         yield config, ["im2sequence", "fusion_lstm"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            max_duration=300,
-                            passes=["mul_lstm_fuse_pass"])
+        self.run_and_statis(
+            quant=False, max_duration=300, passes=["mul_lstm_fuse_pass"]
+        )
 
 
 if __name__ == "__main__":

@@ -35,10 +35,16 @@ def getFNDAFile(rootPath, test):
 
 
 def analysisFNDAFile(rootPath, test):
-    related_ut_map_file = '%s/build/ut_map/%s/related_%s.txt' % (rootPath, test,
-                                                                 test)
+    related_ut_map_file = '%s/build/ut_map/%s/related_%s.txt' % (
+        rootPath,
+        test,
+        test,
+    )
     notrelated_ut_map_file = '%s/build/ut_map/%s/notrelated_%s.txt' % (
-        rootPath, test, test)
+        rootPath,
+        test,
+        test,
+    )
     os.system('touch %s' % related_ut_map_file)
     os.system('touch %s' % notrelated_ut_map_file)
     fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
@@ -60,22 +66,30 @@ def analysisFNDAFile(rootPath, test):
                 fn = message_list[i]
                 matchObj = re.match(
                     r'(.*)Maker(.*)|(.*)Touch(.*)Regist(.*)|(.*)Touch(.*)JitKernel(.*)|(.*)converterC2Ev(.*)',
-                    fn, re.I)
+                    fn,
+                    re.I,
+                )
                 if matchObj == None:
                     OP_REGIST = False
                     break
             if OP_REGIST == False:
                 related_file_list.append(clazz_filename)
-                os.system('echo %s >> %s' %
-                          (clazz_filename, related_ut_map_file))
+                os.system(
+                    'echo %s >> %s' % (clazz_filename, related_ut_map_file)
+                )
             else:
-                os.system('echo %s >> %s' %
-                          (clazz_filename, notrelated_ut_map_file))
+                os.system(
+                    'echo %s >> %s' % (clazz_filename, notrelated_ut_map_file)
+                )
         else:
             if clazz_filename != '':
-                if clazz_filename not in related_file_list:  # xx.pb.cc in RELATED xx.pb.h not in RELATED
-                    os.system('echo %s >> %s' %
-                              (clazz_filename, notrelated_ut_map_file))
+                if (
+                    clazz_filename not in related_file_list
+                ):  # xx.pb.cc in RELATED xx.pb.h not in RELATED
+                    os.system(
+                        'echo %s >> %s'
+                        % (clazz_filename, notrelated_ut_map_file)
+                    )
     f.close()
 
 
@@ -83,10 +97,12 @@ def getCovinfo(rootPath, test):
     ut_map_path = '%s/build/ut_map/%s' % (rootPath, test)
     os.system(
         'cd %s && lcov --capture -d . -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
-        % ut_map_path)
+        % ut_map_path
+    )
     os.system(
         "cd %s && lcov --extract coverage.info '/paddle/paddle/fluid/framework/*' '/paddle/paddle/fluid/imperative/*' '/paddle/paddle/fluid/inference/*' '/paddle/paddle/fluid/memory/*' '/paddle/paddle/fluid/operators/*' '/paddle/paddle/fluid/string/*' '/paddle/paddle/fluid/distributed/*' '/paddle/paddle/fluid/platform/*' '/paddle/paddle/fluid/pybind/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
-        % ut_map_path)
+        % ut_map_path
+    )
     os.system('rm -rf %s/paddle' % ut_map_path)
     os.system('rm -rf %s/coverage.info' % ut_map_path)
     getFNDAFile(rootPath, test)

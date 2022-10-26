@@ -20,20 +20,22 @@ sys.path.append("..")
 from op_test_xpu import XPUOpTest
 import paddle
 import paddle.fluid as fluid
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 np.random.seed(10)
 
 
 class XPUTestExpandAsV2Op(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'expand_as_v2'
         self.use_dynamic_create_class = False
 
     class TestExpandAsV2XPUOp(XPUOpTest):
-
         def setUp(self):
             self.init_dtype()
             self.set_xpu()
@@ -65,7 +67,6 @@ class XPUTestExpandAsV2Op(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
     class TestExpandAsOpRank2(TestExpandAsV2XPUOp):
-
         def set_inputs(self):
             x = np.random.rand(10, 12).astype(self.dtype)
             self.inputs = {'X': x}
@@ -78,7 +79,6 @@ class XPUTestExpandAsV2Op(XPUOpTestWrapper):
             self.outputs = {'Out': output}
 
     class TestExpandAsOpRank3(TestExpandAsV2XPUOp):
-
         def set_inputs(self):
             x = np.random.rand(2, 3, 20).astype(self.dtype)
             self.inputs = {'X': x}
@@ -91,7 +91,6 @@ class XPUTestExpandAsV2Op(XPUOpTestWrapper):
             self.outputs = {'Out': output}
 
     class TestExpandAsOpRank4(TestExpandAsV2XPUOp):
-
         def set_inputs(self):
             x = np.random.rand(1, 1, 7, 16).astype(self.dtype)
             self.inputs = {'X': x}
@@ -104,7 +103,6 @@ class XPUTestExpandAsV2Op(XPUOpTestWrapper):
             self.outputs = {'Out': output}
 
     class TestExpandAsOpRank5(TestExpandAsV2XPUOp):
-
         def set_inputs(self):
             x = np.random.rand(1, 1, 7, 16, 1).astype(self.dtype)
             self.inputs = {'X': x}
@@ -117,7 +115,6 @@ class XPUTestExpandAsV2Op(XPUOpTestWrapper):
             self.outputs = {'Out': output}
 
     class TestExpandAsOpRank6(TestExpandAsV2XPUOp):
-
         def set_inputs(self):
             x = np.random.rand(1, 1, 7, 16, 1, 1).astype(self.dtype)
             self.inputs = {'X': x}
@@ -132,29 +129,28 @@ class XPUTestExpandAsV2Op(XPUOpTestWrapper):
 
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
-
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([2, 12, 14]).astype("float32")
-        x = fluid.layers.data(name='x',
-                              shape=[12, 14],
-                              append_batch_size=False,
-                              dtype="float32")
+        x = fluid.layers.data(
+            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
+        )
 
-        y = fluid.layers.data(name='target_tensor',
-                              shape=[2, 12, 14],
-                              append_batch_size=False,
-                              dtype="float32")
+        y = fluid.layers.data(
+            name='target_tensor',
+            shape=[2, 12, 14],
+            append_batch_size=False,
+            dtype="float32",
+        )
 
         out_1 = paddle.expand_as(x, y=y)
 
         exe = fluid.Executor(place=fluid.XPUPlace(0))
-        res_1 = exe.run(fluid.default_main_program(),
-                        feed={
-                            "x": input1,
-                            "target_tensor": input2
-                        },
-                        fetch_list=[out_1])
+        res_1 = exe.run(
+            fluid.default_main_program(),
+            feed={"x": input1, "target_tensor": input2},
+            fetch_list=[out_1],
+        )
         assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 

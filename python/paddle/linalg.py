@@ -38,7 +38,7 @@ from .tensor.linalg import triangular_solve  # noqa: F401
 from .tensor.linalg import lstsq
 
 __all__ = [
-    'cholesky',  #noqa
+    'cholesky',  # noqa
     'norm',
     'cond',
     'cov',
@@ -61,5 +61,5 @@ __all__ = [
     'solve',
     'cholesky_solve',
     'triangular_solve',
-    'lstsq'
+    'lstsq',
 ]

@@ -43,7 +43,6 @@ def fc_refer(matrix, with_bias, with_relu=False):
 
 
 class MatrixGenerate:
-
     def __init__(self, mb, ic, oc, h, w, bias_dims=2):
         self.input = np.random.random((mb, ic, h, w)).astype("float32")
         self.weights = np.random.random((ic * h * w, oc)).astype("float32")
@@ -54,7 +53,6 @@ class MatrixGenerate:
 
 
 class TestFCOp(OpTest):
-
     def config(self):
         self.with_bias = True
         self.with_relu = True
@@ -68,7 +66,7 @@ class TestFCOp(OpTest):
             self.inputs = {
                 'Input': self.matrix.input,
                 'W': self.matrix.weights,
-                'Bias': self.matrix.bias
+                'Bias': self.matrix.bias,
             }
         else:
             self.inputs = {'Input': self.matrix.input, 'W': self.matrix.weights}
@@ -88,7 +86,6 @@ class TestFCOp(OpTest):
 
 
 class TestFCOpNoBias1(TestFCOp):
-
     def config(self):
         self.with_bias = False
         self.with_relu = False
@@ -96,7 +93,6 @@ class TestFCOpNoBias1(TestFCOp):
 
 
 class TestFCOpNoBias2(TestFCOp):
-
     def config(self):
         self.with_bias = False
         self.with_relu = False
@@ -104,7 +100,6 @@ class TestFCOpNoBias2(TestFCOp):
 
 
 class TestFCOpNoBias4(TestFCOp):
-
     def config(self):
         self.with_bias = False
         self.with_relu = False
@@ -112,7 +107,6 @@ class TestFCOpNoBias4(TestFCOp):
 
 
 class TestFCOpWithBias1(TestFCOp):
-
     def config(self):
         self.with_bias = True
         self.with_relu = False
@@ -120,7 +114,6 @@ class TestFCOpWithBias1(TestFCOp):
 
 
 class TestFCOpWithBias2(TestFCOp):
-
     def config(self):
         self.with_bias = True
         self.with_relu = True
@@ -128,7 +121,6 @@ class TestFCOpWithBias2(TestFCOp):
 
 
 class TestFCOpWithBias3(TestFCOp):
-
     def config(self):
         self.with_bias = True
         self.with_relu = True
@@ -136,7 +128,6 @@ class TestFCOpWithBias3(TestFCOp):
 
 
 class TestFCOpWithPadding(TestFCOp):
-
     def config(self):
         self.with_bias = True
         self.with_relu = True
@@ -144,9 +135,7 @@ class TestFCOpWithPadding(TestFCOp):
 
 
 class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
-
     def test_api(self):
-
         def run_program(num_flatten_dims):
             paddle.seed(SEED)
             np.random.seed(SEED)
@@ -155,17 +144,22 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
 
             with program_guard(main_program, startup_program):
                 input = np.random.random([2, 2, 25]).astype("float32")
-                x = fluid.layers.data(name="x",
-                                      shape=[2, 2, 25],
-                                      append_batch_size=False,
-                                      dtype="float32")
+                x = fluid.layers.data(
+                    name="x",
+                    shape=[2, 2, 25],
+                    append_batch_size=False,
+                    dtype="float32",
+                )
 
-                out = paddle.static.nn.fc(x=x,
-                                          size=1,
-                                          num_flatten_dims=num_flatten_dims)
+                out = paddle.static.nn.fc(
+                    x=x, size=1, num_flatten_dims=num_flatten_dims
+                )
 
-            place = fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0)
+            place = (
+                fluid.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else fluid.CUDAPlace(0)
+            )
             exe = fluid.Executor(place=place)
             exe.run(startup_program)
             out = exe.run(main_program, feed={"x": input}, fetch_list=[out])
@@ -177,7 +171,6 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
 
 
 class TestFCOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.random((2, 4)).astype("float32")

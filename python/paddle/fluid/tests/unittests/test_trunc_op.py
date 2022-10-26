@@ -22,7 +22,6 @@ paddle.enable_static()
 
 
 class TestTruncOp(OpTest):
-
     def setUp(self):
         self.op_type = "trunc"
         self.python_api = paddle.trunc
@@ -42,7 +41,6 @@ class TestTruncOp(OpTest):
 
 
 class TestFloatTruncOp(TestTruncOp):
-
     def init_dtype_type(self):
         self.dtype = np.float32
         self.__class__.exist_fp64_check_grad = True
@@ -52,7 +50,6 @@ class TestFloatTruncOp(TestTruncOp):
 
 
 class TestIntTruncOp(TestTruncOp):
-
     def init_dtype_type(self):
         self.dtype = np.int32
         self.__class__.exist_fp64_check_grad = True
@@ -62,7 +59,6 @@ class TestIntTruncOp(TestTruncOp):
 
 
 class TestTruncAPI(unittest.TestCase):
-
     def setUp(self):
         self.shape = [20, 20]
         self.x = np.random.random((20, 20)).astype(np.float32)

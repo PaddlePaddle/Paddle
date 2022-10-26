@@ -83,37 +83,39 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         .. code-block:: python
 
           import paddle
-          from paddle.fluid.framework import _test_eager_guard
 
-          with _test_eager_guard():
-              paddle.seed(123)
-              channels = 3
-              x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
-              dense_x = paddle.to_tensor(x_data)
-              sparse_x = dense_x.to_sparse_coo(4)
-              batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
-              batch_norm_out = batch_norm(sparse_x)
-              print(batch_norm_out.shape)
-              # [1, 6, 6, 6, 3]
+          paddle.seed(123)
+          channels = 3
+          x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
+          dense_x = paddle.to_tensor(x_data)
+          sparse_x = dense_x.to_sparse_coo(4)
+          batch_norm = paddle.sparse.nn.BatchNorm(channels)
+          batch_norm_out = batch_norm(sparse_x)
+          print(batch_norm_out.shape)
+          # [1, 6, 6, 6, 3]
     """
 
-    def __init__(self,
-                 num_features,
-                 momentum=0.9,
-                 epsilon=1e-05,
-                 weight_attr=None,
-                 bias_attr=None,
-                 data_format='NDHWC',
-                 use_global_stats=None,
-                 name=None):
-        super(BatchNorm, self).__init__(num_features,
-                                        momentum=momentum,
-                                        epsilon=epsilon,
-                                        weight_attr=weight_attr,
-                                        bias_attr=bias_attr,
-                                        data_format=data_format,
-                                        use_global_stats=use_global_stats,
-                                        name=name)
+    def __init__(
+        self,
+        num_features,
+        momentum=0.9,
+        epsilon=1e-05,
+        weight_attr=None,
+        bias_attr=None,
+        data_format='NDHWC',
+        use_global_stats=None,
+        name=None,
+    ):
+        super(BatchNorm, self).__init__(
+            num_features,
+            momentum=momentum,
+            epsilon=epsilon,
+            weight_attr=weight_attr,
+            bias_attr=bias_attr,
+            data_format=data_format,
+            use_global_stats=use_global_stats,
+            name=name,
+        )
 
     def _check_data_format(self, input):
         if input != "NDHWC":
@@ -124,7 +126,8 @@ class BatchNorm(paddle.nn.BatchNorm1D):
 
         if self.training:
             warnings.warn(
-                "When training, we now always track global mean and variance.")
+                "When training, we now always track global mean and variance."
+            )
 
         if self._use_global_stats == None:
             self._use_global_stats = not self.training
@@ -136,9 +139,19 @@ class BatchNorm(paddle.nn.BatchNorm1D):
 
         if in_dynamic_mode():
             batch_norm_out, _, _, _, _, _ = _C_ops.sparse_batch_norm(
-                input, self.weight, self.bias, self._mean, self._variance,
-                self._momentum, self._epsilon, data_format, not self.training,
-                self._use_global_stats, trainable_statistics, False)
+                input,
+                self.weight,
+                self.bias,
+                self._mean,
+                self._variance,
+                self._momentum,
+                self._epsilon,
+                data_format,
+                not self.training,
+                self._use_global_stats,
+                trainable_statistics,
+                False,
+            )
             return batch_norm_out
         else:
             inputs = {
@@ -146,7 +159,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 'scale': self.weight,
                 'bias': self.bias,
                 'mean': self._mean,
-                'variance': self._variance
+                'variance': self._variance,
             }
             attrs = {
                 'momentum': self._momentum,
@@ -155,21 +168,26 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 'is_test': not self.training,
                 'use_global_stats': self._use_global_stats,
                 'trainable_statistics': trainable_statistics,
-                'fuse_with_relu': False
+                'fuse_with_relu': False,
             }
             op_type = 'sparse_batch_norm'
             helper = LayerHelper(op_type)
             dtype = input.dtype
             mean_out = helper.create_variable_for_type_inference(
-                dtype=dtype, stop_gradient=True)
+                dtype=dtype, stop_gradient=True
+            )
             variance_out = helper.create_variable_for_type_inference(
-                dtype=dtype, stop_gradient=True)
+                dtype=dtype, stop_gradient=True
+            )
             saved_mean = helper.create_variable_for_type_inference(
-                dtype=dtype, stop_gradient=True)
+                dtype=dtype, stop_gradient=True
+            )
             saved_variance = helper.create_variable_for_type_inference(
-                dtype=dtype, stop_gradient=True)
+                dtype=dtype, stop_gradient=True
+            )
             reserve_space = helper.create_variable_for_type_inference(
-                dtype=dtype, stop_gradient=True)
+                dtype=dtype, stop_gradient=True
+            )
             out = helper.create_sparse_variable_for_type_inference(dtype)
             outputs = {
                 "out": out,
@@ -177,12 +195,11 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 "variance_out": variance_out,
                 "saved_mean": saved_mean,
                 "saved_variance": saved_variance,
-                "reserve_space": reserve_space
+                "reserve_space": reserve_space,
             }
-            helper.append_op(type=op_type,
-                             inputs=inputs,
-                             outputs=outputs,
-                             attrs=attrs)
+            helper.append_op(
+                type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
+            )
             return out
 
 
@@ -251,6 +268,8 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. If it is set to False, this layer will not
              have trainable bias parameter. Default: None.
+        data_format(str, optional): Specify the input data format, may be "NCHW". Default "NCHW".
+        name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shapes:
         input: Tensor that the dimension from 2 to 5.
@@ -262,11 +281,9 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
           # required: gpu
           import paddle
-          import paddle.incubate.sparse.nn as nn
-          import numpy as np
+          import paddle.sparse.nn as nn
 
-          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-          x = paddle.to_tensor(x)
+          x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]], dtype='float32')
           x = x.to_sparse_coo(len(x.shape)-1)
 
           if paddle.is_compiled_with_cuda():
@@ -283,30 +300,48 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
               #                 [-0.88415730,  1.57439375]])
     """
 
-    def __init__(self,
-                 num_features,
-                 momentum=0.9,
-                 epsilon=1e-05,
-                 weight_attr=None,
-                 bias_attr=None,
-                 data_format='NCHW',
-                 name=None):
-        super(SyncBatchNorm,
-              self).__init__(num_features, momentum, epsilon, weight_attr,
-                             bias_attr, data_format, name)
+    def __init__(
+        self,
+        num_features,
+        momentum=0.9,
+        epsilon=1e-05,
+        weight_attr=None,
+        bias_attr=None,
+        data_format='NCHW',
+        name=None,
+    ):
+        super(SyncBatchNorm, self).__init__(
+            num_features,
+            momentum,
+            epsilon,
+            weight_attr,
+            bias_attr,
+            data_format,
+            name,
+        )
 
     def forward(self, x):
         self._check_data_format()
         sync_batch_norm_out, _, _, _, _, _ = _C_ops.sparse_sync_batch_norm_(
-            x, self.weight, self.bias, self._mean, self._variance,
-            self._momentum, self._epsilon, self._data_format, not self.training,
-            False, False, False)
+            x,
+            self.weight,
+            self.bias,
+            self._mean,
+            self._variance,
+            self._momentum,
+            self._epsilon,
+            self._data_format,
+            not self.training,
+            False,
+            False,
+            False,
+        )
         return sync_batch_norm_out
 
     @classmethod
     def convert_sync_batchnorm(cls, layer):
         r"""
-        Helper function to convert :class: `paddle.incubate.sparse.nn.BatchNorm` layers in the model to :class: `paddle.incubate.sparse.nn.SyncBatchNorm` layers.
+        Helper function to convert :class: `paddle.sparse.nn.BatchNorm` layers in the model to :class: `paddle.sparse.nn.SyncBatchNorm` layers.
 
         Parameters:
             layer(paddle.nn.Layer): model containing one or more `BatchNorm` layers.
@@ -319,7 +354,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
             .. code-block:: python
 
                 import paddle
-                import paddle.incubate.sparse.nn as nn
+                import paddle.sparse.nn as nn
 
                 model = paddle.nn.Sequential(nn.Conv3D(3, 5, 3), nn.BatchNorm(5))
                 sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -327,27 +362,41 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
-            if layer._weight_attr != None and not isinstance(
-                    layer._weight_attr,
-                    bool) and layer._weight_attr.name != None:
+            if (
+                layer._weight_attr != None
+                and not isinstance(layer._weight_attr, bool)
+                and layer._weight_attr.name != None
+            ):
                 layer._weight_attr.name = layer._weight_attr.name + '_sync'
-            if layer._bias_attr != None and not isinstance(
-                    layer._bias_attr, bool) and layer._bias_attr.name != None:
+            if (
+                layer._bias_attr != None
+                and not isinstance(layer._bias_attr, bool)
+                and layer._bias_attr.name != None
+            ):
                 layer._bias_attr.name = layer._bias_attr.name + '_sync'
 
-            #convert sparse BatchNorm
+            # convert sparse BatchNorm
             if isinstance(layer, BatchNorm):
-                layer_output = SyncBatchNorm(layer._num_features,
-                                             layer._momentum, layer._epsilon,
-                                             layer._weight_attr,
-                                             layer._bias_attr,
-                                             layer._data_format, layer._name)
-            #convert dense BatchNorm
+                layer_output = SyncBatchNorm(
+                    layer._num_features,
+                    layer._momentum,
+                    layer._epsilon,
+                    layer._weight_attr,
+                    layer._bias_attr,
+                    layer._data_format,
+                    layer._name,
+                )
+            # convert dense BatchNorm
             else:
                 layer_output = paddle.nn.SyncBatchNorm(
-                    layer._num_features, layer._momentum, layer._epsilon,
-                    layer._weight_attr, layer._bias_attr, layer._data_format,
-                    layer._name)
+                    layer._num_features,
+                    layer._momentum,
+                    layer._epsilon,
+                    layer._weight_attr,
+                    layer._bias_attr,
+                    layer._data_format,
+                    layer._name,
+                )
 
             if layer._weight_attr != False and layer._bias_attr != False:
                 with no_grad():
@@ -357,7 +406,8 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
             layer_output._variance = layer._variance
 
         for name, sublayer in layer.named_children():
-            layer_output.add_sublayer(name,
-                                      cls.convert_sync_batchnorm(sublayer))
+            layer_output.add_sublayer(
+                name, cls.convert_sync_batchnorm(sublayer)
+            )
         del layer
         return layer_output

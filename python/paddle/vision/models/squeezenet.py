@@ -24,25 +24,28 @@ from paddle.utils.download import get_weights_path_from_url
 __all__ = []
 
 model_urls = {
-    'squeezenet1_0':
-    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/SqueezeNet1_0_pretrained.pdparams',
-     '30b95af60a2178f03cf9b66cd77e1db1'),
-    'squeezenet1_1':
-    ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/SqueezeNet1_1_pretrained.pdparams',
-     'a11250d3a1f91d7131fd095ebbf09eee'),
+    'squeezenet1_0': (
+        'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/SqueezeNet1_0_pretrained.pdparams',
+        '30b95af60a2178f03cf9b66cd77e1db1',
+    ),
+    'squeezenet1_1': (
+        'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/SqueezeNet1_1_pretrained.pdparams',
+        'a11250d3a1f91d7131fd095ebbf09eee',
+    ),
 }
 
 
 class MakeFireConv(nn.Layer):
-
     def __init__(self, input_channels, output_channels, filter_size, padding=0):
         super(MakeFireConv, self).__init__()
-        self._conv = Conv2D(input_channels,
-                            output_channels,
-                            filter_size,
-                            padding=padding,
-                            weight_attr=ParamAttr(),
-                            bias_attr=ParamAttr())
+        self._conv = Conv2D(
+            input_channels,
+            output_channels,
+            filter_size,
+            padding=padding,
+            weight_attr=ParamAttr(),
+            bias_attr=ParamAttr(),
+        )
 
     def forward(self, x):
         x = self._conv(x)
@@ -51,16 +54,19 @@ class MakeFireConv(nn.Layer):
 
 
 class MakeFire(nn.Layer):
-
-    def __init__(self, input_channels, squeeze_channels, expand1x1_channels,
-                 expand3x3_channels):
+    def __init__(
+        self,
+        input_channels,
+        squeeze_channels,
+        expand1x1_channels,
+        expand3x3_channels,
+    ):
         super(MakeFire, self).__init__()
         self._conv = MakeFireConv(input_channels, squeeze_channels, 1)
         self._conv_path1 = MakeFireConv(squeeze_channels, expand1x1_channels, 1)
-        self._conv_path2 = MakeFireConv(squeeze_channels,
-                                        expand3x3_channels,
-                                        3,
-                                        padding=1)
+        self._conv_path2 = MakeFireConv(
+            squeeze_channels, expand3x3_channels, 3, padding=1
+        )
 
     def forward(self, inputs):
         x = self._conv(inputs)
@@ -109,17 +115,21 @@ class SqueezeNet(nn.Layer):
         self.with_pool = with_pool
 
         supported_versions = ['1.0', '1.1']
-        assert version in supported_versions, \
-            "supported versions are {} but input version is {}".format(
-                supported_versions, version)
+        assert (
+            version in supported_versions
+        ), "supported versions are {} but input version is {}".format(
+            supported_versions, version
+        )
 
         if self.version == "1.0":
-            self._conv = Conv2D(3,
-                                96,
-                                7,
-                                stride=2,
-                                weight_attr=ParamAttr(),
-                                bias_attr=ParamAttr())
+            self._conv = Conv2D(
+                3,
+                96,
+                7,
+                stride=2,
+                weight_attr=ParamAttr(),
+                bias_attr=ParamAttr(),
+            )
             self._pool = MaxPool2D(kernel_size=3, stride=2, padding=0)
             self._conv1 = MakeFire(96, 16, 64, 64)
             self._conv2 = MakeFire(128, 16, 64, 64)
@@ -130,13 +140,15 @@ class SqueezeNet(nn.Layer):
             self._conv7 = MakeFire(384, 64, 256, 256)
             self._conv8 = MakeFire(512, 64, 256, 256)
         else:
-            self._conv = Conv2D(3,
-                                64,
-                                3,
-                                stride=2,
-                                padding=1,
-                                weight_attr=ParamAttr(),
-                                bias_attr=ParamAttr())
+            self._conv = Conv2D(
+                3,
+                64,
+                3,
+                stride=2,
+                padding=1,
+                weight_attr=ParamAttr(),
+                bias_attr=ParamAttr(),
+            )
             self._pool = MaxPool2D(kernel_size=3, stride=2, padding=0)
             self._conv1 = MakeFire(64, 16, 64, 64)
             self._conv2 = MakeFire(128, 16, 64, 64)
@@ -148,11 +160,9 @@ class SqueezeNet(nn.Layer):
             self._conv8 = MakeFire(512, 64, 256, 256)
 
         self._drop = Dropout(p=0.5, mode="downscale_in_infer")
-        self._conv9 = Conv2D(512,
-                             num_classes,
-                             1,
-                             weight_attr=ParamAttr(),
-                             bias_attr=ParamAttr())
+        self._conv9 = Conv2D(
+            512, num_classes, 1, weight_attr=ParamAttr(), bias_attr=ParamAttr()
+        )
         self._avg_pool = AdaptiveAvgPool2D(1)
 
     def forward(self, inputs):
@@ -195,10 +205,14 @@ class SqueezeNet(nn.Layer):
 def _squeezenet(arch, version, pretrained, **kwargs):
     model = SqueezeNet(version, **kwargs)
     if pretrained:
-        assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
-            arch)
-        weight_path = get_weights_path_from_url(model_urls[arch][0],
-                                                model_urls[arch][1])
+        assert (
+            arch in model_urls
+        ), "{} model do not have a pretrained model now, you should set pretrained=False".format(
+            arch
+        )
+        weight_path = get_weights_path_from_url(
+            model_urls[arch][0], model_urls[arch][1]
+        )
         param = paddle.load(weight_path)
         model.set_dict(param)
 

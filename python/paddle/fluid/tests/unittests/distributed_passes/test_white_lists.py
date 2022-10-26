@@ -13,12 +13,17 @@
 # limitations under the License.
 
 import unittest
-from paddle.distributed.passes.pass_base import register_pass, PassBase, new_pass
-from paddle.distributed.passes.pass_base import _make_rule_from_white_lists_dict as make_white_lists_rule
+from paddle.distributed.passes.pass_base import (
+    register_pass,
+    PassBase,
+    new_pass,
+)
+from paddle.distributed.passes.pass_base import (
+    _make_rule_from_white_lists_dict as make_white_lists_rule,
+)
 
 
 class TestConcretePass(PassBase):
-
     def __init__(self):
         super(TestConcretePass, self).__init__()
 
@@ -34,41 +39,35 @@ class TestConcretePass(PassBase):
 
 @register_pass("A")
 class A(TestConcretePass):
-
     def __init__(self):
         super(A, self).__init__()
 
 
 @register_pass("B")
 class B(TestConcretePass):
-
     def __init__(self):
         super(B, self).__init__()
 
 
 @register_pass("C")
 class C(TestConcretePass):
-
     def __init__(self):
         super(C, self).__init__()
 
 
 @register_pass("D")
 class D(TestConcretePass):
-
     def __init__(self):
         super(D, self).__init__()
 
 
 @register_pass("E")
 class E(TestConcretePass):
-
     def __init__(self):
         super(E, self).__init__()
 
 
 class TestMakeWhiteListsRule(unittest.TestCase):
-
     def test_main(self):
         before_white_lists = {"A": ["B", "C"]}
         after_white_lists = {"D": ["C"]}

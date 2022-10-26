@@ -32,10 +32,12 @@ def function(x: A) -> A:
 
 
 class TestTransformWhileLoop(unittest.TestCase):
-
     def setUp(self):
-        self.place = fluid.CUDAPlace(
-            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
         self.x = np.zeros(shape=(1), dtype=np.int32)
         self._init_dyfunc()
 
@@ -69,7 +71,6 @@ class TestTransformWhileLoop(unittest.TestCase):
 
 
 class TestTypeHint(TestTransformWhileLoop):
-
     def _init_dyfunc(self):
         self.dyfunc = function
 

@@ -42,7 +42,7 @@ enum class NvtxRangeColor : uint32_t {
 };
 
 void CudaNvtxRangePush(const std::string& name,
-                       const NvtxRangeColor color = NvtxRangeColor::Blue);
+                       const NvtxRangeColor color = NvtxRangeColor::Green);
 
 void CudaNvtxRangePop();
 #endif

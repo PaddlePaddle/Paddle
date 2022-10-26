@@ -94,11 +94,14 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
         raise ValueError(
             "The input path MUST be format of dirname/file_prefix "
             "[dirname\\file_prefix in Windows system], but "
-            "the file_prefix is empty in received path: {}".format(path))
+            "the file_prefix is empty in received path: {}".format(path)
+        )
     save_file = path + '.onnx'
 
-    p2o.dygraph2onnx(layer,
-                     save_file,
-                     input_spec=input_spec,
-                     opset_version=opset_version,
-                     **configs)
+    p2o.dygraph2onnx(
+        layer,
+        save_file,
+        input_spec=input_spec,
+        opset_version=opset_version,
+        **configs
+    )

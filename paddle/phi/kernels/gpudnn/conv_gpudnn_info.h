@@ -18,15 +18,14 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
 DECLARE_int64(conv_workspace_size_limit);
 DECLARE_bool(cudnn_exhaustive_search);
 DECLARE_int64(cudnn_exhaustive_search_times);
 
-namespace paddle {
-namespace operators {
+namespace phi {
+
 #ifdef PADDLE_WITH_HIP
 static constexpr size_t kNUM_CUDNN_FWD_ALGS = 1;
 static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS = 1;
@@ -39,5 +38,4 @@ static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS =
     CUDNN_CONVOLUTION_BWD_DATA_ALGO_COUNT;
 #endif
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
