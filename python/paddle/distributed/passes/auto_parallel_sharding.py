@@ -898,27 +898,31 @@ def re_order_program(block, param_grads):
     last_op = block.ops[-1]
     pname_to_op = {}
     num_ops = len(block.ops)
+    remove_op_indices = []
     # TODO support case when optimizer is not the last op
     if is_optimizer_op(last_op) and last_op.type in _supported_optimizer_type:
-        # record and remove optimizer
+        # record optimizer
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type not in _supported_optimizer_type:
                 break
-
             assert len(op.input("Param")) == 1
-            pname_to_op[op.input("Param")[0]] = block.ops.pop(idx)
-            block.desc._remove_op(idx, idx + 1)
+            pname_to_op[op.input("Param")[0]] = block.ops[idx]
+            remove_op_indices.append(idx)
         assert len(use_order) == len(pname_to_op)
 
-        # re-append
+        # append new opts
         for pname in use_order:
             new_op_desc = block.append_op(type='nop').desc
             new_op_desc.copy_from(pname_to_op[pname].desc)
 
+        # remove old opts
+        for idx in remove_op_indices:
+            block._remove_op(idx, sync=False)
+
+        block._sync_with_cpp()
         assert len(block.ops) == num_ops
 
     # TODO reorder gradient clip order
-
     logging.info(
         "Sharding the Order of param being used: {}.".format(use_order))
     return [pname_to_pg_pairs[p] for p in use_order]
