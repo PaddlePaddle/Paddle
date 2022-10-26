@@ -155,7 +155,8 @@ class ShardingPass(PassBase):
     def _build_sharding_infos(self, main_block, params_grads):
 
         # order params
-        params_grads = re_order_program(main_block, params_grads)
+        params_grads = re_order_program(main_block, params_grads,
+                                        self._dist_context)
 
         # partition
         for dp_group in self.dp_groups:
@@ -883,7 +884,7 @@ class ShardingInfo(object):
         return self.params_grads.get(param_name, None)
 
 
-def re_order_program(block, param_grads):
+def re_order_program(block, param_grads, dist_context):
 
     # record order
     pname_to_pg_pairs = {}
@@ -911,14 +912,17 @@ def re_order_program(block, param_grads):
             if op.type not in _supported_optimizer_type:
                 break
             assert len(op.input("Param")) == 1
-            pname_to_op[op.input("Param")[0]] = block.ops[idx]
+            pname_to_op[op.input("Param")[0]] = op
             remove_op_indices.append(idx)
         assert len(use_order) == len(pname_to_op)
 
         # append new opts
         for pname in use_order:
-            new_op_desc = block.append_op(type='nop').desc
-            new_op_desc.copy_from(pname_to_op[pname].desc)
+            new_op = block.append_op(type='nop')
+            new_op.desc.copy_from(pname_to_op[pname].desc)
+            dist_context.set_op_dist_attr_for_program(
+                new_op,
+                dist_context.get_op_dist_attr_for_program(pname_to_op[pname]))
 
         # remove old opts
         for idx in remove_op_indices:
