@@ -110,11 +110,14 @@ class ShardingPass(PassBase):
         # 3. sub-block used for double backward
 
         self._build_sharding_groups(main_block, params_grads)
-        self._shard_optimizer(main_block, startup_block, params_grads, context)
-        self._shard_gradient_synchronization(main_block)
-        self._shard_parameter(main_block, startup_block)
+        for block in main_program.blocks:
+            self._shard_optimizer(block, startup_block, params_grads, context)
+            self._shard_gradient_synchronization(block)
+            self._shard_parameter(block, startup_block)
 
         context.set_attr("params_grads", self.shared_params_grads)
+
+        self._optimization_pass(main_program, startup_program)
 
     def _build_sharding_groups(self, main_block, params_grads):
         self._collective_data_parallel_groups(main_block)
@@ -143,7 +146,7 @@ class ShardingPass(PassBase):
     def _build_sharding_infos(self, main_block, params_grads):
 
         # order params
-        params_grads = _order_param_grads(main_block, params_grads)
+        params_grads = re_order_program(main_block, params_grads)
 
         # partition
         for dp_group in self.dp_groups:
@@ -523,6 +526,16 @@ class ShardingPass(PassBase):
         main_block._sync_with_cpp()
         startup_block._sync_with_cpp()
 
+    def _optimization_pass(self, main_program, startup_program):
+
+        with paddle.static.program_guard(main_program, startup_program):
+            _fuse_overlap_gradient_comm()
+            # TODO support multiple sub_blocks
+            if self.stage == 2:
+                _fuse_overlap_parameter_comm_stage_two()
+            elif self.stage == 3:
+                _fuse_overlap_parameter_comm_stage_three()
+
 
 def _insert_init_and_broadcast_op(block, insert_idx, varname, local_rank,
                                   root_rank, ring_id, op_role, dist_context):
@@ -746,9 +759,9 @@ def partition_by_use_order(params, group_size):
 
 
 def partition_by_greedy_even(params, group_size):
-    # TODO(JZ-LIANG) support multiple partition methods
-    # method1: greedy even but unorder
-    # method2: roughly even with oreder
+    """
+    use greedy alogrithm to partition parameter as even as possible.
+    """
     mapping = {}
     for rank_ in range(group_size):
         mapping[rank_] = []
@@ -859,7 +872,9 @@ class ShardingInfo(object):
         return self.params_grads.get(param_name, None)
 
 
-def _order_param_grads(block, param_grads):
+def re_order_program(block, param_grads):
+
+    # record order
     pname_to_pg_pairs = {}
     for p, g in param_grads:
         pname_to_pg_pairs[p.name] = (p, g)
@@ -873,6 +888,44 @@ def _order_param_grads(block, param_grads):
         if len(use_order) == len(pname_to_pg_pairs):
             break
 
+    # reorder optimzier
+    last_op = block.ops
+    pname_to_op = {}
+    num_ops = len(block.ops)
+    # TODO support case when optimizer is not the last op
+    if is_optimizer_op(last_op) and last_op.type in _supported_optimizer_type:
+        # record and remove optimizer
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if op.type not in _supported_optimizer_type:
+                break
+
+            assert len(op.input("Param")) == 1
+            block.desc._remove_op(idx, idx + 1)
+            pname_to_op[op.input("Param")] = block.ops.pop(idx)
+        assert len(use_order) == len(pname_to_op)
+
+        # re-append
+        for pname in use_order:
+            new_op_desc = block.append_op(type='nop').desc
+            new_op_desc.copy_from(pname_to_op[pname].desc)
+
+        assert len(block.ops) == num_ops
+
+    # TODO reorder gradient clip order
+
     logging.info(
         "Sharding the Order of param being used: {}.".format(use_order))
     return [pname_to_pg_pairs[p] for p in use_order]
+
+
+def _fuse_overlap_gradient_comm():
+    pass
+
+
+def _fuse_overlap_parameter_comm_stage_two(fuse_size):
+    main_program = default_main_program()
+    startup_program = default_startup_program()
+
+
+def _fuse_overlap_parameter_comm_stage_three(fuse_size):
+    pass
