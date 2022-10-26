@@ -716,7 +716,7 @@ def crop(x, shape=None, offsets=None, name=None):
         shape = x.shape
 
     if in_dygraph_mode():
-        return _C_ops.crop_tensor(x, shape, offsets)
+        return _C_ops.crop(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}

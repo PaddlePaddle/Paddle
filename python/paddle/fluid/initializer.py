@@ -435,7 +435,7 @@ class NormalInitializer(Initializer):
 
         if in_dygraph_mode():
             place = _current_expected_place()
-            out_var = _C_ops.gaussian_random(
+            out_var = _C_ops.gaussian(
                 var.shape,
                 self._mean,
                 self._std_dev,
@@ -737,7 +737,7 @@ class XavierInitializer(Initializer):
 
                 if in_dygraph_mode():
                     place = _current_expected_place()
-                    out_var = _C_ops.gaussian_random(
+                    out_var = _C_ops.gaussian(
                         out_var.shape, 0.0, std, self._seed, out_dtype, place
                     )
                 else:
@@ -949,7 +949,7 @@ class MSRAInitializer(Initializer):
                 std = gain / math.sqrt(float(fan_in))
                 if in_dygraph_mode():
                     place = _current_expected_place()
-                    out_var = _C_ops.gaussian_random(
+                    out_var = _C_ops.gaussian(
                         out_var.shape, 0.0, std, self._seed, out_dtype, place
                     )
                 else:

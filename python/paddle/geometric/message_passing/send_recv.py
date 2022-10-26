@@ -133,7 +133,7 @@ def send_u_recv(
         return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
-        return _C_ops.graph_send_recv(
+        return _C_ops.send_u_recv(
             x, src_index, dst_index, reduce_op.upper(), out_size
         )
 
@@ -320,7 +320,7 @@ def send_ue_recv(
         return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
-        return _C_ops.graph_send_ue_recv(
+        return _C_ops.send_ue_recv(
             x,
             y,
             src_index,
@@ -464,12 +464,10 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         y = 1.0 / (y + 1e-12)
 
     if in_dygraph_mode():
-        return _C_ops.graph_send_uv(
-            x, y, src_index, dst_index, message_op.upper()
-        )
+        return _C_ops.send_uv(x, y, src_index, dst_index, message_op.upper())
     else:
         if _in_legacy_dygraph():
-            return _legacy_C_ops.graph_send_uv(
+            return _legacy_C_ops.send_uv(
                 x, y, src_index, dst_index, "message_op", message_op.upper()
             )
         else:
@@ -502,7 +500,7 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
             }
             attrs = {'message_op': message_op.upper()}
             helper.append_op(
-                type="graph_send_uv",
+                type="send_uv",
                 inputs=inputs,
                 attrs=attrs,
                 outputs={"out": out},

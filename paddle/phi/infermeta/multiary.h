@@ -506,21 +506,21 @@ void Yolov3LossInferMeta(const MetaTensor& x,
                          MetaTensor* objectness_mask,
                          MetaTensor* gt_match_mask);
 
-void GraphSendUERecvInferMeta(const MetaTensor& x,
-                              const MetaTensor& y,
-                              const MetaTensor& src_index,
-                              const MetaTensor& dst_index,
-                              const std::string& message_op,
-                              const std::string& reduce_op,
-                              const IntArray& out_size,
-                              MetaTensor* out,
-                              MetaTensor* dst_count);
+void SendUERecvInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const MetaTensor& src_index,
+                         const MetaTensor& dst_index,
+                         const std::string& message_op,
+                         const std::string& reduce_op,
+                         const IntArray& out_size,
+                         MetaTensor* out,
+                         MetaTensor* dst_count);
 
-void GraphSendUVInferMeta(const MetaTensor& x,
-                          const MetaTensor& y,
-                          const MetaTensor& src_index,
-                          const MetaTensor& dst_index,
-                          const std::string& message_op,
-                          MetaTensor* out);
+void SendUVInferMeta(const MetaTensor& x,
+                     const MetaTensor& y,
+                     const MetaTensor& src_index,
+                     const MetaTensor& dst_index,
+                     const std::string& message_op,
+                     MetaTensor* out);
 
 }  // namespace phi

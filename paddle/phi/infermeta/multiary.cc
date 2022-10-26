@@ -2751,15 +2751,15 @@ void Yolov3LossInferMeta(const MetaTensor& x,
   gt_match_mask->set_dtype(x.dtype());
 }
 
-void GraphSendUERecvInferMeta(const MetaTensor& x,
-                              const MetaTensor& y,
-                              const MetaTensor& src_index,
-                              const MetaTensor& dst_index,
-                              const std::string& message_op,
-                              const std::string& reduce_op,
-                              const IntArray& out_size,
-                              MetaTensor* out,
-                              MetaTensor* dst_count) {
+void SendUERecvInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const MetaTensor& src_index,
+                         const MetaTensor& dst_index,
+                         const std::string& message_op,
+                         const std::string& reduce_op,
+                         const IntArray& out_size,
+                         MetaTensor* out,
+                         MetaTensor* dst_count) {
   auto src_index_dims = src_index.dims();
   if (src_index_dims.size() == 2) {
     PADDLE_ENFORCE_EQ(src_index_dims[1],
@@ -2839,12 +2839,12 @@ void GraphSendUERecvInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(out_dims_array));
 }
 
-void GraphSendUVInferMeta(const MetaTensor& x,
-                          const MetaTensor& y,
-                          const MetaTensor& src_index,
-                          const MetaTensor& dst_index,
-                          const std::string& message_op,
-                          MetaTensor* out) {
+void SendUVInferMeta(const MetaTensor& x,
+                     const MetaTensor& y,
+                     const MetaTensor& src_index,
+                     const MetaTensor& dst_index,
+                     const std::string& message_op,
+                     MetaTensor* out) {
   auto src_index_dims = src_index.dims();
   if (src_index_dims.size() == 2) {
     PADDLE_ENFORCE_EQ(src_index_dims[1],

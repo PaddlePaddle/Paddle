@@ -145,15 +145,15 @@
     func : fft_r2c
   backward : fft_r2c_grad
 
-- op : graph_send_uv
+- op : send_uv
   args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD")
   output : Tensor(out)
   infer_meta :
-    func : GraphSendUVInferMeta
+    func : SendUVInferMeta
   kernel :
-    func : graph_send_uv
+    func : send_uv
     data_type : x
-  backward : graph_send_uv_grad
+  backward : send_uv_grad
 
 - op : lgamma
   args : (Tensor x)

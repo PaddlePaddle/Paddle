@@ -52,7 +52,7 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Acosh, "acosh", );    // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Atanh, "atanh", );    // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Square, "square", );  // NOLINT
 
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(BRelu, "brelu", "t_min" comma "t_max");
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardTanh, "hard_tanh", "t_min" comma "t_max");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(LeakyRelu, "leaky_relu", "alpha");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(ThresholdedRelu,
                                "thresholded_relu",
@@ -239,6 +239,8 @@ PD_REGISTER_BASE_KERNEL_NAME(sqrt_grad_grad, sqrt_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(rsqrt_grad_grad, rsqrt_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(celu_grad_grad, celu_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(square_grad_grad, square_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(brelu, hard_tanh);
+PD_REGISTER_BASE_KERNEL_NAME(brelu_grad, hard_tanh_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(cos_grad, phi::CosGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(tan_grad, phi::TanGradOpArgumentMapping);
@@ -274,7 +276,7 @@ PD_REGISTER_ARG_MAPPING_FN(tanh_grad_grad,
                            phi::TanhDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(tanh_triple_grad,
                            phi::TanhTripleGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(brelu_grad, phi::BReluGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(brelu_grad, phi::HardTanhGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(leaky_relu, phi::LeakyReluOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(leaky_relu_grad,
                            phi::LeakyReluGradOpArgumentMapping);

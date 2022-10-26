@@ -12,18 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/crop_kernel.h"
 
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/crop_kernel_impl.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void CropTensorGradKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& out_grad,
-                          const IntArray& offsets,
-                          DenseTensor* x_grad);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(
+    crop, GPU, ALL_LAYOUT, phi::CropKernel, float, double, int, int64_t) {}

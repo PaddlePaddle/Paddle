@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/graph_send_uv_kernel.h"
-#include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"
-#include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
+#include "paddle/phi/kernels/send_uv_kernel.h"
 
 #include <thrust/device_vector.h>
 
@@ -22,6 +20,8 @@
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"
+#include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 
 namespace phi {
 
@@ -142,13 +142,13 @@ void GraphSendUVOpCUDAKernelLaunchHelper(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void GraphSendUVKernel(const Context& ctx,
-                       const DenseTensor& x,
-                       const DenseTensor& y,
-                       const DenseTensor& src_index,
-                       const DenseTensor& dst_index,
-                       const std::string& message_op,
-                       DenseTensor* out) {
+void SendUVKernel(const Context& ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  const DenseTensor& src_index,
+                  const DenseTensor& dst_index,
+                  const std::string& message_op,
+                  DenseTensor* out) {
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
     GraphSendUVOpCUDAKernelLaunchHelper<Context, T, int32_t>(
@@ -161,10 +161,10 @@ void GraphSendUVKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(graph_send_uv,
+PD_REGISTER_KERNEL(send_uv,
                    GPU,
                    ALL_LAYOUT,
-                   phi::GraphSendUVKernel,
+                   phi::SendUVKernel,
                    float,
                    double,
                    int,

@@ -297,17 +297,6 @@
   kernel :
     func : bmm_grad
 
-- backward_op : brelu_grad
-  forward : brelu (Tensor x, float t_min, float t_max) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float t_min, float t_max)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : brelu_grad
-  inplace : (out_grad -> x_grad)
-
 - backward_op : broadcast_tensors_grad
   forward : broadcast_tensors (Tensor[] input) -> Tensor[](out)
   args : (Tensor[] input, Tensor[] out_grad)
@@ -522,14 +511,14 @@
     func : cosh_grad
   inplace : (out_grad -> x_grad)
 
-- backward_op : crop_tensor_grad
-  forward : crop_tensor (Tensor x, IntArray shape, IntArray offsets) -> Tensor(out)
+- backward_op : crop_grad
+  forward : crop (Tensor x, IntArray shape, IntArray offsets) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, IntArray offsets)
   output : Tensor(x_grad)
   infer_meta :
-    func : CropTensorGradInferMeta
+    func : CropGradInferMeta
   kernel :
-    func : crop_tensor_grad
+    func : crop_grad
     data_type : x
 
 - backward_op : cross_entropy_with_softmax_grad
@@ -910,30 +899,6 @@
   kernel :
     func : gelu_grad
 
-- backward_op : graph_send_recv_grad
-  forward : graph_send_recv (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0}) -> Tensor(out), Tensor(dst_count)
-  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str reduce_op = "SUM")
-  output : Tensor(x_grad)
-  infer_meta :
-    func : GeneralUnaryGradInferMeta
-    param : [x]
-  kernel :
-    func : graph_send_recv_grad
-    data_type : out_grad
-  optional: out, dst_count
-
-- backward_op : graph_send_ue_recv_grad
-  forward : graph_send_ue_recv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op, str reduce_op, IntArray out_size) -> Tensor(out), Tensor(dst_count)
-  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str message_op, str reduce_op)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : graph_send_ue_recv_grad
-    data_type : out_grad
-  optional: out, dst_count
-
 - backward_op : grid_sample_grad
   forward : grid_sample (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners) -> Tensor(out)
   args : (Tensor x, Tensor grid, Tensor out_grad, str mode, str padding_mode, bool align_corners)
@@ -999,6 +964,17 @@
     param : [x]
   kernel :
     func : hard_swish_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : hardtanh_grad
+  forward : hardtanh (Tensor x, float t_min, float t_max) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float t_min, float t_max)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hard_tanh_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : hierarchical_sigmoid_grad
@@ -2041,6 +2017,30 @@
     param : [out]
   kernel :
     func : selu_grad
+
+- backward_op : send_u_recv_grad
+  forward : send_u_recv (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0}) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str reduce_op = "SUM")
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : send_u_recv_grad
+    data_type : out_grad
+  optional: out, dst_count
+
+- backward_op : send_ue_recv_grad
+  forward : send_ue_recv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op, str reduce_op, IntArray out_size) -> Tensor(out), Tensor(dst_count)
+  args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out, Tensor dst_count, Tensor out_grad, str message_op, str reduce_op)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : send_ue_recv_grad
+    data_type : out_grad
+  optional: out, dst_count
 
 - backward_op : sigmoid_cross_entropy_with_logits_grad
   forward : sigmoid_cross_entropy_with_logits (Tensor x, Tensor label, bool normalize, int ignore_index) -> Tensor(out)

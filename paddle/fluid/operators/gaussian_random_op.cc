@@ -132,7 +132,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random,
                             GaussianRandomInferShapeFunctor,
-                            PD_INFER_META(phi::GaussianRandomInferMeta));
+                            PD_INFER_META(phi::GaussianInferMeta));
 
 REGISTER_OPERATOR(
     gaussian_random,

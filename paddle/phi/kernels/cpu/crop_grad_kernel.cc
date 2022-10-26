@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/crop_tensor_grad_kernel.h"
+#include "paddle/phi/kernels/crop_grad_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/crop_tensor_grad_kernel_impl.h"
+#include "paddle/phi/kernels/impl/crop_grad_kernel_impl.h"
 
-PD_REGISTER_KERNEL(crop_tensor_grad,
-                   GPU,
+PD_REGISTER_KERNEL(crop_grad,
+                   CPU,
                    ALL_LAYOUT,
-                   phi::CropTensorGradKernel,
+                   phi::CropGradKernel,
                    float,
                    double,
                    int,

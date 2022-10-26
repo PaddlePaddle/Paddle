@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/graph_send_uv_grad_kernel.h"
+#include "paddle/phi/kernels/send_uv_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
@@ -229,15 +229,15 @@ void GraphSendUVGradOpKernelLaunchHelper(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void GraphSendUVGradKernel(const Context& ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           const DenseTensor& src_index,
-                           const DenseTensor& dst_index,
-                           const DenseTensor& out_grad,
-                           const std::string& message_op,
-                           DenseTensor* x_grad,
-                           DenseTensor* y_grad) {
+void SendUVGradKernel(const Context& ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      const DenseTensor& src_index,
+                      const DenseTensor& dst_index,
+                      const DenseTensor& out_grad,
+                      const std::string& message_op,
+                      DenseTensor* x_grad,
+                      DenseTensor* y_grad) {
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
     GraphSendUVGradOpKernelLaunchHelper<Context, T, int32_t>(
@@ -250,10 +250,10 @@ void GraphSendUVGradKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(graph_send_uv_grad,
+PD_REGISTER_KERNEL(send_uv_grad,
                    CPU,
                    ALL_LAYOUT,
-                   phi::GraphSendUVGradKernel,
+                   phi::SendUVGradKernel,
                    float,
                    double,
                    int,
