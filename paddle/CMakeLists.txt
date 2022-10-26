@@ -61,7 +61,6 @@ if(${len} GREATER_EQUAL 1)
       # target_link_libraries(
       #   ${test_name}
       #   ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/libpaddle${POSTFIX})
-      message("TARGET_FILE $<TARGET_FILE:${paddle_lib}>")
       target_link_libraries(${test_name} $<TARGET_LINKER_FILE:${paddle_lib}>)
       target_link_libraries(${test_name} paddle_gtest_main_new)
       add_dependencies(${test_name} ${paddle_lib} paddle_gtest_main_new)
