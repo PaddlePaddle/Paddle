@@ -97,6 +97,11 @@ class ShardingPass(PassBase):
             self.get_attr("sharding_degree") or self.get_attr("degree"))
         self.stage = int(self.get_attr("stage"))
         self.global_rank = int(self.get_attr("global_rank"))
+        self.fuse_overlap_optimization = True
+        if self.fuse_overlap_optimization:
+            self.partition_algor = "use_order"
+        else:
+            self.partition_algor = "greedy_even"
         params_grads = self.get_attr("params_grads")
         main_block, startup_block = main_program.global_block(
         ), startup_program.global_block()
@@ -117,7 +122,8 @@ class ShardingPass(PassBase):
 
         context.set_attr("params_grads", self.shared_params_grads)
 
-        self._optimization_pass(main_program, startup_program)
+        if self.fuse_overlap_optimization:
+            self._optimization_pass(main_program, startup_program)
 
     def _build_sharding_groups(self, main_block, params_grads):
         self._collective_data_parallel_groups(main_block)
@@ -178,7 +184,7 @@ class ShardingPass(PassBase):
             self._dist_context._sharding_group = sharding_group
             # TODO(JZ-LIANG) when support multiple dp groups in future, should group param and bind them to corresponding dp group
             sharding_info = ShardingInfo(sharding_group, self.global_rank,
-                                         params_grads)
+                                         params_grads, self.partition_algor)
             self.sharding_infos.append(sharding_info)
             for param in sharding_info.params:
                 self.varname_to_sharding_info[param.name] = sharding_info
@@ -532,9 +538,9 @@ class ShardingPass(PassBase):
             _fuse_overlap_gradient_comm()
             # TODO support multiple sub_blocks
             if self.stage == 2:
-                _fuse_overlap_parameter_comm_stage_two()
+                _fuse_overlap_parameter_comm_stage_two(self.sharding_infos)
             elif self.stage == 3:
-                _fuse_overlap_parameter_comm_stage_three()
+                _fuse_overlap_parameter_comm_stage_three(self.sharding_infos)
 
 
 def _insert_init_and_broadcast_op(block, insert_idx, varname, local_rank,
@@ -794,7 +800,7 @@ def partition_parameters(params, group_size, algor="greedy_even"):
 
 class ShardingInfo(object):
 
-    def __init__(self, group, rank, params_grads):
+    def __init__(self, group, rank, params_grads, partition_algor):
         self.group = group
         self.params_grads = dict([(p.name, (p, g)) for p, g in params_grads])
         assert len(self.params_grads) == len(set(
@@ -805,10 +811,10 @@ class ShardingInfo(object):
         self.group_size = group.nranks
         self.global_rank = rank
         self.local_rank = group.ranks.index(self.global_rank)
+        self.partition_algor = partition_algor
         # rank in below mapping are local rank in this sharding group
-        self.rank_to_params = partition_parameters(self.params,
-                                                   self.group_size,
-                                                   algor="use_order")
+        self.rank_to_params = partition_parameters(self.params, self.group_size,
+                                                   self.partition_algor)
         # include fp32 and fp16 param
         self.param_to_rank = dict()
         self._map_param_to_rank()
@@ -922,10 +928,27 @@ def _fuse_overlap_gradient_comm():
     pass
 
 
-def _fuse_overlap_parameter_comm_stage_two(fuse_size):
+def _fuse_overlap_parameter_comm_stage_two(sharding_infos, fuse_size):
+
+    assert len(
+        sharding_infos
+    ) == 1, "fuse overlap optimization only support one sharding group right now, but got [{}].".format(
+        len(sharding_infos))
+    sharding_info = sharding_infos[0]
+
     main_program = default_main_program()
     startup_program = default_startup_program()
 
+    # for param in sharding_info.params:
+    #      n
 
-def _fuse_overlap_parameter_comm_stage_three(fuse_size):
+
+def _fuse_overlap_parameter_comm_stage_three(sharding_infos, fuse_size):
+
+    assert len(
+        sharding_infos
+    ) == 1, "fuse overlap optimization only support one sharding group right now, but got [{}].".format(
+        len(sharding_infos))
+    sharding_info = sharding_infos[0]
+
     pass
