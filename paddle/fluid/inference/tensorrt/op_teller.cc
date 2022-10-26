@@ -572,9 +572,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-      auto x_var_name = desc.Input("X")[0];
       auto index_var_name = desc.Input("Index")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
       auto* index_var_desc = block->FindVar(index_var_name);
 
       // The index input must be int32 datatype.
