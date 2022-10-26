@@ -24,7 +24,7 @@ from .pass_base import PassBase, register_pass
 from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_optimizer_op
 from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.operators.common import is_parameter_related, is_data_parallel_reduce_op
-from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_dist_op_attr_for_program_by_mesh_and_mapping, set_var_dist_attr
+from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_dist_op_attr_for_program_by_mesh_and_mapping, set_var_dist_attr, get_logger
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
 
 OpRole = core.op_proto_and_checker_maker.OpRole
@@ -38,6 +38,8 @@ _supported_optimizer_type = [
     "adam", "adamax", "adamw", "decayed_adagrad", "momentum", "dgc_momentum",
     "lars_momentum", "merged_momentum", "lamb", "sgd"
 ]
+
+_logger = get_logger(logging.INFO)
 
 
 def _is_reshard_op(op):
@@ -795,11 +797,11 @@ def partition_parameters(params, group_size, algor="greedy_even"):
     else:
         rank_to_params = partition_by_use_order(params, group_size)
 
-    logging.info("Sharding Parameter Partition:")
+    _logger.info("Sharding Parameter Partition:")
     for k, v in rank_to_params.items():
-        logging.info("Rank:{}, Parameter Size:{} MB.".format(
+        _logger.info("Rank:{}, Parameter Size:{} MB.".format(
             k, sum([get_var_size(var) for var in v])))
-        logging.info("Params in this rank: {}.".format([var.name for var in v]))
+        _logger.info("Params in this rank: {}.".format([var.name for var in v]))
 
     return rank_to_params
 
@@ -932,7 +934,7 @@ def re_order_program(block, param_grads, dist_context):
         assert len(block.ops) == num_ops
 
     # TODO reorder gradient clip order
-    logging.info(
+    _logger.info(
         "Sharding the Order of param being used: {}.".format(use_order))
     return [pname_to_pg_pairs[p] for p in use_order]
 
