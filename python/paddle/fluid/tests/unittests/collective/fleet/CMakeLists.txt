@@ -943,3 +943,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_fleet_log MODULES test_fleet_log ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_dygraph_dist_save_load MODULES test_dygraph_dist_save_load ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+endif()
