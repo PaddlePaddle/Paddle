@@ -303,7 +303,7 @@ class PRChecker(object):
         file_ut_map = None
 
         ret = self.__urlretrieve(
-            'https://paddle-docker-tar.bj.bcebos.com/pre_test/ut_file_map.json',
+            'https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/ut_file_map.json',
             'ut_file_map.json',
         )
         if not ret:
@@ -326,9 +326,7 @@ class PRChecker(object):
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
             elif filename.startswith(PADDLE_ROOT + 'paddle/'):
-                if filename.startswith(
-                    (PADDLE_ROOT + 'paddle/infrt', PADDLE_ROOT + 'paddle/utils')
-                ):
+                if filename.startswith((PADDLE_ROOT + 'paddle/infrt')):
                     filterFiles.append(filename)
                 elif filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
                     if filename.startswith(
@@ -354,7 +352,7 @@ class PRChecker(object):
         if len(file_list) == 0:
             ut_list.append('filterfiles_placeholder')
             ret = self.__urlretrieve(
-                'https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta',
+                'https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/prec_delta',
                 'prec_delta',
             )
             if ret:
