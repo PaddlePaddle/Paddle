@@ -14,7 +14,6 @@ import math
 from typing import List
 from typing import Tuple
 from typing import Union
-from typing import Dict
 
 import paddle
 from paddle import Tensor
