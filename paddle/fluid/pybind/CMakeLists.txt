@@ -623,6 +623,14 @@ if(WITH_PYTHON)
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
+  # TODO(zhiqiu): some symbols not exported even setting the following
+  # property. Need to find a better way.
+
+  # if(WIN32)
+  #   set_property(TARGET ${SHARD_LIB_NAME}
+  #                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  # endif()
+
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_dependencies(${SHARD_LIB_NAME} legacy_eager_codegen)
     add_dependencies(${SHARD_LIB_NAME} eager_legacy_op_function_generator_cmd)
