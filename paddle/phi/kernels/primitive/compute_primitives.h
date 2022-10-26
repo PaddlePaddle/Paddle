@@ -110,6 +110,7 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
     T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
     val = reducer(val, temp);
   }
+  // __syncthreads();
   if (threadIdx.x == 0) {
     shared[threadIdx.y] = val;
   }

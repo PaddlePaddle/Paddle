@@ -67,7 +67,8 @@ enum PermuteType {
   kCopy = 1,
   kTranspose = 2,
   kVecPermute = 3,
-  kNormalPermute = 4
+  kPermAtFirstAndThirdDim = 4,
+  kNormalPermute = 5
 };
 
 constexpr int kBlockRows = 16;
@@ -184,39 +185,48 @@ class PermTypeClassifier {
       vec_size_ = 1;
       type_ = PermuteType::kCopy;
     } else {
-      int vec_size = phi::GetVectorizedSize<T>(dst);
+      int dst_vec_size = phi::GetVectorizedSize<T>(dst);
 
       // While the last dim is fixed, there is chance for vectorized IO.
       if (perm[rank - 1] == rank - 1) {
-        int tmp_size = std::min(vec_size, phi::GetVectorizedSize<T>(src));
-        tmp_size = GetDimVecSize(tmp_size, dims[rank - 1]);
-        if (tmp_size > 1) {
+        const int dim_vec_size =
+            GetDimVecSize(dst_vec_size, dims[rank - 1], src, false);
+        if (dim_vec_size > 1) {
           type_ = kVecPermute;
-          vec_size = tmp_size;
+          vec_size_ = dim_vec_size;
+          return;
         }
       }
 
-      // Once only transpose at the last 2 dims.
+      // Permute at last 2 dims, namely transpose.
       if ((rank == 2 && perm[1] == 0 && perm[0] == 1) ||
           (rank == 3 && perm[2] == 1 && perm[1] == 2)) {
         type_ = PermuteType::kTranspose;
-        // With bytes limitation of shared_memory, the VecSize
-        // shall be restricted to sizeof(float).
-        int tmp_size = std::min(vec_size, phi::GetVectorizedSize<T>(src));
-        vec_size = sizeof(T) > sizeof(float)
-                       ? 1
-                       : GetDimVecSize(tmp_size, dims[rank - 1]);
+        const int dim_vec_size =
+            GetDimVecSize(dst_vec_size, dims[rank - 1], src);
         const int tile_size = (rank == 2 ? 1 : dims[0]) *
                               GETTILESIZE(dims[rank - 1], kTileSize) *
                               GETTILESIZE(dims[rank - 2], kTileSize);
-        vec_size = tile_size < sm_count ? 1 : vec_size;
+        vec_size_ = tile_size < sm_count ? 1 : dim_vec_size;
+        return;
       }
-      vec_size_ = vec_size;
+
+      // Permute at first dim and third dim.
+      if (rank == 3 && perm[2] == 0 && perm[1] == 1) {
+        type_ = PermuteType::kPermAtFirstAndThirdDim;
+        const int dim_vec_size =
+            GetDimVecSize(dst_vec_size, dims[rank - 1], src);
+        const int tile_size = dims[1] * GETTILESIZE(dims[0], kTileSize) *
+                              GETTILESIZE(dims[2], kTileSize);
+        vec_size_ = tile_size < sm_count ? 1 : dim_vec_size;
+        return;
+      }
+
+      vec_size_ = dst_vec_size;
     }
   }
 
   ~PermTypeClassifier() = default;
-
   int GetVecSize() const { return vec_size_; }
   PermuteType GetPermType() const { return type_; }
 
@@ -225,7 +235,11 @@ class PermTypeClassifier {
   PermuteType type_{kNormalPermute};
 
   // To find if highest common divisor and make it as vec_size.
-  int GetDimVecSize(const int vec_size, const size_t target_dim) {
+  int GetDimVecSize(const int dst_vec_size,
+                    const int64_t target_dim,
+                    const T* src,
+                    bool use_share_mem = true) {
+    const int vec_size = std::min(dst_vec_size, phi::GetVectorizedSize<T>(src));
     int dim_vec_size = 1;
     for (int size = vec_size; size > 0; size /= 2) {
       if (target_dim % size == 0) {
@@ -233,7 +247,13 @@ class PermTypeClassifier {
         break;
       }
     }
-    return dim_vec_size;
+
+    if (use_share_mem) {
+      // By bytes limitation of shared_memory.
+      return (sizeof(T) > sizeof(float) ? 1 : dim_vec_size);
+    } else {
+      return dim_vec_size;
+    }
   }
 };
 
