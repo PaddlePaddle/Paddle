@@ -41,10 +41,10 @@ class MLPLayer(nn.Layer):
 class TestMultiTensorAdam(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        self.input_size = 800
-        self.hidden_size = 500
-        self.output_size = 700
-        self.n = 10
+        self.input_size = 8
+        self.hidden_size = 5
+        self.output_size = 7
+        self.n = 1
 
     def get_adam_or_adamw_out(self, use_multi_tesnor_adam, use_adamw):
 
@@ -122,13 +122,13 @@ class TestMultiTensorAdam(unittest.TestCase):
             i = i + 1
 
         if use_multi_tesnor_adam:
-            opt = paddle.optimizer.Adam(
+            opt = paddle.incubate.optimizer.MultiTensorAdam(
                 learning_rate=0.1,
                 parameters=paramters_dict_list,
                 weight_decay=0.01,
                 beta1=beta1,
                 beta2=beta2,
-                use_multi_tensor=True,
+                use_adamw=use_adamw,
             )
         else:
             if not use_adamw:
