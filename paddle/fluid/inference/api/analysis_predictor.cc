@@ -1551,13 +1551,15 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = true;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  auto tensor_place =
+      scope->FindVar(name)->GetMutable<phi::DenseTensor>()->place();
+  if (platform::is_cpu_place(tensor_place)) {
     res->SetPlace(PaddlePlace::kCPU);
-  } else if (platform::is_ipu_place(place_)) {
+  } else if (platform::is_ipu_place(tensor_place)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
     // IpuBackend.
     res->SetPlace(PaddlePlace::kCPU);
-  } else if (platform::is_xpu_place(place_)) {
+  } else if (platform::is_xpu_place(tensor_place)) {
     if (config_.lite_engine_enabled()) {
       // Currently, Paddle-Lite's XPU user interface only supports the transfer
       // of host data pointers. If it is currently used as a subgraph, execution
@@ -1566,20 +1568,20 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
       // model.
       res->SetPlace(PaddlePlace::kCPU);
     } else {
-      auto xpu_place = place_;
+      auto xpu_place = tensor_place;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
-  } else if (platform::is_npu_place(place_)) {
-    auto npu_place = place_;
+  } else if (platform::is_npu_place(tensor_place)) {
+    auto npu_place = tensor_place;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
-  } else if (platform::is_custom_place(place_)) {
-    auto custom_place = place_;
+  } else if (platform::is_custom_place(tensor_place)) {
+    auto custom_place = tensor_place;
     auto paddleplace = static_cast<PaddlePlace>(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+        phi::GetOrRegisterGlobalDeviceTypeId(tensor_place.GetDeviceType()));
     res->SetPlace(paddleplace, custom_place.GetDeviceId());
   } else {
-    auto gpu_place = place_;
+    auto gpu_place = tensor_place;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
   return res;
@@ -1606,13 +1608,15 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       static_cast<void *>(scope), this->GetDeviceContexts()));
   res->input_or_output_ = false;
   res->SetName(name);
-  if (platform::is_cpu_place(place_)) {
+  auto tensor_place =
+      scope->FindVar(name)->GetMutable<phi::DenseTensor>()->place();
+  if (platform::is_cpu_place(tensor_place)) {
     res->SetPlace(PaddlePlace::kCPU);
-  } else if (platform::is_ipu_place(place_)) {
+  } else if (platform::is_ipu_place(tensor_place)) {
     // Currently, IPUPlace's tensor copy between cpu and ipu has been set in
     // IpuBackend.
     res->SetPlace(PaddlePlace::kCPU);
-  } else if (platform::is_xpu_place(place_)) {
+  } else if (platform::is_xpu_place(tensor_place)) {
     if (config_.lite_engine_enabled()) {
       // Currently, Paddle-Lite's XPU user interface only supports the transfer
       // of host data pointers. If it is currently used as a subgraph, execution
@@ -1621,20 +1625,20 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
       // model.
       res->SetPlace(PaddlePlace::kCPU);
     } else {
-      auto xpu_place = place_;
+      auto xpu_place = tensor_place;
       res->SetPlace(PaddlePlace::kXPU, xpu_place.GetDeviceId());
     }
-  } else if (platform::is_npu_place(place_)) {
-    auto npu_place = place_;
+  } else if (platform::is_npu_place(tensor_place)) {
+    auto npu_place = tensor_place;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
-  } else if (platform::is_custom_place(place_)) {
-    auto custom_place = place_;
+  } else if (platform::is_custom_place(tensor_place)) {
+    auto custom_place = tensor_place;
     auto paddleplace = static_cast<PaddlePlace>(
         static_cast<size_t>(PaddlePlace::kCUSTOM) +
-        phi::GetOrRegisterGlobalDeviceTypeId(place_.GetDeviceType()));
+        phi::GetOrRegisterGlobalDeviceTypeId(tensor_place.GetDeviceType()));
     res->SetPlace(paddleplace, custom_place.GetDeviceId());
   } else {
-    auto gpu_place = place_;
+    auto gpu_place = tensor_place;
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
   return res;
