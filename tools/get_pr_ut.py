@@ -458,7 +458,7 @@ class PRChecker(object):
             else:
                 if ut_list:
                     ret = self.__urlretrieve(
-                        'https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta',
+                        'https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/prec_delta',
                         'prec_delta',
                     )
                     if ret:
