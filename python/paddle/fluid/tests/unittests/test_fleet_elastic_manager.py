@@ -27,6 +27,11 @@ class MockLease:
         pass
 
 
+class MockKVMetadata:
+    def __init__(self):
+        self.key = b"host"
+
+
 class MockEtcdClient:
     def __init__(self, lease=None):
         self._lease = lease
@@ -42,7 +47,10 @@ class MockEtcdClient:
         pass
 
     def get_prefix(self, key_prefix):
-        hosts = [b"10.10.10.1:6001", b"10.10.10.2:6001"]
+        hosts = [
+            (b"10.10.10.1:6001", MockKVMetadata()),
+            (b"10.10.10.2:6001", MockKVMetadata()),
+        ]
         return hosts
 
     def add_watch_callback(self, *args, **kwargs):
