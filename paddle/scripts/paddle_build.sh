@@ -2016,9 +2016,6 @@ set +x
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
-    #ljd_testcases='^graph_node_test$|^send_and_recv_cpu_test$|^test_hdfs1$|^test_dyn_rnn$'
-    #precise_card_test_single "$ljd_testcases"
-    
     #run all unittest to get the coverage information of .c and .h files
     precise_card_test_single "$single_card_tests" 1
     precise_card_test_single "$single_card_tests_1" 1
@@ -2033,7 +2030,6 @@ set -x
     
     #analyze the mapping between unit tests and .cu files
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
-
     wait;
 
     #generate python coverage and generate python file to tests_map_file
