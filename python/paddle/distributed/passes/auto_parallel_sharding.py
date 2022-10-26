@@ -895,7 +895,7 @@ def re_order_program(block, param_grads):
             break
 
     # reorder optimzier
-    last_op = block.ops
+    last_op = block.ops[-1]
     pname_to_op = {}
     num_ops = len(block.ops)
     # TODO support case when optimizer is not the last op
