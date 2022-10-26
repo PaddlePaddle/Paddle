@@ -6,7 +6,7 @@
 - op : abs
   backward : abs_grad
   extra :
-    attrs : [bool use_cudnn = false, bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : acosh
   backward : acosh_grad
