@@ -76,7 +76,7 @@ void BuildOpFuncList(const platform::Place& place,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
                      VariableScope* scope,
-                     ExecutionConfig execution_config,
+                     const ExecutionConfig& execution_config,
                      bool use_local_scope = true);
 
 void AddFetch(const std::vector<std::string>& fetch_names,

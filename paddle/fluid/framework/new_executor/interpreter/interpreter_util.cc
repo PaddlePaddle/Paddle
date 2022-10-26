@@ -428,7 +428,7 @@ void BuildOpFuncList(const platform::Place& place,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
                      VariableScope* var_scope,
-                     ExecutionConfig execution_config,
+                     const ExecutionConfig& execution_config,
                      bool use_local_scope) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
