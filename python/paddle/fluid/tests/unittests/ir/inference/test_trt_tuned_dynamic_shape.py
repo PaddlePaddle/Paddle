@@ -22,7 +22,6 @@ from paddle.inference import Config, create_predictor
 
 
 class TRTTunedDynamicShapeTest(unittest.TestCase):
-
     def get_model(self):
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
@@ -30,21 +29,25 @@ class TRTTunedDynamicShapeTest(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 6, 64, 64],
-                              dtype="float32")
-            conv_out = fluid.layers.conv2d(input=data,
-                                           num_filters=3,
-                                           filter_size=3,
-                                           groups=1,
-                                           padding=0,
-                                           bias_attr=False,
-                                           act=None)
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32"
+            )
+            conv_out = fluid.layers.conv2d(
+                input=data,
+                num_filters=3,
+                filter_size=3,
+                groups=1,
+                padding=0,
+                bias_attr=False,
+                act=None,
+            )
         exe.run(startup_program)
         serialized_program = paddle.static.serialize_program(
-            data, conv_out, program=main_program)
+            data, conv_out, program=main_program
+        )
         serialized_params = paddle.static.serialize_persistables(
-            data, conv_out, executor=exe, program=main_program)
+            data, conv_out, executor=exe, program=main_program
+        )
         return serialized_program, serialized_params
 
     def get_config(self, model, params, tuned=False):
@@ -61,9 +64,11 @@ class TRTTunedDynamicShapeTest(unittest.TestCase):
                 min_subgraph_size=0,
                 precision_mode=paddle.inference.PrecisionType.Float32,
                 use_static=True,
-                use_calib_mode=False)
-            config.enable_tuned_tensorrt_dynamic_shape('shape_range.pbtxt',
-                                                       True)
+                use_calib_mode=False,
+            )
+            config.enable_tuned_tensorrt_dynamic_shape(
+                'shape_range.pbtxt', True
+            )
 
         return config
 

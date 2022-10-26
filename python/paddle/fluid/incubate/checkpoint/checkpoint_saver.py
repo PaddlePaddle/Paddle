@@ -16,7 +16,6 @@ from ...compiler import CompiledProgram
 
 
 class SerializableBase(object):
-
     def serialize(self, path):
         raise NotImplementedError
 
@@ -25,7 +24,6 @@ class SerializableBase(object):
 
 
 class PaddleModel(SerializableBase):
-
     def __init__(self, exe, program):
         self._exe = exe
         self._origin_program = program
@@ -37,30 +35,33 @@ class PaddleModel(SerializableBase):
 
     def serialize(self, path):
         from ...io import save_persistables
-        save_persistables(executor=self._exe,
-                          dirname=path,
-                          main_program=self._program,
-                          filename=self._file_name)
+
+        save_persistables(
+            executor=self._exe,
+            dirname=path,
+            main_program=self._program,
+            filename=self._file_name,
+        )
 
     def deserialize(self, path):
         from ...io import load_persistables
-        load_persistables(executor=self._exe,
-                          dirname=path,
-                          main_program=self._program,
-                          filename=self._file_name)
+
+        load_persistables(
+            executor=self._exe,
+            dirname=path,
+            main_program=self._program,
+            filename=self._file_name,
+        )
 
 
 class CheckpointSaver(object):
-
     def __init__(self, fs):
         self._fs = fs
         self._checkpoint_prefix = "__paddle_checkpoint__"
 
-    def save_checkpoint(self,
-                        path,
-                        slists,
-                        trainer_id=None,
-                        local_cache_path=".cache"):
+    def save_checkpoint(
+        self, path, slists, trainer_id=None, local_cache_path=".cache"
+    ):
         """
         Serialize objects in slists to path
         Return really saved path and checkpoint_no
@@ -69,7 +70,8 @@ class CheckpointSaver(object):
             self._fs.mkdirs(path)
         else:
             assert self._fs.is_dir(path), "path:{} must be a directory".format(
-                path)
+                path
+            )
 
         max_no = self._get_last_checkpoint_no(path)
         if max_no < 0:
@@ -81,13 +83,14 @@ class CheckpointSaver(object):
         saved_path = tmp_path
 
         from paddle.distributed.fleet.utils.fs import LocalFS
+
         local_fs = LocalFS()
 
         cache_path = None
         if self._fs.need_upload_download():
-            cache_path = "{}/{}.{}.saved_cache".format(local_cache_path,
-                                                       self._checkpoint_prefix,
-                                                       max_no)
+            cache_path = "{}/{}.{}.saved_cache".format(
+                local_cache_path, self._checkpoint_prefix, max_no
+            )
 
             if trainer_id is not None:
                 cache_path = "{}.{}".format(cache_path, trainer_id)
@@ -95,8 +98,9 @@ class CheckpointSaver(object):
             if not local_fs.is_exist(cache_path):
                 local_fs.mkdirs(cache_path)
             else:
-                assert local_fs.is_dir(cache_path), \
-                    "cache path:{} must be a directory".format(cache_path)
+                assert local_fs.is_dir(
+                    cache_path
+                ), "cache path:{} must be a directory".format(cache_path)
 
             saved_path = cache_path
 
@@ -111,13 +115,15 @@ class CheckpointSaver(object):
 
         return real_path, max_no
 
-    def load_checkpoint(self,
-                        path,
-                        slists,
-                        trainer_id,
-                        local_cache_path=".cache",
-                        checkpoint_no=None,
-                        ignore_empty=True):
+    def load_checkpoint(
+        self,
+        path,
+        slists,
+        trainer_id,
+        local_cache_path=".cache",
+        checkpoint_no=None,
+        ignore_empty=True,
+    ):
         """
         Deserialize objects in slists from path
         Return really load path
@@ -137,11 +143,12 @@ class CheckpointSaver(object):
             assert checkpoint_no >= 0
 
         from paddle.distributed.fleet.utils.fs import LocalFS
+
         local_fs = LocalFS()
         if self._fs.need_upload_download():
-            cache_path = "{}/{}.{}.load_cache".format(local_cache_path,
-                                                      self._checkpoint_prefix,
-                                                      checkpoint_no)
+            cache_path = "{}/{}.{}.load_cache".format(
+                local_cache_path, self._checkpoint_prefix, checkpoint_no
+            )
 
             if trainer_id is not None:
                 cache_path = "{}.{}".format(cache_path, trainer_id)
@@ -151,8 +158,9 @@ class CheckpointSaver(object):
             if local_fs.is_exist(cache_path):
                 local_fs.delete(cache_path)
 
-        real_path = "{}/{}.{}".format(path, self._checkpoint_prefix,
-                                      checkpoint_no)
+        real_path = "{}/{}.{}".format(
+            path, self._checkpoint_prefix, checkpoint_no
+        )
         load_path = real_path
         if self._fs.need_upload_download():
             self._fs.download(real_path, cache_path)
@@ -217,8 +225,9 @@ class CheckpointSaver(object):
             try:
                 n = int(g[1])
                 if n not in s:
-                    path = "{}/{}.{}".format(root_path, self._checkpoint_prefix,
-                                             n)
+                    path = "{}/{}.{}".format(
+                        root_path, self._checkpoint_prefix, n
+                    )
                     self._fs.delete(path)
             except Exception as e:
                 print(e)

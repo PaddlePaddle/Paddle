@@ -29,7 +29,6 @@ dtype_to_size = {
 
 
 class VarBlock:
-
     def __init__(self, varname, offset, size):
         self.varname = varname
         # NOTE: real offset is offset * size
@@ -48,8 +47,9 @@ def create_var_struct(var):
     else:
         raise ValueError("can only support SELECTED_ROWS/LOD_TENSOR now")
 
-    return VarStruct(var.name, var.shape, var.dtype, var.type, lod_level,
-                     var.persistable)
+    return VarStruct(
+        var.name, var.shape, var.dtype, var.type, lod_level, var.persistable
+    )
 
 
 class VarStruct(object):
@@ -70,8 +70,14 @@ class VarStruct(object):
 
     def __str__(self):
         return "N: {}, S: {}, D: {}, T: {}, LL: {}, P: {}, M: {}".format(
-            self.name, self.shape, self.dtype, self.type, self.lod_level,
-            self.persistable, self.m_size)
+            self.name,
+            self.shape,
+            self.dtype,
+            self.type,
+            self.lod_level,
+            self.persistable,
+            self.m_size,
+        )
 
 
 class VarDistributed(object):
@@ -81,14 +87,16 @@ class VarDistributed(object):
     the slice var's properties, such as type/shape/offset/endpoint.
     """
 
-    def __init__(self,
-                 origin_var,
-                 slice_var,
-                 is_slice=None,
-                 block_id=None,
-                 offset=None,
-                 vtype=None,
-                 endpoint=None):
+    def __init__(
+        self,
+        origin_var,
+        slice_var,
+        is_slice=None,
+        block_id=None,
+        offset=None,
+        vtype=None,
+        endpoint=None,
+    ):
         """
         Args:
             origin_var(Variable|VarStruct): origin var properties
@@ -138,26 +146,45 @@ class VarDistributed(object):
         """
         assert isinstance(var1, VarStruct) and isinstance(var2, VarStruct)
 
-        return var1.name == var2.name and \
-               var1.type == var2.type and \
-               var1.shape == var2.shape and \
-               var1.dtype == var2.dtype and \
-               var1.lod_level == var2.lod_level and \
-               var1.persistable == var2.persistable
+        return (
+            var1.name == var2.name
+            and var1.type == var2.type
+            and var1.shape == var2.shape
+            and var1.dtype == var2.dtype
+            and var1.lod_level == var2.lod_level
+            and var1.persistable == var2.persistable
+        )
 
     def __str__(self):
-        origin_var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})". \
-            format(i="{", e="}", name=self.origin.name, type=self.origin.type,
-                   shape=self.origin.shape, dtype=self.origin.dtype)
+        origin_var_str = (
+            "{name} : fluid.{type}.shape{shape}.astype({dtype})".format(
+                i="{",
+                e="}",
+                name=self.origin.name,
+                type=self.origin.type,
+                shape=self.origin.shape,
+                dtype=self.origin.dtype,
+            )
+        )
 
-        slice_var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})" \
-                        ".slice({is_slice}).block({block_id}).offset({offset})". \
-            format(i="{", e="}", name=self.slice.name, type=self.slice.type,
-                   shape=self.slice.shape, dtype=self.slice.dtype,
-                   is_slice=self.is_slice, block_id=self.block_id, offset=self.offset)
+        slice_var_str = (
+            "{name} : fluid.{type}.shape{shape}.astype({dtype})"
+            ".slice({is_slice}).block({block_id}).offset({offset})".format(
+                i="{",
+                e="}",
+                name=self.slice.name,
+                type=self.slice.type,
+                shape=self.slice.shape,
+                dtype=self.slice.dtype,
+                is_slice=self.is_slice,
+                block_id=self.block_id,
+                offset=self.offset,
+            )
+        )
 
         return "var owned: {}, origin var: ( {} ), slice var: ( {} ), endpoint: {} ".format(
-            self.vtype, origin_var_str, slice_var_str, self.endpoint)
+            self.vtype, origin_var_str, slice_var_str, self.endpoint
+        )
 
 
 class VarsDistributed(object):
@@ -171,14 +198,16 @@ class VarsDistributed(object):
     def __init__(self):
         self.distributed_vars = []
 
-    def add_distributed_var(self,
-                            origin_var,
-                            slice_var,
-                            is_slice=None,
-                            block_id=None,
-                            offset=None,
-                            vtype=None,
-                            endpoint=None):
+    def add_distributed_var(
+        self,
+        origin_var,
+        slice_var,
+        is_slice=None,
+        block_id=None,
+        offset=None,
+        vtype=None,
+        endpoint=None,
+    ):
         """
         add distributed var in this.
 
@@ -194,5 +223,13 @@ class VarsDistributed(object):
             None
         """
         self.distributed_vars.append(
-            VarDistributed(origin_var, slice_var, is_slice, block_id, offset,
-                           vtype, endpoint))
+            VarDistributed(
+                origin_var,
+                slice_var,
+                is_slice,
+                block_id,
+                offset,
+                vtype,
+                endpoint,
+            )
+        )

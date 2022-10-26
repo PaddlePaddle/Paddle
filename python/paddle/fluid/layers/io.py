@@ -23,30 +23,46 @@ from .control_flow import BlockGuard
 from .layer_function_generator import templatedoc
 from .. import core
 from ..executor import global_scope
-from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
-    default_startup_program, program_guard, Program, Variable
+from ..framework import (
+    convert_np_dtype_to_dtype_,
+    default_main_program,
+    default_startup_program,
+    program_guard,
+    Program,
+    Variable,
+)
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
 import logging
 from ..data_feeder import check_dtype, check_type
 from paddle.fluid.framework import static_only
-from ..framework import _get_paddle_place, _current_expected_place, _set_expected_place
+from ..framework import (
+    _get_paddle_place,
+    _current_expected_place,
+    _set_expected_place,
+)
 
 __all__ = [
-    'data', 'read_file', 'double_buffer', 'py_reader',
-    'create_py_reader_by_data', 'load'
+    'data',
+    'read_file',
+    'double_buffer',
+    'py_reader',
+    'create_py_reader_by_data',
+    'load',
 ]
 
 
 @static_only
-def data(name,
-         shape,
-         append_batch_size=True,
-         dtype='float32',
-         lod_level=0,
-         type=core.VarDesc.VarType.LOD_TENSOR,
-         stop_gradient=True):
+def data(
+    name,
+    shape,
+    append_batch_size=True,
+    dtype='float32',
+    lod_level=0,
+    type=core.VarDesc.VarType.LOD_TENSOR,
+    stop_gradient=True,
+):
     """
     **Data Layer**
 
@@ -124,13 +140,15 @@ def data(name,
     if append_batch_size:
         shape = [-1] + shape  # append batch size as -1
 
-    data_var = helper.create_global_variable(name=name,
-                                             shape=shape,
-                                             dtype=dtype,
-                                             type=type,
-                                             stop_gradient=stop_gradient,
-                                             lod_level=lod_level,
-                                             is_data=True)
+    data_var = helper.create_global_variable(
+        name=name,
+        shape=shape,
+        dtype=dtype,
+        type=type,
+        stop_gradient=stop_gradient,
+        lod_level=lod_level,
+        is_data=True,
+    )
     return data_var
 
 
@@ -245,13 +263,13 @@ class ListenAndServ(object):
             attrs={
                 'endpoint': self.endpoint,
                 'Fanin': self.fan_in,
-                'optimize_blocks':
-                [current_block
-                 ],  # did not support multiple optimize blocks in layers
-                'distributed_mode':
-                DistributedMode.SYNC,  # did not support async now in layers
-                'grad_to_block_id': [""]
-            })
+                'optimize_blocks': [
+                    current_block
+                ],  # did not support multiple optimize blocks in layers
+                'distributed_mode': DistributedMode.SYNC,  # did not support async now in layers
+                'grad_to_block_id': [""],
+            },
+        )
 
 
 def Send(endpoints, send_vars, dummy_output=None, sync=True):
@@ -266,14 +284,14 @@ def Send(endpoints, send_vars, dummy_output=None, sync=True):
         sync (bool): whether to wait the request finish
 
     """
-    assert (type(send_vars) == list)
+    assert type(send_vars) == list
 
     if dummy_output is None:
         dummy_output = []
     elif isinstance(dummy_output, Variable):
         dummy_output = [dummy_output]
 
-    assert (type(dummy_output) == list)
+    assert type(dummy_output) == list
 
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
@@ -281,22 +299,23 @@ def Send(endpoints, send_vars, dummy_output=None, sync=True):
     helper = LayerHelper("Send", **locals())
     rpc_op_role_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
-    helper.append_op(type="send",
-                     inputs={"X": send_vars},
-                     outputs={"Out": dummy_output},
-                     attrs={
-                         "endpoints":
-                         endpoints,
-                         "epmap":
-                         epmap,
-                         rpc_op_role_name:
-                         core.op_proto_and_checker_maker.OpRole.RPC
-                     })
+    helper.append_op(
+        type="send",
+        inputs={"X": send_vars},
+        outputs={"Out": dummy_output},
+        attrs={
+            "endpoints": endpoints,
+            "epmap": epmap,
+            rpc_op_role_name: core.op_proto_and_checker_maker.OpRole.RPC,
+        },
+    )
     if sync:
-        helper.append_op(type="send_barrier",
-                         inputs={"X": dummy_output},
-                         outputs={"Out": []},
-                         attrs={"endpoints": endpoints})
+        helper.append_op(
+            type="send_barrier",
+            inputs={"X": dummy_output},
+            outputs={"Out": []},
+            attrs={"endpoints": endpoints},
+        )
 
 
 def Recv(endpoints, get_vars, dummy_input=None, sync=True):
@@ -312,35 +331,35 @@ def Recv(endpoints, get_vars, dummy_input=None, sync=True):
     Returns:
         list: list of received variables
     """
-    assert (type(get_vars) == list)
+    assert type(get_vars) == list
 
     if dummy_input is None:
         dummy_input = []
     elif isinstance(dummy_input, Variable):
         dummy_input = [dummy_input]
 
-    assert (type(dummy_input) == list)
+    assert type(dummy_input) == list
 
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
 
     helper = LayerHelper("Recv", **locals())
-    helper.append_op(type="recv",
-                     inputs={"X": dummy_input},
-                     outputs={"Out": get_vars},
-                     attrs={
-                         "endpoints": endpoints,
-                         "epmap": epmap
-                     })
+    helper.append_op(
+        type="recv",
+        inputs={"X": dummy_input},
+        outputs={"Out": get_vars},
+        attrs={"endpoints": endpoints, "epmap": epmap},
+    )
     if sync:
-        helper.append_op(type="fetch_barrier",
-                         outputs={"Out": get_vars},
-                         attrs={"endpoints": endpoints})
+        helper.append_op(
+            type="fetch_barrier",
+            outputs={"Out": get_vars},
+            attrs={"endpoints": endpoints},
+        )
     return get_vars
 
 
 def monkey_patch_reader_methods(reader):
-
     def __get_reader__():
         scope = global_scope()
         var = scope.find_var(reader.name)
@@ -381,24 +400,30 @@ def _copy_reader_create_op_(block, op):
         for arg_name in arg_names:
             new_output_map[param_name].append(block.var(arg_name))
 
-    new_op = block.append_op(type=op.type,
-                             inputs=new_input_map,
-                             outputs=new_output_map,
-                             attrs=op.all_attrs())
+    new_op = block.append_op(
+        type=op.type,
+        inputs=new_input_map,
+        outputs=new_output_map,
+        attrs=op.all_attrs(),
+    )
     return new_op
 
 
-def _py_reader(capacity,
-               shapes,
-               dtypes,
-               lod_levels=None,
-               name=None,
-               use_double_buffer=True,
-               feed_list=None):
+def _py_reader(
+    capacity,
+    shapes,
+    dtypes,
+    lod_levels=None,
+    name=None,
+    use_double_buffer=True,
+    feed_list=None,
+):
     if feed_list is not None:
         if not isinstance(feed_list, list):
-            raise TypeError("feed_list should be a list of Variable"
-                            " instead of " + str(type(feed_list)))
+            raise TypeError(
+                "feed_list should be a list of Variable"
+                " instead of " + str(type(feed_list))
+            )
         lod_levels = []
         dtypes = []
         shape_concat = []
@@ -440,22 +465,25 @@ def _py_reader(capacity,
 
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=reader_name)
-    startup_blk.append_op(type='create_py_reader',
-                          inputs={'blocking_queue': [queue_name]},
-                          outputs={'Out': [startup_var]},
-                          attrs={
-                              'shape_concat': shape_concat,
-                              'lod_levels': lod_levels,
-                              'dtypes': dtype_int,
-                              'need_check_feed': need_check_feed,
-                              'ranks': ranks
-                          })
+    startup_blk.append_op(
+        type='create_py_reader',
+        inputs={'blocking_queue': [queue_name]},
+        outputs={'Out': [startup_var]},
+        attrs={
+            'shape_concat': shape_concat,
+            'lod_levels': lod_levels,
+            'dtypes': dtype_int,
+            'need_check_feed': need_check_feed,
+            'ranks': ranks,
+        },
+    )
 
     startup_var.desc.set_dtypes(dtypes)
     startup_var.persistable = True
 
-    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
-                                      startup_var)
+    main_prog_var = _copy_reader_var_(
+        default_main_program().current_block(), startup_var
+    )
 
     reader = monkey_patch_reader_methods(main_prog_var)
     if use_double_buffer:
@@ -473,7 +501,6 @@ def _py_reader(capacity,
     reader.exited = False
 
     def start_provide_thread(func):
-
         def __provider_thread__(legacy_expected_place):
             try:
                 # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
@@ -501,8 +528,9 @@ def _py_reader(capacity,
                 logging.warn('Your decorated reader has raised an exception!')
                 six.reraise(*sys.exc_info())
 
-        reader.thread = threading.Thread(target=__provider_thread__,
-                                         args=(_current_expected_place(), ))
+        reader.thread = threading.Thread(
+            target=__provider_thread__, args=(_current_expected_place(),)
+        )
         reader.thread.daemon = True
         reader.thread.start()
 
@@ -518,17 +546,22 @@ def _py_reader(capacity,
                 for dtype, shape, lod_level in zip(dtypes, shapes, lod_levels):
                     name = str(counter)
                     actual_feed_list.append(
-                        data(name=name,
-                             dtype=dtype,
-                             shape=shape,
-                             lod_level=lod_level))
+                        data(
+                            name=name,
+                            dtype=dtype,
+                            shape=shape,
+                            lod_level=lod_level,
+                        )
+                    )
                     counter += 1
 
             data_names = [feed_data.name for feed_data in actual_feed_list]
-            feeder = DataFeeder(feed_list=actual_feed_list,
-                                place=core.CPUPlace())
-            paddle_reader = feeder.decorate_reader(paddle_reader,
-                                                   multi_devices=False)
+            feeder = DataFeeder(
+                feed_list=actual_feed_list, place=core.CPUPlace()
+            )
+            paddle_reader = feeder.decorate_reader(
+                paddle_reader, multi_devices=False
+            )
 
         def __tensor_provider__():
             for slots in paddle_reader():
@@ -557,14 +590,11 @@ def _py_reader(capacity,
     return reader
 
 
-def py_reader(capacity,
-              shapes,
-              dtypes,
-              lod_levels=None,
-              name=None,
-              use_double_buffer=True):
+def py_reader(
+    capacity, shapes, dtypes, lod_levels=None, name=None, use_double_buffer=True
+):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     Create a Python reader for data feeding in Python
 
@@ -718,21 +748,23 @@ def py_reader(capacity,
     """
     logging.warn(
         'paddle.fluid.layers.py_reader() may be deprecated in the near future. '
-        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
-    return _py_reader(capacity=capacity,
-                      shapes=shapes,
-                      dtypes=dtypes,
-                      lod_levels=lod_levels,
-                      name=name,
-                      use_double_buffer=use_double_buffer)
+        'Please use paddle.fluid.io.DataLoader.from_generator() instead.'
+    )
+    return _py_reader(
+        capacity=capacity,
+        shapes=shapes,
+        dtypes=dtypes,
+        lod_levels=lod_levels,
+        name=name,
+        use_double_buffer=use_double_buffer,
+    )
 
 
-def create_py_reader_by_data(capacity,
-                             feed_list,
-                             name=None,
-                             use_double_buffer=True):
+def create_py_reader_by_data(
+    capacity, feed_list, name=None, use_double_buffer=True
+):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     The OP creates a Python reader for data feeding in Python, it is similar
     to :ref:`api_fluid_layers_py_reader` except that it can read data from
@@ -799,24 +831,29 @@ def create_py_reader_by_data(capacity,
     """
     logging.warn(
         'paddle.fluid.layers.create_py_reader_by_data() may be deprecated in the near future. '
-        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
-    return _py_reader(capacity=capacity,
-                      shapes=None,
-                      dtypes=None,
-                      lod_levels=None,
-                      name=name,
-                      use_double_buffer=use_double_buffer,
-                      feed_list=feed_list)
+        'Please use paddle.fluid.io.DataLoader.from_generator() instead.'
+    )
+    return _py_reader(
+        capacity=capacity,
+        shapes=None,
+        dtypes=None,
+        lod_levels=None,
+        name=name,
+        use_double_buffer=use_double_buffer,
+        feed_list=feed_list,
+    )
 
 
 def __create_shared_decorated_reader__(op_type, reader, attrs):
     var_name = unique_name(op_type)
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=var_name)
-    startop_op = startup_blk.append_op(type=op_type,
-                                       inputs={'UnderlyingReader': reader},
-                                       outputs={'Out': [startup_var]},
-                                       attrs=attrs)
+    startop_op = startup_blk.append_op(
+        type=op_type,
+        inputs={'UnderlyingReader': reader},
+        outputs={'Out': [startup_var]},
+        attrs=attrs,
+    )
     startup_var.persistable = True
     main_prog_block = default_main_program().current_block()
     main_prog_var = _copy_reader_var_(main_prog_block, startup_var)
@@ -828,10 +865,12 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
     new_reader_name = name if name is not None else unique_name(op_type)
     main_blk = default_main_program().current_block()
     new_reader = main_blk.create_var(name=new_reader_name)
-    main_blk.append_op(type=op_type,
-                       inputs={'UnderlyingReader': reader},
-                       outputs={'Out': [new_reader]},
-                       attrs=attrs)
+    main_blk.append_op(
+        type=op_type,
+        inputs={'UnderlyingReader': reader},
+        outputs={'Out': [new_reader]},
+        attrs=attrs,
+    )
     return monkey_patch_reader_methods(new_reader)
 
 
@@ -864,15 +903,14 @@ def double_buffer(reader, place=None, name=None):
     if place is not None:
         attrs['place'] = str(_get_paddle_place(place)).upper()
 
-    return __create_unshared_decorated_reader__('create_double_buffer_reader',
-                                                reader,
-                                                attrs,
-                                                name=name)
+    return __create_unshared_decorated_reader__(
+        'create_double_buffer_reader', reader, attrs, name=name
+    )
 
 
 def read_file(reader):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     Execute the given reader and get data via it.
 
@@ -898,13 +936,14 @@ def read_file(reader):
     """
     helper = LayerHelper('read_file')
     out = [
-        helper.create_variable_for_type_inference(stop_gradient=True,
-                                                  dtype='float32')
+        helper.create_variable_for_type_inference(
+            stop_gradient=True, dtype='float32'
+        )
         for _ in range(len(reader.desc.shapes()))
     ]
-    helper.append_op(type='read',
-                     inputs={'Reader': [reader]},
-                     outputs={'Out': out})
+    helper.append_op(
+        type='read', inputs={'Reader': [reader]}, outputs={'Out': out}
+    )
     if len(out) == 1:
         return out[0]
     else:

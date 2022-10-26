@@ -70,19 +70,25 @@ class Imikolov(Dataset):
 
     """
 
-    def __init__(self,
-                 data_file=None,
-                 data_type='NGRAM',
-                 window_size=-1,
-                 mode='train',
-                 min_word_freq=50,
-                 download=True):
-        assert data_type.upper() in ['NGRAM', 'SEQ'], \
-            "data type should be 'NGRAM', 'SEQ', but got {}".format(data_type)
+    def __init__(
+        self,
+        data_file=None,
+        data_type='NGRAM',
+        window_size=-1,
+        mode='train',
+        min_word_freq=50,
+        download=True,
+    ):
+        assert data_type.upper() in [
+            'NGRAM',
+            'SEQ',
+        ], "data type should be 'NGRAM', 'SEQ', but got {}".format(data_type)
         self.data_type = data_type.upper()
 
-        assert mode.lower() in ['train', 'test'], \
-            "mode should be 'train', 'test', but got {}".format(mode)
+        assert mode.lower() in [
+            'train',
+            'test',
+        ], "mode should be 'train', 'test', but got {}".format(mode)
         self.mode = mode.lower()
 
         self.window_size = window_size
@@ -90,9 +96,12 @@ class Imikolov(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file is not set and downloading automatically disabled"
-            self.data_file = _check_exists_and_download(data_file, URL, MD5,
-                                                        'imikolov', download)
+            assert (
+                download
+            ), "data_file is not set and downloading automatically disabled"
+            self.data_file = _check_exists_and_download(
+                data_file, URL, MD5, 'imikolov', download
+            )
 
         # Build a word dictionary from the corpus
         self.word_idx = self._build_work_dict(min_word_freq)
@@ -148,7 +157,7 @@ class Imikolov(Dataset):
                     if len(l) >= self.window_size:
                         l = [self.word_idx.get(w, UNK) for w in l]
                         for i in range(self.window_size, len(l) + 1):
-                            self.data.append(tuple(l[i - self.window_size:i]))
+                            self.data.append(tuple(l[i - self.window_size : i]))
                 elif self.data_type == 'SEQ':
                     l = l.strip().split()
                     l = [self.word_idx.get(w, UNK) for w in l]

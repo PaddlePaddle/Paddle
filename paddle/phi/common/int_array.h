@@ -58,6 +58,8 @@ class IntArrayBase {
 
   size_t size() const { return array_.size(); }
 
+  int64_t operator[](int64_t i) const { return array_[i]; }
+
   const std::vector<int64_t>& GetData() const { return array_; }
 
  private:

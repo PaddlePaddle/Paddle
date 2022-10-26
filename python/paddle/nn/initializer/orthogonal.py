@@ -85,15 +85,16 @@ class Orthogonal(Initializer):
         assert isinstance(var, framework.Parameter)
         assert isinstance(block, framework.Block)
         # 'qr' op only support float32/float64 now
-        check_variable_and_dtype(var, "Out", ["float32", "float64"],
-                                 "Orthogonal")
+        check_variable_and_dtype(
+            var, "Out", ["float32", "float64"], "Orthogonal"
+        )
 
         self._seed = block.program.random_seed
 
         shape = var.shape
-        assert len(
-            shape
-        ) >= 2, "Only Tensor with 2 or more dimensions can be initialized by Orthogonal"
+        assert (
+            len(shape) >= 2
+        ), "Only Tensor with 2 or more dimensions can be initialized by Orthogonal"
 
         row = shape[0]
         col = 1
@@ -105,9 +106,9 @@ class Orthogonal(Initializer):
         if framework.in_dygraph_mode():
             with no_grad():
                 place = framework._current_expected_place()
-                normal_var = _C_ops.gaussian_random(flatten_shape, 0.0, 1.0,
-                                                    self._seed, var.dtype,
-                                                    place)
+                normal_var = _C_ops.gaussian_random(
+                    flatten_shape, 0.0, 1.0, self._seed, var.dtype, place
+                )
                 q, r = _C_ops.qr(normal_var, 'reduced')
 
                 r_diag = _C_ops.diag(r, 0, 0)
@@ -127,107 +128,114 @@ class Orthogonal(Initializer):
 
                 return None
 
-        normal_var = block.create_var(name=unique_name.generate('.'.join(
-            ['gaussian_random', 'tmp'])),
-                                      dtype=var.dtype,
-                                      persistable=False,
-                                      stop_gradient=True)
-        block.append_op(type='gaussian_random',
-                        inputs={},
-                        outputs={'Out': normal_var},
-                        attrs={
-                            'mean': 0.0,
-                            'std': 1.0,
-                            'shape': flatten_shape,
-                            'seed': self._seed,
-                            'dtype': var.dtype
-                        },
-                        stop_gradient=True)
+        normal_var = block.create_var(
+            name=unique_name.generate('.'.join(['gaussian_random', 'tmp'])),
+            dtype=var.dtype,
+            persistable=False,
+            stop_gradient=True,
+        )
+        block.append_op(
+            type='gaussian_random',
+            inputs={},
+            outputs={'Out': normal_var},
+            attrs={
+                'mean': 0.0,
+                'std': 1.0,
+                'shape': flatten_shape,
+                'seed': self._seed,
+                'dtype': var.dtype,
+            },
+            stop_gradient=True,
+        )
 
-        q = block.create_var(name=unique_name.generate('.'.join(
-            ['qr', 'q', 'tmp'])),
-                             dtype=normal_var.dtype,
-                             persistable=False,
-                             stop_gradient=True)
-        r = block.create_var(name=unique_name.generate('.'.join(
-            ['qr', 'r', 'tmp'])),
-                             dtype=normal_var.dtype,
-                             persistable=False,
-                             stop_gradient=True)
-        block.append_op(type='qr',
-                        inputs={'X': [normal_var]},
-                        outputs={
-                            'Q': q,
-                            'R': r,
-                        },
-                        attrs={'mode': 'reduced'},
-                        stop_gradient=True)
+        q = block.create_var(
+            name=unique_name.generate('.'.join(['qr', 'q', 'tmp'])),
+            dtype=normal_var.dtype,
+            persistable=False,
+            stop_gradient=True,
+        )
+        r = block.create_var(
+            name=unique_name.generate('.'.join(['qr', 'r', 'tmp'])),
+            dtype=normal_var.dtype,
+            persistable=False,
+            stop_gradient=True,
+        )
+        block.append_op(
+            type='qr',
+            inputs={'X': [normal_var]},
+            outputs={
+                'Q': q,
+                'R': r,
+            },
+            attrs={'mode': 'reduced'},
+            stop_gradient=True,
+        )
 
-        r_diag = block.create_var(name=unique_name.generate('.'.join(
-            ['diag', 'tmp'])),
-                                  dtype=r.dtype,
-                                  persistable=False,
-                                  stop_gradient=True)
-        block.append_op(type='diag_v2',
-                        inputs={'X': r},
-                        outputs={'Out': r_diag},
-                        attrs={
-                            'offset': 0,
-                            'padding_value': 0
-                        },
-                        stop_gradient=True)
+        r_diag = block.create_var(
+            name=unique_name.generate('.'.join(['diag', 'tmp'])),
+            dtype=r.dtype,
+            persistable=False,
+            stop_gradient=True,
+        )
+        block.append_op(
+            type='diag_v2',
+            inputs={'X': r},
+            outputs={'Out': r_diag},
+            attrs={'offset': 0, 'padding_value': 0},
+            stop_gradient=True,
+        )
 
         r_sign = r_diag
-        block.append_op(type='sign',
-                        inputs={'X': [r_diag]},
-                        outputs={'Out': r_sign},
-                        stop_gradient=True)
+        block.append_op(
+            type='sign',
+            inputs={'X': [r_diag]},
+            outputs={'Out': r_sign},
+            stop_gradient=True,
+        )
 
-        block.append_op(type='elementwise_mul',
-                        inputs={
-                            'X': q,
-                            'Y': r_sign
-                        },
-                        outputs={'Out': q},
-                        attrs={},
-                        stop_gradient=True)
+        block.append_op(
+            type='elementwise_mul',
+            inputs={'X': q, 'Y': r_sign},
+            outputs={'Out': q},
+            attrs={},
+            stop_gradient=True,
+        )
 
-        x_shape = block.create_var(name=unique_name.generate('.'.join(
-            ['transpose', 'shape', 'tmp'])),
-                                   dtype=q.dtype,
-                                   persistable=False,
-                                   stop_gradient=True)
+        x_shape = block.create_var(
+            name=unique_name.generate('.'.join(['transpose', 'shape', 'tmp'])),
+            dtype=q.dtype,
+            persistable=False,
+            stop_gradient=True,
+        )
         if row < col:
-            q_transpose = block.create_var(name=unique_name.generate('.'.join(
-                ['transpose', 'tmp'])),
-                                           dtype=q.dtype,
-                                           persistable=False,
-                                           stop_gradient=True)
-            block.append_op(type='transpose2',
-                            inputs={'X': q},
-                            outputs={
-                                'Out': q_transpose,
-                                'XShape': x_shape
-                            },
-                            attrs={'axis': [1, 0]},
-                            stop_gradient=True)
+            q_transpose = block.create_var(
+                name=unique_name.generate('.'.join(['transpose', 'tmp'])),
+                dtype=q.dtype,
+                persistable=False,
+                stop_gradient=True,
+            )
+            block.append_op(
+                type='transpose2',
+                inputs={'X': q},
+                outputs={'Out': q_transpose, 'XShape': x_shape},
+                attrs={'axis': [1, 0]},
+                stop_gradient=True,
+            )
             q = q_transpose
 
-        block.append_op(type='reshape2',
-                        inputs={'X': q},
-                        outputs={
-                            'Out': q,
-                            "XShape": x_shape
-                        },
-                        attrs={'shape': var.shape},
-                        stop_gradient=True)
+        block.append_op(
+            type='reshape2',
+            inputs={'X': q},
+            outputs={'Out': q, "XShape": x_shape},
+            attrs={'shape': var.shape},
+            stop_gradient=True,
+        )
 
-        op = block.append_op(type='scale',
-                             inputs={'X': q},
-                             outputs={'Out': var},
-                             attrs={
-                                 'scale': self._gain,
-                                 'bias': 0.0
-                             })
+        op = block.append_op(
+            type='scale',
+            inputs={'X': q},
+            outputs={'Out': var},
+            attrs={'scale': self._gain, 'bias': 0.0},
+        )
 
         return op

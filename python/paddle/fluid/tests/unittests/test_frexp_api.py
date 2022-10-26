@@ -18,13 +18,15 @@ import paddle.fluid
 
 
 class TestFrexpAPI(unittest.TestCase):
-
     def setUp(self):
         np.random.seed(1024)
         self.rtol = 1e-5
         self.atol = 1e-8
-        self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
         self.set_input()
 
     def set_input(self):
@@ -35,8 +37,9 @@ class TestFrexpAPI(unittest.TestCase):
         # 开启静态图模式
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            input_data = paddle.fluid.data('X', self.x_np.shape,
-                                           self.x_np.dtype)
+            input_data = paddle.fluid.data(
+                'X', self.x_np.shape, self.x_np.dtype
+            )
             out = paddle.frexp(input_data)
             # 计算静态图结果
             exe = paddle.static.Executor(self.place)
@@ -65,7 +68,7 @@ class TestFrexpAPI(unittest.TestCase):
 
 class TestSplitsFloat32Case1(TestFrexpAPI):
     """
-        Test num_or_sections which is an integer and data type is float32.
+    Test num_or_sections which is an integer and data type is float32.
     """
 
     def set_input(self):
@@ -74,7 +77,7 @@ class TestSplitsFloat32Case1(TestFrexpAPI):
 
 class TestSplitsFloat64Case1(TestFrexpAPI):
     """
-        Test num_or_sections which is an integer and data type is float64.
+    Test num_or_sections which is an integer and data type is float64.
     """
 
     def set_input(self):
@@ -83,7 +86,7 @@ class TestSplitsFloat64Case1(TestFrexpAPI):
 
 class TestSplitsFloat64Case2(TestFrexpAPI):
     """
-        Test num_or_sections which is an integer and data type is float64.
+    Test num_or_sections which is an integer and data type is float64.
     """
 
     def set_input(self):

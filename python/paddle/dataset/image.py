@@ -31,6 +31,7 @@ the image layout as follows.
 """
 
 import numpy as np
+
 # FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
 # https://github.com/numpy/numpy/issues/12497
 import subprocess
@@ -42,9 +43,11 @@ interpreter = sys.executable
 # will be the C++ execubable on Windows
 if sys.platform == 'win32' and 'python.exe' not in interpreter:
     interpreter = sys.exec_prefix + os.sep + 'python.exe'
-import_cv2_proc = subprocess.Popen([interpreter, "-c", "import cv2"],
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
+import_cv2_proc = subprocess.Popen(
+    [interpreter, "-c", "import cv2"],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+)
 out, err = import_cv2_proc.communicate()
 retcode = import_cv2_proc.poll()
 if retcode != 0:
@@ -65,6 +68,7 @@ __all__ = []
 def _check_cv2():
     if cv2 is None:
         import sys
+
         sys.stderr.write(
             '''Warning with paddle image module: opencv-python should be imported,
          or paddle image module could NOT work; please install opencv-python first.'''
@@ -74,10 +78,9 @@ def _check_cv2():
         return True
 
 
-def batch_images_from_tar(data_file,
-                          dataset_name,
-                          img2label,
-                          num_per_batch=1024):
+def batch_images_from_tar(
+    data_file, dataset_name, img2label, num_per_batch=1024
+):
     """
     Read images from tar file and batch them into batch file.
 
@@ -115,9 +118,11 @@ def batch_images_from_tar(data_file,
                 output = {}
                 output['label'] = labels
                 output['data'] = data
-                pickle.dump(output,
-                            open('%s/batch_%d' % (out_path, file_id), 'wb'),
-                            protocol=2)
+                pickle.dump(
+                    output,
+                    open('%s/batch_%d' % (out_path, file_id), 'wb'),
+                    protocol=2,
+                )
                 file_id += 1
                 data = []
                 labels = []
@@ -125,9 +130,9 @@ def batch_images_from_tar(data_file,
         output = {}
         output['label'] = labels
         output['data'] = data
-        pickle.dump(output,
-                    open('%s/batch_%d' % (out_path, file_id), 'wb'),
-                    protocol=2)
+        pickle.dump(
+            output, open('%s/batch_%d' % (out_path, file_id), 'wb'), protocol=2
+        )
 
     with open(meta_file, 'a') as meta:
         for file in os.listdir(out_path):
@@ -321,12 +326,9 @@ def left_right_flip(im, is_color=True):
         return im[:, ::-1]
 
 
-def simple_transform(im,
-                     resize_size,
-                     crop_size,
-                     is_train,
-                     is_color=True,
-                     mean=None):
+def simple_transform(
+    im, resize_size, crop_size, is_train, is_color=True, mean=None
+):
     """
     Simply data argumentation for training. These operations include
     resizing, croping and flipping.
@@ -377,12 +379,9 @@ def simple_transform(im,
     return im
 
 
-def load_and_transform(filename,
-                       resize_size,
-                       crop_size,
-                       is_train,
-                       is_color=True,
-                       mean=None):
+def load_and_transform(
+    filename, resize_size, crop_size, is_train, is_color=True, mean=None
+):
     """
     Load image from the input file `filename` and transform image for
     data argumentation. Please refer to the `simple_transform` interface

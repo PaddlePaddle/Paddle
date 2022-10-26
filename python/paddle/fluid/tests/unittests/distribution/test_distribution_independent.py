@@ -25,35 +25,45 @@ np.random.seed(2022)
 @param.place(config.DEVICES)
 @param.param_cls(
     (param.TEST_CASE_NAME, 'base', 'reinterpreted_batch_rank'),
-    [('base_beta',
-      paddle.distribution.Beta(paddle.rand([1, 2]), paddle.rand([1, 2])), 1)])
+    [
+        (
+            'base_beta',
+            paddle.distribution.Beta(paddle.rand([1, 2]), paddle.rand([1, 2])),
+            1,
+        )
+    ],
+)
 class TestIndependent(unittest.TestCase):
-
     def setUp(self):
-        self._t = paddle.distribution.Independent(self.base,
-                                                  self.reinterpreted_batch_rank)
+        self._t = paddle.distribution.Independent(
+            self.base, self.reinterpreted_batch_rank
+        )
 
     def test_mean(self):
         np.testing.assert_allclose(
             self.base.mean,
             self._t.mean,
             rtol=config.RTOL.get(str(self.base.alpha.numpy().dtype)),
-            atol=config.ATOL.get(str(self.base.alpha.numpy().dtype)))
+            atol=config.ATOL.get(str(self.base.alpha.numpy().dtype)),
+        )
 
     def test_variance(self):
         np.testing.assert_allclose(
             self.base.variance,
             self._t.variance,
             rtol=config.RTOL.get(str(self.base.alpha.numpy().dtype)),
-            atol=config.ATOL.get(str(self.base.alpha.numpy().dtype)))
+            atol=config.ATOL.get(str(self.base.alpha.numpy().dtype)),
+        )
 
     def test_entropy(self):
         np.testing.assert_allclose(
-            self._np_sum_rightmost(self.base.entropy().numpy(),
-                                   self.reinterpreted_batch_rank),
+            self._np_sum_rightmost(
+                self.base.entropy().numpy(), self.reinterpreted_batch_rank
+            ),
             self._t.entropy(),
             rtol=config.RTOL.get(str(self.base.alpha.numpy().dtype)),
-            atol=config.ATOL.get(str(self.base.alpha.numpy().dtype)))
+            atol=config.ATOL.get(str(self.base.alpha.numpy().dtype)),
+        )
 
     def _np_sum_rightmost(self, value, n):
         return np.sum(value, tuple(range(-n, 0))) if n > 0 else value
@@ -63,10 +73,12 @@ class TestIndependent(unittest.TestCase):
         np.testing.assert_allclose(
             self._np_sum_rightmost(
                 self.base.log_prob(paddle.to_tensor(value)).numpy(),
-                self.reinterpreted_batch_rank),
+                self.reinterpreted_batch_rank,
+            ),
             self._t.log_prob(paddle.to_tensor(value)).numpy(),
             rtol=config.RTOL.get(str(self.base.alpha.numpy().dtype)),
-            atol=config.ATOL.get(str(self.base.alpha.numpy().dtype)))
+            atol=config.ATOL.get(str(self.base.alpha.numpy().dtype)),
+        )
 
     # TODO(cxxly): Add Kolmogorov-Smirnov test for sample result.
     def test_sample(self):
@@ -79,16 +91,28 @@ class TestIndependent(unittest.TestCase):
 
 @param.place(config.DEVICES)
 @param.param_cls(
-    (param.TEST_CASE_NAME, 'base', 'reinterpreted_batch_rank',
-     'expected_exception'),
-    [('base_not_transform', '', 1, TypeError),
-     ('rank_less_than_zero', paddle.distribution.Transform(), -1, ValueError)])
+    (
+        param.TEST_CASE_NAME,
+        'base',
+        'reinterpreted_batch_rank',
+        'expected_exception',
+    ),
+    [
+        ('base_not_transform', '', 1, TypeError),
+        (
+            'rank_less_than_zero',
+            paddle.distribution.Transform(),
+            -1,
+            ValueError,
+        ),
+    ],
+)
 class TestIndependentException(unittest.TestCase):
-
     def test_init(self):
         with self.assertRaises(self.expected_exception):
             paddle.distribution.IndependentTransform(
-                self.base, self.reinterpreted_batch_rank)
+                self.base, self.reinterpreted_batch_rank
+            )
 
 
 if __name__ == '__main__':

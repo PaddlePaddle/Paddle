@@ -35,32 +35,27 @@ class SGDOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
 
-#ifdef PADDLE_WITH_MKLDNN
-    using dnnl::memory;
-    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-      const auto *param_var = ctx.InputVar("Param");
-      const auto *grad_var = ctx.InputVar("Grad");
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    const auto *param_var = ctx.InputVar("Param");
+    const auto *grad_var = ctx.InputVar("Grad");
 
-      // supported cases
-      bool dense_param_sparse_grad = param_var->IsType<phi::DenseTensor>() &&
-                                     grad_var->IsType<phi::SelectedRows>();
-      bool dense_param_and_grad = param_var->IsType<phi::DenseTensor>() &&
-                                  grad_var->IsType<phi::DenseTensor>();
-
-      if (dense_param_sparse_grad || dense_param_and_grad)
-        return framework::OpKernelType(data_type,
-                                       ctx.GetPlace(),
-                                       phi::DataLayout::kMKLDNN,
-                                       framework::LibraryType::kMKLDNN);
+    // supported cases
+    bool dense_param_sparse_grad = param_var->IsType<phi::DenseTensor>() &&
+                                   grad_var->IsType<phi::SelectedRows>();
+    bool dense_param_and_grad = param_var->IsType<phi::DenseTensor>() &&
+                                grad_var->IsType<phi::DenseTensor>();
+    if (!(dense_param_sparse_grad || dense_param_and_grad)) {
+      this->SetDnnFallback(true);
     }
-#endif
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "LearningRate") {
       return framework::OpKernelType(
           framework::TransToProtoVarType(tensor.dtype()),

@@ -31,6 +31,7 @@ from ..layer_helper import LayerHelper
 from ..framework import _non_static_mode
 from ..param_attr import ParamAttr
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
+
 try:
     from collections.abc import Sequence
 except:
@@ -63,7 +64,7 @@ __all__ = [
 
 class RNNCell(object):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     RNNCell is the base class for abstraction representing the calculations
     mapping the input and state to the output and new state. It is suitable to
@@ -95,12 +96,14 @@ class RNNCell(object):
     def __call__(self, inputs, states, **kwargs):
         return self.call(inputs, states, **kwargs)
 
-    def get_initial_states(self,
-                           batch_ref,
-                           shape=None,
-                           dtype='float32',
-                           init_value=0,
-                           batch_dim_idx=0):
+    def get_initial_states(
+        self,
+        batch_ref,
+        shape=None,
+        dtype='float32',
+        init_value=0,
+        batch_dim_idx=0,
+    ):
         r"""
         Generate initialized states according to provided shape, data type and
         value.
@@ -126,9 +129,12 @@ class RNNCell(object):
             Variable: tensor variable[s] packed in the same structure provided \
                 by shape, representing the initialized states.
         """
-        check_variable_and_dtype(batch_ref, 'batch_ref',
-                                 ['float32', 'float64', 'int32', 'int64'],
-                                 'RNNCell')
+        check_variable_and_dtype(
+            batch_ref,
+            'batch_ref',
+            ['float32', 'float64', 'int32', 'int64'],
+            'RNNCell',
+        )
         check_type(shape, 'shape', (list, tuple, type(None), int), 'RNNCell')
         if isinstance(shape, (list, tuple)):
             shapes = map_structure(lambda x: x, shape)
@@ -144,17 +150,17 @@ class RNNCell(object):
 
         def _is_shape_sequence(seq):
             """For shape, list/tuple of integer is the finest-grained objection"""
-            if (isinstance(seq, list) or isinstance(seq, tuple)):
-                if reduce(lambda flag, x: isinstance(x, int) and flag, seq,
-                          True):
+            if isinstance(seq, list) or isinstance(seq, tuple):
+                if reduce(
+                    lambda flag, x: isinstance(x, int) and flag, seq, True
+                ):
                     return False
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
                 return True
-            return (isinstance(seq, Sequence) and not isinstance(seq, str))
+            return isinstance(seq, Sequence) and not isinstance(seq, str)
 
         class Shape(object):
-
             def __init__(self, shape):
                 self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
 
@@ -180,7 +186,11 @@ class RNNCell(object):
                 shape=shape.shape,
                 dtype=dtype,
                 value=init_value,
-                input_dim_idx=batch_dim_idx), states_shapes, states_dtypes)
+                input_dim_idx=batch_dim_idx,
+            ),
+            states_shapes,
+            states_dtypes,
+        )
         return init_states
 
     @property
@@ -196,7 +206,8 @@ class RNNCell(object):
         `get_initial_states`.
         """
         raise NotImplementedError(
-            "Please add implementaion for `state_shape` in the used cell.")
+            "Please add implementaion for `state_shape` in the used cell."
+        )
 
     @property
     def state_dtype(self):
@@ -211,12 +222,13 @@ class RNNCell(object):
         `get_initial_states`.
         """
         raise NotImplementedError(
-            "Please add implementaion for `state_dtype` in the used cell.")
+            "Please add implementaion for `state_dtype` in the used cell."
+        )
 
 
 class GRUCell(RNNCell):
     r"""
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     Gated Recurrent Unit cell. It is a wrapper for
     `fluid.contrib.layers.rnn_impl.BasicGRUUnit` to make it adapt to RNNCell.
@@ -244,14 +256,16 @@ class GRUCell(RNNCell):
             cell = layers.GRUCell(hidden_size=256)
     """
 
-    def __init__(self,
-                 hidden_size,
-                 param_attr=None,
-                 bias_attr=None,
-                 gate_activation=None,
-                 activation=None,
-                 dtype="float32",
-                 name="GRUCell"):
+    def __init__(
+        self,
+        hidden_size,
+        param_attr=None,
+        bias_attr=None,
+        gate_activation=None,
+        activation=None,
+        dtype="float32",
+        name="GRUCell",
+    ):
         """
         Constructor of GRUCell.
 
@@ -272,9 +286,16 @@ class GRUCell(RNNCell):
         check_dtype(dtype, 'dtype', ['float32', 'float64'], 'GRUCell')
         self.hidden_size = hidden_size
         from .. import contrib  # TODO: resolve recurrent import
+
         self.gru_unit = contrib.layers.rnn_impl.BasicGRUUnit(
-            name, hidden_size, param_attr, bias_attr, gate_activation,
-            activation, dtype)
+            name,
+            hidden_size,
+            param_attr,
+            bias_attr,
+            gate_activation,
+            activation,
+            dtype,
+        )
 
     def call(self, inputs, states):
         r"""
@@ -295,10 +316,12 @@ class GRUCell(RNNCell):
                 tensor is same as that of `states`.
         """
 
-        check_variable_and_dtype(inputs, 'inputs', ['float32', 'float64'],
-                                 'GRUCell')
-        check_variable_and_dtype(states, 'states', ['float32', 'float64'],
-                                 'GRUCell')
+        check_variable_and_dtype(
+            inputs, 'inputs', ['float32', 'float64'], 'GRUCell'
+        )
+        check_variable_and_dtype(
+            states, 'states', ['float32', 'float64'], 'GRUCell'
+        )
         new_hidden = self.gru_unit(inputs, states)
         return new_hidden, new_hidden
 
@@ -314,7 +337,7 @@ class GRUCell(RNNCell):
 
 class LSTMCell(RNNCell):
     r"""
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     Long-Short Term Memory cell. It is a wrapper for
     `fluid.contrib.layers.rnn_impl.BasicLSTMUnit` to make it adapt to RNNCell.
@@ -343,15 +366,17 @@ class LSTMCell(RNNCell):
             cell = layers.LSTMCell(hidden_size=256)
     """
 
-    def __init__(self,
-                 hidden_size,
-                 param_attr=None,
-                 bias_attr=None,
-                 gate_activation=None,
-                 activation=None,
-                 forget_bias=1.0,
-                 dtype="float32",
-                 name="LSTMCell"):
+    def __init__(
+        self,
+        hidden_size,
+        param_attr=None,
+        bias_attr=None,
+        gate_activation=None,
+        activation=None,
+        forget_bias=1.0,
+        dtype="float32",
+        name="LSTMCell",
+    ):
         """
         Constructor of LSTMCell.
 
@@ -375,9 +400,17 @@ class LSTMCell(RNNCell):
         check_dtype(dtype, 'dtype', ['float32', 'float64'], 'LSTMCell')
         self.hidden_size = hidden_size
         from .. import contrib  # TODO: resolve recurrent import
+
         self.lstm_unit = contrib.layers.rnn_impl.BasicLSTMUnit(
-            name, hidden_size, param_attr, bias_attr, gate_activation,
-            activation, forget_bias, dtype)
+            name,
+            hidden_size,
+            param_attr,
+            bias_attr,
+            gate_activation,
+            activation,
+            forget_bias,
+            dtype,
+        )
 
     def call(self, inputs, states):
         r"""
@@ -400,13 +433,18 @@ class LSTMCell(RNNCell):
                 tensors all is same as that of `states`.
         """
 
-        check_variable_and_dtype(inputs, 'inputs', ['float32', 'float64'],
-                                 'LSTMCell')
+        check_variable_and_dtype(
+            inputs, 'inputs', ['float32', 'float64'], 'LSTMCell'
+        )
         check_type(states, 'states', list, 'LSTMCell')
         if isinstance(states, list):
             for i, state in enumerate(states):
-                check_variable_and_dtype(state, 'state[' + str(i) + ']',
-                                         ['float32', 'float64'], 'LSTMCell')
+                check_variable_and_dtype(
+                    state,
+                    'state[' + str(i) + ']',
+                    ['float32', 'float64'],
+                    'LSTMCell',
+                )
 
         pre_hidden, pre_cell = states
         new_hidden, new_cell = self.lstm_unit(inputs, pre_hidden, pre_cell)
@@ -422,13 +460,15 @@ class LSTMCell(RNNCell):
         return [[self.hidden_size], [self.hidden_size]]
 
 
-def rnn(cell,
-        inputs,
-        initial_states=None,
-        sequence_length=None,
-        time_major=False,
-        is_reverse=False,
-        **kwargs):
+def rnn(
+    cell,
+    inputs,
+    initial_states=None,
+    sequence_length=None,
+    time_major=False,
+    is_reverse=False,
+    **kwargs
+):
     """
     rnn creates a recurrent neural network specified by RNNCell `cell`,
     which performs :code:`cell.call()` (for dygraph mode :code:`cell.forward`)
@@ -483,15 +523,28 @@ def rnn(cell,
 
     """
     if _non_static_mode():
-        return _rnn_dynamic_graph(cell, inputs, initial_states, sequence_length,
-                                  time_major, is_reverse, **kwargs)
+        return _rnn_dynamic_graph(
+            cell,
+            inputs,
+            initial_states,
+            sequence_length,
+            time_major,
+            is_reverse,
+            **kwargs
+        )
     else:
-        return _rnn_static_graph(cell, inputs, initial_states, sequence_length,
-                                 time_major, is_reverse, **kwargs)
+        return _rnn_static_graph(
+            cell,
+            inputs,
+            initial_states,
+            sequence_length,
+            time_major,
+            is_reverse,
+            **kwargs
+        )
 
 
 class ArrayWrapper(object):
-
     def __init__(self, x):
         self.array = [x]
 
@@ -505,8 +558,9 @@ class ArrayWrapper(object):
 
 def _maybe_copy(state, new_state, step_mask):
     """update rnn state or just pass the old state through"""
-    new_state = nn.elementwise_mul(new_state, step_mask, axis=0) \
-              + nn.elementwise_mul(state, (1 - step_mask), axis=0)
+    new_state = nn.elementwise_mul(
+        new_state, step_mask, axis=0
+    ) + nn.elementwise_mul(state, (1 - step_mask), axis=0)
     return new_state
 
 
@@ -515,34 +569,40 @@ def _transpose_batch_time(x):
     return nn.transpose(x, perm)
 
 
-def _rnn_dynamic_graph(cell,
-                       inputs,
-                       initial_states=None,
-                       sequence_length=None,
-                       time_major=False,
-                       is_reverse=False,
-                       **kwargs):
+def _rnn_dynamic_graph(
+    cell,
+    inputs,
+    initial_states=None,
+    sequence_length=None,
+    time_major=False,
+    is_reverse=False,
+    **kwargs
+):
     time_step_index = 0 if time_major else 1
     flat_inputs = flatten(inputs)
     time_steps = flat_inputs[0].shape[time_step_index]
 
     if initial_states is None:
         initial_states = cell.get_initial_states(
-            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0
+        )
 
     if not time_major:
         inputs = map_structure(_transpose_batch_time, inputs)
 
     if sequence_length is not None:
-        mask = sequence_lod.sequence_mask(sequence_length,
-                                          maxlen=time_steps,
-                                          dtype=inputs.dtype)
+        mask = sequence_lod.sequence_mask(
+            sequence_length, maxlen=time_steps, dtype=inputs.dtype
+        )
         mask = nn.transpose(mask, [1, 0])
 
     if is_reverse:
         inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
-        mask = tensor.reverse(mask, axis=[0]) \
-            if sequence_length is not None else None
+        mask = (
+            tensor.reverse(mask, axis=[0])
+            if sequence_length is not None
+            else None
+        )
 
     states = initial_states
     outputs = []
@@ -550,42 +610,56 @@ def _rnn_dynamic_graph(cell,
         step_inputs = map_structure(lambda x: x[i], inputs)
         step_outputs, new_states = cell(step_inputs, states, **kwargs)
         if sequence_length is not None:
-            new_states = map_structure(partial(_maybe_copy, step_mask=mask[i]),
-                                       states, new_states)
+            new_states = map_structure(
+                partial(_maybe_copy, step_mask=mask[i]), states, new_states
+            )
         states = new_states
-        outputs = map_structure(lambda x: ArrayWrapper(x),
-                                step_outputs) if i == 0 else map_structure(
-                                    lambda x, x_array: x_array.append(x),
-                                    step_outputs, outputs)
+        outputs = (
+            map_structure(lambda x: ArrayWrapper(x), step_outputs)
+            if i == 0
+            else map_structure(
+                lambda x, x_array: x_array.append(x), step_outputs, outputs
+            )
+        )
 
     final_outputs = map_structure(
-        lambda x: nn.stack(x.array, axis=time_step_index), outputs)
+        lambda x: nn.stack(x.array, axis=time_step_index), outputs
+    )
 
     if is_reverse:
         final_outputs = map_structure(
-            lambda x: tensor.reverse(x, axis=time_step_index), final_outputs)
+            lambda x: tensor.reverse(x, axis=time_step_index), final_outputs
+        )
 
     final_states = new_states
     return final_outputs, final_states
 
 
-def _rnn_static_graph(cell,
-                      inputs,
-                      initial_states=None,
-                      sequence_length=None,
-                      time_major=False,
-                      is_reverse=False,
-                      **kwargs):
+def _rnn_static_graph(
+    cell,
+    inputs,
+    initial_states=None,
+    sequence_length=None,
+    time_major=False,
+    is_reverse=False,
+    **kwargs
+):
     check_type(inputs, 'inputs', (Variable, list, tuple), 'rnn')
     if isinstance(inputs, (list, tuple)):
         for i, input_x in enumerate(inputs):
-            check_variable_and_dtype(input_x, 'inputs[' + str(i) + ']',
-                                     ['float32', 'float64'], 'rnn')
-    check_type(initial_states, 'initial_states',
-               (Variable, list, tuple, type(None)), 'rnn')
+            check_variable_and_dtype(
+                input_x, 'inputs[' + str(i) + ']', ['float32', 'float64'], 'rnn'
+            )
+    check_type(
+        initial_states,
+        'initial_states',
+        (Variable, list, tuple, type(None)),
+        'rnn',
+    )
 
-    check_type(sequence_length, 'sequence_length', (Variable, type(None)),
-               'rnn')
+    check_type(
+        sequence_length, 'sequence_length', (Variable, type(None)), 'rnn'
+    )
 
     def _switch_grad(x, stop=False):
         x.stop_gradient = stop
@@ -593,7 +667,8 @@ def _rnn_static_graph(cell,
 
     if initial_states is None:
         initial_states = cell.get_initial_states(
-            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0
+        )
     initial_states = map_structure(_switch_grad, initial_states)
 
     if not time_major:
@@ -604,7 +679,8 @@ def _rnn_static_graph(cell,
         mask = sequence_lod.sequence_mask(
             sequence_length,
             maxlen=max_seq_len,
-            dtype=flatten(initial_states)[0].dtype)
+            dtype=flatten(initial_states)[0].dtype,
+        )
         mask = nn.transpose(mask, [1, 0])
     if is_reverse:
         inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
@@ -621,7 +697,8 @@ def _rnn_static_graph(cell,
         if sequence_length:
             step_mask = rnn.step_input(mask)
             new_states = map_structure(
-                partial(_maybe_copy, step_mask=step_mask), states, new_states)
+                partial(_maybe_copy, step_mask=step_mask), states, new_states
+            )
 
         map_structure(rnn.update_memory, states, new_states)
         flat_outputs = flatten(outputs)
@@ -629,14 +706,15 @@ def _rnn_static_graph(cell,
         map_structure(rnn.step_output, new_states)
 
     rnn_out = rnn()
-    final_outputs = rnn_out[:len(flat_outputs)]
+    final_outputs = rnn_out[: len(flat_outputs)]
     final_outputs = pack_sequence_as(outputs, final_outputs)
-    final_states = map_structure(lambda x: x[-1], rnn_out[len(flat_outputs):])
+    final_states = map_structure(lambda x: x[-1], rnn_out[len(flat_outputs) :])
     final_states = pack_sequence_as(new_states, final_states)
 
     if is_reverse:
-        final_outputs = map_structure(lambda x: tensor.reverse(x, axis=[0]),
-                                      final_outputs)
+        final_outputs = map_structure(
+            lambda x: tensor.reverse(x, axis=[0]), final_outputs
+        )
 
     if not time_major:
         final_outputs = map_structure(_transpose_batch_time, final_outputs)
@@ -644,13 +722,15 @@ def _rnn_static_graph(cell,
     return (final_outputs, final_states)
 
 
-def birnn(cell_fw,
-          cell_bw,
-          inputs,
-          initial_states=None,
-          sequence_length=None,
-          time_major=False,
-          **kwargs):
+def birnn(
+    cell_fw,
+    cell_bw,
+    inputs,
+    initial_states=None,
+    sequence_length=None,
+    time_major=False,
+    **kwargs
+):
     """
     birnn creates a bidirectional recurrent neural network specified by
     RNNCell `cell_fw` and `cell_bw`, which performs :code:`cell.call()`
@@ -709,28 +789,35 @@ def birnn(cell_fw,
     """
     if initial_states is None:
         states_fw = cell_fw.get_initial_states(
-            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0
+        )
         states_bw = cell_fw.get_initial_states(
-            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0
+        )
     else:
         states_fw, states_bw = initial_states
-    outputs_fw, states_fw = rnn(cell_fw,
-                                inputs,
-                                states_fw,
-                                sequence_length,
-                                time_major=time_major,
-                                **kwargs)
+    outputs_fw, states_fw = rnn(
+        cell_fw,
+        inputs,
+        states_fw,
+        sequence_length,
+        time_major=time_major,
+        **kwargs
+    )
 
-    outputs_bw, states_bw = rnn(cell_bw,
-                                inputs,
-                                states_bw,
-                                sequence_length,
-                                time_major=time_major,
-                                is_reverse=True,
-                                **kwargs)
+    outputs_bw, states_bw = rnn(
+        cell_bw,
+        inputs,
+        states_bw,
+        sequence_length,
+        time_major=time_major,
+        is_reverse=True,
+        **kwargs
+    )
 
-    outputs = map_structure(lambda x, y: tensor.concat([x, y], -1), outputs_fw,
-                            outputs_bw)
+    outputs = map_structure(
+        lambda x, y: tensor.concat([x, y], -1), outputs_fw, outputs_bw
+    )
 
     final_states = (states_fw, states_bw)
     return outputs, final_states
@@ -738,7 +825,7 @@ def birnn(cell_fw,
 
 class Decoder(object):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     Decoder is the base class for any decoder instance used in `dynamic_decode`.
     It provides interface for output generation for one time step, which can be
@@ -890,13 +977,15 @@ class BeamSearchDecoder(Decoder):
 
     """
 
-    def __init__(self,
-                 cell,
-                 start_token,
-                 end_token,
-                 beam_size,
-                 embedding_fn=None,
-                 output_fn=None):
+    def __init__(
+        self,
+        cell,
+        start_token,
+        end_token,
+        beam_size,
+        embedding_fn=None,
+        output_fn=None,
+    ):
         """
         Constructor of BeamSearchDecoder.
 
@@ -939,22 +1028,23 @@ class BeamSearchDecoder(Decoder):
             Variable: A tensor with shape `[batch_size * beam_size, ...]`, whose \
                 data type is same as `x`.
         """
-        check_type(x, 'x', (Variable),
-                   'BeamSearchDecoder.tile_beam_merge_with_batch')
+        check_type(
+            x, 'x', (Variable), 'BeamSearchDecoder.tile_beam_merge_with_batch'
+        )
         x = nn.unsqueeze(x, [1])  # [batch_size, 1, ...]
         expand_times = [1] * len(x.shape)
         expand_times[1] = beam_size
         x = paddle.tile(x, expand_times)  # [batch_size, beam_size, ...]
-        x = nn.transpose(x,
-                         list(range(2, len(x.shape))) +
-                         [0, 1])  # [..., batch_size, beam_size]
-        # use 0 to copy to avoid wrong shape
-        x = nn.reshape(x, shape=[0] * (len(x.shape) - 2) +
-                       [-1])  # [..., batch_size * beam_size]
         x = nn.transpose(
-            x, [len(x.shape) - 1] +
-            list(range(0,
-                       len(x.shape) - 1)))  # [batch_size * beam_size, ...]
+            x, list(range(2, len(x.shape))) + [0, 1]
+        )  # [..., batch_size, beam_size]
+        # use 0 to copy to avoid wrong shape
+        x = nn.reshape(
+            x, shape=[0] * (len(x.shape) - 2) + [-1]
+        )  # [..., batch_size * beam_size]
+        x = nn.transpose(
+            x, [len(x.shape) - 1] + list(range(0, len(x.shape) - 1))
+        )  # [batch_size * beam_size, ...]
         return x
 
     def _split_batch_beams(self, x):
@@ -1032,14 +1122,16 @@ class BeamSearchDecoder(Decoder):
                 replaced with a tensor with all probability on the EOS token.
         """
         check_type(probs, 'probs', (Variable), 'BeamSearchDecoder._mask_probs')
-        check_type(finished, 'finished', (Variable),
-                   'BeamSearchDecoder._mask_probs')
+        check_type(
+            finished, 'finished', (Variable), 'BeamSearchDecoder._mask_probs'
+        )
         # TODO: use where_op
         finished = tensor.cast(finished, dtype=probs.dtype)
         probs = nn.elementwise_mul(
             paddle.tile(nn.unsqueeze(finished, [2]), [1, 1, self.vocab_size]),
             self.noend_mask_tensor,
-            axis=-1) - nn.elementwise_mul(probs, (finished - 1), axis=0)
+            axis=-1,
+        ) - nn.elementwise_mul(probs, (finished - 1), axis=0)
         return probs
 
     def _gather(self, x, indices, batch_size):
@@ -1059,37 +1151,48 @@ class BeamSearchDecoder(Decoder):
         """
         check_type(x, 'x', (Variable), 'BeamSearchDecoder._gather')
         check_type(indices, 'indices', (Variable), 'BeamSearchDecoder._gather')
-        check_type(batch_size, 'batch_size', (Variable),
-                   'BeamSearchDecoder._gather')
+        check_type(
+            batch_size, 'batch_size', (Variable), 'BeamSearchDecoder._gather'
+        )
         # TODO: compatibility of int32 and int64
-        batch_size = tensor.cast(
-            batch_size,
-            indices.dtype) if batch_size.dtype != indices.dtype else batch_size
+        batch_size = (
+            tensor.cast(batch_size, indices.dtype)
+            if batch_size.dtype != indices.dtype
+            else batch_size
+        )
         batch_size.stop_gradient = True  # TODO: remove this
         batch_pos = paddle.tile(
-            nn.unsqueeze(tensor.range(0, batch_size, 1, dtype=indices.dtype),
-                         [1]), [1, self.beam_size])
+            nn.unsqueeze(
+                tensor.range(0, batch_size, 1, dtype=indices.dtype), [1]
+            ),
+            [1, self.beam_size],
+        )
         topk_coordinates = nn.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = True
         return nn.gather_nd(x, topk_coordinates)
 
     class OutputWrapper(
-            collections.namedtuple("OutputWrapper",
-                                   ("scores", "predicted_ids", "parent_ids"))):
+        collections.namedtuple(
+            "OutputWrapper", ("scores", "predicted_ids", "parent_ids")
+        )
+    ):
         """
         The structure for the returned value `outputs` of `decoder.step`.
         A namedtuple includes scores, predicted_ids, parent_ids as fields.
         """
+
         pass
 
     class StateWrapper(
-            collections.namedtuple(
-                "StateWrapper",
-                ("cell_states", "log_probs", "finished", "lengths"))):
+        collections.namedtuple(
+            "StateWrapper", ("cell_states", "log_probs", "finished", "lengths")
+        )
+    ):
         """
         The structure for the argument `states` of `decoder.step`.
         A namedtuple includes cell_states, log_probs, finished, lengths as fields.
         """
+
         pass
 
     def initialize(self, initial_cell_states):
@@ -1117,22 +1220,30 @@ class BeamSearchDecoder(Decoder):
         state = flatten(initial_cell_states)[0]
         self.batch_size = nn.shape(state)[0]
 
-        self.start_token_tensor = tensor.fill_constant(shape=[1],
-                                                       dtype="int64",
-                                                       value=self.start_token)
-        self.end_token_tensor = tensor.fill_constant(shape=[1],
-                                                     dtype="int64",
-                                                     value=self.end_token)
+        self.start_token_tensor = tensor.fill_constant(
+            shape=[1], dtype="int64", value=self.start_token
+        )
+        self.end_token_tensor = tensor.fill_constant(
+            shape=[1], dtype="int64", value=self.end_token
+        )
 
-        init_cell_states = map_structure(self._expand_to_beam_size,
-                                         initial_cell_states)
-        init_inputs = paddle.full(shape=[self.batch_size, self.beam_size],
-                                  fill_value=self.start_token_tensor,
-                                  dtype=self.start_token_tensor.dtype)
+        init_cell_states = map_structure(
+            self._expand_to_beam_size, initial_cell_states
+        )
+        init_inputs = paddle.full(
+            shape=[self.batch_size, self.beam_size],
+            fill_value=self.start_token_tensor,
+            dtype=self.start_token_tensor.dtype,
+        )
         log_probs = paddle.tile(
             tensor.assign(
-                np.array([[0.] + [-self.kinf] * (self.beam_size - 1)],
-                         dtype="float32")), [self.batch_size, 1])
+                np.array(
+                    [[0.0] + [-self.kinf] * (self.beam_size - 1)],
+                    dtype="float32",
+                )
+            ),
+            [self.batch_size, 1],
+        )
         if paddle.get_default_dtype() == "float64":
             log_probs = tensor.cast(log_probs, "float64")
         # TODO: remove the restriction of force_cpu
@@ -1141,13 +1252,19 @@ class BeamSearchDecoder(Decoder):
             shape=[-1, self.beam_size],
             dtype="bool",
             value=False,
-            force_cpu=True)
+            force_cpu=True,
+        )
         init_lengths = tensor.zeros_like(init_inputs)
-        init_inputs = self.embedding_fn(
-            init_inputs) if self.embedding_fn else init_inputs
-        return init_inputs, self.StateWrapper(init_cell_states, log_probs,
-                                              init_finished,
-                                              init_lengths), init_finished
+        init_inputs = (
+            self.embedding_fn(init_inputs) if self.embedding_fn else init_inputs
+        )
+        return (
+            init_inputs,
+            self.StateWrapper(
+                init_cell_states, log_probs, init_finished, init_lengths
+            ),
+            init_finished,
+        )
 
     def _beam_search_step(self, time, logits, next_cell_states, beam_state):
         r"""
@@ -1178,50 +1295,61 @@ class BeamSearchDecoder(Decoder):
 
         """
         self.vocab_size = logits.shape[-1]
-        self.vocab_size_tensor = tensor.fill_constant(shape=[1],
-                                                      dtype="int64",
-                                                      value=self.vocab_size)
+        self.vocab_size_tensor = tensor.fill_constant(
+            shape=[1], dtype="int64", value=self.vocab_size
+        )
         noend_array = [-self.kinf] * self.vocab_size
         noend_array[self.end_token] = 0
 
         self.noend_mask_tensor = tensor.assign(np.array(noend_array, "float32"))
         if paddle.get_default_dtype() == "float64":
-            self.noend_mask_tensor = tensor.cast(self.noend_mask_tensor,
-                                                 "float64")
+            self.noend_mask_tensor = tensor.cast(
+                self.noend_mask_tensor, "float64"
+            )
 
         step_log_probs = nn.log(nn.softmax(logits))
         step_log_probs = self._mask_probs(step_log_probs, beam_state.finished)
-        log_probs = nn.elementwise_add(x=step_log_probs,
-                                       y=beam_state.log_probs,
-                                       axis=0)
+        log_probs = nn.elementwise_add(
+            x=step_log_probs, y=beam_state.log_probs, axis=0
+        )
         # TODO: length penalty
         scores = log_probs
         scores = nn.reshape(scores, [-1, self.beam_size * self.vocab_size])
         # TODO: add grad for topk then this beam search can be used to train
         topk_scores, topk_indices = paddle.topk(x=scores, k=self.beam_size)
-        beam_indices = nn.elementwise_floordiv(topk_indices,
-                                               self.vocab_size_tensor)
+        beam_indices = nn.elementwise_floordiv(
+            topk_indices, self.vocab_size_tensor
+        )
         token_indices = nn.elementwise_mod(topk_indices, self.vocab_size_tensor)
         next_log_probs = self._gather(
             nn.reshape(log_probs, [-1, self.beam_size * self.vocab_size]),
-            topk_indices, self.batch_size)
+            topk_indices,
+            self.batch_size,
+        )
         next_cell_states = map_structure(
             lambda x: self._gather(x, beam_indices, self.batch_size),
-            next_cell_states)
-        next_finished = self._gather(beam_state.finished, beam_indices,
-                                     self.batch_size)
-        next_lengths = self._gather(beam_state.lengths, beam_indices,
-                                    self.batch_size)
-        next_lengths = next_lengths + tensor.cast(nn.logical_not(next_finished),
-                                                  beam_state.lengths.dtype)
+            next_cell_states,
+        )
+        next_finished = self._gather(
+            beam_state.finished, beam_indices, self.batch_size
+        )
+        next_lengths = self._gather(
+            beam_state.lengths, beam_indices, self.batch_size
+        )
+        next_lengths = next_lengths + tensor.cast(
+            nn.logical_not(next_finished), beam_state.lengths.dtype
+        )
         next_finished = control_flow.logical_or(
             next_finished,
-            control_flow.equal(token_indices, self.end_token_tensor))
+            control_flow.equal(token_indices, self.end_token_tensor),
+        )
 
-        beam_search_output = self.OutputWrapper(topk_scores, token_indices,
-                                                beam_indices)
-        beam_search_state = self.StateWrapper(next_cell_states, next_log_probs,
-                                              next_finished, next_lengths)
+        beam_search_output = self.OutputWrapper(
+            topk_scores, token_indices, beam_indices
+        )
+        beam_search_state = self.StateWrapper(
+            next_cell_states, next_log_probs, next_finished, next_lengths
+        )
         return beam_search_output, beam_search_state
 
     def step(self, time, inputs, states, **kwargs):
@@ -1254,11 +1382,13 @@ class BeamSearchDecoder(Decoder):
         """
         inputs = map_structure(self._merge_batch_beams, inputs)
         cell_states = map_structure(self._merge_batch_beams, states.cell_states)
-        cell_outputs, next_cell_states = self.cell(inputs, cell_states,
-                                                   **kwargs)
+        cell_outputs, next_cell_states = self.cell(
+            inputs, cell_states, **kwargs
+        )
         cell_outputs = map_structure(self._split_batch_beams, cell_outputs)
-        next_cell_states = map_structure(self._split_batch_beams,
-                                         next_cell_states)
+        next_cell_states = map_structure(
+            self._split_batch_beams, next_cell_states
+        )
 
         if self.output_fn is not None:
             cell_outputs = self.output_fn(cell_outputs)
@@ -1267,12 +1397,14 @@ class BeamSearchDecoder(Decoder):
             time=time,
             logits=cell_outputs,
             next_cell_states=next_cell_states,
-            beam_state=states)
+            beam_state=states,
+        )
         finished = beam_search_state.finished
         sample_ids = beam_search_output.predicted_ids
         sample_ids.stop_gradient = True
-        next_inputs = self.embedding_fn(
-            sample_ids) if self.embedding_fn else sample_ids
+        next_inputs = (
+            self.embedding_fn(sample_ids) if self.embedding_fn else sample_ids
+        )
 
         return (beam_search_output, beam_search_state, next_inputs, finished)
 
@@ -1300,8 +1432,9 @@ class BeamSearchDecoder(Decoder):
                 `[time_step, batch_size, beam_size]`. `final_states` is the same \
                 as the input argument `final_states`.
         """
-        predicted_ids = nn.gather_tree(outputs.predicted_ids,
-                                       outputs.parent_ids)
+        predicted_ids = nn.gather_tree(
+            outputs.predicted_ids, outputs.parent_ids
+        )
         # TODO: use FinalBeamSearchDecoderOutput as output
         return predicted_ids, final_states
 
@@ -1319,15 +1452,16 @@ class BeamSearchDecoder(Decoder):
         return True
 
 
-def _dynamic_decode_imperative(decoder,
-                               inits=None,
-                               max_step_num=None,
-                               output_time_major=False,
-                               impute_finished=False,
-                               is_test=False,
-                               return_length=False,
-                               **kwargs):
-
+def _dynamic_decode_imperative(
+    decoder,
+    inits=None,
+    max_step_num=None,
+    output_time_major=False,
+    impute_finished=False,
+    is_test=False,
+    return_length=False,
+    **kwargs
+):
     def _maybe_copy(state, new_state, step_mask):
         # TODO: use where_op
         state_dtype = state.dtype
@@ -1340,28 +1474,30 @@ def _dynamic_decode_imperative(decoder,
             # to sum(bool) error.
             step_mask.stop_gradient = True
         new_state = nn.elementwise_mul(
-            state, step_mask, axis=0) - nn.elementwise_mul(new_state,
-                                                           (step_mask - 1),
-                                                           axis=0)
+            state, step_mask, axis=0
+        ) - nn.elementwise_mul(new_state, (step_mask - 1), axis=0)
         if convert_dtype(state_dtype) in ["bool"]:
             new_state = tensor.cast(new_state, dtype=state_dtype)
         return new_state
 
     initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
-    inputs, states, finished = (initial_inputs, initial_states,
-                                initial_finished)
+    inputs, states, finished = (
+        initial_inputs,
+        initial_states,
+        initial_finished,
+    )
     cond = control_flow.logical_not((nn.reduce_all(initial_finished)))
     sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
     outputs = None
 
     step_idx = 0
-    step_idx_tensor = tensor.fill_constant(shape=[1],
-                                           dtype="int64",
-                                           value=step_idx)
+    step_idx_tensor = tensor.fill_constant(
+        shape=[1], dtype="int64", value=step_idx
+    )
     while cond.numpy():
-        (step_outputs, next_states, next_inputs,
-         next_finished) = decoder.step(step_idx_tensor, inputs, states,
-                                       **kwargs)
+        (step_outputs, next_states, next_inputs, next_finished) = decoder.step(
+            step_idx_tensor, inputs, states, **kwargs
+        )
         if not decoder.tracks_own_finished:
             # BeamSearchDecoder would track it own finished, since
             # beams would be reordered and the finished status of each
@@ -1373,26 +1509,37 @@ def _dynamic_decode_imperative(decoder,
             tensor.assign(next_finished, finished)
             next_sequence_lengths = nn.elementwise_add(
                 sequence_lengths,
-                tensor.cast(control_flow.logical_not(finished),
-                            sequence_lengths.dtype))
+                tensor.cast(
+                    control_flow.logical_not(finished), sequence_lengths.dtype
+                ),
+            )
             if impute_finished:  # rectify the states for the finished.
                 next_states = map_structure(
-                    lambda x, y: _maybe_copy(x, y, finished), states,
-                    next_states)
+                    lambda x, y: _maybe_copy(x, y, finished),
+                    states,
+                    next_states,
+                )
         else:
             warnings.warn(
                 "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
             ) if not hasattr(next_states, "lengths") else None
-            next_sequence_lengths = getattr(next_states, "lengths",
-                                            sequence_lengths)
+            next_sequence_lengths = getattr(
+                next_states, "lengths", sequence_lengths
+            )
 
-        outputs = map_structure(
-            lambda x: ArrayWrapper(x),
-            step_outputs) if step_idx == 0 else map_structure(
-                lambda x, x_array: x_array.append(x), step_outputs, outputs)
-        inputs, states, finished, sequence_lengths = (next_inputs, next_states,
-                                                      next_finished,
-                                                      next_sequence_lengths)
+        outputs = (
+            map_structure(lambda x: ArrayWrapper(x), step_outputs)
+            if step_idx == 0
+            else map_structure(
+                lambda x, x_array: x_array.append(x), step_outputs, outputs
+            )
+        )
+        inputs, states, finished, sequence_lengths = (
+            next_inputs,
+            next_states,
+            next_finished,
+            next_sequence_lengths,
+        )
 
         control_flow.increment(x=step_idx_tensor, value=1.0, in_place=True)
         step_idx += 1
@@ -1405,42 +1552,49 @@ def _dynamic_decode_imperative(decoder,
     final_states = states
 
     try:
-        final_outputs, final_states = decoder.finalize(final_outputs,
-                                                       final_states,
-                                                       sequence_lengths)
+        final_outputs, final_states = decoder.finalize(
+            final_outputs, final_states, sequence_lengths
+        )
     except NotImplementedError:
         pass
 
     if not output_time_major:
         final_outputs = map_structure(
             lambda x: nn.transpose(x, [1, 0] + list(range(2, len(x.shape)))),
-            final_outputs)
+            final_outputs,
+        )
 
-    return (final_outputs, final_states,
-            sequence_lengths) if return_length else (final_outputs,
-                                                     final_states)
+    return (
+        (final_outputs, final_states, sequence_lengths)
+        if return_length
+        else (final_outputs, final_states)
+    )
 
 
-def _dynamic_decode_declarative(decoder,
-                                inits=None,
-                                max_step_num=None,
-                                output_time_major=False,
-                                impute_finished=False,
-                                is_test=False,
-                                return_length=False,
-                                **kwargs):
+def _dynamic_decode_declarative(
+    decoder,
+    inits=None,
+    max_step_num=None,
+    output_time_major=False,
+    impute_finished=False,
+    is_test=False,
+    return_length=False,
+    **kwargs
+):
     initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
-    global_inputs, global_states, global_finished = (initial_inputs,
-                                                     initial_states,
-                                                     initial_finished)
+    global_inputs, global_states, global_finished = (
+        initial_inputs,
+        initial_states,
+        initial_finished,
+    )
     global_finished.stop_gradient = True
     step_idx = tensor.fill_constant(shape=[1], dtype="int64", value=0)
 
     cond = control_flow.logical_not((nn.reduce_all(initial_finished)))
     if max_step_num is not None:
-        max_step_num = tensor.fill_constant(shape=[1],
-                                            dtype="int64",
-                                            value=max_step_num)
+        max_step_num = tensor.fill_constant(
+            shape=[1], dtype="int64", value=max_step_num
+        )
     while_op = control_flow.While(cond, is_test=is_test)
 
     sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
@@ -1453,9 +1607,11 @@ def _dynamic_decode_declarative(decoder,
     else:
         # inputs and states of all steps must be saved for backward and training
         inputs_arrays = map_structure(
-            lambda x: control_flow.array_write(x, step_idx), initial_inputs)
+            lambda x: control_flow.array_write(x, step_idx), initial_inputs
+        )
         states_arrays = map_structure(
-            lambda x: control_flow.array_write(x, step_idx), initial_states)
+            lambda x: control_flow.array_write(x, step_idx), initial_states
+        )
 
     def _maybe_copy(state, new_state, step_mask):
         # TODO: use where_op
@@ -1469,9 +1625,8 @@ def _dynamic_decode_declarative(decoder,
             # to sum(bool) error.
             step_mask.stop_gradient = True
         new_state = nn.elementwise_mul(
-            state, step_mask, axis=0) - nn.elementwise_mul(new_state,
-                                                           (step_mask - 1),
-                                                           axis=0)
+            state, step_mask, axis=0
+        ) - nn.elementwise_mul(new_state, (step_mask - 1), axis=0)
         if convert_dtype(state_dtype) in ["bool"]:
             new_state = tensor.cast(new_state, dtype=state_dtype)
         return new_state
@@ -1481,8 +1636,9 @@ def _dynamic_decode_declarative(decoder,
 
     def _create_array_out_of_while(dtype):
         current_block_idx = default_main_program().current_block_idx
-        default_main_program().current_block_idx = default_main_program(
-        ).current_block().parent_idx
+        default_main_program().current_block_idx = (
+            default_main_program().current_block().parent_idx
+        )
         tensor_array = control_flow.create_array(dtype)
         default_main_program().current_block_idx = current_block_idx
         return tensor_array
@@ -1492,23 +1648,30 @@ def _dynamic_decode_declarative(decoder,
         if not is_test:
             inputs = map_structure(
                 lambda array: control_flow.array_read(array, step_idx),
-                inputs_arrays)
+                inputs_arrays,
+            )
             states = map_structure(
                 lambda array: control_flow.array_read(array, step_idx),
-                states_arrays)
-        (outputs, next_states, next_inputs,
-         next_finished) = decoder.step(step_idx, inputs, states, **kwargs)
+                states_arrays,
+            )
+        (outputs, next_states, next_inputs, next_finished) = decoder.step(
+            step_idx, inputs, states, **kwargs
+        )
         if not decoder.tracks_own_finished:
             # BeamSearchDecoder would track it own finished, since beams would
             # be reordered and the finished status of each entry might change.
             # Otherwise, perform logical OR which would not change the already
             # finished.
-            next_finished = control_flow.logical_or(next_finished,
-                                                    global_finished)
+            next_finished = control_flow.logical_or(
+                next_finished, global_finished
+            )
             next_sequence_lengths = nn.elementwise_add(
                 sequence_lengths,
-                tensor.cast(control_flow.logical_not(global_finished),
-                            sequence_lengths.dtype))
+                tensor.cast(
+                    control_flow.logical_not(global_finished),
+                    sequence_lengths.dtype,
+                ),
+            )
             if impute_finished:  # rectify the states for the finished.
                 next_states = map_structure(
                     lambda x, y: _maybe_copy(x, y, global_finished),
@@ -1519,16 +1682,22 @@ def _dynamic_decode_declarative(decoder,
             warnings.warn(
                 "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
             ) if not hasattr(next_states, "lengths") else None
-            next_sequence_lengths = getattr(next_states, "lengths",
-                                            sequence_lengths)
+            next_sequence_lengths = getattr(
+                next_states, "lengths", sequence_lengths
+            )
 
         # create tensor array in global block after dtype[s] of outputs can be got
         outputs_arrays = map_structure(
-            lambda x: _create_array_out_of_while(x.dtype), outputs)
+            lambda x: _create_array_out_of_while(x.dtype), outputs
+        )
 
         map_structure(
             lambda x, x_array: control_flow.array_write(
-                x, i=step_idx, array=x_array), outputs, outputs_arrays)
+                x, i=step_idx, array=x_array
+            ),
+            outputs,
+            outputs_arrays,
+        )
         control_flow.increment(x=step_idx, value=1.0, in_place=True)
         # update the global_finished first, since it might be also in states of
         # decoder, which otherwise would write a stale finished status to array
@@ -1540,50 +1709,68 @@ def _dynamic_decode_declarative(decoder,
         else:
             map_structure(
                 lambda x, x_array: control_flow.array_write(
-                    x, i=step_idx, array=x_array), next_inputs, inputs_arrays)
+                    x, i=step_idx, array=x_array
+                ),
+                next_inputs,
+                inputs_arrays,
+            )
             map_structure(
                 lambda x, x_array: control_flow.array_write(
-                    x, i=step_idx, array=x_array), next_states, states_arrays)
+                    x, i=step_idx, array=x_array
+                ),
+                next_states,
+                states_arrays,
+            )
         if max_step_num is not None:
             control_flow.logical_and(
                 control_flow.logical_not(nn.reduce_all(global_finished)),
-                control_flow.less_equal(step_idx, max_step_num), cond)
+                control_flow.less_equal(step_idx, max_step_num),
+                cond,
+            )
         else:
             control_flow.logical_not(nn.reduce_all(global_finished), cond)
 
     final_outputs = map_structure(
         lambda array: tensor.tensor_array_to_tensor(
-            array, axis=0, use_stack=True)[0], outputs_arrays)
+            array, axis=0, use_stack=True
+        )[0],
+        outputs_arrays,
+    )
     if is_test:
         final_states = global_states
     else:
         final_states = map_structure(
             lambda array: control_flow.array_read(array, step_idx),
-            states_arrays)
+            states_arrays,
+        )
 
     try:
-        final_outputs, final_states = decoder.finalize(final_outputs,
-                                                       final_states,
-                                                       sequence_lengths)
+        final_outputs, final_states = decoder.finalize(
+            final_outputs, final_states, sequence_lengths
+        )
     except NotImplementedError:
         pass
 
     if not output_time_major:
         final_outputs = map_structure(_transpose_batch_time, final_outputs)
 
-    return (final_outputs, final_states,
-            sequence_lengths) if return_length else (final_outputs,
-                                                     final_states)
+    return (
+        (final_outputs, final_states, sequence_lengths)
+        if return_length
+        else (final_outputs, final_states)
+    )
 
 
-def dynamic_decode(decoder,
-                   inits=None,
-                   max_step_num=None,
-                   output_time_major=False,
-                   impute_finished=False,
-                   is_test=False,
-                   return_length=False,
-                   **kwargs):
+def dynamic_decode(
+    decoder,
+    inits=None,
+    max_step_num=None,
+    output_time_major=False,
+    impute_finished=False,
+    is_test=False,
+    return_length=False,
+    **kwargs
+):
     r"""
     Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
     Tensor indicating finished status contains all True values or the number of
@@ -1659,13 +1846,27 @@ def dynamic_decode(decoder,
                                     max_step_num=10)
     """
     if _non_static_mode():
-        return _dynamic_decode_imperative(decoder, inits, max_step_num,
-                                          output_time_major, impute_finished,
-                                          is_test, return_length, **kwargs)
+        return _dynamic_decode_imperative(
+            decoder,
+            inits,
+            max_step_num,
+            output_time_major,
+            impute_finished,
+            is_test,
+            return_length,
+            **kwargs
+        )
     else:
-        return _dynamic_decode_declarative(decoder, inits, max_step_num,
-                                           output_time_major, impute_finished,
-                                           is_test, return_length, **kwargs)
+        return _dynamic_decode_declarative(
+            decoder,
+            inits,
+            max_step_num,
+            output_time_major,
+            impute_finished,
+            is_test,
+            return_length,
+            **kwargs
+        )
 
 
 class DecodeHelper(object):
@@ -1792,11 +1993,14 @@ class TrainingHelper(DecodeHelper):
         # extend inputs to avoid to slice out of range in `next_inputs`
         # may be easier and have better performance than condition_op
         self.inputs_ = map_structure(
-            lambda x: nn.pad(x,
-                             paddings=([0, 1] + [0, 0] * (len(x.shape) - 1))
-                             if time_major else ([0, 0, 0, 1] + [0, 0] *
-                                                 (len(x.shape) - 2))),
-            self.inputs)
+            lambda x: nn.pad(
+                x,
+                paddings=([0, 1] + [0, 0] * (len(x.shape) - 1))
+                if time_major
+                else ([0, 0, 0, 1] + [0, 0] * (len(x.shape) - 2)),
+            ),
+            self.inputs,
+        )
 
     def initialize(self):
         r"""
@@ -1813,12 +2017,14 @@ class TrainingHelper(DecodeHelper):
         """
         init_finished = control_flow.equal(
             self.sequence_length,
-            tensor.fill_constant(shape=[1],
-                                 dtype=self.sequence_length.dtype,
-                                 value=0))
+            tensor.fill_constant(
+                shape=[1], dtype=self.sequence_length.dtype, value=0
+            ),
+        )
         # TODO: support zero length
         init_inputs = map_structure(
-            lambda x: x[0] if self.time_major else x[:, 0], self.inputs)
+            lambda x: x[0] if self.time_major else x[:, 0], self.inputs
+        )
         return init_inputs, init_finished
 
     def sample(self, time, outputs, states):
@@ -1872,8 +2078,11 @@ class TrainingHelper(DecodeHelper):
                 shape `[batch_size]`.
         """
         # TODO: compatibility of int32 and int64
-        time = tensor.cast(time, "int32") if convert_dtype(
-            time.dtype) not in ["int32"] else time
+        time = (
+            tensor.cast(time, "int32")
+            if convert_dtype(time.dtype) not in ["int32"]
+            else time
+        )
         if self.sequence_length.dtype != time.dtype:
             self.sequence_length = tensor.cast(self.sequence_length, time.dtype)
         next_time = time + 1
@@ -1881,11 +2090,12 @@ class TrainingHelper(DecodeHelper):
 
         def _slice(x):  # TODO: use Variable.__getitem__
             axes = [0 if self.time_major else 1]
-            return nn.squeeze(nn.slice(x,
-                                       axes=axes,
-                                       starts=[next_time],
-                                       ends=[next_time + 1]),
-                              axes=axes)
+            return nn.squeeze(
+                nn.slice(
+                    x, axes=axes, starts=[next_time], ends=[next_time + 1]
+                ),
+                axes=axes,
+            )
 
         next_inputs = map_structure(_slice, self.inputs_)
         return finished, next_inputs, states
@@ -1943,9 +2153,9 @@ class GreedyEmbeddingHelper(DecodeHelper):
         """
         self.embedding_fn = embedding_fn
         self.start_tokens = start_tokens
-        self.end_token = tensor.fill_constant(shape=[1],
-                                              dtype="int64",
-                                              value=end_token)
+        self.end_token = tensor.fill_constant(
+            shape=[1], dtype="int64", value=end_token
+        )
 
     def initialize(self):
         r"""
@@ -1966,7 +2176,8 @@ class GreedyEmbeddingHelper(DecodeHelper):
             shape=[-1],
             dtype="bool",
             value=False,
-            force_cpu=True)
+            force_cpu=True,
+        )
         init_inputs = self.embedding_fn(self.start_tokens)
         return init_inputs, init_finished
 
@@ -2054,12 +2265,14 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
                 decoder=decoder, inits=decoder_cell.get_initial_states(encoder_output))
     """
 
-    def __init__(self,
-                 embedding_fn,
-                 start_tokens,
-                 end_token,
-                 softmax_temperature=None,
-                 seed=None):
+    def __init__(
+        self,
+        embedding_fn,
+        start_tokens,
+        end_token,
+        softmax_temperature=None,
+        seed=None,
+    ):
         r"""
         Constructor of SampleEmbeddingHelper.
 
@@ -2086,11 +2299,16 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
                 structure of) tensor variable[s], and `finished` is a tensor with \
                 bool data type.
         """
-        super(SampleEmbeddingHelper, self).__init__(embedding_fn, start_tokens,
-                                                    end_token)
-        self.softmax_temperature = tensor.fill_constant(
-            shape=[1], dtype="float32", value=softmax_temperature
-        ) if softmax_temperature is not None else None
+        super(SampleEmbeddingHelper, self).__init__(
+            embedding_fn, start_tokens, end_token
+        )
+        self.softmax_temperature = (
+            tensor.fill_constant(
+                shape=[1], dtype="float32", value=softmax_temperature
+            )
+            if softmax_temperature is not None
+            else None
+        )
         self.seed = seed
 
     def sample(self, time, outputs, states):
@@ -2112,16 +2330,19 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
             Variable: An `int64` tensor with shape `[batch_size]`, representing \
                 the sampled ids.
         """
-        logits = (outputs / self.softmax_temperature
-                  ) if self.softmax_temperature is not None else outputs
+        logits = (
+            (outputs / self.softmax_temperature)
+            if self.softmax_temperature is not None
+            else outputs
+        )
         probs = nn.softmax(logits)
         # TODO: remove this stop_gradient. The stop_gradient of sample_ids can
         # not pass to probs, since sampling_id op does not have corresponding
         # grad op and thus can not pass.
         probs.stop_gradient = True
-        sample_ids = nn.sampling_id(probs,
-                                    seed=self.seed,
-                                    dtype=self.start_tokens.dtype)
+        sample_ids = nn.sampling_id(
+            probs, seed=self.seed, dtype=self.start_tokens.dtype
+        )
         return sample_ids
 
 
@@ -2201,12 +2422,13 @@ class BasicDecoder(Decoder):
         return initial_inputs, initial_cell_states, initial_finished
 
     class OutputWrapper(
-            collections.namedtuple("OutputWrapper",
-                                   ("cell_outputs", "sample_ids"))):
+        collections.namedtuple("OutputWrapper", ("cell_outputs", "sample_ids"))
+    ):
         """
         The structure for the returned value `outputs` of `decoder.step`.
         A namedtuple includes cell_outputs, sample_ids as fields.
         """
+
         pass
 
     def step(self, time, inputs, states, **kwargs):
@@ -2248,32 +2470,35 @@ class BasicDecoder(Decoder):
         cell_outputs, cell_states = self.cell(inputs, states, **kwargs)
         if self.output_fn is not None:
             cell_outputs = self.output_fn(cell_outputs)
-        sample_ids = self.helper.sample(time=time,
-                                        outputs=cell_outputs,
-                                        states=cell_states)
+        sample_ids = self.helper.sample(
+            time=time, outputs=cell_outputs, states=cell_states
+        )
         sample_ids.stop_gradient = True
-        (finished, next_inputs,
-         next_states) = self.helper.next_inputs(time=time,
-                                                outputs=cell_outputs,
-                                                states=cell_states,
-                                                sample_ids=sample_ids)
+        (finished, next_inputs, next_states) = self.helper.next_inputs(
+            time=time,
+            outputs=cell_outputs,
+            states=cell_states,
+            sample_ids=sample_ids,
+        )
         outputs = self.OutputWrapper(cell_outputs, sample_ids)
         return (outputs, next_states, next_inputs, finished)
 
 
-def dynamic_lstm(input,
-                 size,
-                 h_0=None,
-                 c_0=None,
-                 param_attr=None,
-                 bias_attr=None,
-                 use_peepholes=True,
-                 is_reverse=False,
-                 gate_activation='sigmoid',
-                 cell_activation='tanh',
-                 candidate_activation='tanh',
-                 dtype='float32',
-                 name=None):
+def dynamic_lstm(
+    input,
+    size,
+    h_0=None,
+    c_0=None,
+    param_attr=None,
+    bias_attr=None,
+    use_peepholes=True,
+    is_reverse=False,
+    gate_activation='sigmoid',
+    cell_activation='tanh',
+    candidate_activation='tanh',
+    dtype='float32',
+    name=None,
+):
     r"""
 	:api_attr: Static Graph
 
@@ -2373,35 +2598,40 @@ def dynamic_lstm(input,
             forward.shape  # (-1, 512)
             cell.shape  # (-1, 512)
     """
-    assert _non_static_mode(
-    ) is not True, "please use lstm instead of dynamic_lstm in dygraph mode!"
-    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstm."
+    assert (
+        _non_static_mode() is not True
+    ), "please use lstm instead of dynamic_lstm in dygraph mode!"
+    assert (
+        bias_attr is not False
+    ), "bias_attr should not be False in dynamic_lstm."
 
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'dynamic_lstm')
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'dynamic_lstm'
+    )
 
     check_type(h_0, 'h_0', (Variable, type(None)), 'dynamic_lstm')
     if isinstance(h_0, Variable):
-        check_variable_and_dtype(h_0, 'h_0', ['float32', 'float64'],
-                                 'dynamic_lstm')
+        check_variable_and_dtype(
+            h_0, 'h_0', ['float32', 'float64'], 'dynamic_lstm'
+        )
 
     check_type(c_0, 'c_0', (Variable, type(None)), 'dynamic_lstm')
     if isinstance(c_0, Variable):
-        check_variable_and_dtype(c_0, 'c_0', ['float32', 'float64'],
-                                 'dynamic_lstm')
+        check_variable_and_dtype(
+            c_0, 'c_0', ['float32', 'float64'], 'dynamic_lstm'
+        )
 
     helper = LayerHelper('lstm', **locals())
     size = size // 4
-    weight = helper.create_parameter(attr=helper.param_attr,
-                                     shape=[size, 4 * size],
-                                     dtype=dtype)
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 4 * size], dtype=dtype
+    )
     bias_size = [1, 7 * size]
     if not use_peepholes:
         bias_size[1] = 4 * size
-    bias = helper.create_parameter(attr=helper.bias_attr,
-                                   shape=bias_size,
-                                   dtype=dtype,
-                                   is_bias=True)
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True
+    )
 
     hidden = helper.create_variable_for_type_inference(dtype)
     cell = helper.create_variable_for_type_inference(dtype)
@@ -2410,47 +2640,55 @@ def dynamic_lstm(input,
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
     batch_size = input.shape[0]
     if h_0:
-        assert h_0.shape == (batch_size, size), \
+        assert h_0.shape == (batch_size, size), (
             'The shape of h0 should be (batch_size, %d)' % size
+        )
         inputs['H0'] = h_0
     if c_0:
-        assert c_0.shape == (batch_size, size), \
+        assert c_0.shape == (batch_size, size), (
             'The shape of c0 should be (batch_size, %d)' % size
+        )
         inputs['C0'] = c_0
 
-    helper.append_op(type='lstm',
-                     inputs=inputs,
-                     outputs={
-                         'Hidden': hidden,
-                         'Cell': cell,
-                         'BatchGate': batch_gate,
-                         'BatchCellPreAct': batch_cell_pre_act
-                     },
-                     attrs={
-                         'use_peepholes': use_peepholes,
-                         'is_reverse': is_reverse,
-                         'gate_activation': gate_activation,
-                         'cell_activation': cell_activation,
-                         'candidate_activation': candidate_activation
-                     })
+    helper.append_op(
+        type='lstm',
+        inputs=inputs,
+        outputs={
+            'Hidden': hidden,
+            'Cell': cell,
+            'BatchGate': batch_gate,
+            'BatchCellPreAct': batch_cell_pre_act,
+        },
+        attrs={
+            'use_peepholes': use_peepholes,
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'cell_activation': cell_activation,
+            'candidate_activation': candidate_activation,
+        },
+    )
     return hidden, cell
 
 
-@deprecated(since='2.0.0',
-            update_to='paddle.nn.LSTM',
-            reason="This API may occur CUDNN errors.")
-def lstm(input,
-         init_h,
-         init_c,
-         max_len,
-         hidden_size,
-         num_layers,
-         dropout_prob=0.0,
-         is_bidirec=False,
-         is_test=False,
-         name=None,
-         default_initializer=None,
-         seed=-1):
+@deprecated(
+    since='2.0.0',
+    update_to='paddle.nn.LSTM',
+    reason="This API may occur CUDNN errors.",
+)
+def lstm(
+    input,
+    init_h,
+    init_c,
+    max_len,
+    hidden_size,
+    num_layers,
+    dropout_prob=0.0,
+    is_bidirec=False,
+    is_test=False,
+    name=None,
+    default_initializer=None,
+    seed=-1,
+):
     r"""
 	:api_attr: Static Graph
 
@@ -2577,63 +2815,71 @@ def lstm(input,
         weight_size += input_weight_size + hidden_weight_size
         weight_size += hidden_size * 8 * num_dirrection
 
-    weight = helper.create_parameter(attr=helper.param_attr,
-                                     shape=[weight_size],
-                                     dtype=dtype,
-                                     default_initializer=default_initializer)
+    weight = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[weight_size],
+        dtype=dtype,
+        default_initializer=default_initializer,
+    )
 
     out = helper.create_variable_for_type_inference(dtype)
     last_h = helper.create_variable_for_type_inference(dtype)
     last_c = helper.create_variable_for_type_inference(dtype)
     reserve = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
+    )
     state_out = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
+    )
     state_out.persistable = True
 
-    helper.append_op(type='cudnn_lstm',
-                     inputs={
-                         'Input': input,
-                         'InitH': init_h,
-                         'InitC': init_c,
-                         'W': weight,
-                     },
-                     outputs={
-                         'Out': out,
-                         'LastH': last_h,
-                         'LastC': last_c,
-                         'Reserve': reserve,
-                         'StateOut': state_out,
-                     },
-                     attrs={
-                         'is_bidirec': is_bidirec,
-                         'input_size': input_size,
-                         'hidden_size': hidden_size,
-                         'num_layers': num_layers,
-                         'is_test': is_test,
-                         'dropout_prob': dropout_prob,
-                         'seed': seed,
-                     })
+    helper.append_op(
+        type='cudnn_lstm',
+        inputs={
+            'Input': input,
+            'InitH': init_h,
+            'InitC': init_c,
+            'W': weight,
+        },
+        outputs={
+            'Out': out,
+            'LastH': last_h,
+            'LastC': last_c,
+            'Reserve': reserve,
+            'StateOut': state_out,
+        },
+        attrs={
+            'is_bidirec': is_bidirec,
+            'input_size': input_size,
+            'hidden_size': hidden_size,
+            'num_layers': num_layers,
+            'is_test': is_test,
+            'dropout_prob': dropout_prob,
+            'seed': seed,
+        },
+    )
     return out, last_h, last_c
 
 
-def dynamic_lstmp(input,
-                  size,
-                  proj_size,
-                  param_attr=None,
-                  bias_attr=None,
-                  use_peepholes=True,
-                  is_reverse=False,
-                  gate_activation='sigmoid',
-                  cell_activation='tanh',
-                  candidate_activation='tanh',
-                  proj_activation='tanh',
-                  dtype='float32',
-                  name=None,
-                  h_0=None,
-                  c_0=None,
-                  cell_clip=None,
-                  proj_clip=None):
+def dynamic_lstmp(
+    input,
+    size,
+    proj_size,
+    param_attr=None,
+    bias_attr=None,
+    use_peepholes=True,
+    is_reverse=False,
+    gate_activation='sigmoid',
+    cell_activation='tanh',
+    candidate_activation='tanh',
+    proj_activation='tanh',
+    dtype='float32',
+    name=None,
+    h_0=None,
+    c_0=None,
+    cell_clip=None,
+    proj_clip=None,
+):
     r"""
 	:api_attr: Static Graph
 
@@ -2756,39 +3002,44 @@ def dynamic_lstmp(input,
             last_c.shape  # (-1, 512)
     """
 
-    assert _non_static_mode(
-    ) is not True, "please use lstm instead of dynamic_lstmp in dygraph mode!"
+    assert (
+        _non_static_mode() is not True
+    ), "please use lstm instead of dynamic_lstmp in dygraph mode!"
 
-    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
+    assert (
+        bias_attr is not False
+    ), "bias_attr should not be False in dynamic_lstmp."
 
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'dynamic_lstmp')
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'dynamic_lstmp'
+    )
 
     check_type(h_0, 'h_0', (Variable, type(None)), 'dynamic_lstmp')
     if isinstance(h_0, Variable):
-        check_variable_and_dtype(h_0, 'h_0', ['float32', 'float64'],
-                                 'dynamic_lstmp')
+        check_variable_and_dtype(
+            h_0, 'h_0', ['float32', 'float64'], 'dynamic_lstmp'
+        )
 
     check_type(c_0, 'c_0', (Variable, type(None)), 'dynamic_lstmp')
     if isinstance(c_0, Variable):
-        check_variable_and_dtype(c_0, 'c_0', ['float32', 'float64'],
-                                 'dynamic_lstmp')
+        check_variable_and_dtype(
+            c_0, 'c_0', ['float32', 'float64'], 'dynamic_lstmp'
+        )
 
     helper = LayerHelper('lstmp', **locals())
     size = size // 4
-    weight = helper.create_parameter(attr=helper.param_attr,
-                                     shape=[proj_size, 4 * size],
-                                     dtype=dtype)
-    proj_weight = helper.create_parameter(attr=helper.param_attr,
-                                          shape=[size, proj_size],
-                                          dtype=dtype)
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[proj_size, 4 * size], dtype=dtype
+    )
+    proj_weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, proj_size], dtype=dtype
+    )
     bias_size = [1, 7 * size]
     if not use_peepholes:
         bias_size[1] = 4 * size
-    bias = helper.create_parameter(attr=helper.bias_attr,
-                                   shape=bias_size,
-                                   dtype=dtype,
-                                   is_bias=True)
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True
+    )
 
     projection = helper.create_variable_for_type_inference(dtype)
     cell = helper.create_variable_for_type_inference(dtype)
@@ -2800,16 +3051,18 @@ def dynamic_lstmp(input,
         'Input': input,
         'Weight': weight,
         'ProjWeight': proj_weight,
-        'Bias': bias
+        'Bias': bias,
     }
     batch_size = input.shape[0]
     if h_0:
-        assert h_0.shape == (batch_size, proj_size), \
+        assert h_0.shape == (batch_size, proj_size), (
             'The shape of h0 should be (batch_size, %d)' % proj_size
+        )
         inputs['H0'] = h_0
     if c_0:
-        assert c_0.shape == (batch_size, size), \
+        assert c_0.shape == (batch_size, size), (
             'The shape of c0 should be (batch_size, %d)' % size
+        )
         inputs['C0'] = c_0
 
     if cell_clip:
@@ -2817,37 +3070,41 @@ def dynamic_lstmp(input,
     if proj_clip:
         assert proj_clip >= 0, "proj_clip should not be negative."
 
-    helper.append_op(type='lstmp',
-                     inputs=inputs,
-                     outputs={
-                         'Projection': projection,
-                         'Cell': cell,
-                         'BatchHidden': batch_hidden,
-                         'BatchGate': batch_gate,
-                         'BatchCellPreAct': batch_cell_pre_act
-                     },
-                     attrs={
-                         'use_peepholes': use_peepholes,
-                         'cell_clip': cell_clip,
-                         'proj_clip': proj_clip,
-                         'is_reverse': is_reverse,
-                         'gate_activation': gate_activation,
-                         'cell_activation': cell_activation,
-                         'candidate_activation': candidate_activation,
-                         'proj_activation': proj_activation
-                     })
+    helper.append_op(
+        type='lstmp',
+        inputs=inputs,
+        outputs={
+            'Projection': projection,
+            'Cell': cell,
+            'BatchHidden': batch_hidden,
+            'BatchGate': batch_gate,
+            'BatchCellPreAct': batch_cell_pre_act,
+        },
+        attrs={
+            'use_peepholes': use_peepholes,
+            'cell_clip': cell_clip,
+            'proj_clip': proj_clip,
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'cell_activation': cell_activation,
+            'candidate_activation': candidate_activation,
+            'proj_activation': proj_activation,
+        },
+    )
     return projection, cell
 
 
-def dynamic_gru(input,
-                size,
-                param_attr=None,
-                bias_attr=None,
-                is_reverse=False,
-                gate_activation='sigmoid',
-                candidate_activation='tanh',
-                h_0=None,
-                origin_mode=False):
+def dynamic_gru(
+    input,
+    size,
+    param_attr=None,
+    bias_attr=None,
+    is_reverse=False,
+    gate_activation='sigmoid',
+    candidate_activation='tanh',
+    h_0=None,
+    origin_mode=False,
+):
     r"""
 	:api_attr: Static Graph
 
@@ -2953,33 +3210,35 @@ def dynamic_gru(input,
             hidden = fluid.layers.dynamic_gru(input=x, size=hidden_dim)
     """
 
-    assert _non_static_mode(
-    ) is not True, "please use gru instead of dynamic_gru in dygraph mode!"
+    assert (
+        _non_static_mode() is not True
+    ), "please use gru instead of dynamic_gru in dygraph mode!"
 
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'dynamic_gru')
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'dynamic_gru'
+    )
 
     check_type(h_0, 'h_0', (Variable, type(None)), 'dynamic_gru')
     if isinstance(h_0, Variable):
-        check_variable_and_dtype(h_0, 'h_0', ['float32', 'float64'],
-                                 'dynamic_gru')
+        check_variable_and_dtype(
+            h_0, 'h_0', ['float32', 'float64'], 'dynamic_gru'
+        )
 
     helper = LayerHelper('gru', **locals())
     dtype = helper.input_dtype()
 
-    weight = helper.create_parameter(attr=helper.param_attr,
-                                     shape=[size, 3 * size],
-                                     dtype=dtype)
-    bias = helper.create_parameter(attr=helper.bias_attr,
-                                   shape=[1, 3 * size],
-                                   dtype=dtype,
-                                   is_bias=True)
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype
+    )
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True
+    )
     batch_size = input.shape[0]
     inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
     if h_0:
-        assert h_0.shape == (
-            batch_size,
-            size), 'The shape of h0 should be(batch_size, %d)' % size
+        assert h_0.shape == (batch_size, size), (
+            'The shape of h0 should be(batch_size, %d)' % size
+        )
         inputs['H0'] = h_0
 
     hidden = helper.create_variable_for_type_inference(dtype)
@@ -2987,31 +3246,35 @@ def dynamic_gru(input,
     batch_reset_hidden_prev = helper.create_variable_for_type_inference(dtype)
     batch_hidden = helper.create_variable_for_type_inference(dtype)
 
-    helper.append_op(type='gru',
-                     inputs=inputs,
-                     outputs={
-                         'Hidden': hidden,
-                         'BatchGate': batch_gate,
-                         'BatchResetHiddenPrev': batch_reset_hidden_prev,
-                         'BatchHidden': batch_hidden
-                     },
-                     attrs={
-                         'is_reverse': is_reverse,
-                         'gate_activation': gate_activation,
-                         'activation': candidate_activation,
-                         'origin_mode': origin_mode
-                     })
+    helper.append_op(
+        type='gru',
+        inputs=inputs,
+        outputs={
+            'Hidden': hidden,
+            'BatchGate': batch_gate,
+            'BatchResetHiddenPrev': batch_reset_hidden_prev,
+            'BatchHidden': batch_hidden,
+        },
+        attrs={
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'activation': candidate_activation,
+            'origin_mode': origin_mode,
+        },
+    )
     return hidden
 
 
-def gru_unit(input,
-             hidden,
-             size,
-             param_attr=None,
-             bias_attr=None,
-             activation='tanh',
-             gate_activation='sigmoid',
-             origin_mode=False):
+def gru_unit(
+    input,
+    hidden,
+    size,
+    param_attr=None,
+    bias_attr=None,
+    activation='tanh',
+    gate_activation='sigmoid',
+    origin_mode=False,
+):
     r"""
 	:api_attr: Static Graph
 
@@ -3113,8 +3376,9 @@ def gru_unit(input,
 
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'gru_unit')
-    check_variable_and_dtype(hidden, 'hidden', ['float32', 'float64'],
-                             'gru_unit')
+    check_variable_and_dtype(
+        hidden, 'hidden', ['float32', 'float64'], 'gru_unit'
+    )
     check_type(size, 'size', (int), 'gru_unit')
     activation_dict = dict(
         identity=0,
@@ -3130,9 +3394,9 @@ def gru_unit(input,
     size = size // 3
 
     # create weight
-    weight = helper.create_parameter(attr=helper.param_attr,
-                                     shape=[size, 3 * size],
-                                     dtype=dtype)
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype
+    )
 
     gate = helper.create_variable_for_type_inference(dtype)
     reset_hidden_pre = helper.create_variable_for_type_inference(dtype)
@@ -3141,10 +3405,9 @@ def gru_unit(input,
     # create bias
     if helper.bias_attr:
         bias_size = [1, 3 * size]
-        bias = helper.create_parameter(attr=helper.bias_attr,
-                                       shape=bias_size,
-                                       dtype=dtype,
-                                       is_bias=True)
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True
+        )
         inputs['Bias'] = bias
 
     helper.append_op(
@@ -3158,22 +3421,25 @@ def gru_unit(input,
         attrs={
             'activation': 2,  # tanh
             'gate_activation': 1,  # sigmoid
-            'origin_mode': origin_mode
-        })
+            'origin_mode': origin_mode,
+        },
+    )
 
     return updated_hidden, reset_hidden_pre, gate
 
 
-def beam_search(pre_ids,
-                pre_scores,
-                ids,
-                scores,
-                beam_size,
-                end_id,
-                level=0,
-                is_accumulated=True,
-                name=None,
-                return_parent_idx=False):
+def beam_search(
+    pre_ids,
+    pre_scores,
+    ids,
+    scores,
+    beam_size,
+    end_id,
+    level=0,
+    is_accumulated=True,
+    name=None,
+    return_parent_idx=False,
+):
     r"""
 
     Beam search is a classical algorithm for selecting candidate words in a
@@ -3280,11 +3546,13 @@ def beam_search(pre_ids,
                 end_id=end_id)
     """
     check_variable_and_dtype(pre_ids, 'pre_ids', ['int64'], 'beam_search')
-    check_variable_and_dtype(pre_scores, 'pre_scores', ['float32', 'float64'],
-                             'beam_search')
+    check_variable_and_dtype(
+        pre_scores, 'pre_scores', ['float32', 'float64'], 'beam_search'
+    )
     check_type(ids, 'ids', (Variable, type(None)), 'beam_search')
-    check_variable_and_dtype(scores, 'scores', ['float32', 'float64'],
-                             'beam_search')
+    check_variable_and_dtype(
+        scores, 'scores', ['float32', 'float64'], 'beam_search'
+    )
     helper = LayerHelper('beam_search', **locals())
     score_type = pre_scores.dtype
     id_type = pre_ids.dtype
@@ -3294,7 +3562,8 @@ def beam_search(pre_ids,
         inputs["ids"] = ids
 
     selected_scores = helper.create_variable_for_type_inference(
-        dtype=score_type)
+        dtype=score_type
+    )
     selected_ids = helper.create_variable_for_type_inference(dtype=id_type)
     # parent_idx is a tensor used to gather cell states at the next time
     # step. Though lod in selected_ids can also be used to gather by
@@ -3308,7 +3577,7 @@ def beam_search(pre_ids,
         outputs={
             'selected_ids': selected_ids,
             'selected_scores': selected_scores,
-            'parent_idx': parent_idx
+            'parent_idx': parent_idx,
         },
         attrs={
             # TODO(ChunweiYan) to assure other value support
@@ -3316,7 +3585,8 @@ def beam_search(pre_ids,
             'beam_size': beam_size,
             'end_id': end_id,
             'is_accumulated': is_accumulated,
-        })
+        },
+    )
     if return_parent_idx:
         return selected_ids, selected_scores, parent_idx
     else:
@@ -3381,37 +3651,37 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
                 ids, scores, beam_size=5, end_id=0)
     """
     check_variable_and_dtype(ids, 'ids', ['int64'], 'beam_search_encode')
-    check_variable_and_dtype(scores, 'scores', ['float32'],
-                             'beam_search_encode')
+    check_variable_and_dtype(
+        scores, 'scores', ['float32'], 'beam_search_encode'
+    )
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_variable_for_type_inference(dtype=ids.dtype)
     sentence_scores = helper.create_variable_for_type_inference(
-        dtype=scores.dtype)
+        dtype=scores.dtype
+    )
 
-    helper.append_op(type="beam_search_decode",
-                     inputs={
-                         "Ids": ids,
-                         "Scores": scores
-                     },
-                     outputs={
-                         "SentenceIds": sentence_ids,
-                         "SentenceScores": sentence_scores
-                     },
-                     attrs={
-                         "beam_size": beam_size,
-                         "end_id": end_id
-                     })
+    helper.append_op(
+        type="beam_search_decode",
+        inputs={"Ids": ids, "Scores": scores},
+        outputs={
+            "SentenceIds": sentence_ids,
+            "SentenceScores": sentence_scores,
+        },
+        attrs={"beam_size": beam_size, "end_id": end_id},
+    )
 
     return sentence_ids, sentence_scores
 
 
-def lstm_unit(x_t,
-              hidden_t_prev,
-              cell_t_prev,
-              forget_bias=0.0,
-              param_attr=None,
-              bias_attr=None,
-              name=None):
+def lstm_unit(
+    x_t,
+    hidden_t_prev,
+    cell_t_prev,
+    forget_bias=0.0,
+    param_attr=None,
+    bias_attr=None,
+    name=None,
+):
     r"""
 	:api_attr: Static Graph
 
@@ -3496,10 +3766,12 @@ def lstm_unit(x_t,
     """
     helper = LayerHelper('lstm_unit', **locals())
     check_variable_and_dtype(x_t, 'x_t', ['float32', 'float64'], 'lstm_unit')
-    check_variable_and_dtype(hidden_t_prev, 'hidden_t_prev',
-                             ['float32', 'float64'], 'lstm_unit')
-    check_variable_and_dtype(cell_t_prev, 'cell_t_prev', ['float32', 'float64'],
-                             'lstm_unit')
+    check_variable_and_dtype(
+        hidden_t_prev, 'hidden_t_prev', ['float32', 'float64'], 'lstm_unit'
+    )
+    check_variable_and_dtype(
+        cell_t_prev, 'cell_t_prev', ['float32', 'float64'], 'lstm_unit'
+    )
     if len(x_t.shape) != 2:
         raise ValueError("Rank of x_t must be 2.")
 
@@ -3509,37 +3781,41 @@ def lstm_unit(x_t,
     if len(cell_t_prev.shape) != 2:
         raise ValueError("Rank of cell_t_prev must be 2.")
 
-    if x_t.shape[0] != hidden_t_prev.shape[0] or x_t.shape[
-            0] != cell_t_prev.shape[0]:
-        raise ValueError("The 1st dimensions of x_t, hidden_t_prev and "
-                         "cell_t_prev must be the same.")
+    if (
+        x_t.shape[0] != hidden_t_prev.shape[0]
+        or x_t.shape[0] != cell_t_prev.shape[0]
+    ):
+        raise ValueError(
+            "The 1st dimensions of x_t, hidden_t_prev and "
+            "cell_t_prev must be the same."
+        )
 
     if hidden_t_prev.shape[1] != cell_t_prev.shape[1]:
-        raise ValueError("The 2nd dimensions of hidden_t_prev and "
-                         "cell_t_prev must be the same.")
+        raise ValueError(
+            "The 2nd dimensions of hidden_t_prev and "
+            "cell_t_prev must be the same."
+        )
 
     if bias_attr is None:
         bias_attr = ParamAttr()
 
     size = cell_t_prev.shape[1]
     concat_out = nn.concat(input=[x_t, hidden_t_prev], axis=1)
-    fc_out = nn.fc(input=concat_out,
-                   size=4 * size,
-                   param_attr=param_attr,
-                   bias_attr=bias_attr)
+    fc_out = nn.fc(
+        input=concat_out,
+        size=4 * size,
+        param_attr=param_attr,
+        bias_attr=bias_attr,
+    )
     dtype = x_t.dtype
     c = helper.create_variable_for_type_inference(dtype)
     h = helper.create_variable_for_type_inference(dtype)
 
-    helper.append_op(type='lstm_unit',
-                     inputs={
-                         "X": fc_out,
-                         "C_prev": cell_t_prev
-                     },
-                     outputs={
-                         "C": c,
-                         "H": h
-                     },
-                     attrs={"forget_bias": forget_bias})
+    helper.append_op(
+        type='lstm_unit',
+        inputs={"X": fc_out, "C_prev": cell_t_prev},
+        outputs={"C": c, "H": h},
+        attrs={"forget_bias": forget_bias},
+    )
 
     return h, c

@@ -15,8 +15,11 @@
 import copy
 from paddle.fluid import core
 
-from ..fp16_lists import white_list as white_list_fp16, black_list as black_list_fp16,\
-    gray_list as gray_list_fp16
+from ..fp16_lists import (
+    white_list as white_list_fp16,
+    black_list as black_list_fp16,
+    gray_list as gray_list_fp16,
+)
 
 __all__ = ["AutoMixedPrecisionListsBF16"]
 
@@ -40,10 +43,12 @@ class AutoMixedPrecisionListsBF16(object):
             paddle.static.amp.AutoMixedPrecisionListsBF16(custom_fp32_list={'lstm'})
     """
 
-    def __init__(self,
-                 custom_bf16_list=None,
-                 custom_fp32_list=None,
-                 custom_fp32_varnames=None):
+    def __init__(
+        self,
+        custom_bf16_list=None,
+        custom_fp32_list=None,
+        custom_fp32_varnames=None,
+    ):
         self._custom_bf16_list = custom_bf16_list
         self._custom_fp32_list = custom_fp32_list
         self.bf16_list = copy.copy(bf16_list)
@@ -61,8 +66,9 @@ class AutoMixedPrecisionListsBF16(object):
         if self._custom_bf16_list and self._custom_fp32_list:
             for op_name in self._custom_bf16_list:
                 if op_name in self._custom_fp32_list:
-                    raise ValueError("Custom bf16 list overlap "
-                                     "custom fp32 list")
+                    raise ValueError(
+                        "Custom bf16 list overlap " "custom fp32 list"
+                    )
         if self._custom_bf16_list:
             for op_name in self._custom_bf16_list:
                 if op_name in self.fp32_list:
@@ -92,13 +98,28 @@ bf16_list = {
 
 # depends on the prev_op type
 gray_list = {
-    'elementwise_add', 'elementwise_sub', 'elementwise_mul', 'elementwise_div',
-    'relu', 'layer_norm', 'slice', 'concat', 'uniform_random', 'reshape2',
-    'transpose2', 'pool2d', 'sigmoid', 'cast', 'scale', 'fill_constant', 'split'
+    'elementwise_add',
+    'elementwise_sub',
+    'elementwise_mul',
+    'elementwise_div',
+    'relu',
+    'layer_norm',
+    'slice',
+    'concat',
+    'uniform_random',
+    'reshape2',
+    'transpose2',
+    'pool2d',
+    'sigmoid',
+    'cast',
+    'scale',
+    'fill_constant',
+    'split',
 }
 
 _, _, _sys_unsupported_bf16_list = core.op_supported_infos(
-    'CPU', core.VarDesc.VarType.BF16)
+    'CPU', core.VarDesc.VarType.BF16
+)
 unsupported_list = _sys_unsupported_bf16_list
 
 fp32_list = black_list_fp16.copy().copy()

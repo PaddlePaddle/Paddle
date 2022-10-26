@@ -112,11 +112,6 @@ void RandintInferMeta(
                               high));
 
   auto& shape_vector = shape.GetData();
-  PADDLE_ENFORCE_EQ(
-      shape_vector.empty(),
-      false,
-      errors::InvalidArgument("The shape information should not be empty, it "
-                              "must be set by Attr(shape)."));
 
   std::vector<int64_t> tensor_shape;
   tensor_shape.reserve(shape_vector.size());
