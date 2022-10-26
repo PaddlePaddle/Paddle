@@ -62,6 +62,12 @@ void FuseOperatorReshape2OneDNNPass::FuseReshape2(Graph *graph,
       return;
     }
 
+    if (operator_op->Op()->HasAttr("fused_unsqueeze2_axes")) {
+      VLOG(4) << "Cannot do " << op_type << " + reshape2 fuse, because "
+              << op_type << " is already fused with unsqueeze2!";
+      return;
+    }
+
     std::vector<int> reshape2_shape =
         PADDLE_GET_CONST(std::vector<int>, reshape2_op->Op()->GetAttr("shape"));
 

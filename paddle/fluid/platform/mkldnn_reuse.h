@@ -109,19 +109,6 @@ static void AppendActivation(const framework::ExecutionContext& ctx,
   }
 }
 
-static void SetOutMemDescWithLogicalLayoutFusesSupport(
-    const framework::ExecutionContext& ctx,
-    phi::DenseTensor* out,
-    const dnnl::memory::desc& out_md) {
-  if (ctx.HasAttr("fused_unsqueeze2_axes")) {
-    SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
-  } else if (ctx.HasAttr("fused_reshape2_shape")) {
-    SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
-  } else {
-    out->set_mem_desc(out_md);
-  }
-}
-
 static void SetOutMemDescWithUnsqueeze2FuseSupport(
     const framework::ExecutionContext& ctx,
     phi::DenseTensor* out,
@@ -170,6 +157,19 @@ static void SetOutMemDescWithReshape2FuseSupport(
 
   out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
   out->Resize(phi::make_ddim(fused_reshape2_shape));
+}
+
+static void SetOutMemDescWithLogicalLayoutFusesSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  if (ctx.HasAttr("fused_unsqueeze2_axes")) {
+    SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
+  } else if (ctx.HasAttr("fused_reshape2_shape")) {
+    SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
+  } else {
+    out->set_mem_desc(out_md);
+  }
 }
 
 template <typename T>
