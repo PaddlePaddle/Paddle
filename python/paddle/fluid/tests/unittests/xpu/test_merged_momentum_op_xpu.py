@@ -20,19 +20,21 @@ sys.path.append("..")
 import paddle
 
 from test_merged_momentum_op_xpu_base import TestMergedMomentumBase
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestMergedMomentumOP(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'merged_momentum'
         self.use_dynamic_create_class = False
 
     class TestMergedMomentumOp(TestMergedMomentumBase):
-
         def setUp(self):
             super().setUp()
             self.set_case()
@@ -46,22 +48,18 @@ class XPUTestMergedMomentumOP(XPUOpTestWrapper):
             self.check_with_place(self.place, self.in_type)
 
     class TestMergedMomentum1(TestMergedMomentumOp):
-
         def set_case(self):
             self.shapes = [[3, 4], [2, 7], [5, 6, 8]]
 
     class TestMergedMomentum2(TestMergedMomentumOp):
-
         def set_case(self):
             self.shapes = [[3, 4], [2, 7]]
 
     class TestMergedMomentum3(TestMergedMomentumOp):
-
         def set_case(self):
             self.shapes = [[3, 4]]
 
     class TestMergedMomentum4(TestMergedMomentumOp):
-
         def set_case(self):
             self.shapes = [[3, 4], [2, 7], [5, 6, 7], [9, 9], [10, 12]]
 

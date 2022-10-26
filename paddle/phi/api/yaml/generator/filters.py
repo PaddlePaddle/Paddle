@@ -15,12 +15,20 @@
 import itertools
 import re
 
-from type_mapping import (input_types_map, optional_input_types_map,
-                          attr_types_map, opmaker_attr_types_map,
-                          output_type_map)
-from type_mapping import (dense_input_types_map, dense_optional_input_types_map,
-                          dense_output_types_map, sr_output_types_map,
-                          phi_attr_types_map)
+from type_mapping import (
+    input_types_map,
+    optional_input_types_map,
+    attr_types_map,
+    opmaker_attr_types_map,
+    output_type_map,
+)
+from type_mapping import (
+    dense_input_types_map,
+    dense_optional_input_types_map,
+    dense_output_types_map,
+    sr_output_types_map,
+    phi_attr_types_map,
+)
 
 
 def quote(s):
@@ -104,7 +112,7 @@ def to_input_name(s):
     is more common.
     """
     match = re.match(r"(d\d*)(\w+)", s)
-    assert (match.group(1) != ""), "it should be a grad style name."
+    assert match.group(1) != "", "it should be a grad style name."
     return match.group(2)
 
 
@@ -117,9 +125,10 @@ def cartesian_prod_attrs(attrs):
             items.append((name, "{}Tensor".format(name)))
         elif type_name == "IntArray":
             items.append(
-                (name, "{}Tensor".format(name), "{}TensorList".format(name)))
+                (name, "{}Tensor".format(name), "{}TensorList".format(name))
+            )
         else:
-            items.append((name, ))
+            items.append((name,))
 
     _combinations = itertools.product(*items)
     combinations = []

@@ -19,7 +19,6 @@ import numpy as np
 
 
 class TestLoDTensorArray(unittest.TestCase):
-
     def test_get_set(self):
         scope = core.Scope()
         arr = scope.var('tmp_lod_tensor_array')
@@ -49,7 +48,6 @@ class TestLoDTensorArray(unittest.TestCase):
 
 
 class TestCreateArray(unittest.TestCase):
-
     def setUp(self):
         self.place = paddle.CPUPlace()
         self.shapes = [[10, 4], [8, 12], [1]]
@@ -60,7 +58,8 @@ class TestCreateArray(unittest.TestCase):
             np.random.random(shape).astype('float32') for shape in self.shapes
         ]
         array = paddle.tensor.create_array(
-            'float32', [paddle.to_tensor(x) for x in init_data])
+            'float32', [paddle.to_tensor(x) for x in init_data]
+        )
         for res, gt in zip(array, init_data):
             np.testing.assert_array_equal(res, gt)
 
@@ -82,8 +81,9 @@ class TestCreateArray(unittest.TestCase):
 
         # test error with nest list
         with self.assertRaises(TypeError):
-            paddle.tensor.create_array('float32',
-                                       [init_data[0], [init_data[1]]])
+            paddle.tensor.create_array(
+                'float32', [init_data[0], [init_data[1]]]
+            )
 
         # test error with not variable
         with self.assertRaises(TypeError):

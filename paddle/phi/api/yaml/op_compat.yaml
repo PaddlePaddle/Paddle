@@ -274,6 +274,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : exp
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : expand (expand_v2)
   backward : expand_grad (expand_v2_grad)
   extra :
@@ -680,7 +686,7 @@
 - op : softmax
   backward : softmax_grad
   extra :
-    attrs : [bool use_cudnn = false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
   backward : softplus_grad

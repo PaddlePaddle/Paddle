@@ -21,10 +21,16 @@ import sys
 
 def analysisPyXml(rootPath, ut):
     xml_path = '%s/build/pytest/%s/python-coverage.xml' % (rootPath, ut)
-    related_ut_map_file = '%s/build/ut_map/%s/related_%s.txt' % (rootPath, ut,
-                                                                 ut)
-    notrelated_ut_map_file = '%s/build/ut_map/%s/notrelated_%s.txt' % (rootPath,
-                                                                       ut, ut)
+    related_ut_map_file = '%s/build/ut_map/%s/related_%s.txt' % (
+        rootPath,
+        ut,
+        ut,
+    )
+    notrelated_ut_map_file = '%s/build/ut_map/%s/notrelated_%s.txt' % (
+        rootPath,
+        ut,
+        ut,
+    )
     tree = ElementTree.parse(xml_path)
     root = tree.getroot()
     error_files = []
@@ -40,18 +46,36 @@ def analysisPyXml(rootPath, ut):
                 command = 'sed -n %sp %s' % (line_number, clazz_filename)
                 _code, output = commands.getstatusoutput(command)
                 if _code == 0:
-                    if output.strip().startswith(
-                        ('from', 'import', '__all__', 'def', 'class', '"""',
-                         '@', '\'\'\'', 'logger', '_logger', 'logging', 'r"""',
-                         'pass', 'try', 'except',
-                         'if __name__ == "__main__"')) == False:
-                        pattern = "(.*) = ('*')|(.*) = (\"*\")|(.*) = (\d)|(.*) = (-\d)|(.*) = (None)|(.*) = (True)|(.*) = (False)|(.*) = (URL_PREFIX*)|(.*) = (\[)|(.*) = (\{)|(.*) = (\()"  #a='b'/a="b"/a=0
+                    if (
+                        output.strip().startswith(
+                            (
+                                'from',
+                                'import',
+                                '__all__',
+                                'def',
+                                'class',
+                                '"""',
+                                '@',
+                                '\'\'\'',
+                                'logger',
+                                '_logger',
+                                'logging',
+                                'r"""',
+                                'pass',
+                                'try',
+                                'except',
+                                'if __name__ == "__main__"',
+                            )
+                        )
+                        == False
+                    ):
+                        pattern = r"""(.*) = ('*')|(.*) = ("*")|(.*) = (\d)|(.*) = (-\d)|(.*) = (None)|(.*) = (True)|(.*) = (False)|(.*) = (URL_PREFIX*)|(.*) = (\[)|(.*) = (\{)|(.*) = (\()"""  # a='b'/a="b"/a=0
                         if re.match(pattern, output.strip()) == None:
                             pyCov_file.append(clazz_filename)
                             coverageMessage = 'RELATED'
                             break
                         else:
-                            coverageMessage = 'FILTER'  #hit filter logic
+                            coverageMessage = 'FILTER'  # hit filter logic
                     else:
                         coverageMessage = 'FILTER'
                 else:
@@ -61,8 +85,9 @@ def analysisPyXml(rootPath, ut):
             else:
                 coverageMessage = 'NOT_RELATED'
         if coverageMessage in ['NOT_RELATED', 'ERROR', 'FILTER']:
-            os.system('echo %s >> %s' %
-                      (clazz_filename, notrelated_ut_map_file))
+            os.system(
+                'echo %s >> %s' % (clazz_filename, notrelated_ut_map_file)
+            )
         elif coverageMessage == 'RELATED':
             os.system('echo %s >> %s' % (clazz_filename, related_ut_map_file))
 

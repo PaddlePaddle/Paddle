@@ -19,7 +19,7 @@ import paddle.distributed as dist
 from paddle.distributed.fleet.base.strategy_group import StrategyGroupBase
 
 
-class OrthogonalStrategy():
+class OrthogonalStrategy:
     """
     A hybrid of multiple distributed strategies. Strategies need to be orthogonal, means the ranks are organized like
     a square if there are two strategies, a cube if there aree three strategies, etc.
@@ -57,8 +57,9 @@ class OrthogonalStrategy():
             strategy[0] for strategy in list_of_strategy
         ]
         self._list_of_degree = [strategy[1] for strategy in list_of_strategy]
-        self._coordinate = collections.namedtuple('Coordinate',
-                                                  self._list_of_strategy_name)
+        self._coordinate = collections.namedtuple(
+            'Coordinate', self._list_of_strategy_name
+        )
         self._check_valid_strategy()
 
         ranges = [range(degree) for degree in self._list_of_degree]
@@ -66,14 +67,16 @@ class OrthogonalStrategy():
             self._coordinate(*coord) for coord in itertools.product(*ranges)
         ]
         self._coord_to_rank_dict = dict(
-            zip(list_of_coord, range(len(list_of_coord))))
+            zip(list_of_coord, range(len(list_of_coord)))
+        )
 
         for idx, strategy in enumerate(list_of_strategy):
             strategy_name = strategy[0]
             self._name_to_degree_dict[strategy_name] = strategy[1]
             self._rank_list_dict[strategy_name] = self._calc_rank_list(idx)
             self._name_to_group_dict[strategy_name] = strategy[2](
-                self._rank_list_dict[strategy_name])
+                self._rank_list_dict[strategy_name]
+            )
 
         self._name_to_fused_group_dict = {}
         self._create_fused_group()
@@ -88,8 +91,9 @@ class OrthogonalStrategy():
         Returns:
             An instance of specific strategy group.
         """
-        assert name in self._list_of_strategy_name, "Strategy group {} is not created.".format(
-            name)
+        assert (
+            name in self._list_of_strategy_name
+        ), "Strategy group {} is not created.".format(name)
         return self._name_to_group_dict[name]
 
     def fused_strategy_group(self, name):
@@ -102,8 +106,9 @@ class OrthogonalStrategy():
         Returns:
             (StrategyGroupBase): An instance of strategy group.
         """
-        assert name in self._name_to_fused_group_dict, "Fused strategy group {} is not created.".format(
-            name)
+        assert (
+            name in self._name_to_fused_group_dict
+        ), "Fused strategy group {} is not created.".format(name)
         return self._name_to_fused_group_dict[name]
 
     def rank_in_strategy(self, name):
@@ -116,33 +121,42 @@ class OrthogonalStrategy():
         Returns:
             (Integer): Local rank in specific strategy.
         """
-        assert name in self._list_of_strategy_name, "Strategy group {} is not created.".format(
-            name)
+        assert (
+            name in self._list_of_strategy_name
+        ), "Strategy group {} is not created.".format(name)
         return self._name_to_group_dict[name].group.rank
 
     def _check_valid_strategy(self):
         assert len(self._list_of_strategy_name) == len(
             set(self._list_of_strategy_name)
         ), "Defined duplicated strategies: {}".format(list_of_strategy)
-        num_of_ranks = functools.reduce(lambda x, y: x * y,
-                                        self._list_of_degree)
-        assert num_of_ranks == dist.get_world_size(
+        num_of_ranks = functools.reduce(
+            lambda x, y: x * y, self._list_of_degree
+        )
+        assert (
+            num_of_ranks == dist.get_world_size()
         ), "There are total {} ranks, but need {} ranks in this strategy.".format(
-            dist.get_world_size(), num_of_ranks)
+            dist.get_world_size(), num_of_ranks
+        )
         for fused_strategy in self._fused_strategy_dict.values():
             for strategy in fused_strategy:
-                assert strategy in self._list_of_strategy_name, "Can not fuse strategy {} without defined previous.".format(
-                    strategy)
+                assert (
+                    strategy in self._list_of_strategy_name
+                ), "Can not fuse strategy {} without defined previous.".format(
+                    strategy
+                )
 
     def _create_fused_group(self):
         for name in self._fused_strategy_dict:
             fused_strategy = self._fused_strategy_dict[name]
             non_fused_strategy = list(
-                set(self._list_of_strategy_name).difference(fused_strategy))
+                set(self._list_of_strategy_name).difference(fused_strategy)
+            )
             non_fused_ranges = []
             for strategy in non_fused_strategy:
                 non_fused_ranges.append(
-                    range(self._name_to_degree_dict[strategy]))
+                    range(self._name_to_degree_dict[strategy])
+                )
             fused_ranges = []
             for strategy in fused_strategy:
                 fused_ranges.append(range(self._name_to_degree_dict[strategy]))
@@ -156,8 +170,9 @@ class OrthogonalStrategy():
                 for fused_ranks in itertools.product(*fused_ranges):
                     for i, fused_rank in enumerate(fused_ranks):
                         coord_dict[fused_strategy[i]] = fused_rank
-                    ranks.append(self._coord_to_rank_dict[self._coordinate(
-                        **coord_dict)])
+                    ranks.append(
+                        self._coord_to_rank_dict[self._coordinate(**coord_dict)]
+                    )
                 rank_list.append(ranks)
             self._name_to_fused_group_dict[name] = StrategyGroupBase(rank_list)
 
@@ -175,7 +190,8 @@ class OrthogonalStrategy():
                 coord_list = list(coord)
                 coord_list.insert(strategy_axis, val)
                 ranks.append(
-                    self._coord_to_rank_dict[self._coordinate(*coord_list)])
+                    self._coord_to_rank_dict[self._coordinate(*coord_list)]
+                )
             rank_list.append(ranks)
 
         return rank_list

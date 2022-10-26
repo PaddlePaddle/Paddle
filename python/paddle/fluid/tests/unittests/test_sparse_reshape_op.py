@@ -19,7 +19,7 @@ import unittest
 
 class TestReshape(unittest.TestCase):
     """
-    Test the API paddle.incubate.sparse.reshape on some sparse tensors.
+    Test the API paddle.sparse.reshape on some sparse tensors.
     x: sparse, out: sparse
     """
 
@@ -31,7 +31,7 @@ class TestReshape(unittest.TestCase):
         Transform a sparse tensor with shape "x_shape" to
         a sparse tensor with shape "new_shape".
         Compare the output of paddle.reshape and the output of
-        paddle.incubate.sparse.reshape.
+        paddle.sparse.reshape.
         """
         mask = np.random.randint(0, 2, x_shape)
         np_x = np.random.randint(-100, 100, x_shape) * mask
@@ -42,25 +42,27 @@ class TestReshape(unittest.TestCase):
         dense_out = paddle.reshape(dense_x, new_shape)
 
         if format == "coo":
-            sp_x = paddle.to_tensor(np_x,
-                                    place=paddle.CPUPlace()).to_sparse_coo(
-                                        len(x_shape))
+            sp_x = paddle.to_tensor(
+                np_x, place=paddle.CPUPlace()
+            ).to_sparse_coo(len(x_shape))
         else:
-            sp_x = paddle.to_tensor(np_x,
-                                    place=paddle.CPUPlace()).to_sparse_csr()
+            sp_x = paddle.to_tensor(
+                np_x, place=paddle.CPUPlace()
+            ).to_sparse_csr()
         sp_x.stop_gradient = False
-        sp_out = paddle.incubate.sparse.reshape(sp_x, new_shape)
+        sp_out = paddle.sparse.reshape(sp_x, new_shape)
 
-        np.testing.assert_allclose(sp_out.to_dense().numpy(),
-                                   dense_out.numpy(),
-                                   rtol=1e-05)
+        np.testing.assert_allclose(
+            sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
+        )
 
         dense_out.backward()
         sp_out.backward()
-        np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
-                                   dense_x.grad.numpy() *
-                                   np_x.astype('bool').astype('int'),
-                                   rtol=1e-05)
+        np.testing.assert_allclose(
+            sp_x.grad.to_dense().numpy(),
+            dense_x.grad.numpy() * np_x.astype('bool').astype('int'),
+            rtol=1e-05,
+        )
 
         # check gpu kernel
         if paddle.device.is_compiled_with_cuda():
@@ -70,28 +72,35 @@ class TestReshape(unittest.TestCase):
 
             if format == "coo":
                 sp_x = paddle.to_tensor(
-                    np_x, place=paddle.CUDAPlace(0)).to_sparse_coo(len(x_shape))
+                    np_x, place=paddle.CUDAPlace(0)
+                ).to_sparse_coo(len(x_shape))
             else:
                 sp_x = paddle.to_tensor(
-                    np_x, place=paddle.CUDAPlace(0)).to_sparse_csr()
+                    np_x, place=paddle.CUDAPlace(0)
+                ).to_sparse_csr()
             sp_x.stop_gradient = False
-            sp_out = paddle.incubate.sparse.reshape(sp_x, new_shape)
+            sp_out = paddle.sparse.reshape(sp_x, new_shape)
 
-            np.testing.assert_allclose(sp_out.to_dense().numpy(),
-                                       dense_out.numpy(),
-                                       rtol=1e-05)
+            np.testing.assert_allclose(
+                sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
+            )
 
             dense_out.backward()
             sp_out.backward()
-            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
-                                       dense_x.grad.numpy() *
-                                       np_x.astype('bool').astype('int'),
-                                       rtol=1e-05)
+            np.testing.assert_allclose(
+                sp_x.grad.to_dense().numpy(),
+                dense_x.grad.numpy() * np_x.astype('bool').astype('int'),
+                rtol=1e-05,
+            )
 
     def test_reshape_2d(self):
-        self.check_result([2, 5], [
-            10,
-        ], 'coo')
+        self.check_result(
+            [2, 5],
+            [
+                10,
+            ],
+            'coo',
+        )
         self.check_result([12, 5], [15, 4], 'coo')
 
         self.check_result([10, 5], [2, 25], 'csr')

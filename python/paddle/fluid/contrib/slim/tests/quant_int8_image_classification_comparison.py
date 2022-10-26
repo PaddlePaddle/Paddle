@@ -40,27 +40,29 @@ def parse_args():
         '--skip_batch_num',
         type=int,
         default=0,
-        help='Number of the first minibatches to skip in performance statistics.'
+        help='Number of the first minibatches to skip in performance statistics.',
     )
-    parser.add_argument('--debug',
-                        action='store_true',
-                        help='If used, the graph of Quant model is drawn.')
-    parser.add_argument('--quant_model',
-                        type=str,
-                        default='',
-                        help='A path to a Quant model.')
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='If used, the graph of Quant model is drawn.',
+    )
+    parser.add_argument(
+        '--quant_model', type=str, default='', help='A path to a Quant model.'
+    )
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
     parser.add_argument(
         '--batch_num',
         type=int,
         default=0,
-        help=
-        'Number of batches to process. 0 or less means whole dataset. Default: 0.'
+        help='Number of batches to process. 0 or less means whole dataset. Default: 0.',
     )
-    parser.add_argument('--acc_diff_threshold',
-                        type=float,
-                        default=0.01,
-                        help='Accepted accuracy difference threshold.')
+    parser.add_argument(
+        '--acc_diff_threshold',
+        type=float,
+        default=0.01,
+        help='Accepted accuracy difference threshold.',
+    )
 
     test_args, args = parser.parse_known_args(namespace=unittest)
     return test_args, sys.argv[:1] + args
@@ -72,7 +74,6 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
     """
 
     def _reader_creator(self, data_file='data.bin'):
-
         def reader():
             with open(data_file, 'rb') as fp:
                 num = fp.read(8)
@@ -91,7 +92,8 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                     fp.seek(imgs_offset + img_size * step)
                     img = fp.read(img_size)
                     img = struct.unpack_from(
-                        '{}f'.format(img_ch * img_w * img_h), img)
+                        '{}f'.format(img_ch * img_w * img_h), img
+                    )
                     img = np.array(img)
                     img.shape = (img_ch, img_w, img_h)
                     fp.seek(labels_offset + label_size * step)
@@ -125,14 +127,14 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
             name = op_node.name()
             if name in ['depthwise_conv2d']:
                 input_var_node = graph._find_node_by_name(
-                    op_node.inputs,
-                    op_node.input("Input")[0])
+                    op_node.inputs, op_node.input("Input")[0]
+                )
                 weight_var_node = graph._find_node_by_name(
-                    op_node.inputs,
-                    op_node.input("Filter")[0])
+                    op_node.inputs, op_node.input("Filter")[0]
+                )
                 output_var_node = graph._find_node_by_name(
-                    graph.all_var_nodes(),
-                    op_node.output("Output")[0])
+                    graph.all_var_nodes(), op_node.output("Output")[0]
+                )
                 attrs = {
                     name: op_node.op().attr(name)
                     for name in op_node.op().attr_names()
@@ -141,11 +143,9 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                 conv_op_node = graph.create_op_node(
                     op_type='conv2d',
                     attrs=attrs,
-                    inputs={
-                        'Input': input_var_node,
-                        'Filter': weight_var_node
-                    },
-                    outputs={'Output': output_var_node})
+                    inputs={'Input': input_var_node, 'Filter': weight_var_node},
+                    outputs={'Output': output_var_node},
+                )
 
                 graph.link_to(input_var_node, conv_op_node)
                 graph.link_to(weight_var_node, conv_op_node)
@@ -154,31 +154,41 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
 
         return graph
 
-    def _predict(self,
-                 test_reader=None,
-                 model_path=None,
-                 batch_size=1,
-                 batch_num=1,
-                 skip_batch_num=0,
-                 transform_to_int8=False):
+    def _predict(
+        self,
+        test_reader=None,
+        model_path=None,
+        batch_size=1,
+        batch_num=1,
+        skip_batch_num=0,
+        transform_to_int8=False,
+    ):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         inference_scope = fluid.executor.global_scope()
         with fluid.scope_guard(inference_scope):
             if os.path.exists(os.path.join(model_path, '__model__')):
-                [inference_program, feed_target_names, fetch_targets
-                 ] = fluid.io.load_inference_model(model_path, exe)
+                [
+                    inference_program,
+                    feed_target_names,
+                    fetch_targets,
+                ] = fluid.io.load_inference_model(model_path, exe)
             else:
-                [inference_program, feed_target_names, fetch_targets
-                 ] = fluid.io.load_inference_model(model_path, exe, 'model',
-                                                   'params')
+                [
+                    inference_program,
+                    feed_target_names,
+                    fetch_targets,
+                ] = fluid.io.load_inference_model(
+                    model_path, exe, 'model', 'params'
+                )
 
             graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
-            if (self._debug):
+            if self._debug:
                 graph.draw('.', 'quant_orig', graph.all_op_nodes())
-            if (transform_to_int8):
-                mkldnn_int8_pass = QuantInt8MkldnnPass(_scope=inference_scope,
-                                                       _place=place)
+            if transform_to_int8:
+                mkldnn_int8_pass = QuantInt8MkldnnPass(
+                    _scope=inference_scope, _place=place
+                )
                 graph = mkldnn_int8_pass.apply(graph)
             else:
                 graph = self._prepare_for_fp32_mkldnn(graph)
@@ -205,13 +215,16 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                 labels = np.array([x[1] for x in data]).astype('int64')
 
                 start = time.time()
-                out = exe.run(inference_program,
-                              feed={feed_target_names[0]: images},
-                              fetch_list=fetch_targets)
+                out = exe.run(
+                    inference_program,
+                    feed={feed_target_names[0]: images},
+                    fetch_list=fetch_targets,
+                )
                 batch_time = (time.time() - start) * 1000  # in miliseconds
                 outputs.append(out[0])
                 batch_acc1, batch_acc5 = self._get_batch_accuracy(
-                    out[0], labels)
+                    out[0], labels
+                )
                 infer_accs1.append(batch_acc1)
                 infer_accs5.append(batch_acc5)
                 samples = len(data)
@@ -221,10 +234,17 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                 fpses.append(fps)
                 iters += 1
                 appx = ' (warm-up)' if iters <= skip_batch_num else ''
-                _logger.info('batch {0}{5}, acc1: {1:.4f}, acc5: {2:.4f}, '
-                             'latency: {3:.4f} ms, fps: {4:.2f}'.format(
-                                 iters, batch_acc1, batch_acc5,
-                                 batch_time / batch_size, fps, appx))
+                _logger.info(
+                    'batch {0}{5}, acc1: {1:.4f}, acc5: {2:.4f}, '
+                    'latency: {3:.4f} ms, fps: {4:.2f}'.format(
+                        iters,
+                        batch_acc1,
+                        batch_acc5,
+                        batch_time / batch_size,
+                        fps,
+                        appx,
+                    )
+                )
 
             # Postprocess benchmark data
             batch_latencies = batch_times[skip_batch_num:]
@@ -236,29 +256,43 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
             acc1_avg = np.mean(infer_accs1)
             acc5_avg = np.mean(infer_accs5)
             _logger.info(
-                'Total inference run time: {:.2f} s'.format(infer_total_time))
+                'Total inference run time: {:.2f} s'.format(infer_total_time)
+            )
 
             return outputs, acc1_avg, acc5_avg, fps_avg, latency_avg
 
     def _summarize_performance(self, fp32_fps, fp32_lat, int8_fps, int8_lat):
         _logger.info('--- Performance summary ---')
-        _logger.info('FP32: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
-            fp32_fps, fp32_lat))
-        _logger.info('INT8: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
-            int8_fps, int8_lat))
+        _logger.info(
+            'FP32: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
+                fp32_fps, fp32_lat
+            )
+        )
+        _logger.info(
+            'INT8: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
+                int8_fps, int8_lat
+            )
+        )
 
-    def _compare_accuracy(self, fp32_acc1, fp32_acc5, int8_acc1, int8_acc5,
-                          threshold):
+    def _compare_accuracy(
+        self, fp32_acc1, fp32_acc5, int8_acc1, int8_acc5, threshold
+    ):
         _logger.info('--- Accuracy summary ---')
         _logger.info(
-            'Accepted top1 accuracy drop threshold: {0}. (condition: (FP32_top1_acc - IN8_top1_acc) <= threshold)'
-            .format(threshold))
+            'Accepted top1 accuracy drop threshold: {0}. (condition: (FP32_top1_acc - IN8_top1_acc) <= threshold)'.format(
+                threshold
+            )
+        )
         _logger.info(
-            'FP32: avg top1 accuracy: {0:.4f}, avg top5 accuracy: {1:.4f}'.
-            format(fp32_acc1, fp32_acc5))
+            'FP32: avg top1 accuracy: {0:.4f}, avg top5 accuracy: {1:.4f}'.format(
+                fp32_acc1, fp32_acc5
+            )
+        )
         _logger.info(
-            'INT8: avg top1 accuracy: {0:.4f}, avg top5 accuracy: {1:.4f}'.
-            format(int8_acc1, int8_acc5))
+            'INT8: avg top1 accuracy: {0:.4f}, avg top5 accuracy: {1:.4f}'.format(
+                int8_acc1, int8_acc5
+            )
+        )
         assert fp32_acc1 > 0.0
         assert int8_acc1 > 0.0
         assert fp32_acc1 - int8_acc1 <= threshold
@@ -268,9 +302,13 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
             return
 
         quant_model_path = test_case_args.quant_model
-        assert quant_model_path, 'The Quant model path cannot be empty. Please, use the --quant_model option.'
+        assert (
+            quant_model_path
+        ), 'The Quant model path cannot be empty. Please, use the --quant_model option.'
         data_path = test_case_args.infer_data
-        assert data_path, 'The dataset path cannot be empty. Please, use the --infer_data option.'
+        assert (
+            data_path
+        ), 'The dataset path cannot be empty. Please, use the --infer_data option.'
         batch_size = test_case_args.batch_size
         batch_num = test_case_args.batch_num
         skip_batch_num = test_case_args.skip_batch_num
@@ -285,29 +323,34 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
         _logger.info('Accuracy drop threshold: {0}.'.format(acc_diff_threshold))
 
         _logger.info('--- Quant FP32 prediction start ---')
-        val_reader = paddle.batch(self._reader_creator(data_path),
-                                  batch_size=batch_size)
+        val_reader = paddle.batch(
+            self._reader_creator(data_path), batch_size=batch_size
+        )
         fp32_output, fp32_acc1, fp32_acc5, fp32_fps, fp32_lat = self._predict(
             val_reader,
             quant_model_path,
             batch_size,
             batch_num,
             skip_batch_num,
-            transform_to_int8=False)
+            transform_to_int8=False,
+        )
         _logger.info('--- Quant INT8 prediction start ---')
-        val_reader = paddle.batch(self._reader_creator(data_path),
-                                  batch_size=batch_size)
+        val_reader = paddle.batch(
+            self._reader_creator(data_path), batch_size=batch_size
+        )
         int8_output, int8_acc1, int8_acc5, int8_fps, int8_lat = self._predict(
             val_reader,
             quant_model_path,
             batch_size,
             batch_num,
             skip_batch_num,
-            transform_to_int8=True)
+            transform_to_int8=True,
+        )
 
         self._summarize_performance(fp32_fps, fp32_lat, int8_fps, int8_lat)
-        self._compare_accuracy(fp32_acc1, fp32_acc5, int8_acc1, int8_acc5,
-                               acc_diff_threshold)
+        self._compare_accuracy(
+            fp32_acc1, fp32_acc5, int8_acc1, int8_acc5, acc_diff_threshold
+        )
 
 
 if __name__ == '__main__':

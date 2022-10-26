@@ -19,12 +19,12 @@ import os
 
 
 class SimpleFCLayer(fluid.dygraph.Layer):
-
     def __init__(self, feature_size, batch_size, fc_size):
         super(SimpleFCLayer, self).__init__()
         self._linear = fluid.dygraph.Linear(feature_size, fc_size)
         self._offset = fluid.dygraph.to_variable(
-            np.random.random((batch_size, fc_size)).astype('float32'))
+            np.random.random((batch_size, fc_size)).astype('float32')
+        )
 
     def forward(self, x):
         fc = self._linear(x)
@@ -32,7 +32,6 @@ class SimpleFCLayer(fluid.dygraph.Layer):
 
 
 class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
-
     def test_main(self):
         if fluid.framework.in_dygraph_mode():
             return
@@ -42,21 +41,28 @@ class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
             batch_size = 4
             fc_size = 2
             layer = SimpleFCLayer(feature_size, batch_size, fc_size)
-            optimizer = fluid.optimizer.SGD(learning_rate=1e-3,
-                                            parameter_list=layer.parameters())
+            optimizer = fluid.optimizer.SGD(
+                learning_rate=1e-3, parameter_list=layer.parameters()
+            )
 
-            expected_persistable_vars = set([
-                layer._linear.weight.name, layer._linear.bias.name,
-                layer._offset.name
-            ])
+            expected_persistable_vars = set(
+                [
+                    layer._linear.weight.name,
+                    layer._linear.bias.name,
+                    layer._offset.name,
+                ]
+            )
 
             for _ in range(10):
                 in_x = fluid.dygraph.to_variable(
-                    np.random.random(
-                        (batch_size, feature_size)).astype('float32'))
+                    np.random.random((batch_size, feature_size)).astype(
+                        'float32'
+                    )
+                )
                 if traced_layer is None:
                     dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
-                        layer, [in_x])
+                        layer, [in_x]
+                    )
                 else:
                     dygraph_out = layer(in_x)
                 dygraph_out_numpy = dygraph_out.numpy()
@@ -79,11 +85,15 @@ class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
         self.assertEqual(actual_persistable_vars, expected_persistable_vars)
 
         traced_layer.save_inference_model(
-            path='./traced_layer_test_non_persistable_vars')
-        self.assertTrue('traced_layer_test_non_persistable_vars.pdmodel' in
-                        os.listdir('./'))
-        self.assertTrue('traced_layer_test_non_persistable_vars.pdiparams' in
-                        os.listdir('./'))
+            path='./traced_layer_test_non_persistable_vars'
+        )
+        self.assertTrue(
+            'traced_layer_test_non_persistable_vars.pdmodel' in os.listdir('./')
+        )
+        self.assertTrue(
+            'traced_layer_test_non_persistable_vars.pdiparams'
+            in os.listdir('./')
+        )
 
 
 if __name__ == '__main__':

@@ -24,7 +24,6 @@ paddle.enable_static()
 
 
 class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
-
     def op_name(self):
         return "mul"
 
@@ -39,7 +38,8 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
         self.mul_weights_size = [3, 5]
         self.mul_output_size = [1, 5]
         self.mul_input = np.random.random(self.mul_input_size).astype(
-            self.dtype)
+            self.dtype
+        )
         self.mul_weights = np.ones(self.mul_weights_size, self.dtype)
         self.mul_weights_bad = np.ones([1, 1], self.dtype)
         self.mul_output = np.ndarray(self.mul_output_size).astype(self.dtype)
@@ -49,23 +49,22 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
             "mul_input": self.mul_input,
             "mul_weights": self.mul_weights,
             "mul_output": self.mul_output,
-            "mul_weights_bad": self.mul_weights_bad
+            "mul_weights_bad": self.mul_weights_bad,
         }
 
     def prepare_program_mul(self, program):
         block = program.global_block()
         for name in self.variables_mul:
-            block.create_var(name=name,
-                             dtype="float32",
-                             shape=self.variables_mul[name].shape)
+            block.create_var(
+                name=name, dtype="float32", shape=self.variables_mul[name].shape
+            )
 
-        mul_op1 = block.append_op(type=self.op_name(),
-                                  inputs={
-                                      "X": block.var('mul_input'),
-                                      "Y": block.var('mul_weights')
-                                  },
-                                  outputs={"Out": block.var('mul_output')},
-                                  attrs={'use_mkldnn': self.use_mkldnn})
+        mul_op1 = block.append_op(
+            type=self.op_name(),
+            inputs={"X": block.var('mul_input'), "Y": block.var('mul_weights')},
+            outputs={"Out": block.var('mul_output')},
+            attrs={'use_mkldnn': self.use_mkldnn},
+        )
 
     def test_dequantize_op_weights(self):
         program = fluid.Program()
@@ -80,11 +79,13 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
                     break
             assert op_node != "", "op of type %s not found" % self.op_name()
 
-            qpass = Quant2Int8MkldnnPass(self.quantized_ops,
-                                         _scope=self.scope,
-                                         _place=self.place,
-                                         _core=core,
-                                         _debug=False)
+            qpass = Quant2Int8MkldnnPass(
+                self.quantized_ops,
+                _scope=self.scope,
+                _place=self.place,
+                _core=core,
+                _debug=False,
+            )
             qpass._weight_thresholds["mul_output"] = self.mul_output_scale
             param = self.scope.var("mul_weights").get_tensor()
             param.set(self.variables_mul["mul_weights"], self.place)
@@ -92,9 +93,30 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
 
             assert np.allclose(
                 self.scope.find_var("mul_weights").get_tensor(),
-                [[1. / 127., 2. / 127., 3. / 127., 4. / 127., 5. / 127.],
-                 [1. / 127., 2. / 127., 3. / 127., 4. / 127., 5. / 127.],
-                 [1. / 127., 2. / 127., 3. / 127., 4. / 127., 5. / 127.]])
+                [
+                    [
+                        1.0 / 127.0,
+                        2.0 / 127.0,
+                        3.0 / 127.0,
+                        4.0 / 127.0,
+                        5.0 / 127.0,
+                    ],
+                    [
+                        1.0 / 127.0,
+                        2.0 / 127.0,
+                        3.0 / 127.0,
+                        4.0 / 127.0,
+                        5.0 / 127.0,
+                    ],
+                    [
+                        1.0 / 127.0,
+                        2.0 / 127.0,
+                        3.0 / 127.0,
+                        4.0 / 127.0,
+                        5.0 / 127.0,
+                    ],
+                ],
+            )
 
             param = self.scope.var("mul_weights").get_tensor()
             param.set(self.variables_mul["mul_weights_bad"], self.place)
@@ -103,13 +125,11 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
 
 
 class TestQuant2Int8MkldnnPassMatmulV2(TestQuant2Int8MkldnnPassMul):
-
     def op_name(self):
         return "matmul_v2"
 
 
 class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
-
     def setUp(self):
         self.scope = fluid.Scope()
         self.place = fluid.CPUPlace()
@@ -131,7 +151,8 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
         self.filter2 = np.random.random(self.filter_size2).astype(self.dtype)
         self.conv_output = np.ndarray(self.conv_output_size).astype(self.dtype)
         self.conv_output2 = np.ndarray(self.conv_output2_size).astype(
-            self.dtype)
+            self.dtype
+        )
         self.quantized_ops = 'conv2d'
         self.variables = {
             "input": self.input,
@@ -144,15 +165,12 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
     def prepare_program_conv2d(self, program):
         block = program.global_block()
         for name in self.variables:
-            block.create_var(name=name,
-                             dtype="float32",
-                             shape=self.variables[name].shape)
+            block.create_var(
+                name=name, dtype="float32", shape=self.variables[name].shape
+            )
         conv2d_op1 = block.append_op(
             type="conv2d",
-            inputs={
-                "Input": block.var('input'),
-                'Filter': block.var('filter')
-            },
+            inputs={"Input": block.var('input'), 'Filter': block.var('filter')},
             outputs={"Output": block.var('conv_output')},
             attrs={
                 'strides': self.stride,
@@ -162,13 +180,14 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                 'use_cudnn': self.use_cudnn,
                 'use_mkldnn': self.use_mkldnn,
                 'data_format': self.data_format,
-                'fuse_relu': True
-            })
+                'fuse_relu': True,
+            },
+        )
         conv2d_op2 = block.append_op(
             type="conv2d",
             inputs={
                 "Input": block.var('conv_output'),
-                'Filter': block.var('filter2')
+                'Filter': block.var('filter2'),
             },
             outputs={"Output": block.var('conv_output2')},
             attrs={
@@ -178,8 +197,9 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
                 'use_mkldnn': self.use_mkldnn,
-                'data_format': self.data_format
-            })
+                'data_format': self.data_format,
+            },
+        )
 
     def remove_fuse_activation_attribute(self, graph):
         for op in graph.all_op_nodes():
@@ -204,16 +224,17 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
             graph = IrGraph(core.Graph(program.desc), for_test=True)
             graph = self.remove_fuse_activation_attribute(graph)
             self.check_graph_before_pass(graph)
-            quant2_int8_mkldnn_pass = Quant2Int8MkldnnPass(self.quantized_ops,
-                                                           _scope=self.scope,
-                                                           _place=self.place,
-                                                           _core=core,
-                                                           _debug=False)
+            quant2_int8_mkldnn_pass = Quant2Int8MkldnnPass(
+                self.quantized_ops,
+                _scope=self.scope,
+                _place=self.place,
+                _core=core,
+                _debug=False,
+            )
             graph = quant2_int8_mkldnn_pass._update_activations(graph)
             self.check_graph_after_pass(graph)
 
     class TestQuant2Int8MkldnnPassNearestInterp(unittest.TestCase):
-
         def op_name(self):
             return "nearest_interp"
 
@@ -236,7 +257,8 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
             self.input = np.random.random(self.input_size).astype(self.dtype)
             self.filter = np.random.random(self.filter_size).astype(self.dtype)
             self.conv_output = np.ndarray(self.conv_output_size).astype(
-                self.dtype)
+                self.dtype
+            )
 
             # nearest_interp
             self.out_h = 1
@@ -246,16 +268,20 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
             self.data_layout = 'NCHW'
             self.nearest_interp_output_size = [1, 1, 2, 2]
             self.nearest_interp_output = np.ndarray(
-                self.nearest_interp_output_size).astype(self.dtype)
+                self.nearest_interp_output_size
+            ).astype(self.dtype)
 
             # dropout
             self.dropout_prob = 0.5
             self.dropout_out = np.ndarray(
-                self.nearest_interp_output_size).astype(self.dtype)
+                self.nearest_interp_output_size
+            ).astype(self.dtype)
             self.dropout_mask = np.ndarray(self.nearest_interp_output_size)
 
             self.quantized_ops = {
-                "conv2d", "nearest_interp", "nearest_interp_v2"
+                "conv2d",
+                "nearest_interp",
+                "nearest_interp_v2",
             }
             self.variables = {
                 "input": self.input,
@@ -263,55 +289,61 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                 "conv_output": self.conv_output,
                 "nearest_interp_output": self.nearest_interp_output,
                 "dropout_out": self.dropout_out,
-                'dropout_mask': self.dropout_mask
+                'dropout_mask': self.dropout_mask,
             }
 
         def prepare_program(self, program):
             block = program.global_block()
             for name in self.variables:
-                block.create_var(name=name,
-                                 dtype="float32",
-                                 shape=self.variables[name].shape)
-            block.append_op(type="conv2d",
-                            inputs={
-                                "Input": block.var('input'),
-                                'Filter': block.var('filter')
-                            },
-                            outputs={"Output": block.var('conv_output')},
-                            attrs={
-                                'strides': self.stride,
-                                'paddings': self.pad,
-                                'groups': self.groups,
-                                'dilations': self.dilations,
-                                'use_cudnn': self.use_cudnn,
-                                'use_mkldnn': self.use_mkldnn,
-                                'data_format': self.data_format,
-                                'fuse_relu': True
-                            })
-            block.append_op(type=self.op_name(),
-                            inputs={
-                                "X": block.var('conv_output'),
-                            },
-                            outputs={"Out": block.var('nearest_interp_output')},
-                            attrs={
-                                'interp_method': self.interp_method,
-                                'out_h': self.out_h,
-                                'out_w': self.out_w,
-                                'scale': self.scale,
-                                'data_layout': self.data_layout,
-                                'use_mkldnn': self.use_mkldnn
-                            })
-            block.append_op(type='dropout',
-                            inputs={
-                                "X": block.var('nearest_interp_output'),
-                            },
-                            outputs={
-                                'Out': block.var('dropout_out'),
-                                'Mask': block.var('dropout_mask')
-                            },
-                            attrs={
-                                'dropout_prob': self.dropout_prob,
-                            })
+                block.create_var(
+                    name=name, dtype="float32", shape=self.variables[name].shape
+                )
+            block.append_op(
+                type="conv2d",
+                inputs={
+                    "Input": block.var('input'),
+                    'Filter': block.var('filter'),
+                },
+                outputs={"Output": block.var('conv_output')},
+                attrs={
+                    'strides': self.stride,
+                    'paddings': self.pad,
+                    'groups': self.groups,
+                    'dilations': self.dilations,
+                    'use_cudnn': self.use_cudnn,
+                    'use_mkldnn': self.use_mkldnn,
+                    'data_format': self.data_format,
+                    'fuse_relu': True,
+                },
+            )
+            block.append_op(
+                type=self.op_name(),
+                inputs={
+                    "X": block.var('conv_output'),
+                },
+                outputs={"Out": block.var('nearest_interp_output')},
+                attrs={
+                    'interp_method': self.interp_method,
+                    'out_h': self.out_h,
+                    'out_w': self.out_w,
+                    'scale': self.scale,
+                    'data_layout': self.data_layout,
+                    'use_mkldnn': self.use_mkldnn,
+                },
+            )
+            block.append_op(
+                type='dropout',
+                inputs={
+                    "X": block.var('nearest_interp_output'),
+                },
+                outputs={
+                    'Out': block.var('dropout_out'),
+                    'Mask': block.var('dropout_mask'),
+                },
+                attrs={
+                    'dropout_prob': self.dropout_prob,
+                },
+            )
 
         def check_graph_after_pass(self, graph):
             for op in graph.all_op_nodes():
@@ -329,12 +361,21 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                     _scope=self.scope,
                     _place=self.place,
                     _core=core,
-                    _debug=False)
+                    _debug=False,
+                )
 
-                input_scale_tensor = quant2_int8_mkldnn_pass._convert_scale2tensor(
-                    np.array(self.scale).astype(np.float64))
-                output_scale_tensor = quant2_int8_mkldnn_pass._convert_scale2tensor(
-                    np.array(1. / self.scale * self.scale).astype(np.float64))
+                input_scale_tensor = (
+                    quant2_int8_mkldnn_pass._convert_scale2tensor(
+                        np.array(self.scale).astype(np.float64)
+                    )
+                )
+                output_scale_tensor = (
+                    quant2_int8_mkldnn_pass._convert_scale2tensor(
+                        np.array(1.0 / self.scale * self.scale).astype(
+                            np.float64
+                        )
+                    )
+                )
                 var_scale = {
                     "input": (False, input_scale_tensor),
                     "filter": (False, input_scale_tensor),
@@ -347,7 +388,6 @@ class TestQuant2Int8MkldnnPassConv2D(unittest.TestCase):
                     self.check_graph_after_pass(graph)
 
     class TestQuant2Int8MkldnnPassNearestInterpV2(unittest.TestCase):
-
         def op_name(self):
             return "nearest_interp_v2"
 

@@ -122,9 +122,9 @@ void TransformData(const OpKernelType &expected_kernel_type,
 void SetTensorToVariable(const Variable &in_var,
                          const phi::DenseTensor &tensor,
                          Variable *out_var) {
-  if (in_var.IsType<LoDTensor>()) {
-    auto &in_lod_tensor = in_var.Get<LoDTensor>();
-    auto *tran_lod_tensor = out_var->GetMutable<LoDTensor>();
+  if (in_var.IsType<phi::DenseTensor>()) {
+    auto &in_lod_tensor = in_var.Get<phi::DenseTensor>();
+    auto *tran_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
     tran_lod_tensor->set_lod(in_lod_tensor.lod());
     tran_lod_tensor->set_layout(in_lod_tensor.layout());
 #ifdef PADDLE_WITH_MKLDNN
@@ -139,7 +139,8 @@ void SetTensorToVariable(const Variable &in_var,
     trans_selected_rows->mutable_value()->ShareDataWith(tensor);
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
-        "Unsupported variable type, only supports LoDTensor or SelectedRows, "
+        "Unsupported variable type, only supports phi::DenseTensor or "
+        "SelectedRows, "
         "but the input variable type is %s.",
         ToTypeName(in_var.Type())));
   }

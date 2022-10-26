@@ -32,7 +32,7 @@ class Image(unittest.TestCase):
     """
 
     def test_resize_flip_chw(self):
-        """ resize """
+        """resize"""
         imgdir = sys.argv[0].replace('test_image.py', 'cat.jpg')
         images = image.load_image(imgdir)
         images = image.resize_short(images, 256)
