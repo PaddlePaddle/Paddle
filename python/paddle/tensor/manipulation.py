@@ -1095,7 +1095,7 @@ def concat(x, axis=0, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor with the same data type as ``x``.
+        Tensor, A Tensor with the same data type as ``x``.
 
     Examples:
         .. code-block:: python
