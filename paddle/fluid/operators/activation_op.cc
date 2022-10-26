@@ -110,27 +110,6 @@ class ActivationOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
   }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
-    // When activation is first oneDNN op (there was some non oneDNN op
-    // previously)
-    // then we also need to rotate shape NHWC -> NCWH
-    if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-        (tensor.layout() != phi::DataLayout::kMKLDNN) &&
-        paddle::platform::MKLDNNDeviceContext::tls()
-                .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(),
-                                     phi::DataLayout::kNHWC);
-    }
-#endif
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
-  }
 };
 
 class ActivationOpInferVarType
@@ -177,13 +156,6 @@ UNUSED constexpr char LogSigmoidDoc[] = R"DOC(
 Logsigmoid Activation Operator
 
 $$out = \\log \\frac{1}{1 + e^{-x}}$$
-
-)DOC";
-
-UNUSED constexpr char ExpDoc[] = R"DOC(
-Exp Operator. Computes exp of x element-wise with a natural number :math:`e` as the base.
-
-$$out = e^x$$
 
 )DOC";
 
@@ -827,7 +799,6 @@ It is recommended to use the defaults for this activation.
 REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Silu, SiluDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
-REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
 REGISTER_ACTIVATION_OP_MAKER(Expm1, Expm1Doc);
 REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
@@ -1741,23 +1712,6 @@ REGISTER_OPERATOR(pow_grad,
                   ops::PowOpGrad,
                   ops::ActivationGradOpInplaceInferer);
 /* ========================================================================== */
-
-/* ==========================   exp register  ============================ */
-REGISTER_OPERATOR(
-    exp,
-    ops::ActivationOp,
-    ops::ExpOpMaker,
-    ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::ExpGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::ExpGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    std::conditional<ops::CanInplaceAct<ops::ExpGradFunctor<float>>(),
-                     ops::ActFwdInplaceInferer,
-                     void>::type);
-REGISTER_OPERATOR(exp_grad,
-                  ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer);
 
 /* ==========================  Log register ==================================*/
 REGISTER_OPERATOR(

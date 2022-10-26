@@ -33,6 +33,16 @@
     func : cholesky_solve
   backward : cholesky_solve_grad
 
+- op : exp
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : exp
+  inplace : (x -> out)
+  backward : exp_grad
+
 - op : cross
   args : (Tensor x, Tensor y, int axis = 9)
   output : Tensor
@@ -192,7 +202,7 @@
   backward : trace_grad
 
 - op : trunc
-  args : (Tensor x)
+  args : (Tensor input)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta

@@ -25,8 +25,9 @@ from test_resnet import ResNet, optimizer_setting, SEED
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
 epoch_num = 1
-place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
-    else fluid.CPUPlace()
+place = (
+    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+)
 
 program_translator = ProgramTranslator()
 
@@ -58,10 +59,13 @@ def train(to_static, build_strategy=None):
             for batch_id in range(100):
                 start_time = time.time()
                 img = paddle.to_tensor(
-                    np.random.random([batch_size, 3, 224,
-                                      224]).astype('float32'))
+                    np.random.random([batch_size, 3, 224, 224]).astype(
+                        'float32'
+                    )
+                )
                 label = paddle.to_tensor(
-                    np.random.randint(0, 100, [batch_size, 1], dtype='int64'))
+                    np.random.randint(0, 100, [batch_size, 1], dtype='int64')
+                )
                 img.stop_gradient = True
                 label.stop_gradient = True
 
@@ -87,9 +91,17 @@ def train(to_static, build_strategy=None):
 
                 end_time = time.time()
                 if batch_id % 2 == 0:
-                    print( "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f" % \
-                        ( epoch, batch_id, total_loss.numpy() / total_sample, \
-                            total_acc1.numpy() / total_sample, total_acc5.numpy() / total_sample, end_time-start_time))
+                    print(
+                        "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f"
+                        % (
+                            epoch,
+                            batch_id,
+                            total_loss.numpy() / total_sample,
+                            total_acc1.numpy() / total_sample,
+                            total_acc5.numpy() / total_sample,
+                            end_time - start_time,
+                        )
+                    )
                 if batch_id == 10:
                     break
 
@@ -97,7 +109,6 @@ def train(to_static, build_strategy=None):
 
 
 class TestResnet(unittest.TestCase):
-
     def train(self, to_static):
         program_translator.enable(to_static)
         return train(to_static)
@@ -110,7 +121,9 @@ class TestResnet(unittest.TestCase):
             dygraph_loss,
             rtol=1e-05,
             err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss))
+                static_loss, dygraph_loss
+            ),
+        )
 
 
 if __name__ == '__main__':

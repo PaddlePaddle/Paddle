@@ -20,14 +20,13 @@ import tempfile
 
 
 class BufferLayers(paddle.nn.Layer):
-
     def __init__(self, out_channel):
         super(BufferLayers, self).__init__()
         self.out_channel = out_channel
 
     def forward(self, x):
         mean = paddle.mean(x)
-        if mean < 0.:
+        if mean < 0.0:
             x = x * self._mask()
 
         out = x - mean
@@ -38,13 +37,13 @@ class BufferLayers(paddle.nn.Layer):
 
 
 class SequentialNet(paddle.nn.Layer):
-
     def __init__(self, sub_layer, in_channel, out_channel):
         super(SequentialNet, self).__init__()
         self.layer = paddle.nn.Sequential(
             ('l1', paddle.nn.Linear(in_channel, in_channel)),
             ('l2', paddle.nn.Linear(in_channel, out_channel)),
-            ('l3', sub_layer(out_channel)))
+            ('l3', sub_layer(out_channel)),
+        )
 
     def forward(self, x):
         out = self.layer(x)
@@ -52,7 +51,6 @@ class SequentialNet(paddle.nn.Layer):
 
 
 class NestSequentialNet(paddle.nn.Layer):
-
     def __init__(self):
         super().__init__()
         group1 = paddle.nn.Sequential(
@@ -70,7 +68,6 @@ class NestSequentialNet(paddle.nn.Layer):
 
 
 class TestSequential(unittest.TestCase):
-
     def setUp(self):
         paddle.set_device('cpu')
         self.seed = 2021
@@ -100,7 +97,8 @@ class TestSequential(unittest.TestCase):
                 load_out,
                 out,
                 rtol=1e-05,
-                err_msg='load_out is {}\\st_out is {}'.format(load_out, out))
+                err_msg='load_out is {}\\st_out is {}'.format(load_out, out),
+            )
 
         return out
 
@@ -113,7 +111,9 @@ class TestSequential(unittest.TestCase):
             st_out,
             rtol=1e-05,
             err_msg='dygraph_res is {}\nstatic_res is {}'.format(
-                dy_out, st_out))
+                dy_out, st_out
+            ),
+        )
 
     def _test_load(self, net, x):
         paddle.jit.save(net, self.model_path)
@@ -123,11 +123,11 @@ class TestSequential(unittest.TestCase):
 
 
 class TestNestSequential(TestSequential):
-
     def _init_config(self):
         self.net = NestSequentialNet()
-        self.model_path = os.path.join(self.temp_dir.name,
-                                       'nested_sequential_net')
+        self.model_path = os.path.join(
+            self.temp_dir.name, 'nested_sequential_net'
+        )
 
 
 if __name__ == '__main__':

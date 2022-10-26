@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -27,7 +26,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class Discriminator(fluid.Layer):
-
     def __init__(self):
         super(Discriminator, self).__init__()
         self._fc1 = Linear(1, 32, act='elu')
@@ -40,7 +38,6 @@ class Discriminator(fluid.Layer):
 
 
 class Generator(fluid.Layer):
-
     def __init__(self):
         super(Generator, self).__init__()
         self._fc1 = Linear(2, 64, act='elu')
@@ -55,7 +52,6 @@ class Generator(fluid.Layer):
 
 
 class TestDygraphGAN(unittest.TestCase):
-
     def func_test_gan_float32(self):
         seed = 90
         paddle.seed(1)
@@ -65,34 +61,38 @@ class TestDygraphGAN(unittest.TestCase):
         generate_p = fluid.Program()
 
         scope = fluid.core.Scope()
-        with new_program_scope(main=discriminate_p,
-                               startup=startup,
-                               scope=scope):
+        with new_program_scope(
+            main=discriminate_p, startup=startup, scope=scope
+        ):
             discriminator = Discriminator()
             generator = Generator()
 
-            img = fluid.layers.data(name="img",
-                                    shape=[2, 1],
-                                    append_batch_size=False)
-            noise = fluid.layers.data(name="noise",
-                                      shape=[2, 2],
-                                      append_batch_size=False)
+            img = fluid.layers.data(
+                name="img", shape=[2, 1], append_batch_size=False
+            )
+            noise = fluid.layers.data(
+                name="noise", shape=[2, 2], append_batch_size=False
+            )
 
             d_real = discriminator(img)
             d_loss_real = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
                     x=d_real,
-                    label=fluid.layers.fill_constant(shape=[2, 1],
-                                                     dtype='float32',
-                                                     value=1.0)))
+                    label=fluid.layers.fill_constant(
+                        shape=[2, 1], dtype='float32', value=1.0
+                    ),
+                )
+            )
 
             d_fake = discriminator(generator(noise))
             d_loss_fake = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
                     x=d_fake,
-                    label=fluid.layers.fill_constant(shape=[2, 1],
-                                                     dtype='float32',
-                                                     value=0.0)))
+                    label=fluid.layers.fill_constant(
+                        shape=[2, 1], dtype='float32', value=0.0
+                    ),
+                )
+            )
 
             d_loss = d_loss_real + d_loss_fake
 
@@ -103,42 +103,47 @@ class TestDygraphGAN(unittest.TestCase):
             discriminator = Discriminator()
             generator = Generator()
 
-            noise = fluid.layers.data(name="noise",
-                                      shape=[2, 2],
-                                      append_batch_size=False)
+            noise = fluid.layers.data(
+                name="noise", shape=[2, 2], append_batch_size=False
+            )
 
             d_fake = discriminator(generator(noise))
             g_loss = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
                     x=d_fake,
-                    label=fluid.layers.fill_constant(shape=[2, 1],
-                                                     dtype='float32',
-                                                     value=1.0)))
+                    label=fluid.layers.fill_constant(
+                        shape=[2, 1], dtype='float32', value=1.0
+                    ),
+                )
+            )
 
             sgd = SGDOptimizer(learning_rate=1e-3)
             sgd.minimize(g_loss)
 
-        exe = fluid.Executor(fluid.CPUPlace(
-        ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+        exe = fluid.Executor(
+            fluid.CPUPlace()
+            if not core.is_compiled_with_cuda()
+            else fluid.CUDAPlace(0)
+        )
         static_params = dict()
         with fluid.scope_guard(scope):
             img = np.ones([2, 1], np.float32)
             noise = np.ones([2, 2], np.float32)
             exe.run(startup)
-            static_d_loss = exe.run(discriminate_p,
-                                    feed={
-                                        'img': img,
-                                        'noise': noise
-                                    },
-                                    fetch_list=[d_loss])[0]
-            static_g_loss = exe.run(generate_p,
-                                    feed={'noise': noise},
-                                    fetch_list=[g_loss])[0]
+            static_d_loss = exe.run(
+                discriminate_p,
+                feed={'img': img, 'noise': noise},
+                fetch_list=[d_loss],
+            )[0]
+            static_g_loss = exe.run(
+                generate_p, feed={'noise': noise}, fetch_list=[g_loss]
+            )[0]
 
             # generate_p contains all parameters needed.
             for param in generate_p.global_block().all_parameters():
                 static_params[param.name] = np.array(
-                    scope.find_var(param.name).get_tensor())
+                    scope.find_var(param.name).get_tensor()
+                )
 
         dy_params = dict()
         with fluid.dygraph.guard():
@@ -147,20 +152,28 @@ class TestDygraphGAN(unittest.TestCase):
 
             discriminator = Discriminator()
             generator = Generator()
-            sgd = SGDOptimizer(learning_rate=1e-3,
-                               parameter_list=(discriminator.parameters() +
-                                               generator.parameters()))
+            sgd = SGDOptimizer(
+                learning_rate=1e-3,
+                parameter_list=(
+                    discriminator.parameters() + generator.parameters()
+                ),
+            )
 
             d_real = discriminator(to_variable(np.ones([2, 1], np.float32)))
             d_loss_real = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
-                    x=d_real, label=to_variable(np.ones([2, 1], np.float32))))
+                    x=d_real, label=to_variable(np.ones([2, 1], np.float32))
+                )
+            )
 
             d_fake = discriminator(
-                generator(to_variable(np.ones([2, 2], np.float32))))
+                generator(to_variable(np.ones([2, 2], np.float32)))
+            )
             d_loss_fake = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
-                    x=d_fake, label=to_variable(np.zeros([2, 1], np.float32))))
+                    x=d_fake, label=to_variable(np.zeros([2, 1], np.float32))
+                )
+            )
 
             d_loss = d_loss_real + d_loss_fake
             d_loss.backward()
@@ -169,10 +182,13 @@ class TestDygraphGAN(unittest.TestCase):
             generator.clear_gradients()
 
             d_fake = discriminator(
-                generator(to_variable(np.ones([2, 2], np.float32))))
+                generator(to_variable(np.ones([2, 2], np.float32)))
+            )
             g_loss = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
-                    x=d_fake, label=to_variable(np.ones([2, 1], np.float32))))
+                    x=d_fake, label=to_variable(np.ones([2, 1], np.float32))
+                )
+            )
             g_loss.backward()
             sgd.minimize(g_loss)
             for p in discriminator.parameters():
@@ -190,20 +206,28 @@ class TestDygraphGAN(unittest.TestCase):
             paddle.framework.random._manual_program_seed(1)
             discriminator2 = Discriminator()
             generator2 = Generator()
-            sgd2 = SGDOptimizer(learning_rate=1e-3,
-                                parameter_list=(discriminator2.parameters() +
-                                                generator2.parameters()))
+            sgd2 = SGDOptimizer(
+                learning_rate=1e-3,
+                parameter_list=(
+                    discriminator2.parameters() + generator2.parameters()
+                ),
+            )
 
             d_real2 = discriminator2(to_variable(np.ones([2, 1], np.float32)))
             d_loss_real2 = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
-                    x=d_real2, label=to_variable(np.ones([2, 1], np.float32))))
+                    x=d_real2, label=to_variable(np.ones([2, 1], np.float32))
+                )
+            )
 
             d_fake2 = discriminator2(
-                generator2(to_variable(np.ones([2, 2], np.float32))))
+                generator2(to_variable(np.ones([2, 2], np.float32)))
+            )
             d_loss_fake2 = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
-                    x=d_fake2, label=to_variable(np.zeros([2, 1], np.float32))))
+                    x=d_fake2, label=to_variable(np.zeros([2, 1], np.float32))
+                )
+            )
 
             d_loss2 = d_loss_real2 + d_loss_fake2
             d_loss2.backward()
@@ -212,10 +236,13 @@ class TestDygraphGAN(unittest.TestCase):
             generator2.clear_gradients()
 
             d_fake2 = discriminator2(
-                generator2(to_variable(np.ones([2, 2], np.float32))))
+                generator2(to_variable(np.ones([2, 2], np.float32)))
+            )
             g_loss2 = fluid.layers.reduce_mean(
                 fluid.layers.sigmoid_cross_entropy_with_logits(
-                    x=d_fake2, label=to_variable(np.ones([2, 1], np.float32))))
+                    x=d_fake2, label=to_variable(np.ones([2, 1], np.float32))
+                )
+            )
             g_loss2.backward()
             sgd2.minimize(g_loss2)
             for p in discriminator2.parameters():
@@ -228,12 +255,12 @@ class TestDygraphGAN(unittest.TestCase):
 
         self.assertEqual(dy_g_loss, static_g_loss)
         self.assertEqual(dy_d_loss, static_d_loss)
-        for k, v in six.iteritems(dy_params):
+        for k, v in dy_params.items():
             np.testing.assert_allclose(v, static_params[k], rtol=1e-05)
 
         self.assertEqual(dy_g_loss2, static_g_loss)
         self.assertEqual(dy_d_loss2, static_d_loss)
-        for k, v in six.iteritems(dy_params2):
+        for k, v in dy_params2.items():
             np.testing.assert_allclose(v, static_params[k], rtol=1e-05)
 
     def test_gan_float32(self):

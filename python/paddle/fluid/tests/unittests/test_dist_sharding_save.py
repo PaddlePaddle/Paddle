@@ -22,7 +22,6 @@ paddle.enable_static()
 
 
 class TestDistMnistFleetSave(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -40,11 +39,19 @@ class TestDistMnistFleetSave(TestDistBase):
         sharding_save_files = sorted(os.listdir(dirname))
 
         check_files = [
-            'fc_0.b_0', 'fc_0.b_0_velocity_0', 'fc_0.w_0',
-            'fc_0.w_0_velocity_0', 'fc_1.b_0', 'fc_1.b_0_velocity_0',
-            'fc_1.w_0', 'fc_1.w_0_velocity_0', 'fc_2.b_0',
-            'fc_2.b_0_velocity_0', 'fc_2.w_0', 'fc_2.w_0_velocity_0',
-            'learning_rate_0'
+            'fc_0.b_0',
+            'fc_0.b_0_velocity_0',
+            'fc_0.w_0',
+            'fc_0.w_0_velocity_0',
+            'fc_1.b_0',
+            'fc_1.b_0_velocity_0',
+            'fc_1.w_0',
+            'fc_1.w_0_velocity_0',
+            'fc_2.b_0',
+            'fc_2.b_0_velocity_0',
+            'fc_2.w_0',
+            'fc_2.w_0_velocity_0',
+            'learning_rate_0',
         ]
 
         if sharding_save_files != check_files:
@@ -54,12 +61,14 @@ class TestDistMnistFleetSave(TestDistBase):
 
         return True
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=True,
-                         need_envs={},
-                         log_name=""):
+    def check_with_place(
+        self,
+        model_file,
+        delta=1e-3,
+        check_error_log=True,
+        need_envs={},
+        log_name="",
+    ):
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
         tr0_losses, tr1_losses = self._run_cluster_nccl2(
@@ -67,13 +76,15 @@ class TestDistMnistFleetSave(TestDistBase):
             required_envs,
             update_method='nccl2',
             check_error_log=check_error_log,
-            log_name=log_name)
+            log_name=log_name,
+        )
 
         dirname = './ut_sharding_save_model'
         self._test_saved_files(dirname)
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_sharding_save.py", delta=1e-5)
 

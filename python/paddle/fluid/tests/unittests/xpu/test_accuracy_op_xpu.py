@@ -20,19 +20,21 @@ sys.path.append("..")
 import paddle
 
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestAccuracyOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'accuracy'
         self.use_dynamic_create_class = False
 
     class TestXPUAccuracyOp(XPUOpTest):
-
         def setUp(self):
             self.op_type = "accuracy"
             self.init_dtype()
@@ -48,10 +50,11 @@ class XPUTestAccuracyOp(XPUOpTestWrapper):
                         num_correct += 1
                         break
             self.outputs = {
-                'Accuracy':
-                np.array([num_correct / float(n)]).astype(self.dtype),
+                'Accuracy': np.array([num_correct / float(n)]).astype(
+                    self.dtype
+                ),
                 'Correct': np.array([num_correct]).astype("int32"),
-                'Total': np.array([n]).astype("int32")
+                'Total': np.array([n]).astype("int32"),
             }
             self.attrs = {'use_xpu': True}
 

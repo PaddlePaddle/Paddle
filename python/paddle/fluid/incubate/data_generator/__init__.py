@@ -31,8 +31,9 @@ class DataGenerator(object):
 
     def _set_line_limit(self, line_limit):
         if not isinstance(line_limit, int):
-            raise ValueError("line_limit%s must be in int type" %
-                             type(line_limit))
+            raise ValueError(
+                "line_limit%s must be in int type" % type(line_limit)
+            )
         if line_limit < 1:
             raise ValueError("line_limit can not less than 1")
         self._line_limit = line_limit
@@ -140,7 +141,8 @@ class DataGenerator(object):
             Return a string data that can be read directly by the datafeed.
         '''
         raise NotImplementedError(
-            "pls use MultiSlotDataGenerator or PairWiseDataGenerator")
+            "pls use MultiSlotDataGenerator or PairWiseDataGenerator"
+        )
 
     def generate_sample(self, line):
         '''
@@ -172,8 +174,9 @@ class DataGenerator(object):
                         return local_iter
         '''
         raise NotImplementedError(
-            "Please rewrite this function to return a list or tuple: " +
-            "[(name, [feasign, ...]), ...] or ((name, [feasign, ...]), ...)")
+            "Please rewrite this function to return a list or tuple: "
+            + "[(name, [feasign, ...]), ...] or ((name, [feasign, ...]), ...)"
+        )
 
     def generate_batch(self, samples):
         '''
@@ -214,7 +217,6 @@ class DataGenerator(object):
 # add more generalized DataGenerator that can adapt user-defined slot
 # for example, [(name, float_list), (name, str_list), (name, int_list)]
 class MultiSlotStringDataGenerator(DataGenerator):
-
     def _gen_str(self, line):
         '''
         Further processing the output of the process() function rewritten by
@@ -238,7 +240,8 @@ class MultiSlotStringDataGenerator(DataGenerator):
         if not isinstance(line, list) and not isinstance(line, tuple):
             raise ValueError(
                 "the output of process() must be in list or tuple type"
-                "Examples: [('words', ['1926', '08', '17']), ('label', ['1'])]")
+                "Examples: [('words', ['1926', '08', '17']), ('label', ['1'])]"
+            )
         output = ""
         for index, item in enumerate(line):
             name, elements = item
@@ -252,7 +255,6 @@ class MultiSlotStringDataGenerator(DataGenerator):
 
 
 class MultiSlotDataGenerator(DataGenerator):
-
     def _gen_str(self, line):
         '''
         Further processing the output of the process() function rewritten by
@@ -281,7 +283,8 @@ class MultiSlotDataGenerator(DataGenerator):
         if not isinstance(line, list) and not isinstance(line, tuple):
             raise ValueError(
                 "the output of process() must be in list or tuple type"
-                "Example: [('words', [1926, 08, 17]), ('label', [1])]")
+                "Example: [('words', [1926, 08, 17]), ('label', [1])]"
+            )
         output = ""
 
         if self._proto_info is None:
@@ -291,8 +294,9 @@ class MultiSlotDataGenerator(DataGenerator):
                 if not isinstance(name, str):
                     raise ValueError("name%s must be in str type" % type(name))
                 if not isinstance(elements, list):
-                    raise ValueError("elements%s must be in list type" %
-                                     type(elements))
+                    raise ValueError(
+                        "elements%s must be in list type" % type(elements)
+                    )
                 if not elements:
                     raise ValueError(
                         "the elements of each field can not be empty, you need padding it in process()."
@@ -305,10 +309,12 @@ class MultiSlotDataGenerator(DataGenerator):
                     if isinstance(elem, float):
                         self._proto_info[-1] = (name, "float")
                     elif not isinstance(elem, int) and not isinstance(
-                            elem, long):
+                        elem, long
+                    ):
                         raise ValueError(
-                            "the type of element%s must be in int or float" %
-                            type(elem))
+                            "the type of element%s must be in int or float"
+                            % type(elem)
+                        )
                     output += " " + str(elem)
         else:
             if len(line) != len(self._proto_info):
@@ -320,8 +326,9 @@ class MultiSlotDataGenerator(DataGenerator):
                 if not isinstance(name, str):
                     raise ValueError("name%s must be in str type" % type(name))
                 if not isinstance(elements, list):
-                    raise ValueError("elements%s must be in list type" %
-                                     type(elements))
+                    raise ValueError(
+                        "elements%s must be in list type" % type(elements)
+                    )
                 if not elements:
                     raise ValueError(
                         "the elements of each field can not be empty, you need padding it in process()."
@@ -329,7 +336,8 @@ class MultiSlotDataGenerator(DataGenerator):
                 if name != self._proto_info[index][0]:
                     raise ValueError(
                         "the field name of two given line are not match: require<%s>, get<%s>."
-                        % (self._proto_info[index][0], name))
+                        % (self._proto_info[index][0], name)
+                    )
                 if output:
                     output += " "
                 output += str(len(elements))
@@ -338,9 +346,11 @@ class MultiSlotDataGenerator(DataGenerator):
                         if isinstance(elem, float):
                             self._proto_info[index] = (name, "float")
                         elif not isinstance(elem, int) and not isinstance(
-                                elem, long):
+                            elem, long
+                        ):
                             raise ValueError(
                                 "the type of element%s must be in int or float"
-                                % type(elem))
+                                % type(elem)
+                            )
                     output += " " + str(elem)
         return output + "\n"

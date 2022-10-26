@@ -24,14 +24,31 @@ import paddle
 # deprecated module import
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.io import _unpack_saved_dict, _pack_loaded_dict, _pickle_loads_mac
+from paddle.fluid.io import (
+    _unpack_saved_dict,
+    _pack_loaded_dict,
+    _pickle_loads_mac,
+)
 from paddle.fluid.io import _legacy_save as _legacy_static_save
 from paddle.fluid.io import _open_file_buffer, _is_file_path, _is_memory_buffer
 
-from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, _non_static_mode, ParamBase, EagerParamBase, _current_expected_place, Program
+from paddle.fluid.framework import (
+    Variable,
+    _varbase_creator,
+    _dygraph_tracer,
+    _non_static_mode,
+    ParamBase,
+    EagerParamBase,
+    _current_expected_place,
+    Program,
+)
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
-from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
+from paddle.fluid.dygraph.io import (
+    _construct_program_holders,
+    _construct_params_and_buffers,
+)
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+
 try:
     from collections.abc import Iterable
 except:
@@ -68,7 +85,8 @@ def _load_state_dict_from_save_inference_model(model_path, config):
     # 2. load layer parameters & buffers
     with fluid.dygraph.guard():
         persistable_var_dict = _construct_params_and_buffers(
-            model_path, programs, config.params_filename, append_suffix=False)
+            model_path, programs, config.params_filename, append_suffix=False
+        )
 
         # 3. construct state_dict
         load_param_dict = dict()
@@ -84,10 +102,15 @@ def _load_state_dict_from_save_inference_model(model_path, config):
             structured_para_dict = dict()
             for var_name in load_param_dict:
                 structured_name = extra_var_info[var_name].get(
-                    'structured_name', None)
-                assert structured_name is not None, "Cannot find saved variable (%s)'s structured name in saved model." % var_name
+                    'structured_name', None
+                )
+                assert structured_name is not None, (
+                    "Cannot find saved variable (%s)'s structured name in saved model."
+                    % var_name
+                )
                 structured_para_dict[structured_name] = load_param_dict[
-                    var_name]
+                    var_name
+                ]
             load_param_dict = structured_para_dict
 
     return load_param_dict
@@ -115,7 +138,8 @@ def _load_state_dict_from_save_params(model_path):
                 type='load',
                 inputs={},
                 outputs={'Out': new_var},
-                attrs={'file_path': os.path.join(model_path, name)})
+                attrs={'file_path': os.path.join(model_path, name)},
+            )
             load_var_list.append(new_var)
 
     # 3. construct state_dict
@@ -151,7 +175,8 @@ def _build_load_path_and_config(path, config):
         raise ValueError(
             "The %s.pdmodel and %s directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique." % (path, path))
+            "of ``path`` is unique." % (path, path)
+        )
     elif not prefix_format_exist and not directory_format_exist:
         error_msg = "The ``path`` (%s) to load model not exists."
         # if current path is a prefix, and the path.pdparams or path.pdopt
@@ -160,10 +185,12 @@ def _build_load_path_and_config(path, config):
         params_file_path = path + ".pdparams"
         opti_file_path = path + ".pdopt"
         if os.path.exists(params_file_path) or os.path.exists(opti_file_path):
-            error_msg += " If you want to load the results saved by `fluid.save_dygraph`, " \
-                "please specify the full file name, not just the file name prefix. For " \
-                "example, it should be written as `paddle.load('model.pdparams')` instead of " \
+            error_msg += (
+                " If you want to load the results saved by `fluid.save_dygraph`, "
+                "please specify the full file name, not just the file name prefix. For "
+                "example, it should be written as `paddle.load('model.pdparams')` instead of "
                 "`paddle.load('model')`."
+            )
         raise ValueError(error_msg % path)
     else:
         if prefix_format_exist:
@@ -173,13 +200,15 @@ def _build_load_path_and_config(path, config):
                 warnings.warn(
                     "When loading the result saved with the "
                     "specified file prefix, the ``model_filename`` config does "
-                    "not take effect.")
+                    "not take effect."
+                )
             config.model_filename = file_prefix + INFER_MODEL_SUFFIX
             if config.params_filename is not None:
                 warnings.warn(
                     "When loading the result saved with the "
                     "specified file prefix, the ``params_filename`` config does "
-                    "not take effect.")
+                    "not take effect."
+                )
             config.params_filename = file_prefix + INFER_PARAMS_SUFFIX
         else:
             # Compatible with the old save_inference_model format
@@ -190,7 +219,10 @@ def _build_load_path_and_config(path, config):
 
 def _parse_load_config(configs):
     supported_configs = [
-        'model_filename', 'params_filename', 'keep_name_table', 'return_numpy'
+        'model_filename',
+        'params_filename',
+        'keep_name_table',
+        'return_numpy',
     ]
 
     # input check
@@ -198,7 +230,8 @@ def _parse_load_config(configs):
         if key not in supported_configs:
             raise ValueError(
                 "The additional config (%s) of `paddle.load` is not supported."
-                % key)
+                % key
+            )
 
     # construct inner config
     inner_config = _SaveLoadConfig()
@@ -218,7 +251,8 @@ def _parse_save_config(configs):
         if key not in supported_configs:
             raise ValueError(
                 "The additional config (%s) of `paddle.save` is not supported."
-                % key)
+                % key
+            )
 
     # construct inner config
     inner_config = _SaveLoadConfig()
@@ -231,19 +265,22 @@ def _parse_save_config(configs):
 def _pickle_save(obj, f, protocol):
     # TODO(weixin):add support for BytesIO.
     if not isinstance(protocol, int):
-        raise ValueError("The 'protocol' MUST be `int`, but received {}".format(
-            type(protocol)))
+        raise ValueError(
+            "The 'protocol' MUST be `int`, but received {}".format(
+                type(protocol)
+            )
+        )
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
-            "Expected 1<'protocol'<5, but received protocol={}".format(
-                protocol))
+            "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
+        )
 
     def reduce_varbase(self):
         data = self.numpy()
         name = self.name
 
-        return (tuple, ((name, data), ))
+        return (tuple, ((name, data),))
 
     def reduce_LoDTensor(self):
         data = np.array(self)
@@ -252,7 +289,8 @@ def _pickle_save(obj, f, protocol):
 
     def reduce_Layer(self):
         raise ValueError(
-            "paddle do not support saving `paddle.nn.Layer` object.")
+            "paddle do not support saving `paddle.nn.Layer` object."
+        )
 
     dispatch_table_layer = dict()
 
@@ -260,8 +298,9 @@ def _pickle_save(obj, f, protocol):
         dispatch_table_layer[layer.__class__] = reduce_Layer
         return layer
 
-    _parse_every_object(obj, lambda v: isinstance(v, fluid.Layer),
-                        create_layer_dispatch_table)
+    _parse_every_object(
+        obj, lambda v: isinstance(v, fluid.Layer), create_layer_dispatch_table
+    )
 
     def add_dispatch_table():
         # This is not a good method, because the pickle module has been modified.
@@ -289,7 +328,7 @@ def _pickle_save(obj, f, protocol):
 
         max_bytes = 2**30
         for i in range(0, len(pickle_bytes), max_bytes):
-            f.write(pickle_bytes[i:i + max_bytes])
+            f.write(pickle_bytes[i : i + max_bytes])
     else:
         pickler = pickle.Pickler(f, protocol)
         pickler.dispatch_table = copyreg.dispatch_table.copy()
@@ -306,7 +345,8 @@ def _pickle_save(obj, f, protocol):
 def _contain_x(obj, condition_func):
     if isinstance(obj, core.SelectedRows):
         raise NotImplementedError(
-            "`paddle.save` do not support saving 'SelectedRows'.")
+            "`paddle.save` do not support saving 'SelectedRows'."
+        )
 
     if condition_func(obj):
         return True
@@ -330,8 +370,16 @@ def _is_state_dict(obj):
 
         def condition(obj):
             return isinstance(
-                obj, (fluid.Layer, Program, core.VarBase, core.eager.Tensor,
-                      core.LoDTensor, core.SelectedRows))
+                obj,
+                (
+                    fluid.Layer,
+                    Program,
+                    core.VarBase,
+                    core.eager.Tensor,
+                    core.LoDTensor,
+                    core.SelectedRows,
+                ),
+            )
 
         # If the value of a dict is a core.VarBase/LoDTensor or a dict
         # that does not contain a paddle type(Layer, Program, VarBase, LoDTensor, SelectedRows),
@@ -342,7 +390,8 @@ def _is_state_dict(obj):
                     if _contain_x(v, condition):
                         return False
             elif not isinstance(
-                    value, (core.VarBase, core.eager.Tensor, core.LoDTensor)):
+                value, (core.VarBase, core.eager.Tensor, core.LoDTensor)
+            ):
                 return False
         return True
 
@@ -370,8 +419,10 @@ def _transformed_from_lodtensor(obj):
 def _to_LodTensor(ndarray):
     if not isinstance(ndarray, np.ndarray):
         raise TypeError(
-            'Type of `ndarray` should be numpy.ndarray, but received {}.'.
-            format(type(ndarray)))
+            'Type of `ndarray` should be numpy.ndarray, but received {}.'.format(
+                type(ndarray)
+            )
+        )
     t = core.LoDTensor()
     place = _current_expected_place()
     t.set(ndarray, place)
@@ -418,26 +469,30 @@ def _parse_every_object(obj, condition_func, convert_func):
             if condition_func(obj[key]):
                 obj[key] = convert_func(obj[key])
             else:
-                obj[key] = _parse_every_object(obj[key], condition_func,
-                                               convert_func)
+                obj[key] = _parse_every_object(
+                    obj[key], condition_func, convert_func
+                )
         return obj
     elif type(obj) == tuple:
         return tuple(
-            _parse_every_object(list(obj), condition_func, convert_func))
+            _parse_every_object(list(obj), condition_func, convert_func)
+        )
     elif type(obj) == set:
         return set(_parse_every_object(list(obj), condition_func, convert_func))
     else:
         if isinstance(obj, Iterable) and not isinstance(
-                obj,
-            (str, np.ndarray, core.VarBase, core.eager.Tensor, core.LoDTensor)):
+            obj,
+            (str, np.ndarray, core.VarBase, core.eager.Tensor, core.LoDTensor),
+        ):
             raise NotImplementedError(
-                "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}."
-                .format(type(obj)))
+                "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".format(
+                    type(obj)
+                )
+            )
         return obj
 
 
 def _parse_load_result(obj, return_numpy):
-
     def is_layer(obj):
         return isinstance(obj, fluid.Layer)
 
@@ -463,13 +518,15 @@ def _parse_load_result(obj, return_numpy):
     # tuple(name, ndarry) was converted from varbase of paddle2.1,
     # and all tuple(name, ndarry) are converted to tensor.
     if _contain_x(obj, _transformed_from_varbase):
-        return _parse_every_object(obj, _transformed_from_varbase,
-                                   tuple_to_tensor)
+        return _parse_every_object(
+            obj, _transformed_from_varbase, tuple_to_tensor
+        )
     # If there is no tuple(name, ndary), it is considered to be saved by paddle2.0
     # or converted from LoDTensor, and all ndarrays are converted to tensor.
     else:
-        return _parse_every_object(obj, _transformed_from_lodtensor,
-                                   ndarray_to_tensor)
+        return _parse_every_object(
+            obj, _transformed_from_lodtensor, ndarray_to_tensor
+        )
 
 
 def _save_lod_tensor(tensor, file_name):
@@ -490,8 +547,10 @@ def _save_lod_tensor(tensor, file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports saving objects to file or BytesIO, but received {}'.
-            format(type(file_name)))
+            'Only supports saving objects to file or BytesIO, but received {}'.format(
+                type(file_name)
+            )
+        )
     return _seek
 
 
@@ -509,8 +568,10 @@ def _load_lod_tensor(file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports load objects from file or BytesIO, but received {}'.
-            format(type(file_name)))
+            'Only supports load objects from file or BytesIO, but received {}'.format(
+                type(file_name)
+            )
+        )
 
     return temp_t, _seek
 
@@ -529,8 +590,10 @@ def _save_selected_rows(selected_rows, file_name):
             _seek = f.tell()
     else:
         raise NotImplementedError(
-            'Only supports saving objects to file or BytesIO, but received {}'.
-            format(type(file_name)))
+            'Only supports saving objects to file or BytesIO, but received {}'.format(
+                type(file_name)
+            )
+        )
     return _seek
 
 
@@ -544,13 +607,16 @@ def _load_selected_rows(file_name):
         with _open_file_buffer(file_name, 'rb') as f:
             selected_rows_bytes = f.read()
             paddle.fluid.core.load_selected_rows_from_memory(
-                temp_sr, selected_rows_bytes)
+                temp_sr, selected_rows_bytes
+            )
         _seek = f.tell()
 
     else:
         raise NotImplementedError(
-            'Only supports load objects from file or BytesIO, but received {}'.
-            format(type(file_name)))
+            'Only supports load objects from file or BytesIO, but received {}'.format(
+                type(file_name)
+            )
+        )
 
     return temp_sr, _seek
 
@@ -565,8 +631,10 @@ def _save_binary_var(obj, path):
     else:
         # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'
         raise NotImplementedError(
-            "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}."
-            .format(type(obj)))
+            "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}.".format(
+                type(obj)
+            )
+        )
 
 
 def save(obj, path, protocol=4, **configs):
@@ -694,7 +762,8 @@ def save(obj, path, protocol=4, **configs):
             raise ValueError(
                 "The input path MUST be format of dirname/filename "
                 "[dirname\\filename in Windows system], but received "
-                "filename is empty string.")
+                "filename is empty string."
+            )
 
         # 2. save object
         dirname = os.path.dirname(path)
@@ -702,15 +771,19 @@ def save(obj, path, protocol=4, **configs):
             os.makedirs(dirname)
     elif not _is_memory_buffer(path):
         raise ValueError(
-            "only supports saving objects to file and `BytesIO`, but got {}".
-            format(type(path)))
+            "only supports saving objects to file and `BytesIO`, but got {}".format(
+                type(path)
+            )
+        )
 
     config = _parse_save_config(configs)
 
     if not isinstance(config.use_binary_format, bool):
         raise TypeError(
-            "Type of `use_binary_format` should be bool, but received {}.".
-            format(type(config.use_binary_format)))
+            "Type of `use_binary_format` should be bool, but received {}.".format(
+                type(config.use_binary_format)
+            )
+        )
 
     if config.use_binary_format:
         _save_binary_var(obj, path)
@@ -742,19 +815,23 @@ def _legacy_save(obj, path, protocol=2):
     if not isinstance(obj, dict):
         raise NotImplementedError(
             "Now only supports save state_dict of Layer or Optimizer, "
-            "expect dict, but received %s." % type(obj))
+            "expect dict, but received %s." % type(obj)
+        )
 
     if len(obj) == 0:
         warnings.warn("The input state dict is empty, no need to save.")
 
     if not isinstance(protocol, int):
-        raise ValueError("The 'protocol' MUST be `int`, but received {}".format(
-            type(protocol)))
+        raise ValueError(
+            "The 'protocol' MUST be `int`, but received {}".format(
+                type(protocol)
+            )
+        )
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
-            "Expected 1<'protocol'<5, but received protocol={}".format(
-                protocol))
+            "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
+        )
 
     if _is_file_path(path):
         filename = os.path.basename(path)
@@ -762,7 +839,8 @@ def _legacy_save(obj, path, protocol=2):
             raise ValueError(
                 "The input path MUST be format of dirname/filename "
                 "[dirname\\filename in Windows system], but received "
-                "filename is empty string.")
+                "filename is empty string."
+            )
         # 2. save object
         dirname = os.path.dirname(path)
         if dirname and not os.path.exists(dirname):
@@ -774,13 +852,16 @@ def _legacy_save(obj, path, protocol=2):
     saved_obj = _unpack_saved_dict(saved_obj, protocol)
 
     # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
-    if _is_file_path(
-            path) and sys.platform == 'darwin' and sys.version_info.major == 3:
+    if (
+        _is_file_path(path)
+        and sys.platform == 'darwin'
+        and sys.version_info.major == 3
+    ):
         pickle_bytes = pickle.dumps(saved_obj, protocol=protocol)
         with open(path, 'wb') as f:
             max_bytes = 2**30
             for i in range(0, len(pickle_bytes), max_bytes):
-                f.write(pickle_bytes[i:i + max_bytes])
+                f.write(pickle_bytes[i : i + max_bytes])
     else:
         with _open_file_buffer(path, 'wb') as f:
             pickle.dump(saved_obj, f, protocol=protocol)
@@ -947,9 +1028,11 @@ def load(path, **configs):
         try:
             with _open_file_buffer(path, 'rb') as f:
                 # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
-                if _is_file_path(
-                        path
-                ) and sys.platform == 'darwin' and sys.version_info.major == 3:
+                if (
+                    _is_file_path(path)
+                    and sys.platform == 'darwin'
+                    and sys.version_info.major == 3
+                ):
                     load_result = _pickle_loads_mac(path, f)
                 else:
                     load_result = pickle.load(f, encoding='latin1')
@@ -963,18 +1046,24 @@ def load(path, **configs):
                         for key in load_result["StructuredToParameterName@@"]:
                             if isinstance(load_result[key], np.ndarray):
                                 load_result[key] = _ndarray_to_tensor(
-                                    load_result[key], config.return_numpy)
+                                    load_result[key], config.return_numpy
+                                )
 
-                        if not config.keep_name_table and "StructuredToParameterName@@" in load_result:
+                        if (
+                            not config.keep_name_table
+                            and "StructuredToParameterName@@" in load_result
+                        ):
                             del load_result["StructuredToParameterName@@"]
                     else:
                         # paddle2.1 static.save/load
                         load_result = _parse_load_result(
-                            load_result, config.return_numpy)
+                            load_result, config.return_numpy
+                        )
 
                 else:
-                    load_result = _parse_load_result(load_result,
-                                                     config.return_numpy)
+                    load_result = _parse_load_result(
+                        load_result, config.return_numpy
+                    )
 
         except exception_type as msg_pickle:
             try:
@@ -994,12 +1083,15 @@ def load(path, **configs):
                         with _open_file_buffer(path, "rb") as f:
                             program_desc_str = f.read()
                             program = Program.parse_from_string(
-                                program_desc_str)
+                                program_desc_str
+                            )
                             return program
                     except:
                         raise ValueError(
                             "`paddle.load` can not parse the file:{}.".format(
-                                path))
+                                path
+                            )
+                        )
 
     else:
         load_result = _legacy_load(path, **configs)
@@ -1016,7 +1108,10 @@ def _legacy_load(path, **configs):
         with _open_file_buffer(path, 'rb') as f:
             load_result = pickle.load(f, encoding='latin1')
         load_result = _pack_loaded_dict(load_result)
-        if not config.keep_name_table and "StructuredToParameterName@@" in load_result:
+        if (
+            not config.keep_name_table
+            and "StructuredToParameterName@@" in load_result
+        ):
             del load_result["StructuredToParameterName@@"]
     else:
         # file prefix and directory are compatible cases
@@ -1037,7 +1132,8 @@ def _legacy_load(path, **configs):
             # the user to configure the `use_structured_name` argument when `set_state_dict`
             # NOTE(chenweihang): `jit.save` doesn't save optimizer state
             load_result = _load_state_dict_from_save_inference_model(
-                model_path, config)
+                model_path, config
+            )
         else:
             # load state dict by `io.save_params/persistables` save format
             # TODO(chenweihang): [ Now only supports loading parameters separately ]

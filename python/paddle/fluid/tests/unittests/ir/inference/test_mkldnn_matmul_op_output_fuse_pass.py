@@ -20,7 +20,6 @@ from inference_pass_test import InferencePassTest
 
 
 class TestMKLDNNMatmulFuseOp(InferencePassTest):
-
     def init_data(self):
         self.bs = 8
         self.d_type = np.float32
@@ -30,16 +29,17 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
 
     def make_network(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(name='x',
-                           shape=[-1] + self.shape_x,
-                           dtype=self.d_type)
-            y = fluid.data(name='y',
-                           shape=[-1] + self.shape_y,
-                           dtype=self.d_type)
+            x = fluid.data(
+                name='x', shape=[-1] + self.shape_x, dtype=self.d_type
+            )
+            y = fluid.data(
+                name='y', shape=[-1] + self.shape_y, dtype=self.d_type
+            )
             out = fluid.layers.matmul(x, y)
             out = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
             out = fluid.layers.reshape(
-                out, [0, 0, self.shape_y[0] * self.shape_y[2]])
+                out, [0, 0, self.shape_y[0] * self.shape_y[2]]
+            )
             out = fluid.layers.fc(out, size=1)
         return out
 
@@ -51,7 +51,7 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
     def set_feeds(self, out):
         self.feeds = {
             "x": np.random.random([self.bs] + self.shape_x).astype(self.d_type),
-            "y": np.random.random([self.bs] + self.shape_y).astype(self.d_type)
+            "y": np.random.random([self.bs] + self.shape_y).astype(self.d_type),
         }
         self.fetch_list = [out]
 
@@ -61,7 +61,6 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
 
 
 class TestMKLDNNMatmulOtherDimsFuseOp(TestMKLDNNMatmulFuseOp):
-
     def init_data(self):
         self.bs = 8
         self.d_type = np.float32
@@ -71,15 +70,14 @@ class TestMKLDNNMatmulOtherDimsFuseOp(TestMKLDNNMatmulFuseOp):
 
 
 class TestMKLDNNMatmulOpNotFusedWrongTransposeAxis(TestMKLDNNMatmulFuseOp):
-
     def make_network(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(name='x',
-                           shape=[-1] + self.shape_x,
-                           dtype=self.d_type)
-            y = fluid.data(name='y',
-                           shape=[-1] + self.shape_y,
-                           dtype=self.d_type)
+            x = fluid.data(
+                name='x', shape=[-1] + self.shape_x, dtype=self.d_type
+            )
+            y = fluid.data(
+                name='y', shape=[-1] + self.shape_y, dtype=self.d_type
+            )
             out = fluid.layers.matmul(x, y)
             out = fluid.layers.transpose(out, perm=[0, 1, 2, 3])
             out = fluid.layers.reshape(out, [0, 0, 0, 0])
@@ -88,7 +86,6 @@ class TestMKLDNNMatmulOpNotFusedWrongTransposeAxis(TestMKLDNNMatmulFuseOp):
 
 
 class TestMKLDNNMatmulOpNotFusedBreakPattern(TestMKLDNNMatmulFuseOp):
-
     def init_data(self):
         self.bs = 7
         self.d_type = np.float32
@@ -98,18 +95,20 @@ class TestMKLDNNMatmulOpNotFusedBreakPattern(TestMKLDNNMatmulFuseOp):
 
     def make_network(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(name='x',
-                           shape=[-1] + self.shape_x,
-                           dtype=self.d_type)
-            y = fluid.data(name='y',
-                           shape=[-1] + self.shape_y,
-                           dtype=self.d_type)
+            x = fluid.data(
+                name='x', shape=[-1] + self.shape_x, dtype=self.d_type
+            )
+            y = fluid.data(
+                name='y', shape=[-1] + self.shape_y, dtype=self.d_type
+            )
             out = fluid.layers.matmul(x, y)
             out = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
-            out = fluid.layers.transpose(out, perm=[0, 1, 2,
-                                                    3])  # breaks pattern
+            out = fluid.layers.transpose(
+                out, perm=[0, 1, 2, 3]
+            )  # breaks pattern
             out = fluid.layers.reshape(
-                out, [0, 0, self.shape_y[0] * self.shape_y[2]])
+                out, [0, 0, self.shape_y[0] * self.shape_y[2]]
+            )
             out = fluid.layers.fc(out, size=1)
         return out
 

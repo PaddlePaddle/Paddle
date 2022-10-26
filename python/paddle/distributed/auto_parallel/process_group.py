@@ -31,10 +31,11 @@ def get_all_process_groups():
 
 def get_process_group(group_id, g_process_group_map=None):
     global _g_process_group_map
-    return _g_process_group_map.get(
-        group_id,
-        None) if g_process_group_map is None else g_process_group_map.get(
-            group_id, None)
+    return (
+        _g_process_group_map.get(group_id, None)
+        if g_process_group_map is None
+        else g_process_group_map.get(group_id, None)
+    )
 
 
 def get_world_process_group():
@@ -75,10 +76,11 @@ def new_process_group(ranks, group_id=None):
 # the instantiation process in a more general way. In the future, the process group may
 # handle the communication implementation choice.
 class ProcessGroup:
-
     def __init__(self, group_id, ranks):
         if group_id == 0 and get_process_group(0) is not None:
-            assert group_id != 0, "Process group id 0 is reserved for all ranks."
+            assert (
+                group_id != 0
+            ), "Process group id 0 is reserved for all ranks."
         self._group_id = group_id
         self._ranks = sorted(ranks)
         # Add the current ranks into group 0
@@ -103,8 +105,9 @@ class ProcessGroup:
         if set(new_ranks) <= set(self.ranks):
             return
         else:
-            assert self.is_instantiate() == False, \
-                "Cannot add new ranks after instantiating the process group"
+            assert (
+                self.is_instantiate() == False
+            ), "Cannot add new ranks after instantiating the process group"
         self._ranks.extend(new_ranks)
         self._ranks = sorted(list(set(self.ranks)))
 
@@ -112,8 +115,9 @@ class ProcessGroup:
         if global_rank in self.ranks:
             return self.ranks.index(global_rank)
         else:
-            assert False, \
-                "Rank {} doesn't belong to this group".format(global_rank)
+            assert False, "Rank {} doesn't belong to this group".format(
+                global_rank
+            )
 
     def is_instantiate(self):
         return self._is_instantiate
@@ -137,22 +141,27 @@ class ProcessGroup:
 
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
-                core.NCCLParallelContext(strategy,
-                                         place).init_with_ring_id(ring_id)
+                core.NCCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
             else:
-                assert False, ("No CUDA device found")
+                assert False, "No CUDA device found"
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
             paddle.disable_static()
-            paddle.set_device('gpu:%d' %
-                              paddle.distributed.ParallelEnv().dev_id)
-            tmp = paddle.to_tensor(
-                [1], dtype="int32") if _non_static_mode() else fill_constant(
-                    [0], dtype="int32", value="1")
+            paddle.set_device(
+                'gpu:%d' % paddle.distributed.ParallelEnv().dev_id
+            )
+            tmp = (
+                paddle.to_tensor([1], dtype="int32")
+                if _non_static_mode()
+                else fill_constant([0], dtype="int32", value="1")
+            )
             # use legacy ops
-            _legacy_C_ops.c_allreduce_sum_(tmp, 'use_calc_stream', True,
-                                           'ring_id', self.id)
+            _legacy_C_ops.c_allreduce_sum_(
+                tmp, 'use_calc_stream', True, 'ring_id', self.id
+            )
             _legacy_C_ops.c_sync_calc_stream(tmp, tmp)
             paddle.enable_static()
 
@@ -173,7 +182,8 @@ class ProcessGroup:
 
     def __str__(self):
         string = "id: {}, nranks: {}, ranks: {}.".format(
-            self.id, self.nranks, ", ".join(map(str, self.ranks)))
+            self.id, self.nranks, ", ".join(map(str, self.ranks))
+        )
         return string
 
     def __hash__(self):

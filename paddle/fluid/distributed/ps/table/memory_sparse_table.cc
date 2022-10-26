@@ -41,12 +41,12 @@ namespace paddle {
 namespace distributed {
 
 int32_t MemorySparseTable::Initialize() {
-  auto& profiler = CostProfiler::instance();
+  auto &profiler = CostProfiler::instance();
   profiler.register_profiler("pserver_sparse_update_all");
   profiler.register_profiler("pserver_sparse_select_all");
   InitializeValue();
   _shards_task_pool.resize(_task_pool_size);
-  for (int i = 0; i < _shards_task_pool.size(); ++i) {
+  for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
   }
   VLOG(0) << "initalize MemorySparseTable succ";
@@ -102,8 +102,8 @@ int32_t MemorySparseTable::InitializeValue() {
   return 0;
 }
 
-int32_t MemorySparseTable::Load(const std::string& path,
-                                const std::string& param) {
+int32_t MemorySparseTable::Load(const std::string &path,
+                                const std::string &param) {
   std::string table_path = TableDir(path);
   auto file_list = _afs_client.list(table_path);
 
@@ -157,13 +157,13 @@ int32_t MemorySparseTable::Load(const std::string& path,
       err_no = 0;
       std::string line_data;
       auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
-      char* end = NULL;
-      auto& shard = _local_shards[i];
+      char *end = NULL;
+      auto &shard = _local_shards[i];
       try {
         while (read_channel->read_line(line_data) == 0 &&
                line_data.size() > 1) {
           uint64_t key = std::strtoul(line_data.data(), &end, 10);
-          auto& value = shard[key];
+          auto &value = shard[key];
           value.resize(feature_value_size);
           int parse_size = _value_accesor->ParseFromString(++end, value.data());
           value.resize(parse_size);
@@ -200,7 +200,7 @@ int32_t MemorySparseTable::Load(const std::string& path,
   return 0;
 }
 
-int32_t MemorySparseTable::LoadPatch(const std::vector<std::string>& file_list,
+int32_t MemorySparseTable::LoadPatch(const std::vector<std::string> &file_list,
                                      int load_param) {
   if (!_config.enable_revert()) {
     LOG(INFO) << "MemorySparseTable should be enabled revert.";
@@ -213,7 +213,7 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string>& file_list,
   int o_start_idx = _shard_idx * _avg_local_shard_num;
   int o_end_idx = o_start_idx + _real_local_shard_num;
 
-  if (start_idx >= file_list.size()) {
+  if (start_idx >= static_cast<int>(file_list.size())) {
     return 0;
   }
   size_t feature_value_size =
@@ -224,7 +224,7 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string>& file_list,
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = start_idx; i < end_idx; ++i) {
+  for (int i = start_idx; i < end_idx; ++i) {
     FsChannelConfig channel_config;
     channel_config.path = file_list[i];
     channel_config.converter = _value_accesor->Converter(load_param).converter;
@@ -239,11 +239,11 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string>& file_list,
       err_no = 0;
       std::string line_data;
       auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
-      char* end = NULL;
+      char *end = NULL;
       int m_local_shard_id = i % _m_avg_local_shard_num;
       std::unordered_set<size_t> global_shard_idx;
       std::string global_shard_idx_str;
-      for (size_t j = o_start_idx; j < o_end_idx; ++j) {
+      for (int j = o_start_idx; j < o_end_idx; ++j) {
         if ((j % _avg_local_shard_num) % _m_real_local_shard_num ==
             m_local_shard_id) {
           global_shard_idx.insert(j);
@@ -267,9 +267,9 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string>& file_list,
             continue;
           }
           size_t local_shard_idx = *index_iter % _avg_local_shard_num;
-          auto& shard = _local_shards[local_shard_idx];
+          auto &shard = _local_shards[local_shard_idx];
 
-          auto& value = shard[key];
+          auto &value = shard[key];
           value.resize(feature_value_size);
           int parse_size = _value_accesor->ParseFromString(++end, value.data());
           value.resize(parse_size);
@@ -300,7 +300,7 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string>& file_list,
 }
 
 void MemorySparseTable::Revert() {
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (int i = 0; i < _real_local_shard_num; ++i) {
     _local_shards_new[i].clear();
   }
 }
@@ -309,8 +309,8 @@ void MemorySparseTable::CheckSavePrePatchDone() {
   _save_patch_model_thread.join();
 }
 
-int32_t MemorySparseTable::Save(const std::string& dirname,
-                                const std::string& param) {
+int32_t MemorySparseTable::Save(const std::string &dirname,
+                                const std::string &param) {
   if (_real_local_shard_num == 0) {
     _local_show_threshold = -1;
     return 0;
@@ -368,7 +368,7 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
     int feasign_size = 0;
     int retry_num = 0;
     int err_no = 0;
-    auto& shard = _local_shards[i];
+    auto &shard = _local_shards[i];
     do {
       err_no = 0;
       feasign_size = 0;
@@ -426,7 +426,7 @@ int32_t MemorySparseTable::Save(const std::string& dirname,
   return 0;
 }
 
-int32_t MemorySparseTable::SavePatch(const std::string& path, int save_param) {
+int32_t MemorySparseTable::SavePatch(const std::string &path, int save_param) {
   if (!_config.enable_revert()) {
     LOG(INFO) << "MemorySparseTable should be enabled revert.";
     return 0;
@@ -441,7 +441,7 @@ int32_t MemorySparseTable::SavePatch(const std::string& path, int save_param) {
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = 0; i < _m_real_local_shard_num; ++i) {
+  for (int i = 0; i < _m_real_local_shard_num; ++i) {
     FsChannelConfig channel_config;
     channel_config.path = paddle::string::format_string("%s/part-%03d-%05d",
                                                         table_path.c_str(),
@@ -463,9 +463,9 @@ int32_t MemorySparseTable::SavePatch(const std::string& path, int save_param) {
       auto write_channel =
           _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
 
-      for (size_t j = 0; j < _real_local_shard_num; ++j) {
+      for (int j = 0; j < _real_local_shard_num; ++j) {
         if (j % _m_real_local_shard_num == i) {
-          auto& shard = _local_shards_patch_model[j];
+          auto &shard = _local_shards_patch_model[j];
           for (auto it = shard.begin(); it != shard.end(); ++it) {
             if (_value_accesor->Save(it.value().data(), save_param)) {
               std::string format_value = _value_accesor->ParseToString(
@@ -515,14 +515,14 @@ int32_t MemorySparseTable::SavePatch(const std::string& path, int save_param) {
 }
 
 int64_t MemorySparseTable::CacheShuffle(
-    const std::string& path,
-    const std::string& param,
+    const std::string &path,
+    const std::string &param,
     double cache_threshold,
     std::function<std::future<int32_t>(
-        int msg_type, int to_pserver_id, std::string& msg)> send_msg_func,
-    paddle::framework::Channel<std::pair<uint64_t, std::string>>&
-        shuffled_channel,
-    const std::vector<Table*>& table_ptrs) {
+        int msg_type, int to_pserver_id, std::string &msg)> send_msg_func,
+    paddle::framework::Channel<std::pair<uint64_t, std::string>>
+        &shuffled_channel,
+    const std::vector<Table *> &table_ptrs) {
   LOG(INFO) << "cache shuffle with cache threshold: " << cache_threshold;
   int save_param = atoi(param.c_str());  // batch_model:0  xbox:1
   if (!_config.enable_sparse_table_cache() || cache_threshold < 0) {
@@ -546,22 +546,22 @@ int64_t MemorySparseTable::CacheShuffle(
   int feasign_size = 0;
   std::vector<paddle::framework::Channel<std::pair<uint64_t, std::string>>>
       tmp_channels;
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+  for (int i = 0; i < _real_local_shard_num; ++i) {
     tmp_channels.push_back(
         paddle::framework::MakeChannel<std::pair<uint64_t, std::string>>());
   }
 
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
-  for (size_t i = 0; i < _real_local_shard_num; ++i) {
-    paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>& writer =
+  for (int i = 0; i < _real_local_shard_num; ++i) {
+    paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>> &writer =
         writers[i];
     writer.Reset(tmp_channels[i].get());
 
     for (size_t idx = 0; idx < table_ptrs.size(); idx++) {
-      Table* table_ptr = table_ptrs[idx];
+      Table *table_ptr = table_ptrs[idx];
       auto value_accesor = table_ptr->ValueAccesor();
-      shard_type* shard_ptr = static_cast<shard_type*>(table_ptr->GetShard(i));
+      shard_type *shard_ptr = static_cast<shard_type *>(table_ptr->GetShard(i));
 
       for (auto it = shard_ptr->begin(); it != shard_ptr->end(); ++it) {
         if (value_accesor->SaveCache(
@@ -581,14 +581,14 @@ int64_t MemorySparseTable::CacheShuffle(
   // size: " << feasign_size << " and start sparse cache data shuffle real local
   // shard num: " << _real_local_shard_num;
   std::vector<std::pair<uint64_t, std::string>> local_datas;
-  for (size_t idx_shard = 0; idx_shard < _real_local_shard_num; ++idx_shard) {
-    paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>>& writer =
+  for (int idx_shard = 0; idx_shard < _real_local_shard_num; ++idx_shard) {
+    paddle::framework::ChannelWriter<std::pair<uint64_t, std::string>> &writer =
         writers[idx_shard];
     auto channel = writer.channel();
-    std::vector<std::pair<uint64_t, std::string>>& data = datas[idx_shard];
+    std::vector<std::pair<uint64_t, std::string>> &data = datas[idx_shard];
     std::vector<paddle::framework::BinaryArchive> ars(shuffle_node_num);
     while (channel->Read(data)) {
-      for (auto& t : data) {
+      for (auto &t : data) {
         auto pserver_id =
             paddle::distributed::local_random_engine()() % shuffle_node_num;
         if (pserver_id != _shard_idx) {
@@ -604,9 +604,9 @@ int64_t MemorySparseTable::CacheShuffle(
         send_index[i] = i;
       }
       std::random_shuffle(send_index.begin(), send_index.end());
-      for (auto index = 0u; index < shuffle_node_num; ++index) {
+      for (int index = 0; index < shuffle_node_num; ++index) {
         int i = send_index[index];
-        if (i == _shard_idx) {
+        if (i == static_cast<int>(_shard_idx)) {
           continue;
         }
         if (ars[i].Length() == 0) {
@@ -617,7 +617,7 @@ int64_t MemorySparseTable::CacheShuffle(
         total_status.push_back(std::move(ret));
         send_data_size[i] += ars[i].Length();
       }
-      for (auto& t : total_status) {
+      for (auto &t : total_status) {
         t.wait();
       }
       ars.clear();
@@ -630,10 +630,10 @@ int64_t MemorySparseTable::CacheShuffle(
 }
 
 int32_t MemorySparseTable::SaveCache(
-    const std::string& path,
-    const std::string& param,
-    paddle::framework::Channel<std::pair<uint64_t, std::string>>&
-        shuffled_channel) {
+    const std::string &path,
+    const std::string &param,
+    paddle::framework::Channel<std::pair<uint64_t, std::string>>
+        &shuffled_channel) {
   if (_shard_idx >= _config.sparse_table_cache_file_num()) {
     return 0;
   }
@@ -656,7 +656,7 @@ int32_t MemorySparseTable::SaveCache(
   bool is_write_failed = false;
   shuffled_channel->Close();
   while (shuffled_channel->Read(data)) {
-    for (auto& t : data) {
+    for (auto &t : data) {
       ++feasign_size;
       if (0 != write_channel->write_line(paddle::string::format_string(
                    "%lu %s", t.first, t.second.c_str()))) {
@@ -695,7 +695,7 @@ int64_t MemorySparseTable::LocalMFSize() {
     tasks[shard_id] =
         _shards_task_pool[shard_id % _shards_task_pool.size()]->enqueue(
             [this, shard_id, &size_arr]() -> int {
-              auto& local_shard = _local_shards[shard_id];
+              auto &local_shard = _local_shards[shard_id];
               for (auto it = local_shard.begin(); it != local_shard.end();
                    ++it) {
                 if (_value_accesor->HasMF(it.value().size())) {
@@ -720,20 +720,20 @@ std::pair<int64_t, int64_t> MemorySparseTable::PrintTableStat() {
   return {feasign_size, mf_size};
 }
 
-int32_t MemorySparseTable::Pull(TableContext& context) {
+int32_t MemorySparseTable::Pull(TableContext &context) {
   CHECK(context.value_type == Sparse);
   if (context.use_ptr) {
-    char** pull_values = context.pull_context.ptr_values;
-    const uint64_t* keys = context.pull_context.keys;
+    char **pull_values = context.pull_context.ptr_values;
+    const uint64_t *keys = context.pull_context.keys;
     return PullSparsePtr(pull_values, keys, context.num);
   } else {
-    float* pull_values = context.pull_context.values;
-    const PullSparseValue& pull_value = context.pull_context.pull_value;
+    float *pull_values = context.pull_context.values;
+    const PullSparseValue &pull_value = context.pull_context.pull_value;
     return PullSparse(pull_values, pull_value);
   }
 }
 
-int32_t MemorySparseTable::Push(TableContext& context) {
+int32_t MemorySparseTable::Push(TableContext &context) {
   CHECK(context.value_type == Sparse);
   if (!context.use_ptr) {
     return PushSparse(
@@ -745,8 +745,8 @@ int32_t MemorySparseTable::Push(TableContext& context) {
   }
 }
 
-int32_t MemorySparseTable::PullSparse(float* pull_values,
-                                      const PullSparseValue& pull_value) {
+int32_t MemorySparseTable::PullSparse(float *pull_values,
+                                      const PullSparseValue &pull_value) {
   CostTimer timer("pserver_sparse_select_all");
   std::vector<std::future<int>> tasks(_real_local_shard_num);
 
@@ -776,11 +776,11 @@ int32_t MemorySparseTable::PullSparse(float* pull_values,
              pull_values,
              mf_value_size,
              select_value_size]() -> int {
-              auto& local_shard = _local_shards[shard_id];
+              auto &local_shard = _local_shards[shard_id];
               float data_buffer[value_size];  // NOLINT
-              float* data_buffer_ptr = data_buffer;
+              float *data_buffer_ptr = data_buffer;
 
-              auto& keys = task_keys[shard_id];
+              auto &keys = task_keys[shard_id];
               for (size_t i = 0; i < keys.size(); i++) {
                 uint64_t key = keys[i].first;
                 auto itr = local_shard.find(key);
@@ -790,9 +790,9 @@ int32_t MemorySparseTable::PullSparse(float* pull_values,
                   if (FLAGS_pserver_create_value_when_push) {
                     memset(data_buffer, 0, sizeof(float) * data_size);
                   } else {
-                    auto& feature_value = local_shard[key];
+                    auto &feature_value = local_shard[key];
                     feature_value.resize(data_size);
-                    float* data_ptr = feature_value.data();
+                    float *data_ptr = feature_value.data();
                     _value_accesor->Create(&data_buffer_ptr, 1);
                     memcpy(
                         data_ptr, data_buffer_ptr, data_size * sizeof(float));
@@ -807,9 +807,9 @@ int32_t MemorySparseTable::PullSparse(float* pull_values,
                   data_buffer[mf_idx] = 0.0;
                 }
                 auto offset = keys[i].second;
-                float* select_data = pull_values + select_value_size * offset;
+                float *select_data = pull_values + select_value_size * offset;
                 _value_accesor->Select(
-                    &select_data, (const float**)&data_buffer_ptr, 1);
+                    &select_data, (const float **)&data_buffer_ptr, 1);
               }
 
               return 0;
@@ -822,8 +822,8 @@ int32_t MemorySparseTable::PullSparse(float* pull_values,
   return 0;
 }
 
-int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
-                                         const uint64_t* keys,
+int32_t MemorySparseTable::PullSparsePtr(char **pull_values,
+                                         const uint64_t *keys,
                                          size_t num) {
   CostTimer timer("pscore_sparse_select_all");
   size_t value_size = _value_accesor->GetAccessorInfo().size / sizeof(float);
@@ -847,20 +847,20 @@ int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
              pull_values,
              value_size,
              mf_value_size]() -> int {
-              auto& keys = task_keys[shard_id];
-              auto& local_shard = _local_shards[shard_id];
+              auto &keys = task_keys[shard_id];
+              auto &local_shard = _local_shards[shard_id];
               float data_buffer[value_size];  // NOLINT
-              float* data_buffer_ptr = data_buffer;
+              float *data_buffer_ptr = data_buffer;
               for (size_t i = 0; i < keys.size(); ++i) {
                 uint64_t key = keys[i].first;
                 auto itr = local_shard.find(key);
                 size_t data_size = value_size - mf_value_size;
-                FixedFeatureValue* ret = NULL;
+                FixedFeatureValue *ret = NULL;
                 if (itr == local_shard.end()) {
                   // ++missed_keys;
-                  auto& feature_value = local_shard[key];
+                  auto &feature_value = local_shard[key];
                   feature_value.resize(data_size);
-                  float* data_ptr = feature_value.data();
+                  float *data_ptr = feature_value.data();
                   _value_accesor->Create(&data_buffer_ptr, 1);
                   memcpy(data_ptr, data_buffer_ptr, data_size * sizeof(float));
                   ret = &feature_value;
@@ -868,7 +868,7 @@ int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
                   ret = itr.value_ptr();
                 }
                 int pull_data_idx = keys[i].second;
-                pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
+                pull_values[pull_data_idx] = reinterpret_cast<char *>(ret);
               }
               return 0;
             });
@@ -879,8 +879,8 @@ int32_t MemorySparseTable::PullSparsePtr(char** pull_values,
   return 0;
 }
 
-int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
-                                      const float* values,
+int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
+                                      const float *values,
                                       size_t num) {
   CostTimer timer("pserver_sparse_update_all");
   std::vector<std::future<int>> tasks(_real_local_shard_num);
@@ -907,15 +907,15 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
          update_value_col,
          values,
          &task_keys]() -> int {
-          auto& keys = task_keys[shard_id];
-          auto& local_shard = _local_shards[shard_id];
-          auto& local_shard_new = _local_shards_new[shard_id];
+          auto &keys = task_keys[shard_id];
+          auto &local_shard = _local_shards[shard_id];
+          auto &local_shard_new = _local_shards_new[shard_id];
           float data_buffer[value_col];  // NOLINT
-          float* data_buffer_ptr = data_buffer;
+          float *data_buffer_ptr = data_buffer;
           for (size_t i = 0; i < keys.size(); ++i) {
             uint64_t key = keys[i].first;
             uint64_t push_data_idx = keys[i].second;
-            const float* update_data =
+            const float *update_data =
                 values + push_data_idx * update_value_col;
             auto itr = local_shard.find(key);
             if (itr == local_shard.end()) {
@@ -924,7 +924,7 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
                 continue;
               }
               auto value_size = value_col - mf_value_col;
-              auto& feature_value = local_shard[key];
+              auto &feature_value = local_shard[key];
               feature_value.resize(value_size);
               _value_accesor->Create(&data_buffer_ptr, 1);
               memcpy(feature_value.data(),
@@ -933,8 +933,8 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
               itr = local_shard.find(key);
             }
 
-            auto& feature_value = itr.value();
-            float* value_data = feature_value.data();
+            auto &feature_value = itr.value();
+            float *value_data = feature_value.data();
             size_t value_size = feature_value.size();
 
             if (value_size == value_col) {  // 已拓展到最大size, 则就地update
@@ -952,7 +952,7 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
               memcpy(value_data, data_buffer_ptr, value_size * sizeof(float));
             }
             if (_config.enable_revert()) {
-              FixedFeatureValue* feature_value_new = &(local_shard_new[key]);
+              FixedFeatureValue *feature_value_new = &(local_shard_new[key]);
               auto new_size = feature_value.size();
               feature_value_new->resize(new_size);
               memcpy(feature_value_new->data(),
@@ -970,8 +970,8 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
   return 0;
 }
 
-int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
-                                      const float** values,
+int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
+                                      const float **values,
                                       size_t num) {
   std::vector<std::future<int>> tasks(_real_local_shard_num);
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
@@ -996,14 +996,14 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
          update_value_col,
          values,
          &task_keys]() -> int {
-          auto& keys = task_keys[shard_id];
-          auto& local_shard = _local_shards[shard_id];
+          auto &keys = task_keys[shard_id];
+          auto &local_shard = _local_shards[shard_id];
           float data_buffer[value_col];  // NOLINT
-          float* data_buffer_ptr = data_buffer;
+          float *data_buffer_ptr = data_buffer;
           for (size_t i = 0; i < keys.size(); ++i) {
             uint64_t key = keys[i].first;
             uint64_t push_data_idx = keys[i].second;
-            const float* update_data = values[push_data_idx];
+            const float *update_data = values[push_data_idx];
             auto itr = local_shard.find(key);
             if (itr == local_shard.end()) {
               if (FLAGS_pserver_enable_create_feasign_randomly &&
@@ -1011,7 +1011,7 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
                 continue;
               }
               auto value_size = value_col - mf_value_col;
-              auto& feature_value = local_shard[key];
+              auto &feature_value = local_shard[key];
               feature_value.resize(value_size);
               _value_accesor->Create(&data_buffer_ptr, 1);
               memcpy(feature_value.data(),
@@ -1019,8 +1019,8 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
                      value_size * sizeof(float));
               itr = local_shard.find(key);
             }
-            auto& feature_value = itr.value();
-            float* value_data = feature_value.data();
+            auto &feature_value = itr.value();
+            float *value_data = feature_value.data();
             size_t value_size = feature_value.size();
             if (value_size == value_col) {  // 已拓展到最大size, 则就地update
               _value_accesor->Update(&value_data, &update_data, 1);
@@ -1048,12 +1048,12 @@ int32_t MemorySparseTable::PushSparse(const uint64_t* keys,
 
 int32_t MemorySparseTable::Flush() { return 0; }
 
-int32_t MemorySparseTable::Shrink(const std::string& param) {
+int32_t MemorySparseTable::Shrink(const std::string &param) {
   VLOG(0) << "MemorySparseTable::Shrink";
   // TODO(zhaocaibei123): implement with multi-thread
   for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
     // Shrink
-    auto& shard = _local_shards[shard_id];
+    auto &shard = _local_shards[shard_id];
     for (auto it = shard.begin(); it != shard.end();) {
       if (_value_accesor->Shrink(it.value().data())) {
         it = shard.erase(it);

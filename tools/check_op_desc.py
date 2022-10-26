@@ -88,7 +88,9 @@ def diff_vars(origin_vars, new_vars):
                     if var_name not in var_changed_error_massage.keys():
                         var_changed_error_massage[var_name] = {}
                     var_changed_error_massage[var_name][arg_name] = (
-                        origin_arg_value, new_arg_value)
+                        origin_arg_value,
+                        new_arg_value,
+                    )
 
     for var_name in vars_name_only_in_origin:
         error, var_error = True, True
@@ -111,7 +113,8 @@ def diff_vars(origin_vars, new_vars):
 
         # if added var is def, inference needs to review, needs to register.
         if not new_vars.get(var_name).get(EXTRA) and not new_vars.get(
-                var_name).get(QUANT):
+            var_name
+        ).get(QUANT):
             error, var_error = True, True
             var_add_def_message.append(var_name)
 
@@ -160,7 +163,9 @@ def diff_attr(ori_attrs, new_attrs):
                     if attr_name not in attr_changed_error_massage.keys():
                         attr_changed_error_massage[attr_name] = {}
                     attr_changed_error_massage[attr_name][arg_name] = (
-                        origin_arg_value, new_arg_value)
+                        origin_arg_value,
+                        new_arg_value,
+                    )
 
     for attr_name in attrs_only_in_origin:
         error, attr_error = True, True
@@ -179,7 +184,8 @@ def diff_attr(ori_attrs, new_attrs):
 
         # if added attr is def, inference needs to review, needs to register
         if not new_attrs.get(attr_name).get(EXTRA) and not new_attrs.get(
-                attr_name).get(QUANT):
+            attr_name
+        ).get(QUANT):
             error, var_error = True, True
             attr_added_define_message.append(attr_name)
 
@@ -206,7 +212,8 @@ def check_io_registry(io_type, op, diff):
     for update_type in [ADD]:
         for item in diff.get(update_type, []):
             infos = checker.filter_updates(
-                op, version_update_map[io_type][update_type], item)
+                op, version_update_map[io_type][update_type], item
+            )
             if not infos:
                 if update_type not in results.keys():
                     results[update_type] = []
@@ -228,7 +235,8 @@ def check_attr_registry(op, diff, origin_attrs):
     for update_type in [ADD, CHANGE]:
         for item in diff.get(update_type, {}):
             infos = checker.filter_updates(
-                op, version_update_map[ATTRS][update_type], item)
+                op, version_update_map[ATTRS][update_type], item
+            )
             if not infos:
                 if update_type == ADD:
                     if update_type not in results.keys():
@@ -279,8 +287,9 @@ def compare_op_desc(origin_op_desc, new_op_desc):
         origin_attrs = origin_info.get(ATTRS, {})
         new_attrs = new_info.get(ATTRS, {})
         attrs_error, attrs_diff = diff_attr(origin_attrs, new_attrs)
-        attrs_version_errors = check_attr_registry(op_type, attrs_diff,
-                                                   origin_attrs)
+        attrs_version_errors = check_attr_registry(
+            op_type, attrs_diff, origin_attrs
+        )
 
         if ins_diff:
             desc_error_message.setdefault(op_type, {})[INPUTS] = ins_diff
@@ -290,21 +299,26 @@ def compare_op_desc(origin_op_desc, new_op_desc):
             desc_error_message.setdefault(op_type, {})[ATTRS] = attrs_diff
 
         if ins_version_errors:
-            version_error_message.setdefault(op_type,
-                                             {})[INPUTS] = ins_version_errors
+            version_error_message.setdefault(op_type, {})[
+                INPUTS
+            ] = ins_version_errors
         if outs_version_errors:
-            version_error_message.setdefault(op_type,
-                                             {})[OUTPUTS] = outs_version_errors
+            version_error_message.setdefault(op_type, {})[
+                OUTPUTS
+            ] = outs_version_errors
         if attrs_version_errors:
-            version_error_message.setdefault(op_type,
-                                             {})[ATTRS] = attrs_version_errors
+            version_error_message.setdefault(op_type, {})[
+                ATTRS
+            ] = attrs_version_errors
 
     return desc_error_message, version_error_message
 
 
 def print_desc_error_message(error_message):
-    print("\n======================= \n"
-          "Op desc error for the changes of Inputs/Outputs/Attrs of OPs:\n")
+    print(
+        "\n======================= \n"
+        "Op desc error for the changes of Inputs/Outputs/Attrs of OPs:\n"
+    )
     for op_name in error_message:
         print("For OP '{}':".format(op_name))
 
@@ -321,16 +335,24 @@ def print_desc_error_message(error_message):
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    " * The arg '{}' of Input '{}' is changed: from '{}' to '{}'."
-                    .format(arg, name, ori_value, new_value))
+                    " * The arg '{}' of Input '{}' is changed: from '{}' to '{}'.".format(
+                        arg, name, ori_value, new_value
+                    )
+                )
 
         for name in Inputs_error.get(QUANT, {}):
-            print(" * The added Input '{}' is `quant`, need slim to review.".
-                  format(name))
+            print(
+                " * The added Input '{}' is `quant`, need slim to review.".format(
+                    name
+                )
+            )
 
         for name in Inputs_error.get(DEF, {}):
-            print(" * The added Input '{}' is `def`, need inference to review.".
-                  format(name))
+            print(
+                " * The added Input '{}' is `def`, need inference to review.".format(
+                    name
+                )
+            )
 
         # 2. print outputs error message
         Outputs_error = error_message.get(op_name, {}).get(OUTPUTS, {})
@@ -345,23 +367,31 @@ def print_desc_error_message(error_message):
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    " * The arg '{}' of Output '{}' is changed: from '{}' to '{}'."
-                    .format(arg, name, ori_value, new_value))
+                    " * The arg '{}' of Output '{}' is changed: from '{}' to '{}'.".format(
+                        arg, name, ori_value, new_value
+                    )
+                )
 
         for name in Outputs_error.get(QUANT, {}):
-            print(" * The added Output '{}' is `quant`, need slim to review.".
-                  format(name))
+            print(
+                " * The added Output '{}' is `quant`, need slim to review.".format(
+                    name
+                )
+            )
 
         for name in Outputs_error.get(DEF, {}):
             print(
-                " * The added Output '{}' is `def`, need inference to review.".
-                format(name))
+                " * The added Output '{}' is `def`, need inference to review.".format(
+                    name
+                )
+            )
 
         # 3. print attrs error message
         attrs_error = error_message.get(op_name, {}).get(ATTRS, {})
         for name in attrs_error.get(ADD_WITH_DEFAULT, {}):
-            print(" * The added attr '{}' doesn't set default value.".format(
-                name))
+            print(
+                " * The added attr '{}' doesn't set default value.".format(name)
+            )
 
         for name in attrs_error.get(DELETE, {}):
             print(" * The attr '{}' is deleted.".format(name))
@@ -371,18 +401,26 @@ def print_desc_error_message(error_message):
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    " * The arg '{}' of attr '{}' is changed: from '{}' to '{}'."
-                    .format(arg, name, ori_value, new_value))
+                    " * The arg '{}' of attr '{}' is changed: from '{}' to '{}'.".format(
+                        arg, name, ori_value, new_value
+                    )
+                )
 
         for name in attrs_error.get(QUANT, {}):
             # TODO(Wilber):
-            print(" * The added attr '{}' is `quant`, need slim to review.".
-                  format(name))
+            print(
+                " * The added attr '{}' is `quant`, need slim to review.".format(
+                    name
+                )
+            )
 
         for name in attrs_error.get(DEF, {}):
             # TODO(Wilber):
-            print(" * The added attr '{}' is `def`, need inference to review.".
-                  format(name))
+            print(
+                " * The added attr '{}' is `def`, need inference to review.".format(
+                    name
+                )
+            )
 
 
 def print_version_error_message(error_message):
@@ -398,31 +436,42 @@ def print_version_error_message(error_message):
         error_list = inputs_error.get(ADD, [])
         if error_list:
             for tup in error_list:
-                print(" * The added input '{}' is not yet registered.".format(
-                    tup[1]))
+                print(
+                    " * The added input '{}' is not yet registered.".format(
+                        tup[1]
+                    )
+                )
 
         # 2. print outputs error message
         outputs_error = error_message.get(op_name, {}).get(OUTPUTS, {})
         error_list = outputs_error.get(ADD, [])
         if error_list:
             for tup in error_list:
-                print(" * The added output '{}' is not yet registered.".format(
-                    tup[1]))
+                print(
+                    " * The added output '{}' is not yet registered.".format(
+                        tup[1]
+                    )
+                )
 
-        #3. print attrs error message
+        # 3. print attrs error message
         attrs_error = error_message.get(op_name, {}).get(ATTRS, {})
         error_list = attrs_error.get(ADD, [])
         if error_list:
             for tup in error_list:
                 print(
                     " * The added attribute '{}' is not yet registered.".format(
-                        tup[1]))
-        error_dic = error_message.get(op_name, {}).get(ATTRS,
-                                                       {}).get(CHANGE, {})
+                        tup[1]
+                    )
+                )
+        error_dic = (
+            error_message.get(op_name, {}).get(ATTRS, {}).get(CHANGE, {})
+        )
         for key, val in error_dic.items():
             print(
                 " * The change of attribute '{}' is not yet registered.".format(
-                    key))
+                    key
+                )
+            )
 
 
 def print_repeat_process():
@@ -449,7 +498,8 @@ if len(sys.argv) == 3:
         new_op_desc = f.read()
 
     desc_error_message, version_error_message = compare_op_desc(
-        origin_op_desc, new_op_desc)
+        origin_op_desc, new_op_desc
+    )
     if error:
         print("-" * 30)
         print_desc_error_message(desc_error_message)
