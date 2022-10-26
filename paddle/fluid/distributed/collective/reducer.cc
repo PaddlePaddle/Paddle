@@ -358,8 +358,6 @@ void EagerGroup::SplitTensorsDev(const platform::DeviceContext &context) {
 #endif
   } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    // auto *default_ctx = static_cast<platform::CustomDeviceContext *>(
-    //     platform::DeviceContextPool::Instance().Get(place));
     SplitTensorsWithType(
         static_cast<const platform::CustomDeviceContext &>(context),
         &dense_contents_,
@@ -372,47 +370,10 @@ void EagerGroup::SplitTensorsDev(const platform::DeviceContext &context) {
         "Please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
-    // auto *default_ctx = static_cast<phi::CPUContext *>(
-    //     platform::DeviceContextPool::Instance().Get(place));
     SplitTensorsWithType(static_cast<const phi::CPUContext &>(context),
                          &dense_contents_,
                          &dense_tensors_,
                          dtype_);
-  } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Split grad tensor not supported on place (%s)", place));
-  }
-}
-
-void EagerGroup::SplitTensors(const platform::Place &place) {
-  if (platform::is_gpu_place(place)) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto *default_ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(place));
-    SplitTensorsWithType(
-        *default_ctx, &dense_contents_, &dense_tensors_, dtype_);
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't split grad tensor since it's not compiled with NCCL,"
-        "Please recompile or reinstall Paddle with NCCL support."));
-#endif
-  } else if (platform::is_custom_place(place)) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    auto *default_ctx = static_cast<platform::CustomDeviceContext *>(
-        platform::DeviceContextPool::Instance().Get(place));
-    SplitTensorsWithType(
-        *default_ctx, &dense_contents_, &dense_tensors_, dtype_);
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't split grad tensor since it's not compiled with "
-        "CUSTOM_DEVICE,"
-        "Please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
-#endif
-  } else if (platform::is_cpu_place(place)) {
-    auto *default_ctx = static_cast<phi::CPUContext *>(
-        platform::DeviceContextPool::Instance().Get(place));
-    SplitTensorsWithType(
-        *default_ctx, &dense_contents_, &dense_tensors_, dtype_);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Split grad tensor not supported on place (%s)", place));
@@ -1002,10 +963,9 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
   }
   group->task = process_group_->AllReduce(in_out, in_out, opts);
 
-  auto context = process_group_->GetDeviceContext(inner_place_);
-  group->SplitTensorsDev(*context);
+  const auto &context = process_group_->GetDeviceContext(inner_place_);
+  group->SplitTensorsDev(context);
   group->task->UpdateWaitChain(context);
-  // group->dense_contents_.reset();
   // split in FinalizeBackward()
 }
 
