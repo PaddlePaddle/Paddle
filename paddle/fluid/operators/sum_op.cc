@@ -76,22 +76,21 @@ class SumOp : public framework::OperatorWithKernel {
                             "Sum operator should have at least one tensor"));
 
       auto data_type = static_cast<framework::proto::VarType::Type>(dtype);
-#ifdef PADDLE_WITH_MKLDNN
-      if (this->CanMKLDNNBeUsed(ctx, data_type) &&
-          (data_type == framework::proto::VarType::FP32 ||
-           data_type == framework::proto::VarType::BF16) &&
-          ctx.OutputVar("Out")->IsType<phi::DenseTensor>()) {
-        if (std::all_of(
-                x_vars.begin(), x_vars.end(), [](const framework::Variable* v) {
-                  return v->IsType<phi::DenseTensor>();
-                })) {
-          return framework::OpKernelType(data_type,
-                                         ctx.GetPlace(),
-                                         phi::DataLayout::kMKLDNN,
-                                         framework::LibraryType::kMKLDNN);
-        }
+
+      // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+      if (!((data_type == framework::proto::VarType::FP32 ||
+             data_type == framework::proto::VarType::BF16) &&
+            ctx.OutputVar("Out")->IsType<phi::DenseTensor>())) {
+        this->SetDnnFallback(true);
+      } else if (!std::all_of(x_vars.begin(),
+                              x_vars.end(),
+                              [](const framework::Variable* v) {
+                                return v->IsType<phi::DenseTensor>();
+                              })) {
+        this->SetDnnFallback(true);
       }
-#endif
+      // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
       return framework::OpKernelType(data_type, ctx.GetPlace());
     } else if (x_vars[0]->IsType<phi::SelectedRows>()) {
       for (auto& var : x_vars) {

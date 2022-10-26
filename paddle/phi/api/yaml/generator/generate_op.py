@@ -136,7 +136,6 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
                     key = args_map[key]
                 if val in args_map:
                     val = args_map[val]
-                key, val = val, key
                 inplace_map[key] = val
             forward_api_item['inplace'] = inplace_map
 
@@ -208,6 +207,15 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
                     args_map[param] if param in args_map else param
                     for param in backward_api_item['no_need_buffer']
                 ]
+            if backward_api_item['inplace']:
+                inplace_map = {}
+                for key, val in backward_api_item['inplace'].items():
+                    if key in args_map:
+                        key = args_map[key]
+                    if val in args_map:
+                        val = args_map[val]
+                    inplace_map[key] = val
+                backward_api_item['inplace'] = inplace_map
 
 
 def process_invoke_op(forward_api_dict, backward_api_dict):

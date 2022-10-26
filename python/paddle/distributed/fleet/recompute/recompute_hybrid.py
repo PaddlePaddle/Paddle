@@ -86,7 +86,6 @@ class _HPRecomputeFunction(PyLayer):
         *args,
         **kwargs
     ):
-        check_recompute_necessary(args)
 
         # store for recomputing
         ctx.run_function = run_function
@@ -263,6 +262,9 @@ def recompute_hybrid(ctx, function, *args, **kwargs):
 
     offload = ctx.get('offload', False)
     partition = ctx.get('partition', False)
+
+    if framework._dygraph_tracer()._has_grad:
+        check_recompute_necessary(args)
 
     all_outputs = []
     _HPRecomputeFunction.apply(

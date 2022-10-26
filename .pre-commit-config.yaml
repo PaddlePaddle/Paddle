@@ -33,12 +33,6 @@ repos:
     hooks:
     -   id: black
         files: (.*\.(py|pyi|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
-        # Temporary exclude, will be formatted in a separate PR
-        exclude: |
-            (?x)^(
-                python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py|
-                python/paddle/fluid/tests/unittests/dygraph_to_static/test_origin_info.py
-            )$
 -   repo: https://github.com/PyCQA/flake8
     rev: 4.0.1
     hooks:

@@ -611,8 +611,8 @@ class HDFSClient(FS):
         return self._is_dir(fs_path)
 
     def _is_dir(self, fs_path):
-        cmd = "test -d {}".format(fs_path, redirect_stderr=True)
-        ret, lines = self._run_cmd(cmd, retry_times=1)
+        cmd = "test -d {}".format(fs_path)
+        ret, lines = self._run_cmd(cmd, redirect_stderr=True, retry_times=1)
         if ret:
             # other error
             if self._test_match(lines):

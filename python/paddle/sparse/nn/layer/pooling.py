@@ -61,15 +61,13 @@ class MaxPool3D(Layer):
         .. code-block:: python
 
             import paddle
-            from paddle.fluid.framework import _test_eager_guard
 
-            with _test_eager_guard():
-                dense_x = paddle.randn((2, 3, 6, 6, 3))
-                sparse_x = dense_x.to_sparse_coo(4)
-                max_pool3d = paddle.sparse.nn.MaxPool3D(
-                    kernel_size=3, data_format='NDHWC')
-                out = max_pool3d(sparse_x)
-                #shape=[2, 1, 2, 2, 3]
+            dense_x = paddle.randn((2, 3, 6, 6, 3))
+            sparse_x = dense_x.to_sparse_coo(4)
+            max_pool3d = paddle.sparse.nn.MaxPool3D(
+                kernel_size=3, data_format='NDHWC')
+            out = max_pool3d(sparse_x)
+            #shape=[2, 1, 2, 2, 3]
 
     """
 
