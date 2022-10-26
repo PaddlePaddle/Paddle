@@ -375,7 +375,7 @@
 - op : gelu
   backward : gelu_grad
   extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : grad_add
   extra :
