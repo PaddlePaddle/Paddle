@@ -25,7 +25,6 @@ paddle.enable_static()
 
 
 class DemoNet(nn.Layer):
-
     def __init__(self):
         super(DemoNet, self).__init__()
 
@@ -42,15 +41,14 @@ class DemoNet(nn.Layer):
 
 
 class TestFuseAdamPass(DistPassTestBase):
-
     def init(self):
         self.atol = 1e-4
         self.rtol = 1e-4
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
-        image = paddle.static.data(shape=[batch_size] + image_shape,
-                                   dtype='float32',
-                                   name='image')
+        image = paddle.static.data(
+            shape=[batch_size] + image_shape, dtype='float32', name='image'
+        )
 
         model = DemoNet()
         pred_out = model(image)
@@ -86,11 +84,14 @@ class TestFuseAdamPass(DistPassTestBase):
         for op in main_prog.global_block().ops:
             op_type.append(op.type)
             if op.type == "momentum":
-                self.assertTrue("@FUSEDVAR@_momentum_Param_batch_norm2d_0.b_0"
-                                in op.input("Param"))
                 self.assertTrue(
-                    "@FUSEDVAR@_momentum_Grad_batch_norm2d_0.b_0@GRAD" in
-                    op.input("Grad"))
+                    "@FUSEDVAR@_momentum_Param_batch_norm2d_0.b_0"
+                    in op.input("Param")
+                )
+                self.assertTrue(
+                    "@FUSEDVAR@_momentum_Grad_batch_norm2d_0.b_0@GRAD"
+                    in op.input("Grad")
+                )
         self.assertTrue("coalesce_tensor" in op_type)
 
     def test_fuse_adam(self):

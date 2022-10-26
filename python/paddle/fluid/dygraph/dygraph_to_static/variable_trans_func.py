@@ -17,7 +17,10 @@ import textwrap
 from paddle.utils import gast
 from paddle.fluid import unique_name
 from paddle.fluid.framework import Variable
-from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_variable
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    UndefinedVar,
+    create_undefined_variable,
+)
 from paddle.fluid.layers.utils import map_structure, is_sequence
 
 __all__ = [
@@ -37,16 +40,19 @@ def create_fill_constant_node(name, value=0):
     func_code = "{} = paddle.full(shape=[1], ".format(name)
     if isinstance(value, bool):
         func_code += "dtype='bool', fill_value={}, name='{}')".format(
-            value, name)
+            value, name
+        )
         return gast.parse(func_code).body[0]
     if isinstance(value, float):
         func_code += "dtype='float64', fill_value={}, name='{}')".format(
-            value, name)
+            value, name
+        )
         return gast.parse(func_code).body[0]
 
     if isinstance(value, int):
         func_code += "dtype='int64', fill_value={}, name='{}')".format(
-            value, name)
+            value, name
+        )
         return gast.parse(func_code).body[0]
 
 

@@ -275,10 +275,10 @@ class LayerDict(Layer):
 
         """
 
-        assert isinstance(
-            sublayers, Iterable
-        ), "The type of sublayers is not iterable of key/value pairs, the type of sublayers is " + type(
-            sublayers).__name__
+        assert isinstance(sublayers, Iterable), (
+            "The type of sublayers is not iterable of key/value pairs, the type of sublayers is "
+            + type(sublayers).__name__
+        )
 
         if isinstance(sublayers, (OrderedDict, LayerDict, Mapping)):
             for key, layer in sublayers.items():
@@ -287,7 +287,11 @@ class LayerDict(Layer):
             # handle this format [(key1, layer1), (key2, layer2)...]
             for i, kv in enumerate(sublayers):
                 if len(kv) != 2:
-                    raise ValueError("The length of the " + str(i) +
-                                     "'s element in sublayers is " +
-                                     str(len(kv)) + ", which must be 2.")
+                    raise ValueError(
+                        "The length of the "
+                        + str(i)
+                        + "'s element in sublayers is "
+                        + str(len(kv))
+                        + ", which must be 2."
+                    )
                 self.add_sublayer(kv[0], kv[1])

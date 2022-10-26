@@ -16,7 +16,6 @@ __all__ = []
 
 
 class RuntimeBase(object):
-
     def __init__(self):
         pass
 

@@ -73,7 +73,7 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
  public:
   using paddle::operators::BatchNormGradOp::BatchNormGradOp;
 
-  void InferShape(framework::InferShapeContext* ctx) const {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     // check input
     OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "InplaceABNGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),

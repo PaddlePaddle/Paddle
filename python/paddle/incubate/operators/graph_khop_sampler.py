@@ -18,13 +18,15 @@ from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _legacy_C_ops
 
 
-def graph_khop_sampler(row,
-                       colptr,
-                       input_nodes,
-                       sample_sizes,
-                       sorted_eids=None,
-                       return_eids=False,
-                       name=None):
+def graph_khop_sampler(
+    row,
+    colptr,
+    input_nodes,
+    sample_sizes,
+    sorted_eids=None,
+    return_eids=False,
+    name=None,
+):
     """
     Graph Khop Sampler API.
 
@@ -86,36 +88,64 @@ def graph_khop_sampler(row,
     if _non_static_mode():
         if return_eids:
             if sorted_eids is None:
-                raise ValueError("`sorted_eid` should not be None "
-                                 "if return_eids is True.")
-            edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
-                _legacy_C_ops.graph_khop_sampler(row, sorted_eids,
-                                              colptr, input_nodes,
-                                              "sample_sizes", sample_sizes,
-                                              "return_eids", True)
+                raise ValueError(
+                    "`sorted_eid` should not be None " "if return_eids is True."
+                )
+            (
+                edge_src,
+                edge_dst,
+                sample_index,
+                reindex_nodes,
+                edge_eids,
+            ) = _legacy_C_ops.graph_khop_sampler(
+                row,
+                sorted_eids,
+                colptr,
+                input_nodes,
+                "sample_sizes",
+                sample_sizes,
+                "return_eids",
+                True,
+            )
             return edge_src, edge_dst, sample_index, reindex_nodes, edge_eids
         else:
-            edge_src, edge_dst, sample_index, reindex_nodes, _ = \
-                _legacy_C_ops.graph_khop_sampler(row, None,
-                                              colptr, input_nodes,
-                                              "sample_sizes", sample_sizes,
-                                              "return_eids", False)
+            (
+                edge_src,
+                edge_dst,
+                sample_index,
+                reindex_nodes,
+                _,
+            ) = _legacy_C_ops.graph_khop_sampler(
+                row,
+                None,
+                colptr,
+                input_nodes,
+                "sample_sizes",
+                sample_sizes,
+                "return_eids",
+                False,
+            )
             return edge_src, edge_dst, sample_index, reindex_nodes
 
-    check_variable_and_dtype(row, "Row", ("int32", "int64"),
-                             "graph_khop_sampler")
+    check_variable_and_dtype(
+        row, "Row", ("int32", "int64"), "graph_khop_sampler"
+    )
 
     if return_eids:
         if sorted_eids is None:
-            raise ValueError("`sorted_eid` should not be None "
-                             "if return_eids is True.")
-        check_variable_and_dtype(sorted_eids, "Eids", ("int32", "int64"),
-                                 "graph_khop_sampler")
+            raise ValueError(
+                "`sorted_eid` should not be None " "if return_eids is True."
+            )
+        check_variable_and_dtype(
+            sorted_eids, "Eids", ("int32", "int64"), "graph_khop_sampler"
+        )
 
-    check_variable_and_dtype(colptr, "Col_Ptr", ("int32", "int64"),
-                             "graph_khop_sampler")
-    check_variable_and_dtype(input_nodes, "X", ("int32", "int64"),
-                             "graph_khop_sampler")
+    check_variable_and_dtype(
+        colptr, "Col_Ptr", ("int32", "int64"), "graph_khop_sampler"
+    )
+    check_variable_and_dtype(
+        input_nodes, "X", ("int32", "int64"), "graph_khop_sampler"
+    )
 
     helper = LayerHelper("graph_khop_sampler", **locals())
     edge_src = helper.create_variable_for_type_inference(dtype=row.dtype)
@@ -123,24 +153,23 @@ def graph_khop_sampler(row,
     sample_index = helper.create_variable_for_type_inference(dtype=row.dtype)
     reindex_nodes = helper.create_variable_for_type_inference(dtype=row.dtype)
     edge_eids = helper.create_variable_for_type_inference(dtype=row.dtype)
-    helper.append_op(type="graph_khop_sampler",
-                     inputs={
-                         "Row": row,
-                         "Eids": sorted_eids,
-                         "Col_Ptr": colptr,
-                         "X": input_nodes
-                     },
-                     outputs={
-                         "Out_Src": edge_src,
-                         "Out_Dst": edge_dst,
-                         "Sample_Index": sample_index,
-                         "Reindex_X": reindex_nodes,
-                         "Out_Eids": edge_eids
-                     },
-                     attrs={
-                         "sample_sizes": sample_sizes,
-                         "return_eids": return_eids
-                     })
+    helper.append_op(
+        type="graph_khop_sampler",
+        inputs={
+            "Row": row,
+            "Eids": sorted_eids,
+            "Col_Ptr": colptr,
+            "X": input_nodes,
+        },
+        outputs={
+            "Out_Src": edge_src,
+            "Out_Dst": edge_dst,
+            "Sample_Index": sample_index,
+            "Reindex_X": reindex_nodes,
+            "Out_Eids": edge_eids,
+        },
+        attrs={"sample_sizes": sample_sizes, "return_eids": return_eids},
+    )
     if return_eids:
         return edge_src, edge_dst, sample_index, reindex_nodes, edge_eids
     else:

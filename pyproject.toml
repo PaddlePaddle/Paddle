@@ -1,0 +1,4 @@
+[tool.black]
+exclude = "build"
+line-length = 80
+skip-string-normalization = true
