@@ -370,16 +370,16 @@ class ComposeDataset(Dataset):
 
 class ChainDataset(IterableDataset):
     """
-    A Dataset which chains multiple iterable-tyle datasets.
+    A Dataset which chains multiple iterable-style datasets.
 
     This dataset is used for assembling multiple datasets which should
     be :code:`paddle.io.IterableDataset`.
 
     Args:
-        datasets(list of Dataset): List of datasets to be chainned.
+        datasets(list of IterableDatasets): List of datasets to be chainned.
 
     Returns:
-        Dataset: A Dataset which chains fields of multiple datasets.
+        paddle.io.IterableDataset: A Dataset which chains fields of multiple datasets.
 
     Examples:
 
