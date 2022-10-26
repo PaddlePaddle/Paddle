@@ -34,6 +34,8 @@
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
 
+#include "paddle/fluid/platform/mkldnn_op_list.h"
+
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
     false,
