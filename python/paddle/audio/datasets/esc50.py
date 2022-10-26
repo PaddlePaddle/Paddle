@@ -137,14 +137,16 @@ class ESC50(AudioClassificationDataset):
     )
     audio_path = os.path.join('ESC-50-master', 'audio')
 
-    def __init__(self,
-                 mode: str = 'train',
-                 split: int = 1,
-                 feat_type: str = 'raw',
-                 archive=None,
-                 **kwargs):
-        assert (
-            split in range(1, 6)
+    def __init__(
+        self,
+        mode: str = 'train',
+        split: int = 1,
+        feat_type: str = 'raw',
+        archive=None,
+        **kwargs,
+    ):
+        assert split in range(
+            1, 6
         ), f'The selected split should be integer, and 1 <= split <= 5, but got {split}'
         if archive is not None:
             self.archive = archive
