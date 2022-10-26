@@ -165,20 +165,22 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         const IntT* scatter_indices =
             rulebook_ptr + rulebook_len + h_offsets_ptr[i];
 
-        fp16_gather_gemm_scatter my_kernel = getBestFp16Kernel(M, N, K);
-        my_kernel(dev_ctx,
-                  reinterpret_cast<const cutlass::half_t*>(
-                      x.non_zero_elements().data<T>()),
-                  reinterpret_cast<const cutlass::half_t*>(tmp_kernel_ptr),
-                  reinterpret_cast<cutlass::half_t*>(out_values_ptr),
-                  reinterpret_cast<cutlass::half_t*>(out_values_ptr),
-                  M,
-                  N,
-                  K,
-                  static_cast<const int32_t*>(gather_indices),
-                  static_cast<const int32_t*>(scatter_indices),
-                  static_cast<cutlass::half_t>(1),
-                  static_cast<cutlass::half_t>(1));
+        fp16_gather_gemm_scatter gather_gemm_scatter =
+            getBestFp16Kernel(M, N, K);
+        gather_gemm_scatter(
+            dev_ctx,
+            reinterpret_cast<const cutlass::half_t*>(
+                x.non_zero_elements().data<T>()),
+            reinterpret_cast<const cutlass::half_t*>(tmp_kernel_ptr),
+            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
+            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
+            M,
+            N,
+            K,
+            static_cast<const int32_t*>(gather_indices),
+            static_cast<const int32_t*>(scatter_indices),
+            static_cast<cutlass::half_t>(1),
+            static_cast<cutlass::half_t>(1));
       }
     }
   }
@@ -216,19 +218,20 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
         const IntT* scatter_indices =
             rulebook_ptr + rulebook_len + h_offsets_ptr[i];
-        fp32_gather_gemm_scatter my_kernel = getBestFp32Kernel(M, N, K);
-        my_kernel(dev_ctx,
-                  x.non_zero_elements().data<T>(),
-                  tmp_kernel_ptr,
-                  out_values_ptr,
-                  out_values_ptr,
-                  M,
-                  N,
-                  K,
-                  gather_indices,
-                  scatter_indices,
-                  static_cast<T>(1),
-                  static_cast<T>(1));
+        fp32_gather_gemm_scatter gather_gemm_scatter =
+            getBestFp32Kernel(M, N, K);
+        gather_gemm_scatter(dev_ctx,
+                            x.non_zero_elements().data<T>(),
+                            tmp_kernel_ptr,
+                            out_values_ptr,
+                            out_values_ptr,
+                            M,
+                            N,
+                            K,
+                            gather_indices,
+                            scatter_indices,
+                            static_cast<T>(1),
+                            static_cast<T>(1));
       }
     }
   }
@@ -254,19 +257,20 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         const IntT* scatter_indices =
             rulebook_ptr + rulebook_len + h_offsets_ptr[i];
 
-        fp64_gather_gemm_scatter my_kernel = getBestFp64Kernel(M, N, K);
-        my_kernel(dev_ctx,
-                  x.non_zero_elements().data<T>(),
-                  tmp_kernel_ptr,
-                  out_values_ptr,
-                  out_values_ptr,
-                  M,
-                  N,
-                  K,
-                  gather_indices,
-                  scatter_indices,
-                  static_cast<T>(1),
-                  static_cast<T>(1));
+        fp64_gather_gemm_scatter gather_gemm_scatter =
+            getBestFp64Kernel(M, N, K);
+        gather_gemm_scatter(dev_ctx,
+                            x.non_zero_elements().data<T>(),
+                            tmp_kernel_ptr,
+                            out_values_ptr,
+                            out_values_ptr,
+                            M,
+                            N,
+                            K,
+                            gather_indices,
+                            scatter_indices,
+                            static_cast<T>(1),
+                            static_cast<T>(1));
       }
     }
   }
