@@ -289,7 +289,7 @@ bool CPUQuantizePass::AreScalesPresentForNodes(
   return present;
 }
 
-std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataByName(
+std::pair<bool, phi::DenseTensor> CPUQuantizePass::GetScaleDataByName(
     const std::string& name) const {
   if (var_quant_scales_->empty()) {
     auto& scales = Get<VarQuantScale>("quant_var_scales");
@@ -298,16 +298,18 @@ std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataByName(
   return var_quant_scales_->at(name);
 }
 
-std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataForNode(
+std::pair<bool, phi::DenseTensor> CPUQuantizePass::GetScaleDataForNode(
     const Node* node) const {
   return GetScaleDataByName(node->Name());
 }
 
-LoDTensor CPUQuantizePass::GetScaleTensorByName(const std::string& name) const {
+phi::DenseTensor CPUQuantizePass::GetScaleTensorByName(
+    const std::string& name) const {
   return GetScaleDataByName(name).second;
 }
 
-LoDTensor CPUQuantizePass::GetScaleTensorForNode(const Node* node) const {
+phi::DenseTensor CPUQuantizePass::GetScaleTensorForNode(
+    const Node* node) const {
   return GetScaleDataForNode(node).second;
 }
 
@@ -1071,7 +1073,7 @@ void CPUQuantizePass::QuantizeMultiGru(Graph* graph) const {
       auto* w_scale_node = g->CreateVarNode(&scale_var_desc);
 
       auto* w_scale_tensor_dst =
-          scope->Var(w_scale_node->Name())->GetMutable<LoDTensor>();
+          scope->Var(w_scale_node->Name())->GetMutable<phi::DenseTensor>();
       w_scale_tensor_dst->Resize(scale_tensor_src.dims());
       auto* dst_data =
           w_scale_tensor_dst->mutable_data<float>(platform::CPUPlace());

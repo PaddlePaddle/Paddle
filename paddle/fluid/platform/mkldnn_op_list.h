@@ -54,10 +54,7 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "flatten",
     "flatten_grad",
     "flatten2",
-    "flatten2_grad",
-    // NOTE(jiahongyu): Below ops register kernel with customized_type_value, we
-    // need to analysis and solve them one-by-one.
-    "prior_box"};
+    "flatten2_grad"};
 
 static const std::unordered_set<std::string> cudnn_white_list = {
     // cudnn general ops
