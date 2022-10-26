@@ -24,7 +24,7 @@ namespace jit {
 
 static PaddleTensor DenseTensorToPaddleTensor(DenseTensor *t);
 static bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
-                                      framework::LoDTensor *t,
+                                      DenseTensor *t,
                                       const platform::Place &place);
 
 PredictorEngine::PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
@@ -105,7 +105,7 @@ static PaddleTensor DenseTensorToPaddleTensor(DenseTensor *t) {
 }
 
 static bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
-                                      framework::LoDTensor *t,
+                                      DenseTensor *t,
                                       const platform::Place &place) {
   framework::DDim ddim = phi::make_ddim(pt.shape);
   void *input_ptr;
