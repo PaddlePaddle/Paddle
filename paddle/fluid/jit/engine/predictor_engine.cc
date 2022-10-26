@@ -178,12 +178,6 @@ static bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "The analysis predictor supports CPU, GPU and XPU now."));
   }
-  // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
-  framework::LoD lod;
-  for (auto &level : pt.lod) {
-    lod.emplace_back(level);
-  }
-  t->set_lod(lod);
   return true;
 }
 

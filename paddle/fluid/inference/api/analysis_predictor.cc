@@ -170,7 +170,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
   }
   // NOTE(Aurelius84): Some kernels support zero shape input
   // without memory holder, we should skip enforce logic.
-  bool has_zero_dim = phi::product(ddim);
+  bool has_zero_dim = (phi::product(ddim) == 0);
   if (!has_zero_dim) {
     VLOG(3) << "Found zero dim from input with ddim: " << ddim;
     PADDLE_ENFORCE_NOT_NULL(
