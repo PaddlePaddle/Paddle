@@ -312,7 +312,7 @@ def get_window(window: Union[str, Tuple[str, float]],
     """Return a window of a given length and type.
 
     Args:
-        window (Union[str, Tuple[str, float]]): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'kaiser', 'gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor'.
+        window (Union[str, Tuple[str, float]]): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'kaiser', 'gaussian', 'general_gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor'.
         win_length (int): Number of samples.
         fftbins (bool, optional): If True, create a "periodic" window. Otherwise, create a "symmetric" window, for use in filter design. Defaults to True.
         dtype (str, optional): The data type of the return window. Defaults to 'float64'.
@@ -347,6 +347,13 @@ def get_window(window: Union[str, Tuple[str, float]],
     else:
         raise ValueError("%s as window type is not supported." %
                          str(type(window)))
+
+    if winstr not in [
+            'hamming', 'hann', 'kaiser', 'gaussian', 'general_gaussian',
+            'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey',
+            'taylor'
+    ]:
+        raise ValueError("%s as window type is not supported." % str(winstr))
 
     try:
         winfunc = eval('_' + winstr)
