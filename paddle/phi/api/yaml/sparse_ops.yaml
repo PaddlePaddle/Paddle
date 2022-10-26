@@ -379,7 +379,8 @@
   args : (Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0)
   output : Tensor(out)
   infer_meta :
-    func : AddmmInferMeta
+    func : UnchangedInferMeta
+    param : [input]
   kernel :
     func : addmm_csr_dense {dense, sparse_csr, dense -> dense},
            addmm_csr_csr {sparse_csr, sparse_csr, sparse_csr -> sparse_csr},
