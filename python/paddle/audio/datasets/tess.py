@@ -101,7 +101,7 @@ class TESS(AudioClassificationDataset):
         ), f'the n_folds should be integer and n_folds >= 1, but got {n_folds}'
         assert (
             split in range(1, n_folds + 1)
-        ), f'The selected split should be integer and should be 1 <= split <= n_folds, but got {split}'
+        ), f'The selected split should be integer and should be 1 <= split <= {n_folds}, but got {split}'
         if archive is not None:
             self.archive = archive
         files, labels = self._get_data(mode, n_folds, split)
