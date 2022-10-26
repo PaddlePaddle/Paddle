@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -53,18 +54,9 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* image = ctx.Input<phi::DenseTensor>("Image");
 
-    switch (image->dtype()) {
-      case ::paddle::DataType::FLOAT32:
-        PriorBoxOpHandler<float>(ctx);
-        break;
-      case ::paddle::DataType::FLOAT64:
-        PriorBoxOpHandler<double>(ctx);
-        break;
-      default:
-        PD_THROW("PriorBoxOpKernel is not implemented for data type `",
-                 image->dtype(),
-                 "`");
-    }
+    PD_VISIT_FLOATING_TYPES(image->dtype(), "PriorBoxOpHandler", ([&] {
+                              PriorBoxOpHandler<data_t>(ctx);
+                            }));
   }
 
   template <typename K>
