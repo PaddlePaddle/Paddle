@@ -407,7 +407,9 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     fc_p->execute(astream, fc_args);
     astream.wait();
 
-    out->set_mem_desc(
+    platform::SetOutMemDescWithLogicalLayoutFusesSupport(
+        ctx,
+        out,
         dst_memory_p->get_desc().reshape(phi::vectorize(out->dims())));
   }
 

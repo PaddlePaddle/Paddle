@@ -334,6 +334,8 @@ void CpuPassStrategy::EnableMKLDNN() {
              "shuffle_channel_mkldnn_detect_pass",    //
              "elt_act_mkldnn_fuse_pass",              //
              "operator_scale_onednn_fuse_pass",       //
+             "operator_unsqueeze2_onednn_fuse_pass",  //
+             "operator_reshape2_onednn_fuse_pass",    //
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
              // "mkldnn_inplace_pass",  // This pass should be activated after
@@ -427,6 +429,8 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("reshape_transpose_matmul_mkldnn_fuse_pass");
     passes_.push_back("matmul_elementwise_add_mkldnn_fuse_pass");
     passes_.push_back("operator_scale_onednn_fuse_pass");
+    passes_.push_back("operator_unsqueeze2_onednn_fuse_pass");
+    passes_.push_back("operator_reshape2_onednn_fuse_pass");
     passes_.push_back("cpu_quantize_placement_pass");
     passes_.push_back("cpu_quantize_pass");
     passes_.push_back("cpu_quantize_squash_pass");

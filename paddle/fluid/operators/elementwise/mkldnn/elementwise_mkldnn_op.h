@@ -128,12 +128,14 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     if (handler.use_broadcasting_hack == false) {
-      z->set_mem_desc(dst_memory->get_desc());
+      platform::SetOutMemDescWithLogicalLayoutFusesSupport(
+          ctx, z, dst_memory->get_desc());
     } else {
       auto dims = dst_memory->get_desc().dims();
       dims.insert(dims.begin(), x->dims()[0]);
       dims[1] /= dims[0];
-      z->set_mem_desc(dst_memory->get_desc().reshape(dims));
+      platform::SetOutMemDescWithLogicalLayoutFusesSupport(
+          ctx, z, dst_memory->get_desc().reshape(dims));
     }
   }
 };
