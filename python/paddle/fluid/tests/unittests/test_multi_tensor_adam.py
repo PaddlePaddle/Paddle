@@ -162,7 +162,7 @@ class TestMultiTensorAdam(unittest.TestCase):
                 for test_dict in [True, False]:
                     test_fp16 = False
                     self.run_adam_or_adamw(use_adamw, test_dict, test_fp16)
-                    if paddle.device.get_device() != "cpu":
+                    if use_gpu:
                         test_fp16 = True
                         self.run_adam_or_adamw(use_adamw, test_dict, test_fp16)
         paddle.set_device(old_device)
