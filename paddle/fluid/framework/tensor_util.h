@@ -112,7 +112,9 @@ template <typename T>
 void TesnorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
 
 // convert dlpack's DLTensor to tensor
+
 void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst);
+void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst);
 
 //
 // The implementation of template functions.
