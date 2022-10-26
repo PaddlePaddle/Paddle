@@ -21,15 +21,16 @@ from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 
 
 class TestImperativeNumpyBridge(unittest.TestCase):
-
     def func_tensor_from_numpy(self):
         data_np = np.array([[2, 3, 1]]).astype('float32')
         with fluid.dygraph.guard(fluid.CPUPlace()):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 var = fluid.dygraph.to_variable(data_np, zero_copy=True)
-                assert "Currently, zero_copy is not supported, and it will be discarded." in str(
-                    w[-1].message)
+                assert (
+                    "Currently, zero_copy is not supported, and it will be discarded."
+                    in str(w[-1].message)
+                )
             # Temporally diable zero_copy
             # var = fluid.dygraph.to_variable(data_np, zero_copy=True)
             # np.testing.assert_array_equal(var.numpy(), data_np)

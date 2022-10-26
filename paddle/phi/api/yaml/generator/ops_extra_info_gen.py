@@ -52,16 +52,20 @@ ATTR_TYPE_STRING_MAP = {
     'int64_t[]': 'std::vector<int64_t>',
     'float[]': 'std::vector<float>',
     'double[]': 'std::vector<double>',
-    'str[]': 'std::vector<std::string>'
+    'str[]': 'std::vector<std::string>',
 }
 
 
 def parse_attr(attr_str):
     result = re.search(
         r"(?P<attr_type>[a-zA-Z0-9_[\]]+)\s+(?P<name>[a-zA-Z0-9_]+)\s*=\s*(?P<default_val>\S+)",
-        attr_str)
-    return ATTR_TYPE_STRING_MAP[result.group('attr_type')], result.group(
-        'name'), result.group('default_val')
+        attr_str,
+    )
+    return (
+        ATTR_TYPE_STRING_MAP[result.group('attr_type')],
+        result.group('name'),
+        result.group('default_val'),
+    )
 
 
 def generate_extra_info(op_compat_yaml_path, ops_extra_info_path):
@@ -93,14 +97,16 @@ def generate_extra_info(op_compat_yaml_path, ops_extra_info_path):
                     )
                     if attr_type.startswith("std::vector"):
                         attr_map_list.append(
-                            f"{{\"{attr_name}\", {attr_type}{default_val}}}")
+                            f"{{\"{attr_name}\", {attr_type}{default_val}}}"
+                        )
                     else:
                         attr_map_list.append(
                             f"{{\"{attr_name}\", {attr_type}{{{default_val}}}}}"
                         )
                 api_extra_attr_map = ", ".join(attr_map_list)
                 api_extra_attr_checkers = ",\n      ".join(
-                    attr_checker_func_list)
+                    attr_checker_func_list
+                )
                 extra_map_str_list.append(
                     f"{{\"{get_op_name(op_compat_args['op'])}\", {{ {api_extra_attr_map} }}}}"
                 )
@@ -111,28 +117,37 @@ def generate_extra_info(op_compat_yaml_path, ops_extra_info_path):
                     for bw_item in op_compat_args['backward'].split(','):
                         bw_op_name = get_op_name(bw_item)
                         extra_map_str_list.append(
-                            f"{{\"{bw_op_name}\", {{ {api_extra_attr_map} }}}}")
+                            f"{{\"{bw_op_name}\", {{ {api_extra_attr_map} }}}}"
+                        )
                         extra_checker_str_list.append(
                             f"{{\"{bw_op_name}\", {{ {api_extra_attr_checkers} }}}}"
                         )
 
     ops_extra_info_file = open(ops_extra_info_path, 'w')
     ops_extra_info_file.write(
-        map_code_template(",\n    ".join(extra_map_str_list),
-                          ",\n    ".join(extra_checker_str_list)))
+        map_code_template(
+            ",\n    ".join(extra_map_str_list),
+            ",\n    ".join(extra_checker_str_list),
+        )
+    )
     ops_extra_info_file.close()
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate PaddlePaddle Extra Param Info for Op')
-    parser.add_argument('--op_compat_yaml_path',
-                        help='path to api compat yaml file',
-                        default='paddle/phi/api/yaml/op_compat.yaml')
+        description='Generate PaddlePaddle Extra Param Info for Op'
+    )
+    parser.add_argument(
+        '--op_compat_yaml_path',
+        help='path to api compat yaml file',
+        default='paddle/phi/api/yaml/op_compat.yaml',
+    )
 
-    parser.add_argument('--ops_extra_info_path',
-                        help='output of generated extra_prama_info code file',
-                        default='paddle/fluid/operators/ops_extra_info.cc')
+    parser.add_argument(
+        '--ops_extra_info_path',
+        help='output of generated extra_prama_info code file',
+        default='paddle/fluid/operators/ops_extra_info.cc',
+    )
 
     options = parser.parse_args()
 

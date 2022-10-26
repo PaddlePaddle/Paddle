@@ -328,7 +328,8 @@ static void FillConstantLike(const VariableWrapper &ref_var,
   // grad mission
   // we can't get data_type_ directly. We need to check if we can only use
   // default data_type for now.
-  if (ref_var.ForwardDataType() != -1) {
+  if (ref_var.ForwardDataType() !=
+      static_cast<framework::proto::VarType::Type>(-1)) {
     dst_tensor->mutable_data(
         place, framework::TransToPhiDataType(ref_var.ForwardDataType()));
   } else {

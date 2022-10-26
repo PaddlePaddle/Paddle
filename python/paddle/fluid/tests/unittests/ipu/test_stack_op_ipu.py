@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -36,12 +35,12 @@ class TestBase(IPUOpTest):
         self.feed_fp32 = {
             "x": x.astype(np.float32),
             "y": y.astype(np.float32),
-            "z": z.astype(np.float32)
+            "z": z.astype(np.float32),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
             "y": y.astype(np.float16),
-            "z": z.astype(np.float16)
+            "z": z.astype(np.float16),
         }
 
     def set_feed_attr(self):
@@ -54,15 +53,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
-        y = paddle.static.data(name=self.feed_list[1],
-                               shape=self.feed_shape[1],
-                               dtype='float32')
-        z = paddle.static.data(name=self.feed_list[2],
-                               shape=self.feed_shape[2],
-                               dtype='float32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        y = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
+        z = paddle.static.data(
+            name=self.feed_list[2], shape=self.feed_shape[2], dtype='float32'
+        )
         out = paddle.fluid.layers.stack([x, y, z], **self.attrs)
         self.fetch_list = [out.name]
 
@@ -78,7 +77,6 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {"axis": -2}
 

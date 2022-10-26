@@ -17,4 +17,5 @@ __all__ = ['ParameterError']
 
 class ParameterError(Exception):
     """Exception class for Parameter checking"""
+
     pass

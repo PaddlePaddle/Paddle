@@ -28,14 +28,15 @@ np.random.seed(1)
 def maxout_forward_naive(x, groups, channel_axis):
     s0, s1, s2, s3 = x.shape
     if channel_axis == 1:
-        return np.ndarray([s0, s1 // groups, groups, s2, s3], \
-            buffer = x, dtype=x.dtype).max(axis=2)
-    return np.ndarray([s0, s1, s2, s3 // groups, groups], \
-        buffer = x, dtype=x.dtype).max(axis=4)
+        return np.ndarray(
+            [s0, s1 // groups, groups, s2, s3], buffer=x, dtype=x.dtype
+        ).max(axis=2)
+    return np.ndarray(
+        [s0, s1, s2, s3 // groups, groups], buffer=x, dtype=x.dtype
+    ).max(axis=4)
 
 
 class TestMaxOutOp(OpTest):
-
     def setUp(self):
         self.op_type = "maxout"
         self.python_api = paddle.nn.functional.maxout
@@ -63,25 +64,21 @@ class TestMaxOutOp(OpTest):
 
 
 class TestMaxOutOpAxis0(TestMaxOutOp):
-
     def set_attrs(self):
         self.axis = -1
 
 
 class TestMaxOutOpAxis1(TestMaxOutOp):
-
     def set_attrs(self):
         self.axis = 3
 
 
 class TestMaxOutOpFP32(TestMaxOutOp):
-
     def set_attrs(self):
         self.dtype = 'float32'
 
 
 class TestMaxOutOpGroups(TestMaxOutOp):
-
     def set_attrs(self):
         self.groups = 3
 
@@ -92,8 +89,11 @@ class TestMaxoutAPI(unittest.TestCase):
         self.x_np = np.random.uniform(-1, 1, [2, 6, 5, 4]).astype(np.float64)
         self.groups = 2
         self.axis = 1
-        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -142,9 +142,9 @@ class TestMaxoutAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.maxout, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32',
-                                        shape=[2, 4, 6, 8],
-                                        dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[2, 4, 6, 8], dtype='int32'
+            )
             self.assertRaises(TypeError, F.maxout, x_int32)
 
             x_float32 = paddle.fluid.data(name='x_float32', shape=[2, 4, 6, 8])

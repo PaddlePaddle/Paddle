@@ -15,10 +15,19 @@
 import numpy as np
 from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
-from paddle.fluid.data_feeder import (check_type, convert_dtype)
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
-from paddle.fluid.layers import (elementwise_add, elementwise_div,
-                                 elementwise_sub, nn, tensor)
+from paddle.fluid.data_feeder import check_type, convert_dtype
+from paddle.fluid.framework import (
+    _non_static_mode,
+    in_dygraph_mode,
+    _in_legacy_dygraph,
+)
+from paddle.fluid.layers import (
+    elementwise_add,
+    elementwise_div,
+    elementwise_sub,
+    nn,
+    tensor,
+)
 
 
 class Uniform(distribution.Distribution):
@@ -86,12 +95,18 @@ class Uniform(distribution.Distribution):
 
     def __init__(self, low, high, name=None):
         if not _non_static_mode():
-            check_type(low, 'low',
-                       (int, float, np.ndarray, tensor.Variable, list, tuple),
-                       'Uniform')
-            check_type(high, 'high',
-                       (int, float, np.ndarray, tensor.Variable, list, tuple),
-                       'Uniform')
+            check_type(
+                low,
+                'low',
+                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                'Uniform',
+            )
+            check_type(
+                high,
+                'high',
+                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                'Uniform',
+            )
 
         self.all_arg_is_float = False
         self.batch_size_unknown = False
@@ -111,11 +126,15 @@ class Uniform(distribution.Distribution):
         else:
             if isinstance(low, float) and isinstance(high, float):
                 self.all_arg_is_float = True
-            if isinstance(low, np.ndarray) and str(
-                    low.dtype) in ['float32', 'float64']:
+            if isinstance(low, np.ndarray) and str(low.dtype) in [
+                'float32',
+                'float64',
+            ]:
                 self.dtype = low.dtype
-            elif isinstance(high, np.ndarray) and str(
-                    high.dtype) in ['float32', 'float64']:
+            elif isinstance(high, np.ndarray) and str(high.dtype) in [
+                'float32',
+                'float64',
+            ]:
                 self.dtype = high.dtype
             # pylint: disable=unbalanced-tuple-unpacking
             self.low, self.high = self._to_tensor(low, high)
@@ -145,27 +164,33 @@ class Uniform(distribution.Distribution):
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
-                self.low + self.high, batch_shape + shape, self.dtype, 0.)
+                self.low + self.high, batch_shape + shape, self.dtype, 0.0
+            )
             uniform_random_tmp = nn.uniform_random_batch_size_like(
                 zero_tmp,
                 zero_tmp.shape,
                 dtype=self.dtype,
-                min=0.,
-                max=1.,
-                seed=seed)
+                min=0.0,
+                max=1.0,
+                seed=seed,
+            )
             zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
-            uniform_random_tmp_reshape = nn.reshape(uniform_random_tmp,
-                                                    output_shape)
-            output = uniform_random_tmp_reshape * (zero_tmp_reshape +
-                                                   self.high - self.low)
+            uniform_random_tmp_reshape = nn.reshape(
+                uniform_random_tmp, output_shape
+            )
+            output = uniform_random_tmp_reshape * (
+                zero_tmp_reshape + self.high - self.low
+            )
             output = elementwise_add(output, self.low, name=name)
             return output
         else:
             output_shape = shape + batch_shape
             output = nn.uniform_random(
-                output_shape, dtype=self.dtype, min=0., max=1.,
-                seed=seed) * (tensor.zeros(output_shape, dtype=self.dtype) +
-                              (self.high - self.low))
+                output_shape, dtype=self.dtype, min=0.0, max=1.0, seed=seed
+            ) * (
+                tensor.zeros(output_shape, dtype=self.dtype)
+                + (self.high - self.low)
+            )
             output = elementwise_add(output, self.low, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)
@@ -194,10 +219,12 @@ class Uniform(distribution.Distribution):
                 return nn.log(lb * ub) - nn.log(self.high - self.low)
 
             if _in_legacy_dygraph():
-                lb = _legacy_C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype,
-                                        'out_dtype', value.dtype)
-                ub = _legacy_C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype,
-                                        'out_dtype', value.dtype)
+                lb = _legacy_C_ops.cast(
+                    lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype', value.dtype
+                )
+                ub = _legacy_C_ops.cast(
+                    ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype', value.dtype
+                )
                 return nn.log(lb * ub) - nn.log(self.high - self.low)
 
         name = self.name + '_log_prob'
@@ -205,9 +232,9 @@ class Uniform(distribution.Distribution):
         ub_bool = value < self.high
         lb = tensor.cast(lb_bool, dtype=value.dtype)
         ub = tensor.cast(ub_bool, dtype=value.dtype)
-        return elementwise_sub(nn.log(lb * ub),
-                               nn.log(self.high - self.low),
-                               name=name)
+        return elementwise_sub(
+            nn.log(lb * ub), nn.log(self.high - self.low), name=name
+        )
 
     def probs(self, value):
         """Probability density/mass function.
@@ -230,10 +257,12 @@ class Uniform(distribution.Distribution):
                 return (lb * ub) / (self.high - self.low)
 
             if _in_legacy_dygraph():
-                lb = _legacy_C_ops.cast(lb_bool, 'in_dtype', lb_bool.dtype,
-                                        'out_dtype', value.dtype)
-                ub = _legacy_C_ops.cast(ub_bool, 'in_dtype', ub_bool.dtype,
-                                        'out_dtype', value.dtype)
+                lb = _legacy_C_ops.cast(
+                    lb_bool, 'in_dtype', lb_bool.dtype, 'out_dtype', value.dtype
+                )
+                ub = _legacy_C_ops.cast(
+                    ub_bool, 'in_dtype', ub_bool.dtype, 'out_dtype', value.dtype
+                )
                 return (lb * ub) / (self.high - self.low)
 
         name = self.name + '_probs'

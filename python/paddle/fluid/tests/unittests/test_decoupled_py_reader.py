@@ -40,14 +40,16 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.layers.data(name='image',
-                                      shape=[784],
-                                      dtype='float32')
+            image = fluid.layers.data(
+                name='image', shape=[784], dtype='float32'
+            )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            py_reader = fluid.io.PyReader(feed_list=[image, label],
-                                          capacity=4,
-                                          iterable=not use_legacy_py_reader,
-                                          use_double_buffer=use_double_buffer)
+            py_reader = fluid.io.PyReader(
+                feed_list=[image, label],
+                capacity=4,
+                iterable=not use_legacy_py_reader,
+                use_double_buffer=use_double_buffer,
+            )
             hidden = image
             for hidden_size in [10, 20, 30]:
                 hidden = fluid.layers.fc(
@@ -55,13 +57,16 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
                     size=hidden_size,
                     act='tanh',
                     bias_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(value=1.0)))
+                        initializer=fluid.initializer.Constant(value=1.0)
+                    ),
+                )
 
-            predict_label = fluid.layers.fc(hidden,
-                                            size=CLASS_NUM,
-                                            act='softmax')
+            predict_label = fluid.layers.fc(
+                hidden, size=CLASS_NUM, act='softmax'
+            )
             loss = paddle.mean(
-                fluid.layers.cross_entropy(input=predict_label, label=label))
+                fluid.layers.cross_entropy(input=predict_label, label=label)
+            )
 
             optimizer = fluid.optimizer.Adam()
             optimizer.minimize(loss)
@@ -69,28 +74,35 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
 
 
 class TestBase(unittest.TestCase):
-
-    def run_main(self, use_legacy_py_reader, with_data_parallel, places,
-                 use_double_buffer):
+    def run_main(
+        self,
+        use_legacy_py_reader,
+        with_data_parallel,
+        places,
+        use_double_buffer,
+    ):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             startup_prog, main_prog, py_reader, loss = simple_fc_net(
-                places, use_legacy_py_reader, use_double_buffer)
+                places, use_legacy_py_reader, use_double_buffer
+            )
 
             reader = paddle.batch(random_reader, batch_size=BATCH_SIZE)
 
             ps = places if use_double_buffer else fluid.cpu_places(len(places))
 
             py_reader.decorate_sample_list_generator(
-                reader, places=ps if py_reader.iterable else None)
+                reader, places=ps if py_reader.iterable else None
+            )
 
             exe = fluid.Executor(place=places[0])
             exe.run(startup_prog)
 
             prog = fluid.CompiledProgram(main_prog)
             if with_data_parallel:
-                prog = prog.with_data_parallel(loss_name=loss.name,
-                                               places=places)
+                prog = prog.with_data_parallel(
+                    loss_name=loss.name, places=places
+                )
 
             step = 0
             step_list = []
@@ -102,9 +114,11 @@ class TestBase(unittest.TestCase):
                     py_reader.start()
                     while True:
                         try:
-                            L, = exe.run(program=prog,
-                                         fetch_list=[loss],
-                                         use_program_cache=True)
+                            (L,) = exe.run(
+                                program=prog,
+                                fetch_list=[loss],
+                                use_program_cache=True,
+                            )
                             loss_list.append(np.mean(L))
                             step += 1
                         except fluid.core.EOFException:
@@ -123,10 +137,12 @@ class TestBase(unittest.TestCase):
                             assert label.shape() == [BATCH_SIZE, 1]
                             assert image._place()._equals(ps[i])
                             assert label._place()._equals(ps[i])
-                        L, = exe.run(program=prog,
-                                     feed=d,
-                                     fetch_list=[loss],
-                                     use_program_cache=True)
+                        (L,) = exe.run(
+                            program=prog,
+                            feed=d,
+                            fetch_list=[loss],
+                            use_program_cache=True,
+                        )
                         loss_list.append(np.mean(L))
                         step += 1
                     step_list.append(step)
@@ -134,7 +150,7 @@ class TestBase(unittest.TestCase):
             ret = {
                 "time": end_t - start_t,
                 "step": step_list,
-                "loss": np.array(loss_list)
+                "loss": np.array(loss_list),
             }
             return ret
 
@@ -163,11 +179,13 @@ class TestBase(unittest.TestCase):
                             use_legacy_py_reader=use_legacy_py_reader,
                             with_data_parallel=with_data_parallel,
                             places=p,
-                            use_double_buffer=use_double_buffer)
+                            use_double_buffer=use_double_buffer,
+                        )
                         results.append(ret)
                     if not use_double_buffer:
                         diff = np.max(
-                            np.abs(results[0]['loss'] - results[1]['loss']))
+                            np.abs(results[0]['loss'] - results[1]['loss'])
+                        )
                         self.assertLess(diff, 1e-3)
 
 

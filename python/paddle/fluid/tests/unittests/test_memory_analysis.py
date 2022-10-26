@@ -14,12 +14,14 @@
 
 import unittest
 import paddle
-from paddle.fluid.memory_analysis import pre_allocate_memory, get_max_memory_info
+from paddle.fluid.memory_analysis import (
+    pre_allocate_memory,
+    get_max_memory_info,
+)
 from simple_nets import simple_fc_net
 
 
 class TestMemoryAnalysis(unittest.TestCase):
-
     def setUp(self):
         paddle.enable_static()
 
@@ -28,18 +30,19 @@ class TestMemoryAnalysis(unittest.TestCase):
         optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
         optimizer.minimize(loss)
         main_prog = paddle.static.default_main_program()
-        max_tmp_mem_1, max_persitable_mem_1 = get_max_memory_info(main_prog,
-                                                                  batch_size=32)
+        max_tmp_mem_1, max_persitable_mem_1 = get_max_memory_info(
+            main_prog, batch_size=32
+        )
         self.assertGreater(max_tmp_mem_1, 0)
         self.assertGreater(max_persitable_mem_1, 0)
-        max_tmp_mem_2, max_persitable_mem_2 = get_max_memory_info(main_prog,
-                                                                  batch_size=64)
+        max_tmp_mem_2, max_persitable_mem_2 = get_max_memory_info(
+            main_prog, batch_size=64
+        )
         self.assertEqual(max_persitable_mem_1, max_persitable_mem_2)
         self.assertLess(max_tmp_mem_1, max_tmp_mem_2)
 
 
 class TestPreAllocateMemory(unittest.TestCase):
-
     def setUp(self):
         paddle.enable_static()
 

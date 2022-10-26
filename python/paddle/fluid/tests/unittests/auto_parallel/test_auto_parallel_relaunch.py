@@ -93,7 +93,6 @@ mapping_josn = """
 
 
 class TestAutoParallelReLaunch(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -101,10 +100,12 @@ class TestAutoParallelReLaunch(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_relaunch(self):
-        cluster_json_path = os.path.join(self.temp_dir.name,
-                                         "auto_parallel_cluster.json")
-        mapping_json_path = os.path.join(self.temp_dir.name,
-                                         "auto_parallel_rank_mapping.json")
+        cluster_json_path = os.path.join(
+            self.temp_dir.name, "auto_parallel_cluster.json"
+        )
+        mapping_json_path = os.path.join(
+            self.temp_dir.name, "auto_parallel_rank_mapping.json"
+        )
 
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
@@ -115,20 +116,32 @@ class TestAutoParallelReLaunch(unittest.TestCase):
             json.dump(mapping_josn_object, mapping_josn_file)
 
         file_dir = os.path.dirname(os.path.abspath(__file__))
-        launch_model_path = os.path.join(file_dir,
-                                         "auto_parallel_relaunch_model.py")
+        launch_model_path = os.path.join(
+            file_dir, "auto_parallel_relaunch_model.py"
+        )
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
         else:
             coverage_args = []
 
-        cmd = [sys.executable, "-u"] + coverage_args + [
-            "-m", "paddle.distributed.launch", "--log_dir", self.temp_dir.name,
-            "--cluster_topo_path", cluster_json_path, "--rank_mapping_path",
-            mapping_json_path, "--enable_auto_mapping", "True",
-            launch_model_path
-        ]
+        cmd = (
+            [sys.executable, "-u"]
+            + coverage_args
+            + [
+                "-m",
+                "paddle.distributed.launch",
+                "--log_dir",
+                self.temp_dir.name,
+                "--cluster_topo_path",
+                cluster_json_path,
+                "--rank_mapping_path",
+                mapping_json_path,
+                "--enable_auto_mapping",
+                "True",
+                launch_model_path,
+            ]
+        )
         process = subprocess.Popen(cmd)
         process.wait()
         self.assertEqual(process.returncode, 0)
