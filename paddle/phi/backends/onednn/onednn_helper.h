@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-
 #include <thread>
 #include "dnnl.hpp"  // NOLINT
 #include "glog/logging.h"
