@@ -40,8 +40,7 @@ class MockEtcdClient:
         pass
 
     def get(self, key):
-        value = b"0"
-        return value, value
+        return b'0', MockKVMetadata()
 
     def delete_prefix(self, key):
         pass
