@@ -16,6 +16,7 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <vector>
+
 namespace paddle {
 namespace string {
 
