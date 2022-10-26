@@ -27,18 +27,14 @@ namespace platform {
 // TODO(jiahongyu): Delete mkldnn_white_list and fully support
 // PADDLE_WITH_MKLDNN of GetExpectedKernelType.
 static const std::unordered_set<std::string> mkldnn_white_list = {
-    "cast",
-    "transfer_dtype",
-    "layer_norm",
+    // NOTE(jiahongyu): Below ops use mem_desc function, which is encoded by
+    // PADDLE_WITH_MKLDNN in DenseTensor. The hardcodes within
+    // GetExpectedKernelType of these ops cannot be deleted now.
     "pad2d",
     "pad3d",
-    "pool2d",
-    "pool2d_grad",
     "slice",
     "slice_grad",
     "split",
-    "sum",
-    "sgd",
     // NOTE(jiahongyu): squeeze MKLDNN kernel are disabled
     // (https://github.com/PaddlePaddle/Paddle/pull/35781). If these MKLDNN
     // kernels and codes are deleted in the future, attributes `use_mkldnn`
@@ -59,20 +55,9 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "flatten_grad",
     "flatten2",
     "flatten2_grad",
-    // NOTE(jiahongyu): After fixing GetExpectedKernelType in ReduceOp, reduce
-    // series hard code can be deleted together.
-    "reduce_max",
-    "reduce_mean",
-    "reduce_mean_grad",
-    "reduce_min",
-    "reduce_sum",
-    "reduce_sum_grad",
     // NOTE(jiahongyu): Below ops register kernel with customized_type_value, we
     // need to analysis and solve them one-by-one.
-    "prior_box",
-    "fc",
-    "mul",
-    "mul_grad"};
+    "prior_box"};
 
 inline bool in_mkldnn_white_list(const std::string& op_name) {
   return mkldnn_white_list.find(op_name) != mkldnn_white_list.end();

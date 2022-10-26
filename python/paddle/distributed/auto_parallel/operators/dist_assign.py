@@ -21,7 +21,6 @@ from ..utils import compute_compatible_and_update_dim_mapping
 
 
 class DistributedAssign(DistributedOperatorImplContainer):
-
     def __init__(self, op_type):
         super(DistributedAssign, self).__init__(op_type)
 
@@ -30,7 +29,6 @@ register_distributed_operator_impl_container(DistributedAssign("assign"))
 
 
 class DistributedAssignImpl(DistributedOperatorImpl):
-
     def __init__(self, name):
         super(DistributedAssignImpl, self).__init__(name)
         self._forward_implemented = True
@@ -43,8 +41,9 @@ class DistributedAssignImpl(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
-        if (not self.is_input_compatible(dist_op)) or \
-            (not self.is_output_compatible(dist_op)):
+        if (not self.is_input_compatible(dist_op)) or (
+            not self.is_output_compatible(dist_op)
+        ):
             return False
 
         op_desc = dist_op.serial_op.desc
@@ -70,7 +69,8 @@ class DistributedAssignImpl(DistributedOperatorImpl):
 
         for i in range(len(x_dims_mapping)):
             dim_changed = compute_compatible_and_update_dim_mapping(
-                [x_dims_mapping, out_dims_mapping], [i, i])
+                [x_dims_mapping, out_dims_mapping], [i, i]
+            )
             if dim_changed:
                 changed = True
 

@@ -23,36 +23,44 @@ from paddle.distributed.fleet import auto
 
 
 class MLPLayer(nn.Layer):
-
-    def __init__(self,
-                 hidden_size=64,
-                 intermediate_size=4 * 64,
-                 initializer_range=0.02):
+    def __init__(
+        self, hidden_size=64, intermediate_size=4 * 64, initializer_range=0.02
+    ):
         super(MLPLayer, self).__init__()
         self.norm = nn.LayerNorm(hidden_size, epsilon=1e-5)
         self.linear0 = nn.Linear(
             hidden_size,
             intermediate_size,
-            paddle.ParamAttr(initializer=nn.initializer.Normal(
-                mean=0.0, std=initializer_range)),
-            bias_attr=None)
+            paddle.ParamAttr(
+                initializer=nn.initializer.Normal(
+                    mean=0.0, std=initializer_range
+                )
+            ),
+            bias_attr=None,
+        )
         self.linear1 = nn.Linear(
             intermediate_size,
             hidden_size,
-            paddle.ParamAttr(initializer=nn.initializer.Normal(
-                mean=0.0, std=initializer_range)),
-            bias_attr=None)
+            paddle.ParamAttr(
+                initializer=nn.initializer.Normal(
+                    mean=0.0, std=initializer_range
+                )
+            ),
+            bias_attr=None,
+        )
 
     def forward(self, input):
         out = self.norm(input)
 
-        auto.shard_tensor(self.linear0.weight, auto.ProcessMesh([0, 1], "x"),
-                          [None, "x"])
+        auto.shard_tensor(
+            self.linear0.weight, auto.ProcessMesh([0, 1], "x"), [None, "x"]
+        )
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
 
-        auto.shard_tensor(self.linear1.weight, auto.ProcessMesh([0, 1], "x"),
-                          ["x", None])
+        auto.shard_tensor(
+            self.linear1.weight, auto.ProcessMesh([0, 1], "x"), ["x", None]
+        )
         out = self.linear1(out)
 
         if paddle.mean(out) < 2:
@@ -75,7 +83,6 @@ def loss_fn(predict, label):
 
 
 class TestSubblock(unittest.TestCase):
-
     def test_subblock(self):
 
         mlp = MLPLayer()
@@ -87,9 +94,9 @@ class TestSubblock(unittest.TestCase):
 
         input_sepc = InputSpec([4, 64], 'float32', 'input')
         label_spec = InputSpec([4, 1], 'float32', 'label')
-        engine.prepare(inputs_spec=[input_sepc],
-                       labels_spec=[label_spec],
-                       mode="predict")
+        engine.prepare(
+            inputs_spec=[input_sepc], labels_spec=[label_spec], mode="predict"
+        )
 
 
 if __name__ == "__main__":

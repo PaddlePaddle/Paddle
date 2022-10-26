@@ -20,14 +20,16 @@ from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
 
-from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBase, get_logger
+from paddle.fluid.tests.unittests.auto_checkpoint_utils import (
+    AutoCheckpointBase,
+    get_logger,
+)
 
 paddle.enable_static()
 logger = get_logger()
 
 
 class AutoCheckPointACLBase(AutoCheckpointBase):
-
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -44,7 +46,7 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint",
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
             "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test",
-            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0",
         }
         os.environ.update(proc_env)
 
@@ -66,7 +68,8 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
         logger.info("begin _run_normal")
 
         compiled, data_loader, optimizer, loss, image, label = self._init_env(
-            exe, main_prog, startup_prog)
+            exe, main_prog, startup_prog
+        )
         for i in range(3):
             self.assertEqual(acp._get_train_epoch_range(), None)
             self.assertEqual(acp.g_acp_type, None)
@@ -91,8 +94,9 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
         logger.info("begin _not_use_train")
         exe, main_prog, startup_prog = self._generate()
 
-        compiled, data_loader, optimizer, loss, image, label = \
-            self._init_env(exe, main_prog, startup_prog)
+        compiled, data_loader, optimizer, loss, image, label = self._init_env(
+            exe, main_prog, startup_prog
+        )
 
         epochs = []
         for i in acp.train_epoch_range(3, 0):
@@ -111,8 +115,9 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
 
         exe, main_prog, startup_prog = self._generate()
 
-        compiled, data_loader, optimizer, loss, image, label = \
-            self._init_env(exe, main_prog, startup_prog)
+        compiled, data_loader, optimizer, loss, image, label = self._init_env(
+            exe, main_prog, startup_prog
+        )
 
         o = None
         i = 0
@@ -149,7 +154,8 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
         fs.delete(save_dir)
 
         compiled, data_loader, optimizer, loss, image, label = self._init_env(
-            exe, main_prog, startup_prog)
+            exe, main_prog, startup_prog
+        )
 
         o = None
         i = 0
@@ -195,7 +201,6 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
 
 
 class AutoCheckpointTest(AutoCheckPointACLBase):
-
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -212,7 +217,7 @@ class AutoCheckpointTest(AutoCheckPointACLBase):
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint_0",
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
             "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test_0",
-            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0",
         }
         os.environ.update(proc_env)
 

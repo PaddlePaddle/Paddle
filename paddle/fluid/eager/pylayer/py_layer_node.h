@@ -34,6 +34,13 @@ class GradNodePyLayer : public GradNodeBase {
     Py_INCREF(ctx_);
   }
 
+  GradNodePyLayer(const GradNodePyLayer& other) : GradNodeBase(other) {
+    this->ctx_ = other.ctx_;
+    Py_INCREF(this->ctx_);
+    this->forward_outputs_meta_ = other.forward_outputs_meta_;
+    this->forward_outputs_place_ = other.forward_outputs_place_;
+  }
+
   ~GradNodePyLayer() override;
 
   virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,

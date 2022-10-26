@@ -495,6 +495,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
       // convert input and copy to TRT engine's buffer
       auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
+      PADDLE_ENFORCE_GT(
+          t.numel(),
+          0,
+          phi::errors::InvalidArgument(
+              "The input tensor named %s of trt-subgraph must "
+              "have >0 elements, but now have %d elements. "
+              "It's likely that this tensor is connected to a Concat op inside "
+              "a trt-subgraph, "
+              "try to ues API to forbid this op into trt-subgraph.",
+              x,
+              t.numel()));
+
       // check the input_tensor
       if (!platform::is_gpu_place(t.place())) {
         phi::DenseTensor out;

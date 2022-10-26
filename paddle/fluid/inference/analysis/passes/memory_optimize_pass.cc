@@ -76,6 +76,7 @@ void MemoryOptimizePass::CollectLifeCycle(
     } else {
       // Normal operators.
       for (const Node* node : requires) {
+        if (!node->Var()) continue;
         if (node->Var()->Persistable()) continue;
         std::string var = node->Name();
         if (!lifecycles->count(var)) {
@@ -133,7 +134,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
   // between performance and underlying principle.
   std::unordered_set<std::string> black_list;
   for (auto* node : graph->Nodes()) {
-    if (node->IsVar() &&
+    if (node->IsVar() && node->Var() &&
         node->Var()->GetType() ==
             framework::proto::VarType::Type::VarType_Type_LOD_TENSOR) {
       if (!valid_var(node)) {
@@ -144,7 +145,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
 
   // Collect tensors from graph.
   for (auto* node : graph->Nodes()) {
-    if (node->IsVar() &&
+    if (node->IsVar() && node->Var() &&
         node->Var()->GetType() ==
             framework::proto::VarType::Type::VarType_Type_LOD_TENSOR &&
         !black_list.count(node->Var()->Name())) {

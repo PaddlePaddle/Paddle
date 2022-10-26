@@ -182,9 +182,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #endif
 
-#if defined(__linux__) && !defined(PADDLE_WITH_XPU) &&               \
-    !defined(PADDLE_WITH_ASCEND_CL) && !defined(PADDLE_WITH_CINN) && \
-    !defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_RPC)
 #include "paddle/fluid/pybind/rpc.h"
 #endif
 
@@ -2065,7 +2063,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
-  m.def("nvprof_nvtx_push", platform::CudaNvtxRangePush);
+  m.def("nvprof_nvtx_push", [](const std::string &name) {
+    platform::CudaNvtxRangePush(name, platform::NvtxRangeColor::Green);
+  });
   m.def("nvprof_nvtx_pop", platform::CudaNvtxRangePop);
   m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
@@ -2610,9 +2610,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGraphGpuWrapper(&m);
 #endif
 #endif
-#if defined(__linux__) && !defined(PADDLE_WITH_XPU) &&               \
-    !defined(PADDLE_WITH_ASCEND_CL) && !defined(PADDLE_WITH_CINN) && \
-    !defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_RPC)
   BindWorkerInfo(&m);
   BindFuture(&m);
   InitAndSetAgentInstance(&m);

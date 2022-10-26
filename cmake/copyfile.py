@@ -21,7 +21,7 @@ import glob
 def main():
     src = sys.argv[1]
     dst = sys.argv[2]
-    if os.path.isdir(src):  #copy directory
+    if os.path.isdir(src):  # copy directory
         pathList = os.path.split(src)
         dst = os.path.join(dst, pathList[-1])
         if not os.path.exists(dst):
@@ -31,7 +31,7 @@ def main():
             shutil.rmtree(dst)
             shutil.copytree(src, dst)
             print("overwritten copy directory: {0} --->>> {1}".format(src, dst))
-    else:  #copy file, wildcard
+    else:  # copy file, wildcard
         if not os.path.exists(dst):
             os.makedirs(dst)
         srcFiles = glob.glob(src)

@@ -20,7 +20,12 @@ from .hapi.callbacks import LRScheduler  # noqa: F401
 from .hapi.callbacks import EarlyStopping  # noqa: F401
 from .hapi.callbacks import ReduceLROnPlateau  # noqa: F401
 
-__all__ = [  #noqa
-    'Callback', 'ProgBarLogger', 'ModelCheckpoint', 'VisualDL', 'LRScheduler',
-    'EarlyStopping', 'ReduceLROnPlateau'
+__all__ = [  # noqa
+    'Callback',
+    'ProgBarLogger',
+    'ModelCheckpoint',
+    'VisualDL',
+    'LRScheduler',
+    'EarlyStopping',
+    'ReduceLROnPlateau',
 ]

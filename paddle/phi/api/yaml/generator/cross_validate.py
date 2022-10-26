@@ -34,17 +34,22 @@ def main(forward_api_yaml_paths, backward_api_yaml_paths):
 if __name__ == "__main__":
     current_dir = Path(__file__).parent / "temp"
     parser = argparse.ArgumentParser(
-        description="Parse api yaml into canonical format.")
-    parser.add_argument('--forward_yaml_paths',
-                        type=str,
-                        nargs='+',
-                        default=str(current_dir / "api.parsed.yaml"),
-                        help="forward api yaml file.")
-    parser.add_argument('--backward_yaml_paths',
-                        type=str,
-                        nargs='+',
-                        default=str(current_dir / "backward_api.parsed.yaml"),
-                        help="backward api yaml file.")
+        description="Parse api yaml into canonical format."
+    )
+    parser.add_argument(
+        '--forward_yaml_paths',
+        type=str,
+        nargs='+',
+        default=str(current_dir / "api.parsed.yaml"),
+        help="forward api yaml file.",
+    )
+    parser.add_argument(
+        '--backward_yaml_paths',
+        type=str,
+        nargs='+',
+        default=str(current_dir / "backward_api.parsed.yaml"),
+        help="backward api yaml file.",
+    )
 
     args = parser.parse_args()
     main(args.forward_yaml_paths, args.backward_yaml_paths)

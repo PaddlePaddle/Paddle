@@ -31,23 +31,23 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class PRChecker(object):
-    """ PR Checker. """
+    """PR Checker."""
 
     def __init__(self):
         self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)
         self.repo = self.github.get_repo('PaddlePaddle/Paddle')
-        self.py_prog_oneline = re.compile('\d+\|\s*#.*')
+        self.py_prog_oneline = re.compile(r'\d+\|\s*#.*')
         self.py_prog_multiline_a = re.compile('"""(.*?)"""', re.DOTALL)
         self.py_prog_multiline_b = re.compile("'''(.*?)'''", re.DOTALL)
-        self.cc_prog_online = re.compile('\d+\|\s*//.*')
-        self.cc_prog_multiline = re.compile('\d+\|\s*/\*.*?\*/', re.DOTALL)
-        self.lineno_prog = re.compile('@@ \-\d+,\d+ \+(\d+),(\d+) @@')
+        self.cc_prog_online = re.compile(r'\d+\|\s*//.*')
+        self.cc_prog_multiline = re.compile(r'\d+\|\s*/\*.*?\*/', re.DOTALL)
+        self.lineno_prog = re.compile(r'@@ \-\d+,\d+ \+(\d+),(\d+) @@')
         self.pr = None
         self.suffix = ''
         self.full_case = False
 
     def init(self):
-        """ Get pull request. """
+        """Get pull request."""
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
             print('PREC No PR ID')
@@ -72,7 +72,7 @@ class PRChecker(object):
             print('PREC test=allcase is set')
             self.full_case = True
 
-    #todo: exception
+    # todo: exception
     def __wget_with_retry(self, url):
         ix = 1
         proxy = '--no-proxy'
@@ -86,12 +86,15 @@ class PRChecker(object):
                     proxy = '--no-proxy'
             code = subprocess.call(
                 'wget -q {} --no-check-certificate {}'.format(proxy, url),
-                shell=True)
+                shell=True,
+            )
             if code == 0:
                 return True
             print(
-                'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'
-                .format(url, ix, ix * 10, proxy))
+                'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.format(
+                    url, ix, ix * 10, proxy
+                )
+            )
             time.sleep(ix * 10)
             ix += 1
         return False
@@ -105,16 +108,19 @@ class PRChecker(object):
                 cur_proxy = urllib.request.ProxyHandler(without_proxy)
             else:
                 cur_proxy = urllib.request.ProxyHandler(with_proxy)
-            opener = urllib.request.build_opener(cur_proxy,
-                                                 urllib.request.HTTPHandler)
+            opener = urllib.request.build_opener(
+                cur_proxy, urllib.request.HTTPHandler
+            )
             urllib.request.install_opener(opener)
             try:
                 urllib.request.urlretrieve(url, filename)
             except Exception as e:
                 print(e)
                 print(
-                    'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'
-                    .format(url, ix, ix * 10, cur_proxy))
+                    'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.format(
+                        url, ix, ix * 10, cur_proxy
+                    )
+                )
                 continue
             else:
                 return True
@@ -124,7 +130,7 @@ class PRChecker(object):
         return False
 
     def get_pr_files(self):
-        """ Get files in pull request. """
+        """Get files in pull request."""
         page = 0
         file_dict = {}
         file_count = 0
@@ -135,20 +141,23 @@ class PRChecker(object):
             for f in files:
                 file_dict[PADDLE_ROOT + f.filename] = f.status
                 file_count += 1
-            if file_count == 30:  #if pr file count = 31, nend to run all case
+            if file_count == 30:  # if pr file count = 31, nend to run all case
                 break
             page += 1
         print("pr modify files: %s" % file_dict)
         return file_dict
 
     def get_is_white_file(self, filename):
-        """ judge is white file in pr's files. """
+        """judge is white file in pr's files."""
         isWhiteFile = False
-        not_white_files = (PADDLE_ROOT + 'cmake/', PADDLE_ROOT + 'patches/',
-                           PADDLE_ROOT + 'tools/dockerfile/',
-                           PADDLE_ROOT + 'tools/windows/',
-                           PADDLE_ROOT + 'tools/test_runner.py',
-                           PADDLE_ROOT + 'tools/parallel_UT_rule.py')
+        not_white_files = (
+            PADDLE_ROOT + 'cmake/',
+            PADDLE_ROOT + 'patches/',
+            PADDLE_ROOT + 'tools/dockerfile/',
+            PADDLE_ROOT + 'tools/windows/',
+            PADDLE_ROOT + 'tools/test_runner.py',
+            PADDLE_ROOT + 'tools/parallel_UT_rule.py',
+        )
         if 'cmakelist' in filename.lower():
             isWhiteFile = False
         elif filename.startswith((not_white_files)):
@@ -162,13 +171,16 @@ class PRChecker(object):
         if filetype == 'py':
             result = self.__get_comment_by_prog(content, self.py_prog_oneline)
             result.extend(
-                self.__get_comment_by_prog(content, self.py_prog_multiline_a))
+                self.__get_comment_by_prog(content, self.py_prog_multiline_a)
+            )
             result.extend(
-                self.__get_comment_by_prog(content, self.py_prog_multiline_b))
+                self.__get_comment_by_prog(content, self.py_prog_multiline_b)
+            )
         if filetype == 'cc':
             result = self.__get_comment_by_prog(content, self.cc_prog_oneline)
             result.extend(
-                self.__get_comment_by_prog(content, self.cc_prog_multiline))
+                self.__get_comment_by_prog(content, self.cc_prog_multiline)
+            )
         return result
 
     def __get_comment_by_prog(self, content, prog):
@@ -181,15 +193,15 @@ class PRChecker(object):
         return result
 
     def get_comment_of_file(self, f):
-        #content = self.repo.get_contents(f.replace(PADDLE_ROOT, ''), 'pull/').decoded_content
-        #todo: get file from github
+        # content = self.repo.get_contents(f.replace(PADDLE_ROOT, ''), 'pull/').decoded_content
+        # todo: get file from github
         with open(f, encoding="utf-8") as fd:
             lines = fd.readlines()
         lineno = 1
         inputs = ''
         for line in lines:
-            #for line in content.split('\n'):
-            #input += str(lineno) + '|' + line + '\n'
+            # for line in content.split('\n'):
+            # input += str(lineno) + '|' + line + '\n'
             inputs += str(lineno) + '|' + line
             lineno += 1
         fietype = ''
@@ -227,8 +239,9 @@ class PRChecker(object):
                             end += 1
                         if data[ix][0] == '+':
                             line_list = file_to_diff_lines.get(filename)
-                            line = '{}{}'.format(lineno,
-                                                 data[ix].replace('+', '|', 1))
+                            line = '{}{}'.format(
+                                lineno, data[ix].replace('+', '|', 1)
+                            )
                             if line_list:
                                 line_list.append(line)
                             else:
@@ -254,9 +267,11 @@ class PRChecker(object):
         return True
 
     def get_all_count(self):
-        p = subprocess.Popen("cd {}build && ctest -N".format(PADDLE_ROOT),
-                             shell=True,
-                             stdout=subprocess.PIPE)
+        p = subprocess.Popen(
+            "cd {}build && ctest -N".format(PADDLE_ROOT),
+            shell=True,
+            stdout=subprocess.PIPE,
+        )
         out, err = p.communicate()
         for line in out.splitlines():
             if 'Total Tests:' in str(line):
@@ -264,12 +279,13 @@ class PRChecker(object):
         return int(all_counts)
 
     def file_is_unnit_test(self, filename):
-        #get all testcases by ctest-N
+        # get all testcases by ctest-N
         all_ut_file = '%s/build/all_ut_file' % PADDLE_ROOT
         os.system(
             "cd %s/build && ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > %s"
-            % (PADDLE_ROOT, all_ut_file))
-        #determine whether filename is in all_ut_case
+            % (PADDLE_ROOT, all_ut_file)
+        )
+        # determine whether filename is in all_ut_case
         with open(all_ut_file, 'r') as f:
             (filepath, tempfilename) = os.path.split(filename)
             for f_file in f:
@@ -279,7 +295,7 @@ class PRChecker(object):
                 return False
 
     def get_pr_ut(self):
-        """ Get unit tests in pull request. """
+        """Get unit tests in pull request."""
         if self.full_case:
             return ''
         check_added_ut = False
@@ -288,7 +304,8 @@ class PRChecker(object):
 
         ret = self.__urlretrieve(
             'https://paddle-docker-tar.bj.bcebos.com/pre_test/ut_file_map.json',
-            'ut_file_map.json')
+            'ut_file_map.json',
+        )
         if not ret:
             print('PREC download file_ut.json failed')
             exit(1)
@@ -303,19 +320,23 @@ class PRChecker(object):
         filterFiles = []
         file_list = []
         file_dict = self.get_pr_files()
-        if len(file_dict) == 30:  #if pr file count = 31, nend to run all case
+        if len(file_dict) == 30:  # if pr file count = 31, nend to run all case
             return ''
         for filename in file_dict:
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
             elif filename.startswith(PADDLE_ROOT + 'paddle/'):
-                if filename.startswith((PADDLE_ROOT + 'paddle/infrt',
-                                        PADDLE_ROOT + 'paddle/utils')):
+                if filename.startswith(
+                    (PADDLE_ROOT + 'paddle/infrt', PADDLE_ROOT + 'paddle/utils')
+                ):
                     filterFiles.append(filename)
                 elif filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
                     if filename.startswith(
-                        (PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
-                         PADDLE_ROOT + 'paddle/scripts/paddle_build.bat')):
+                        (
+                            PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
+                            PADDLE_ROOT + 'paddle/scripts/paddle_build.bat',
+                        )
+                    ):
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
@@ -334,7 +355,8 @@ class PRChecker(object):
             ut_list.append('filterfiles_placeholder')
             ret = self.__urlretrieve(
                 'https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta',
-                'prec_delta')
+                'prec_delta',
+            )
             if ret:
                 with open('prec_delta') as delta:
                     for ut in delta:
@@ -343,17 +365,25 @@ class PRChecker(object):
                 print('PREC download prec_delta failed')
                 exit(1)
             PRECISION_TEST_Cases_ratio = format(
-                float(len(ut_list)) / float(self.get_all_count()), '.2f')
+                float(len(ut_list)) / float(self.get_all_count()), '.2f'
+            )
             print("filterFiles: %s" % filterFiles)
             print("ipipe_log_param_PRECISION_TEST: true")
-            print("ipipe_log_param_PRECISION_TEST_Cases_count: %s" %
-                  len(ut_list))
-            print("ipipe_log_param_PRECISION_TEST_Cases_ratio: %s" %
-                  PRECISION_TEST_Cases_ratio)
+            print(
+                "ipipe_log_param_PRECISION_TEST_Cases_count: %s" % len(ut_list)
+            )
+            print(
+                "ipipe_log_param_PRECISION_TEST_Cases_ratio: %s"
+                % PRECISION_TEST_Cases_ratio
+            )
             return '\n'.join(ut_list)
         else:
             for f in file_list:
-                if current_system == "Darwin" or current_system == "Windows" or self.suffix == ".py3":
+                if (
+                    current_system == "Darwin"
+                    or current_system == "Windows"
+                    or self.suffix == ".py3"
+                ):
                     f_judge = f.replace(PADDLE_ROOT, '/paddle/', 1)
                     f_judge = f_judge.replace('//', '/')
                 else:
@@ -362,25 +392,34 @@ class PRChecker(object):
                     if f_judge.endswith('.md'):
                         ut_list.append('md_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
-                    elif 'tests/unittests/xpu' in f_judge or 'tests/unittests/npu' in f_judge or 'op_npu.cc' in f_judge:
+                    elif (
+                        'tests/unittests/xpu' in f_judge
+                        or 'tests/unittests/npu' in f_judge
+                        or 'op_npu.cc' in f_judge
+                    ):
                         ut_list.append('xpu_npu_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
                     elif f_judge.endswith(('.h', '.cu', '.cc', '.py')):
-                        #determine whether the new added file is a member of added_ut
+                        # determine whether the new added file is a member of added_ut
                         if file_dict[f] in ['added']:
                             f_judge_in_added_ut = False
-                            with open('{}/added_ut'.format(
-                                    PADDLE_ROOT)) as utfile:
-                                (filepath,
-                                 tempfilename) = os.path.split(f_judge)
+                            with open(
+                                '{}/added_ut'.format(PADDLE_ROOT)
+                            ) as utfile:
+                                (filepath, tempfilename) = os.path.split(
+                                    f_judge
+                                )
                                 for f_file in utfile:
-                                    if f_file.strip('\n') == tempfilename.split(
-                                            ".")[0]:
+                                    if (
+                                        f_file.strip('\n')
+                                        == tempfilename.split(".")[0]
+                                    ):
                                         f_judge_in_added_ut = True
                             if f_judge_in_added_ut == True:
                                 print(
                                     "Adding new unit tests not hit mapFiles: %s"
-                                    % f_judge)
+                                    % f_judge
+                                )
                             else:
                                 notHitMapFiles.append(f_judge)
                         elif file_dict[f] in ['removed']:
@@ -394,9 +433,11 @@ class PRChecker(object):
                             else:
                                 notHitMapFiles.append(f_judge)
                     else:
-                        notHitMapFiles.append(
-                            f_judge) if file_dict[f] != 'removed' else print(
-                                "remove file not hit mapFiles: %s" % f_judge)
+                        notHitMapFiles.append(f_judge) if file_dict[
+                            f
+                        ] != 'removed' else print(
+                            "remove file not hit mapFiles: %s" % f_judge
+                        )
                 else:
                     if file_dict[f] not in ['removed']:
                         if self.is_only_comment(f):
@@ -420,7 +461,8 @@ class PRChecker(object):
                 if ut_list:
                     ret = self.__urlretrieve(
                         'https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta',
-                        'prec_delta')
+                        'prec_delta',
+                    )
                     if ret:
                         with open('prec_delta') as delta:
                             for ut in delta:
@@ -430,13 +472,17 @@ class PRChecker(object):
                         exit(1)
                     print("hitMapFiles: %s" % hitMapFiles)
                     print("ipipe_log_param_PRECISION_TEST: true")
-                    print("ipipe_log_param_PRECISION_TEST_Cases_count: %s" %
-                          len(ut_list))
+                    print(
+                        "ipipe_log_param_PRECISION_TEST_Cases_count: %s"
+                        % len(ut_list)
+                    )
                     PRECISION_TEST_Cases_ratio = format(
-                        float(len(ut_list)) / float(self.get_all_count()),
-                        '.2f')
-                    print("ipipe_log_param_PRECISION_TEST_Cases_ratio: %s" %
-                          PRECISION_TEST_Cases_ratio)
+                        float(len(ut_list)) / float(self.get_all_count()), '.2f'
+                    )
+                    print(
+                        "ipipe_log_param_PRECISION_TEST_Cases_ratio: %s"
+                        % PRECISION_TEST_Cases_ratio
+                    )
                     if len(filterFiles) != 0:
                         print("filterFiles: %s" % filterFiles)
                 return '\n'.join(ut_list)

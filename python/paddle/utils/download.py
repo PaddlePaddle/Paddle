@@ -28,7 +28,6 @@ try:
 except:
 
     class tqdm(object):
-
         def __init__(self, total=None):
             self.total = total
             self.n = 0
@@ -38,8 +37,9 @@ except:
             if self.total is None:
                 sys.stderr.write("\r{0:.1f} bytes".format(self.n))
             else:
-                sys.stderr.write("\r{0:.1f}%".format(100 * self.n /
-                                                     float(self.total)))
+                sys.stderr.write(
+                    "\r{0:.1f}%".format(100 * self.n / float(self.total))
+                )
             sys.stderr.flush()
 
         def __enter__(self):
@@ -115,13 +115,10 @@ def _get_unique_endpoints(trainer_endpoints):
     return unique_endpoints
 
 
-def get_path_from_url(url,
-                      root_dir,
-                      md5sum=None,
-                      check_exist=True,
-                      decompress=True,
-                      method='get'):
-    """ Download from given url to root_dir.
+def get_path_from_url(
+    url, root_dir, md5sum=None, check_exist=True, decompress=True, method='get'
+):
+    """Download from given url to root_dir.
     if file or directory specified by url is exists under
     root_dir, return the path directly, otherwise download
     from url and decompress it, return the path.
@@ -157,8 +154,9 @@ def get_path_from_url(url,
                 time.sleep(1)
 
     if ParallelEnv().current_endpoint in unique_endpoints:
-        if decompress and (tarfile.is_tarfile(fullpath)
-                           or zipfile.is_zipfile(fullpath)):
+        if decompress and (
+            tarfile.is_tarfile(fullpath) or zipfile.is_zipfile(fullpath)
+        ):
             fullpath = _decompress(fullpath)
 
     return fullpath
@@ -170,13 +168,18 @@ def _get_download(url, fullname):
     try:
         req = requests.get(url, stream=True)
     except Exception as e:  # requests.exceptions.ConnectionError
-        logger.info("Downloading {} from {} failed with exception {}".format(
-            fname, url, str(e)))
+        logger.info(
+            "Downloading {} from {} failed with exception {}".format(
+                fname, url, str(e)
+            )
+        )
         return False
 
     if req.status_code != 200:
-        raise RuntimeError("Downloading from {} failed with code "
-                           "{}!".format(url, req.status_code))
+        raise RuntimeError(
+            "Downloading from {} failed with code "
+            "{}!".format(url, req.status_code)
+        )
 
     # For protecting download interupted, download to
     # tmp_fullname firstly, move tmp_fullname to fullname
@@ -202,18 +205,20 @@ def _wget_download(url, fullname):
     # using wget to download url
     tmp_fullname = fullname + "_tmp"
     # –user-agent
-    command = 'wget -O {} -t {} {}'.format(tmp_fullname, DOWNLOAD_RETRY_LIMIT,
-                                           url)
-    subprc = subprocess.Popen(command,
-                              shell=True,
-                              stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE)
+    command = 'wget -O {} -t {} {}'.format(
+        tmp_fullname, DOWNLOAD_RETRY_LIMIT, url
+    )
+    subprc = subprocess.Popen(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     _ = subprc.communicate()
 
     if subprc.returncode != 0:
         raise RuntimeError(
-            '{} failed. Please make sure `wget` is installed or {} exists'.
-            format(command, url))
+            '{} failed. Please make sure `wget` is installed or {} exists'.format(
+                command, url
+            )
+        )
 
     shutil.move(tmp_fullname, fullname)
 
@@ -237,7 +242,8 @@ def _download(url, path, md5sum=None, method='get'):
 
     """
     assert method in _download_methods, 'make sure `{}` implemented'.format(
-        method)
+        method
+    )
 
     if not osp.exists(path):
         os.makedirs(path)
@@ -251,8 +257,9 @@ def _download(url, path, md5sum=None, method='get'):
         if retry_cnt < DOWNLOAD_RETRY_LIMIT:
             retry_cnt += 1
         else:
-            raise RuntimeError("Download from {} failed. "
-                               "Retry limit reached".format(url))
+            raise RuntimeError(
+                "Download from {} failed. " "Retry limit reached".format(url)
+            )
 
         if not _download_methods[method](url, fullname):
             time.sleep(1)
@@ -273,8 +280,10 @@ def _md5check(fullname, md5sum=None):
     calc_md5sum = md5.hexdigest()
 
     if calc_md5sum != md5sum:
-        logger.info("File {} md5 check failed, {}(calc) != "
-                    "{}(base)".format(fullname, calc_md5sum, md5sum))
+        logger.info(
+            "File {} md5 check failed, {}(calc) != "
+            "{}(base)".format(fullname, calc_md5sum, md5sum)
+        )
         return False
     return True
 
@@ -314,7 +323,8 @@ def _uncompress_file_zip(filepath):
         elif _is_a_single_dir(file_list):
             # `strip(os.sep)` to remove `os.sep` in the tail of path
             rootpath = os.path.splitext(file_list[0].strip(os.sep))[0].split(
-                os.sep)[-1]
+                os.sep
+            )[-1]
             uncompressed_path = os.path.join(file_dir, rootpath)
 
             files.extractall(file_dir)
@@ -340,7 +350,8 @@ def _uncompress_file_tar(filepath, mode="r:*"):
             files.extractall(file_dir)
         elif _is_a_single_dir(file_list):
             rootpath = os.path.splitext(file_list[0].strip(os.sep))[0].split(
-                os.sep)[-1]
+                os.sep
+            )[-1]
             uncompressed_path = os.path.join(file_dir, rootpath)
             files.extractall(file_dir)
         else:

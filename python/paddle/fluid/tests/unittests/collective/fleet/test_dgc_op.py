@@ -23,7 +23,6 @@ g_array_size = 102400
 
 
 class TestDGCOp(unittest.TestCase):
-
     def setup(self, place, array_size=g_array_size):
         size = array_size
         np.random.seed(5)  # fix seed
@@ -72,20 +71,23 @@ class TestDGCOp(unittest.TestCase):
         self.param_tensor.set(self.param, place)
 
         self.current_step_tensor = self.scope.var(
-            self.current_step_name).get_tensor()
+            self.current_step_name
+        ).get_tensor()
         self.current_step_tensor.set(self.current_step, core.CPUPlace())
 
         self.nranks_tensor = self.scope.var(self.nranks_name).get_tensor()
         self.nranks_tensor.set(self.nranks, core.CPUPlace())
 
         self.encode_grad_tensor = self.scope.var(
-            self.encode_grad_name).get_tensor()
+            self.encode_grad_name
+        ).get_tensor()
 
         self.k_tensor = self.scope.var(self.k_name).get_tensor()
         self.k_tensor.set(self.k, core.CPUPlace())
 
         self.gather_buff_tensor = self.scope.var(
-            self.gather_buff_name).get_tensor()
+            self.gather_buff_name
+        ).get_tensor()
 
     def check(self, actual_t, expect_t, place, out_name, atol=1e-5):
         np.testing.assert_allclose(
@@ -93,8 +95,16 @@ class TestDGCOp(unittest.TestCase):
             expect_t,
             rtol=1e-05,
             atol=atol,
-            err_msg='Output (' + out_name + ') has diff at ' + str(place) +
-            '\nExpect ' + str(expect_t) + '\n' + 'But Got' + str(actual_t))
+            err_msg='Output ('
+            + out_name
+            + ') has diff at '
+            + str(place)
+            + '\nExpect '
+            + str(expect_t)
+            + '\n'
+            + 'But Got'
+            + str(actual_t),
+        )
 
     def test_run_and_check(self):
         self.setup(place=core.CUDAPlace(0))
@@ -106,7 +116,6 @@ class TestDGCOp(unittest.TestCase):
             'Param': self.param_name,
             'current_step': self.current_step_name,
             'nranks': self.nranks_name,
-
             # outputs
             'U_out': self.u_name,
             'V_out': self.v_name,
@@ -114,7 +123,6 @@ class TestDGCOp(unittest.TestCase):
             'Grad_out': self.grad_name,
             'k': self.k_name,
             'GatherBuff': self.gather_buff_name,
-
             # attrs
             'm': 0.9,
             'sparsity': [0.75, 0.9375, 0.984375, 0.996, 0.999],
@@ -127,7 +135,7 @@ class TestDGCOp(unittest.TestCase):
 
         dgc_op = Operator('dgc', **kwargs)
 
-        #atol = 1e-6
+        # atol = 1e-6
         dgc_op.run(self.scope, self.place)
 
         u_out = np.array(self.u_tensor)
@@ -144,7 +152,7 @@ class TestDGCOp(unittest.TestCase):
         self.assertEqual(k, int(g_array_size * 0.25))
 
         index = encode_grad_out[0:k].view(dtype=np.int32)
-        value = encode_grad_out[k:2 * k]
+        value = encode_grad_out[k : 2 * k]
 
         acl = 1e-7
 

@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -52,13 +51,12 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
-        x = paddle.static.nn.conv2d(x,
-                                    num_filters=3,
-                                    filter_size=3,
-                                    bias_attr=False)
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        x = paddle.static.nn.conv2d(
+            x, num_filters=3, filter_size=3, bias_attr=False
+        )
         x = paddle.fluid.layers.batch_norm(x, **self.attrs)
         self.fetch_list = [x.name]
 
@@ -74,7 +72,6 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_atol(self):
         self.atol = 1e-6
         self.rtol = 1e-6
@@ -89,7 +86,6 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
-
     def set_atol(self):
         self.atol = 1e-6
         self.rtol = 1e-6

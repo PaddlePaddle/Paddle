@@ -86,27 +86,38 @@ class VocabParallelEmbedding(Layer):
               return x
     """
 
-    def __init__(self,
-                 num_embeddings,
-                 embedding_dim,
-                 weight_attr=None,
-                 mp_group=None,
-                 name=None):
+    def __init__(
+        self,
+        num_embeddings,
+        embedding_dim,
+        weight_attr=None,
+        mp_group=None,
+        name=None,
+    ):
         super(VocabParallelEmbedding, self).__init__()
 
-        self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
-        ) if mp_group is None else mp_group
-        self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
-        ) if mp_group is None else mp_group.nranks
-        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank(
-        ) if mp_group is None else mp_group.rank
+        self.model_parallel_group = (
+            tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group()
+            if mp_group is None
+            else mp_group
+        )
+        self.world_size = (
+            tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size()
+            if mp_group is None
+            else mp_group.nranks
+        )
+        self.rank = (
+            tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
+            if mp_group is None
+            else mp_group.rank
+        )
 
         self.origin_num_embeddings = num_embeddings
-        self.is_mp = (self.world_size > 1)
+        self.is_mp = self.world_size > 1
 
-        assert num_embeddings % self.world_size == 0, (
-            "The length of the vocabulary must be divisible by the parallelism degree of MP"
-        )
+        assert (
+            num_embeddings % self.world_size == 0
+        ), "The length of the vocabulary must be divisible by the parallelism degree of MP"
 
         per_part_size = num_embeddings // self.world_size
 
@@ -118,15 +129,19 @@ class VocabParallelEmbedding(Layer):
 
         if self.is_mp and paddle.in_dynamic_mode():
             with get_rng_state_tracker().rng_state():
-                self.weight = self.create_parameter(attr=self._weight_attr,
-                                                    shape=self._size,
-                                                    dtype=self._dtype,
-                                                    is_bias=False)
+                self.weight = self.create_parameter(
+                    attr=self._weight_attr,
+                    shape=self._size,
+                    dtype=self._dtype,
+                    is_bias=False,
+                )
         else:
-            self.weight = self.create_parameter(attr=self._weight_attr,
-                                                shape=self._size,
-                                                dtype=self._dtype,
-                                                is_bias=False)
+            self.weight = self.create_parameter(
+                attr=self._weight_attr,
+                shape=self._size,
+                dtype=self._dtype,
+                is_bias=False,
+            )
 
         self.weight.is_distributed = True if self.is_mp else False
 
@@ -136,17 +151,22 @@ class VocabParallelEmbedding(Layer):
                 self.weight,
                 x,
                 start_index=self.vocab_start_index,
-                name=self._name)
-            output = mp_ops._mp_allreduce(output_parallel,
-                                          group=self.model_parallel_group,
-                                          use_calc_stream=True,
-                                          use_model_parallel=True)
+                name=self._name,
+            )
+            output = mp_ops._mp_allreduce(
+                output_parallel,
+                group=self.model_parallel_group,
+                use_calc_stream=True,
+                use_model_parallel=True,
+            )
         else:
-            output = F.embedding(x,
-                                 weight=self.weight,
-                                 padding_idx=None,
-                                 sparse=False,
-                                 name=self._name)
+            output = F.embedding(
+                x,
+                weight=self.weight,
+                padding_idx=None,
+                sparse=False,
+                name=self._name,
+            )
         return output
 
 
@@ -200,29 +220,39 @@ class ColumnParallelLinear(Layer):
               return x
     """
 
-    def __init__(self,
-                 in_features,
-                 out_features,
-                 weight_attr=None,
-                 has_bias=None,
-                 gather_output=True,
-                 fuse_matmul_bias=False,
-                 mp_group=None,
-                 name=None):
+    def __init__(
+        self,
+        in_features,
+        out_features,
+        weight_attr=None,
+        has_bias=None,
+        gather_output=True,
+        fuse_matmul_bias=False,
+        mp_group=None,
+        name=None,
+    ):
         super(ColumnParallelLinear, self).__init__()
 
-        self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
-        ) if mp_group is None else mp_group
-        self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
-        ) if mp_group is None else mp_group.nranks
+        self.model_parallel_group = (
+            tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group()
+            if mp_group is None
+            else mp_group
+        )
+        self.world_size = (
+            tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size()
+            if mp_group is None
+            else mp_group.nranks
+        )
         self._name = name
-        self.is_mp = (self.world_size > 1)
+        self.is_mp = self.world_size > 1
 
         self.gather_output = gather_output
         assert out_features % self.world_size == 0, (
             "Number of column of the weight for linear ({}) must be"
             " divisible by model parallel size ({})".format(
-                out_features, self.world_size))
+                out_features, self.world_size
+            )
+        )
         self.output_size_per_partition = out_features // self.world_size
 
         self._weight_attr = weight_attr
@@ -234,13 +264,15 @@ class ColumnParallelLinear(Layer):
                     shape=[in_features, self.output_size_per_partition],
                     attr=self._weight_attr,
                     dtype=self._dtype,
-                    is_bias=False)
+                    is_bias=False,
+                )
         else:
             self.weight = self.create_parameter(
                 shape=[in_features, self.output_size_per_partition],
                 attr=self._weight_attr,
                 dtype=self._dtype,
-                is_bias=False)
+                is_bias=False,
+            )
 
         self.weight.is_distributed = True if self.is_mp else False
 
@@ -250,7 +282,8 @@ class ColumnParallelLinear(Layer):
                 shape=[self.output_size_per_partition],
                 attr=paddle.nn.initializer.Constant(value=0.0),
                 dtype=self._dtype,
-                is_bias=True)
+                is_bias=True,
+            )
             self.bias.is_distributed = True if self.is_mp else False
         else:
             self.bias = None
@@ -263,26 +296,29 @@ class ColumnParallelLinear(Layer):
                     "You set fuse_matmul_bias=True in ColumnParallelLinear, "
                     "however, the paddle you are using not support this operation. "
                     "Please set fuse_matmul_bias=False or use paddle compiled "
-                    "with cuda 11.6 or higher.")
+                    "with cuda 11.6 or higher."
+                )
             from paddle.incubate.nn.functional import fused_linear
+
             self.linear = fused_linear
 
     def forward(self, x):
         # use inner api to process identity
         if self.is_mp:
-            input_parallel = mp_ops._c_identity(x,
-                                                group=self.model_parallel_group)
+            input_parallel = mp_ops._c_identity(
+                x, group=self.model_parallel_group
+            )
         else:
             input_parallel = x
 
-        output_parallel = self.linear(input_parallel,
-                                      self.weight,
-                                      self.bias,
-                                      name=self._name)
+        output_parallel = self.linear(
+            input_parallel, self.weight, self.bias, name=self._name
+        )
 
         if self.gather_output and self.is_mp:
-            output = mp_ops._c_concat(output_parallel,
-                                      group=self.model_parallel_group)
+            output = mp_ops._c_concat(
+                output_parallel, group=self.model_parallel_group
+            )
         else:
             output = output_parallel
         return output
@@ -338,15 +374,17 @@ class RowParallelLinear(Layer):
               return x
     """
 
-    def __init__(self,
-                 in_features,
-                 out_features,
-                 weight_attr=None,
-                 has_bias=True,
-                 input_is_parallel=False,
-                 fuse_matmul_bias=False,
-                 mp_group=None,
-                 name=None):
+    def __init__(
+        self,
+        in_features,
+        out_features,
+        weight_attr=None,
+        has_bias=True,
+        input_is_parallel=False,
+        fuse_matmul_bias=False,
+        mp_group=None,
+        name=None,
+    ):
         super(RowParallelLinear, self).__init__()
 
         self.in_features = in_features
@@ -356,18 +394,29 @@ class RowParallelLinear(Layer):
         self._dtype = self._helper.get_default_dtype()
         self._name = name
 
-        self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
-        ) if mp_group is None else mp_group
-        self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
-        ) if mp_group is None else mp_group.nranks
-        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank(
-        ) if mp_group is None else mp_group.rank
+        self.model_parallel_group = (
+            tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group()
+            if mp_group is None
+            else mp_group
+        )
+        self.world_size = (
+            tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size()
+            if mp_group is None
+            else mp_group.nranks
+        )
+        self.rank = (
+            tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
+            if mp_group is None
+            else mp_group.rank
+        )
 
-        self.is_mp = (self.world_size > 1)
+        self.is_mp = self.world_size > 1
         assert in_features % self.world_size == 0, (
             "Number of row of the weight for linear ({}) must be"
             " divisible by model parallel size ({})".format(
-                in_features, self.world_size))
+                in_features, self.world_size
+            )
+        )
 
         self.input_size_per_partition = in_features // self.world_size
 
@@ -377,13 +426,15 @@ class RowParallelLinear(Layer):
                     shape=[self.input_size_per_partition, self.out_features],
                     attr=self._weight_attr,
                     dtype=self._dtype,
-                    is_bias=False)
+                    is_bias=False,
+                )
         else:
             self.weight = self.create_parameter(
                 shape=[self.input_size_per_partition, self.out_features],
                 attr=self._weight_attr,
                 dtype=self._dtype,
-                is_bias=False)
+                is_bias=False,
+            )
 
         self.weight.is_distributed = True if self.is_mp else False
 
@@ -392,7 +443,8 @@ class RowParallelLinear(Layer):
                 shape=[self.out_features],
                 attr=paddle.nn.initializer.Constant(value=0.0),
                 dtype=self._dtype,
-                is_bias=True)
+                is_bias=True,
+            )
         else:
             self.bias = None
 
@@ -404,8 +456,10 @@ class RowParallelLinear(Layer):
                     "You set fuse_matmul_bias=True in RowParallelLinear, "
                     "however, the paddle you are using not support this operation. "
                     "Please set fuse_matmul_bias=False or use paddle compiled "
-                    "with cuda 11.6 or higher.")
+                    "with cuda 11.6 or higher."
+                )
             from paddle.incubate.nn.functional import fused_linear
+
             self.linear = fused_linear
 
     def forward(self, x):
@@ -416,19 +470,20 @@ class RowParallelLinear(Layer):
             input_parallel = mp_ops._c_split(x, group=self.model_parallel_group)
 
         if self.is_mp:
-            output_parallel = self.linear(input_parallel,
-                                          self.weight,
-                                          name=self._name)
-            output_ = mp_ops._mp_allreduce(output_parallel,
-                                           group=self.model_parallel_group,
-                                           use_calc_stream=True,
-                                           use_model_parallel=True)
+            output_parallel = self.linear(
+                input_parallel, self.weight, name=self._name
+            )
+            output_ = mp_ops._mp_allreduce(
+                output_parallel,
+                group=self.model_parallel_group,
+                use_calc_stream=True,
+                use_model_parallel=True,
+            )
             output = output_ + self.bias if self.bias is not None else output_
         else:
-            output = self.linear(input_parallel,
-                                 self.weight,
-                                 self.bias,
-                                 name=self._name)
+            output = self.linear(
+                input_parallel, self.weight, self.bias, name=self._name
+            )
 
         return output
 
@@ -451,14 +506,24 @@ class ParallelCrossEntropy(Layer):
     def __init__(self, mp_group=None, name=None):
         super(ParallelCrossEntropy, self).__init__()
         self.name = name
-        self.model_parallel_group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group(
-        ) if mp_group is None else mp_group
-        self.world_size = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size(
-        ) if mp_group is None else mp_group.nranks
-        self.rank = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank(
-        ) if mp_group is None else mp_group.rank
+        self.model_parallel_group = (
+            tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group()
+            if mp_group is None
+            else mp_group
+        )
+        self.world_size = (
+            tp._HYBRID_PARALLEL_GROUP.get_model_parallel_world_size()
+            if mp_group is None
+            else mp_group.nranks
+        )
+        self.rank = (
+            tp._HYBRID_PARALLEL_GROUP.get_model_parallel_rank()
+            if mp_group is None
+            else mp_group.rank
+        )
 
     def forward(self, input, label):
         loss = mp_ops._c_softmax_with_cross_entropy(
-            input, label, group=self.model_parallel_group)
+            input, label, group=self.model_parallel_group
+        )
         return loss
