@@ -50,10 +50,10 @@ void SliceRawKernel(const Context& dev_ctx,
 
   out->Resize(make_ddim(slice_dims));
 
-  VLOG(1) << "if (!x.initialized()) {";
-  VLOG(1) << "x.initialized(): " << x.initialized();
+  VLOG(5) << "if (!x.initialized()) {";
+  VLOG(5) << "x.initialized(): " << x.initialized();
   for (auto i : x_vec_dims) {
-    VLOG(1) << "x_vec_dims: " << i;
+    VLOG(5) << "x_vec_dims: " << i;
   }
   // Note(0x45f): To support slice Tensors with shapes like [0, 0, 0].
   if (!x.initialized() || x.numel() == 0) {

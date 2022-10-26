@@ -169,7 +169,7 @@ class PredictorEngine : public BaseEngine {
 
   std::vector<DenseTensor> operator()(const std::vector<DenseTensor> &inputs) {
     for (auto t : inputs) {
-      VLOG(1) << "inputs is init: " << t.initialized();
+      VLOG(3) << "inputs is init: " << t.initialized();
     }
 
     std::vector<PaddleTensor> pt_inputs;
