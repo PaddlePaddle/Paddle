@@ -157,10 +157,10 @@ class RandomSampler(Sampler):
                 set :attr:`num_samples` for how many samples to draw. Default False.
         num_samples(int): set sample number to draw if :attr:`replacement`
                 is True, then it will take samples according to the number you set. Default None.
-        generator(Generator): specify a generator to sample the :code:`data_source`. Default None
+        generator(Generator): specify a generator to sample the :code:`data_source`. Default None.
 
     Returns:
-        RandomSampler: a Sampler yield sample index randomly
+        RandomSampler: a Sampler yield sample index randomly.
 
     Examples:
 

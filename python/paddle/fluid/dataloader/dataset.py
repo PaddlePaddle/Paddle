@@ -99,7 +99,7 @@ class IterableDataset(Dataset):
 
     see :code:`paddle.io.DataLoader`.
 
-    Examples:
+    Examples 1:
 
         .. code-block:: python
 
@@ -128,7 +128,7 @@ class IterableDataset(Dataset):
     among workers as follows. In both the methods, worker information that can be getted in
     a worker process by `paddle.io.get_worker_info` will be needed.
 
-    Example 1: splitting data copy in each worker in :code:`__iter__`
+    Example 2: splitting data copy in each worker in :code:`__iter__`
 
         .. code-block:: python
 
@@ -169,7 +169,7 @@ class IterableDataset(Dataset):
                 print(data)
                 # outputs: [2, 5, 3, 6, 4, 7]
 
-    Example 2: splitting data copy in each worker by :code:`worker_init_fn`
+    Example 3: splitting data copy in each worker by :code:`worker_init_fn`
 
         .. code-block:: python
 
