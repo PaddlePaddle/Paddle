@@ -486,7 +486,7 @@ struct ReduceConfig {
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
 #endif
     } else if (reduce_rank == 1) {
-      reduce_type = static_cast<int>(ReduceType::kReduceAny);
+      reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
       if (rank == 3 && not_higher) {
         reduce_type = static_cast<int>(ReduceType::kReduceAny);
       }
@@ -1040,8 +1040,8 @@ CubTensorReduceImpl(const Tx* x_data,
                     int reduce_num,
                     const KPDevice& dev_ctx,
                     KPStream stream) {
-  half* in = (half*)(void*)x_data;
-  half* out = (half*)(void*)y_data;
+  const half* in = reinterpret_cast<const half*>(x_data);
+  half* out = reinterpret_cast<half*>(y_data);
   auto reducer = ReduceOp<half>();
   auto transform_half = kps::IdentityFunctor<half, half>();
   cub::TransformInputIterator<half,
@@ -1115,7 +1115,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
 
   config.SetOutputData(y_data, dev_ctx, &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
-  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
+  bool use_cub_reduce = config.reduce_num == numel;
 #ifndef PADDLE_WITH_XPU_KP
   if (use_cub_reduce) {
     if (is_mean) {
