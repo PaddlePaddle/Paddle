@@ -160,32 +160,6 @@ void cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8(
     const int32_t* c_d_indices,
     cutlass::half_t const alpha,
     cutlass::half_t const beta);
-void cutlass_tensorop_h1688gemm_128x64_32x2_nn_align1(
-    const GPUContext& dev_ctx,
-    const cutlass::half_t* const a,
-    const cutlass::half_t* const b,
-    const cutlass::half_t* const c,
-    cutlass::half_t* const d,
-    const int m,
-    const int n,
-    const int k,
-    const int32_t* a_indices,
-    const int32_t* c_d_indices,
-    cutlass::half_t const alpha,
-    cutlass::half_t const beta);
-void cutlass_tensorop_h1688gemm_64x64_32x2_nn_align1(
-    const GPUContext& dev_ctx,
-    const cutlass::half_t* const a,
-    const cutlass::half_t* const b,
-    const cutlass::half_t* const c,
-    cutlass::half_t* const d,
-    const int m,
-    const int n,
-    const int k,
-    const int32_t* a_indices,
-    const int32_t* c_d_indices,
-    cutlass::half_t const alpha,
-    cutlass::half_t const beta);
 void cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8(
     const GPUContext& dev_ctx,
     const cutlass::half_t* const a,
@@ -199,6 +173,58 @@ void cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8(
     const int32_t* c_d_indices,
     cutlass::half_t const alpha,
     cutlass::half_t const beta);
+void cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4(
+    const GPUContext& dev_ctx,
+    const float* const a,
+    const float* const b,
+    const float* const c,
+    float* const d,
+    const int m,
+    const int n,
+    const int k,
+    const int32_t* a_indices,
+    const int32_t* c_d_indices,
+    float const alpha,
+    float const beta);
+void cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4(
+    const GPUContext& dev_ctx,
+    const float* const a,
+    const float* const b,
+    const float* const c,
+    float* const d,
+    const int m,
+    const int n,
+    const int k,
+    const int32_t* a_indices,
+    const int32_t* c_d_indices,
+    float const alpha,
+    float const beta);
+void cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4(
+    const GPUContext& dev_ctx,
+    const float* const a,
+    const float* const b,
+    const float* const c,
+    float* const d,
+    const int m,
+    const int n,
+    const int k,
+    const int32_t* a_indices,
+    const int32_t* c_d_indices,
+    float const alpha,
+    float const beta);
+void cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4(
+    const GPUContext& dev_ctx,
+    const float* const a,
+    const float* const b,
+    const float* const c,
+    float* const d,
+    const int m,
+    const int n,
+    const int k,
+    const int32_t* a_indices,
+    const int32_t* c_d_indices,
+    float const alpha,
+    float const beta);
 void cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4(
     const GPUContext& dev_ctx,
     const float* const a,

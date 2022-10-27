@@ -277,8 +277,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   if (!cutlass ||
       !((std::is_same<T, float>::value && in_channels % 4 == 0 &&
          out_channels % 4 == 0) ||
-        (std::is_same<T, phi::dtype::float16>::value && in_channels % 8 == 0 &&
-         out_channels % 8 == 0) ||
+        (std::is_same<T, phi::dtype::float16>::value && in_channels % 4 == 0 &&
+         out_channels % 4 == 0) ||
         (std::is_same<T, double>::value)) ||
       !std::is_same<IntT, int32_t>::value) {
 #endif
