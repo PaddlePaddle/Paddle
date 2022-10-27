@@ -34,12 +34,12 @@ def to_uva_tensor(x, gpu_id=0):
     faster speed compared with the IO of copying data from CPU to GPU. This API is useful
     especially in large graph training domain.
 
+    Note:
+        This API is dygraph-only, and should be used under gpu version.
+
     Args:
         x (numpy.ndarray): The numpy ndarray data, which will be used to generate uva tensor.
         gpu_id (int): `gpu_id` means which gpu we put the UVA tensor on. Default value is 0.
-
-    Note:
-        This API is dygraph-only, and should be used under gpu version.
 
     Returns:
         out (Tensor): The output UVA tensor. And the shape and dtype should be the same with `x`.
