@@ -21,6 +21,7 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #endif
+#include "paddle/fluid/platform/mkldnn_op_list.h"
 
 namespace paddle {
 namespace framework {
@@ -132,6 +133,17 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   auto* dev_ctx = pool.Get(place_);
   auto exec_ctx = ExecutionContext(*op, Scope(), *dev_ctx, runtime_context);
   auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(exec_ctx);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (!op_with_kernel->DnnFallback() &&
+      paddle::platform::CanCUDNNBeUsed(exec_ctx)) {
+    PADDLE_ENFORCE_EQ(
+        paddle::platform::in_cudnn_white_list(op_with_kernel->Type()),
+        true,
+        platform::errors::Unimplemented("%s operator not in cudnn_white_list",
+                                        op_with_kernel->Type()));
+    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+  }
+#endif
 
   VLOG(6) << "expected_kernel_key " << expected_kernel_key << "\n";
   VLOG(6) << "op_with_kernel Type() " << op_with_kernel->Type() << "\n";
