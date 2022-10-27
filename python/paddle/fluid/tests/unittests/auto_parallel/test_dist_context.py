@@ -244,7 +244,7 @@ class TestDistributedContext(unittest.TestCase):
             "_serial_loss",
             "_serial_feed_vars",
             "_serial_fetch_vars",
-            "_lr_optimizer",
+            "_serial_optimizer",
             "_backup_serial_main_program_stack",
             "_backup_serial_startup_program_stack",
             "_pass_context",

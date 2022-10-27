@@ -740,7 +740,7 @@ class Engine:
         ].dist_startup_programs
         self._feed_vars[mode] = self._dist_contexts[mode].serial_feed_vars
         self._fetch_vars[mode] = self._dist_contexts[mode].serial_fetch_vars
-        self._lr_optimizer = self._dist_contexts[mode]._lr_optimizer
+        self._optimizer = self._dist_contexts[mode]._serial_optimizer
 
         if self._nranks > 1:
             # Traverse different rank programs and traverse each op of them,
@@ -927,7 +927,7 @@ class Engine:
                     )
                 except core.EOFException:
                     break
-                lr = get_lr(self._lr_optimizer)
+                lr = get_lr(self._optimizer)
                 logs = self._prepare_logger(
                     outs,
                     epoch,
@@ -1555,7 +1555,7 @@ class Engine:
             mode in self._dist_main_progs
         ), "{} model is not ready, please call `prepare()` first.".format(mode)
         self.to_mode(mode)
-        self._lr_optimizer = self._dist_contexts[mode]._lr_optimizer
+        self._optimizer = self._dist_contexts[mode]._serial_optimizer
 
     def to_mode(self, mode):
         assert mode in [
