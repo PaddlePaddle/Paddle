@@ -28,13 +28,6 @@ class SoftplusOneDNNHandler
                         const float beta)
       : funcs::OneDNNHandlerNoCachingT<T, dnnl::binary>(dev_ctx.GetEngine(),
                                                         dev_ctx.GetPlace()) {
-    auto x_tz = phi::vectorize(x->dims());
-
-    auto beta_tz = std::vector<int64_t>(x_tz.size(), 1);
-    auto beta_md = dnnl::memory::desc(beta_tz,
-                                      funcs::OneDNNGetDataType<T>(),
-                                      funcs::GetPlainOneDNNFormat(x_tz.size()));
-
     dnnl::post_ops post_ops;
     post_ops.append_eltwise(
         1.0f, dnnl::algorithm::eltwise_soft_relu, 0.0f, 0.0f);
@@ -42,11 +35,15 @@ class SoftplusOneDNNHandler
       post_ops.append_eltwise(
           1.0f, dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
     }
-
     funcs::AppendActivation(dev_ctx, post_ops);
-
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);
+
+    auto x_tz = phi::vectorize(x->dims());
+    auto beta_tz = std::vector<int64_t>(x_tz.size(), 1);
+    auto beta_md = dnnl::memory::desc(beta_tz,
+                                      funcs::OneDNNGetDataType<T>(),
+                                      funcs::GetPlainOneDNNFormat(x_tz.size()));
 
     this->AcquireForwardPrimitiveDescriptor(attrs,
                                             dnnl::algorithm::binary_mul,
