@@ -182,11 +182,10 @@ class DistributedBatchSampler(BatchSampler):
         Dataset is assumed to be of constant size.
 
     Args:
-        dataset(paddle.io.Dataset): this could be a `paddle.io.Dataset` implement
+        dataset(paddle.io.Dataset): this could be an instance of subclass of `paddle.io.Dataset`
                      or other python object which implemented
-                     `__len__` for BatchSampler to get sample
-                     number of data source.
-        batch_size(int): sample indice number in a mini-batch indices.
+                     `__len__` for BatchSampler to get indices of samples. default None.
+        batch_size(int): sample size of each mini-batch.
         num_replicas(int, optional): porcess number in distributed training.
             If :attr:`num_replicas` is None, :attr:`num_replicas` will be
             retrieved from :code:`paddle.distributed.ParallenEnv`.
@@ -196,8 +195,8 @@ class DistributedBatchSampler(BatchSampler):
             :code:`paddle.distributed.ParallenEnv`. Default None.
         shuffle(bool): whther to shuffle indices order before genrating
             batch indices. Default False.
-        drop_last(bool): whether drop the last incomplete batch dataset size
-            is not divisible by the batch size. Default False
+        drop_last(bool): whether drop the last incomplete(less than a mini-batch) batch dataset size.
+             Default False.
 
     Examples:
         .. code-block:: python
