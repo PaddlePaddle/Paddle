@@ -54,7 +54,8 @@ if(WITH_TESTING AND NOT WIN32)
     COMMAND
       wget -nc -q --no-check-certificate
       https://paddle-ci.gz.bcebos.com/dy2st/multi_program_load_with_property.tar.gz
-    COMMAND tar zxf multi_program_load_with_property.tar.gz)
+    COMMAND tar zxf multi_program_load_with_property.tar.gz
+    WORKING_DIRECTORY "${CC_TESTS_DIR}")
   set(JIT_DEPS
       phi
       phi_api
@@ -70,5 +71,5 @@ if(WITH_TESTING AND NOT WIN32)
     layer_test
     SRCS layer_test.cc
     DEPS ${JIT_DEPS})
-  add_dependencies(layer_test jit_download_program)
+  # add_dependencies(layer_test jit_download_program)
 endif()

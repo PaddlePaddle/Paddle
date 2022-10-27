@@ -580,10 +580,19 @@ if(WITH_PYTHON)
   if(WIN32)
     set(SHARD_LIB_NAME libpaddle)
   endif()
+  set_property(GLOBAL PROPERTY PADDLE_LIB_NAME ${SHARD_LIB_NAME})
   cc_library(
     ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
+  # TODO(zhiqiu): some symbols not exported even setting the following
+  # property. Need to find a better way.
+
+  # if(WIN32)
+  #   set_property(TARGET ${SHARD_LIB_NAME}
+  #                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  # endif()
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_dependencies(${SHARD_LIB_NAME} legacy_eager_codegen)
@@ -596,10 +605,6 @@ if(WITH_PYTHON)
 
   if(WITH_ROCM)
     target_link_libraries(${SHARD_LIB_NAME} ${ROCM_HIPRTC_LIB})
-  endif()
-
-  if(WITH_MPI)
-    target_link_libraries(${SHARD_LIB_NAME} ${MPI_CXX_LIBRARIES})
   endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)

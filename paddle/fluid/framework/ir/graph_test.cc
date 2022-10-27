@@ -74,7 +74,7 @@ class DummyOpVarTypeInference : public VarTypeInference {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OPERATOR(sum,
+REGISTER_OPERATOR(fake_sum,
                   paddle::framework::NOP,
                   paddle::framework::SumOpMaker,
                   paddle::framework::SumOpVarTypeInference);
@@ -92,7 +92,7 @@ namespace framework {
 TEST(GraphTest, Basic) {
   ProgramDesc prog;
   auto *op = prog.MutableBlock(0)->AppendOp();
-  op->SetType("sum");
+  op->SetType("fake_sum");
   op->SetInput("X", {"test_a", "test_b", "test_c"});
   op->SetOutput("Out", {"test_out"});
   op->SetAttr("op_role", 1);
@@ -115,7 +115,7 @@ TEST(GraphTest, Basic) {
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   std::vector<ir::Node *> nodes(g->Nodes().begin(), g->Nodes().end());
   for (ir::Node *n : nodes) {
-    if (n->Name() == "sum") {
+    if (n->Name() == "fake_sum") {
       ASSERT_EQ(n->inputs.size(), 3UL);
       ASSERT_EQ(n->outputs.size(), 1UL);
     } else if (n->Name() == "test_a" || n->Name() == "test_b" ||
@@ -322,7 +322,7 @@ TEST(GraphTest, TestMultiBlock) {
 
   // Set contents in block_0.
   auto *op = prog.MutableBlock(0)->AppendOp();
-  op->SetType("sum");
+  op->SetType("fake_sum");
   op->SetInput("X", {"test_a", "test_b", "test_c"});
   op->SetOutput("Out", {"test_out"});
   op->SetAttr("op_role", 1);
@@ -342,7 +342,7 @@ TEST(GraphTest, TestMultiBlock) {
 
   // Set contents in block_1.
   op = prog.MutableBlock(1)->AppendOp();
-  op->SetType("sum");
+  op->SetType("fake_sum");
   op->SetInput("X", {"a"});
   op->SetOutput("Out", {"b"});
   op->SetAttr("op_role", 1);
@@ -359,7 +359,7 @@ TEST(GraphTest, TestMultiBlock) {
 
   // Set contents in block_2.
   op = prog.MutableBlock(2)->AppendOp();
-  op->SetType("sum");
+  op->SetType("fake_sum");
   op->SetInput("X", {"a"});
   op->SetOutput("Out", {"b"});
   op->SetAttr("op_role", 1);
@@ -383,7 +383,7 @@ TEST(GraphTest, TestMultiBlock) {
   const ir::Graph *g0 = g->GetSubGraph(0);
   std::vector<ir::Node *> nodes(g0->Nodes().begin(), g0->Nodes().end());
   for (ir::Node *n : nodes) {
-    if (n->Name() == "sum") {
+    if (n->Name() == "fake_sum") {
       ASSERT_EQ(n->inputs.size(), 3UL);
       ASSERT_EQ(n->outputs.size(), 1UL);
     } else if (n->Name() == "test_a" || n->Name() == "test_b" ||
@@ -402,7 +402,7 @@ TEST(GraphTest, TestMultiBlock) {
   ir::Node *control_dep1 = nullptr;
   ir::Node *control_dep2 = nullptr;
   for (ir::Node *n : g1->Nodes()) {
-    if (n->Name() == "sum") {
+    if (n->Name() == "fake_sum") {
       ASSERT_EQ(n->outputs[0]->Name(), "b");
       ASSERT_TRUE(ir::IsControlDepVar(*n->outputs[1]));
       control_dep1 = n->outputs[1];
@@ -422,7 +422,7 @@ TEST(GraphTest, TestMultiBlock) {
   control_dep1 = nullptr;
   control_dep2 = nullptr;
   for (ir::Node *n : g2->Nodes()) {
-    if (n->Name() == "sum") {
+    if (n->Name() == "fake_sum") {
       ASSERT_EQ(n->outputs[0]->Name(), "b");
       ASSERT_TRUE(ir::IsControlDepVar(*n->outputs[1]));
       ASSERT_EQ(n->outputs.size(), 2UL);
