@@ -825,6 +825,7 @@ class ReorderOneDNNHandler {
 template <typename T>
 class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
+  bool use_broadcasting_hack;
   BinaryOneDNNHandler(const dnnl::algorithm algo,
                       const int axis,
                       const dnnl::engine engine,
@@ -835,15 +836,17 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                       float scale_x,
                       float scale_y,
                       float scale_out,
+                      bool allow_hack,
                       const dnnl::post_ops& post_ops = dnnl::post_ops{})
       : OneDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
+    use_broadcasting_hack = false;
     const auto src_x_tz = vectorize(x->dims());
     const auto src_y_tz = vectorize(y->dims());
     // if output tensor(z) is nullptr then we are computing into oneDNN
     // managed buffer
     auto rankdiff = x->dims().size() - y->dims().size();
-    const auto dst_tz = (out == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
-                                         : vectorize(out->dims());
+    auto dst_tz = (out == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
+                                   : vectorize(out->dims());
 
     auto src0_md = x->mem_desc();
     auto src1_md = y->mem_desc();
@@ -870,11 +873,47 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
       }
       src0_md = src0_md.reshape(dims0_ex);
     }
-    const auto dst_md =
-        memory::desc(dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
 
     auto attributes =
         CreateAttributes(algo, scale_x, scale_y, scale_out, post_ops);
+
+    // Workaround for U2++ model which deletes first tensor dimensions to enable
+    // optimized oneDNNs broadcasting. Output tensor is reshaped back afterwards
+    // at the end of the kernel, after the computation
+    if (allow_hack && dst_tz.size() == 4 &&
+        src0_md.dims()[2] != src1_md.dims()[2]) {
+      auto are_strides_plain = [](int64_t* strides, int ndims) {
+        for (int i = 0; i < ndims - 1; ++i) {
+          if (strides[i] < strides[i + 1]) {
+            return false;
+          }
+        }
+        return true;
+      };
+
+      auto src0_strides = src0_md.data.format_desc.blocking.strides;
+      auto src1_strides = src1_md.data.format_desc.blocking.strides;
+      auto src0_dims = src0_md.dims();
+      auto src1_dims = src1_md.dims();
+
+      bool can_squeeze = src0_dims[0] == src1_dims[0] &&
+                         src0_dims[1] == src1_dims[1] &&
+                         src0_dims[3] == src1_dims[3];
+
+      if (can_squeeze && are_strides_plain(src0_strides, 4) &&
+          are_strides_plain(src1_strides, 4)) {
+        src0_dims[1] *= dst_tz[0];
+        src1_dims[1] *= dst_tz[0];
+        dst_tz[1] *= dst_tz[0];
+        dst_tz.erase(dst_tz.begin());
+        src0_md = src0_md.reshape({src0_dims.begin() + 1, src0_dims.end()});
+        src1_md = src1_md.reshape({src1_dims.begin() + 1, src1_dims.end()});
+        use_broadcasting_hack = true;
+      }
+    }
+
+    auto dst_md =
+        memory::desc(dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
 
     if (x->numel() < y->numel()) {
       if (algo == dnnl::algorithm::binary_sub) {
@@ -1045,70 +1084,6 @@ class ClipOneDNNHandler
     return this->AcquireMemoryFromPrimitive(this->bwd_pd_->src_desc(),
                                             to_void_cast<T>(input_data));
   }
-};
-template <typename T>
-class TransposeOneDNNHandler {
- public:
-  TransposeOneDNNHandler(const OneDNNContext& dev_ctx,
-                         std::vector<int64_t>& dims,  // NOLINT
-                         std::vector<int>& axis,      // NOLINT
-                         dnnl::engine engine)
-      : dev_ctx_(dev_ctx),
-        dims_(dims),
-        axis_(axis),
-        logical_axis_(dims.size(), 0),
-        engine_(engine) {}
-
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const OneDNNMemoryFormat& fmt,
-                                                 void* ptr) {
-    // Make memory descriptor using input format, unless it
-    // cannot be trusted (nchw) then make up memory fmt manually
-    for (size_t i = 0; i < this->logical_axis_.size(); ++i) {
-      this->logical_axis_[i] = i;
-    }
-
-    auto src_md = fmt != OneDNNMemoryFormat::nchw
-                      ? OneDNNMemDesc(dims_, OneDNNGetDataType<T>(), fmt)
-                      : Axis2MemoryDesc(dims_, logical_axis_);
-    return std::make_shared<dnnl::memory>(src_md, engine_, ptr);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(DenseTensor* output,
-                                                 Place place) {
-    auto dst_md = Axis2MemoryDesc(dims_, axis_);
-    auto dst_data = dev_ctx_.Alloc<T>(output);
-    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
-  }
-
-  std::shared_ptr<dnnl::reorder> AcquireTranspose(
-      std::shared_ptr<dnnl::memory> dst_memory_p,
-      std::shared_ptr<dnnl::memory> src_memory_p) {
-    return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p));
-  }
-
- protected:
-  dnnl::memory::desc Axis2MemoryDesc(std::vector<int64_t>& nchw_tz,  // NOLINT
-                                     std::vector<int>& axis          // NOLINT
-  ) {
-    size_t ndims = axis.size();
-
-    std::vector<int64_t> strides(ndims);
-    unsigned int total_stride = 1;
-    for (int i = ndims - 1; i >= 0; --i) {
-      strides[axis[i]] = total_stride;
-      total_stride *= nchw_tz[axis[i]];
-    }
-    dnnl::memory::desc mem_d(nchw_tz, OneDNNGetDataType<T>(), strides);
-
-    return mem_d;
-  }
-
- private:
-  const OneDNNContext& dev_ctx_;
-  std::vector<int64_t> dims_;
-  std::vector<int> axis_;
-  std::vector<int> logical_axis_;
-  dnnl::engine engine_;
 };
 }  // namespace funcs
 }  // namespace phi

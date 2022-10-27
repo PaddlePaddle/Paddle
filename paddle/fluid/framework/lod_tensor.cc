@@ -33,13 +33,14 @@ LoD SliceInLevel(const LoD &in,
                  size_t level,
                  size_t elem_begin,
                  size_t elem_end) {
-  PADDLE_ENFORCE_LT(level,
-                    in.size(),
-                    platform::errors::InvalidArgument(
-                        "The input LoDTensor's lod level should be less than "
-                        "the LoD size, but received level is %d, LoD is %s.",
-                        level,
-                        in));
+  PADDLE_ENFORCE_LT(
+      level,
+      in.size(),
+      platform::errors::InvalidArgument(
+          "The input phi::DenseTensor's lod level should be less than "
+          "the LoD size, but received level is %d, LoD is %s.",
+          level,
+          in));
   PADDLE_ENFORCE_LT(
       elem_begin,
       elem_end,
@@ -204,12 +205,12 @@ LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod,
 }
 
 void SerializeToStream(std::ostream &os,
-                       const LoDTensor &tensor,
+                       const phi::DenseTensor &tensor,
                        const platform::DeviceContext &dev_ctx) {
   phi::SerializeToStream(os, tensor, dev_ctx);
 }
 
-void SerializeToStream(std::ostream &os, const LoDTensor &tensor) {
+void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext *dev_ctx;
   auto place = tensor.place();
@@ -217,7 +218,7 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor) {
   phi::SerializeToStream(os, tensor, *dev_ctx);
 }
 
-void DeserializeFromStream(std::istream &os, LoDTensor *tensor) {
+void DeserializeFromStream(std::istream &os, phi::DenseTensor *tensor) {
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext *dev_ctx;
   dev_ctx = pool.Get(platform::CPUPlace());
@@ -225,7 +226,7 @@ void DeserializeFromStream(std::istream &os, LoDTensor *tensor) {
 }
 
 void DeserializeFromStream(std::istream &is,
-                           LoDTensor *tensor,
+                           phi::DenseTensor *tensor,
                            const platform::DeviceContext &dev_ctx,
                            const size_t &seek,
                            const std::vector<int64_t> &shape) {
@@ -233,7 +234,7 @@ void DeserializeFromStream(std::istream &is,
 }
 
 void DeserializeFromStream(std::istream &is,
-                           LoDTensor *tensor,
+                           phi::DenseTensor *tensor,
                            const platform::DeviceContext &dev_ctx) {
   phi::DeserializeFromStream(is, tensor, dev_ctx);
 }
@@ -255,8 +256,8 @@ LoD ConvertToOffsetBasedLoD(const LoD &length_lod) {
   return offset_lod;
 }
 
-std::vector<LoDTensor> SplitLoDTensor(
-    const LoDTensor &src, const std::vector<platform::Place> places) {
+std::vector<phi::DenseTensor> SplitLoDTensor(
+    const phi::DenseTensor &src, const std::vector<platform::Place> places) {
   PADDLE_ENFORCE_GT(places.size(),
                     0,
                     platform::errors::InvalidArgument(
@@ -265,9 +266,9 @@ std::vector<LoDTensor> SplitLoDTensor(
   auto rank = src.dims().size();
   // if rank is 0, just return #places.size() copys of src
   if (rank == 0) {
-    LoDTensor dst;
+    phi::DenseTensor dst;
     framework::TensorCopy(src, src.place(), &dst);
-    std::vector<LoDTensor> ret;
+    std::vector<phi::DenseTensor> ret;
     ret.emplace_back(std::move(dst));
     return ret;
   }
@@ -278,10 +279,10 @@ std::vector<LoDTensor> SplitLoDTensor(
   // if batch_size is 0, just return #places.size() copys of empty
   // tensors.
   if (batch_size == 0) {
-    std::vector<LoDTensor> empty_results;
+    std::vector<phi::DenseTensor> empty_results;
     empty_results.reserve(places.size());
     for (size_t i = 0; i < places.size(); ++i) {
-      LoDTensor dst;
+      phi::DenseTensor dst;
       dst.Resize(src.dims());
       dst.mutable_data(places[i], src.dtype());
       if (!src.lod().empty()) {
@@ -294,7 +295,7 @@ std::vector<LoDTensor> SplitLoDTensor(
 
   auto step_width = (batch_size + places.size() - 1) / places.size();
   auto result_size = (batch_size + step_width - 1) / step_width;
-  std::vector<LoDTensor> results;
+  std::vector<phi::DenseTensor> results;
   results.reserve(result_size);
 
   for (size_t i = 0; i < result_size; ++i) {
@@ -308,7 +309,7 @@ std::vector<LoDTensor> SplitLoDTensor(
                           begin,
                           end));
 
-    LoDTensor dst;
+    phi::DenseTensor dst;
     if (src.lod().empty()) {
       auto sliced_src = src.Slice(begin, end);
       auto &dst_place = places[i];
@@ -338,8 +339,8 @@ std::vector<LoDTensor> SplitLoDTensor(
   return results;
 }
 
-void MergeLoDTensor(LoDTensor *target,
-                    const std::vector<const LoDTensor *> &lod_tensors,
+void MergeLoDTensor(phi::DenseTensor *target,
+                    const std::vector<const phi::DenseTensor *> &lod_tensors,
                     platform::Place dst_place) {
   PADDLE_ENFORCE_EQ(lod_tensors.empty(),
                     false,
@@ -368,7 +369,8 @@ void MergeLoDTensor(LoDTensor *target,
           new_type,
           framework::TransToProtoVarType(t->dtype()),
           platform::errors::InvalidArgument(
-              "LoDTensor data type does not match, expected type is %s, actual "
+              "phi::DenseTensor data type does not match, expected type is %s, "
+              "actual "
               "type is %s.",
               DataTypeToString(new_type),
               DataTypeToString(framework::TransToProtoVarType(t->dtype()))));
@@ -376,7 +378,7 @@ void MergeLoDTensor(LoDTensor *target,
           new_layout,
           t->layout(),
           platform::errors::InvalidArgument(
-              "LoDTensor layout does not match, expected layout is %s, "
+              "phi::DenseTensor layout does not match, expected layout is %s, "
               "actual layout is %s.",
               phi::DataLayoutToString(new_layout),
               phi::DataLayoutToString(t->layout())));
@@ -384,13 +386,13 @@ void MergeLoDTensor(LoDTensor *target,
       PADDLE_ENFORCE_EQ(tensor_dims.size(),
                         new_dim.size(),
                         platform::errors::InvalidArgument(
-                            "dimensions of LoDTensor does not match"));
+                            "dimensions of DenseTensor does not match"));
       for (int j = 1; j < t->dims().size(); j++) {
         PADDLE_ENFORCE_EQ(
             tensor_dims[j],
             new_dim[j],
             platform::errors::InvalidArgument(
-                "LoDTensor.ddim[%d] should eaqual to %d, but is %d",
+                "DenseTensor.ddim[%d] should eaqual to %d, but is %d",
                 j,
                 new_dim[j],
                 tensor_dims[j]));
@@ -401,13 +403,14 @@ void MergeLoDTensor(LoDTensor *target,
     }
 
     auto &lod = t->lod();
-    PADDLE_ENFORCE_EQ(new_lod.size(),
-                      lod.size(),
-                      platform::errors::InvalidArgument(
-                          "The LoD information of LoDTensor does not match, "
-                          "expected LoD is %s, actual LoD is %s.",
-                          new_lod,
-                          lod));
+    PADDLE_ENFORCE_EQ(
+        new_lod.size(),
+        lod.size(),
+        platform::errors::InvalidArgument(
+            "The LoD information of phi::DenseTensor does not match, "
+            "expected LoD is %s, actual LoD is %s.",
+            new_lod,
+            lod));
     for (size_t j = 0; j < lod.size(); ++j) {
       auto &sub_lod = new_lod[j];
       size_t offset = sub_lod.back();
