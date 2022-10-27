@@ -20,22 +20,22 @@ sys.path.append("..")
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = "unsqueeze2"
         self.use_dynamic_create_class = False
 
     class TestUnsqueeze2Op(XPUOpTest):
-
         def setUp(self):
             self.op_type = "unsqueeze2"
             self.__class__.op_type = "unsqueeze2"
@@ -47,7 +47,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
             }
             self.outputs = {
                 "Out": self.inputs["X"].reshape(self.new_shape),
-                "XShape": np.random.random(self.ori_shape).astype(self.dtype)
+                "XShape": np.random.random(self.ori_shape).astype(self.dtype),
             }
             self.init_attrs()
 
@@ -75,15 +75,13 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
     # Correct: Single input index.
     class TestUnsqueeze2Op1(TestUnsqueeze2Op):
-
         def init_test_case(self):
             self.ori_shape = (20, 5)
-            self.axes = (-1, )
+            self.axes = (-1,)
             self.new_shape = (20, 5, 1)
 
     # Correct: Mixed input axis.
     class TestUnsqueeze2Op2(TestUnsqueeze2Op):
-
         def init_test_case(self):
             self.ori_shape = (20, 5)
             self.axes = (0, -1)
@@ -91,7 +89,6 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
     # Correct: There is duplicated axis.
     class TestUnsqueeze2Op3(TestUnsqueeze2Op):
-
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (0, 3, 3)
@@ -99,7 +96,6 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
     # Correct: Reversed axes.
     class TestUnsqueeze2Op4(TestUnsqueeze2Op):
-
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (3, 1, 1)
@@ -107,7 +103,6 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
     # axes is a list(with tensor)
     class TestUnsqueeze2Op_AxesTensorList(XPUOpTest):
-
         def setUp(self):
             self.op_type = "unsqueeze2"
             self.__class__.op_type = "unsqueeze2"
@@ -117,17 +112,18 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
             axes_tensor_list = []
             for index, ele in enumerate(self.axes):
-                axes_tensor_list.append(("axes" + str(index), np.ones(
-                    (1)).astype('int32') * ele))
+                axes_tensor_list.append(
+                    ("axes" + str(index), np.ones((1)).astype('int32') * ele)
+                )
 
             self.inputs = {
                 "X": np.random.random(self.ori_shape).astype(self.dtype),
-                "AxesTensorList": axes_tensor_list
+                "AxesTensorList": axes_tensor_list,
             }
             self.init_attrs()
             self.outputs = {
                 "Out": self.inputs["X"].reshape(self.new_shape),
-                "XShape": np.random.random(self.ori_shape).astype(self.dtype)
+                "XShape": np.random.random(self.ori_shape).astype(self.dtype),
             }
 
         def init_dtype(self):
@@ -153,28 +149,24 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
             self.attrs = {}
 
     class TestUnsqueeze2Op1_AxesTensorList(TestUnsqueeze2Op_AxesTensorList):
-
         def init_test_case(self):
             self.ori_shape = (20, 5)
-            self.axes = (-1, )
+            self.axes = (-1,)
             self.new_shape = (20, 5, 1)
 
     class TestUnsqueeze2Op2_AxesTensorList(TestUnsqueeze2Op_AxesTensorList):
-
         def init_test_case(self):
             self.ori_shape = (20, 5)
             self.axes = (0, -1)
             self.new_shape = (1, 20, 5, 1)
 
     class TestUnsqueeze2Op3_AxesTensorList(TestUnsqueeze2Op_AxesTensorList):
-
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (0, 3, 3)
             self.new_shape = (1, 10, 2, 1, 1, 5)
 
     class TestUnsqueeze2Op4_AxesTensorList(TestUnsqueeze2Op_AxesTensorList):
-
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (3, 1, 1)
@@ -182,7 +174,6 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
     # axes is a Tensor
     class TestUnsqueeze2Op_AxesTensor(XPUOpTest):
-
         def setUp(self):
             self.op_type = "unsqueeze2"
             self.__class__.op_type = "unsqueeze2"
@@ -192,12 +183,12 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
 
             self.inputs = {
                 "X": np.random.random(self.ori_shape).astype(self.dtype),
-                "AxesTensor": np.array(self.axes).astype("int32")
+                "AxesTensor": np.array(self.axes).astype("int32"),
             }
             self.init_attrs()
             self.outputs = {
                 "Out": self.inputs["X"].reshape(self.new_shape),
-                "XShape": np.random.random(self.ori_shape).astype(self.dtype)
+                "XShape": np.random.random(self.ori_shape).astype(self.dtype),
             }
 
         def init_dtype(self):
@@ -223,28 +214,24 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
             self.attrs = {}
 
     class TestUnsqueeze2Op1_AxesTensor(TestUnsqueeze2Op_AxesTensor):
-
         def init_test_case(self):
             self.ori_shape = (20, 5)
-            self.axes = (-1, )
+            self.axes = (-1,)
             self.new_shape = (20, 5, 1)
 
     class TestUnsqueeze2Op2_AxesTensor(TestUnsqueeze2Op_AxesTensor):
-
         def init_test_case(self):
             self.ori_shape = (20, 5)
             self.axes = (0, -1)
             self.new_shape = (1, 20, 5, 1)
 
     class TestUnsqueeze2Op3_AxesTensor(TestUnsqueeze2Op_AxesTensor):
-
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (0, 3, 3)
             self.new_shape = (1, 10, 2, 1, 1, 5)
 
     class TestUnsqueeze2Op4_AxesTensor(TestUnsqueeze2Op_AxesTensor):
-
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (3, 1, 1)

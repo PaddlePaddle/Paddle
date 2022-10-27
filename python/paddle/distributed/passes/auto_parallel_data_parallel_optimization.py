@@ -16,17 +16,28 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-from paddle.fluid import core, unique_name
+from paddle.fluid import unique_name
 from paddle.fluid.framework import default_main_program
-from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
-from paddle.distributed.auto_parallel.operators.common import is_data_parallel_scale_op, is_data_parallel_reduce_op
-from paddle.distributed.auto_parallel.utils import is_loss_grad_op, is_optimize_op, is_backward_op, ring_id_to_process_group, find_higher_order_backward_op
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.distributed.auto_parallel.operators.common import (
+    is_data_parallel_scale_op,
+    is_data_parallel_reduce_op,
+)
+from paddle.distributed.auto_parallel.utils import (
+    find_higher_order_backward_op,
+    is_loss_grad_op,
+    is_optimize_op,
+    ring_id_to_process_group,
+)
 from .pass_base import PassBase, PassType, register_pass
 
 # add new optimizers supporting rescale_grad here
 __rescale_grad_supported_opts__ = [
-    'lars_momentum', 'sparse_momentum', 'dgc_momentum', 'momentum',
-    'merge_momentum'
+    'lars_momentum',
+    'sparse_momentum',
+    'dgc_momentum',
+    'momentum',
+    'merge_momentum',
 ]
 
 # a heuristic number
@@ -62,8 +73,9 @@ class DataParallelOptimizationPass(PassBase):
     def _check_self(self):
         if self.get_attr("dist_context") is None:
             return False
-        if (not isinstance(self.get_attr("global_rank"),
-                           int)) or self.get_attr("global_rank") < 0:
+        if (not isinstance(self.get_attr("global_rank"), int)) or self.get_attr(
+            "global_rank"
+        ) < 0:
             return False
 
         return True
@@ -82,9 +94,11 @@ class DataParallelOptimizationPass(PassBase):
 
         with paddle.static.program_guard(main_program, startup_program):
             self._analyze_program()
-            self._prune_grad_scaling()
-            self._calc_comm_overlap()
-            grad_group = self._fuse_allreduce()
+
+            if self.is_data_parallel_applied():
+                self._prune_grad_scaling()
+                self._calc_comm_overlap()
+                grad_group = self._fuse_allreduce()
 
         # self.summary(grad_group)
 
@@ -138,8 +152,11 @@ class DataParallelOptimizationPass(PassBase):
                 ), "Unexception: comm op [{}] has NOT ring id.".format(str(op))
                 group = ring_id_to_process_group(op.attr("ring_id"))
 
-                assert group is not None, "Unexception: data parallel group of [{}] from op [{}] is None".format(
-                    grad_name, str(op))
+                assert (
+                    group is not None
+                ), "Unexception: data parallel group of [{}] from op [{}] is None".format(
+                    grad_name, str(op)
+                )
 
                 self._grad_name_to_group_map[grad_name] = group
 
@@ -154,30 +171,43 @@ class DataParallelOptimizationPass(PassBase):
 
             # TODO support multiple optimizers in on network in future.
             # here we assume that the optimizer is unique in network.
-            elif is_optimize_op(
-                    op) and op.type in __rescale_grad_supported_opts__:
+            elif (
+                is_optimize_op(op)
+                and op.type in __rescale_grad_supported_opts__
+            ):
                 self._support_rescale_grad = True
 
         not_synchronized_grads = []
         for grad_name in scaled_grads:
             if grad_name not in self._grad_name_to_group_map:
                 not_synchronized_grads.append(grad_name)
-        assert len(
+        assert (
+            len(not_synchronized_grads) == 0
+        ), "Unexception: gradients [{}] is scaled BUT NOT synchronized.".format(
             not_synchronized_grads
-        ) == 0, "Unexception: gradients [{}] is scaled BUT NOT synchronized.".format(
-            not_synchronized_grads)
+        )
+
+    def is_data_parallel_applied(self):
+        return len(self._group_to_grad_name_map) > 0
 
     def _could_be_prune(self):
 
         return self.dist_context.gradient_scale and (
-            self._support_rescale_grad or self._all_dp_groups_same_degree())
+            self._support_rescale_grad or self._all_dp_groups_same_degree()
+        )
 
     def _all_dp_groups_same_degree(self):
-        return len(
-            set([
-                len(group.ranks)
-                for group in self._group_to_grad_name_map.keys()
-            ])) == 1
+        return (
+            len(
+                set(
+                    [
+                        len(group.ranks)
+                        for group in self._group_to_grad_name_map.keys()
+                    ]
+                )
+            )
+            == 1
+        )
 
     def _scale_backward_initial_grad(self):
 
@@ -186,9 +216,10 @@ class DataParallelOptimizationPass(PassBase):
 
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_loss_grad_op(op):
-                assert op.type == 'fill_constant', \
-                    "loss_grad_op must be fill_constant op, " \
+                assert op.type == 'fill_constant', (
+                    "loss_grad_op must be fill_constant op, "
                     "but this op is {}".format(op.type)
+                )
                 assert op.has_attr('value')
                 loss_scale = float(op.attr('value'))
                 loss_scale = loss_scale / dp_degree
@@ -210,28 +241,35 @@ class DataParallelOptimizationPass(PassBase):
         scaled_grads = set()
 
         for idx, op in reversed(list(enumerate(block.ops))):
-            if is_optimize_op(
-                    op) and op.type in __rescale_grad_supported_opts__:
+            if (
+                is_optimize_op(op)
+                and op.type in __rescale_grad_supported_opts__
+            ):
                 assert op.has_attr(
                     'rescale_grad'
                 ), "Unexception: op [{}] is supported to have [rescale_grad] attribute.".format(
-                    str(op))
-                assert len(
-                    op.input("Grad")
-                ) == 1, "Unexception: op [{}] is supported to have only one input grad var.".format(
-                    str(op))
+                    str(op)
+                )
+                assert (
+                    len(op.input("Grad")) == 1
+                ), "Unexception: op [{}] is supported to have only one input grad var.".format(
+                    str(op)
+                )
 
                 grad_name = op.input("Grad")[0]
                 dp_degree = len(
-                    list(self._grad_name_to_group_map[grad_name].ranks))
+                    list(self._grad_name_to_group_map[grad_name].ranks)
+                )
                 scaled_grads.add(grad_name)
 
                 rescale_grad = float(op.attr('rescale_grad')) / dp_degree
                 op._set_attr('rescale_grad', rescale_grad)
 
-        assert scaled_grads == set(self._grad_name_to_group_map.keys(
-        )), "Unexception: gradients [{}] are unscaled.".format(
-            set(self._grad_name_to_group_map.keys()) - scaled_grads)
+        assert scaled_grads == set(
+            self._grad_name_to_group_map.keys()
+        ), "Unexception: gradients [{}] are unscaled.".format(
+            set(self._grad_name_to_group_map.keys()) - scaled_grads
+        )
 
     def _could_be_overlap(self):
         # NOTE current different nccl comm will use different cuda stream
@@ -261,14 +299,13 @@ class DataParallelOptimizationPass(PassBase):
                 op._set_attr('use_calc_stream', False)
                 ring_id = op.attr("ring_id")
 
-                block._insert_op_without_sync(idx,
-                                              type='c_wait_compute',
-                                              inputs={'X': []},
-                                              outputs={'Out': []},
-                                              attrs={
-                                                  'op_role': OpRole.Backward,
-                                                  'ring_id': ring_id
-                                              })
+                block._insert_op_without_sync(
+                    idx,
+                    type='c_wait_compute',
+                    inputs={'X': []},
+                    outputs={'Out': []},
+                    attrs={'op_role': OpRole.Backward, 'ring_id': ring_id},
+                )
 
         block._sync_with_cpp()
 
@@ -302,8 +339,10 @@ class DataParallelOptimizationPass(PassBase):
             # other ops that might use communicating grad
             else:
                 for input_var_name in op.input_arg_names:
-                    for ring_id, unsync_grad_names in ring_id_to_un_sync_grad_map.items(
-                    ):
+                    for (
+                        ring_id,
+                        unsync_grad_names,
+                    ) in ring_id_to_un_sync_grad_map.items():
                         if input_var_name in unsync_grad_names:
                             # need to sync before op_i
                             if i in op_idx_to_sync_ring_id_map:
@@ -323,14 +362,13 @@ class DataParallelOptimizationPass(PassBase):
         for i in sorted(indices, reverse=True):
             for ring_id in op_idx_to_sync_ring_id_map[i]:
 
-                block._insert_op_without_sync(i,
-                                              type='c_wait_comm',
-                                              inputs={'X': []},
-                                              outputs={'Out': []},
-                                              attrs={
-                                                  'op_role': OpRole.Backward,
-                                                  'ring_id': ring_id
-                                              })
+                block._insert_op_without_sync(
+                    i,
+                    type='c_wait_comm',
+                    inputs={'X': []},
+                    outputs={'Out': []},
+                    attrs={'op_role': OpRole.Backward, 'ring_id': ring_id},
+                )
 
     def _could_be_fuse(self):
         # TODO  support gradient fuse higher order gradient.
@@ -418,36 +456,49 @@ class DataParallelOptimizationPass(PassBase):
         for i, group in enumerate(grad_groups[::-1]):
 
             # create coalecse tensor
-            group.coalesce_var = block.create_var(name=unique_name.generate(
-                'coalecse_grad_{}'.format(i)),
-                                                  dtype=group.dtype,
-                                                  persistable=False,
-                                                  stop_gradient=True)
+            group.coalesce_var = block.create_var(
+                name=unique_name.generate('coalecse_grad_{}'.format(i)),
+                dtype=group.dtype,
+                persistable=False,
+                stop_gradient=True,
+            )
 
             # update allreduce & scale op
             if group.scale_op_idx != -1:
                 scale_op = block.ops[group.scale_op_idx]
-                assert scale_op.type == 'scale', "should found scale op but found {}".format(
-                    str(scale_op))
-                scale_op._rename_input(scale_op.input_arg_names[0],
-                                       group.coalesce_var.name)
-                scale_op._rename_output(scale_op.output_arg_names[0],
-                                        group.coalesce_var.name)
+                assert (
+                    scale_op.type == 'scale'
+                ), "should found scale op but found {}".format(str(scale_op))
+                scale_op._rename_input(
+                    scale_op.input_arg_names[0], group.coalesce_var.name
+                )
+                scale_op._rename_output(
+                    scale_op.output_arg_names[0], group.coalesce_var.name
+                )
 
             allreduce_op = block.ops[group.allreduce_op_idx]
-            assert allreduce_op.type == 'c_allreduce_sum', "should found c_allreduce_sum op but found {}".format(
-                str(allreduce_op))
-            allreduce_op._rename_input(allreduce_op.input_arg_names[0],
-                                       group.coalesce_var.name)
-            allreduce_op._rename_output(allreduce_op.output_arg_names[0],
-                                        group.coalesce_var.name)
+            assert (
+                allreduce_op.type == 'c_allreduce_sum'
+            ), "should found c_allreduce_sum op but found {}".format(
+                str(allreduce_op)
+            )
+            allreduce_op._rename_input(
+                allreduce_op.input_arg_names[0], group.coalesce_var.name
+            )
+            allreduce_op._rename_output(
+                allreduce_op.output_arg_names[0], group.coalesce_var.name
+            )
 
             # remvoe un-used op
-            remove_op_indices = group.remove_wait_op_indices + group.remove_allreduce_op_indices + group.remove_scale_op_indices
+            remove_op_indices = (
+                group.remove_wait_op_indices
+                + group.remove_allreduce_op_indices
+                + group.remove_scale_op_indices
+            )
             for idx in sorted(remove_op_indices, reverse=True):
-                assert block.ops[
-                    idx].type in remove_op_types, "Unexception: try to remove op {}".format(
-                        str(op))
+                assert (
+                    block.ops[idx].type in remove_op_types
+                ), "Unexception: try to remove op {}".format(str(op))
                 block._remove_op(idx)
 
             # insert coalecse op
@@ -459,22 +510,23 @@ class DataParallelOptimizationPass(PassBase):
                 concated_ranks.append(len(shape))
 
             grad_names = [grad.name for grad in group.gradients]
-            block._insert_op_without_sync(group.coalesce_op_idx,
-                                          type="coalesce_tensor",
-                                          inputs={"Input": grad_names},
-                                          outputs={
-                                              "Output": grad_names,
-                                              "FusedOutput": group.coalesce_var
-                                          },
-                                          attrs={
-                                              "copy_data": False,
-                                              "use_align": True,
-                                              "dtype": group.dtype,
-                                              "concated_shapes":
-                                              concated_shapes,
-                                              "concated_ranks": concated_ranks,
-                                              OP_ROLE_KEY: OpRole.Backward
-                                          })
+            block._insert_op_without_sync(
+                group.coalesce_op_idx,
+                type="coalesce_tensor",
+                inputs={"Input": grad_names},
+                outputs={
+                    "Output": grad_names,
+                    "FusedOutput": group.coalesce_var,
+                },
+                attrs={
+                    "copy_data": False,
+                    "use_align": True,
+                    "dtype": group.dtype,
+                    "concated_shapes": concated_shapes,
+                    "concated_ranks": concated_ranks,
+                    OP_ROLE_KEY: OpRole.Backward,
+                },
+            )
 
         block._sync_with_cpp()
         # TODO update dist attr
@@ -482,6 +534,7 @@ class DataParallelOptimizationPass(PassBase):
     def summary(self, grad_groups=[]):
         # TODO: add logger module
         import logging
+
         self._logger = logging.getLogger()
         self._logger.propagate = False
         if not self._logger.handlers:
@@ -495,26 +548,31 @@ class DataParallelOptimizationPass(PassBase):
 
         if len(grad_groups) > 0:
             self._logger.info(
-                "origin {} allreduce ops are fused into {} coalecse allreduce ops."
-                .format(len(self._grad_name_to_group_map.keys()),
-                        len(grad_groups)))
+                "origin {} allreduce ops are fused into {} coalecse allreduce ops.".format(
+                    len(self._grad_name_to_group_map.keys()), len(grad_groups)
+                )
+            )
             self._logger.info("gradient fusing group are following: ")
             fused_grads = set()
             for i, group in enumerate(grad_groups):
                 self._logger.info(
                     "coalecse gradient [{}] is composed by: {}".format(
-                        i, [grad.name for grad in group.gradients]))
+                        i, [grad.name for grad in group.gradients]
+                    )
+                )
                 fused_grads.update([grad.name for grad in group.gradients])
-            individual_grads = set(
-                self._grad_name_to_group_map.keys()) - set(fused_grads)
+            individual_grads = set(self._grad_name_to_group_map.keys()) - set(
+                fused_grads
+            )
             self._logger.info(
                 "the following [{}] gradients are not fused: ".format(
-                    len(individual_grads)))
+                    len(individual_grads)
+                )
+            )
             self._logger.info("individual gradient {}".format(individual_grads))
 
 
 class GradientsGroup(object):
-
     def __init__(self, ops, max_group_size):
         self.max_group_size = max_group_size
         self.ops = ops
@@ -570,8 +628,11 @@ class GradientsGroup(object):
                 grad_op_idx -= 1
 
             grad_op = self.ops[grad_op_idx]
-            assert grad_var.name in grad_op.output_arg_names, "grad [{}] should be output of {}".format(
-                grad_var.name, str(grad_op))
+            assert (
+                grad_var.name in grad_op.output_arg_names
+            ), "grad [{}] should be output of {}".format(
+                grad_var.name, str(grad_op)
+            )
             self.coalesce_op_idx = grad_op_idx
 
     def finalize(self):

@@ -25,7 +25,7 @@ namespace operators {
 inline std::vector<int> get_repeat_times(
     const framework::ExecutionContext& ctx) {
   if (ctx.HasInput("RepeatTimes")) {
-    auto* repeat_tensor = ctx.Input<framework::LoDTensor>("RepeatTimes");
+    auto* repeat_tensor = ctx.Input<phi::DenseTensor>("RepeatTimes");
     auto* repeat_data = repeat_tensor->data<int>();
     phi::DenseTensor cpu_repeat_tensor;
     if (platform::is_gpu_place(repeat_tensor->place()) ||

@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
 class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -59,40 +54,40 @@ class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
         def generate_weight():
             return np.random.random(channel).astype(np.float32)
 
-        batch_norm_op = OpConfig(type="batch_norm",
-                                 inputs={
-                                     "X": ["input_data"],
-                                     "Bias": ["Bias"],
-                                     "Mean": ["Mean"],
-                                     "Scale": ["Scale"],
-                                     "Variance": ["Variance"]
-                                 },
-                                 outputs={
-                                     "Y": ["norm_output"],
-                                     "MeanOut": ["Mean"],
-                                     "VarianceOut": ["Variance"],
-                                     "SavedMean": ["SavedMean"],
-                                     "SavedVariance": ["SavedVariance"]
-                                 },
-                                 attrs={
-                                     "data_layout": data_layout,
-                                     "epsilon": epsilon,
-                                     "fuse_with_relu": fuse_with_relu,
-                                     "is_test": is_test,
-                                     "momentum": momentum,
-                                     "trainable_statistics":
-                                     trainable_statistics,
-                                     "use_global_stats": use_global_stats,
-                                     "use_mkldnn": use_mkldnn1
-                                 })
+        batch_norm_op = OpConfig(
+            type="batch_norm",
+            inputs={
+                "X": ["input_data"],
+                "Bias": ["Bias"],
+                "Mean": ["Mean"],
+                "Scale": ["Scale"],
+                "Variance": ["Variance"],
+            },
+            outputs={
+                "Y": ["norm_output"],
+                "MeanOut": ["Mean"],
+                "VarianceOut": ["Variance"],
+                "SavedMean": ["SavedMean"],
+                "SavedVariance": ["SavedVariance"],
+            },
+            attrs={
+                "data_layout": data_layout,
+                "epsilon": epsilon,
+                "fuse_with_relu": fuse_with_relu,
+                "is_test": is_test,
+                "momentum": momentum,
+                "trainable_statistics": trainable_statistics,
+                "use_global_stats": use_global_stats,
+                "use_mkldnn": use_mkldnn1,
+            },
+        )
 
-        relu_op = OpConfig(type="relu",
-                           inputs={"X": ["norm_output"]},
-                           outputs={"Out": ["relu_output"]},
-                           attrs={
-                               "use_cudnn": use_cudnn,
-                               "use_mkldnn": use_mkldnn2
-                           })
+        relu_op = OpConfig(
+            type="relu",
+            inputs={"X": ["norm_output"]},
+            outputs={"Out": ["relu_output"]},
+            attrs={"use_cudnn": use_cudnn, "use_mkldnn": use_mkldnn2},
+        )
 
         model_net = [batch_norm_op, relu_op]
 
@@ -102,12 +97,13 @@ class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
                 "Bias": TensorConfig(data_gen=partial(generate_weight)),
                 "Mean": TensorConfig(data_gen=partial(generate_weight)),
                 "Scale": TensorConfig(data_gen=partial(generate_weight)),
-                "Variance": TensorConfig(data_gen=partial(generate_weight))
+                "Variance": TensorConfig(data_gen=partial(generate_weight)),
             },
             inputs={
                 "input_data": TensorConfig(data_gen=partial(generate_input))
             },
-            outputs=["relu_output"])
+            outputs=["relu_output"],
+        )
 
         return program_config
 

@@ -19,7 +19,6 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestCollectiveReduceScatter(TestMultipleGpus):
-
     def test_collective_reduce_scatter(self):
         self.run_mnist_2gpu('collective_reduce_scatter.py', eager_mode=True)
 

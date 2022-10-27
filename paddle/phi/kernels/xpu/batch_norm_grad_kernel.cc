@@ -98,8 +98,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
                         "But recevived 'data_layout' is [%s].",
                         data_layout));
 
-  const auto data_layout_val =
-      paddle::framework::StringToDataLayout(data_layout);
+  const auto data_layout_val = phi::StringToDataLayout(data_layout);
 
   use_global_stats = is_test || use_global_stats;
 

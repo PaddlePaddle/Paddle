@@ -1,24 +1,22 @@
 #  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
-#Licensed under the Apache License, Version 2.0 (the "License")
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License")
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
 #    http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import unittest
 import numpy as np
 import math
-import copy
 from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
-from test_multiclass_nms_op import iou
 from test_multiclass_nms_op import nms
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
@@ -44,9 +42,9 @@ def multiclass_nms(prediction, class_num, keep_top_k, nms_threshold):
         for idx in indices:
             score_index.append((prediction[c][idx][4], c, idx))
 
-    sorted_score_index = sorted(score_index,
-                                key=lambda tup: tup[0],
-                                reverse=True)
+    sorted_score_index = sorted(
+        score_index, key=lambda tup: tup[0], reverse=True
+    )
     if keep_top_k > -1 and num_det > keep_top_k:
         sorted_score_index = sorted_score_index[:keep_top_k]
         num_det = keep_top_k
@@ -61,9 +59,16 @@ def multiclass_nms(prediction, class_num, keep_top_k, nms_threshold):
     return nmsed_outs, num_det
 
 
-def retinanet_detection_out(boxes_list, scores_list, anchors_list, im_info,
-                            score_threshold, nms_threshold, nms_top_k,
-                            keep_top_k):
+def retinanet_detection_out(
+    boxes_list,
+    scores_list,
+    anchors_list,
+    im_info,
+    score_threshold,
+    nms_threshold,
+    nms_top_k,
+    keep_top_k,
+):
     class_num = scores_list[0].shape[-1]
     im_height, im_width, im_scale = im_info
 
@@ -90,23 +95,37 @@ def retinanet_detection_out(boxes_list, scores_list, anchors_list, im_info,
             a = int(idx / class_num)
             c = int(idx % class_num)
             box_offset = a * 4
-            anchor_box_width = anchors_per_level[
-                box_offset + 2] - anchors_per_level[box_offset] + 1
-            anchor_box_height = anchors_per_level[
-                box_offset + 3] - anchors_per_level[box_offset + 1] + 1
-            anchor_box_center_x = anchors_per_level[
-                box_offset] + anchor_box_width / 2
-            anchor_box_center_y = anchors_per_level[box_offset +
-                                                    1] + anchor_box_height / 2
+            anchor_box_width = (
+                anchors_per_level[box_offset + 2]
+                - anchors_per_level[box_offset]
+                + 1
+            )
+            anchor_box_height = (
+                anchors_per_level[box_offset + 3]
+                - anchors_per_level[box_offset + 1]
+                + 1
+            )
+            anchor_box_center_x = (
+                anchors_per_level[box_offset] + anchor_box_width / 2
+            )
+            anchor_box_center_y = (
+                anchors_per_level[box_offset + 1] + anchor_box_height / 2
+            )
 
-            target_box_center_x = bboxes_per_level[
-                box_offset] * anchor_box_width + anchor_box_center_x
-            target_box_center_y = bboxes_per_level[
-                box_offset + 1] * anchor_box_height + anchor_box_center_y
-            target_box_width = math.exp(
-                bboxes_per_level[box_offset + 2]) * anchor_box_width
-            target_box_height = math.exp(
-                bboxes_per_level[box_offset + 3]) * anchor_box_height
+            target_box_center_x = (
+                bboxes_per_level[box_offset] * anchor_box_width
+                + anchor_box_center_x
+            )
+            target_box_center_y = (
+                bboxes_per_level[box_offset + 1] * anchor_box_height
+                + anchor_box_center_y
+            )
+            target_box_width = (
+                math.exp(bboxes_per_level[box_offset + 2]) * anchor_box_width
+            )
+            target_box_height = (
+                math.exp(bboxes_per_level[box_offset + 3]) * anchor_box_height
+            )
 
             pred_box_xmin = target_box_center_x - target_box_width / 2
             pred_box_ymin = target_box_center_y - target_box_height / 2
@@ -119,33 +138,46 @@ def retinanet_detection_out(boxes_list, scores_list, anchors_list, im_info,
             pred_box_ymax = pred_box_ymax / im_scale
 
             pred_box_xmin = max(
-                min(pred_box_xmin,
-                    np.round(im_width / im_scale) - 1), 0.)
+                min(pred_box_xmin, np.round(im_width / im_scale) - 1), 0.0
+            )
             pred_box_ymin = max(
-                min(pred_box_ymin,
-                    np.round(im_height / im_scale) - 1), 0.)
+                min(pred_box_ymin, np.round(im_height / im_scale) - 1), 0.0
+            )
             pred_box_xmax = max(
-                min(pred_box_xmax,
-                    np.round(im_width / im_scale) - 1), 0.)
+                min(pred_box_xmax, np.round(im_width / im_scale) - 1), 0.0
+            )
             pred_box_ymax = max(
-                min(pred_box_ymax,
-                    np.round(im_height / im_scale) - 1), 0.)
+                min(pred_box_ymax, np.round(im_height / im_scale) - 1), 0.0
+            )
 
             if c not in prediction.keys():
                 prediction[c] = []
-            prediction[c].append([
-                pred_box_xmin, pred_box_ymin, pred_box_xmax, pred_box_ymax,
-                scores_per_level[idx]
-            ])
+            prediction[c].append(
+                [
+                    pred_box_xmin,
+                    pred_box_ymin,
+                    pred_box_xmax,
+                    pred_box_ymax,
+                    scores_per_level[idx],
+                ]
+            )
 
-    nmsed_outs, nmsed_num = multiclass_nms(prediction, class_num, keep_top_k,
-                                           nms_threshold)
+    nmsed_outs, nmsed_num = multiclass_nms(
+        prediction, class_num, keep_top_k, nms_threshold
+    )
     return nmsed_outs, nmsed_num
 
 
-def batched_retinanet_detection_out(boxes, scores, anchors, im_info,
-                                    score_threshold, nms_threshold, nms_top_k,
-                                    keep_top_k):
+def batched_retinanet_detection_out(
+    boxes,
+    scores,
+    anchors,
+    im_info,
+    score_threshold,
+    nms_threshold,
+    nms_top_k,
+    keep_top_k,
+):
     batch_size = scores[0].shape[0]
     det_outs = []
     lod = []
@@ -160,8 +192,15 @@ def batched_retinanet_detection_out(boxes, scores, anchors, im_info,
             scores_per_batch.append(scores[lvl][n])
 
         nmsed_outs, nmsed_num = retinanet_detection_out(
-            boxes_per_batch, scores_per_batch, anchors, im_info[n],
-            score_threshold, nms_threshold, nms_top_k, keep_top_k)
+            boxes_per_batch,
+            scores_per_batch,
+            anchors,
+            im_info[n],
+            score_threshold,
+            nms_threshold,
+            nms_top_k,
+            keep_top_k,
+        )
         lod.append(nmsed_num)
         if nmsed_num == 0:
             continue
@@ -171,7 +210,6 @@ def batched_retinanet_detection_out(boxes, scores, anchors, im_info,
 
 
 class TestRetinanetDetectionOutOp1(OpTest):
-
     def set_argument(self):
         self.score_threshold = 0.05
         self.min_level = 3
@@ -194,8 +232,8 @@ class TestRetinanetDetectionOutOp1(OpTest):
         self.layer_w = []
         num_levels = self.max_level - self.min_level + 1
         for i in range(num_levels):
-            self.layer_h.append(2**(num_levels - i))
-            self.layer_w.append(2**(num_levels - i))
+            self.layer_h.append(2 ** (num_levels - i))
+            self.layer_w.append(2 ** (num_levels - i))
 
     def init_test_input(self):
         anchor_num = len(self.aspect_ratios) * self.scales_per_octave
@@ -208,62 +246,89 @@ class TestRetinanetDetectionOutOp1(OpTest):
             layer_h = self.layer_h[i]
             layer_w = self.layer_w[i]
 
-            input_feat = np.random.random((self.batch_size, self.input_channels,
-                                           layer_h, layer_w)).astype('float32')
+            input_feat = np.random.random(
+                (self.batch_size, self.input_channels, layer_h, layer_w)
+            ).astype('float32')
             score = np.random.random(
-                (self.batch_size, self.class_num * anchor_num, layer_h,
-                 layer_w)).astype('float32')
+                (self.batch_size, self.class_num * anchor_num, layer_h, layer_w)
+            ).astype('float32')
             score = np.transpose(score, [0, 2, 3, 1])
             score = score.reshape((self.batch_size, -1, self.class_num))
-            box = np.random.random((self.batch_size, self.box_size * anchor_num,
-                                    layer_h, layer_w)).astype('float32')
+            box = np.random.random(
+                (self.batch_size, self.box_size * anchor_num, layer_h, layer_w)
+            ).astype('float32')
             box = np.transpose(box, [0, 2, 3, 1])
             box = box.reshape((self.batch_size, -1, self.box_size))
             anchor_sizes = []
             for octave in range(self.scales_per_octave):
                 anchor_sizes.append(
-                    float(self.anchor_strides[i] * (2**octave)) /
-                    float(self.scales_per_octave) * self.anchor_scale)
+                    float(self.anchor_strides[i] * (2**octave))
+                    / float(self.scales_per_octave)
+                    * self.anchor_scale
+                )
             anchor, var = anchor_generator_in_python(
                 input_feat=input_feat,
                 anchor_sizes=anchor_sizes,
                 aspect_ratios=self.aspect_ratios,
                 variances=[1.0, 1.0, 1.0, 1.0],
                 stride=[self.anchor_strides[i], self.anchor_strides[i]],
-                offset=0.5)
+                offset=0.5,
+            )
             anchor = np.reshape(anchor, [-1, 4])
             self.scores_list.append(score.astype('float32'))
             self.bboxes_list.append(box.astype('float32'))
             self.anchors_list.append(anchor.astype('float32'))
 
-        self.im_info = np.array([[256., 256., 1.5]]).astype(
-            'float32')  #im_height, im_width, scale
+        self.im_info = np.array([[256.0, 256.0, 1.5]]).astype(
+            'float32'
+        )  # im_height, im_width, scale
 
     def setUp(self):
         self.set_argument()
         self.init_test_input()
 
         nmsed_outs, lod = batched_retinanet_detection_out(
-            self.bboxes_list, self.scores_list, self.anchors_list, self.im_info,
-            self.score_threshold, self.nms_threshold, self.nms_top_k,
-            self.keep_top_k)
+            self.bboxes_list,
+            self.scores_list,
+            self.anchors_list,
+            self.im_info,
+            self.score_threshold,
+            self.nms_threshold,
+            self.nms_top_k,
+            self.keep_top_k,
+        )
         nmsed_outs = np.array(nmsed_outs).astype('float32')
         self.op_type = 'retinanet_detection_output'
         self.inputs = {
-            'BBoxes': [('b0', self.bboxes_list[0]), ('b1', self.bboxes_list[1]),
-                       ('b2', self.bboxes_list[2]), ('b3', self.bboxes_list[3]),
-                       ('b4', self.bboxes_list[4])],
-            'Scores': [('s0', self.scores_list[0]), ('s1', self.scores_list[1]),
-                       ('s2', self.scores_list[2]), ('s3', self.scores_list[3]),
-                       ('s4', self.scores_list[4])],
-            'Anchors': [('a0', self.anchors_list[0]),
-                        ('a1', self.anchors_list[1]),
-                        ('a2', self.anchors_list[2]),
-                        ('a3', self.anchors_list[3]),
-                        ('a4', self.anchors_list[4])],
-            'ImInfo': (self.im_info, [[
-                1,
-            ]])
+            'BBoxes': [
+                ('b0', self.bboxes_list[0]),
+                ('b1', self.bboxes_list[1]),
+                ('b2', self.bboxes_list[2]),
+                ('b3', self.bboxes_list[3]),
+                ('b4', self.bboxes_list[4]),
+            ],
+            'Scores': [
+                ('s0', self.scores_list[0]),
+                ('s1', self.scores_list[1]),
+                ('s2', self.scores_list[2]),
+                ('s3', self.scores_list[3]),
+                ('s4', self.scores_list[4]),
+            ],
+            'Anchors': [
+                ('a0', self.anchors_list[0]),
+                ('a1', self.anchors_list[1]),
+                ('a2', self.anchors_list[2]),
+                ('a3', self.anchors_list[3]),
+                ('a4', self.anchors_list[4]),
+            ],
+            'ImInfo': (
+                self.im_info,
+                [
+                    [
+                        1,
+                    ]
+                ],
+            ),
         }
         self.outputs = {'Out': (nmsed_outs, [lod])}
         self.attrs = {
@@ -271,7 +336,7 @@ class TestRetinanetDetectionOutOp1(OpTest):
             'nms_top_k': self.nms_top_k,
             'nms_threshold': self.nms_threshold,
             'keep_top_k': self.keep_top_k,
-            'nms_eta': 1.,
+            'nms_eta': 1.0,
         }
 
     def test_check_output(self):
@@ -279,7 +344,6 @@ class TestRetinanetDetectionOutOp1(OpTest):
 
 
 class TestRetinanetDetectionOutOp2(OpTest):
-
     def set_argument(self):
         self.score_threshold = 0.05
         self.min_level = 3
@@ -304,7 +368,6 @@ class TestRetinanetDetectionOutOp2(OpTest):
 
 
 class TestRetinanetDetectionOutOpNo3(TestRetinanetDetectionOutOp1):
-
     def set_argument(self):
         # Here set 2.0 to test the case there is no outputs.
         # In practical use, 0.0 < score_threshold < 1.0
@@ -329,12 +392,11 @@ class TestRetinanetDetectionOutOpNo3(TestRetinanetDetectionOutOp1):
         self.layer_w = []
         num_levels = self.max_level - self.min_level + 1
         for i in range(num_levels):
-            self.layer_h.append(2**(num_levels - i))
-            self.layer_w.append(2**(num_levels - i))
+            self.layer_h.append(2 ** (num_levels - i))
+            self.layer_w.append(2 ** (num_levels - i))
 
 
 class TestRetinanetDetectionOutOpNo4(TestRetinanetDetectionOutOp1):
-
     def set_argument(self):
         self.score_threshold = 0.05
         self.min_level = 2
@@ -357,33 +419,52 @@ class TestRetinanetDetectionOutOpNo4(TestRetinanetDetectionOutOp1):
         self.layer_w = []
         num_levels = self.max_level - self.min_level + 1
         for i in range(num_levels):
-            self.layer_h.append(2**(num_levels - i))
-            self.layer_w.append(2**(num_levels - i))
+            self.layer_h.append(2 ** (num_levels - i))
+            self.layer_w.append(2 ** (num_levels - i))
 
     def setUp(self):
         self.set_argument()
         self.init_test_input()
 
         nmsed_outs, lod = batched_retinanet_detection_out(
-            self.bboxes_list, self.scores_list, self.anchors_list, self.im_info,
-            self.score_threshold, self.nms_threshold, self.nms_top_k,
-            self.keep_top_k)
+            self.bboxes_list,
+            self.scores_list,
+            self.anchors_list,
+            self.im_info,
+            self.score_threshold,
+            self.nms_threshold,
+            self.nms_top_k,
+            self.keep_top_k,
+        )
         nmsed_outs = np.array(nmsed_outs).astype('float32')
         self.op_type = 'retinanet_detection_output'
         self.inputs = {
-            'BBoxes': [('b0', self.bboxes_list[0]), ('b1', self.bboxes_list[1]),
-                       ('b2', self.bboxes_list[2]),
-                       ('b3', self.bboxes_list[3])],
-            'Scores': [('s0', self.scores_list[0]), ('s1', self.scores_list[1]),
-                       ('s2', self.scores_list[2]),
-                       ('s3', self.scores_list[3])],
-            'Anchors': [('a0', self.anchors_list[0]),
-                        ('a1', self.anchors_list[1]),
-                        ('a2', self.anchors_list[2]),
-                        ('a3', self.anchors_list[3])],
-            'ImInfo': (self.im_info, [[
-                1,
-            ]])
+            'BBoxes': [
+                ('b0', self.bboxes_list[0]),
+                ('b1', self.bboxes_list[1]),
+                ('b2', self.bboxes_list[2]),
+                ('b3', self.bboxes_list[3]),
+            ],
+            'Scores': [
+                ('s0', self.scores_list[0]),
+                ('s1', self.scores_list[1]),
+                ('s2', self.scores_list[2]),
+                ('s3', self.scores_list[3]),
+            ],
+            'Anchors': [
+                ('a0', self.anchors_list[0]),
+                ('a1', self.anchors_list[1]),
+                ('a2', self.anchors_list[2]),
+                ('a3', self.anchors_list[3]),
+            ],
+            'ImInfo': (
+                self.im_info,
+                [
+                    [
+                        1,
+                    ]
+                ],
+            ),
         }
         self.outputs = {'Out': (nmsed_outs, [lod])}
         self.attrs = {
@@ -391,7 +472,7 @@ class TestRetinanetDetectionOutOpNo4(TestRetinanetDetectionOutOp1):
             'nms_top_k': self.nms_top_k,
             'nms_threshold': self.nms_threshold,
             'keep_top_k': self.keep_top_k,
-            'nms_eta': 1.,
+            'nms_eta': 1.0,
         }
 
     def test_check_output(self):
@@ -399,7 +480,6 @@ class TestRetinanetDetectionOutOpNo4(TestRetinanetDetectionOutOp1):
 
 
 class TestRetinanetDetectionOutOpNo5(TestRetinanetDetectionOutOp1):
-
     def set_argument(self):
         self.score_threshold = 0.05
         self.min_level = 3
@@ -422,35 +502,34 @@ class TestRetinanetDetectionOutOpNo5(TestRetinanetDetectionOutOp1):
         self.layer_w = []
         num_levels = self.max_level - self.min_level + 1
         for i in range(num_levels):
-            self.layer_h.append(2**(num_levels - i))
-            self.layer_w.append(2**(num_levels - i))
+            self.layer_h.append(2 ** (num_levels - i))
+            self.layer_w.append(2 ** (num_levels - i))
 
 
 class TestRetinanetDetectionOutOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
-            bboxes_low1 = fluid.data(name='bboxes_low1',
-                                     shape=[1, 44, 4],
-                                     dtype='float32')
-            bboxes_high1 = fluid.data(name='bboxes_high1',
-                                      shape=[1, 11, 4],
-                                      dtype='float32')
-            scores_low1 = fluid.data(name='scores_low1',
-                                     shape=[1, 44, 10],
-                                     dtype='float32')
-            scores_high1 = fluid.data(name='scores_high1',
-                                      shape=[1, 11, 10],
-                                      dtype='float32')
-            anchors_low1 = fluid.data(name='anchors_low1',
-                                      shape=[44, 4],
-                                      dtype='float32')
-            anchors_high1 = fluid.data(name='anchors_high1',
-                                       shape=[11, 4],
-                                       dtype='float32')
-            im_info1 = fluid.data(name="im_info1",
-                                  shape=[1, 3],
-                                  dtype='float32')
+            bboxes_low1 = fluid.data(
+                name='bboxes_low1', shape=[1, 44, 4], dtype='float32'
+            )
+            bboxes_high1 = fluid.data(
+                name='bboxes_high1', shape=[1, 11, 4], dtype='float32'
+            )
+            scores_low1 = fluid.data(
+                name='scores_low1', shape=[1, 44, 10], dtype='float32'
+            )
+            scores_high1 = fluid.data(
+                name='scores_high1', shape=[1, 11, 10], dtype='float32'
+            )
+            anchors_low1 = fluid.data(
+                name='anchors_low1', shape=[44, 4], dtype='float32'
+            )
+            anchors_high1 = fluid.data(
+                name='anchors_high1', shape=[11, 4], dtype='float32'
+            )
+            im_info1 = fluid.data(
+                name="im_info1", shape=[1, 3], dtype='float32'
+            )
 
             # The `bboxes` must be list, each element must be Variable and
             # its Tensor data type must be one of float32 and float64.
@@ -459,19 +538,21 @@ class TestRetinanetDetectionOutOpError(unittest.TestCase):
                     bboxes=bboxes_low1,
                     scores=[scores_low1, scores_high1],
                     anchors=[anchors_low1, anchors_high1],
-                    im_info=im_info1)
+                    im_info=im_info1,
+                )
 
             self.assertRaises(TypeError, test_bboxes_type)
 
             def test_bboxes_tensor_dtype():
-                bboxes_high2 = fluid.data(name='bboxes_high2',
-                                          shape=[1, 11, 4],
-                                          dtype='int32')
+                bboxes_high2 = fluid.data(
+                    name='bboxes_high2', shape=[1, 11, 4], dtype='int32'
+                )
                 fluid.layers.retinanet_detection_output(
                     bboxes=[bboxes_high2, 5],
                     scores=[scores_low1, scores_high1],
                     anchors=[anchors_low1, anchors_high1],
-                    im_info=im_info1)
+                    im_info=im_info1,
+                )
 
             self.assertRaises(TypeError, test_bboxes_tensor_dtype)
 
@@ -482,19 +563,21 @@ class TestRetinanetDetectionOutOpError(unittest.TestCase):
                     bboxes=[bboxes_low1, bboxes_high1],
                     scores=scores_low1,
                     anchors=[anchors_low1, anchors_high1],
-                    im_info=im_info1)
+                    im_info=im_info1,
+                )
 
             self.assertRaises(TypeError, test_scores_type)
 
             def test_scores_tensor_dtype():
-                scores_high2 = fluid.data(name='scores_high2',
-                                          shape=[1, 11, 10],
-                                          dtype='int32')
+                scores_high2 = fluid.data(
+                    name='scores_high2', shape=[1, 11, 10], dtype='int32'
+                )
                 fluid.layers.retinanet_detection_output(
                     bboxes=[bboxes_low1, bboxes_high1],
                     scores=[scores_high2, 5],
                     anchors=[anchors_low1, anchors_high1],
-                    im_info=im_info1)
+                    im_info=im_info1,
+                )
 
             self.assertRaises(TypeError, test_scores_tensor_dtype)
 
@@ -505,19 +588,21 @@ class TestRetinanetDetectionOutOpError(unittest.TestCase):
                     bboxes=[bboxes_low1, bboxes_high1],
                     scores=[scores_low1, scores_high1],
                     anchors=anchors_low1,
-                    im_info=im_info1)
+                    im_info=im_info1,
+                )
 
             self.assertRaises(TypeError, test_anchors_type)
 
             def test_anchors_tensor_dtype():
-                anchors_high2 = fluid.data(name='anchors_high2',
-                                           shape=[11, 4],
-                                           dtype='int32')
+                anchors_high2 = fluid.data(
+                    name='anchors_high2', shape=[11, 4], dtype='int32'
+                )
                 fluid.layers.retinanet_detection_output(
                     bboxes=[bboxes_low1, bboxes_high1],
                     scores=[scores_low1, scores_high1],
                     anchors=[anchors_high2, 5],
-                    im_info=im_info1)
+                    im_info=im_info1,
+                )
 
             self.assertRaises(TypeError, test_anchors_tensor_dtype)
 
@@ -528,19 +613,21 @@ class TestRetinanetDetectionOutOpError(unittest.TestCase):
                     bboxes=[bboxes_low1, bboxes_high1],
                     scores=[scores_low1, scores_high1],
                     anchors=[anchors_low1, anchors_high1],
-                    im_info=[2, 3, 4])
+                    im_info=[2, 3, 4],
+                )
 
             self.assertRaises(TypeError, test_iminfo_type)
 
             def test_iminfo_tensor_dtype():
-                im_info2 = fluid.data(name='im_info2',
-                                      shape=[1, 3],
-                                      dtype='int32')
+                im_info2 = fluid.data(
+                    name='im_info2', shape=[1, 3], dtype='int32'
+                )
                 fluid.layers.retinanet_detection_output(
                     bboxes=[bboxes_low1, bboxes_high1],
                     scores=[scores_low1, scores_high1],
                     anchors=[anchors_low1, anchors_high1],
-                    im_info=im_info2)
+                    im_info=im_info2,
+                )
 
             self.assertRaises(TypeError, test_iminfo_tensor_dtype)
 

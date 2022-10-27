@@ -185,10 +185,9 @@ class GradOpBaseMakerBase {
           auto grad_var_base_tmp = var_base_temp->GradVarBase();
 
           if (!is_input) {
-            auto* tensor = grad_var_base_tmp->MutableVar()
-                               ->GetMutable<framework::LoDTensor>();
-            tensor->Resize(
-                var_base_temp->Var().Get<framework::LoDTensor>().dims());
+            auto* tensor =
+                grad_var_base_tmp->MutableVar()->GetMutable<phi::DenseTensor>();
+            tensor->Resize(var_base_temp->Var().Get<phi::DenseTensor>().dims());
           }
           vec_temp.emplace_back(grad_var_base_tmp);
         } else {
@@ -270,8 +269,8 @@ class TracedGradOp {
         return;
       } else {
         for (auto& var : vars) {
-          VLOG(6) << "SetOutput var name: " << var->Name();
           if (var && !var->OverridedStopGradient() && var->GradNode()) {
+            VLOG(6) << "SetOutput var name: " << var->Name();
             if (map_dirty_grad_node_.find(var) != map_dirty_grad_node_.end()) {
               // Because inplace var isn't a leaf var, it should have
               // dirty_grad_node.
@@ -284,8 +283,6 @@ class TracedGradOp {
               // the var with `stop_gradient=True` to the var with
               // `stop_gradient=False`.
               node_->InsertGradPendingNode(var->GradNode());
-              VLOG(6) << (*node_.get())[0].Type() << " insertGradPendingNode "
-                      << (*(var->GradNode().get()))[0].Type();
             }
           }
         }
@@ -366,11 +363,11 @@ class TracedGradOp {
     } else if (var_wrapper->InplaceVersionSnapshot() ==
                var_wrapper->MutableVar()->CurrentInplaceVersion()) {
       return var_wrapper;
-    } else if (var_wrapper->MutableVar()->IsType<framework::LoDTensor>() ||
+    } else if (var_wrapper->MutableVar()->IsType<phi::DenseTensor>() ||
                var_wrapper->MutableVar()->IsType<phi::SelectedRows>()) {
       auto* tensor =
-          var_wrapper->MutableVar()->IsType<framework::LoDTensor>()
-              ? var_wrapper->MutableVar()->GetMutable<framework::LoDTensor>()
+          var_wrapper->MutableVar()->IsType<phi::DenseTensor>()
+              ? var_wrapper->MutableVar()->GetMutable<phi::DenseTensor>()
               : var_wrapper->MutableVar()
                     ->GetMutable<phi::SelectedRows>()
                     ->mutable_value();

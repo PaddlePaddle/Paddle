@@ -380,7 +380,7 @@ class BoxCoderNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* prior_box = ctx.Input<phi::DenseTensor>("PriorBox");
     auto* prior_box_var = ctx.Input<phi::DenseTensor>("PriorBoxVar");
-    auto* target_box = ctx.Input<framework::LoDTensor>("TargetBox");
+    auto* target_box = ctx.Input<phi::DenseTensor>("TargetBox");
     auto* output_box = ctx.Output<phi::DenseTensor>("OutputBox");
     std::vector<float> variance = ctx.Attr<std::vector<float>>("variance");
     const int axis = ctx.Attr<int>("axis");

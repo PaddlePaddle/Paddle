@@ -26,7 +26,7 @@ limitations under the License. */
 
 using float16 = paddle::platform::float16;
 using Tensor = phi::DenseTensor;
-using LoDTensor = paddle::framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using Scope = paddle::framework::Scope;
 using OpDesc = paddle::framework::OpDesc;
 using Graph = paddle::framework::ir::Graph;
@@ -41,7 +41,7 @@ namespace ipu {
 template <typename T>
 T GetSingleVarFromScope(const Scope* scope, const std::string& var_name) {
   auto var = scope->GetVar(var_name);
-  auto tensor = var->Get<framework::LoDTensor>();
+  auto tensor = var->Get<phi::DenseTensor>();
   return tensor.data<T>()[0];
 }
 

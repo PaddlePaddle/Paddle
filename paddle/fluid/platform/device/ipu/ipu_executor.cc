@@ -339,7 +339,7 @@ void Executor::SetWeightsIO() {
       VLOG(10) << "Connect paddle weight: " << paddle_var
                << " with popart weight: " << popart_var;
       auto var = scope_->GetVar(paddle_var);
-      auto data_ptr = var->GetMutable<framework::LoDTensor>()->data();
+      auto data_ptr = var->GetMutable<phi::DenseTensor>()->data();
       auto tensor_info = session_->getInfo(popart_var);
       executor_resources_->weights_io.insert(popart_var,
                                              {data_ptr, tensor_info});
@@ -354,7 +354,7 @@ void Executor::ConvertWeights(bool align_to_popart) {
   for (auto weight_pair : executor_resources_->weights_and_opt_state) {
     auto paddle_var = scope_->GetVar(weight_pair.second);
     auto paddle_var_dtype = PhiDType2PopartDType(
-        paddle_var->GetMutable<framework::LoDTensor>()->dtype());
+        paddle_var->GetMutable<phi::DenseTensor>()->dtype());
 
     PADDLE_ENFORCE_EQ((paddle_var_dtype == popart::DataType::FLOAT ||
                        paddle_var_dtype == popart::DataType::FLOAT16),
@@ -382,7 +382,7 @@ void Executor::ConvertWeights(bool align_to_popart) {
       VLOG(10) << weight_pair.first << " and " << weight_pair.second
                << " have different dtype : " << popart_var_dtype;
       auto *data_ptr =
-          paddle_var->GetMutable<framework::LoDTensor>()->data<float>();
+          paddle_var->GetMutable<phi::DenseTensor>()->data<float>();
 
       auto num_elem = info.nelms();
       if (align_to_popart) {

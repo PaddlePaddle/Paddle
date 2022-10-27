@@ -807,6 +807,33 @@ void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void RnnGradInferMeta(const MetaTensor& x,
+                      const std::vector<const MetaTensor*>& pre_state,
+                      const std::vector<const MetaTensor*>& weight_list,
+                      MetaTensor* x_grad,
+                      std::vector<MetaTensor*> pre_state_grad,
+                      std::vector<MetaTensor*> weight_grad_list) {
+  PADDLE_ENFORCE_GT(
+      pre_state.size(),
+      0UL,
+      phi::errors::InvalidArgument(
+          "The input pre_state in RnnGradInferMeta can't be empty."));
+  PADDLE_ENFORCE_GT(
+      weight_grad_list.size(),
+      0UL,
+      phi::errors::InvalidArgument(
+          "The input weight_grad_list in RnnGradInferMeta can't be empty."));
+  if (x_grad) {
+    UnchangedInferMeta(x, x_grad);
+  }
+  if (pre_state_grad.size()) {
+    UnchangedMultiInferMeta(pre_state, pre_state_grad);
+  }
+  if (weight_grad_list.size()) {
+    UnchangedMultiInferMeta(weight_list, weight_grad_list);
+  }
+}
+
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
                           const MetaTensor& out_grad,

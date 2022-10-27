@@ -655,7 +655,7 @@ void AnalysisConfig::EnableTensorRtEngine(
   }
 
   use_tensorrt_ = true;
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
   // https://forums.developer.nvidia.com/t/nvinfer1-createexecutioncontextwithoutdevicememory-returns-nullptr/111878/2
   // when trt version less than 7.2,
   // createExecutionContextWithoutDeviceMemory() has bug.

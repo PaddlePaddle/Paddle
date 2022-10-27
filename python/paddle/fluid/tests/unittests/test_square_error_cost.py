@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import sys
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -22,7 +21,6 @@ from paddle.fluid.executor import Executor
 
 
 class TestSquareErrorCost(unittest.TestCase):
-
     def test_square_error_cost(self):
         input_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
         label_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
@@ -34,25 +32,23 @@ class TestSquareErrorCost(unittest.TestCase):
         label_var = layers.create_tensor(dtype="float32", name="label")
         output = layers.square_error_cost(input=input_var, label=label_var)
 
-        for use_cuda in ([False, True]
-                         if core.is_compiled_with_cuda() else [False]):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
-            result, = exe.run(fluid.default_main_program(),
-                              feed={
-                                  "input": input_val,
-                                  "label": label_val
-                              },
-                              fetch_list=[output])
+            (result,) = exe.run(
+                fluid.default_main_program(),
+                feed={"input": input_val, "label": label_val},
+                fetch_list=[output],
+            )
 
             np.testing.assert_allclose(np_result, result, rtol=1e-05)
 
 
 class TestSquareErrorInvalidInput(unittest.TestCase):
-
     def test_error(self):
-
         def test_invalid_input():
             input = [256, 3]
             label = fluid.data(name='label1', shape=[None, 3], dtype='float32')

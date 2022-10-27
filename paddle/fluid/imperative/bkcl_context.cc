@@ -163,12 +163,12 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
   XPUStream stream =
       use_calc_stream ? dev_ctx->x_context()->xpu_stream : comm->stream();
 
-  if (src.IsType<framework::LoDTensor>()) {
-    if (!dst->IsType<framework::LoDTensor>()) {
+  if (src.IsType<phi::DenseTensor>()) {
+    if (!dst->IsType<phi::DenseTensor>()) {
       dst->Clear();
     }
-    AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>(),
+    AllReduce(src.Get<phi::DenseTensor>(),
+              dst->GetMutable<phi::DenseTensor>(),
               stream,
               comm);
   } else {
@@ -181,7 +181,7 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
 
 void BKCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
-  phi::DenseTensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+  phi::DenseTensor *src_tensor = src->GetMutable<phi::DenseTensor>();
   const auto &place = src_tensor->place();
   platform::BKCLComm *comm =
       platform::BKCLCommContext::Instance().Get(ring_id, place);

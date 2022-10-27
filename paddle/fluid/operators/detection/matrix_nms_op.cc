@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 class MatrixNMSOp : public framework::OperatorWithKernel {
  public:

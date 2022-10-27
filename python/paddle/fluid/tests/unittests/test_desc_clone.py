@@ -12,21 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import argparse
-import time
-import math
-import sys
-
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
 from paddle.fluid import core
 import unittest
-from multiprocessing import Process
-import os
-import signal
-import six
+import functools
 import collections
 
 SEED = 1
@@ -37,33 +27,41 @@ paddle.dataset.mnist.fetch()
 # random seed must set before configuring the network.
 # fluid.default_startup_program().random_seed = SEED
 def cnn_model(data):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(input=data,
-                                                  filter_size=5,
-                                                  num_filters=20,
-                                                  pool_size=2,
-                                                  pool_stride=2,
-                                                  act="relu")
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
-                                                  filter_size=5,
-                                                  num_filters=50,
-                                                  pool_size=2,
-                                                  pool_stride=2,
-                                                  act="relu")
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+        input=data,
+        filter_size=5,
+        num_filters=20,
+        pool_size=2,
+        pool_stride=2,
+        act="relu",
+    )
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+        input=conv_pool_1,
+        filter_size=5,
+        num_filters=50,
+        pool_size=2,
+        pool_stride=2,
+        act="relu",
+    )
 
     # TODO(dzhwinter) : refine the initializer and random seed settting
     SIZE = 10
     input_shape = conv_pool_2.shape
-    param_shape = [six.moves.reduce(lambda a, b: a * b, input_shape[1:], 1)
-                   ] + [SIZE]
-    scale = (2.0 / (param_shape[0]**2 * SIZE))**0.5
+    param_shape = [functools.reduce(lambda a, b: a * b, input_shape[1:], 1)] + [
+        SIZE
+    ]
+    scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
     predict = fluid.layers.fc(
         input=conv_pool_2,
         size=SIZE,
         act="softmax",
         param_attr=fluid.param_attr.ParamAttr(
-            initializer=fluid.initializer.NormalInitializer(loc=0.0,
-                                                            scale=scale)))
+            initializer=fluid.initializer.NormalInitializer(
+                loc=0.0, scale=scale
+            )
+        ),
+    )
     return predict
 
 
@@ -79,75 +77,88 @@ def get_model(batch_size):
 
     # Evaluator
     batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-    batch_acc = fluid.layers.accuracy(input=predict,
-                                      label=label,
-                                      total=batch_size_tensor)
+    batch_acc = fluid.layers.accuracy(
+        input=predict, label=label, total=batch_size_tensor
+    )
 
     inference_program = fluid.default_main_program().clone()
     # Optimization
-    opt = fluid.optimizer.AdamOptimizer(learning_rate=0.001,
-                                        beta1=0.9,
-                                        beta2=0.999)
+    opt = fluid.optimizer.AdamOptimizer(
+        learning_rate=0.001, beta1=0.9, beta2=0.999
+    )
 
     # Reader
-    train_reader = paddle.batch(paddle.dataset.mnist.train(),
-                                batch_size=batch_size)
-    test_reader = paddle.batch(paddle.dataset.mnist.test(),
-                               batch_size=batch_size)
+    train_reader = paddle.batch(
+        paddle.dataset.mnist.train(), batch_size=batch_size
+    )
+    test_reader = paddle.batch(
+        paddle.dataset.mnist.test(), batch_size=batch_size
+    )
     opt.minimize(avg_cost)
-    return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
+    return (
+        inference_program,
+        avg_cost,
+        train_reader,
+        test_reader,
+        batch_acc,
+        predict,
+    )
 
 
 def operator_equal(a, b):
     if a.__str__() != b.__str__():
         raise ValueError("In operator_equal not equal\n")
 
-    for k, v in six.iteritems(a.__dict__):
-        if isinstance(v, fluid.framework.Program) or \
-                isinstance(v, fluid.framework.Block):
+    for k, v in a.__dict__.items():
+        if isinstance(v, fluid.framework.Program) or isinstance(
+            v, fluid.framework.Block
+        ):
             continue
 
         elif isinstance(v, core.OpDesc):
             continue
 
         elif isinstance(v, collections.OrderedDict):
-            v0 = sorted(list(six.iteritems(v)), key=lambda x: x[0])
-            v1 = sorted(list(six.iteritems(b.__dict__[k])), key=lambda x: x[0])
+            v0 = sorted(list(v.items()), key=lambda x: x[0])
+            v1 = sorted(list(b.__dict__[k].items()), key=lambda x: x[0])
 
             if v0 != v1:
                 raise ValueError("In operator_equal not equal:{0}\n".format(k))
 
-        elif (v != b.__dict__[k]):
+        elif v != b.__dict__[k]:
             raise ValueError("In operator_equal not equal:{0}\n".format(k))
 
     return True
 
 
 def block_equal(a, b):
-    for k, v in six.iteritems(a.__dict__):
-        if isinstance(v, core.ProgramDesc) or isinstance(
-                v, fluid.framework.Program) or isinstance(v, core.BlockDesc):
+    for k, v in a.__dict__.items():
+        if (
+            isinstance(v, core.ProgramDesc)
+            or isinstance(v, fluid.framework.Program)
+            or isinstance(v, core.BlockDesc)
+        ):
             continue
 
         elif k == "ops":
-            assert (len(a.ops) == len(b.ops))
+            assert len(a.ops) == len(b.ops)
             for i in range(0, len(a.ops)):
                 if not operator_equal(a.ops[i], b.ops[i]):
                     raise ValueError("In block_equal not equal:{0}\n".format(k))
 
         elif isinstance(v, collections.OrderedDict):
-            for key, value in six.iteritems(v):
+            for key, value in v.items():
                 if str(value) != str(b.__dict__[k][key]):
                     raise ValueError("In block_equal not equal:{0}\n".format(k))
 
-        elif (v != b.__dict__[k]):
+        elif v != b.__dict__[k]:
             raise ValueError("In block_equal not equal:{0}\n".format(k))
 
     return True
 
 
 def program_equal(a, b):
-    for k, v in six.iteritems(a.__dict__):
+    for k, v in a.__dict__.items():
         if isinstance(v, core.ProgramDesc):
             continue
 
@@ -155,19 +166,19 @@ def program_equal(a, b):
             for i in range(0, len(a.blocks)):
                 if not block_equal(a.blocks[i], b.blocks[i]):
                     raise ValueError(
-                        "In operator_equal not equal:{0}\n".format(k))
+                        "In operator_equal not equal:{0}\n".format(k)
+                    )
                     return False
-            assert (len(a.blocks) == len(b.blocks))
+            assert len(a.blocks) == len(b.blocks)
         elif k == '_auto_checkpoint_name':
             continue
-        elif (v != b.__dict__[k]):
+        elif v != b.__dict__[k]:
             raise ValueError("In program_equal not equal:{0}\n".format(k))
 
     return True
 
 
 class TestCloneWithStopGradient(unittest.TestCase):
-
     def test_clone_with_stop_gradient(self):
         train_program = fluid.Program()
         startup_program = fluid.Program()
@@ -178,18 +189,20 @@ class TestCloneWithStopGradient(unittest.TestCase):
             hidden2 = fluid.layers.dropout(hidden1, dropout_prob=0.5)
             loss = fluid.layers.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
-                label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
+                label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
+            )
             avg_loss = paddle.mean(loss)
             test_program = train_program.clone(for_test=False)
 
         self.assertEqual(
-            test_program.block(0).var(hidden1.name).stop_gradient, True)
+            test_program.block(0).var(hidden1.name).stop_gradient, True
+        )
         self.assertEqual(
-            test_program.block(0).var(hidden2.name).stop_gradient, False)
+            test_program.block(0).var(hidden2.name).stop_gradient, False
+        )
 
 
 class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
-
     def test_clone_with_stop_gradient(self):
         train_program = fluid.Program()
         startup_program = fluid.Program()
@@ -214,12 +227,14 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
 
             loss = fluid.layers.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
-                label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
+                label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
+            )
             avg_loss = paddle.mean(loss)
             test_program = train_program.clone(for_test=False)
 
         self.assertEqual(
-            test_program.block(0).var(hidden1.name).stop_gradient, True)
+            test_program.block(0).var(hidden1.name).stop_gradient, True
+        )
         for var in test_program.block(1).vars.values():
             var2 = train_program.block(1).var(var.name)
             self.assertEqual(var.stop_gradient, var2.stop_gradient)
@@ -229,7 +244,6 @@ class TestCloneWithStopGradientInSubBlock(unittest.TestCase):
 
 
 class TestCloneWithRaise(unittest.TestCase):
-
     def test_clone_with_stop_gradient(self):
         train_program = fluid.Program()
         startup_program = fluid.Program()
@@ -253,14 +267,19 @@ class TestCloneWithRaise(unittest.TestCase):
             hidden2 = fluid.layers.cond(cond, true_fn, false_fn)
             loss = fluid.layers.cross_entropy(
                 input=fluid.layers.fc(hidden2, size=10, act='softmax'),
-                label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
+                label=fluid.layers.data(name='label', shape=[1], dtype='int64'),
+            )
             avg_loss = paddle.mean(loss)
             test_program = train_program.clone(for_test=False)
 
-        self.assertRaises(ValueError, train_program._copy_data_info_from,
-                          startup_program)
-        self.assertRaises(TypeError, train_program._copy_data_info_from,
-                          startup_program.block(0))
+        self.assertRaises(
+            ValueError, train_program._copy_data_info_from, startup_program
+        )
+        self.assertRaises(
+            TypeError,
+            train_program._copy_data_info_from,
+            startup_program.block(0),
+        )
 
 
 if __name__ == "__main__":

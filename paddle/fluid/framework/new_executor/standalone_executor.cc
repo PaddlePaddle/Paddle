@@ -13,7 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
-#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
@@ -37,7 +37,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 framework::interpreter::CostInfo StandaloneExecutor::DryRun(
     Scope* scope,
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors) {
+    const std::vector<phi::DenseTensor>& feed_tensors) {
   auto core = GetInterpreterCore(scope, prog_, feed_names, {}, true);
 
   return core->DryRun(feed_names, feed_tensors);

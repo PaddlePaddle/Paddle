@@ -552,8 +552,7 @@ void BatchNormKernel(const Context &ctx,
                      DenseTensor *reserve_space) {
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_stats);
 
   // Get the size for each dimension.

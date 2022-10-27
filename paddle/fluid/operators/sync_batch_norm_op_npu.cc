@@ -47,16 +47,16 @@ void training_or_inference(const framework::ExecutionContext &ctx,
                            Tensor *saved_variance,
                            Tensor *y) {
   std::vector<int> axes;
-  if (layout == framework::DataLayout::kNCHW) {
+  if (layout == phi::DataLayout::kNCHW) {
     axes = {0, 2, 3};
-  } else if (layout == framework::DataLayout::kNHWC) {
+  } else if (layout == phi::DataLayout::kNHWC) {
     axes = {0, 1, 2};
   }
 
   std::vector<int> multiples;
-  if (layout == framework::DataLayout::kNCHW)
+  if (layout == phi::DataLayout::kNCHW)
     multiples = {N, 1, H, W};
-  else if (layout == framework::DataLayout::kNHWC)
+  else if (layout == phi::DataLayout::kNHWC)
     multiples = {N, H, W, 1};
 
   Tensor common_mean_tile_1;
@@ -64,9 +64,9 @@ void training_or_inference(const framework::ExecutionContext &ctx,
     common_mean_tile_1.Resize({C});
     common_mean_tile_1.mutable_data<float>(place);
     paddle::framework::TensorCopySync(*common_mean, place, &common_mean_tile_1);
-    if (layout == framework::DataLayout::kNCHW)
+    if (layout == phi::DataLayout::kNCHW)
       common_mean_tile_1.Resize({1, C, 1, 1});
-    else if (layout == framework::DataLayout::kNHWC)
+    else if (layout == phi::DataLayout::kNHWC)
       common_mean_tile_1.Resize({1, 1, 1, C});
   }
 
@@ -85,9 +85,9 @@ void training_or_inference(const framework::ExecutionContext &ctx,
     common_var_tile_1.Resize({C});
     common_var_tile_1.mutable_data<float>(place);
     paddle::framework::TensorCopySync(*common_var, place, &common_var_tile_1);
-    if (layout == framework::DataLayout::kNCHW)
+    if (layout == phi::DataLayout::kNCHW)
       common_var_tile_1.Resize({1, C, 1, 1});
-    else if (layout == framework::DataLayout::kNHWC)
+    else if (layout == phi::DataLayout::kNHWC)
       common_var_tile_1.Resize({1, 1, 1, C});
   }
 
@@ -148,9 +148,9 @@ void training_or_inference(const framework::ExecutionContext &ctx,
     scale_tile_1.Resize({C});
     scale_tile_1.mutable_data<float>(place);
     paddle::framework::TensorCopySync(*scale, place, &scale_tile_1);
-    if (layout == framework::DataLayout::kNCHW)
+    if (layout == phi::DataLayout::kNCHW)
       scale_tile_1.Resize({1, C, 1, 1});
-    else if (layout == framework::DataLayout::kNHWC)
+    else if (layout == phi::DataLayout::kNHWC)
       scale_tile_1.Resize({1, 1, 1, C});
   }
 
@@ -178,9 +178,9 @@ void training_or_inference(const framework::ExecutionContext &ctx,
     bias_tile_1.Resize({C});
     bias_tile_1.mutable_data<float>(place);
     paddle::framework::TensorCopySync(*bias, place, &bias_tile_1);
-    if (layout == framework::DataLayout::kNCHW)
+    if (layout == phi::DataLayout::kNCHW)
       bias_tile_1.Resize({1, C, 1, 1});
-    else if (layout == framework::DataLayout::kNHWC)
+    else if (layout == phi::DataLayout::kNHWC)
       bias_tile_1.Resize({1, 1, 1, C});
   }
 
@@ -314,7 +314,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
     float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout layout = framework::StringToDataLayout(layout_str);
+    const DataLayout layout = phi::StringToDataLayout(layout_str);
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
 
@@ -355,9 +355,9 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     std::vector<int> axes;
-    if (layout == framework::DataLayout::kNCHW) {
+    if (layout == phi::DataLayout::kNCHW) {
       axes = {0, 2, 3};
-    } else if (layout == framework::DataLayout::kNHWC) {
+    } else if (layout == phi::DataLayout::kNHWC) {
       axes = {0, 1, 2};
     }
 
@@ -579,7 +579,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     float epsilon = ctx.Attr<float>("epsilon");
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout layout = framework::StringToDataLayout(layout_str);
+    const DataLayout layout = phi::StringToDataLayout(layout_str);
 
     const auto *d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
@@ -609,16 +609,16 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
             .stream();
 
     std::vector<int> axes;
-    if (layout == framework::DataLayout::kNCHW) {
+    if (layout == phi::DataLayout::kNCHW) {
       axes = {0, 2, 3};
-    } else if (layout == framework::DataLayout::kNHWC) {
+    } else if (layout == phi::DataLayout::kNHWC) {
       axes = {0, 1, 2};
     }
 
     std::vector<int> multiples;
-    if (layout == framework::DataLayout::kNCHW)
+    if (layout == phi::DataLayout::kNCHW)
       multiples = {N, 1, H, W};
-    else if (layout == framework::DataLayout::kNHWC)
+    else if (layout == phi::DataLayout::kNHWC)
       multiples = {N, H, W, 1};
 
     auto comm = paddle::platform::HCCLCommContext::Instance().Get(0, place);
@@ -719,9 +719,9 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       saved_mean_tile_1.Resize({C});
       saved_mean_tile_1.mutable_data<float>(place);
       paddle::framework::TensorCopySync(*saved_mean, place, &saved_mean_tile_1);
-      if (layout == framework::DataLayout::kNCHW)
+      if (layout == phi::DataLayout::kNCHW)
         saved_mean_tile_1.Resize({1, C, 1, 1});
-      else if (layout == framework::DataLayout::kNHWC)
+      else if (layout == phi::DataLayout::kNHWC)
         saved_mean_tile_1.Resize({1, 1, 1, C});
     }
 
@@ -749,9 +749,9 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       var_ref_tile_1.Resize({C});
       var_ref_tile_1.mutable_data<float>(place);
       paddle::framework::TensorCopySync(var_ref, place, &var_ref_tile_1);
-      if (layout == framework::DataLayout::kNCHW)
+      if (layout == phi::DataLayout::kNCHW)
         var_ref_tile_1.Resize({1, C, 1, 1});
-      else if (layout == framework::DataLayout::kNHWC)
+      else if (layout == phi::DataLayout::kNHWC)
         var_ref_tile_1.Resize({1, 1, 1, C});
     }
 
@@ -901,9 +901,9 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         dy_mean_tile_1.Resize({C});
         dy_mean_tile_1.mutable_data<float>(place);
         paddle::framework::TensorCopySync(dy_mean, place, &dy_mean_tile_1);
-        if (layout == framework::DataLayout::kNCHW)
+        if (layout == phi::DataLayout::kNCHW)
           dy_mean_tile_1.Resize({1, C, 1, 1});
-        else if (layout == framework::DataLayout::kNHWC)
+        else if (layout == phi::DataLayout::kNHWC)
           dy_mean_tile_1.Resize({1, 1, 1, C});
       }
 
@@ -954,9 +954,9 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         dy_mul_x_sub_mean_mean_tile_1.mutable_data<float>(place);
         paddle::framework::TensorCopySync(
             dy_mul_x_sub_mean_mean, place, &dy_mul_x_sub_mean_mean_tile_1);
-        if (layout == framework::DataLayout::kNCHW)
+        if (layout == phi::DataLayout::kNCHW)
           dy_mul_x_sub_mean_mean_tile_1.Resize({1, C, 1, 1});
-        else if (layout == framework::DataLayout::kNHWC)
+        else if (layout == phi::DataLayout::kNHWC)
           dy_mul_x_sub_mean_mean_tile_1.Resize({1, 1, 1, C});
       }
 
@@ -1012,9 +1012,9 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         scale_tile_1.Resize({C});
         scale_tile_1.mutable_data<float>(place);
         paddle::framework::TensorCopySync(*scale, place, &scale_tile_1);
-        if (layout == framework::DataLayout::kNCHW)
+        if (layout == phi::DataLayout::kNCHW)
           scale_tile_1.Resize({1, C, 1, 1});
-        else if (layout == framework::DataLayout::kNHWC)
+        else if (layout == phi::DataLayout::kNHWC)
           scale_tile_1.Resize({1, 1, 1, C});
       }
 

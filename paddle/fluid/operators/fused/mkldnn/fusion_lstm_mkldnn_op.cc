@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::LoDTensor;
-
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
 using phi::CPUContext;
@@ -35,7 +33,7 @@ class LSTMMKLDNNHandler
                     const platform::MKLDNNDeviceContext& dev_ctx,
                     const dnnl::engine mkldnn_engine,
                     platform::Place cpu_place,
-                    const LoDTensor* input,
+                    const phi::DenseTensor* input,
                     const phi::DenseTensor* weight_h,
                     const phi::DenseTensor* h0,
                     const phi::DenseTensor* c0,
@@ -343,14 +341,14 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     // Get Tensors
-    const auto* input = ctx.Input<LoDTensor>("X");
+    const auto* input = ctx.Input<phi::DenseTensor>("X");
     const auto* h0 = ctx.Input<phi::DenseTensor>("H0");
     const auto* c0 = ctx.Input<phi::DenseTensor>("C0");
     const auto* weight_x = ctx.Input<phi::DenseTensor>("WeightX");
     const auto* weight_h = ctx.Input<phi::DenseTensor>("WeightH");
     const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
-    auto* hidden = ctx.Output<LoDTensor>("Hidden");
-    auto* cell = ctx.Output<LoDTensor>("Cell");
+    auto* hidden = ctx.Output<phi::DenseTensor>("Hidden");
+    auto* cell = ctx.Output<phi::DenseTensor>("Cell");
     cell = cell;
     auto x_dims = input->dims();
     auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)

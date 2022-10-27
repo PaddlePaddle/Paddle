@@ -16,6 +16,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/reduce_grad_functions.h"
@@ -23,6 +24,7 @@
 
 namespace phi {
 
+template <typename T>
 struct LogsumexpGradFunctor {
   template <typename Context,
             typename X,
@@ -37,7 +39,13 @@ struct LogsumexpGradFunctor {
                   DY* dy,
                   const Dim& dim,
                   int size) {
-    dx->device(place) = dy->broadcast(dim) * (*x - y->broadcast(dim)).exp();
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    auto x_mt = (*x).template cast<MT>();
+    auto y_mt = (*y).template cast<MT>();
+    auto dy_mt = (*dy).template cast<MT>();
+    dx->device(place) =
+        (dy_mt.broadcast(dim) * (x_mt - y_mt.broadcast(dim)).exp())
+            .template cast<T>();
   }
 };
 
@@ -62,11 +70,11 @@ void LogsumexpGradKernel(const Context& dev_ctx,
     auto dx = phi::EigenVector<T>::Flatten(*in_grad);
     auto& place = *dev_ctx.eigen_device();
     auto broadcast_dim = Eigen::array<int, 1>({{static_cast<int>(in.numel())}});
-    LogsumexpGradFunctor()(
+    LogsumexpGradFunctor<T>()(
         place, &x, &y, &dx, &dy, broadcast_dim, broadcast_dim[0]);
   } else {
     int rank = in.dims().size();
-    LogsumexpGradFunctor functor;
+    LogsumexpGradFunctor<T> functor;
     std::vector<int32_t> axis32;
     axis32.reserve(axis.size());
     std::for_each(axis.begin(), axis.end(), [&axis32](const int64_t& t) {
@@ -74,20 +82,25 @@ void LogsumexpGradKernel(const Context& dev_ctx,
     });
     switch (rank) {
       case 1:
-        phi::funcs::ReduceGradFunctor<Context, T, 1, LogsumexpGradFunctor>(
+        phi::funcs::ReduceGradFunctor<Context, T, 1, LogsumexpGradFunctor<T>>(
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       case 2:
-        phi::funcs::ReduceGradFunctor<Context, T, 2, LogsumexpGradFunctor>(
+        phi::funcs::ReduceGradFunctor<Context, T, 2, LogsumexpGradFunctor<T>>(
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       case 3:
-        phi::funcs::ReduceGradFunctor<Context, T, 3, LogsumexpGradFunctor>(
+        phi::funcs::ReduceGradFunctor<Context, T, 3, LogsumexpGradFunctor<T>>(
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       case 4:
-        phi::funcs::ReduceGradFunctor<Context, T, 4, LogsumexpGradFunctor>(
+        phi::funcs::ReduceGradFunctor<Context, T, 4, LogsumexpGradFunctor<T>>(
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
+        break;
+      default:
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "Unsupported dimensions, please keep maximum dimensions of input "
+            "data less than 4."));
         break;
     }
   }

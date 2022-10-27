@@ -24,9 +24,13 @@ from . import utils
 from ..cal_kl_threshold import cal_kl_threshold
 
 __all__ = [
-    'BaseQuantizer', 'AbsmaxQuantizer', 'PerChannelAbsmaxQuantizer',
-    'KLQuantizer', 'HistQuantizer', 'SUPPORT_ACT_QUANTIZERS',
-    'SUPPORT_WT_QUANTIZERS'
+    'BaseQuantizer',
+    'AbsmaxQuantizer',
+    'PerChannelAbsmaxQuantizer',
+    'KLQuantizer',
+    'HistQuantizer',
+    'SUPPORT_ACT_QUANTIZERS',
+    'SUPPORT_WT_QUANTIZERS',
 ]
 
 
@@ -50,25 +54,25 @@ def merge_max_value(old, new):
     return new
 
 
-def combine_abs_max_and_hist(tensor, origin_max, origin_hist, bins,
-                             upsample_bins):
-    """
-    """
+def combine_abs_max_and_hist(
+    tensor, origin_max, origin_hist, bins, upsample_bins
+):
+    """ """
 
     new_max = abs_max_value(tensor)
 
     if new_max == 0.0:
         return origin_max, origin_hist
     elif origin_max == 0.0:
-        new_hist, _ = np.histogram(paddle.abs(tensor).numpy(),
-                                   range=(0, new_max),
-                                   bins=bins)
+        new_hist, _ = np.histogram(
+            paddle.abs(tensor).numpy(), range=(0, new_max), bins=bins
+        )
         new_hist = new_hist.astype(np.float32)
         return new_max, new_hist
     elif new_max <= origin_max:
-        new_hist, _ = np.histogram(paddle.abs(tensor).numpy(),
-                                   range=(0, origin_max),
-                                   bins=bins)
+        new_hist, _ = np.histogram(
+            paddle.abs(tensor).numpy(), range=(0, origin_max), bins=bins
+        )
         new_hist = new_hist.astype(np.float32)
         new_hist += origin_hist
         return origin_max, new_hist
@@ -81,25 +85,25 @@ def combine_abs_max_and_hist(tensor, origin_max, origin_hist, bins,
 
         upsampled_hist = np.repeat(origin_hist, upsample_bins)
         expanded_hist = np.zeros((bins * downsampe_bins), dtype=np.float32)
-        expanded_hist[0:bins * upsample_bins] = upsampled_hist
-        cumsumed_hist = np.cumsum(
-            expanded_hist, dtype=np.float64)[downsampe_bins - 1::downsampe_bins]
+        expanded_hist[0 : bins * upsample_bins] = upsampled_hist
+        cumsumed_hist = np.cumsum(expanded_hist, dtype=np.float64)[
+            downsampe_bins - 1 :: downsampe_bins
+        ]
         shift_cumsumed_hist = np.zeros((bins), dtype=np.float64)
         shift_cumsumed_hist[1:] = cumsumed_hist[0:-1]
         sampled_hist = (cumsumed_hist - shift_cumsumed_hist) / upsample_bins
         sampled_hist = sampled_hist.astype(np.float32)
 
-        new_hist, _ = np.histogram(paddle.abs(tensor).numpy(),
-                                   range=(0, new_max),
-                                   bins=bins)
+        new_hist, _ = np.histogram(
+            paddle.abs(tensor).numpy(), range=(0, new_max), bins=bins
+        )
         new_hist = new_hist.astype(np.float32)
         new_hist += sampled_hist
 
         return new_max, new_hist
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseQuantizer(object):
+class BaseQuantizer(metaclass=abc.ABCMeta):
     """
     Base quantizer for activation and weight.
     """
@@ -166,17 +170,16 @@ class PerChannelAbsmaxQuantizer(BaseQuantizer):
                 ]
                 abs_max_vals_list.append(abs_max_vals)
 
-        self.abs_max_vals = merge_max_value(self.abs_max_vals,
-                                            abs_max_vals_list)
+        self.abs_max_vals = merge_max_value(
+            self.abs_max_vals, abs_max_vals_list
+        )
 
     def cal_thresholds(self):
         self.thresholds = self.abs_max_vals
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseHistQuantizer(BaseQuantizer):
-    """
-    """
+class BaseHistQuantizer(BaseQuantizer, metaclass=abc.ABCMeta):
+    """ """
 
     def __init__(self, quant_bits=8, bins=1024, upsample_bins=64):
         super(BaseHistQuantizer, self).__init__(quant_bits)
@@ -196,9 +199,11 @@ class BaseHistQuantizer(BaseQuantizer):
                 if abs_max_vals[idx] == 0.0:
                     self.hists.append(None)
                 else:
-                    hist, _ = np.histogram(paddle.abs(tensor).numpy(),
-                                           range=(0., abs_max_vals[idx]),
-                                           bins=self.bins)
+                    hist, _ = np.histogram(
+                        paddle.abs(tensor).numpy(),
+                        range=(0.0, abs_max_vals[idx]),
+                        bins=self.bins,
+                    )
                     hist = hist.astype(np.float32)
                     self.hists.append(hist)
         else:
@@ -207,8 +212,12 @@ class BaseHistQuantizer(BaseQuantizer):
 
             for idx, tensor in enumerate(tensors):
                 new_abs_max, new_hist = combine_abs_max_and_hist(
-                    tensor, self.abs_max_vals[idx], self.hists[idx], self.bins,
-                    self.upsample_bins)
+                    tensor,
+                    self.abs_max_vals[idx],
+                    self.hists[idx],
+                    self.bins,
+                    self.upsample_bins,
+                )
                 self.abs_max_vals[idx] = new_abs_max
                 self.hists[idx] = new_hist
 
@@ -218,19 +227,15 @@ class BaseHistQuantizer(BaseQuantizer):
 
 
 class HistQuantizer(BaseHistQuantizer):
-    """
-    """
+    """ """
 
-    def __init__(self,
-                 quant_bits=8,
-                 bins=1024,
-                 upsample_bins=64,
-                 hist_percent=0.99999):
+    def __init__(
+        self, quant_bits=8, bins=1024, upsample_bins=64, hist_percent=0.99999
+    ):
         super(HistQuantizer, self).__init__(quant_bits, bins, upsample_bins)
         self.hist_percent = hist_percent
 
     def cal_thresholds(self):
-
         def _helper(abs_max, hist, percent):
             assert hist.ndim == 1 and percent < 1.0
             hist = hist / np.sum(hist, dtype=np.float64)
@@ -242,14 +247,14 @@ class HistQuantizer(BaseHistQuantizer):
             if self.hists[idx] is None:
                 self.thresholds.append(self.abs_max_vals[idx])
             else:
-                threshold = _helper(self.abs_max_vals[idx], self.hists[idx],
-                                    self.hist_percent)
+                threshold = _helper(
+                    self.abs_max_vals[idx], self.hists[idx], self.hist_percent
+                )
                 self.thresholds.append(threshold)
 
 
 class KLQuantizer(BaseHistQuantizer):
-    """
-    """
+    """ """
 
     def __init__(self, quant_bits=8, bins=1024, upsample_bins=64):
         super(KLQuantizer, self).__init__(quant_bits, bins, upsample_bins)

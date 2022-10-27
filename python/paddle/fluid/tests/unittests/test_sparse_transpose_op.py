@@ -23,7 +23,9 @@ class TestTranspose(unittest.TestCase):
     def check_result(self, x_shape, dims, format):
         with _test_eager_guard():
             mask = paddle.randint(0, 2, x_shape).astype("float32")
-            origin_x = paddle.rand(x_shape, dtype='float32') * mask
+            # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
+            # or the backward checks may fail.
+            origin_x = (paddle.rand(x_shape, dtype='float32') + 1) * mask
             dense_x = origin_x.detach()
             dense_x.stop_gradient = False
             dense_out = paddle.transpose(dense_x, dims)
@@ -33,16 +35,18 @@ class TestTranspose(unittest.TestCase):
             else:
                 sp_x = origin_x.detach().to_sparse_csr()
             sp_x.stop_gradient = False
-            sp_out = paddle.incubate.sparse.transpose(sp_x, dims)
+            sp_out = paddle.sparse.transpose(sp_x, dims)
 
-            np.testing.assert_allclose(sp_out.to_dense().numpy(),
-                                       dense_out.numpy(),
-                                       rtol=1e-05)
+            np.testing.assert_allclose(
+                sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
+            )
             dense_out.backward()
             sp_out.backward()
-            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
-                                       (dense_x.grad * mask).numpy(),
-                                       rtol=1e-05)
+            np.testing.assert_allclose(
+                sp_x.grad.to_dense().numpy(),
+                (dense_x.grad * mask).numpy(),
+                rtol=1e-05,
+            )
 
     def test_transpose_2d(self):
         self.check_result([2, 5], [0, 1], 'coo')
@@ -67,8 +71,9 @@ class TestTranspose(unittest.TestCase):
     def test_transpose_nd(self):
         self.check_result([8, 3, 4, 4, 5, 3], [5, 3, 4, 1, 0, 2], 'coo')
         # Randint now only supports access to dimension 0 to 9.
-        self.check_result([2, 3, 4, 2, 3, 4, 2, 3, 4],
-                          [2, 3, 4, 5, 6, 7, 8, 0, 1], 'coo')
+        self.check_result(
+            [2, 3, 4, 2, 3, 4, 2, 3, 4], [2, 3, 4, 5, 6, 7, 8, 0, 1], 'coo'
+        )
 
 
 if __name__ == "__main__":

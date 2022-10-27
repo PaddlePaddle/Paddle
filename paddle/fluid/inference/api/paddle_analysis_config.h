@@ -170,13 +170,6 @@ struct PD_INFER_DECL AnalysisConfig {
     kBf16,         ///< bf16
   };
 
-  enum class Backend {
-    kCPU = 0,
-    kGPU,
-    kXPU,
-    kNPU,
-  };
-
   ///
   /// \brief Set the no-combined model dir path.
   ///

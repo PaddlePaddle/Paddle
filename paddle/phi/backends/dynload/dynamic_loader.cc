@@ -479,7 +479,7 @@ void* GetNCCLDsoHandle() {
 #else
   std::string warning_msg(
       "You may need to install 'nccl2' from NVIDIA official website: "
-      "https://developer.nvidia.com/nccl/nccl-download"
+      "https://developer.nvidia.com/nccl/nccl-download "
       "before install PaddlePaddle.");
 #endif
 

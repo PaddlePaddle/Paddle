@@ -29,7 +29,7 @@ limitations under the License. */
 
 namespace paddle::operators {
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using Variable = framework::Variable;
 using Graph = framework::ir::Graph;
 using Node = framework::ir::Node;

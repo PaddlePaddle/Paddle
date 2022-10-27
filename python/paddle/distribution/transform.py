@@ -15,26 +15,38 @@
 import enum
 import functools
 import math
-import numbers
 import operator
 import typing
 
 import paddle
 import paddle.nn.functional as F
-from paddle.distribution import (constraint, distribution,
-                                 transformed_distribution, variable)
+from paddle.distribution import (
+    constraint,
+    distribution,
+    transformed_distribution,
+    variable,
+)
 
 __all__ = [  # noqa
-    'Transform', 'AbsTransform', 'AffineTransform', 'ChainTransform',
-    'ExpTransform', 'IndependentTransform', 'PowerTransform',
-    'ReshapeTransform', 'SigmoidTransform', 'SoftmaxTransform',
-    'StackTransform', 'StickBreakingTransform', 'TanhTransform'
+    'Transform',
+    'AbsTransform',
+    'AffineTransform',
+    'ChainTransform',
+    'ExpTransform',
+    'IndependentTransform',
+    'PowerTransform',
+    'ReshapeTransform',
+    'SigmoidTransform',
+    'SoftmaxTransform',
+    'StackTransform',
+    'StickBreakingTransform',
+    'TanhTransform',
 ]
 
 
 class Type(enum.Enum):
-    """Mapping type of a transformation.
-    """
+    """Mapping type of a transformation."""
+
     BIJECTION = 'bijection'  # bijective(injective and surjective)
     INJECTION = 'injection'  # injective-only
     SURJECTION = 'surjection'  # surjective-only
@@ -42,8 +54,7 @@ class Type(enum.Enum):
 
     @classmethod
     def is_injective(cls, _type):
-        """Both bijection and injection are injective mapping.
-        """
+        """Both bijection and injection are injective mapping."""
         return _type in (cls.BIJECTION, cls.INJECTION)
 
 
@@ -139,10 +150,11 @@ class Transform(object):
         """
         if isinstance(input, distribution.Distribution):
             return transformed_distribution.TransformedDistribution(
-                input, [self])
+                input, [self]
+            )
         if isinstance(input, Transform):
             return ChainTransform([self, input])
-        return self.forward(x)
+        return self.forward(input)
 
     def forward(self, x):
         """Forward transformation with mapping :math:`y = f(x)`.
@@ -158,11 +170,13 @@ class Transform(object):
         """
         if not isinstance(x, paddle.fluid.framework.Variable):
             raise TypeError(
-                f"Expected 'x' is a Tensor or Real, but got {type(x)}.")
+                f"Expected 'x' is a Tensor or Real, but got {type(x)}."
+            )
         if x.dim() < self._domain.event_rank:
             raise ValueError(
                 f'The dimensions of x({x.dim()}) should be '
-                f'grater than or equal to {self._domain.event_rank}')
+                f'grater than or equal to {self._domain.event_rank}'
+            )
         return self._forward(x)
 
     def inverse(self, y):
@@ -177,11 +191,13 @@ class Transform(object):
         """
         if not isinstance(y, paddle.fluid.framework.Variable):
             raise TypeError(
-                f"Expected 'y' is a Tensor or Real, but got {type(y)}.")
+                f"Expected 'y' is a Tensor or Real, but got {type(y)}."
+            )
         if y.dim() < self._codomain.event_rank:
             raise ValueError(
                 f'The dimensions of y({y.dim()}) should be '
-                f'grater than or equal to {self._codomain.event_rank}')
+                f'grater than or equal to {self._codomain.event_rank}'
+            )
         return self._inverse(y)
 
     def forward_log_det_jacobian(self, x):
@@ -197,16 +213,21 @@ class Transform(object):
         """
         if not isinstance(x, paddle.fluid.framework.Variable):
             raise TypeError(
-                f"Expected 'y' is a Tensor or Real, but got {type(x)}.")
-        if isinstance(x, paddle.fluid.framework.Variable
-                      ) and x.dim() < self._domain.event_rank:
+                f"Expected 'y' is a Tensor or Real, but got {type(x)}."
+            )
+        if (
+            isinstance(x, paddle.fluid.framework.Variable)
+            and x.dim() < self._domain.event_rank
+        ):
             raise ValueError(
                 f'The dimensions of x({x.dim()}) should be '
-                f'grater than or equal to {self._domain.event_rank}')
+                f'grater than or equal to {self._domain.event_rank}'
+            )
         if not self._is_injective():
             raise NotImplementedError(
                 "forward_log_det_jacobian can't be implemented for non-injective"
-                "transforms.")
+                "transforms."
+            )
 
         return self._call_forward_log_det_jacobian(x)
 
@@ -227,7 +248,8 @@ class Transform(object):
         if y.dim() < self._codomain.event_rank:
             raise ValueError(
                 f'The dimensions of y({y.dim()}) should be '
-                f'grater than or equal to {self._codomain.event_rank}')
+                f'grater than or equal to {self._codomain.event_rank}'
+            )
         return self._call_inverse_log_det_jacobian(y)
 
     def forward_shape(self, shape):
@@ -241,7 +263,8 @@ class Transform(object):
         """
         if not isinstance(shape, typing.Sequence):
             raise TypeError(
-                f"Expected shape is Sequence[int] type, but got {type(shape)}.")
+                f"Expected shape is Sequence[int] type, but got {type(shape)}."
+            )
         return self._forward_shape(shape)
 
     def inverse_shape(self, shape):
@@ -255,7 +278,8 @@ class Transform(object):
         """
         if not isinstance(shape, typing.Sequence):
             raise TypeError(
-                f"Expected shape is Sequence[int] type, but got {type(shape)}.")
+                f"Expected shape is Sequence[int] type, but got {type(shape)}."
+            )
         return self._inverse_shape(shape)
 
     @property
@@ -285,10 +309,11 @@ class Transform(object):
         if hasattr(self, '_forward_log_det_jacobian'):
             return self._forward_log_det_jacobian(x)
         if hasattr(self, '_inverse_log_det_jacobian'):
-            return -self._inverse_log_det_jacobian(self.forward(y))
+            return -self._inverse_log_det_jacobian(self.forward(x))
         raise NotImplementedError(
             'Neither _forward_log_det_jacobian nor _inverse_log_det_jacobian'
-            'is implemented. One of them is required.')
+            'is implemented. One of them is required.'
+        )
 
     def _call_inverse_log_det_jacobian(self, y):
         """Inner method called by ``inverse_log_det_jacobian``"""
@@ -298,7 +323,8 @@ class Transform(object):
             return -self._forward_log_det_jacobian(self._inverse(y))
         raise NotImplementedError(
             'Neither _forward_log_det_jacobian nor _inverse_log_det_jacobian '
-            'is implemented. One of them is required')
+            'is implemented. One of them is required'
+        )
 
     def _forward_shape(self, shape):
         """Inner method called by ``forward_shape``, which is used to infer the
@@ -421,7 +447,8 @@ class AffineTransform(Transform):
             raise TypeError(f"Expected 'loc' is a Tensor, but got {type(loc)}")
         if not isinstance(scale, paddle.fluid.framework.Variable):
             raise TypeError(
-                f"Expected scale is a Tensor, but got {type(scale)}")
+                f"Expected scale is a Tensor, but got {type(scale)}"
+            )
         self._loc = loc
         self._scale = scale
         super(AffineTransform, self).__init__()
@@ -447,13 +474,17 @@ class AffineTransform(Transform):
         return tuple(
             paddle.broadcast_shape(
                 paddle.broadcast_shape(shape, self._loc.shape),
-                self._scale.shape))
+                self._scale.shape,
+            )
+        )
 
     def _inverse_shape(self, shape):
         return tuple(
             paddle.broadcast_shape(
                 paddle.broadcast_shape(shape, self._loc.shape),
-                self._scale.shape))
+                self._scale.shape,
+            )
+        )
 
     @property
     def _domain(self):
@@ -505,7 +536,8 @@ class ChainTransform(Transform):
             )
         if not all(isinstance(t, Transform) for t in transforms):
             raise TypeError(
-                "All elements of transforms should be Transform type.")
+                "All elements of transforms should be Transform type."
+            )
 
         self.transforms = transforms
         super(ChainTransform, self).__init__()
@@ -524,11 +556,12 @@ class ChainTransform(Transform):
         return y
 
     def _forward_log_det_jacobian(self, x):
-        value = 0.
+        value = 0.0
         event_rank = self._domain.event_rank
         for t in self.transforms:
-            value += self._sum_rightmost(t.forward_log_det_jacobian(x),
-                                         event_rank - t._domain.event_rank)
+            value += self._sum_rightmost(
+                t.forward_log_det_jacobian(x), event_rank - t._domain.event_rank
+            )
             x = t.forward(x)
             event_rank += t._codomain.event_rank - t._domain.event_rank
         return value
@@ -683,7 +716,8 @@ class IndependentTransform(Transform):
     def __init__(self, base, reinterpreted_batch_rank):
         if not isinstance(base, Transform):
             raise TypeError(
-                f"Expected 'base' is Transform type, but get {type(base)}")
+                f"Expected 'base' is Transform type, but get {type(base)}"
+            )
         if reinterpreted_batch_rank <= 0:
             raise ValueError(
                 f"Expected 'reinterpreted_batch_rank' is grater than zero, but got {reinterpreted_batch_rank}"
@@ -708,7 +742,8 @@ class IndependentTransform(Transform):
 
     def _forward_log_det_jacobian(self, x):
         return self._base.forward_log_det_jacobian(x).sum(
-            list(range(-self._reinterpreted_batch_rank, 0)))
+            list(range(-self._reinterpreted_batch_rank, 0))
+        )
 
     def _forward_shape(self, shape):
         return self._base.forward_shape(shape)
@@ -718,13 +753,15 @@ class IndependentTransform(Transform):
 
     @property
     def _domain(self):
-        return variable.Independent(self._base._domain,
-                                    self._reinterpreted_batch_rank)
+        return variable.Independent(
+            self._base._domain, self._reinterpreted_batch_rank
+        )
 
     @property
     def _codomain(self):
-        return variable.Independent(self._base._codomain,
-                                    self._reinterpreted_batch_rank)
+        return variable.Independent(
+            self._base._codomain, self._reinterpreted_batch_rank
+        )
 
 
 class PowerTransform(Transform):
@@ -758,7 +795,8 @@ class PowerTransform(Transform):
     def __init__(self, power):
         if not isinstance(power, paddle.fluid.framework.Variable):
             raise TypeError(
-                f"Expected 'power' is a tensor, but got {type(power)}")
+                f"Expected 'power' is a tensor, but got {type(power)}"
+            )
         self._power = power
         super(PowerTransform, self).__init__()
 
@@ -827,13 +865,16 @@ class ReshapeTransform(Transform):
 
     def __init__(self, in_event_shape, out_event_shape):
         if not isinstance(in_event_shape, typing.Sequence) or not isinstance(
-                out_event_shape, typing.Sequence):
+            out_event_shape, typing.Sequence
+        ):
             raise TypeError(
                 f"Expected type of 'in_event_shape' and 'out_event_shape' is "
                 f"Squence[int], but got 'in_event_shape': {in_event_shape}, "
-                f"'out_event_shape': {out_event_shape}")
+                f"'out_event_shape': {out_event_shape}"
+            )
         if functools.reduce(operator.mul, in_event_shape) != functools.reduce(
-                operator.mul, out_event_shape):
+            operator.mul, out_event_shape
+        ):
             raise ValueError(
                 f"The numel of 'in_event_shape' should be 'out_event_shape', "
                 f"but got {functools.reduce(operator.mul, in_event_shape)}!={functools.reduce(operator.mul, out_event_shape)}"
@@ -861,39 +902,45 @@ class ReshapeTransform(Transform):
 
     def _forward(self, x):
         return x.reshape(
-            tuple(x.shape)[:x.dim() - len(self._in_event_shape)] +
-            self._out_event_shape)
+            tuple(x.shape)[: x.dim() - len(self._in_event_shape)]
+            + self._out_event_shape
+        )
 
     def _inverse(self, y):
         return y.reshape(
-            tuple(y.shape)[:y.dim() - len(self._out_event_shape)] +
-            self._in_event_shape)
+            tuple(y.shape)[: y.dim() - len(self._out_event_shape)]
+            + self._in_event_shape
+        )
 
     def _forward_shape(self, shape):
         if len(shape) < len(self._in_event_shape):
             raise ValueError(
                 f"Expected length of 'shape' is not less than {len(self._in_event_shape)}, but got {len(shape)}"
             )
-        if shape[-len(self._in_event_shape):] != self._in_event_shape:
+        if shape[-len(self._in_event_shape) :] != self._in_event_shape:
             raise ValueError(
                 f"Event shape mismatch, expected: {self._in_event_shape}, but got {shape[-len(self._in_event_shape):]}"
             )
-        return tuple(shape[:-len(self._in_event_shape)]) + self._out_event_shape
+        return (
+            tuple(shape[: -len(self._in_event_shape)]) + self._out_event_shape
+        )
 
     def _inverse_shape(self, shape):
         if len(shape) < len(self._out_event_shape):
             raise ValueError(
                 f"Expected 'shape' length is not less than {len(self._out_event_shape)}, but got {len(shape)}"
             )
-        if shape[-len(self._out_event_shape):] != self._out_event_shape:
+        if shape[-len(self._out_event_shape) :] != self._out_event_shape:
             raise ValueError(
                 f"Event shape mismatch, expected: {self._out_event_shape}, but got {shape[-len(self._out_event_shape):]}"
             )
-        return tuple(shape[:-len(self._out_event_shape)]) + self._in_event_shape
+        return (
+            tuple(shape[: -len(self._out_event_shape)]) + self._in_event_shape
+        )
 
     def _forward_log_det_jacobian(self, x):
         # paddle.zeros not support zero dimension Tensor.
-        shape = x.shape[:x.dim() - len(self._in_event_shape)] or [1]
+        shape = x.shape[: x.dim() - len(self._in_event_shape)] or [1]
         return paddle.zeros(shape, dtype=x.dtype)
 
 
@@ -928,7 +975,7 @@ class SigmoidTransform(Transform):
 
     @property
     def _codomain(self):
-        return variable.Variable(False, 0, constraint.Range(0., 1.))
+        return variable.Variable(False, 0, constraint.Range(0.0, 1.0))
 
     def _forward(self, x):
         return F.sigmoid(x)
@@ -997,7 +1044,7 @@ class SoftmaxTransform(Transform):
 
 
 class StackTransform(Transform):
-    r""" ``StackTransform`` applies a sequence of transformations along the
+    r"""``StackTransform`` applies a sequence of transformations along the
     specific axis.
 
     Args:
@@ -1044,7 +1091,8 @@ class StackTransform(Transform):
             )
         if not all(isinstance(t, Transform) for t in transforms):
             raise TypeError(
-                'Expected all element in transforms is Transform Type.')
+                'Expected all element in transforms is Transform Type.'
+            )
         if not isinstance(axis, int):
             raise TypeError(f"Expected 'axis' is int, but got{type(axis)}.")
 
@@ -1064,34 +1112,45 @@ class StackTransform(Transform):
 
     def _forward(self, x):
         self._check_size(x)
-        return paddle.stack([
-            t.forward(v)
-            for v, t in zip(paddle.unstack(x, self._axis), self._transforms)
-        ], self._axis)
+        return paddle.stack(
+            [
+                t.forward(v)
+                for v, t in zip(paddle.unstack(x, self._axis), self._transforms)
+            ],
+            self._axis,
+        )
 
     def _inverse(self, y):
         self._check_size(y)
-        return paddle.stack([
-            t.inverse(v)
-            for v, t in zip(paddle.unstack(y, self._axis), self._transforms)
-        ], self._axis)
+        return paddle.stack(
+            [
+                t.inverse(v)
+                for v, t in zip(paddle.unstack(y, self._axis), self._transforms)
+            ],
+            self._axis,
+        )
 
     def _forward_log_det_jacobian(self, x):
         self._check_size(x)
-        return paddle.stack([
-            t.forward_log_det_jacobian(v)
-            for v, t in zip(paddle.unstack(x, self._axis), self._transforms)
-        ], self._axis)
+        return paddle.stack(
+            [
+                t.forward_log_det_jacobian(v)
+                for v, t in zip(paddle.unstack(x, self._axis), self._transforms)
+            ],
+            self._axis,
+        )
 
     def _check_size(self, v):
         if not (-v.dim() <= self._axis < v.dim()):
             raise ValueError(
                 f'Input dimensions {v.dim()} should be grater than stack '
-                f'transform axis {self._axis}.')
+                f'transform axis {self._axis}.'
+            )
         if v.shape[self._axis] != len(self._transforms):
             raise ValueError(
                 f'Input size along {self._axis} should be equal to the '
-                f'length of transforms.')
+                f'length of transforms.'
+            )
 
     @property
     def _domain(self):
@@ -1099,8 +1158,9 @@ class StackTransform(Transform):
 
     @property
     def _codomain(self):
-        return variable.Stack([t._codomain for t in self._transforms],
-                              self._axis)
+        return variable.Stack(
+            [t._codomain for t in self._transforms], self._axis
+        )
 
 
 class StickBreakingTransform(Transform):
@@ -1133,8 +1193,9 @@ class StickBreakingTransform(Transform):
         offset = x.shape[-1] + 1 - paddle.ones([x.shape[-1]]).cumsum(-1)
         z = F.sigmoid(x - offset.log())
         z_cumprod = (1 - z).cumprod(-1)
-        return F.pad(z, [0]*2*(len(x.shape)-1) + [0, 1], value=1) * \
-            F.pad(z_cumprod, [0]*2*(len(x.shape)-1) + [1, 0], value=1)
+        return F.pad(z, [0] * 2 * (len(x.shape) - 1) + [0, 1], value=1) * F.pad(
+            z_cumprod, [0] * 2 * (len(x.shape) - 1) + [1, 0], value=1
+        )
 
     def _inverse(self, y):
         y_crop = y[..., :-1]
@@ -1152,12 +1213,12 @@ class StickBreakingTransform(Transform):
     def _forward_shape(self, shape):
         if not shape:
             raise ValueError(f"Expected 'shape' is not empty, but got {shape}")
-        return shape[:-1] + (shape[-1] + 1, )
+        return shape[:-1] + (shape[-1] + 1,)
 
     def _inverse_shape(self, shape):
         if not shape:
             raise ValueError(f"Expected 'shape' is not empty, but got {shape}")
-        return shape[:-1] + (shape[-1] - 1, )
+        return shape[:-1] + (shape[-1] - 1,)
 
     @property
     def _domain(self):
@@ -1221,4 +1282,4 @@ class TanhTransform(Transform):
 
         See details: https://github.com/tensorflow/probability/blob/master/tensorflow_probability/python/bijectors/tanh.py#L69-L80
         """
-        return 2. * (math.log(2.) - x - F.softplus(-2. * x))
+        return 2.0 * (math.log(2.0) - x - F.softplus(-2.0 * x))

@@ -6,7 +6,7 @@
 - op : abs
   backward : abs_grad
   extra :
-    attrs : [bool use_cudnn = false, bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : acosh
   backward : acosh_grad
@@ -32,7 +32,7 @@
 - op : angle
   backward : angle_grad
   extra :
-    attrs : [bool use_cudnn = false, bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : asinh
   backward : asinh_grad
@@ -274,6 +274,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : exp
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : expand (expand_v2)
   backward : expand_grad (expand_v2_grad)
   extra :
@@ -324,6 +330,12 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : flip
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : floor
   backward : floor_grad
   extra :
@@ -363,7 +375,7 @@
 - op : gelu
   backward : gelu_grad
   extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : grad_add
   extra :
@@ -674,7 +686,7 @@
 - op : softmax
   backward : softmax_grad
   extra :
-    attrs : [bool use_cudnn = false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
   backward : softplus_grad
@@ -768,7 +780,7 @@
 
 - op : trunc
   inputs :
-    x : X
+    input : X
   outputs :
     out : Out
 

@@ -27,7 +27,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 inline int Im2SeqOutputSize(
     int input_size, int filter_size, int padding_0, int padding_1, int stride) {

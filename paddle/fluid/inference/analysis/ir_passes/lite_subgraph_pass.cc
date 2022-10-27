@@ -241,7 +241,7 @@ void LiteSubgraphPass::SetUpEngine(
           scope->FindVar(param),
           platform::errors::NotFound(
               "Block should already have a '%s' variable", param));
-      auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
+      auto* tensor = scope->FindVar(param)->GetMutable<phi::DenseTensor>();
       framework::SerializeToStream(os, *tensor, ctx);
     }
     *str = os.str();

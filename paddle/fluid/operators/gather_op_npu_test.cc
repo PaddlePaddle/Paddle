@@ -41,10 +41,10 @@ void Compare(f::Scope* scope,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   auto index = scope->Var("Index");
-  auto tensor_index = index->GetMutable<f::LoDTensor>();
+  auto tensor_index = index->GetMutable<phi::DenseTensor>();
 
   std::vector<T> init_x;
   for (int64_t i = 1; i < 7; ++i) {
@@ -63,7 +63,7 @@ void Compare(f::Scope* scope,
   ctx.Wait();
 
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   // run
   f::AttributeMap attrs = {{"validate_indices", true}};
@@ -101,13 +101,13 @@ void CompareGrad(f::Scope* scope,
                  std::string op_type) {
   // init
   auto index = scope->Var("Index");
-  auto tensor_index = index->GetMutable<f::LoDTensor>();
+  auto tensor_index = index->GetMutable<phi::DenseTensor>();
 
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   auto dout = scope->Var("DOut");
-  auto tensor_dout = dout->GetMutable<f::LoDTensor>();
+  auto tensor_dout = dout->GetMutable<phi::DenseTensor>();
 
   std::vector<int> init_index = {0, 1};
   paddle::framework::TensorFromVector<int>(init_index, ctx, tensor_index);
@@ -124,7 +124,7 @@ void CompareGrad(f::Scope* scope,
   ctx.Wait();
 
   auto dx = scope->Var("DX");
-  auto tensor_dx = dx->GetMutable<f::LoDTensor>();
+  auto tensor_dx = dx->GetMutable<phi::DenseTensor>();
 
   // run
   f::AttributeMap attrs;

@@ -5458,5 +5458,54 @@ MLURNNDesc::~MLURNNDesc() {
                                           scores));
 }
 
+/* static */ void MLUOP::OpPriorBox(
+    const ExecutionContext& ctx,
+    const mluOpTensorDescriptor_t min_sizes_desc,
+    const void* min_sizes,
+    const mluOpTensorDescriptor_t aspect_ratios_desc,
+    const void* aspect_ratios,
+    const mluOpTensorDescriptor_t variances_desc,
+    const void* variances,
+    const mluOpTensorDescriptor_t max_sizes_desc,
+    const void* max_sizes,
+    const int height,
+    const int width,
+    const int im_height,
+    const int im_width,
+    const float step_h,
+    const float step_w,
+    const float offset,
+    const bool clip,
+    const bool min_max_aspect_ratios_order,
+    const mluOpTensorDescriptor_t output_desc,
+    void* output,
+    const mluOpTensorDescriptor_t var_desc,
+    void* var) {
+  mluOpHandle_t handle = GetMLUOpHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(mluOpPriorBox(handle,
+                                           min_sizes_desc,
+                                           min_sizes,
+                                           aspect_ratios_desc,
+                                           aspect_ratios,
+                                           variances_desc,
+                                           variances,
+                                           max_sizes_desc,
+                                           max_sizes,
+                                           height,
+                                           width,
+                                           im_height,
+                                           im_width,
+                                           step_h,
+                                           step_w,
+                                           offset,
+                                           clip,
+                                           min_max_aspect_ratios_order,
+                                           output_desc,
+                                           output,
+                                           var_desc,
+                                           var));
+}
+
 }  // namespace operators
 }  // namespace paddle

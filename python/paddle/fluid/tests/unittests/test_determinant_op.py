@@ -16,17 +16,12 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
-import paddle.nn.functional as F
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.tensor as tensor
 from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
 
 class TestDeterminantOp(OpTest):
-
     def setUp(self):
         self.python_api = paddle.linalg.det
         self.init_data()
@@ -47,7 +42,6 @@ class TestDeterminantOp(OpTest):
 
 
 class TestDeterminantOpCase1(TestDeterminantOp):
-
     def init_data(self):
         np.random.seed(0)
         self.case = np.random.rand(10, 10).astype('float32')
@@ -56,7 +50,6 @@ class TestDeterminantOpCase1(TestDeterminantOp):
 
 
 class TestDeterminantOpCase2(TestDeterminantOp):
-
     def init_data(self):
         np.random.seed(0)
         # not invertible matrix
@@ -66,7 +59,6 @@ class TestDeterminantOpCase2(TestDeterminantOp):
 
 
 class TestDeterminantAPI(unittest.TestCase):
-
     def setUp(self):
         np.random.seed(0)
         self.shape = [3, 3, 5, 5]
@@ -99,7 +91,6 @@ class TestDeterminantAPI(unittest.TestCase):
 
 
 class TestSlogDeterminantOp(OpTest):
-
     def setUp(self):
         self.op_type = "slogdeterminant"
         self.python_api = paddle.linalg.slogdet
@@ -111,9 +102,9 @@ class TestSlogDeterminantOp(OpTest):
 
     def test_check_grad(self):
         # the slog det's grad value is always huge
-        self.check_grad(['Input'], ['Out'],
-                        max_relative_error=0.1,
-                        check_eager=True)
+        self.check_grad(
+            ['Input'], ['Out'], max_relative_error=0.1, check_eager=True
+        )
 
     def init_data(self):
         np.random.seed(0)
@@ -123,7 +114,6 @@ class TestSlogDeterminantOp(OpTest):
 
 
 class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
-
     def init_data(self):
         np.random.seed(0)
         self.case = np.random.rand(2, 2, 5, 5).astype(np.float32)
@@ -132,7 +122,6 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
 
 
 class TestSlogDeterminantAPI(unittest.TestCase):
-
     def setUp(self):
         np.random.seed(0)
         self.shape = [3, 3, 5, 5]

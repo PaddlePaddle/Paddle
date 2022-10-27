@@ -61,7 +61,7 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 
 template <typename T>
 static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
   auto d_output =
       ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Out"));
   const auto slot_size = inputs.size();
@@ -113,7 +113,7 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
 #endif
 }
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 template <typename T>
 class PullBoxSparseKernel : public framework::OpKernel<T> {
  public:

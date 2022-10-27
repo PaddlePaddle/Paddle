@@ -704,6 +704,13 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(FusedAttentionGradNoNeedBufferInferer,
+                                    "QKVBiasOut",
+                                    "QKVOut",
+                                    "QKOut",
+                                    "QKTVOut",
+                                    "OutLinearOut");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -713,7 +720,9 @@ REGISTER_OPERATOR(fused_attention,
                   ops::FusedAttentionOpMaker,
                   ops::FusedAttentionGradOpMaker<paddle::framework::OpDesc>,
                   ops::FusedAttentionGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(fused_attention_grad, ops::FusedAttentionGradOp);
+REGISTER_OPERATOR(fused_attention_grad,
+                  ops::FusedAttentionGradOp,
+                  ops::FusedAttentionGradNoNeedBufferInferer);
 
 REGISTER_OP_VERSION(fused_attention)
     .AddCheckpoint(

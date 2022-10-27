@@ -14,7 +14,14 @@
 
 import paddle
 from .layer_function_generator import templatedoc
-from ..framework import core, Variable, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph, convert_np_dtype_to_dtype_
+from ..framework import (
+    core,
+    Variable,
+    _non_static_mode,
+    in_dygraph_mode,
+    _in_legacy_dygraph,
+    convert_np_dtype_to_dtype_,
+)
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..core import VarDesc
@@ -41,20 +48,22 @@ __all__ = [
 
 
 @templatedoc()
-def sequence_conv(input,
-                  num_filters,
-                  filter_size=3,
-                  filter_stride=1,
-                  padding=True,
-                  padding_start=None,
-                  bias_attr=None,
-                  param_attr=None,
-                  act=None,
-                  name=None):
+def sequence_conv(
+    input,
+    num_filters,
+    filter_size=3,
+    filter_stride=1,
+    padding=True,
+    padding_start=None,
+    bias_attr=None,
+    param_attr=None,
+    act=None,
+    name=None,
+):
     r"""
 
     Note:
-    	Only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
+        Only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
 
     This operator receives input sequences with variable length and other convolutional
     configuration parameters(num_filters, filter_size) to apply the convolution operation.
@@ -146,31 +155,35 @@ def sequence_conv(input,
              x_conved = paddle.static.nn.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
     """
 
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'sequence_conv')
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'sequence_conv'
+    )
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
     filter_shape = [filter_size * input.shape[1], num_filters]
-    filter_param = helper.create_parameter(attr=helper.param_attr,
-                                           shape=filter_shape,
-                                           dtype=dtype)
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr, shape=filter_shape, dtype=dtype
+    )
     pre_bias = helper.create_variable_for_type_inference(dtype)
     if padding_start is None:
         padding_start = -int(filter_size // 2)
 
-    helper.append_op(type='sequence_conv',
-                     inputs={
-                         'X': [input],
-                         'Filter': [filter_param],
-                     },
-                     outputs={"Out": pre_bias},
-                     attrs={
-                         'contextStride': filter_stride,
-                         'contextStart': padding_start,
-                         'contextLength': filter_size,
-                     })
+    helper.append_op(
+        type='sequence_conv',
+        inputs={
+            'X': [input],
+            'Filter': [filter_param],
+        },
+        outputs={"Out": pre_bias},
+        attrs={
+            'contextStride': filter_stride,
+            'contextStart': padding_start,
+            'contextLength': filter_size,
+        },
+    )
     pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
 
@@ -244,17 +257,21 @@ def sequence_softmax(input, use_cudnn=False, name=None):
                  dtype='float32', lod_level=1)
              x_sequence_softmax_2 = paddle.static.nn.sequence_softmax(input=y)
     """
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_softmax', **locals())
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'sequence_softmax')
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'sequence_softmax'
+    )
     dtype = helper.input_dtype()
     softmax_out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="sequence_softmax",
-                     inputs={"X": input},
-                     outputs={"Out": softmax_out},
-                     attrs={"use_cudnn": use_cudnn})
+    helper.append_op(
+        type="sequence_softmax",
+        inputs={"X": input},
+        outputs={"Out": softmax_out},
+        attrs={"use_cudnn": use_cudnn},
+    )
     return softmax_out
 
 
@@ -345,26 +362,27 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
             last_x = paddle.static.nn.sequence_pool(input=x, pool_type='last')
             first_x = paddle.static.nn.sequence_pool(input=x, pool_type='first')
     """
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'sequence_pool')
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'sequence_pool'
+    )
     helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
     max_index = helper.create_variable_for_type_inference(dtype)
 
-    helper.append_op(type="sequence_pool",
-                     inputs={"X": input},
-                     outputs={
-                         "Out": pool_out,
-                         "MaxIndex": max_index
-                     },
-                     attrs={
-                         "pooltype": pool_type.upper(),
-                         "is_test": is_test,
-                         "pad_value": pad_value
-                     })
+    helper.append_op(
+        type="sequence_pool",
+        inputs={"X": input},
+        outputs={"Out": pool_out, "MaxIndex": max_index},
+        attrs={
+            "pooltype": pool_type.upper(),
+            "is_test": is_test,
+            "pad_value": pad_value,
+        },
+    )
 
     # when pool_type is max, variable max_index is initialized,
     # so we stop the gradient explicitly here
@@ -422,20 +440,24 @@ def sequence_concat(input, name=None):
             y = paddle.static.data(name='y', shape=[-1, 10], dtype='float32', lod_level=1)
             out = paddle.static.nn.sequence_concat(input=[x, y])
     """
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_concat', **locals())
 
     check_type(input, 'input', list, 'fluid.layers.sequence_concat')
     for i, input_x in enumerate(input):
-        check_variable_and_dtype(input_x, 'input[' + str(i) + ']',
-                                 ['int64', 'float32', 'float64'],
-                                 'fluid.layers.sequence_concat')
+        check_variable_and_dtype(
+            input_x,
+            'input[' + str(i) + ']',
+            ['int64', 'float32', 'float64'],
+            'fluid.layers.sequence_concat',
+        )
 
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(type='sequence_concat',
-                     inputs={'X': input},
-                     outputs={'Out': [out]})
+    helper.append_op(
+        type='sequence_concat', inputs={'X': input}, outputs={'Out': [out]}
+    )
     return out
 
 
@@ -491,8 +513,9 @@ def sequence_first_step(input):
              x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_first_step = paddle.static.nn.sequence_first_step(input=x)
     """
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'sequence_first_step')
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'sequence_first_step'
+    )
     return sequence_pool(input=input, pool_type="first")
 
 
@@ -549,8 +572,9 @@ def sequence_last_step(input):
              x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_last_step = paddle.static.nn.sequence_last_step(input=x)
     """
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'sequence_last_step')
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'sequence_last_step'
+    )
     return sequence_pool(input=input, pool_type="last")
 
 
@@ -615,17 +639,23 @@ def sequence_slice(input, offset, length, name=None):
              subseqs = paddle.static.nn.sequence_slice(input=seqs, offset=offset,
                                                    length=length)
     """
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper("sequence_slice", **locals())
 
-    check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64', 'int32', 'int64'],
-                             'sequence_slice')
-    check_variable_and_dtype(offset, 'offset', ['int32', 'int64'],
-                             'sequence_slice')
-    check_variable_and_dtype(length, 'length', ['int32', 'int64'],
-                             'sequence_slice')
+    check_variable_and_dtype(
+        input,
+        'input',
+        ['float32', 'float64', 'int32', 'int64'],
+        'sequence_slice',
+    )
+    check_variable_and_dtype(
+        offset, 'offset', ['int32', 'int64'], 'sequence_slice'
+    )
+    check_variable_and_dtype(
+        length, 'length', ['int32', 'int64'], 'sequence_slice'
+    )
 
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
@@ -633,13 +663,11 @@ def sequence_slice(input, offset, length, name=None):
     offset.stop_gradient = True
     length.stop_gradient = True
 
-    helper.append_op(type="sequence_slice",
-                     inputs={
-                         "X": input,
-                         "Offset": offset,
-                         "Length": length
-                     },
-                     outputs={"Out": out})
+    helper.append_op(
+        type="sequence_slice",
+        inputs={"X": input, "Offset": offset, "Length": length},
+        outputs={"Out": out},
+    )
 
     return out
 
@@ -765,20 +793,21 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             #    dtype: float
             #    data: [1 2 1 2 3 4 3 4]
     """
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
-                             'sequence_expand')
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sequence_expand'
+    )
     helper = LayerHelper('sequence_expand', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     tmp = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type='sequence_expand',
-                     inputs={
-                         'X': x,
-                         'Y': y
-                     },
-                     outputs={'Out': tmp},
-                     attrs={'ref_level': ref_level})
+    helper.append_op(
+        type='sequence_expand',
+        inputs={'X': x, 'Y': y},
+        outputs={'Out': tmp},
+        attrs={'ref_level': ref_level},
+    )
     return tmp
 
 
@@ -886,20 +915,19 @@ def sequence_expand_as(x, y, name=None):
             #    dtype: float
             #    data: [1 1 1 2 2 2 3 4]
     """
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
-                             'sequence_expand_as')
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sequence_expand_as'
+    )
     check_type(y, 'y', Variable, 'sequence_expand_as')
     helper = LayerHelper('sequence_expand_as', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     tmp = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type='sequence_expand_as',
-                     inputs={
-                         'X': x,
-                         'Y': y
-                     },
-                     outputs={'Out': tmp})
+    helper.append_op(
+        type='sequence_expand_as', inputs={'X': x, 'Y': y}, outputs={'Out': tmp}
+    )
     return tmp
 
 
@@ -990,14 +1018,22 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             out = paddle.static.nn.sequence_pad(x=x, pad_value=pad_value)
     """
 
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_pad', **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
-                             'fluid.layers.sequence_pad')
-    check_variable_and_dtype(pad_value, 'pad_value',
-                             ['float32', 'float64', 'int32', 'int64'],
-                             'fluid.layers.sequence_pad')
+    check_variable_and_dtype(
+        x,
+        'x',
+        ['float32', 'float64', 'int32', 'int64'],
+        'fluid.layers.sequence_pad',
+    )
+    check_variable_and_dtype(
+        pad_value,
+        'pad_value',
+        ['float32', 'float64', 'int32', 'int64'],
+        'fluid.layers.sequence_pad',
+    )
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     length = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
@@ -1007,16 +1043,12 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
     if maxlen is None:
         maxlen = -1
-    helper.append_op(type='sequence_pad',
-                     inputs={
-                         'X': x,
-                         'PadValue': pad_value
-                     },
-                     outputs={
-                         'Out': out,
-                         'Length': length
-                     },
-                     attrs={'padded_length': maxlen})
+    helper.append_op(
+        type='sequence_pad',
+        inputs={'X': x, 'PadValue': pad_value},
+        outputs={'Out': out, 'Length': length},
+        attrs={'padded_length': maxlen},
+    )
     return out, length
 
 
@@ -1030,22 +1062,22 @@ def sequence_unpad(x, length, name=None):
 
     .. code-block:: text
 
-	Case 1:
+        Case 1:
 
-	Given input Variable **x**:
-	    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
-		      [ 6.0,  7.0,  8.0,  9.0, 10.0],
-		      [11.0, 12.0, 13.0, 14.0, 15.0]],
+        Given input Variable **x**:
+            x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
+                      [ 6.0,  7.0,  8.0,  9.0, 10.0],
+                      [11.0, 12.0, 13.0, 14.0, 15.0]],
 
-	in which there are 3 sequences padded to length 5, and the actual length
-	specified by input Variable **length**:
+        in which there are 3 sequences padded to length 5, and the actual length
+        specified by input Variable **length**:
 
-	    length.data = [2, 3, 4],
+            length.data = [2, 3, 4],
 
-	after unpadding, the output Variable will be:
+        after unpadding, the output Variable will be:
 
-	    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
-	    out.lod = [[0, 2, 5, 9]]
+            out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
+            out.lod = [[0, 2, 5, 9]]
 
     Args:
         x(Variable): A Tensor which contains padding data, and its shape size can not be less than 2.
@@ -1075,24 +1107,29 @@ def sequence_unpad(x, length, name=None):
             unpad_data = paddle.static.nn.sequence_unpad(x=pad_data, length=len)
     """
 
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_unpad', **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
-                             'fluid.layers.sequence_unpad')
-    check_variable_and_dtype(length, 'length', ['int64'],
-                             'fluid.layers.sequence_unpad')
+    check_variable_and_dtype(
+        x,
+        'x',
+        ['float32', 'float64', 'int32', 'int64'],
+        'fluid.layers.sequence_unpad',
+    )
+    check_variable_and_dtype(
+        length, 'length', ['int64'], 'fluid.layers.sequence_unpad'
+    )
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
 
     length.stop_gradient = True
 
-    helper.append_op(type='sequence_unpad',
-                     inputs={
-                         'X': x,
-                         'Length': length
-                     },
-                     outputs={'Out': out})
+    helper.append_op(
+        type='sequence_unpad',
+        inputs={'X': x, 'Length': length},
+        outputs={'Out': out},
+    )
     return out
 
 
@@ -1145,17 +1182,23 @@ def sequence_reshape(input, new_dim):
             x = paddle.static.data(name='x', shape=[None, 16], dtype='float32', lod_level=1)
             x_reshaped = paddle.static.nn.sequence_reshape(input=x, new_dim=4)
     """
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_reshape', **locals())
-    check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64', 'int32', 'int64'],
-                             'fluid.layers.sequence_reshape')
+    check_variable_and_dtype(
+        input,
+        'input',
+        ['float32', 'float64', 'int32', 'int64'],
+        'fluid.layers.sequence_reshape',
+    )
     out = helper.create_variable_for_type_inference(helper.input_dtype())
-    helper.append_op(type='sequence_reshape',
-                     inputs={'X': [input]},
-                     outputs={'Out': [out]},
-                     attrs={'new_dim': new_dim})
+    helper.append_op(
+        type='sequence_reshape',
+        inputs={'X': [input]},
+        outputs={'Out': [out]},
+        attrs={'new_dim': new_dim},
+    )
     return out
 
 
@@ -1224,28 +1267,34 @@ def sequence_scatter(input, index, updates, name=None):
             output = paddle.static.nn.sequence_scatter(input, index, updates)
 
     """
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper('sequence_scatter', **locals())
 
-    check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64', 'int32', 'int64'],
-                             'sequence_scatter')
-    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
-                             'sequence_scatter')
-    check_variable_and_dtype(updates, 'updates',
-                             ['float32', 'float64', 'int32', 'int64'],
-                             'sequence_scatter')
+    check_variable_and_dtype(
+        input,
+        'input',
+        ['float32', 'float64', 'int32', 'int64'],
+        'sequence_scatter',
+    )
+    check_variable_and_dtype(
+        index, 'index', ['int32', 'int64'], 'sequence_scatter'
+    )
+    check_variable_and_dtype(
+        updates,
+        'updates',
+        ['float32', 'float64', 'int32', 'int64'],
+        'sequence_scatter',
+    )
 
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="sequence_scatter",
-                     inputs={
-                         "X": input,
-                         "Ids": index,
-                         "Updates": updates
-                     },
-                     outputs={"Out": out})
+    helper.append_op(
+        type="sequence_scatter",
+        inputs={"X": input, "Ids": index, "Updates": updates},
+        outputs={"Out": out},
+    )
     return out
 
 
@@ -1300,20 +1349,22 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
             x = paddle.static.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
             out = paddle.static.nn.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    check_variable_and_dtype(input, 'input', ['int32', 'int64'],
-                             'sequence_enumerate')
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
+    check_variable_and_dtype(
+        input, 'input', ['int32', 'int64'], 'sequence_enumerate'
+    )
     helper = LayerHelper('sequence_enumerate', **locals())
-    out = helper.create_variable_for_type_inference(helper.input_dtype(),
-                                                    stop_gradient=True)
-    helper.append_op(type='sequence_enumerate',
-                     inputs={'X': input},
-                     outputs={'Out': out},
-                     attrs={
-                         'win_size': win_size,
-                         'pad_value': pad_value
-                     })
+    out = helper.create_variable_for_type_inference(
+        helper.input_dtype(), stop_gradient=True
+    )
+    helper.append_op(
+        type='sequence_enumerate',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'win_size': win_size, 'pad_value': pad_value},
+    )
     return out
 
 
@@ -1427,16 +1478,22 @@ def sequence_reverse(x, name=None):
             x = paddle.static.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
             x_reversed = paddle.static.nn.sequence_reverse(x)
     """
-    assert not _non_static_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
+    assert (
+        not _non_static_mode()
+    ), "sequence layer is not supported in dygraph mode yet."
     helper = LayerHelper("sequence_reverse", **locals())
-    check_variable_and_dtype(x, 'x',
-                             ['float32', 'float64', 'int8', 'int32', 'int64'],
-                             'fluid.layers.sequence_reverse')
+    check_variable_and_dtype(
+        x,
+        'x',
+        ['float32', 'float64', 'int8', 'int32', 'int64'],
+        'fluid.layers.sequence_reverse',
+    )
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type="sequence_reverse",
-                     inputs={"X": x},
-                     outputs={"Y": out},
-                     attrs=dict())
+    helper.append_op(
+        type="sequence_reverse",
+        inputs={"X": x},
+        outputs={"Y": out},
+        attrs=dict(),
+    )
     return out

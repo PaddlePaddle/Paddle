@@ -16,6 +16,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
@@ -23,15 +24,17 @@
 
 namespace phi {
 
-#define HANDLE_DIM(NDIM, RDIM)                                      \
-  if (ndim == NDIM && rdim == RDIM) {                               \
-    funcs::ReduceFunctor<Context, T, NDIM, RDIM, LogsumexpFunctor>( \
-        dev_ctx, x, out, axis, keepdim);                            \
+#define HANDLE_DIM(NDIM, RDIM)                                         \
+  if (ndim == NDIM && rdim == RDIM) {                                  \
+    funcs::ReduceFunctor<Context, T, NDIM, RDIM, LogsumexpFunctor<T>>( \
+        dev_ctx, x, out, axis, keepdim);                               \
   }
 
+template <typename T>
 struct LogsumexpFunctor {
   template <typename Context, typename X, typename Y, typename Dim>
   void operator()(const Context& place, X* x, Y* y, const Dim& dim) {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     auto x_dim = x->dimensions();
     auto t_dim = x_dim;
     for (int i = 0; i < static_cast<int>(dim.size()); i++) {
@@ -46,12 +49,14 @@ struct LogsumexpFunctor {
       r_dim[dim[i]] = x_dim[dim[i]];
     }
 
+    auto x_mt = (*x).template cast<MT>();
     auto y_dim = y->dimensions();
-    auto x_max = x->maximum(dim);
+    auto x_max = x_mt.maximum(dim);
     y->device(place) =
         (x_max +
-         (*x - x_max.reshape(t_dim).broadcast(r_dim)).exp().sum(dim).log())
-            .reshape(y_dim);
+         (x_mt - x_max.reshape(t_dim).broadcast(r_dim)).exp().sum(dim).log())
+            .reshape(y_dim)
+            .template cast<T>();
   }
 };
 
@@ -74,10 +79,16 @@ void LogsumexpKernel(const Context& dev_ctx,
     auto output = phi::EigenScalar<T>::From(*out);
     auto& place = *dev_ctx.eigen_device();
     auto reduce_dim = Eigen::array<int, 1>({{0}});
-    LogsumexpFunctor()(place, &input, &output, reduce_dim);
+    LogsumexpFunctor<T>()(place, &input, &output, reduce_dim);
   } else {
     int ndim = input_dim_size;
     int rdim = axis.size();
+    if (ndim > 4) {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported dimensions, please keep maximum dimensions of input "
+          "data less than 4."));
+    }
+
     // comments for accelerating compiling temporarily.
     // HANDLE_DIM(6, 5);
     // HANDLE_DIM(6, 4);

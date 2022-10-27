@@ -108,7 +108,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto &x = GET_DATA_SAFELY(
                   scope.FindVar(Input("X")), "Input", "X", "LoDTensorToArray")
-                  .Get<framework::LoDTensor>();
+                  .Get<phi::DenseTensor>();
     auto &rank_table = GET_DATA_SAFELY(scope.FindVar(Input("RankTable")),
                                        "Input",
                                        "RankTable",

@@ -38,7 +38,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 // math: dx = scale * ((x - mean) * inv_var / NxHxW * (np.mean(ddx,
 // axis=(n,h,w)) *
@@ -59,7 +59,7 @@ using DataLayout = framework::DataLayout;
 //          inv_var.pow(3) * (x - mean) * np.mean(dy * (x - mean),
 //          axis=(n,h,w)))
 
-template <typename T, int BlockDim, framework::DataLayout layout>
+template <typename T, int BlockDim, phi::DataLayout layout>
 __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
     const T *x,
     const T *mean,
@@ -98,7 +98,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
     T ddx_mul_x_sub_mean_sum = 0;
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int index =
-          layout == framework::DataLayout::kNCHW
+          layout == phi::DataLayout::kNCHW
               ? (j / sample_size * C + i) * sample_size + j % sample_size
               : j * outer_size + i;
       T ddx_i = ddx[index];
@@ -134,7 +134,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
     if (ddx != nullptr) {
       for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int index =
-            layout == framework::DataLayout::kNCHW
+            layout == phi::DataLayout::kNCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         dx[index] +=
@@ -153,7 +153,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
     if (ddscale != nullptr) {
       for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int index =
-            layout == framework::DataLayout::kNCHW
+            layout == phi::DataLayout::kNCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         dx[index] += (dy[index] * var_val - dy_sum_val / inner_size * var_val -
@@ -168,7 +168,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDX(
 // math: ddy = (x - mean) * inv_var * ddscale + ddbias +
 //           scale * inv_var * (ddx - (x - mean) * inv_var.pow(2) *
 //           np.mean(ddx * (x - mean), axis=(n,h,w)))
-template <typename T, int BlockDim, framework::DataLayout layout>
+template <typename T, int BlockDim, phi::DataLayout layout>
 __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     const T *x,
     const T *mean,
@@ -198,7 +198,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     T ddx_mul_x_sub_mean_sum = 0;
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int index =
-          layout == framework::DataLayout::kNCHW
+          layout == phi::DataLayout::kNCHW
               ? (j / sample_size * C + i) * sample_size + j % sample_size
               : j * outer_size + i;
       T ddx_i = ddx[index];
@@ -218,7 +218,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     if (ddx != nullptr) {
       for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int index =
-            layout == framework::DataLayout::kNCHW
+            layout == phi::DataLayout::kNCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         ddy[index] += scale[i] * var_val *
@@ -231,7 +231,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     if (ddscale != nullptr) {
       for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int index =
-            layout == framework::DataLayout::kNCHW
+            layout == phi::DataLayout::kNCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         ddy[index] += (x[index] - mean_val) * var_val * ddscale[i];
@@ -241,7 +241,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
     if (ddbias != nullptr) {
       for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int index =
-            layout == framework::DataLayout::kNCHW
+            layout == phi::DataLayout::kNCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         ddy[index] += ddbias[i];
@@ -253,7 +253,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDDY(
 // math: dscale = inv_var * (dy - np.mean(dy, axis=(n,h,w) - (x-mean) *
 //            inv_var.pow(2) * np.mean(dy * (x-mean), axis=(n,h,w)))) *
 //            ddx
-template <typename T, int BlockDim, framework::DataLayout layout>
+template <typename T, int BlockDim, phi::DataLayout layout>
 __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScale(
     const T *x,
     const T *mean,
@@ -282,7 +282,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScale(
     T var_val = variance[i];
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int index =
-          layout == framework::DataLayout::kNCHW
+          layout == phi::DataLayout::kNCHW
               ? (j / sample_size * C + i) * sample_size + j % sample_size
               : j * outer_size + i;
       T dy_i = dy[index];
@@ -303,7 +303,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScale(
       T dscale_tmp = 0;
       for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
         const int index =
-            layout == framework::DataLayout::kNCHW
+            layout == phi::DataLayout::kNCHW
                 ? (j / sample_size * C + i) * sample_size + j % sample_size
                 : j * outer_size + i;
         dscale_tmp += ddx[index] * var_val *
@@ -323,7 +323,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScale(
 }
 
 // math: dscale = np.sum(ddx * dy, axis=(n,h,w)) * inv_var
-template <typename T, int BlockDim, framework::DataLayout layout>
+template <typename T, int BlockDim, phi::DataLayout layout>
 __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScaleWithGlobal(
     const T *ddx,
     const T *variance,
@@ -343,7 +343,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScaleWithGlobal(
     T ddx_mul_dy_sum = 0;
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
       const int index =
-          layout == framework::DataLayout::kNCHW
+          layout == phi::DataLayout::kNCHW
               ? (j / sample_size * C + i) * sample_size + j % sample_size
               : j * outer_size + i;
       T ddx_i = ddx[index];
@@ -364,7 +364,7 @@ __global__ LAUNCH_BOUNDS(BlockDim) void DoubleGradComputeDScaleWithGlobal(
 }
 
 // math: dx = ddscale * dy * inv_var
-template <typename T, framework::DataLayout layout>
+template <typename T, phi::DataLayout layout>
 __global__ void DoubleGradComputeDXWithGlobal(const T *dy,
                                               const T *ddscale,
                                               const T *variance,
@@ -378,7 +378,7 @@ __global__ void DoubleGradComputeDXWithGlobal(const T *dy,
   if (ddscale != nullptr) {
     for (int i = gid; i < num; i += stride) {
       const int c =
-          layout == framework::DataLayout::kNCHW ? i / sample_size % C : i % C;
+          layout == phi::DataLayout::kNCHW ? i / sample_size % C : i % C;
       T inv_var = 1.0 / sqrt(variance[c] + epsilon);
       dx[i] = dy[i] * ddscale[c] * inv_var;
     }
@@ -387,7 +387,7 @@ __global__ void DoubleGradComputeDXWithGlobal(const T *dy,
 
 // math: ddy = scale * ddx * inv_var + ddbias +
 //             ddscale * (x - mean) * inv_var
-template <typename T, framework::DataLayout layout>
+template <typename T, phi::DataLayout layout>
 __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
                                                const T *scale,
                                                const T *mean,
@@ -406,7 +406,7 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
   if (ddx != nullptr) {
     for (int i = gid; i < num; i += stride) {
       const int c =
-          layout == framework::DataLayout::kNCHW ? i / sample_size % C : i % C;
+          layout == phi::DataLayout::kNCHW ? i / sample_size % C : i % C;
       T inv_var = 1.0 / sqrt(variance[c] + epsilon);
       ddy[i] += ddx[i] * scale[c] * inv_var;
     }
@@ -415,7 +415,7 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
   if (ddscale != nullptr) {
     for (int i = gid; i < num; i += stride) {
       const int c =
-          layout == framework::DataLayout::kNCHW ? i / sample_size % C : i % C;
+          layout == phi::DataLayout::kNCHW ? i / sample_size % C : i % C;
       T inv_var = 1.0 / sqrt(variance[c] + epsilon);
       ddy[i] += (x[i] - mean[c]) * inv_var * ddscale[c];
     }
@@ -424,7 +424,7 @@ __global__ void DoubleGradComputeDDYWithGlobal(const T *ddx,
   if (ddbias != nullptr) {
     for (int i = gid; i < num; i += stride) {
       const int c =
-          layout == framework::DataLayout::kNCHW ? i / sample_size % C : i % C;
+          layout == phi::DataLayout::kNCHW ? i / sample_size % C : i % C;
       ddy[i] += ddbias[c];
     }
   }

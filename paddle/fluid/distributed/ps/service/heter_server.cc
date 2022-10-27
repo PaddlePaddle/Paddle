@@ -244,7 +244,7 @@ int SendAndRecvVariableHandler::QueryInSwitchWithScope(
       LOG(INFO) << "local_scope not find var: " << req_var_name;
     }
     butil::IOBuf temp_iobuf;
-    if (var_ptr->IsType<framework::LoDTensor>()) {
+    if (var_ptr->IsType<phi::DenseTensor>()) {
       SerializeLodTensor(var_ptr, cpu_dev_ctx, send_var_msg, &temp_iobuf);
     } else if (var_ptr->IsType<phi::SelectedRows>()) {
       SerializeSelectedRows(var_ptr, cpu_dev_ctx, send_var_msg, &temp_iobuf);

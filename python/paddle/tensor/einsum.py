@@ -16,20 +16,18 @@ import itertools
 import numpy as np
 import re
 
-from .linalg import dot, matmul, transpose
+from .linalg import matmul, transpose
 from .manipulation import squeeze, unsqueeze, reshape
 from .math import multiply
 from .math import sum as paddle_sum
 from ..fluid.framework import _in_legacy_dygraph
 from paddle import _C_ops, _legacy_C_ops
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 import collections
 import string
 import opt_einsum
-
-from paddle.common_ops_import import dygraph_only
 
 __all__ = []
 
@@ -52,12 +50,13 @@ def parse_op_labels(labelstr, operand):
     '''
     # Sanity checks
     for c in labelstr.replace('.', ''):
-        assert c.isalpha(), (
-            f"Invalid equation: {c} is not a valid label, which should be letters."
-        )
+        assert (
+            c.isalpha()
+        ), f"Invalid equation: {c} is not a valid label, which should be letters."
 
-    assert labelstr.replace('...', '', 1).find('.') == -1, (
-        f"Invalid equation: `.` is found outside of an ellipsis.")
+    assert (
+        labelstr.replace('...', '', 1).find('.') == -1
+    ), "Invalid equation: `.` is found outside of an ellipsis."
 
     # Check shape. Note, in Paddle a tensor rank is always nonzero
     ndims = len(operand.shape)
@@ -65,8 +64,9 @@ def parse_op_labels(labelstr, operand):
 
     full_labelstr = labelstr.replace('...', '.' * (ndims - len(labelstr) + 3))
 
-    assert len(full_labelstr) == ndims, (
-        f"Invalid equation: the label string '{labelstr}' misses dimensions.")
+    assert (
+        len(full_labelstr) == ndims
+    ), f"Invalid equation: the label string '{labelstr}' misses dimensions."
 
     return full_labelstr
 
@@ -90,7 +90,8 @@ def parse_labels(labelstr, operands):
     nop_labels = labelstr.split(',')
     assert len(nop_labels) == len(operands), (
         f"Invalid equation: the number of operands is {len(operands)}, "
-        f"but found {len(nop_labels)} segments in the label equation.")
+        f"but found {len(nop_labels)} segments in the label equation."
+    )
 
     return list(map(parse_op_labels, nop_labels, operands))
 
@@ -101,8 +102,9 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     '''
     # Sanity check.
     if n_bcast_dims > 0:
-        assert '...' in rhs, (
-            f"Invalid equation: missing ellipsis in output labels.")
+        assert (
+            '...' in rhs
+        ), "Invalid equation: missing ellipsis in output labels."
 
     rhs = rhs.replace('...', '')
     rhs_set = set(rhs)
@@ -114,10 +116,12 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     non_input_labels = rhs_set.difference(input_labels)
     assert not non_input_labels, (
         f"Invalid equation: "
-        f"output label {sorted(non_input_labels)} not used by any input.")
+        f"output label {sorted(non_input_labels)} not used by any input."
+    )
     # Verify that output labels are not duplicate
-    assert len(rhs) == len(rhs_set), (
-        f"Invalid equation: duplicate output labels are found.")
+    assert len(rhs) == len(
+        rhs_set
+    ), "Invalid equation: duplicate output labels are found."
 
 
 def build_view(in_labels, out_labels):
@@ -159,8 +163,8 @@ def build_view(in_labels, out_labels):
         # fill the broadcast dimension indices from right to left.
         if s:
             for ax, dim in zip(
-                    range(start, end)[::-1],
-                    range(s.start(), s.end())[::-1]):
+                range(start, end)[::-1], range(s.start(), s.end())[::-1]
+            ):
                 inv_map[ax] = dim
 
     # Now work on non-broadcast dimensions
@@ -219,7 +223,8 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
         g_labels_out = rhs.replace('...', '.' * n_bcast_dims)
     else:
         g_labels_out = '.' * n_bcast_dims + ''.join(
-            l for l, c in zip(labels, count) if c == 1)
+            l for l, c in zip(labels, count) if c == 1
+        )
 
     for i in range(len(count))[::-1]:
         if labels[i] in g_labels_out:
@@ -267,12 +272,14 @@ def build_global_shape(g_view, g_labels, op_shapes):
 
     assert not non_bcastable, (
         f"Invalid operands: label {g_labels[non_bcastable[0]]} "
-        f"corresponds to non-broadcastable dimensions.")
+        f"corresponds to non-broadcastable dimensions."
+    )
 
     g_shape = [sizes.pop() if len(sizes) > 0 else 1 for sizes in g_shape]
 
-    g_masks = [[s > 1 or s == -1 for s in view_shape]
-               for view_shape in view_shapes]
+    g_masks = [
+        [s > 1 or s == -1 for s in view_shape] for view_shape in view_shapes
+    ]
 
     return g_shape, g_masks
 
@@ -297,8 +304,9 @@ def diagonalize(labels, operand):
     --------
     'ijj...i' would be merged into 'ij...'
     '''
-    assert not has_duplicated_labels(labels), (
-        f'Duplicate labels are not supported.')
+    assert not has_duplicated_labels(
+        labels
+    ), 'Duplicate labels are not supported.'
 
     return labels, operand
 
@@ -358,12 +366,21 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
         plan.add_step(step)
 
     # Check if conditions hold for turnning the operation into a matmul
-    if j1 + j2 > 0 and k > 0 and -1 not in np.concatenate(
-        (op1_vshape, op2_vshape)):
-        op1_shape = list(op1_vshape[I]) + [np.prod(op1_vshape[J1])
-                                           ] + [np.prod(op1_vshape[K])]
-        op2_shape = list(op2_vshape[I]) + [np.prod(op2_vshape[J2])
-                                           ] + [np.prod(op2_vshape[K])]
+    if (
+        j1 + j2 > 0
+        and k > 0
+        and -1 not in np.concatenate((op1_vshape, op2_vshape))
+    ):
+        op1_shape = (
+            list(op1_vshape[I])
+            + [np.prod(op1_vshape[J1])]
+            + [np.prod(op1_vshape[K])]
+        )
+        op2_shape = (
+            list(op2_vshape[I])
+            + [np.prod(op2_vshape[J2])]
+            + [np.prod(op2_vshape[K])]
+        )
 
         # Merge J dims and K dims by reshaping
         step = reshape, [var1], var1, op1_shape
@@ -411,16 +428,23 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
             plan.add_step(step)
             step = squeeze, [var2], var2, [-1, -2]
             plan.add_step(step)
-        elif j1 + j2 == 0 and not -1 in np.concatenate(
-            (op1_vshape[K], op2_vshape[K])):
+        elif j1 + j2 == 0 and -1 not in np.concatenate(
+            (op1_vshape[K], op2_vshape[K])
+        ):
             assert all(op1_vshape[K] == op2_vshape[K])
-            step = reshape, [
-                var1
-            ], var1, list(op1_vshape[I]) + [1] + [np.prod(op1_vshape[K])]
+            step = (
+                reshape,
+                [var1],
+                var1,
+                list(op1_vshape[I]) + [1] + [np.prod(op1_vshape[K])],
+            )
             plan.add_step(step)
-            step = reshape, [
-                var2
-            ], var2, list(op2_vshape[I]) + [1] + [np.prod(op2_vshape[K])]
+            step = (
+                reshape,
+                [var2],
+                var2,
+                list(op2_vshape[I]) + [1] + [np.prod(op2_vshape[K])],
+            )
             plan.add_step(step)
             step = matmul, [var1, var2], var2, False, True
             plan.add_step(step)
@@ -449,8 +473,9 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
     g_view[op2] = list(op2_view)
 
 
-def plan_summation(plan, g_view, op1, op2, g_supports, g_shape, g_count,
-                   n_bcast):
+def plan_summation(
+    plan, g_view, op1, op2, g_supports, g_shape, g_count, n_bcast
+):
     '''
     Plan various kinds of summation
     '''
@@ -464,8 +489,9 @@ def plan_summation(plan, g_view, op1, op2, g_supports, g_shape, g_count,
 
     I, K, J1, J2 = list(range(n_bcast)), [], [], []
 
-    for ax, dim1, dim2 in zip(range(n_bcast, ndim), op1_view[n_bcast:],
-                              op2_view[n_bcast:]):
+    for ax, dim1, dim2 in zip(
+        range(n_bcast, ndim), op1_view[n_bcast:], op2_view[n_bcast:]
+    ):
 
         if (dim1 != -1) != (dim2 != -1):
             if dim1 != -1:
@@ -531,7 +557,6 @@ def plan_broadcast(plan, operands, nop_axes):
 
 
 class Plan:
-
     def __init__(self):
         self.env = {}
         self.steps = []
@@ -635,8 +660,9 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
             # op1 is a one element tensor.
             plan_scalar_prod(plan, i - 1, i)
         else:
-            plan_summation(plan, g_view, i - 1, i, g_supports, g_shape, g_count,
-                           n_bcast)
+            plan_summation(
+                plan, g_view, i - 1, i, g_supports, g_shape, g_count, n_bcast
+            )
 
     # for ax, dim in enumerate(g_view[nop-1][:nout]):
     #     assert dim == ax
@@ -678,7 +704,9 @@ def preprocess(equation, *operands):
     """
     equation = equation.replace(" ", "")
     nop = len(operands)
-    assert nop > 0, "Required at least one operand in Einsum API, but received %s " % nop
+    assert nop > 0, (
+        "Required at least one operand in Einsum API, but received %s " % nop
+    )
 
     # Part the equation to left hand side and right hand side
     lhs, *rhs = equation.lower().split('->')
@@ -692,16 +720,20 @@ def preprocess(equation, *operands):
 
     assert len(lhs.split(',')) == len(operands), (
         f"Invalid equation: the number of operands is {len(operands)}, "
-        f"but found {len(lhs.split(','))} segments in the label equation.")
+        f"but found {len(lhs.split(','))} segments in the label equation."
+    )
 
-    assert not ('...' in lhs and '...' not in rhs
-                ), f'Invalid equation: missing ellipsis in output labels.'
+    assert not (
+        '...' in lhs and '...' not in rhs
+    ), 'Invalid equation: missing ellipsis in output labels.'
 
-    assert not (len(list(filter(has_duplicated_labels, lhs.split(',')))) >
-                0), f'Duplicate labels are not supported.'
+    assert not (
+        len(list(filter(has_duplicated_labels, lhs.split(',')))) > 0
+    ), 'Duplicate labels are not supported.'
 
     assert not has_duplicated_labels(
-        rhs), f'Invalid equation: duplicate output labels are found.'
+        rhs
+    ), 'Invalid equation: duplicate output labels are found.'
 
     return lhs, rhs, labels
 
@@ -719,10 +751,10 @@ def parse_fake_shape(equation, operands, labels):
     shaped = collections.namedtuple('shaped', ['shape'])
 
     def fake_shape(label, op):
-        assert len(op.shape) == len(
-            label
-        ), "length of shape and length of label must be the same, but received %d != %d" % (
-            len(op.shape), len(label))
+        assert len(op.shape) == len(label), (
+            "length of shape and length of label must be the same, but received %d != %d"
+            % (len(op.shape), len(label))
+        )
         fakes = [s for i, (l, s) in enumerate(zip(label, op.shape)) if l != '.']
         fakes = list(map(abs, fakes))  # make -1 -> 1
         if '.' in label:
@@ -734,7 +766,6 @@ def parse_fake_shape(equation, operands, labels):
 
 
 def rhs_inference(lhs):
-
     def is_free(key):
         return cnt.get(key) == 1 and key not in ['.', ',']
 
@@ -753,7 +784,8 @@ def gen_equation_for_opteinsum(lhs, rhs):
     def get_used_label(counter):
         used = set(counter.elements())
         for c in string.ascii_lowercase:
-            if c not in used: return c
+            if c not in used:
+                return c
         raise ValueError(
             "You have used all `a` - `z`, there can't find a unused for einsum optimization"
         )
@@ -786,14 +818,15 @@ def einsum_v2(equation, *operands):
     var_list = list(operands)
     for path in cons:
         (a, b), _, eq, *__ = path
-        assert a > b, "Assume the first var_idx is smaller than the second_idx. opt_einsum can guarantee it."
+        assert (
+            a > b
+        ), "Assume the first var_idx is smaller than the second_idx. opt_einsum can guarantee it."
         var_s = [var_list.pop(a), var_list.pop(b)]
         eq = eq.replace(broadcast_label, "...")
         var_list.append(gen_einsum_op(eq, *var_s))
-    assert len(
-        var_list
-    ) == 1, "There must be one elements in list, but received %d." % len(
-        var_list)
+    assert (
+        len(var_list) == 1
+    ), "There must be one elements in list, but received %d." % len(var_list)
     return var_list[0]
 
 
@@ -807,8 +840,9 @@ def gen_einsum_op(equation, *operands):
 
     if _in_legacy_dygraph():
         # dygraph
-        return _legacy_C_ops.einsum(operands, len(operands), len(operands),
-                                    'equation', equation)[0]
+        return _legacy_C_ops.einsum(
+            operands, len(operands), len(operands), 'equation', equation
+        )[0]
 
     for inp in operands:
         check_variable_and_dtype(inp, 'dtype', ['float32', 'float64'], 'einsum')
@@ -825,14 +859,12 @@ def gen_einsum_op(equation, *operands):
         helper.create_variable_for_type_inference(dtype=operands[0].dtype)
         for i in range(len(operands))
     ]
-    helper.append_op(type='einsum',
-                     inputs={'Operands': operands},
-                     outputs={
-                         'Out': out,
-                         "InnerCache": caches,
-                         "XShape": xshape
-                     },
-                     attrs=attrs)
+    helper.append_op(
+        type='einsum',
+        inputs={'Operands': operands},
+        outputs={'Out': out, "InnerCache": caches, "XShape": xshape},
+        attrs=attrs,
+    )
     return out
 
 
@@ -884,7 +916,7 @@ def einsum(equation, *operands):
                 the sum over the original output.
                 - Non-input labels are invalid.
                 - Duplicate labels are invalid.
-                - For any dummmy label which is present for the output, it's promoted to
+                - For any dummy label which is present for the output, it's promoted to
                 a free label.
                 - For any free label which is not present for the output, it's lowered to
                 a dummy label.
@@ -994,6 +1026,7 @@ def einsum(equation, *operands):
         #     [0.51476848, 0.23367381, 0.39229113]]])
     """
     import os
+
     if int(os.environ.get('FLAGS_new_einsum', "1")):
         return einsum_v2(equation, *operands)
 
@@ -1039,9 +1072,11 @@ def einsum(equation, *operands):
     #   Counting how many non-trivial dimensions remain for each ax
 
     g_labels, g_view, g_nout, g_count = build_global_view(
-        nop_labels, rhs, n_bcast_dims)
-    g_shape, g_supports = build_global_shape(g_view, g_labels,
-                                             [op.shape for op in operands])
+        nop_labels, rhs, n_bcast_dims
+    )
+    g_shape, g_supports = build_global_shape(
+        g_view, g_labels, [op.shape for op in operands]
+    )
 
     # Now we're ready to build up an execution plan
     args = operands, g_view, g_shape, g_supports, g_count, n_bcast_dims

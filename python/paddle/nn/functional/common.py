@@ -12,24 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
 from ...tensor import concat
 from ...tensor.creation import zeros
 from paddle.static import Variable
-from ...fluid import dygraph_utils
+
 # TODO: define the common functions to build a neural network
 from ...tensor.manipulation import squeeze
 from ...tensor.manipulation import unsqueeze
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
-from ...fluid.data_feeder import check_variable_and_dtype, check_dtype, check_type
-from ...fluid.framework import _varbase_creator, _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
-
-from ...fluid import dygraph_utils
+from ...fluid.data_feeder import (
+    check_variable_and_dtype,
+    check_dtype,
+    check_type,
+)
+from ...fluid.framework import (
+    _in_legacy_dygraph,
+    _non_static_mode,
+    in_dygraph_mode,
+)
 
 from paddle import _C_ops, _legacy_C_ops
 from paddle.framework import in_dynamic_mode
@@ -112,26 +117,28 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
 
-    assert len(x.shape) == 4, \
-            "input should be the format of [N, C, H, W]"
+    assert len(x.shape) == 4, "input should be the format of [N, C, H, W]"
 
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
-        assert isinstance(kernel_sizes, list) and (len(kernel_sizes) == 2), \
-            "kernel_sizes should either be an integer or a list of two integers"
+        assert isinstance(kernel_sizes, list) and (
+            len(kernel_sizes) == 2
+        ), "kernel_sizes should either be an integer or a list of two integers"
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
-        assert isinstance(strides, list) and (len(strides) == 2), \
-            "strides should either be an integer or a list of two integers"
+        assert isinstance(strides, list) and (
+            len(strides) == 2
+        ), "strides should either be an integer or a list of two integers"
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
-        assert isinstance(dilations, list) and (len(dilations) == 2), \
-            "dilations should either be an integer or a list of two integers"
+        assert isinstance(dilations, list) and (
+            len(dilations) == 2
+        ), "dilations should either be an integer or a list of two integers"
 
     if isinstance(paddings, int):
         paddings = [paddings] * 4
@@ -147,32 +154,37 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     else:
         raise ValueError(
             "Unexpected type of paddings, it should be either an integer or a list"
-            "of 2 or 4 integers")
+            "of 2 or 4 integers"
+        )
 
     if in_dygraph_mode():
         return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="unfold",
-                     inputs={"X": x},
-                     outputs={"Y": out},
-                     attrs={
-                         "kernel_sizes": kernel_sizes,
-                         "strides": strides,
-                         "paddings": paddings,
-                         "dilations": dilations
-                     })
+    helper.append_op(
+        type="unfold",
+        inputs={"X": x},
+        outputs={"Y": out},
+        attrs={
+            "kernel_sizes": kernel_sizes,
+            "strides": strides,
+            "paddings": paddings,
+            "dilations": dilations,
+        },
+    )
     return out
 
 
-def interpolate(x,
-                size=None,
-                scale_factor=None,
-                mode='nearest',
-                align_corners=False,
-                align_mode=0,
-                data_format='NCHW',
-                name=None):
+def interpolate(
+    x,
+    size=None,
+    scale_factor=None,
+    mode='nearest',
+    align_corners=False,
+    align_mode=0,
+    data_format='NCHW',
+    name=None,
+):
     """
 
     This API resizes a batch of images.
@@ -380,7 +392,8 @@ def interpolate(x,
     if resample not in resample_methods:
         raise ValueError(
             "The 'resample' of image_resize can only be 'area', 'linear', 'bilinear', 'trilinear', "
-            " 'bicubic' or 'nearest' currently.")
+            " 'bicubic' or 'nearest' currently."
+        )
 
     if resample in ['LINEAR'] and len(x.shape) != 3:
         raise ValueError("'linear' only support 3-D tensor.")
@@ -407,8 +420,11 @@ def interpolate(x,
         )
 
     if resample == 'AREA':
-        if isinstance(size, list) or isinstance(size, tuple) or isinstance(
-                size, Variable):
+        if (
+            isinstance(size, list)
+            or isinstance(size, tuple)
+            or isinstance(size, Variable)
+        ):
             if len(size) == 0:
                 raise ValueError("output size can not be empty")
         if len(x.shape) == 3:
@@ -422,19 +438,25 @@ def interpolate(x,
     dtype = helper.input_dtype(input_param_name='x')
     if len(x.shape) == 3 and data_format not in ['NCW', 'NWC']:
         raise ValueError(
-            "Got wrong value for param `data_format`: " + data_format +
-            " received but only `NCW` or `NWC` supported for 3-D input.")
+            "Got wrong value for param `data_format`: "
+            + data_format
+            + " received but only `NCW` or `NWC` supported for 3-D input."
+        )
     elif len(x.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
-            "Got wrong value for param `data_format`: " + data_format +
-            " received but only `NCHW` or `NHWC` supported for 4-D input.")
+            "Got wrong value for param `data_format`: "
+            + data_format
+            + " received but only `NCHW` or `NHWC` supported for 4-D input."
+        )
     elif len(x.shape) == 5 and data_format not in ['NCDHW', 'NDHWC']:
         raise ValueError(
-            "Got wrong value for param `data_format`: " + data_format +
-            " received but only `NCDHW` or `NDHWC` supported for 5-D input.")
+            "Got wrong value for param `data_format`: "
+            + data_format
+            + " received but only `NCDHW` or `NDHWC` supported for 5-D input."
+        )
 
     def _is_list_or_turple_(data):
-        return (isinstance(data, list) or isinstance(data, tuple))
+        return isinstance(data, list) or isinstance(data, tuple)
 
     if data_format == 'NCHW' or data_format == 'NCDHW' or data_format == 'NCW':
         data_layout = 'NCHW'
@@ -452,7 +474,7 @@ def interpolate(x,
         "interp_method": resample_type,
         "align_corners": align_corners,
         "align_mode": align_mode,
-        "data_layout": data_layout
+        "data_layout": data_layout,
     }
 
     out_shape = size
@@ -480,9 +502,9 @@ def interpolate(x,
                 if isinstance(dim_size, Variable):
                     contain_var = True
                     continue
-                assert dim_size > 0, (
-                    "Each dimension size given in out_shape must be greater than 0."
-                )
+                assert (
+                    dim_size > 0
+                ), "Each dimension size given in out_shape must be greater than 0."
 
             if contain_var:
                 new_size_tensor = []
@@ -493,14 +515,13 @@ def interpolate(x,
                         new_size_tensor.append(dim)
                         size_list.append(-1)
                     else:
-                        assert (isinstance(dim, int))
+                        assert isinstance(dim, int)
                         temp_out = helper.create_variable_for_type_inference(
-                            'int32')
-                        fill_constant([1],
-                                      'int32',
-                                      dim,
-                                      force_cpu=True,
-                                      out=temp_out)
+                            'int32'
+                        )
+                        fill_constant(
+                            [1], 'int32', dim, force_cpu=True, out=temp_out
+                        )
                         new_size_tensor.append(temp_out)
                         size_list.append(dim)
                 inputs['SizeTensor'] = new_size_tensor
@@ -508,7 +529,8 @@ def interpolate(x,
             if len(x.shape) == 3:
                 if len(out_shape) != 1:
                     raise ValueError(
-                        "size length should be 2 for input 3-D tensor")
+                        "size length should be 2 for input 3-D tensor"
+                    )
                 if contain_var:
                     attrs['out_w'] = size_list[0]
                 else:
@@ -516,8 +538,9 @@ def interpolate(x,
                     attrs['out_w'] = out_shape[0]
             if len(x.shape) == 4:
                 if len(out_shape) != 2:
-                    raise ValueError("size length should be 2 for "
-                                     "input 4-D tensor.")
+                    raise ValueError(
+                        "size length should be 2 for " "input 4-D tensor."
+                    )
                 if contain_var:
                     attrs['out_h'] = size_list[0]
                     attrs['out_w'] = size_list[1]
@@ -527,8 +550,9 @@ def interpolate(x,
                     attrs['out_w'] = out_shape[1]
             if len(x.shape) == 5:
                 if len(out_shape) != 3:
-                    raise ValueError("size length should be 3 for "
-                                     "input 5-D tensor.")
+                    raise ValueError(
+                        "size length should be 3 for " "input 5-D tensor."
+                    )
                 if contain_var:
                     attrs['out_d'] = size_list[0]
                     attrs['out_h'] = size_list[1]
@@ -554,9 +578,10 @@ def interpolate(x,
             attrs['scale'] = list(map(float, scale_list))
         elif isinstance(scale, list) or isinstance(scale, tuple):
             if len(scale) != len(x.shape) - 2:
-                raise ValueError("scale_shape length should be {} for "
-                                 "input {}-D tensor.".format(
-                                     len(x.shape) - 2, len(x.shape)))
+                raise ValueError(
+                    "scale_shape length should be {} for "
+                    "input {}-D tensor.".format(len(x.shape) - 2, len(x.shape))
+                )
             for value in scale:
                 if value <= 0:
                     raise ValueError("Attr(scale) should be greater than zero.")
@@ -576,80 +601,114 @@ def interpolate(x,
         if resample_type == "linear":
             if in_dygraph_mode():
                 out = _C_ops.linear_interp(
-                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    x,
+                    inputs['OutSize'] if 'OutSize' in inputs else None,
                     inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
                     inputs['Scale'] if 'Scale' in inputs else None,
-                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
-                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
-                    attrs['interp_method'], attrs['align_corners'],
-                    attrs['align_mode'])
+                    attrs['data_layout'],
+                    attrs['out_d'],
+                    attrs['out_h'],
+                    attrs['out_w'],
+                    attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'],
+                    attrs['align_corners'],
+                    attrs['align_mode'],
+                )
             else:
                 out = _legacy_C_ops.linear_interp_v2(x, *dy_attr)
         elif resample_type == "bilinear":
             if in_dygraph_mode():
                 out = _C_ops.bilinear_interp(
-                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    x,
+                    inputs['OutSize'] if 'OutSize' in inputs else None,
                     inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
                     inputs['Scale'] if 'Scale' in inputs else None,
-                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
-                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
-                    attrs['interp_method'], attrs['align_corners'],
-                    attrs['align_mode'])
+                    attrs['data_layout'],
+                    attrs['out_d'],
+                    attrs['out_h'],
+                    attrs['out_w'],
+                    attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'],
+                    attrs['align_corners'],
+                    attrs['align_mode'],
+                )
             else:
                 out = _legacy_C_ops.bilinear_interp_v2(x, *dy_attr)
         elif resample_type == "trilinear":
             if in_dygraph_mode():
                 out = _C_ops.trilinear_interp(
-                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    x,
+                    inputs['OutSize'] if 'OutSize' in inputs else None,
                     inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
                     inputs['Scale'] if 'Scale' in inputs else None,
-                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
-                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
-                    attrs['interp_method'], attrs['align_corners'],
-                    attrs['align_mode'])
+                    attrs['data_layout'],
+                    attrs['out_d'],
+                    attrs['out_h'],
+                    attrs['out_w'],
+                    attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'],
+                    attrs['align_corners'],
+                    attrs['align_mode'],
+                )
             else:
                 out = _legacy_C_ops.trilinear_interp_v2(x, *dy_attr)
         elif resample_type == "nearest":
             if in_dygraph_mode():
                 out = _C_ops.nearest_interp(
-                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    x,
+                    inputs['OutSize'] if 'OutSize' in inputs else None,
                     inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
                     inputs['Scale'] if 'Scale' in inputs else None,
-                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
-                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
-                    attrs['interp_method'], attrs['align_corners'],
-                    attrs['align_mode'])
+                    attrs['data_layout'],
+                    attrs['out_d'],
+                    attrs['out_h'],
+                    attrs['out_w'],
+                    attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'],
+                    attrs['align_corners'],
+                    attrs['align_mode'],
+                )
             else:
                 out = _legacy_C_ops.nearest_interp_v2(x, *dy_attr)
         elif resample_type == "bicubic":
             if in_dygraph_mode():
                 out = _C_ops.bicubic_interp(
-                    x, inputs['OutSize'] if 'OutSize' in inputs else None,
+                    x,
+                    inputs['OutSize'] if 'OutSize' in inputs else None,
                     inputs['SizeTensor'] if 'SizeTensor' in inputs else None,
                     inputs['Scale'] if 'Scale' in inputs else None,
-                    attrs['data_layout'], attrs['out_d'], attrs['out_h'],
-                    attrs['out_w'], attrs['scale'] if 'scale' in attrs else [],
-                    attrs['interp_method'], attrs['align_corners'],
-                    attrs['align_mode'])
+                    attrs['data_layout'],
+                    attrs['out_d'],
+                    attrs['out_h'],
+                    attrs['out_w'],
+                    attrs['scale'] if 'scale' in attrs else [],
+                    attrs['interp_method'],
+                    attrs['align_corners'],
+                    attrs['align_mode'],
+                )
             else:
                 out = _legacy_C_ops.bicubic_interp_v2(x, *dy_attr)
         return out
     out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type='{}_interp_v2'.format(resample_type),
-                     inputs=inputs,
-                     outputs={"Out": out},
-                     attrs=attrs)
+    helper.append_op(
+        type='{}_interp_v2'.format(resample_type),
+        inputs=inputs,
+        outputs={"Out": out},
+        attrs=attrs,
+    )
     return out
 
 
-def upsample(x,
-             size=None,
-             scale_factor=None,
-             mode='nearest',
-             align_corners=False,
-             align_mode=0,
-             data_format='NCHW',
-             name=None):
+def upsample(
+    x,
+    size=None,
+    scale_factor=None,
+    mode='nearest',
+    align_corners=False,
+    align_mode=0,
+    data_format='NCHW',
+    name=None,
+):
     """
     This API resizes a batch of images.
 
@@ -831,8 +890,9 @@ def upsample(x,
                 # [2L, 3L, 12L, 12L]
 
     """
-    return interpolate(x, size, scale_factor, mode, align_corners, align_mode,
-                       data_format)
+    return interpolate(
+        x, size, scale_factor, mode, align_corners, align_mode, data_format
+    )
 
 
 def bilinear(x1, x2, weight, bias=None, name=None):
@@ -883,19 +943,16 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     helper = LayerHelper("bilinear", **locals())
     out = helper.create_variable_for_type_inference(dtype=x1.dtype)
 
-    helper.append_op(type="bilinear_tensor_product",
-                     inputs=inputs,
-                     outputs={"Out": out})
+    helper.append_op(
+        type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out}
+    )
 
     return out
 
 
-def dropout(x,
-            p=0.5,
-            axis=None,
-            training=True,
-            mode="upscale_in_train",
-            name=None):
+def dropout(
+    x, p=0.5, axis=None, training=True, mode="upscale_in_train", name=None
+):
     """
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training. The dropout operator randomly sets the
@@ -1047,7 +1104,8 @@ def dropout(x,
 
     if isinstance(p, (int, float)):
         # fast return for p == 0
-        if p == 0: return x
+        if p == 0:
+            return x
         elif p < 0 or p > 1:
             raise ValueError("p argument should between 0 and 1")
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
@@ -1059,41 +1117,63 @@ def dropout(x,
 
     if axis == None:  # commonly used dropout
         seed = None
-        mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+        mode = (
+            'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
+        )  # semantic transfer
 
         if _non_static_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
             if in_dygraph_mode():
-                out, mask = _C_ops.dropout( x, None, p, not training, mode, \
-                    seed if seed is not None else 0, seed is not None)
+                out, mask = _C_ops.dropout(
+                    x,
+                    None,
+                    p,
+                    not training,
+                    mode,
+                    seed if seed is not None else 0,
+                    seed is not None,
+                )
 
                 return out
-            out, mask = _legacy_C_ops.dropout(x, 'dropout_prob', p, 'is_test',
-                                              not training, 'fix_seed', seed
-                                              is not None, 'seed',
-                                              seed if seed is not None else 0,
-                                              'dropout_implementation', mode)
+            out, mask = _legacy_C_ops.dropout(
+                x,
+                'dropout_prob',
+                p,
+                'is_test',
+                not training,
+                'fix_seed',
+                seed is not None,
+                'seed',
+                seed if seed is not None else 0,
+                'dropout_implementation',
+                mode,
+            )
             return out
 
         helper = LayerHelper('dropout', **locals())
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 'dropout')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+        )
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         mask = helper.create_variable_for_type_inference(
-            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
+        )
 
         def get_attrs(prog, dropout_prob, is_test, seed):
             if (seed is None or seed == 0) and prog.random_seed != 0:
                 seed = prog.random_seed
 
-            if isinstance(dropout_prob,
-                          Variable) and not dropout_prob.shape != [1]:
+            if isinstance(
+                dropout_prob, Variable
+            ) and not dropout_prob.shape != [1]:
                 raise TypeError(
-                    "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}"
-                    .format(p.shape))
+                    "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
+                        p.shape
+                    )
+                )
             attrs = {
                 'dropout_prob': dropout_prob,
                 'is_test': is_test,
@@ -1105,38 +1185,45 @@ def dropout(x,
 
         attrs = get_attrs(helper.main_program, p, not training, seed)
 
-        helper.append_op(type='dropout',
-                         inputs={'X': [x]},
-                         outputs={
-                             'Out': [out],
-                             'Mask': [mask]
-                         },
-                         attrs=attrs)
+        helper.append_op(
+            type='dropout',
+            inputs={'X': [x]},
+            outputs={'Out': [out], 'Mask': [mask]},
+            attrs=attrs,
+        )
         return out
-    else:  #sometimes called dropout_nd #TODO: optimize with c++
+    else:  # sometimes called dropout_nd #TODO: optimize with c++
         if not in_dynamic_mode():
             check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'dropout')
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
-            if in_dynamic_mode() and p == 1.:
-                return paddle.scale(x, scale=0.)
+            if in_dynamic_mode() and p == 1.0:
+                return paddle.scale(x, scale=0.0)
 
-            scale_input = paddle.scale(
-                x, scale=1 / keep_prob) if mode == 'upscale_in_train' else x
+            scale_input = (
+                paddle.scale(x, scale=1 / keep_prob)
+                if mode == 'upscale_in_train'
+                else x
+            )
 
-            #get mask shape
+            # get mask shape
             input_shape = x.shape
             if not in_dynamic_mode():
                 input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
-                raise ValueError("axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} " \
-                                 .format(len(input_shape), max(drop_axes)))
+                raise ValueError(
+                    "axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} ".format(
+                        len(input_shape), max(drop_axes)
+                    )
+                )
             if len(drop_axes) > len(input_shape):
                 raise ValueError(
-                    "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}"
-                    .format(len(input_shape), len(drop_axes)))
+                    "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".format(
+                        len(input_shape), len(drop_axes)
+                    )
+                )
             mask_shape = [1] * len(input_shape)
             if not in_dynamic_mode():
                 for i in drop_axes:
@@ -1145,11 +1232,10 @@ def dropout(x,
                 for i in drop_axes:
                     mask_shape[i] = input_shape[i]
 
-            #get mask
-            random_tensor = paddle.uniform(mask_shape,
-                                           dtype='float32',
-                                           min=0.,
-                                           max=1.0)
+            # get mask
+            random_tensor = paddle.uniform(
+                mask_shape, dtype='float32', min=0.0, max=1.0
+            )
             p = full(shape=[1], fill_value=p, dtype='float32')
             keep_mask = paddle.greater_equal(random_tensor, p)
 
@@ -1158,8 +1244,11 @@ def dropout(x,
             ret = paddle.multiply(scale_input, keep_mask, name=name)
             return ret
         else:  # test
-            ret = paddle.scale(
-                x, scale=keep_prob) if mode == 'downscale_in_infer' else x
+            ret = (
+                paddle.scale(x, scale=keep_prob)
+                if mode == 'downscale_in_infer'
+                else x
+            )
             return ret
 
 
@@ -1200,20 +1289,26 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
     """
     input_shape = x.shape
     if len(input_shape) != 4:
-        raise ValueError("dimensions of x should be 4, but received {} != 4"\
-        .format(len(input_shape)))
+        raise ValueError(
+            "dimensions of x should be 4, but received {} != 4".format(
+                len(input_shape)
+            )
+        )
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
-            "Attr(data_format): %s." % str(data_format))
+            "Attr(data_format): %s." % str(data_format)
+        )
 
-    return dropout(x,
-                   p=p,
-                   axis=[0, 1] if data_format == 'NCHW' else [0, 3],
-                   training=training,
-                   mode="upscale_in_train",
-                   name=name)
+    return dropout(
+        x,
+        p=p,
+        axis=[0, 1] if data_format == 'NCHW' else [0, 3],
+        training=training,
+        mode="upscale_in_train",
+        name=name,
+    )
 
 
 def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
@@ -1252,20 +1347,26 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
 
     input_shape = x.shape
     if len(input_shape) != 5:
-        raise ValueError("dimensions of x should be 5, but received {} != 5" \
-        .format(len(input_shape)))
+        raise ValueError(
+            "dimensions of x should be 5, but received {} != 5".format(
+                len(input_shape)
+            )
+        )
 
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
-            "Attr(data_format): %s." % str(data_format))
+            "Attr(data_format): %s." % str(data_format)
+        )
 
-    return dropout(x,
-                   p=p,
-                   axis=[0, 1] if data_format == 'NCDHW' else [0, 4],
-                   training=training,
-                   mode="upscale_in_train",
-                   name=name)
+    return dropout(
+        x,
+        p=p,
+        axis=[0, 1] if data_format == 'NCDHW' else [0, 4],
+        training=training,
+        mode="upscale_in_train",
+        name=name,
+    )
 
 
 def alpha_dropout(x, p=0.5, training=True, name=None):
@@ -1307,37 +1408,40 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         raise ValueError("p argument should between 0 and 1")
 
     if not in_dynamic_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
-                                 'alpha_dropout')
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64'], 'alpha_dropout'
+        )
 
     if training:
         if p == 1:
-            return paddle.scale(x, scale=0.)
-        #get transformation params
+            return paddle.scale(x, scale=0.0)
+        # get transformation params
         alpha = 1.6732632423543772848170429916717
         scale = 1.0507009873554804934193349852946
         alpha_p = -alpha * scale
-        a = ((1 - p) * (1 + p * alpha_p**2))**-0.5
+        a = ((1 - p) * (1 + p * alpha_p**2)) ** -0.5
         b = -a * alpha_p * p
 
         dtype = x.dtype
         input_shape = x.shape
 
-        #get mask
-        random_tensor = paddle.uniform(input_shape,
-                                       dtype='float32',
-                                       min=0.,
-                                       max=1.0)
+        # get mask
+        random_tensor = paddle.uniform(
+            input_shape, dtype='float32', min=0.0, max=1.0
+        )
         p = full(shape=[1], fill_value=p, dtype='float32')
         keep_mask = paddle.greater_equal(random_tensor, p)
         keep_mask = paddle.cast(keep_mask, dtype)
         drop_mask = paddle.subtract(
-            full(shape=input_shape, fill_value=1., dtype=dtype), keep_mask)
+            full(shape=input_shape, fill_value=1.0, dtype=dtype), keep_mask
+        )
 
-        #apply mask
+        # apply mask
         b = full(shape=[1], fill_value=b, dtype=dtype)
-        y = paddle.add(paddle.multiply(x, keep_mask),
-                       paddle.scale(drop_mask, scale=alpha_p))
+        y = paddle.add(
+            paddle.multiply(x, keep_mask),
+            paddle.scale(drop_mask, scale=alpha_p),
+        )
         res = paddle.add(paddle.scale(y, scale=a), b, name=name)
         return res
     else:  # test
@@ -1456,18 +1560,28 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             #    [6. 4. 5. 6. 4. 5.]
             #    [3. 1. 2. 3. 1. 2.]]]]
     """
-    assert mode in ['reflect', 'replicate', 'constant', 'circular'], \
-            "mode should be one of constant, reflect, replicate, circular, but got {}.".format(mode)
+    assert mode in [
+        'reflect',
+        'replicate',
+        'constant',
+        'circular',
+    ], "mode should be one of constant, reflect, replicate, circular, but got {}.".format(
+        mode
+    )
 
     data_format = data_format.upper()
-    assert data_format in ["NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC"], \
-        "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], " \
+    assert data_format in ["NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC"], (
+        "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
         "but got {}".format(data_format)
+    )
 
     x_dim = len(x.shape)
 
-    if mode == "constant" and isinstance(
-            pad, (list, tuple)) and len(pad) == x_dim * 2:
+    if (
+        mode == "constant"
+        and isinstance(pad, (list, tuple))
+        and len(pad) == x_dim * 2
+    ):
         paddings = pad
         pad_value = value
 
@@ -1475,10 +1589,20 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             out = _C_ops.pad(x, paddings, float(pad_value))
             return out
 
-        check_variable_and_dtype(x, 'x', [
-            'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
-            'complex128'
-        ], "pad")
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
+            "pad",
+        )
 
         check_type(pad_value, 'pad_value', (float, int, Variable), 'pad')
         if isinstance(pad_value, int):
@@ -1487,17 +1611,18 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         helper = LayerHelper('pad', **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(type='pad',
-                         inputs={'X': x},
-                         outputs={'Out': out},
-                         attrs={
-                             'paddings': paddings,
-                             'pad_value': pad_value
-                         })
+        helper.append_op(
+            type='pad',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'paddings': paddings, 'pad_value': pad_value},
+        )
         return out
 
     assert x_dim in [
-        3, 4, 5
+        3,
+        4,
+        5,
     ], "input tesor dimension must be in [3, 4, 5] but got {}".format(x_dim)
 
     supported_format_map = {
@@ -1505,9 +1630,11 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         4: ["NCHW", "NHWC"],
         5: ["NCDHW", "NDHWC"],
     }
-    assert data_format in supported_format_map[x_dim], \
-    "input tensor dimension is {}, it's data format should be in {} but got {}".format(
-        x_dim, supported_format_map[x_dim], data_format)
+    assert (
+        data_format in supported_format_map[x_dim]
+    ), "input tensor dimension is {}, it's data format should be in {} but got {}".format(
+        x_dim, supported_format_map[x_dim], data_format
+    )
 
     unsqueezed_dim = []
 
@@ -1515,21 +1642,21 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:
-                pad = concat([zeros((4, ), dtype="int32"), pad], axis=0)
+                pad = concat([zeros((4,), dtype="int32"), pad], axis=0)
                 unsqueezed_dim = [3, 4]
                 x = unsqueeze(x, axis=unsqueezed_dim)
             elif x_dim == 4:
-                pad = concat([pad, zeros((2, ), dtype="int32")], axis=0)
+                pad = concat([pad, zeros((2,), dtype="int32")], axis=0)
                 unsqueezed_dim = [2]
                 x = unsqueeze(x, axis=unsqueezed_dim)
         elif data_format in ["NLC", "NHWC", "NDHWC"]:
             data_format = "NDHWC"
             if x_dim == 3:
-                pad = concat([zeros((4, ), dtype="int32"), pad], axis=0)
+                pad = concat([zeros((4,), dtype="int32"), pad], axis=0)
                 unsqueezed_dim = [2, 3]
                 x = unsqueeze(x, axis=unsqueezed_dim)
             elif x_dim == 4:
-                pad = concat([pad, zeros((2, ), dtype="int32")], axis=0)
+                pad = concat([pad, zeros((2,), dtype="int32")], axis=0)
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
     else:
@@ -1563,9 +1690,19 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         if _in_legacy_dygraph():
             if isinstance(pad, Variable):
                 pad = pad.numpy().tolist()
-            out = _legacy_C_ops.pad3d(x, "paddings", pad, "mode", mode, "value",
-                                      value, "data_format", data_format, "name",
-                                      name)
+            out = _legacy_C_ops.pad3d(
+                x,
+                "paddings",
+                pad,
+                "mode",
+                mode,
+                "value",
+                value,
+                "data_format",
+                data_format,
+                "name",
+                name,
+            )
         else:
             attrs = {'mode': mode, 'value': value, 'data_format': data_format}
             inputs = {'X': [x]}
@@ -1579,10 +1716,9 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
             dtype = helper.input_dtype(input_param_name='input')
             out = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(type='pad3d',
-                             inputs=inputs,
-                             outputs={"Out": out},
-                             attrs=attrs)
+            helper.append_op(
+                type='pad3d', inputs=inputs, outputs={"Out": out}, attrs=attrs
+            )
 
     if len(unsqueezed_dim) != 0:
         out = squeeze(out, axis=unsqueezed_dim)
@@ -1623,12 +1759,14 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
             #    [0. 0. 0. 0. 0. 0.]]]]
     """
 
-    return pad(x,
-               pad=padding,
-               mode='constant',
-               value=0,
-               data_format=data_format,
-               name=name)
+    return pad(
+        x,
+        pad=padding,
+        mode='constant',
+        value=0,
+        data_format=data_format,
+        name=name,
+    )
 
 
 def cosine_similarity(x1, x2, axis=1, eps=1e-8):
@@ -1735,12 +1873,13 @@ def linear(x, weight, bias=None, name=None):
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
     if in_dygraph_mode():
-        #TODO(jiabin): using addmm for fast forward route
+        # TODO(jiabin): using addmm for fast forward route
         return _C_ops.linear(x, weight, bias)
     else:
         if _in_legacy_dygraph():
-            pre_bias = _legacy_C_ops.matmul_v2(x, weight, 'trans_x', False,
-                                               'trans_y', False)
+            pre_bias = _legacy_C_ops.matmul_v2(
+                x, weight, 'trans_x', False, 'trans_y', False
+            )
 
             if bias is None:
                 return pre_bias
@@ -1750,27 +1889,30 @@ def linear(x, weight, bias=None, name=None):
             helper = LayerHelper('linear', **locals())
             dtype = x.dtype
 
-            check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                     'linear')
-            check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
-                        'linear')
+            check_variable_and_dtype(
+                x, 'x', ['float16', 'float32', 'float64'], 'linear'
+            )
+            check_dtype(
+                dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear'
+            )
 
             inputs = {'X': [x], 'Y': [weight]}
             attrs = {'trans_x': False, 'trans_y': False}
             tmp = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(type='matmul_v2',
-                             inputs=inputs,
-                             outputs={'Out': tmp},
-                             attrs=attrs)
+            helper.append_op(
+                type='matmul_v2',
+                inputs=inputs,
+                outputs={'Out': tmp},
+                attrs=attrs,
+            )
             if bias is not None:
                 res = helper.create_variable_for_type_inference(dtype)
-                helper.append_op(type='elementwise_add',
-                                 inputs={
-                                     'X': [tmp],
-                                     'Y': [bias]
-                                 },
-                                 outputs={'Out': [res]},
-                                 attrs={'axis': len(x.shape) - 1})
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [tmp], 'Y': [bias]},
+                    outputs={'Out': [res]},
+                    attrs={'axis': len(x.shape) - 1},
+                )
             else:
                 res = tmp
             return res
@@ -1834,29 +1976,32 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
             #[[[0.03333334 0.93333334 0.03333334]
             #  [0.93333334 0.03333334 0.93333334]]]
     """
-    if epsilon > 1. or epsilon < 0.:
+    if epsilon > 1.0 or epsilon < 0.0:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
     if in_dygraph_mode():
         return _C_ops.label_smooth(label, prior_dist, float(epsilon))
 
     elif paddle.in_dynamic_mode():
-        return _legacy_C_ops.label_smooth(label, prior_dist, 'epsilon',
-                                          float(epsilon))
+        return _legacy_C_ops.label_smooth(
+            label, prior_dist, 'epsilon', float(epsilon)
+        )
 
-    check_variable_and_dtype(label, 'label', ['float32', 'float64'],
-                             'label_smooth')
+    check_variable_and_dtype(
+        label, 'label', ['float32', 'float64'], 'label_smooth'
+    )
 
     helper = LayerHelper("label_smooth", **locals())
     label.stop_gradient = True
     smooth_label = helper.create_variable_for_type_inference(label.dtype)
-    helper.append_op(type="label_smooth",
-                     inputs={
-                         "X": label,
-                         "PriorDist": prior_dist
-                     } if prior_dist else {"X": label},
-                     outputs={"Out": smooth_label},
-                     attrs={"epsilon": float(epsilon)})
+    helper.append_op(
+        type="label_smooth",
+        inputs={"X": label, "PriorDist": prior_dist}
+        if prior_dist
+        else {"X": label},
+        outputs={"Out": smooth_label},
+        attrs={"epsilon": float(epsilon)},
+    )
     return smooth_label
 
 
@@ -1967,7 +2112,10 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     if not (group == False or group is None or hasattr(group, 'is_member')):
         raise ValueError(
             'Expected group is False, None or instance of paddle.distributed.collective.Group \
-             (got group: {})'.format(group))
+             (got group: {})'.format(
+                group
+            )
+        )
         return
 
     if hasattr(group, 'is_member') and not group.is_member():
@@ -1980,76 +2128,112 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         if core.is_compiled_with_dist():
             parallel_env = paddle.distributed.ParallelEnv()
             global_rank = parallel_env.rank
-            rank = global_rank if group is None else group.get_group_rank(
-                global_rank)
+            rank = (
+                global_rank
+                if group is None
+                else group.get_group_rank(global_rank)
+            )
             nranks = parallel_env.world_size if group is None else group.nranks
 
     if num_samples > num_classes:
         raise ValueError(
-            'Expected num_samples less than or equal to {}, got num_samples {}'.
-            format(num_classes, num_samples))
+            'Expected num_samples less than or equal to {}, got num_samples {}'.format(
+                num_classes, num_samples
+            )
+        )
 
     label_size = 1
     for dim in list(label.shape):
         label_size *= dim
     if label_size != -1 and label_size < 1:
-        raise ValueError('Expected label_size > 0 \
-             (got label_size: {})'.format(label_size))
+        raise ValueError(
+            'Expected label_size > 0 \
+             (got label_size: {})'.format(
+                label_size
+            )
+        )
 
     label_dims = len(list(label.shape))
     if label_dims != 1:
-        raise ValueError('Expected label_dims == 1 \
-             (got label_dims: {})'.format(label_dims))
+        raise ValueError(
+            'Expected label_dims == 1 \
+             (got label_dims: {})'.format(
+                label_dims
+            )
+        )
 
     seed = None
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
     if in_dygraph_mode():
-        return _C_ops.class_center_sample(label, num_classes, num_samples,
-                                          ring_id, rank, nranks, seed
-                                          is not None,
-                                          seed if seed is not None else 0)
+        return _C_ops.class_center_sample(
+            label,
+            num_classes,
+            num_samples,
+            ring_id,
+            rank,
+            nranks,
+            seed is not None,
+            seed if seed is not None else 0,
+        )
     elif paddle.in_dynamic_mode():
-        remapped_label, sampled_class_center = _legacy_C_ops.class_center_sample(
-            label, 'num_classes', num_classes, 'num_samples', num_samples,
-            'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed', seed
-            is not None, 'seed', seed if seed is not None else 0)
+        (
+            remapped_label,
+            sampled_class_center,
+        ) = _legacy_C_ops.class_center_sample(
+            label,
+            'num_classes',
+            num_classes,
+            'num_samples',
+            num_samples,
+            'ring_id',
+            ring_id,
+            'nranks',
+            nranks,
+            'rank',
+            rank,
+            'fix_seed',
+            seed is not None,
+            'seed',
+            seed if seed is not None else 0,
+        )
         return remapped_label, sampled_class_center
 
-    check_variable_and_dtype(label, 'label', ['int64', 'int32'],
-                             'class_center_sample')
+    check_variable_and_dtype(
+        label, 'label', ['int64', 'int32'], 'class_center_sample'
+    )
     op_type = 'class_center_sample'
     helper = LayerHelper(op_type, **locals())
     remapped_label = helper.create_variable_for_type_inference(
-        dtype=label.dtype)
+        dtype=label.dtype
+    )
     sampled_class_center = helper.create_variable_for_type_inference(
-        dtype=label.dtype)
-    helper.append_op(type=op_type,
-                     inputs={'Label': label},
-                     outputs={
-                         'RemappedLabel': remapped_label,
-                         'SampledLocalClassCenter': sampled_class_center
-                     },
-                     attrs={
-                         'num_classes': num_classes,
-                         'num_samples': num_samples,
-                         'ring_id': ring_id,
-                         'nranks': nranks,
-                         'rank': rank,
-                         'fix_seed': seed is not None,
-                         'seed': seed if seed is not None else 0
-                     })
+        dtype=label.dtype
+    )
+    helper.append_op(
+        type=op_type,
+        inputs={'Label': label},
+        outputs={
+            'RemappedLabel': remapped_label,
+            'SampledLocalClassCenter': sampled_class_center,
+        },
+        attrs={
+            'num_classes': num_classes,
+            'num_samples': num_samples,
+            'ring_id': ring_id,
+            'nranks': nranks,
+            'rank': rank,
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0,
+        },
+    )
     return remapped_label, sampled_class_center
 
 
-def fold(x,
-         output_sizes,
-         kernel_sizes,
-         strides=1,
-         paddings=0,
-         dilations=1,
-         name=None):
+def fold(
+    x, output_sizes, kernel_sizes, strides=1, paddings=0, dilations=1, name=None
+):
     r"""
 
     Combines an array of sliding local blocks into a large containing
@@ -2112,35 +2296,38 @@ def fold(x,
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fold')
 
-    assert len(x.shape) == 3, \
-            "input should be the format of [N, C, L]"
+    assert len(x.shape) == 3, "input should be the format of [N, C, L]"
 
     def _is_list_or_turple_(data):
-        return (isinstance(data, list) or isinstance(data, tuple))
+        return isinstance(data, list) or isinstance(data, tuple)
 
     if isinstance(output_sizes, int):
         output_sizes = [output_sizes, output_sizes]
     else:
-        assert _is_list_or_turple_(output_sizes) and (len(output_sizes) == 2), \
-            "output_sizes should either be an integer or a list/tuple of two integers"
+        assert _is_list_or_turple_(output_sizes) and (
+            len(output_sizes) == 2
+        ), "output_sizes should either be an integer or a list/tuple of two integers"
 
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
-        assert _is_list_or_turple_(kernel_sizes) and (len(kernel_sizes) == 2), \
-            "kernel_sizes should either be an integer or a list/tuple of two integers"
+        assert _is_list_or_turple_(kernel_sizes) and (
+            len(kernel_sizes) == 2
+        ), "kernel_sizes should either be an integer or a list/tuple of two integers"
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
-        assert _is_list_or_turple_(strides) and (len(strides) == 2), \
-            "strides should either be an integer or a list/tuple of two integers"
+        assert _is_list_or_turple_(strides) and (
+            len(strides) == 2
+        ), "strides should either be an integer or a list/tuple of two integers"
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
-        assert _is_list_or_turple_(dilations) and (len(dilations) == 2), \
-            "dilations should either be an integer or a list/tuple of two integers"
+        assert _is_list_or_turple_(dilations) and (
+            len(dilations) == 2
+        ), "dilations should either be an integer or a list/tuple of two integers"
 
     if isinstance(paddings, int):
         paddings = [paddings] * 4
@@ -2156,26 +2343,39 @@ def fold(x,
     else:
         raise ValueError(
             "Unexpected type of paddings, it should be either an integer or a list"
-            "of 2 or 4 integers")
+            "of 2 or 4 integers"
+        )
 
     if in_dygraph_mode():
-        out = _C_ops.fold(x, output_sizes, kernel_sizes, strides, paddings,
-                          dilations)
+        out = _C_ops.fold(
+            x, output_sizes, kernel_sizes, strides, paddings, dilations
+        )
     elif in_dynamic_mode():
-        out = _legacy_C_ops.fold(x, "output_sizes", output_sizes,
-                                 "kernel_sizes", kernel_sizes, "strides",
-                                 strides, "paddings", paddings, "dilations",
-                                 dilations)
+        out = _legacy_C_ops.fold(
+            x,
+            "output_sizes",
+            output_sizes,
+            "kernel_sizes",
+            kernel_sizes,
+            "strides",
+            strides,
+            "paddings",
+            paddings,
+            "dilations",
+            dilations,
+        )
     else:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type="fold",
-                         inputs={"X": x},
-                         outputs={"Y": out},
-                         attrs={
-                             "output_sizes": output_sizes,
-                             "kernel_sizes": kernel_sizes,
-                             "strides": strides,
-                             "paddings": paddings,
-                             "dilations": dilations
-                         })
+        helper.append_op(
+            type="fold",
+            inputs={"X": x},
+            outputs={"Y": out},
+            attrs={
+                "output_sizes": output_sizes,
+                "kernel_sizes": kernel_sizes,
+                "strides": strides,
+                "paddings": paddings,
+                "dilations": dilations,
+            },
+        )
     return out

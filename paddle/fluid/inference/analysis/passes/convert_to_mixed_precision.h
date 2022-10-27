@@ -30,7 +30,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-bool OpSupportPrecision(const std::string& phi_op_type,
+bool OpSupportPrecision(const std::string& op_type,
                         phi::Backend backend,
                         phi::DataType precision,
                         const std::unordered_set<std::string>& blacklist);

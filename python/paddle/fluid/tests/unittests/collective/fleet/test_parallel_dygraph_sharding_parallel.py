@@ -23,8 +23,9 @@ class TestHybridParallel(TestMultipleGpus):
     # check sharding logic as well as the accuracy with single mode
     def test_hybrid_parallel_sharding_logic(self):
         self.run_mnist_2gpu('hybrid_parallel_sharding_model.py')
-        self.run_mnist_2gpu('hybrid_parallel_sharding_model.py',
-                            eager_mode=False)
+        self.run_mnist_2gpu(
+            'hybrid_parallel_sharding_model.py', eager_mode=False
+        )
 
 
 if __name__ == "__main__":

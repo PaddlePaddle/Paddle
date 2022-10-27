@@ -57,7 +57,7 @@ size_t memory_size() const;
 
 void check_memory_size() const;
 
-void set_layout(const paddle::framework::DataLayout layout);
+void set_layout(const DataLayout layout);
 
 void clear() {
   holder_.reset();
@@ -132,7 +132,7 @@ inline void set_format(const dnnl::memory::format_tag format) {
 #endif
 
 /* ------------------------------ */
-/*   From framework::LoDTensor    */
+/*   From phi::DenseTensor    */
 /* ------------------------------ */
 /* The following members & interfaces were copied from phi::DenseTensor,
     so as to facilitate the unification of different Tensors

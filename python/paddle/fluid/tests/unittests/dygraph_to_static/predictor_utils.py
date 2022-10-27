@@ -13,10 +13,8 @@
 # limitations under the License.
 
 import os
-import unittest
 
 import numpy as np
-import paddle
 import paddle.fluid as fluid
 
 from paddle.fluid.core import AnalysisConfig
@@ -45,7 +43,8 @@ class PredictorTools(object):
         if os.path.exists(os.path.join(self.model_path, self.params_file)):
             config = AnalysisConfig(
                 os.path.join(self.model_path, self.model_file),
-                os.path.join(self.model_path, self.params_file))
+                os.path.join(self.model_path, self.params_file),
+            )
         else:
             config = AnalysisConfig(os.path.join(self.model_path))
 
@@ -75,7 +74,7 @@ class PredictorTools(object):
         tensor_shapes = predictor.get_input_tensor_shape()
         names = predictor.get_input_names()
         for i, name in enumerate(names):
-            #assert name in self.feeds_var, '{} not in feeded dict'.format(name)
+            # assert name in self.feeds_var, '{} not in feeded dict'.format(name)
             shape = tensor_shapes[name]
             tensor = predictor.get_input_tensor(name)
             feed_data = self.feeds_var[i]

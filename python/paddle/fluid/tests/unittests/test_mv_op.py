@@ -1,4 +1,4 @@
-#Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,15 +15,11 @@
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
 from paddle.static import program_guard, Program
 from op_test import OpTest
 
 
 class TestMVOp(OpTest):
-
     def setUp(self):
         self.op_type = "mv"
         self.python_api = paddle.mv
@@ -43,7 +39,6 @@ class TestMVOp(OpTest):
 
 
 class TestMVAPI(unittest.TestCase):
-
     def test_dygraph_api_out(self):
         paddle.disable_static()
 
@@ -71,12 +66,12 @@ class TestMVAPI(unittest.TestCase):
                 self.input_vec = np.random.rand(100).astype("float64")
 
                 with program_guard(train_program, startup_program):
-                    data_x = paddle.static.data("x",
-                                                shape=[5, 100],
-                                                dtype="float64")
-                    data_vec = paddle.static.data("vec",
-                                                  shape=[100],
-                                                  dtype="float64")
+                    data_x = paddle.static.data(
+                        "x", shape=[5, 100], dtype="float64"
+                    )
+                    data_vec = paddle.static.data(
+                        "vec", shape=[100], dtype="float64"
+                    )
 
                     data_x.stop_gradient = x_stop_gradient
                     data_vec.stop_gradient = vec_stop_gradient
@@ -85,19 +80,16 @@ class TestMVAPI(unittest.TestCase):
 
                     self.place = paddle.CPUPlace()
                     exe = paddle.static.Executor(self.place)
-                    res, = exe.run(feed={
-                        "x": self.input_x,
-                        "vec": self.input_vec
-                    },
-                                   fetch_list=[result_vec])
+                    (res,) = exe.run(
+                        feed={"x": self.input_x, "vec": self.input_vec},
+                        fetch_list=[result_vec],
+                    )
                     z_expected = np.array(np.dot(self.input_x, self.input_vec))
                     np.testing.assert_allclose(res, z_expected, rtol=1e-05)
 
 
 class TestMVError(unittest.TestCase):
-
     def test_input(self):
-
         def test_shape():
             paddle.enable_static()
 
@@ -105,9 +97,9 @@ class TestMVError(unittest.TestCase):
             self.input_vec = np.random.rand(100).astype("float64")
 
             data_x = paddle.static.data("x", shape=[5, 100], dtype="float64")
-            data_vec = paddle.static.data("vec",
-                                          shape=[100, 2],
-                                          dtype="float64")
+            data_vec = paddle.static.data(
+                "vec", shape=[100, 2], dtype="float64"
+            )
             result_vec = paddle.mv(data_x, data_vec)
 
         self.assertRaises(ValueError, test_shape)

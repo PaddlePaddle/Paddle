@@ -28,56 +28,67 @@ from op_test_ipu import IPUOpTest
 # just load one custom-op for the data race issue under parallel mode
 def load_custom_detach():
     cur_dir = os.path.dirname(os.path.realpath(__file__))
-    custom_ops = load(name=f"custom_detach",
-                      sources=[
-                          f"{cur_dir}/custom_detach.cc",
-                      ],
-                      extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'],
-                      extra_ldflags=['-lpopfloat'])
+    custom_ops = load(
+        name="custom_detach",
+        sources=[
+            f"{cur_dir}/custom_detach.cc",
+        ],
+        extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'],
+        extra_ldflags=['-lpopfloat'],
+    )
     return custom_ops
 
 
 def load_custom_identity():
     cur_dir = os.path.dirname(os.path.realpath(__file__))
-    custom_ops = load(name=f"custom_identity",
-                      sources=[
-                          f"{cur_dir}/custom_identity.cc",
-                      ],
-                      extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'],
-                      extra_ldflags=['-lpopfloat'])
+    custom_ops = load(
+        name="custom_identity",
+        sources=[
+            f"{cur_dir}/custom_identity.cc",
+        ],
+        extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'],
+        extra_ldflags=['-lpopfloat'],
+    )
     return custom_ops
 
 
 def load_custom_nll():
     cur_dir = os.path.dirname(os.path.realpath(__file__))
-    custom_ops = load(name=f"custom_nll",
-                      sources=[
-                          f"{cur_dir}/custom_nll.cc",
-                      ],
-                      extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'],
-                      extra_ldflags=['-lpopfloat'])
+    custom_ops = load(
+        name="custom_nll",
+        sources=[
+            f"{cur_dir}/custom_nll.cc",
+        ],
+        extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'],
+        extra_ldflags=['-lpopfloat'],
+    )
     return custom_ops
 
 
 def build_ipu_strategy():
     ipu_strategy = paddle.static.IpuStrategy()
-    ipu_strategy.add_custom_op(paddle_op="custom_detach",
-                               popart_op="Detach",
-                               domain="ai.graphcore",
-                               version=1)
-    ipu_strategy.add_custom_op(paddle_op="custom_identity",
-                               popart_op="Identity",
-                               domain="ai.onnx",
-                               version=11)
-    ipu_strategy.add_custom_op(paddle_op="custom_nll",
-                               popart_op="Nll",
-                               domain="ai.graphcore",
-                               version=1)
+    ipu_strategy.add_custom_op(
+        paddle_op="custom_detach",
+        popart_op="Detach",
+        domain="ai.graphcore",
+        version=1,
+    )
+    ipu_strategy.add_custom_op(
+        paddle_op="custom_identity",
+        popart_op="Identity",
+        domain="ai.onnx",
+        version=11,
+    )
+    ipu_strategy.add_custom_op(
+        paddle_op="custom_nll",
+        popart_op="Nll",
+        domain="ai.graphcore",
+        version=1,
+    )
     return ipu_strategy
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.load_custom_ops()
         self.set_atol()
@@ -107,9 +118,9 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         out = self.op(x, **self.op_attrs)
         out = paddle.mean(out)
         self.fetch_list = [out.name]
@@ -127,7 +138,6 @@ class TestBase(IPUOpTest):
 
 
 class TestIdentity(TestBase):
-
     def load_custom_ops(self):
         self.custom_ops = load_custom_identity()
 
@@ -137,7 +147,6 @@ class TestIdentity(TestBase):
 
 
 class TestNll(TestBase):
-
     def load_custom_ops(self):
         self.custom_ops = load_custom_nll()
 
@@ -159,12 +168,12 @@ class TestNll(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
-        label = paddle.static.data(name=self.feed_list[1],
-                                   shape=self.feed_shape[1],
-                                   dtype='int32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        label = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='int32'
+        )
         out = self.op(x, label, **self.op_attrs)
         out = paddle.mean(out)
         self.fetch_list = [out.name]

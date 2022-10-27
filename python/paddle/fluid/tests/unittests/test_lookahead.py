@@ -14,13 +14,10 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
-from paddle.fluid import core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
 
 LOOKAHEAD_K = 5
 LOOKAHEAD_ALPHA = 0.2
@@ -28,7 +25,6 @@ SGD_LR = 1.0
 
 
 class TestLookAhead(unittest.TestCase):
-
     def test_lookahead_static(self):
         paddle.enable_static()
         place = fluid.CPUPlace()
@@ -44,7 +40,8 @@ class TestLookAhead(unittest.TestCase):
 
                 optimizer = paddle.optimizer.SGD(learning_rate=SGD_LR)
                 lookahead = paddle.incubate.optimizer.LookAhead(
-                    optimizer, alpha=LOOKAHEAD_ALPHA, k=LOOKAHEAD_K)
+                    optimizer, alpha=LOOKAHEAD_ALPHA, k=LOOKAHEAD_K
+                )
                 lookahead.minimize(loss)
 
         exe.run(startup)
@@ -52,21 +49,24 @@ class TestLookAhead(unittest.TestCase):
         fast_param = None
         for i in range(10):
             if (i + 1) % LOOKAHEAD_K == 0:
-                slow_param = slow_param + LOOKAHEAD_ALPHA * (fast_param -
-                                                             slow_param)
+                slow_param = slow_param + LOOKAHEAD_ALPHA * (
+                    fast_param - slow_param
+                )
             x = np.random.random(size=(10, 1)).astype('float32')
-            latest_b, b_grad = exe.run(program=train_program,
-                                       feed={'X': x},
-                                       fetch_list=[
-                                           'fc_0.b_0',
-                                           'fc_0.b_0@GRAD',
-                                       ])
+            latest_b, b_grad = exe.run(
+                program=train_program,
+                feed={'X': x},
+                fetch_list=[
+                    'fc_0.b_0',
+                    'fc_0.b_0@GRAD',
+                ],
+            )
             if i == 0:
                 slow_param = latest_b
             if (i + 1) % LOOKAHEAD_K == 0:
-                self.assertAlmostEqual(slow_param.all(),
-                                       latest_b.all(),
-                                       delta=5e-3)
+                self.assertAlmostEqual(
+                    slow_param.all(), latest_b.all(), delta=5e-3
+                )
             fast_param = latest_b - SGD_LR * b_grad
 
     def func_test_look_ahead_dygraph(self):
@@ -79,21 +79,20 @@ class TestLookAhead(unittest.TestCase):
 
         # define a random dataset
         class RandomDataset(paddle.io.Dataset):
-
             def __init__(self, num_samples):
                 self.num_samples = num_samples
 
             def __getitem__(self, idx):
                 image = np.random.random([IMAGE_SIZE]).astype('float32')
-                label = np.random.randint(0, CLASS_NUM - 1,
-                                          (1, )).astype('int64')
+                label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype(
+                    'int64'
+                )
                 return image, label
 
             def __len__(self):
                 return self.num_samples
 
         class LinearNet(nn.Layer):
-
             def __init__(self):
                 super(LinearNet, self).__init__()
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
@@ -113,34 +112,41 @@ class TestLookAhead(unittest.TestCase):
                     out = layer(image)
                     loss = loss_fn(out, label)
                     loss.backward()
-                    fast_param = (layer.bias.numpy() -
-                                  SGD_LR * layer.bias.grad.numpy())
+                    fast_param = (
+                        layer.bias.numpy() - SGD_LR * layer.bias.grad.numpy()
+                    )
                     opt.step()
                     if idx == 1:
                         slow_param = fast_param
                     if idx % LOOKAHEAD_K == 0:
                         slow_param = slow_param + LOOKAHEAD_ALPHA * (
-                            fast_param - slow_param)
-                        self.assertAlmostEqual(np.mean(slow_param),
-                                               np.mean(layer.bias.numpy()),
-                                               delta=5e-3)
+                            fast_param - slow_param
+                        )
+                        self.assertAlmostEqual(
+                            np.mean(slow_param),
+                            np.mean(layer.bias.numpy()),
+                            delta=5e-3,
+                        )
                     opt.clear_grad()
 
         layer = LinearNet()
         loss_fn = nn.CrossEntropyLoss()
-        optimizer = paddle.optimizer.SGD(learning_rate=SGD_LR,
-                                         parameters=layer.parameters())
-        lookahead = paddle.incubate.optimizer.LookAhead(optimizer,
-                                                        alpha=LOOKAHEAD_ALPHA,
-                                                        k=LOOKAHEAD_K)
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=SGD_LR, parameters=layer.parameters()
+        )
+        lookahead = paddle.incubate.optimizer.LookAhead(
+            optimizer, alpha=LOOKAHEAD_ALPHA, k=LOOKAHEAD_K
+        )
 
         # create data loader
         dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-        loader = paddle.io.DataLoader(dataset,
-                                      batch_size=BATCH_SIZE,
-                                      shuffle=True,
-                                      drop_last=True,
-                                      num_workers=2)
+        loader = paddle.io.DataLoader(
+            dataset,
+            batch_size=BATCH_SIZE,
+            shuffle=True,
+            drop_last=True,
+            num_workers=2,
+        )
 
         train(layer, loader, loss_fn, lookahead)
 

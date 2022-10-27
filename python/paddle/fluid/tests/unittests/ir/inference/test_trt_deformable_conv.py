@@ -25,19 +25,18 @@ os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
 
 class TRTDeformableConvTest(InferencePassTest):
-
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            input = fluid.data(name='input',
-                               shape=self.input_size,
-                               dtype=self.dtype)
-            offset = fluid.data(name='offset',
-                                shape=self.offset_size,
-                                dtype=self.dtype)
-            mask = fluid.data(name='mask',
-                              shape=self.mask_size,
-                              dtype=self.dtype)
+            input = fluid.data(
+                name='input', shape=self.input_size, dtype=self.dtype
+            )
+            offset = fluid.data(
+                name='offset', shape=self.offset_size, dtype=self.dtype
+            )
+            mask = fluid.data(
+                name='mask', shape=self.mask_size, dtype=self.dtype
+            )
 
             output = fluid.layers.deformable_conv(
                 input,
@@ -50,19 +49,21 @@ class TRTDeformableConvTest(InferencePassTest):
                 dilation=self.dilations,
                 groups=self.groups,
                 deformable_groups=self.deformable_groups,
-                im2col_step=self.im2col_step)
+                im2col_step=self.im2col_step,
+            )
 
         self.feeds = {
             'input': np.random.random(self.input_size).astype(self.dtype),
             'offset': np.random.random(self.offset_size).astype(self.dtype),
-            'mask': np.random.random(self.mask_size).astype(self.dtype)
+            'mask': np.random.random(self.mask_size).astype(self.dtype),
         }
         self.enable_trt = True
         dtype = AnalysisConfig.Precision.Float32
         if self.dtype == 'float16':
             dtype = AnalysisConfig.Precision.Half
         self.trt_parameters = TRTDeformableConvTest.TensorRTParam(
-            1 << 30, self.bs, 0, dtype, False, False)
+            1 << 30, self.bs, 0, dtype, False, False
+        )
         self.fetch_list = [output]
 
     def set_params(self):
@@ -77,13 +78,21 @@ class TRTDeformableConvTest(InferencePassTest):
         self.input_size = [self.bs, 8, 4, 4]
         self.num_filters = 8
         self.filter_size = 3
-        offset_c = 2 * self.deformable_groups * self.filter_size * self.filter_size
+        offset_c = (
+            2 * self.deformable_groups * self.filter_size * self.filter_size
+        )
         mask_c = self.deformable_groups * self.filter_size * self.filter_size
         self.offset_size = [
-            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
+            self.input_size[0],
+            offset_c,
+            self.input_size[2],
+            self.input_size[3],
         ]
         self.mask_size = [
-            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
+            self.input_size[0],
+            mask_c,
+            self.input_size[2],
+            self.input_size[3],
         ]
 
         self.dtype = 'float32'
@@ -93,7 +102,8 @@ class TRTDeformableConvTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 if __name__ == "__main__":

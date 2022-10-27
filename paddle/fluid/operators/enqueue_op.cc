@@ -31,7 +31,7 @@ class OpBase;
 }  // namespace imperative
 }  // namespace paddle
 
-using LoDTensor = paddle::framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using LoDTensorBlockingQueueHolder =
     paddle::operators::reader::LoDTensorBlockingQueueHolder;
 
