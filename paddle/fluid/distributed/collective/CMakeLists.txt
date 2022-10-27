@@ -89,15 +89,3 @@ if(WITH_CUSTOM_DEVICE)
     DEPS processgroup phi_backends place enforce collective_helper
          device_context)
 endif()
-
-set(COMM_UTILS_DEPS processgroup)
-if(WITH_NCCL OR WITH_RCCL)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_nccl)
-endif()
-if(WITH_CUSTOM_DEVICE)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_custom)
-endif()
-cc_library(
-  processgroup_comm_utils
-  SRCS CommUtils.cc
-  DEPS ${COMM_UTILS_DEPS})

@@ -179,3 +179,15 @@ set_property(GLOBAL PROPERTY PHI_KERNELS ${ADD_PHI_KERNELS})
 if(NOT "${KERNEL_LIST}" STREQUAL "")
   prune_declaration_h()
 endif()
+
+set(COMM_UTILS_DEPS processgroup)
+if(WITH_NCCL OR WITH_RCCL)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_nccl)
+endif()
+if(WITH_CUSTOM_DEVICE)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_custom)
+endif()
+cc_library(
+  processgroup_comm_utils
+  SRCS ProcessGroupCommUtils.cc
+  DEPS ${COMM_UTILS_DEPS})
