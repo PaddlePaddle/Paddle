@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/infermeta/unary.h"
@@ -185,6 +186,47 @@ DECLARE_INFER_SHAPE_FUNCTOR(sparse_add,
                             SparseAddInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
 
+class SparseBatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("x", "(Tensor), input 0 of sparse_batch_norm op.");
+    AddInput("scale", "(Tensor), input 1 of sparse_batch_norm op.");
+    AddInput("bias", "(Tensor), input 2 of sparse_batch_norm op.");
+    AddInput("mean", "(Tensor), input 3 of sparse_batch_norm op.");
+    AddInput("variance", "(Tensor), input 4 of sparse_batch_norm op.");
+    AddOutput("y", "(Tensor), output 0 of sparse_batch_norm op.");
+    AddOutput("mean_out", "(Tensor), output 1 of sparse_batch_norm op.");
+    AddOutput("variance_out", "(Tensor), output 2 of sparse_batch_norm op.");
+    AddOutput("saved_mean", "(Tensor), output 3 of sparse_batch_norm op.");
+    AddOutput("saved_variance", "(Tensor), output 4 of sparse_batch_norm op.");
+    AddOutput("reserve_space", "(Tensor), output 5 of sparse_batch_norm op.");
+    AddAttr<float>("momentum",
+                   "(float), attribute 0 for sparse_batch_norm op.");
+    AddAttr<float>("epsilon", "(float), attribute 1 for sparse_batch_norm op.");
+    AddAttr<std::string>("data_layout",
+                         "(string), attribute 2 for sparse_batch_norm op.");
+    AddAttr<bool>("is_test", "(bool), attribute 3 for sparse_batch_norm op.");
+    AddAttr<bool>("use_global_stats",
+                  "(bool), attribute 4 for sparse_batch_norm op.");
+    AddAttr<bool>("trainable_statistics",
+                  "(bool), attribute 4 for sparse_batch_norm op.");
+    AddAttr<bool>("fuse_with_relu",
+                  "(bool), attribute 4 for sparse_batch_norm op.");
+    AddComment(R"DOC(
+TODO: Documentation of sparse_conv3d op.
+)DOC");
+  }
+};
+
+class SparseBatchNormOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+};
+
+DECLARE_INFER_SHAPE_FUNCTOR(sparse_batch_norm,
+                            SparseBatchNormInferShapeFunctor,
+                            PD_INFER_META(phi::BatchNormInferMeta));
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -224,3 +266,8 @@ REGISTER_OPERATOR(sparse_add,
                   ops::SparseAddOp,
                   ops::SparseAddOpMaker,
                   ops::SparseAddInferShapeFunctor);
+
+REGISTER_OPERATOR(sparse_batch_norm,
+                  ops::SparseBatchNormOp,
+                  ops::SparseBatchNormOpMaker,
+                  ops::SparseBatchNormInferShapeFunctor);
