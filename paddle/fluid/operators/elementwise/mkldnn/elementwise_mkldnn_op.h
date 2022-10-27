@@ -34,11 +34,18 @@ inline std::vector<int64_t> CalculateBroadcastedDims(
   const auto src_tz = phi::vectorize(x->dims());
   const auto dst_tz = phi::vectorize(y->dims());
 
-  size_t j = 0;
   std::vector<int64_t> dst_tz_ex(src_tz.size(), 1);
-  for (size_t i = 0; i < src_tz.size(); ++i) {
-    dst_tz_ex[i] = (src_tz[i] != dst_tz[j]) ? 1 : dst_tz[j++];
-    if (j == dst_tz.size()) break;
+
+  if (src_tz.size() == dst_tz.size()) {
+    for (size_t i = 0; i < src_tz.size(); i++) {
+      dst_tz_ex[i] = (src_tz[i] == dst_tz[i]) ? dst_tz[i] : 1;
+    }
+  } else {
+    size_t j = 0;
+    for (size_t i = 0; i < src_tz.size(); i++) {
+      dst_tz_ex[i] = (src_tz[i] != dst_tz[j]) ? 1 : dst_tz[j++];
+      if (j == dst_tz.size()) break;
+    }
   }
 
   return dst_tz_ex;
@@ -180,26 +187,30 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (dx) {
+      std::shared_ptr<dnnl::memory> broadcast_src_memory;
       std::shared_ptr<dnnl::memory> dst_memory;
 
       // elementwise_add & elementwise_sub
       if (BINARY_OP == dnnl::algorithm::binary_add ||
           BINARY_OP == dnnl::algorithm::binary_sub) {
-        dst_memory = reorder_handler.AcquireDstMemory(
-            dx, dout->mem_desc(), ctx.GetPlace());
+        if (dout->dims() == dx->dims()) {
+          dst_memory = reorder_handler.AcquireDstMemory(
+              dx, dout->mem_desc(), ctx.GetPlace());
 
-        dnnl::primitive_attr reorder_attr;
-        reorder_attr.set_output_scales(0, scales);
-        auto reorder_p = reorder_handler.AcquireReorder(
-            dst_memory, reorder_src_memory_p, reorder_attr);
-        platform::RecordEvent record_reorder(
-            "int_reorder",
-            platform::TracerEventType::UserDefined,
-            2,
-            platform::EventRole::kUniqueOp);
+          dnnl::primitive_attr reorder_attr;
+          reorder_attr.set_output_scales(0, scales);
+          auto reorder_p = reorder_handler.AcquireReorder(
+              dst_memory, reorder_src_memory_p, reorder_attr);
+          platform::RecordEvent record_reorder(
+              "int_reorder",
+              platform::TracerEventType::UserDefined,
+              2,
+              platform::EventRole::kUniqueOp);
 
-        reorder_p->execute(astream, *reorder_src_memory_p, *dst_memory);
-
+          reorder_p->execute(astream, *reorder_src_memory_p, *dst_memory);
+        } else {
+          broadcast_src_memory = reorder_src_memory_p;
+        }
       } else {  // elementwise_mul & elementwise_div
         platform::BinaryMKLDNNHandler<T> binary_handler(BINARY_OP,
                                                         axis,
@@ -226,7 +237,43 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         binary_prim->execute(astream, args);
       }
       astream.wait();
-      if (!swap_x_y) dx->set_mem_desc(dst_memory->get_desc());
+
+      if (dout->dims() != dx->dims()) {
+        dnnl::primitive_attr broadcast_reduction_attr;
+
+        // Broadcasting
+        if (BINARY_OP == dnnl::algorithm::binary_sub) {
+          dnnl::post_ops po;
+          po.append_eltwise(
+              1.0f, dnnl::algorithm::eltwise_linear, scales[0], 0);
+          broadcast_reduction_attr.set_post_ops(po);
+        }
+
+        platform::ReductionMKLDNNHandler<T> reduction_handler(
+            dnnl::algorithm::reduction_sum,
+            0.0f,
+            0.0f,
+            onednn_engine,
+            ctx.GetPlace(),
+            dout,
+            dx,
+            CalculateBroadcastedDims(dout, dx),
+            broadcast_reduction_attr);
+        dst_memory = reduction_handler.AcquireDstMemory(dx);
+
+        auto reduction_p = reduction_handler.AcquireForwardPrimitive();
+
+        reduction_p->execute(astream,
+                             {
+                                 {DNNL_ARG_SRC, *broadcast_src_memory},
+                                 {DNNL_ARG_DST, *dst_memory},
+                             });
+        astream.wait();
+        dx->set_mem_desc(dst_memory->get_desc().reshape(
+            phi::vectorize<int64_t>(dx->dims())));
+      } else {
+        dx->set_mem_desc(dst_memory->get_desc());
+      }
     }
 
     if (dy) {
@@ -364,11 +411,10 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
                                  {DNNL_ARG_DST, *dst_memory},
                              });
         astream.wait();
-        if (!swap_x_y)
-          dy->set_mem_desc(dst_memory->get_desc().reshape(
-              phi::vectorize<int64_t>(dy->dims())));
+        dy->set_mem_desc(dst_memory->get_desc().reshape(
+            phi::vectorize<int64_t>(dy->dims())));
       } else {
-        if (!swap_x_y) dy->set_mem_desc(dst_memory->get_desc());
+        dy->set_mem_desc(dst_memory->get_desc());
       }
     }
   }
