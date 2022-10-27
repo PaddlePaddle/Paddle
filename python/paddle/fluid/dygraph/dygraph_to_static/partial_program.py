@@ -634,29 +634,45 @@ class PartialProgramLayer:
                 )
             )
 
+            step_scope = self._create_scope_vec(
+                program_id=self.program_id, use_scope_cache=True
+            )
             _legacy_C_ops.run_program(
                 self._valid_vars(in_vars),
                 self._valid_vars(self._params),
                 self._valid_vars(out_vars),
-                self._create_scope_vec(
-                    program_id=self.program_id, use_scope_cache=True
-                ),
+                step_scope,
                 self._double_grads,
                 self._cuda_graph_vec,
                 *attrs
             )
         else:
+            step_scope = self._create_scope_vec()
             _legacy_C_ops.run_program(
                 self._valid_vars(in_vars),
                 self._valid_vars(self._params),
                 self._valid_vars(out_vars),
-                self._create_scope_vec(),
+                step_scope,
                 self._double_grads,
                 self._cuda_graph_vec,
                 *attrs
             )
+        self._drop_scope_if_no_grad(use_interpretorcore, step_scope)
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
+
+    def _drop_scope_if_no_grad(self, use_interpretorcore, step_scope):
+        tracer = framework._dygraph_tracer()
+        scope = (
+            step_scope.value().get_scope()
+            if isinstance(step_scope, (core.VarBase))
+            else step_scope[0]
+        )
+        if self.training and not tracer._has_grad:
+            if use_interpretorcore and not scope._can_reuesd:
+                scope._can_reuesd = True
+            else:
+                scope.drop_kids()
 
     def _cast_fp16_if_pure_fp16(self, in_vars):
         if _in_pure_fp16_guard():
