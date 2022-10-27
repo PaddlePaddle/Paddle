@@ -55,8 +55,7 @@ void ConvGradKernel(const Context& dev_ctx,
                     AllocationType::CPU,
                     phi::errors::PreconditionNotMet(
                         "Operator DNNL ConvGrad must use CPUPlace"));
-  const auto& mkldnn_engine = dev_ctx.GetEngine();
-  VLOG(1) << "ConvGrad Has is_test " << dev_ctx.HasDnnAttr("is_test");
+  const auto& onednn_engine = dev_ctx.GetEngine();
 
   const auto* bias =
       dev_ctx.HasDnnInput("Bias") ? dev_ctx.GetDnnInput("Bias") : nullptr;
