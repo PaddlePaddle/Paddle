@@ -132,7 +132,7 @@ void ConvGradKernel(const Context& dev_ctx,
                 weights_tz.size() == 6 ? dnnl::memory::format_tag::goidhw
                                        : dnnl::memory::format_tag::goihw;
             funcs::ReorderOneDNNHandler handler(
-                weights_tz, filter.dtype(), in_type, mkldnn_engine);
+                weights_tz, filter.dtype(), in_type, onednn_engine);
             auto reorder_dst_memory_p = handler.AcquireDstMemory(
                 filter_grad, out_format, dev_ctx.GetPlace());
 

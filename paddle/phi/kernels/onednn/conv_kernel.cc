@@ -84,14 +84,14 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
                  bool fuse_residual_conn,
                  bool force_fp32_output,
                  DenseTensor* output) {
-  const auto& mkldnn_engine = dev_ctx.GetEngine();
+  const auto& onednn_engine = dev_ctx.GetEngine();
   const bool is_conv3d = strides.size() == 3U;
   const std::string& unique_name =
       dev_ctx.GetInputsName("Input")[0] + dev_ctx.GetInputsName("Filter")[0];
   PD_VISIT_FLOAT_AND_INT8_TYPES(
       filter->dtype(), "ConvOneDNNHandlerT", ([&] {
         onednn::ConvOneDNNHandlerT<T, data_t, T_out> handler(dev_ctx,
-                                                             mkldnn_engine,
+                                                             onednn_engine,
                                                              dev_ctx.GetPlace(),
                                                              input,
                                                              filter,
@@ -157,7 +157,7 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
                  bool fuse_residual_conn,
                  bool force_fp32_output,
                  DenseTensor* output) {
-  const auto& mkldnn_engine = dev_ctx.GetEngine();
+  const auto& onednn_engine = dev_ctx.GetEngine();
   const bool is_conv3d = strides.size() == 3U;
 
   bool unsigned_output =
@@ -179,7 +179,7 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
   PD_VISIT_FLOAT_AND_INT8_TYPES(
       filter->dtype(), "ConvMKLDNNHandlerT", ([&] {
         onednn::ConvOneDNNHandlerT<T, data_t, T_out> handler(dev_ctx,
-                                                             mkldnn_engine,
+                                                             onednn_engine,
                                                              dev_ctx.GetPlace(),
                                                              input,
                                                              filter,
