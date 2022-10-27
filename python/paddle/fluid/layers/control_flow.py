@@ -48,7 +48,6 @@ from ..data_feeder import (
     check_type,
     check_dtype,
 )
-from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 from paddle import _C_ops, _legacy_C_ops
 

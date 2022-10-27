@@ -101,9 +101,9 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
   }
 
  protected:
-  framework::LoDTensor input_;
-  framework::LoDTensor shape_;
-  framework::LoDTensor output_;
+  phi::DenseTensor input_;
+  phi::DenseTensor shape_;
+  phi::DenseTensor output_;
   TensorRTEngine *engine_;
   phi::GPUContext *ctx_;
 };

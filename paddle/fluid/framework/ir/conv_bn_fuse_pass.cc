@@ -77,12 +77,12 @@ namespace ir {
   GET_IR_NODE_FROM_SUBGRAPH(bn_saved_variance, bn_saved_variance, pattern_name)
 
 void recompute_bias_and_weights(const Scope* scope,
-                                ir::Node* conv_weight,            //
-                                const ir::Node& bn_scale,         //
-                                const LoDTensor& bn_bias_tensor,  //
-                                const ir::Node& bn_mean,          //
-                                const ir::Node& bn_variance,      //
-                                LoDTensor* eltwise_y_in_tensor,   //
+                                ir::Node* conv_weight,                   //
+                                const ir::Node& bn_scale,                //
+                                const phi::DenseTensor& bn_bias_tensor,  //
+                                const ir::Node& bn_mean,                 //
+                                const ir::Node& bn_variance,             //
+                                phi::DenseTensor* eltwise_y_in_tensor,   //
                                 float epsilon,
                                 const std::string& conv_type) {
   using EigenVectorArrayMap =
@@ -101,10 +101,12 @@ void recompute_bias_and_weights(const Scope* scope,
                         eltwise_y_in_tensor->dims().size(),
                         bn_bias_tensor.dims().size()));
 
-  auto* scale_tensor = scope->FindVar(bn_scale.Name())->GetMutable<LoDTensor>();
+  auto* scale_tensor =
+      scope->FindVar(bn_scale.Name())->GetMutable<phi::DenseTensor>();
   auto* variance_tensor =
-      scope->FindVar(bn_variance.Name())->GetMutable<LoDTensor>();
-  auto* mean_tensor = scope->FindVar(bn_mean.Name())->GetMutable<LoDTensor>();
+      scope->FindVar(bn_variance.Name())->GetMutable<phi::DenseTensor>();
+  auto* mean_tensor =
+      scope->FindVar(bn_mean.Name())->GetMutable<phi::DenseTensor>();
 
   ConstEigenVectorArrayMap scale_array(
       scale_tensor->data<float>(), scale_tensor->numel(), 1);
@@ -148,7 +150,8 @@ void recompute_bias_and_weights(const Scope* scope,
   }
 
   // Re-compute weight of conv2d from BN
-  auto* weights = scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
+  auto* weights =
+      scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
   auto weights_shape = weights->dims();
   auto weights_data = weights->mutable_data<float>(platform::CPUPlace());
 
@@ -308,7 +311,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // conv_weight fp32 --> fp16
     auto* conv_weight_tensor =
-        scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
 
     if (tensor_type == paddle::experimental::DataType::FLOAT16) {
@@ -317,7 +320,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Get batch norm bias
     auto* bn_bias_tensor =
-        scope->FindVar(bn_bias->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(bn_bias->Name())->GetMutable<phi::DenseTensor>();
 
     // Create eltwise_y (conv bias) variable
     VarDesc eltwise_y_in_desc(
@@ -329,7 +332,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     eltwise_y_in_desc.SetPersistable(true);
     auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
     auto* eltwise_y_in_tensor =
-        scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
+        scope->Var(eltwise_y_in_node->Name())->GetMutable<phi::DenseTensor>();
 
     // Initialize eltwise_y
     eltwise_y_in_tensor->Resize(bn_bias_tensor->dims());
@@ -370,7 +373,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
             1UL,
             platform::errors::InvalidArgument("Find input var Bais error."));
         auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
-        auto* conv_bias_tensor = conv_bias_var->GetMutable<LoDTensor>();
+        auto* conv_bias_tensor = conv_bias_var->GetMutable<phi::DenseTensor>();
         PADDLE_ENFORCE_EQ(
             conv_bias_tensor->dims(),
             eltwise_y_in_tensor->dims(),
@@ -580,11 +583,11 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // Get eltwise_y (conv bias) variable
     auto* eltwise_y_in_tensor =
-        scope->FindVar(eltwise_y_in->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(eltwise_y_in->Name())->GetMutable<phi::DenseTensor>();
 
     // Get batch norm bias
     auto* bn_bias_tensor =
-        scope->FindVar(bn_bias->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(bn_bias->Name())->GetMutable<phi::DenseTensor>();
 
     // update weights and biases
     float epsilon =
@@ -592,7 +595,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
     // conv_weight fp16 --> fp32
     auto* conv_weight_tensor =
-        scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
     auto tensor_type = conv_weight_tensor->dtype();
 
     if (tensor_type == paddle::experimental::DataType::FLOAT16) {
@@ -614,7 +617,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
       eltwise_y_in_desc.SetPersistable(true);
       auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
       auto* eltwise_y_in_tensor_ex =
-          scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
+          scope->Var(eltwise_y_in_node->Name())->GetMutable<phi::DenseTensor>();
 
       // Initialize eltwise_y
       TensorCopy(

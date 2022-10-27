@@ -195,7 +195,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     auto* w_node = g->CreateVarNode(&w_key);
     if (!use_gpu && use_fc_padding) {
       auto* scope = param_scope();
-      auto* weight = scope->FindVar(w->Name())->GetMutable<LoDTensor>();
+      auto* weight = scope->FindVar(w->Name())->GetMutable<phi::DenseTensor>();
       auto* weight_data = weight->data<float>();
       auto weight_dims = weight->dims();
       int weight_num = product(weight_dims);
