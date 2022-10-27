@@ -139,8 +139,8 @@ static void SetOutMemDescWithReshape2FuseSupport(
     phi::DenseTensor* out,
     const dnnl::memory::desc& out_md) {
   std::vector<int64_t> fused_reshape2_shape(
-      ctx.Attr<std::vector<int>>("fused_unsqueeze2_axes").begin(),
-      ctx.Attr<std::vector<int>>("fused_unsqueeze2_axes").end());
+      ctx.Attr<std::vector<int>>("fused_reshape2_shape").begin(),
+      ctx.Attr<std::vector<int>>("fused_reshape2_shape").end());
 
   const int out_shape_numel = out->numel();
   const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),

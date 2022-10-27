@@ -72,10 +72,19 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(
     bool has_axes_tensor_list =
         std::find(names.begin(), names.end(), "AxesTensorList") != names.end();
 
-    if (has_axes_tensor || has_axes_tensor_list) {
-      VLOG(3) << "Cannot fuse op with unsqueeze2, because its dims are "
-                 "specified either by AxesTensor or AxesTensorList and can be "
-                 "changed at runtime!";
+    if (has_axes_tensor &&
+        unsqueeze2_op->Op()->Input("AxesTensor").size() > 0) {
+      VLOG(4) << "Cannot fuse " << op_type
+              << " and unsqueeze2 because unsqueeze2 dims are specified by "
+                 "AxesTensor!";
+      return;
+    }
+
+    if (has_axes_tensor_list &&
+        unsqueeze2_op->Op()->Input("AxesTensorList").size() > 0) {
+      VLOG(4) << "Cannot fuse " << op_type
+              << " and unsqueeze2 because unsqueeze2 dims are specified by "
+                 "AxesTensorList!";
       return;
     }
 

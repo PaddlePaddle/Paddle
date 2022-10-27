@@ -27,7 +27,8 @@ using string::PrettyLogDetail;
 void FuseOperatorReshape2OneDNNPass::ApplyImpl(Graph *graph) const {
   // THIS FUSE WILL WORK ONLY WITH OPERATORS THAT OUTPUTS PLAIN MEMORY, F.E.
   // ABCD FOR 4D! BE AWARE OF THAT!
-  std::vector<std::pair<std::string, int>> ops_and_outputs = {{"fc", 1}};
+  std::vector<std::pair<std::string, int>> ops_and_outputs = {
+      {"fc", 1}, {"transpose2", 2}};
 
   for (const auto &op_and_outputs : ops_and_outputs)
     FuseReshape2(graph, op_and_outputs.first, op_and_outputs.second);
@@ -96,11 +97,19 @@ void FuseOperatorReshape2OneDNNPass::FuseReshape2(Graph *graph,
     bool has_shape_tensor_list =
         std::find(names.begin(), names.end(), "ShapeTensorList") != names.end();
 
-    if (has_shape_tensor || has_shape_tensor_list) {
-      VLOG(3)
-          << "Cannot fuse op with reshape2, because its dims are "
-             "specified either by ShapeTensor or ShapeTensorList and can be "
-             "changed at runtime!";
+    if (has_shape_tensor &&
+        reshape2_op->Op()->Input("ShapeTensor").size() > 0) {
+      VLOG(4) << "Cannot fuse " << op_type
+              << " and reshape2 because reshape2 dims are specified by "
+                 "ShapeTensor!";
+      return;
+    }
+
+    if (has_shape_tensor_list &&
+        reshape2_op->Op()->Input("ShapeTensorList").size() > 0) {
+      VLOG(4) << "Cannot fuse " << op_type
+              << " and reshape2 because reshape2 dims are specified by "
+                 "ShapeTensorList!";
       return;
     }
 
