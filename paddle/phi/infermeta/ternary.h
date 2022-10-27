@@ -44,8 +44,8 @@ void AccuracyInferMeta(const MetaTensor& out,
 void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& x,
                     const MetaTensor& y,
-                    float alpha,
                     float beta,
+                    float alpha,
                     MetaTensor* out);
 
 void ArangeInferMeta(const MetaTensor& start,
