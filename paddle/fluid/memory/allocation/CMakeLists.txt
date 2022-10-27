@@ -1,6 +1,6 @@
 include(ExternalProject)
 
-set(ALLOCATOR_DEPS place stats profiler phi_backends device_context rt)
+set(ALLOCATOR_DEPS place stats profiler phi_backends device_context)
 set(ALLOCATOR_SRCS
     allocator.cc
     cpu_allocator.cc
@@ -45,6 +45,8 @@ if(NOT WIN32)
   if(WITH_GPU)
     list(APPEND ALLOCATOR_SRCS cuda_ipc_allocator.cc)
   endif()
+
+  list(APPEND ALLOCATOR_DEPS rt)
 endif()
 
 if(WITH_ASCEND_CL)
