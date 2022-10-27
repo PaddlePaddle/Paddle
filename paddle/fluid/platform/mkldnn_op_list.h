@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifdef PADDLE_WITH_MKLDNN
+// #ifdef PADDLE_WITH_MKLDNN
 
 #include <unordered_set>
 
@@ -208,4 +208,4 @@ inline bool in_cudnn_white_list(const std::string& op_name) {
 
 }  // namespace platform
 }  // namespace paddle
-#endif
+// #endif
