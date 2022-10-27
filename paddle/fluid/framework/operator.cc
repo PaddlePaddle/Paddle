@@ -50,8 +50,8 @@ class DenseTensor;
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/mkldnn_op_list.h"
 #endif
+#include "paddle/fluid/platform/mkldnn_op_list.h"
 
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"

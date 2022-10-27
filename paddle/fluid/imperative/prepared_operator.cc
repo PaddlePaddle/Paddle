@@ -25,9 +25,9 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
-#ifdef PADDLE_WITH_MKLDNN
+// #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_op_list.h"
-#endif
+// #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
