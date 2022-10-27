@@ -484,6 +484,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(custom_device_type_);
   CP_MEMBER(custom_device_id_);
 
+  // JITLayer relate
+  CP_MEMBER(apply_optim_);
+  CP_MEMBER(skip_load_params_);
+
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
                       false,
