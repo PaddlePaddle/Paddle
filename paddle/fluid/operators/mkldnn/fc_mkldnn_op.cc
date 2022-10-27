@@ -365,7 +365,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
   }
 
   void PrepareSrcMem(const std::shared_ptr<inner_product_forward>& fc_p,
-                     std::shared_ptr<dnnl::memory>& src_mem,
+                     const std::shared_ptr<dnnl::memory>& src_mem,
                      const LoDTensor* x,
                      const dnnl::engine& engine) const {
     auto x_md = x->mem_desc().reshape(src_mem->get_desc().dims());
