@@ -21,6 +21,9 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#endif
 #include "paddle/fluid/platform/mkldnn_op_list.h"
 
 namespace paddle {
