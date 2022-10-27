@@ -183,7 +183,6 @@ class TestCustomCPUPlugin(unittest.TestCase):
             shuffle=True,
             drop_last=True,
             num_workers=2,
-            use_shared_memory=False,
         )
         test_loader = paddle.io.DataLoader(
             test_dataset,
@@ -191,7 +190,6 @@ class TestCustomCPUPlugin(unittest.TestCase):
             shuffle=True,
             drop_last=True,
             num_workers=2,
-            use_shared_memory=False,
         )
 
         # train and eval
@@ -256,7 +254,6 @@ class TestCustomCPUPlugin(unittest.TestCase):
             shuffle=True,
             drop_last=True,
             num_workers=2,
-            use_shared_memory=False,
         )
         test_loader = paddle.io.DataLoader(
             test_dataset,
@@ -264,7 +261,6 @@ class TestCustomCPUPlugin(unittest.TestCase):
             shuffle=True,
             drop_last=True,
             num_workers=2,
-            use_shared_memory=False,
         )
 
         # train and eval

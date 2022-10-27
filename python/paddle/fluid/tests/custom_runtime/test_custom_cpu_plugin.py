@@ -77,11 +77,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
             ),
         )
         loader = paddle.io.DataLoader(
-            dataset,
-            batch_size=32,
-            num_workers=1,
-            shuffle=True,
-            use_shared_memory=False,
+            dataset, batch_size=32, num_workers=1, shuffle=True
         )
         for image, label in loader:
             self.assertTrue(image.place.is_custom_place())
@@ -122,11 +118,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
             ),
         )
         loader = paddle.io.DataLoader(
-            dataset,
-            batch_size=64,
-            num_workers=1,
-            shuffle=True,
-            use_shared_memory=False,
+            dataset, batch_size=64, num_workers=1, shuffle=True
         )
 
         mnist = MNIST()
