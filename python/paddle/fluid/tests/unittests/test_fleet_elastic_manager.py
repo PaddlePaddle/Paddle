@@ -45,17 +45,15 @@ class MockEtcdClient:
         pass
 
     def get(self, key):
-        return b'10.10.10.1:6001', MockKVMetadata(
-            b"/paddle/nodes/xyuwtd1666866618.522037"
-        )
+        return b'0', MockKVMetadata(b"/prefix")
 
     def delete_prefix(self, key):
         pass
 
     def get_prefix(self, key_prefix):
         hosts = [
-            (b"/paddle/nodes/xyuwtd1666866618.522037", b"10.10.10.1:6001"),
-            (b"/paddle/nodes/pyputy1666866653.8720498", b"10.10.10.2:6001"),
+            (b"/prefix/host1", b"10.10.10.1:6001"),
+            (b"/prefix/host2", b"10.10.10.2:6001"),
         ]
         return ((v, MockKVMetadata(k)) for k, v in hosts)
 
@@ -70,7 +68,7 @@ class MockEtcdClient:
         pass
 
     def delete(self, key):
-        pass
+        return True
 
     def lease(self, ttl):
         if self._lease:
