@@ -52,6 +52,8 @@ void SetOp(ProgramDesc* prog,
       op->SetAttr("alpha", 0.02f);
     } else if (type == "relu6") {
       op->SetAttr("threshold", 6.0f);
+    } else if (type == "mish") {
+      op->SetAttr("threshold", 20.0f);
     } else if (type == "swish") {
       op->SetAttr("beta", 1.0f);
     }
