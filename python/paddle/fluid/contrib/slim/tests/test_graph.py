@@ -29,19 +29,23 @@ os.environ["CPU_NUM"] = "1"
 def conv_block():
     img = fluid.layers.data(name='image', shape=[1, 28, 28], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
-                                                  filter_size=5,
-                                                  num_filters=20,
-                                                  pool_size=2,
-                                                  pool_stride=2,
-                                                  act="relu")
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+        input=img,
+        filter_size=5,
+        num_filters=20,
+        pool_size=2,
+        pool_stride=2,
+        act="relu",
+    )
     conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
-                                                  filter_size=5,
-                                                  num_filters=50,
-                                                  pool_size=2,
-                                                  pool_stride=2,
-                                                  act="relu")
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+        input=conv_pool_1,
+        filter_size=5,
+        num_filters=50,
+        pool_size=2,
+        pool_stride=2,
+        act="relu",
+    )
     prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_loss = paddle.mean(loss)
@@ -49,7 +53,6 @@ def conv_block():
 
 
 class TestGraph(unittest.TestCase):
-
     def graph_apis(self, use_cuda=False, for_ci=True):
         main = fluid.Program()
         startup = fluid.Program()
@@ -65,25 +68,27 @@ class TestGraph(unittest.TestCase):
         build_strategy.memory_optimize = False
         build_strategy.enable_inplace = False
         origin_binary = fluid.CompiledProgram(graph.graph).with_data_parallel(
-            loss_name=loss.name, build_strategy=build_strategy)
+            loss_name=loss.name, build_strategy=build_strategy
+        )
         backup_binary = fluid.CompiledProgram(
-            backup_graph.graph).with_data_parallel(
-                loss_name=loss.name, build_strategy=build_strategy)
+            backup_graph.graph
+        ).with_data_parallel(loss_name=loss.name, build_strategy=build_strategy)
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup)
         iters = 5
         batch_size = 8
-        train_reader = paddle.batch(paddle.dataset.mnist.train(),
-                                    batch_size=batch_size)
+        train_reader = paddle.batch(
+            paddle.dataset.mnist.train(), batch_size=batch_size
+        )
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
 
         def _train(binary):
             for _ in range(iters):
                 data = next(train_reader())
-                loss_v = exe.run(binary,
-                                 feed=feeder.feed(data),
-                                 fetch_list=[loss.name])
+                loss_v = exe.run(
+                    binary, feed=feeder.feed(data), fetch_list=[loss.name]
+                )
                 if not for_ci:
                     print('{}: {}'.format('loss', loss_v))
 
@@ -98,18 +103,18 @@ class TestGraph(unittest.TestCase):
             var.set(var_array, place)
 
         sum_before = np.sum(
-            np.array(
-                fluid.global_scope().find_var('conv2d_1.w_0').get_tensor()))
+            np.array(fluid.global_scope().find_var('conv2d_1.w_0').get_tensor())
+        )
         fluid.io._save_persistable_nodes(exe, checkponit_dir, graph)
         _set_zero('conv2d_1.w_0', fluid.global_scope(), place)
         set_after = np.sum(
-            np.array(
-                fluid.global_scope().find_var('conv2d_1.w_0').get_tensor()))
+            np.array(fluid.global_scope().find_var('conv2d_1.w_0').get_tensor())
+        )
         self.assertEqual(set_after, 0)
         fluid.io._load_persistable_nodes(exe, checkponit_dir, graph)
         sum_after = np.sum(
-            np.array(
-                fluid.global_scope().find_var('conv2d_1.w_0').get_tensor()))
+            np.array(fluid.global_scope().find_var('conv2d_1.w_0').get_tensor())
+        )
         self.assertEqual(sum_before, sum_after)
 
         marked_nodes = set()

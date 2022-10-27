@@ -19,14 +19,16 @@ from paddle.fluid.framework import dygraph_only
 
 
 @dygraph_only
-def attention(query,
-              key,
-              value,
-              sparse_mask,
-              key_padding_mask=None,
-              attn_mask=None,
-              name=None):
-    """
+def attention(
+    query,
+    key,
+    value,
+    sparse_mask,
+    key_padding_mask=None,
+    attn_mask=None,
+    name=None,
+):
+    r"""
     Note:
         This API is only used from ``CUDA 11.7`` .
 
@@ -37,7 +39,7 @@ def attention(query,
 
     .. math::
 
-        result = softmax(\\frac{ Q * K^T }{\\sqrt{d}}) * V
+        result = softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
 
     where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
     The shape of the three parameters are: `[batch_size, num_heads, seq_len, head_dim]`, and
@@ -89,5 +91,6 @@ def attention(query,
             output = paddle.sparse.nn.functional.attention(query, key, value, sp_mask, kp_mask, attn_mask)
             output.backward()
     """
-    return _C_ops.sparse_fused_attention(query, key, value, sparse_mask,
-                                         key_padding_mask, attn_mask)
+    return _C_ops.sparse_fused_attention(
+        query, key, value, sparse_mask, key_padding_mask, attn_mask
+    )

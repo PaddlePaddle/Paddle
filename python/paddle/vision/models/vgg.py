@@ -20,10 +20,14 @@ from paddle.utils.download import get_weights_path_from_url
 __all__ = []
 
 model_urls = {
-    'vgg16': ('https://paddle-hapi.bj.bcebos.com/models/vgg16.pdparams',
-              '89bbffc0f87d260be9b8cdc169c991c4'),
-    'vgg19': ('https://paddle-hapi.bj.bcebos.com/models/vgg19.pdparams',
-              '23b18bb13d8894f60f54e642be79a0dd')
+    'vgg16': (
+        'https://paddle-hapi.bj.bcebos.com/models/vgg16.pdparams',
+        '89bbffc0f87d260be9b8cdc169c991c4',
+    ),
+    'vgg19': (
+        'https://paddle-hapi.bj.bcebos.com/models/vgg19.pdparams',
+        '23b18bb13d8894f60f54e642be79a0dd',
+    ),
 }
 
 
@@ -111,15 +115,65 @@ def make_layers(cfg, batch_norm=False):
 
 cfgs = {
     'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
-    'B':
-    [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    'B': [
+        64,
+        64,
+        'M',
+        128,
+        128,
+        'M',
+        256,
+        256,
+        'M',
+        512,
+        512,
+        'M',
+        512,
+        512,
+        'M',
+    ],
     'D': [
-        64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512,
-        512, 512, 'M'
+        64,
+        64,
+        'M',
+        128,
+        128,
+        'M',
+        256,
+        256,
+        256,
+        'M',
+        512,
+        512,
+        512,
+        'M',
+        512,
+        512,
+        512,
+        'M',
     ],
     'E': [
-        64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512,
-        'M', 512, 512, 512, 512, 'M'
+        64,
+        64,
+        'M',
+        128,
+        128,
+        'M',
+        256,
+        256,
+        256,
+        256,
+        'M',
+        512,
+        512,
+        512,
+        512,
+        'M',
+        512,
+        512,
+        512,
+        512,
+        'M',
     ],
 }
 
@@ -128,10 +182,14 @@ def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
     model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
 
     if pretrained:
-        assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
-            arch)
-        weight_path = get_weights_path_from_url(model_urls[arch][0],
-                                                model_urls[arch][1])
+        assert (
+            arch in model_urls
+        ), "{} model do not have a pretrained model now, you should set pretrained=False".format(
+            arch
+        )
+        weight_path = get_weights_path_from_url(
+            model_urls[arch][0], model_urls[arch][1]
+        )
 
         param = paddle.load(weight_path)
         model.load_dict(param)
@@ -172,7 +230,7 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
     """
     model_name = 'vgg11'
     if batch_norm:
-        model_name += ('_bn')
+        model_name += '_bn'
     return _vgg(model_name, 'A', batch_norm, pretrained, **kwargs)
 
 
@@ -209,7 +267,7 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
     """
     model_name = 'vgg13'
     if batch_norm:
-        model_name += ('_bn')
+        model_name += '_bn'
     return _vgg(model_name, 'B', batch_norm, pretrained, **kwargs)
 
 
@@ -246,7 +304,7 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
     """
     model_name = 'vgg16'
     if batch_norm:
-        model_name += ('_bn')
+        model_name += '_bn'
     return _vgg(model_name, 'D', batch_norm, pretrained, **kwargs)
 
 
@@ -283,5 +341,5 @@ def vgg19(pretrained=False, batch_norm=False, **kwargs):
     """
     model_name = 'vgg19'
     if batch_norm:
-        model_name += ('_bn')
+        model_name += '_bn'
     return _vgg(model_name, 'E', batch_norm, pretrained, **kwargs)

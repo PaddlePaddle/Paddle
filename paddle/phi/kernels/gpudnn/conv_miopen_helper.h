@@ -14,47 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/conv_base_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn_base.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 using ConvArgs = ConvArgsBase<miopenHandle_t, miopenDataType_t>;
-
-template <typename DeviceContext, typename T, size_t D>
-static void RemovePaddingSlice(const phi::GPUContext& context,
-                               const phi::DenseTensor* input,
-                               phi::DenseTensor* out,
-                               const std::vector<int>& starts,
-                               const std::vector<int>& axes) {
-  auto& place = *context.eigen_device();
-  auto in_dims = input->dims();
-  auto new_out_dims = out->dims();
-  auto offsets = Eigen::array<int, D>();
-  auto extents = Eigen::array<int, D>();
-  for (size_t i = 0; i < D; ++i) {
-    offsets[i] = 0;
-    extents[i] = new_out_dims[i];
-  }
-
-  for (size_t i = 0; i < axes.size(); ++i) {
-    int start = starts[i];
-    if (start < 0) {
-      start = (start + in_dims[axes[i]]);
-    }
-    start = std::max(start, 0);
-    offsets[axes[i]] = start;
-  }
-  auto in_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *input);
-
-  auto out_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *out, new_out_dims);
-  out_t.device(place) = in_t.slice(offsets, extents);
-}
 
 template <typename PerfT>
 struct SearchAlgorithm {};
@@ -78,7 +42,7 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
     miopenConvAlgoPerf_t find_result;
     auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::miopenFindConvolutionForwardAlgorithm(
+          phi::dynload::miopenFindConvolutionForwardAlgorithm(
               args.handle,
               args.idesc.desc(),
               args.x->data<T>(),
@@ -104,7 +68,7 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
   static size_t GetWorkspaceSize(const ConvArgs& args) {
     size_t workspace_size = 0;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenConvolutionForwardGetWorkSpaceSize(
+        phi::dynload::miopenConvolutionForwardGetWorkSpaceSize(
             args.handle,
             args.wdesc.desc(),
             args.idesc.desc(),
@@ -134,7 +98,7 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
     miopenConvAlgoPerf_t find_result;
     auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::miopenFindConvolutionBackwardDataAlgorithm(
+          phi::dynload::miopenFindConvolutionBackwardDataAlgorithm(
               args.handle,
               args.odesc.desc(),
               args.o->data<T>(),
@@ -160,7 +124,7 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
   static size_t GetWorkspaceSize(const ConvArgs& args) {
     size_t workspace_size = 0;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenConvolutionBackwardDataGetWorkSpaceSize(
+        phi::dynload::miopenConvolutionBackwardDataGetWorkSpaceSize(
             args.handle,
             args.odesc.desc(),
             args.wdesc.desc(),
@@ -190,7 +154,7 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
     miopenConvAlgoPerf_t find_result;
     auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::miopenFindConvolutionBackwardWeightsAlgorithm(
+          phi::dynload::miopenFindConvolutionBackwardWeightsAlgorithm(
               args.handle,
               args.odesc.desc(),
               args.o->data<T>(),
@@ -216,7 +180,7 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
   static size_t GetWorkspaceSize(const ConvArgs& args) {
     size_t workspace_size = 0;
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenConvolutionBackwardWeightsGetWorkSpaceSize(
+        phi::dynload::miopenConvolutionBackwardWeightsGetWorkSpaceSize(
             args.handle,
             args.odesc.desc(),
             args.idesc.desc(),
@@ -227,5 +191,4 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

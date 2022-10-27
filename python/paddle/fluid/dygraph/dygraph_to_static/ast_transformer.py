@@ -19,24 +19,60 @@
 
 import os
 from paddle.utils import gast
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
-from paddle.fluid.dygraph.dygraph_to_static.early_return_transformer import EarlyReturnTransformer
-from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import AssertTransformer
-from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import BasicApiTransformer
-from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
-from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakTransformOptimizer
-from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransformer
-from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import CastTransformer
-from paddle.fluid.dygraph.dygraph_to_static.typehint_transformer import TypeHintTransformer
-from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
-from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import LogicalTransformer
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
-from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransformer
-from paddle.fluid.dygraph.dygraph_to_static.return_transformer import ReturnTransformer
-from paddle.fluid.dygraph.dygraph_to_static.create_variable_transformer import CreateVariableTransformer
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
-from paddle.fluid.dygraph.dygraph_to_static.decorator_transformer import DecoratorTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    BaseTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.early_return_transformer import (
+    EarlyReturnTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import (
+    AssertTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import (
+    BasicApiTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import (
+    BreakContinueTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import (
+    BreakTransformOptimizer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.call_transformer import (
+    CallTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import (
+    CastTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.typehint_transformer import (
+    TypeHintTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import (
+    IfElseTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import (
+    LogicalTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import (
+    LoopTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.print_transformer import (
+    PrintTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.return_transformer import (
+    ReturnTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.create_variable_transformer import (
+    CreateVariableTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+    StaticAnalysisVisitor,
+)
+from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import (
+    TensorShapeTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.decorator_transformer import (
+    DecoratorTransformer,
+)
 
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
@@ -51,8 +87,11 @@ def apply_optimization(transformers):
     And not all optimized transformations are applied by default. It's controlled by
     'export FLAGS_optim_transformation=1'
     """
-    flag = str(
-        os.environ.get('FLAGS_optim_transformation')) in ['1', 'True', 'true']
+    flag = str(os.environ.get('FLAGS_optim_transformation')) in [
+        '1',
+        'True',
+        'true',
+    ]
     if flag:
         transformers.insert(3, BreakTransformOptimizer)
 
@@ -69,7 +108,8 @@ class DygraphToStaticAst(BaseTransformer):
         # save root for some analysis may need global AST
         self.root = root
         self.static_analysis_visitor = StaticAnalysisVisitor(root)
-        self.static_analysis_root = self.static_analysis_visitor.get_node_wrapper_root(
+        self.static_analysis_root = (
+            self.static_analysis_visitor.get_node_wrapper_root()
         )
         self.decorate_func_name = None
         self.transfer_from_node_type(self.static_analysis_root)
@@ -77,12 +117,14 @@ class DygraphToStaticAst(BaseTransformer):
 
     def _apply(self, transformer, node_wrapper, log_level):
         transformer(node_wrapper).transform()
-        self.translator_logger.log_transformed_code(log_level, self.root,
-                                                    transformer.__name__)
+        self.translator_logger.log_transformed_code(
+            log_level, self.root, transformer.__name__
+        )
 
     def transfer_from_node_type(self, node_wrapper):
         self.translator_logger.log(
-            1, "Source code: \n{}".format(ast_to_source_code(self.root)))
+            1, "Source code: \n{}".format(ast_to_source_code(self.root))
+        )
         # Generic transformation
         self.visit(node_wrapper.node)
 
@@ -110,7 +152,8 @@ class DygraphToStaticAst(BaseTransformer):
             self._apply(transformer, node_wrapper, log_level=index + 1)
 
         self.translator_logger.log_transformed_code(
-            logging_utils.LOG_AllTransformer, self.root, "All Transformers")
+            logging_utils.LOG_AllTransformer, self.root, "All Transformers"
+        )
 
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:

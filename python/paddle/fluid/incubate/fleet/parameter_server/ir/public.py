@@ -26,7 +26,10 @@ from paddle.fluid.core import CommContext
 import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from paddle.fluid.incubate.fleet.parameter_server.ir import vars_metatools
-from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, PSDispatcher
+from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import (
+    RoundRobin,
+    PSDispatcher,
+)
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 
 OP_NAME_SCOPE = "op_namescope"
@@ -49,9 +52,9 @@ def _get_lr_ops(program):
     lr_ops = []
     for index, op in enumerate(program.global_block().ops):
         role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
-        if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
-                int(OPT_OP_ROLE_ATTR_VALUE):
+        if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or role_id == int(
+            LR_SCHED_OP_ROLE_ATTR_VALUE
+        ) | int(OPT_OP_ROLE_ATTR_VALUE):
             lr_ops.append(op)
     return lr_ops
 
@@ -68,12 +71,17 @@ def _has_global_step(lr_ops):
 
 
 def is_sparse_op(op):
-    if op.type in SPARSE_OP_LIST and op.attr('is_sparse') is True and op.attr(
-            'is_distributed') is False:
+    if (
+        op.type in SPARSE_OP_LIST
+        and op.attr('is_sparse') is True
+        and op.attr('is_distributed') is False
+    ):
         return True
 
-    if op.type == "distributed_lookup_table" and op.attr(
-            'is_distributed') is False:
+    if (
+        op.type == "distributed_lookup_table"
+        and op.attr('is_distributed') is False
+    ):
         return True
 
     return False
@@ -83,8 +91,10 @@ def is_distributed_sparse_op(op):
     if op.type in SPARSE_OP_LIST and op.attr('is_distributed') is True:
         return True
 
-    if op.type == "distributed_lookup_table" and op.attr(
-            'is_distributed') is True:
+    if (
+        op.type == "distributed_lookup_table"
+        and op.attr('is_distributed') is True
+    ):
         return True
 
     return False
@@ -108,7 +118,6 @@ def get_sparse_tablenames(program, is_distributed):
 
 
 class MergedVariable:
-
     def __init__(self, merged, ordered, offsets):
         self.merged_var = merged
         self.ordered_vars = ordered
@@ -128,7 +137,6 @@ def Singleton(cls):
 
 @Singleton
 class CompileTimeStrategy(object):
-
     def __init__(self, main_program, startup_program, strategy, role_maker):
         self.min_block_size = 81920
 
@@ -268,20 +276,24 @@ class CompileTimeStrategy(object):
     def get_origin_ps_startup_program(self):
         return self.origin_ps_startup_program
 
-    def add_tensor_table(self,
-                         feed_var_name,
-                         fetch_var_name="",
-                         startup_program=None,
-                         main_program=None,
-                         tensor_table_class=""):
+    def add_tensor_table(
+        self,
+        feed_var_name,
+        fetch_var_name="",
+        startup_program=None,
+        main_program=None,
+        tensor_table_class="",
+    ):
         self.tensor_table_dict[feed_var_name] = {}
         self.tensor_table_dict[feed_var_name]["feed_var_name"] = feed_var_name
         self.tensor_table_dict[feed_var_name]["fetch_var_name"] = fetch_var_name
         self.tensor_table_dict[feed_var_name][
-            "startup_program"] = startup_program
+            "startup_program"
+        ] = startup_program
         self.tensor_table_dict[feed_var_name]["main_program"] = main_program
         self.tensor_table_dict[feed_var_name][
-            "tensor_table_class"] = tensor_table_class
+            "tensor_table_class"
+        ] = tensor_table_class
 
     def get_tensor_table_dict(self):
         return self.tensor_table_dict
@@ -289,8 +301,9 @@ class CompileTimeStrategy(object):
     def get_sparse_varname_on_ps(self, is_distributed, endpoint=None):
         if not endpoint:
             endpoint = self.get_ps_endpoint()
-        varnames = get_sparse_tablenames(self.get_origin_main_program(),
-                                         is_distributed)
+        varnames = get_sparse_tablenames(
+            self.get_origin_main_program(), is_distributed
+        )
 
         ps_sparse_varnames = []
         for varname in varnames:
@@ -313,13 +326,19 @@ class CompileTimeStrategy(object):
                 # check all input
                 for key in op.input_names:
                     if key in [
-                            "Param", "Grad", "LearningRate", "Beta1Tensor",
-                            "Beta2Tensor"
+                        "Param",
+                        "Grad",
+                        "LearningRate",
+                        "Beta1Tensor",
+                        "Beta2Tensor",
                     ]:
                         continue
                     # check varibale shape related param, e.g: Moment1
-                    optimize_var_names += self._get_optimizer_param_related_var_name(
-                        op, op.type, key)
+                    optimize_var_names += (
+                        self._get_optimizer_param_related_var_name(
+                            op, op.type, key
+                        )
+                    )
         return optimize_var_names
 
     def _get_optimizer_param_related_var_name(self, op, op_type, varkey):
@@ -346,18 +365,13 @@ class CompileTimeStrategy(object):
             pass
         else:
             raise ValueError(
-                "Not supported optimizer for distributed training: %s" %
-                op_type)
+                "Not supported optimizer for distributed training: %s" % op_type
+            )
         return related_var_names
 
-    def build_ctx(self,
-                  vars,
-                  mapping,
-                  is_grad,
-                  is_sparse,
-                  is_send,
-                  is_distributed=False):
-
+    def build_ctx(
+        self, vars, mapping, is_grad, is_sparse, is_send, is_distributed=False
+    ):
         def get_grad_var_ep(slices):
             names = []
             eps = []
@@ -369,10 +383,12 @@ class CompileTimeStrategy(object):
                         names.append("{}.delta".format(slice.name))
                     else:
                         names.append(slice.name)
-                elif is_grad and self.is_sync_mode(
-                ) and self.get_trainers() > 1:
-                    names.append("{}.trainer_{}".format(slice.name,
-                                                        self.get_role_id()))
+                elif (
+                    is_grad and self.is_sync_mode() and self.get_trainers() > 1
+                ):
+                    names.append(
+                        "{}.trainer_{}".format(slice.name, self.get_role_id())
+                    )
                 else:
                     names.append(slice.name)
 
@@ -400,21 +416,33 @@ class CompileTimeStrategy(object):
 
         trainer_id = self.get_role_id()
         aggregate = True
-        ctx = CommContext(name, names, eps, sections, origin_varnames,
-                          trainer_id, aggregate, is_sparse, is_distributed, [])
+        ctx = CommContext(
+            name,
+            names,
+            eps,
+            sections,
+            origin_varnames,
+            trainer_id,
+            aggregate,
+            is_sparse,
+            is_distributed,
+            [],
+        )
         return ctx
 
     def get_trainer_send_context(self):
         send_ctx = {}
-        distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
-                                                    True)
+        distibuted_varnames = get_sparse_tablenames(
+            self.origin_main_program, True
+        )
         idx = 0
 
         if not self.is_geo_mode():
             for merged in self.merged_dense_pairs:
                 grad = merged[1]
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False,
-                                     True)
+                ctx = self.build_ctx(
+                    grad, self.grad_var_mapping, True, False, True
+                )
                 send_ctx[ctx.var_name()] = ctx
 
             for merged in self.merged_sparse_pairs:
@@ -423,10 +451,18 @@ class CompileTimeStrategy(object):
 
                 param_name = param.merged_var.name
 
-                is_distributed = True if param_name in distibuted_varnames else False
+                is_distributed = (
+                    True if param_name in distibuted_varnames else False
+                )
 
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
-                                     True, is_distributed)
+                ctx = self.build_ctx(
+                    grad,
+                    self.grad_var_mapping,
+                    True,
+                    True,
+                    True,
+                    is_distributed,
+                )
                 send_ctx[ctx.var_name()] = ctx
                 idx += 1
 
@@ -437,21 +473,39 @@ class CompileTimeStrategy(object):
             for pairs in self.origin_sparse_pairs:
                 param, grad = pairs
                 param_name = param.name
-                is_distributed = True if param_name in distibuted_varnames else False
+                is_distributed = (
+                    True if param_name in distibuted_varnames else False
+                )
 
-                param_ctx = self.build_ctx(param, self.param_var_mapping, False,
-                                           True, True, is_distributed)
-                grad_ctx = self.build_ctx(grad, self.grad_var_mapping, True,
-                                          True, True, is_distributed)
+                param_ctx = self.build_ctx(
+                    param,
+                    self.param_var_mapping,
+                    False,
+                    True,
+                    True,
+                    is_distributed,
+                )
+                grad_ctx = self.build_ctx(
+                    grad,
+                    self.grad_var_mapping,
+                    True,
+                    True,
+                    True,
+                    is_distributed,
+                )
 
-                ctx = CommContext(param_ctx.var_name(),
-                                  param_ctx.split_varnames(),
-                                  param_ctx.split_endpoints(),
-                                  param_ctx.sections(),
-                                  grad_ctx.origin_varnames(),
-                                  param_ctx.trainer_id(), param_ctx.aggregate(),
-                                  param_ctx.is_sparse(),
-                                  param_ctx.is_distributed(), [])
+                ctx = CommContext(
+                    param_ctx.var_name(),
+                    param_ctx.split_varnames(),
+                    param_ctx.split_endpoints(),
+                    param_ctx.sections(),
+                    grad_ctx.origin_varnames(),
+                    param_ctx.trainer_id(),
+                    param_ctx.aggregate(),
+                    param_ctx.is_sparse(),
+                    param_ctx.is_distributed(),
+                    [],
+                )
 
                 send_ctx[ctx.var_name()] = ctx
                 idx += 1
@@ -461,24 +515,34 @@ class CompileTimeStrategy(object):
 
     def get_communicator_send_context(self):
         send_ctx = {}
-        distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
-                                                    True)
+        distibuted_varnames = get_sparse_tablenames(
+            self.origin_main_program, True
+        )
         idx = 0
 
         if self.is_geo_mode():
             for pairs in self.merged_dense_pairs:
                 param = pairs[0]
-                ctx = self.build_ctx(param, self.param_var_mapping, False,
-                                     False, True)
+                ctx = self.build_ctx(
+                    param, self.param_var_mapping, False, False, True
+                )
                 send_ctx[ctx.var_name()] = ctx
 
             for pairs in self.merged_sparse_pairs:
                 param = pairs[0]
                 param_name = param.merged_var.name
-                is_distributed = True if param_name in distibuted_varnames else False
+                is_distributed = (
+                    True if param_name in distibuted_varnames else False
+                )
 
-                ctx = self.build_ctx(param, self.param_var_mapping, False, True,
-                                     True, is_distributed)
+                ctx = self.build_ctx(
+                    param,
+                    self.param_var_mapping,
+                    False,
+                    True,
+                    True,
+                    is_distributed,
+                )
                 send_ctx[ctx.var_name()] = ctx
                 idx += 1
             name, ctx = self._step_ctx(idx)
@@ -486,18 +550,27 @@ class CompileTimeStrategy(object):
         else:
             for merged in self.merged_dense_pairs:
                 grad = merged[1]
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False,
-                                     True)
+                ctx = self.build_ctx(
+                    grad, self.grad_var_mapping, True, False, True
+                )
                 send_ctx[ctx.var_name()] = ctx
 
             for merged in self.merged_sparse_pairs:
                 param, grad = merged
                 param_name = param.merged_var.name
 
-                is_distributed = True if param_name in distibuted_varnames else False
+                is_distributed = (
+                    True if param_name in distibuted_varnames else False
+                )
 
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True, True,
-                                     True, is_distributed)
+                ctx = self.build_ctx(
+                    grad,
+                    self.grad_var_mapping,
+                    True,
+                    True,
+                    True,
+                    is_distributed,
+                )
                 send_ctx[ctx.var_name()] = ctx
                 idx += 1
 
@@ -505,13 +578,14 @@ class CompileTimeStrategy(object):
             send_ctx[name] = ctx
         return send_ctx
 
-    def get_communicator_recv_context(self,
-                                      recv_type=1,
-                                      use_origin_program=False):
+    def get_communicator_recv_context(
+        self, recv_type=1, use_origin_program=False
+    ):
         # recv_type
         # 1 : DENSE 2. SPARSE 3. DISTRIBUTED 4. ALL
-        distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
-                                                    True)
+        distibuted_varnames = get_sparse_tablenames(
+            self.origin_main_program, True
+        )
         sparse_varnames = []
         for pairs in self.origin_sparse_pairs:
             param, grad = pairs
@@ -521,26 +595,33 @@ class CompileTimeStrategy(object):
         sparse_recv_ctx = {}
         distributed_recv_ctx = {}
 
-        variables_pairs = self.merged_variables_pairs if not use_origin_program else self.origin_merged_variables_pairs
+        variables_pairs = (
+            self.merged_variables_pairs
+            if not use_origin_program
+            else self.origin_merged_variables_pairs
+        )
         for merged in variables_pairs:
             params = merged[0]
             if params.merged_var.name in sparse_varnames:
                 continue
 
-            ctx = self.build_ctx(params, self.param_var_mapping, False, False,
-                                 False, False)
+            ctx = self.build_ctx(
+                params, self.param_var_mapping, False, False, False, False
+            )
             dense_recv_ctx[ctx.var_name()] = ctx
 
         for pairs in self.origin_sparse_pairs:
             param, grad = pairs
 
             if param.name in distibuted_varnames:
-                ctx = self.build_ctx(param, self.param_var_mapping, False, True,
-                                     False, True)
+                ctx = self.build_ctx(
+                    param, self.param_var_mapping, False, True, False, True
+                )
                 distributed_recv_ctx[ctx.var_name()] = ctx
             else:
-                ctx = self.build_ctx(param, self.param_var_mapping, False, True,
-                                     False, False)
+                ctx = self.build_ctx(
+                    param, self.param_var_mapping, False, True, False, False
+                )
                 sparse_recv_ctx[ctx.var_name()] = ctx
 
         if recv_type == 1:
@@ -564,28 +645,44 @@ class CompileTimeStrategy(object):
             idx = 0
 
             distibuted_varnames = get_sparse_tablenames(
-                self.origin_main_program, True)
+                self.origin_main_program, True
+            )
             for merged in self.merged_sparse_pairs:
                 param, grad = merged
                 grad_name = grad.merged_var.name
                 param_name = param.merged_var.name
-                is_distributed = True if param_name in distibuted_varnames else False
+                is_distributed = (
+                    True if param_name in distibuted_varnames else False
+                )
 
                 var = self.origin_main_program.global_block().vars[
-                    grad.merged_var.name]
+                    grad.merged_var.name
+                ]
                 var_numel = reduce(lambda x, y: x * y, var.shape[1:])
 
-                sparse_ctx = CommContext(grad_name, [grad_name],
-                                         ["127.0.0.1:6071"], [var_numel],
-                                         [grad_name], trainer_id, True, True,
-                                         is_distributed, idx, False, False, -1,
-                                         [])
+                sparse_ctx = CommContext(
+                    grad_name,
+                    [grad_name],
+                    ["127.0.0.1:6071"],
+                    [var_numel],
+                    [grad_name],
+                    trainer_id,
+                    True,
+                    True,
+                    is_distributed,
+                    idx,
+                    False,
+                    False,
+                    -1,
+                    [],
+                )
                 idx += 1
                 send_ctx[sparse_ctx.var_name()] = sparse_ctx
 
             if len(send_ctx) == 0:
                 raise ValueError(
-                    "GeoSGD require sparse parameters in your net.")
+                    "GeoSGD require sparse parameters in your net."
+                )
 
             if len(self.tensor_table_dict) > 0 and self.role_maker._is_worker():
                 name, ctx = self._step_ctx(idx)
@@ -595,12 +692,14 @@ class CompileTimeStrategy(object):
         else:
             return self.get_the_one_send_context(split_dense_table)
 
-    def get_dense_send_context(self,
-                               send_ctx,
-                               idx,
-                               merged_dense_pairs,
-                               trainer_id,
-                               split_dense_table=False):
+    def get_dense_send_context(
+        self,
+        send_ctx,
+        idx,
+        merged_dense_pairs,
+        trainer_id,
+        split_dense_table=False,
+    ):
         if len(merged_dense_pairs) < 1:
             return idx
         if not split_dense_table:
@@ -610,52 +709,87 @@ class CompileTimeStrategy(object):
                 grad = merged[1]
                 origin_varnames.append(grad.merged_var.name)
                 var = self.origin_main_program.global_block().vars[
-                    grad.merged_var.name]
+                    grad.merged_var.name
+                ]
                 var_numel += reduce(lambda x, y: x * y, var.shape)
             grad_name = "Dense@Grad"
             trainer_id = self.get_role_id()
             aggregate = True
-            dense_ctx = CommContext(grad_name, [grad_name], ["127.0.0.1:6071"],
-                                    [var_numel], origin_varnames, trainer_id,
-                                    aggregate, False, False, idx, False, False,
-                                    -1, [])
+            dense_ctx = CommContext(
+                grad_name,
+                [grad_name],
+                ["127.0.0.1:6071"],
+                [var_numel],
+                origin_varnames,
+                trainer_id,
+                aggregate,
+                False,
+                False,
+                idx,
+                False,
+                False,
+                -1,
+                [],
+            )
             send_ctx[grad_name] = dense_ctx
             idx += 1
         else:
             for merged in merged_dense_pairs:
                 grad = merged[1]
                 origin_varname = grad.merged_var.name
-                var = self.origin_main_program.global_block(
-                ).vars[origin_varname]
+                var = self.origin_main_program.global_block().vars[
+                    origin_varname
+                ]
                 var_numel = reduce(lambda x, y: x * y, var.shape)
                 grad_name = origin_varname
                 aggregate = True
-                dense_ctx = CommContext(grad_name, [grad_name],
-                                        ["127.0.0.1:6071"], [var_numel],
-                                        [origin_varname], trainer_id, aggregate,
-                                        False, False, idx, False, False, -1, [])
+                dense_ctx = CommContext(
+                    grad_name,
+                    [grad_name],
+                    ["127.0.0.1:6071"],
+                    [var_numel],
+                    [origin_varname],
+                    trainer_id,
+                    aggregate,
+                    False,
+                    False,
+                    idx,
+                    False,
+                    False,
+                    -1,
+                    [],
+                )
                 send_ctx[grad_name] = dense_ctx
                 idx += 1
         return idx
 
-    def get_the_one_send_context(self,
-                                 split_dense_table=False,
-                                 use_origin_program=False,
-                                 ep_list=None):
+    def get_the_one_send_context(
+        self, split_dense_table=False, use_origin_program=False, ep_list=None
+    ):
         if ep_list is None:
             ep_list = ["127.0.0.1:6071"]
         send_ctx = {}
         trainer_id = self.get_role_id()
         idx = 0
 
-        merged_dense_pairs = self.origin_merged_dense_pairs if use_origin_program else self.merged_dense_pairs
-        merged_sparse_pairs = self.origin_merged_sparse_pairs if use_origin_program else self.merged_sparse_pairs
+        merged_dense_pairs = (
+            self.origin_merged_dense_pairs
+            if use_origin_program
+            else self.merged_dense_pairs
+        )
+        merged_sparse_pairs = (
+            self.origin_merged_sparse_pairs
+            if use_origin_program
+            else self.merged_sparse_pairs
+        )
 
-        idx += self.get_dense_send_context(send_ctx, idx, merged_dense_pairs,
-                                           trainer_id, split_dense_table)
+        idx += self.get_dense_send_context(
+            send_ctx, idx, merged_dense_pairs, trainer_id, split_dense_table
+        )
 
-        distibuted_varnames = get_sparse_tablenames(self.origin_main_program,
-                                                    True)
+        distibuted_varnames = get_sparse_tablenames(
+            self.origin_main_program, True
+        )
         for merged in merged_sparse_pairs:
             param, grad = merged
             grad_name = grad.merged_var.name
@@ -665,17 +799,33 @@ class CompileTimeStrategy(object):
             for i in range(len(ep_list)):
                 splited_varname.append("{}.block{}".format(param_name, i))
 
-            is_distributed = True if param_name in distibuted_varnames else False
+            is_distributed = (
+                True if param_name in distibuted_varnames else False
+            )
 
             var = self.origin_main_program.global_block().vars[
-                grad.merged_var.name]
+                grad.merged_var.name
+            ]
 
             shape = list(var.shape)
             shape[0] = 0 if is_distributed else shape[0]
 
-            sparse_ctx = CommContext(grad_name, splited_varname, ep_list, shape,
-                                     [grad_name], trainer_id, True, True,
-                                     is_distributed, idx, False, False, -1, [])
+            sparse_ctx = CommContext(
+                grad_name,
+                splited_varname,
+                ep_list,
+                shape,
+                [grad_name],
+                trainer_id,
+                True,
+                True,
+                is_distributed,
+                idx,
+                False,
+                False,
+                -1,
+                [],
+            )
 
             idx += 1
             send_ctx[sparse_ctx.var_name()] = sparse_ctx
@@ -686,15 +836,15 @@ class CompileTimeStrategy(object):
 
         return send_ctx
 
-    def get_the_one_recv_context(self,
-                                 is_dense=True,
-                                 split_dense_table=False,
-                                 use_origin_program=False):
+    def get_the_one_recv_context(
+        self, is_dense=True, split_dense_table=False, use_origin_program=False
+    ):
         recv_id_maps = {}
         if is_dense:
             send_ctx = self.get_the_one_send_context(
                 split_dense_table=split_dense_table,
-                use_origin_program=use_origin_program)
+                use_origin_program=use_origin_program,
+            )
             for idx, (name, ctx) in enumerate(send_ctx.items()):
                 if ctx.is_sparse():
                     continue
@@ -752,8 +902,22 @@ class CompileTimeStrategy(object):
         endpoints = self.get_ps_endpoints()
         sections = [1] * len(endpoints)
         names = [name] * len(endpoints)
-        ctx = CommContext(name, names, endpoints, sections, [name], trainer_id,
-                          True, False, False, idx, True, False, -1, [])
+        ctx = CommContext(
+            name,
+            names,
+            endpoints,
+            sections,
+            [name],
+            trainer_id,
+            True,
+            False,
+            False,
+            idx,
+            True,
+            False,
+            -1,
+            [],
+        )
         return name, ctx
 
     def _create_vars_from_blocklist(self, block_list):
@@ -784,20 +948,23 @@ class CompileTimeStrategy(object):
 
             if len(split) == 1:
                 var_mapping[varname] = [orig_var]
-                self.var_distributed.add_distributed_var(origin_var=orig_var,
-                                                         slice_var=orig_var,
-                                                         block_id=0,
-                                                         offset=0,
-                                                         is_slice=False,
-                                                         vtype="Param")
+                self.var_distributed.add_distributed_var(
+                    origin_var=orig_var,
+                    slice_var=orig_var,
+                    block_id=0,
+                    offset=0,
+                    is_slice=False,
+                    vtype="Param",
+                )
             else:
                 var_mapping[varname] = []
                 orig_shape = orig_var.shape
                 orig_dim1_flatten = 1
 
                 if len(orig_shape) >= 2:
-                    orig_dim1_flatten = reduce(lambda x, y: x * y,
-                                               orig_shape[1:])
+                    orig_dim1_flatten = reduce(
+                        lambda x, y: x * y, orig_shape[1:]
+                    )
 
                 for i, block in enumerate(split):
                     size = block[1]
@@ -813,7 +980,8 @@ class CompileTimeStrategy(object):
                         dtype=orig_var.dtype,
                         type=orig_var.type,
                         lod_level=orig_var.lod_level,
-                        persistable=False)
+                        persistable=False,
+                    )
                     var_mapping[varname].append(slice_var)
 
                     self.var_distributed.add_distributed_var(
@@ -822,7 +990,8 @@ class CompileTimeStrategy(object):
                         block_id=i,
                         offset=-1,
                         is_slice=False,
-                        vtype="Param")
+                        vtype="Param",
+                    )
 
         return var_mapping
 
@@ -871,11 +1040,9 @@ class CompileTimeStrategy(object):
                 self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
                 self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
 
-    def _slice_variable(self,
-                        var_list,
-                        slice_count,
-                        min_block_size,
-                        uniform=False):
+    def _slice_variable(
+        self, var_list, slice_count, min_block_size, uniform=False
+    ):
         """
         We may need to split dense tensor to one or more blocks and put
         them equally onto parameter server. One block is a sub-tensor
@@ -906,7 +1073,8 @@ class CompileTimeStrategy(object):
                 else:
                     split_count = slice_count
                     max_pserver_count = int(
-                        math.floor(var_numel / float(min_block_size)))
+                        math.floor(var_numel / float(min_block_size))
+                    )
                     if max_pserver_count == 0:
                         max_pserver_count = 1
                     if max_pserver_count < slice_count:
@@ -922,10 +1090,12 @@ class CompileTimeStrategy(object):
                         # update split_count after aligning
                 split_count = int(math.ceil(var_numel / float(block_size)))
                 for block_id in range(split_count):
-                    curr_block_size = min(block_size,
-                                          var_numel - ((block_id) * block_size))
-                    block = vars_metatools.VarBlock(var.name, block_id,
-                                                    curr_block_size)
+                    curr_block_size = min(
+                        block_size, var_numel - ((block_id) * block_size)
+                    )
+                    block = vars_metatools.VarBlock(
+                        var.name, block_id, curr_block_size
+                    )
                     blocks.append(str(block))
             else:
                 block_size = var.shape[0] / slice_count
@@ -966,13 +1136,13 @@ class CompileTimeStrategy(object):
 
                 # when we slice var up into blocks, we will slice the var according to
                 # pserver services' count. A pserver may have two or more listening ports.
-        grad_blocks = self._slice_variable(grad_list,
-                                           len(self.get_ps_endpoints()),
-                                           min_block_size, uniform)
+        grad_blocks = self._slice_variable(
+            grad_list, len(self.get_ps_endpoints()), min_block_size, uniform
+        )
 
-        param_blocks = self._slice_variable(param_list,
-                                            len(self.get_ps_endpoints()),
-                                            min_block_size, uniform)
+        param_blocks = self._slice_variable(
+            param_list, len(self.get_ps_endpoints()), min_block_size, uniform
+        )
         return param_blocks, grad_blocks
 
     def _var_slice_and_distribute(self):
@@ -982,15 +1152,17 @@ class CompileTimeStrategy(object):
         # 3. grad_param_mapping : grad.blockx->param.blockx
         # 4. param_grad_ep_mapping : ep->{"params" : [], "grads" : [] }
 
-        dps, dgs = self._get_param_grad_blocks(self.merged_dense_pairs,
-                                               self.min_block_size, False)
-        sps, sgs = self._get_param_grad_blocks(self.merged_sparse_pairs,
-                                               self.min_block_size, True)
+        dps, dgs = self._get_param_grad_blocks(
+            self.merged_dense_pairs, self.min_block_size, False
+        )
+        sps, sgs = self._get_param_grad_blocks(
+            self.merged_sparse_pairs, self.min_block_size, True
+        )
 
         param_blocks = dps + sps
         grad_blocks = dgs + sgs
 
-        assert (len(grad_blocks) == len(param_blocks))
+        assert len(grad_blocks) == len(param_blocks)
 
         # origin_param_name->[splited_param_vars]
         self.param_var_mapping = self._create_vars_from_blocklist(param_blocks)
@@ -1001,8 +1173,9 @@ class CompileTimeStrategy(object):
         for g, p in zip(grad_blocks, param_blocks):
             g_name, g_bid, _ = g.split(":")
             p_name, p_bid, _ = p.split(":")
-            self.grad_param_mapping[self.grad_var_mapping[g_name][int(g_bid)]] = \
-                self.param_var_mapping[p_name][int(p_bid)]
+            self.grad_param_mapping[
+                self.grad_var_mapping[g_name][int(g_bid)]
+            ] = self.param_var_mapping[p_name][int(p_bid)]
 
         print_maps = {}
         for k, v in self.grad_param_mapping.items():
@@ -1011,10 +1184,8 @@ class CompileTimeStrategy(object):
         # create mapping of endpoint->split var to create pserver side program
         self.param_grad_ep_mapping = collections.OrderedDict()
         [
-            self.param_grad_ep_mapping.update({ep: {
-                "params": [],
-                "grads": []
-            }}) for ep in self.get_ps_endpoints()
+            self.param_grad_ep_mapping.update({ep: {"params": [], "grads": []}})
+            for ep in self.get_ps_endpoints()
         ]
 
     def _build_var_distributed(self):
@@ -1055,7 +1226,8 @@ class CompileTimeStrategy(object):
         for merged in self.merged_variables_pairs:
             m_param, m_grad = merged
             self.merged_variable_map[
-                m_param.merged_var.name] = m_param.merged_var
+                m_param.merged_var.name
+            ] = m_param.merged_var
             self.merged_variable_map[m_grad.merged_var.name] = m_grad.merged_var
 
         param_merges = []
@@ -1096,8 +1268,10 @@ class CompileTimeStrategy(object):
             for op in block.ops:
                 if _is_opt_role_op(op):
                     # delete clip op from opt_ops when run in Parameter Server mode
-                    if OP_NAME_SCOPE in op.all_attrs() \
-                            and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
+                    if (
+                        OP_NAME_SCOPE in op.all_attrs()
+                        and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE)
+                    ):
                         op._set_attr("op_role", role_id)
                         continue
                     if op.attr(OP_ROLE_VAR_ATTR_NAME):
@@ -1105,8 +1279,10 @@ class CompileTimeStrategy(object):
                         grad_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
                         if param_name not in optimize_params:
                             optimize_params.add(param_name)
-                            param_grad = (origin_var_dict[param_name],
-                                          origin_var_dict[grad_name])
+                            param_grad = (
+                                origin_var_dict[param_name],
+                                origin_var_dict[grad_name],
+                            )
 
                             if param_name in sparse_varnames:
                                 sparse_param_grads.append(param_grad)
@@ -1117,8 +1293,10 @@ class CompileTimeStrategy(object):
         def _get_sparse_varnames():
             varnames = []
             for op in origin_program.global_block().ops:
-                if op.type in SPARSE_OP_TYPE_DICT.keys() \
-                        and op.attr('remote_prefetch') is True:
+                if (
+                    op.type in SPARSE_OP_TYPE_DICT.keys()
+                    and op.attr('remote_prefetch') is True
+                ):
                     param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
                     varnames.append(param_name)
 
@@ -1126,7 +1304,8 @@ class CompileTimeStrategy(object):
 
         sparse_varnames = _get_sparse_varnames()
         sparse_param_grads, dense_param_grads = _get_params_grads(
-            sparse_varnames)
+            sparse_varnames
+        )
 
         return sparse_param_grads, dense_param_grads
 
@@ -1160,8 +1339,9 @@ def _is_opt_role_op(op):
     # optimize
     op_maker = core.op_proto_and_checker_maker
     optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-    if op_maker.kOpRoleAttrName() in op.attr_names and \
-            int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+    if op_maker.kOpRoleAttrName() in op.attr_names and int(
+        op.all_attrs()[op_maker.kOpRoleAttrName()]
+    ) == int(optimize_role):
         return True
     return False
 
@@ -1172,11 +1352,14 @@ def _get_optimize_ops(_program):
     for op in block.ops:
         if _is_opt_role_op(op):
             # delete clip op from opt_ops when run in Parameter Server mode
-            if OP_NAME_SCOPE in op.all_attrs() \
-                    and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
+            if (
+                OP_NAME_SCOPE in op.all_attrs()
+                and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE)
+            ):
                 op._set_attr(
                     "op_role",
-                    int(core.op_proto_and_checker_maker.OpRole.Backward))
+                    int(core.op_proto_and_checker_maker.OpRole.Backward),
+                )
                 continue
             opt_ops.append(op)
     return opt_ops
@@ -1185,17 +1368,28 @@ def _get_optimize_ops(_program):
 def _add_lr_decay_table_pass(main_program, compiled_config, lr_decay_steps):
     if hasattr(compiled_config.origin_main_program, 'lr_sheduler'):
         from paddle.optimizer.lr import LRScheduler
-        assert isinstance(compiled_config.origin_main_program.lr_sheduler,
-                          LRScheduler), "must be LRScheduler"
+
+        assert isinstance(
+            compiled_config.origin_main_program.lr_sheduler, LRScheduler
+        ), "must be LRScheduler"
         ops = _get_optimize_ops(compiled_config.origin_main_program)
         lr_param_dict = _get_lr_param_dict(ops)
-        lr_decay_main_program, lr_decay_startup_program, lr_name = _get_lr_sheduler_program(
-            compiled_config.origin_main_program.lr_sheduler, lr_param_dict,
-            lr_decay_steps)
-        compiled_config.add_tensor_table("@LR_DECAY_COUNTER@", lr_name,
-                                         lr_decay_startup_program,
-                                         lr_decay_main_program,
-                                         "GlobalStepTable")
+        (
+            lr_decay_main_program,
+            lr_decay_startup_program,
+            lr_name,
+        ) = _get_lr_sheduler_program(
+            compiled_config.origin_main_program.lr_sheduler,
+            lr_param_dict,
+            lr_decay_steps,
+        )
+        compiled_config.add_tensor_table(
+            "@LR_DECAY_COUNTER@",
+            lr_name,
+            lr_decay_startup_program,
+            lr_decay_main_program,
+            "GlobalStepTable",
+        )
 
 
 def _get_lr_param_dict(opt_ops):
@@ -1211,11 +1405,26 @@ def _get_lr_param_dict(opt_ops):
 
 def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
     schedler_decay = [
-        'NoamDecay', 'NaturalExpDecay', 'InverseTimeDecay', 'ExponentialDecay'
+        'NoamDecay',
+        'NaturalExpDecay',
+        'InverseTimeDecay',
+        'ExponentialDecay',
     ]
 
-    from paddle.optimizer.lr import ExponentialDecay, NoamDecay, PiecewiseDecay, NaturalExpDecay, InverseTimeDecay
-    from paddle.fluid.layers.learning_rate_scheduler import exponential_decay, noam_decay, piecewise_decay, natural_exp_decay, inverse_time_decay
+    from paddle.optimizer.lr import (
+        ExponentialDecay,
+        NoamDecay,
+        PiecewiseDecay,
+        NaturalExpDecay,
+        InverseTimeDecay,
+    )
+    from paddle.fluid.layers.learning_rate_scheduler import (
+        exponential_decay,
+        noam_decay,
+        piecewise_decay,
+        natural_exp_decay,
+        inverse_time_decay,
+    )
 
     decay_main_program = fluid.framework.Program()
     decay_startup_program = fluid.framework.Program()
@@ -1230,13 +1439,16 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
                 "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
                 "\t strategy.a_sync = True \n"
                 "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
-                % lr_decay_steps)
+                % lr_decay_steps
+            )
     elif isinstance(lr_sheduler, NoamDecay):
         with fluid.program_guard(decay_main_program, decay_startup_program):
             lr = noam_decay(lr_sheduler.d_model, lr_sheduler.warmup_steps, 1.0)
             lr_name = lr.name
-            logging.warn("NoamDecay is set, warmup steps is [ %d ]" %
-                         lr_sheduler.warmup_steps)
+            logging.warn(
+                "NoamDecay is set, warmup steps is [ %d ]"
+                % lr_sheduler.warmup_steps
+            )
     elif isinstance(lr_sheduler, NaturalExpDecay):
         with fluid.program_guard(decay_main_program, decay_startup_program):
             lr = natural_exp_decay(1.0, lr_decay_steps, lr_sheduler.gamma, True)
@@ -1246,22 +1458,27 @@ def _get_lr_sheduler_program(lr_sheduler, lr_param_dict, lr_decay_steps):
                 "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
                 "\t strategy.a_sync = True \n"
                 "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
-                % lr_decay_steps)
+                % lr_decay_steps
+            )
     elif isinstance(lr_sheduler, InverseTimeDecay):
         with fluid.program_guard(decay_main_program, decay_startup_program):
-            lr = inverse_time_decay(1.0, lr_decay_steps, lr_sheduler.gamma,
-                                    True)
+            lr = inverse_time_decay(
+                1.0, lr_decay_steps, lr_sheduler.gamma, True
+            )
             lr_name = lr.name
             logging.warn(
                 "InverseTimeDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"
                 "\t strategy = paddle.distributed.fleet.DistributedStrategy() \n "
                 "\t strategy.a_sync = True \n"
                 "\t strategy.a_sync_configs= { 'lr_decay_steps' : YOUR_DECAY_STEP } \n"
-                % lr_decay_steps)
+                % lr_decay_steps
+            )
     else:
         raise ValueError(
-            "Not supported current LearningRate strategy, please use follow decay strategy: {}"
-            .format(schedler_decay))
+            "Not supported current LearningRate strategy, please use follow decay strategy: {}".format(
+                schedler_decay
+            )
+        )
 
     return decay_main_program, decay_startup_program, lr_name
 
@@ -1273,15 +1490,15 @@ def _get_varname_parts(varname):
     block_part = ""
     trainer_idx = varname.find(".trainer_")
     if trainer_idx >= 0:
-        trainer_part = varname[trainer_idx + 1:]
+        trainer_part = varname[trainer_idx + 1 :]
     else:
         trainer_idx = len(varname)
     block_index = varname.find(".block")
     if block_index >= 0:
-        block_part = varname[block_index + 1:trainer_idx]
+        block_part = varname[block_index + 1 : trainer_idx]
     else:
         block_index = len(varname)
-    orig_var_name = varname[0:min(block_index, trainer_idx)]
+    orig_var_name = varname[0 : min(block_index, trainer_idx)]
     return orig_var_name, block_part, trainer_part
 
 

@@ -17,9 +17,9 @@ import math
 import numpy as np
 from ....log_helper import get_logger
 
-_logger = get_logger(__name__,
-                     logging.INFO,
-                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 __all__ = ['cal_kl_threshold']
 
@@ -38,11 +38,13 @@ def expand_quantized_bins(quantized_bins, reference_bins):
         if zero_count == num_merged_bins:
             avg_bin_ele = 0
         else:
-            avg_bin_ele = quantized_bins[idx] / (num_merged_bins - zero_count +
-                                                 0.0)
+            avg_bin_ele = quantized_bins[idx] / (
+                num_merged_bins - zero_count + 0.0
+            )
         for idx1 in range(j_start, j_end):
-            expanded_quantized_bins[idx1] = (0 if reference_bins[idx1] == 0 else
-                                             avg_bin_ele)
+            expanded_quantized_bins[idx1] = (
+                0 if reference_bins[idx1] == 0 else avg_bin_ele
+            )
         j_start += num_merged_bins
         j_end += num_merged_bins
         if (idx + 1) == len(quantized_bins) - 1:
@@ -65,8 +67,12 @@ def safe_entropy(reference_distr_P, P_sum, candidate_distr_Q, Q_sum):
             tmp_sum2 += 0
         else:
             if q_idx == 0:
-                _logger.error("Fatal error!, idx = " + str(idx) +
-                              " qindex = 0! p_idx = " + str(p_idx))
+                _logger.error(
+                    "Fatal error!, idx = "
+                    + str(idx)
+                    + " qindex = 0! p_idx = "
+                    + str(p_idx)
+                )
             tmp_sum1 += p_idx * (math.log(Q_sum * p_idx))
             tmp_sum2 += p_idx * (math.log(P_sum * q_idx))
     return (tmp_sum1 - tmp_sum2) / P_sum
@@ -84,7 +90,7 @@ def cal_kl_threshold(hist, bin_width, bits):
     assert hist.ndim == 1
     hist_bins = hist.shape[0]
     starting_iter = int((hist_bins - 1) * 0.5)
-    quant_range = 2**(bits - 1) - 1
+    quant_range = 2 ** (bits - 1) - 1
 
     P_sum = np.sum(np.array(hist).ravel())
     min_kl_divergence = 0
@@ -105,16 +111,19 @@ def cal_kl_threshold(hist, bin_width, bits):
         j_end = num_merged_bins
         for idx in range(quant_range):
             candidate_distr_Q_quantized[idx] = sum(
-                candidate_distr_Q[j_start:j_end])
+                candidate_distr_Q[j_start:j_end]
+            )
             j_start += num_merged_bins
             j_end += num_merged_bins
             if (idx + 1) == quant_range - 1:
                 j_end = i
-        candidate_distr_Q = expand_quantized_bins(candidate_distr_Q_quantized,
-                                                  reference_distr_bins)
+        candidate_distr_Q = expand_quantized_bins(
+            candidate_distr_Q_quantized, reference_distr_bins
+        )
         Q_sum = sum(candidate_distr_Q)
-        kl_divergence = safe_entropy(reference_distr_P, P_sum,
-                                     candidate_distr_Q, Q_sum)
+        kl_divergence = safe_entropy(
+            reference_distr_P, P_sum, candidate_distr_Q, Q_sum
+        )
         if not kl_inited:
             min_kl_divergence = kl_divergence
             min_kl_index = i

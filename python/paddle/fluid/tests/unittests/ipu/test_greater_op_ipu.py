@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestGreaterThan(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -35,12 +34,12 @@ class TestGreaterThan(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
-        y = paddle.static.data(name=self.feed_list[1],
-                               shape=self.feed_shape[1],
-                               dtype='float32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        y = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
         out = self.op(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -114,25 +113,21 @@ class TestGreaterThan(IPUOpTest):
 
 
 class TestLessThan(TestGreaterThan):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.less_than
 
 
 class TestEqual(TestGreaterThan):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.equal
 
 
 class TestGreaterEqual(TestGreaterThan):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.greater_equal
 
 
 class TestLessEqual(TestGreaterThan):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.less_equal
 

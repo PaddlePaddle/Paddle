@@ -173,6 +173,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_reshape2_matmul_fuse_pass PROPERTIES TIMEOUT 240)
+    set_tests_properties(test_preln_layernorm_x_fuse_pass PROPERTIES TIMEOUT
+                                                                     240)
     set_tests_properties(test_trt_flatten2_matmul_fuse_pass PROPERTIES TIMEOUT
                                                                        240)
     set_tests_properties(test_trt_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT

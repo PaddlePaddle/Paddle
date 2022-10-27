@@ -149,7 +149,7 @@ void MatmulScaleFusePass::ApplyImpl(ir::Graph* graph) const {
       auto* scale_var = scope->FindVar(scale_var_name);
       // ScaleTensor must be weight
       if (scale_var == nullptr) return;
-      auto* scale_tensor = scale_var->GetMutable<LoDTensor>();
+      auto* scale_tensor = scale_var->GetMutable<phi::DenseTensor>();
       scale = *(scale_tensor->data<float>());
     }
 
@@ -211,12 +211,12 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
       auto* scale_var = scope->FindVar(scale_var_name);
       // ScaleTensor must be weight
       if (scale_var == nullptr) return;
-      auto* scale_tensor = scale_var->GetMutable<LoDTensor>();
+      auto* scale_tensor = scale_var->GetMutable<phi::DenseTensor>();
       scale = *(scale_tensor->data<float>());
     }
 
     auto* matmul_y =
-        scope->FindVar(matmul_v2_in_y->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(matmul_v2_in_y->Name())->GetMutable<phi::DenseTensor>();
     auto y_data = matmul_y->mutable_data<float>(platform::CPUPlace());
     for (int i = 0; i < matmul_y->numel(); ++i) {
       y_data[i] *= scale;

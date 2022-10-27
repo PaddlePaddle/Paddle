@@ -26,7 +26,6 @@ from test_attribute_var import UnittestBase
 
 
 class TestEyeOp(OpTest):
-
     def setUp(self):
         '''
         Test eye op with specified shape
@@ -38,7 +37,7 @@ class TestEyeOp(OpTest):
         self.attrs = {
             'num_rows': 219,
             'num_columns': 319,
-            'dtype': framework.convert_np_dtype_to_dtype_(np.int32)
+            'dtype': framework.convert_np_dtype_to_dtype_(np.int32),
         }
         self.outputs = {'Out': np.eye(219, 319, dtype=np.int32)}
 
@@ -47,7 +46,6 @@ class TestEyeOp(OpTest):
 
 
 class TestEyeOp1(OpTest):
-
     def setUp(self):
         '''
         Test eye op with default parameters
@@ -64,7 +62,6 @@ class TestEyeOp1(OpTest):
 
 
 class TestEyeOp2(OpTest):
-
     def setUp(self):
         '''
         Test eye op with specified shape
@@ -81,13 +78,12 @@ class TestEyeOp2(OpTest):
 
 
 class API_TestTensorEye(unittest.TestCase):
-
     def test_out(self):
         with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10)
             place = fluid.CPUPlace()
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[data])
+            (result,) = exe.run(fetch_list=[data])
             expected_result = np.eye(10, dtype="float32")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -95,7 +91,7 @@ class API_TestTensorEye(unittest.TestCase):
             data = paddle.eye(10, num_columns=7, dtype="float64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[data])
+            (result,) = exe.run(fetch_list=[data])
             expected_result = np.eye(10, 7, dtype="float64")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -103,7 +99,7 @@ class API_TestTensorEye(unittest.TestCase):
             data = paddle.eye(10, dtype="int64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[data])
+            (result,) = exe.run(fetch_list=[data])
             expected_result = np.eye(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -125,8 +121,9 @@ class API_TestTensorEye(unittest.TestCase):
             result = tmp_result
             expected_result = np.stack(result, axis=0)
         paddle.enable_static()
-        self.assertEqual(out.numpy().shape == np.array(expected_result).shape,
-                         True)
+        self.assertEqual(
+            out.numpy().shape == np.array(expected_result).shape, True
+        )
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
         paddle.disable_static()
@@ -141,8 +138,9 @@ class API_TestTensorEye(unittest.TestCase):
             result = tmp_result
             expected_result = np.stack(result, axis=0)
         paddle.enable_static()
-        self.assertEqual(out.numpy().shape == np.array(expected_result).shape,
-                         True)
+        self.assertEqual(
+            out.numpy().shape == np.array(expected_result).shape, True
+        )
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
     def test_errors(self):
@@ -165,7 +163,6 @@ class API_TestTensorEye(unittest.TestCase):
 
 
 class TestEyeRowsCol(UnittestBase):
-
     def init_info(self):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
@@ -191,8 +188,9 @@ class TestEyeRowsCol(UnittestBase):
             res = exe.run(fetch_list=[tmp, out])
             gt = np.eye(3, 10)
             np.testing.assert_allclose(res[0], gt)
-            paddle.static.save_inference_model(self.save_path, [x], [tmp, out],
-                                               exe)
+            paddle.static.save_inference_model(
+                self.save_path, [x], [tmp, out], exe
+            )
             # Test for Inference Predictor
             infer_outs = self.infer_prog()
             np.testing.assert_allclose(infer_outs[0], gt)
@@ -215,7 +213,6 @@ class TestEyeRowsCol(UnittestBase):
 
 
 class TestEyeRowsCol2(TestEyeRowsCol):
-
     def call_func(self, x):
         rows = paddle.assign(3)
         cols = paddle.assign(10)

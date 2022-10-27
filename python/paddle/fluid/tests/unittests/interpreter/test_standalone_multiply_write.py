@@ -22,19 +22,17 @@ paddle.enable_static()
 
 
 class TestMultiplyWrite(TestCompatibility):
-
     def _get_feed(self):
-        """ return the feeds
-        """
+        """return the feeds"""
         return None
 
     def build_program(self):
         main_program = Program()
         startup_program = Program()
         with paddle.static.program_guard(main_program, startup_program):
-            out = paddle.full((1, ), 1)
-            inp1 = paddle.full((1, ), 2)
-            inp2 = paddle.full((1, ), 3)
+            out = paddle.full((1,), 1)
+            inp1 = paddle.full((1,), 2)
+            inp2 = paddle.full((1,), 3)
 
             paddle.fluid.layers.assign(inp1, out)
             paddle.fluid.layers.assign(inp2, out)

@@ -43,15 +43,15 @@ dim_feedforward = 4 * d_model
 
 
 class EmbeddingNet(Layer):
-
     def __init__(self):
         super(EmbeddingNet, self).__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
         self.position_embeddings = nn.Embedding(vocab_size, hidden_size)
 
     def forward(self, x):
-        attention_mask = paddle.tensor.triu((paddle.ones(
-            (length, length), dtype="float32") * -1e9), 1)
+        attention_mask = paddle.tensor.triu(
+            (paddle.ones((length, length), dtype="float32") * -1e9), 1
+        )
 
         no_used = paddle.ones((3, 3), dtype="int32")
 
@@ -66,7 +66,6 @@ class EmbeddingNet(Layer):
 
 
 class TransformerNet(Layer):
-
     def __init__(self):
         super(TransformerNet, self).__init__()
         self.linear1 = nn.Linear(d_model, dim_feedforward)
@@ -82,7 +81,9 @@ class TransformerNet(Layer):
         q = self.q_proj(x)
         k = self.k_proj(x)
         v = self.v_proj(x)
-        product = layers.matmul(x=q, y=k, transpose_y=True, alpha=d_model**-0.5)
+        product = layers.matmul(
+            x=q, y=k, transpose_y=True, alpha=d_model**-0.5
+        )
 
         weights = F.softmax(product + mask)
         tgt = layers.matmul(weights, v)
@@ -95,13 +96,11 @@ class TransformerNet(Layer):
 
 
 class EmbeddingPipe(EmbeddingNet):
-
     def forward(self, x):
         return super().forward(x)
 
 
 class TransformerNetPipe(TransformerNet):
-
     def forward(self, args):
         x, mask, no_used, p_emb = args[0], args[1], args[2], args[3]
 
@@ -112,7 +111,6 @@ class TransformerNetPipe(TransformerNet):
 
 
 class CriterionPipe(Layer):
-
     def __init__(self):
         super(CriterionPipe, self).__init__()
 
@@ -122,7 +120,6 @@ class CriterionPipe(Layer):
 
 
 class ModelPipe(PipelineLayer):
-
     def __init__(self, topology):
         self.descs = []
         self.descs.append(LayerDesc(EmbeddingPipe))
@@ -137,11 +134,11 @@ class ModelPipe(PipelineLayer):
             loss_fn=CriterionPipe(),
             topology=topology,
             num_virtual_pipeline_stages=num_virtual_pipeline_stages,
-            seg_method="layer:TransformerNetPipe")
+            seg_method="layer:TransformerNetPipe",
+        )
 
 
 class TestDistPPTraning(unittest.TestCase):
-
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -154,7 +151,7 @@ class TestDistPPTraning(unittest.TestCase):
         }
         strategy.pipeline_configs = {
             "accumulate_steps": batch_size // micro_batch_size,
-            "micro_batch_size": micro_batch_size
+            "micro_batch_size": micro_batch_size,
         }
         fleet.init(is_collective=True, strategy=strategy)
 
@@ -168,11 +165,12 @@ class TestDistPPTraning(unittest.TestCase):
         set_random_seed(1024, dp_id, rank_id)
 
         model = ModelPipe(topology)
-        scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
-                                                       values=[0.001, 0.002],
-                                                       verbose=True)
-        optimizer = paddle.optimizer.SGD(learning_rate=scheduler,
-                                         parameters=model.parameters())
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2], values=[0.001, 0.002], verbose=True
+        )
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=scheduler, parameters=model.parameters()
+        )
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)

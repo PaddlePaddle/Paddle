@@ -1367,6 +1367,17 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         process_level_allocator_enabled = true;
       }
 
+      // support set flags from enviorment.
+      const platform::ExportedFlagInfoMap &env_map =
+          platform::GetExportedFlagInfoMap();
+      std::ostringstream os;
+      os << "--tryfromenv=";
+      for (auto &pair : env_map) {
+        os << pair.second.name << ",";
+      }
+      auto tryfromenv_str = os.str();
+      gflags.push_back(os.str().substr(0, tryfromenv_str.size() - 1));
+
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "
                    "for the first predictor: ";
@@ -2260,6 +2271,7 @@ USE_TRT_CONVERTER(shape)
 USE_TRT_CONVERTER(fill_constant)
 USE_TRT_CONVERTER(fused_token_prune)
 USE_TRT_CONVERTER(layernorm_shift_partition)
+USE_TRT_CONVERTER(preln_layernorm_shift_partition)
 USE_TRT_CONVERTER(merge_layernorm)
 USE_TRT_CONVERTER(generic_plugin_creater)
 USE_TRT_CONVERTER(custom_plugin_creater)

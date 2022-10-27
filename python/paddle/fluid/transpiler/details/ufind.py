@@ -14,7 +14,7 @@
 
 
 class UnionFind(object):
-    """ Union-find data structure.
+    """Union-find data structure.
 
     Union-find is a data structure that keeps track of a set of elements partitioned
     into a number of disjoint (non-overlapping) subsets.

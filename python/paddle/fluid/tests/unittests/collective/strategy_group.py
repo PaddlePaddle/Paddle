@@ -16,7 +16,13 @@ import unittest
 import numpy as np
 import paddle
 import paddle.distributed as dist
-from paddle.distributed.fleet.base.strategy_group import StrategyGroupBase, DPGroup, MPGroup, PPGroup, ShardingGroup
+from paddle.distributed.fleet.base.strategy_group import (
+    StrategyGroupBase,
+    DPGroup,
+    MPGroup,
+    PPGroup,
+    ShardingGroup,
+)
 
 
 def _check_using_all_reduce(group):
@@ -39,7 +45,6 @@ def _check_using_recv(group, src):
 
 
 class TestStrategyGroupAPI(unittest.TestCase):
-
     def setUp(self):
         self._num_of_ranks = 2
         self._list_of_rank = [[0, 1]]
@@ -74,7 +79,12 @@ class TestStrategyGroupAPI(unittest.TestCase):
 
     def test_pipeline_parallel_group(self):
         pp_group = PPGroup(self._list_of_rank)
-        send_next_group, send_prev_group, recv_next_group, recv_prev_group = pp_group.p2p_groups
+        (
+            send_next_group,
+            send_prev_group,
+            recv_next_group,
+            recv_prev_group,
+        ) = pp_group.p2p_groups
         if self._global_rank == 0:
             self.assertEqual(pp_group.rank_of_next_stage, 1)
             self.assertEqual(pp_group.rank_of_prev_stage, 1)
