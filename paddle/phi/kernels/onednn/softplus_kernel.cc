@@ -20,20 +20,21 @@
 namespace phi {
 
 template <typename T>
-class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
+class SoftplusOneDNNHandler
+    : public funcs::OneDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
   SoftplusOneDNNHandler(const dnnl::engine onednn_engine,
                         Place cpu_place,
                         const phi::DenseTensor* x,
                         const float beta)
-      : OneDNNHandlerNoCachingT<T, dnnl::binary>(onednn_engine, cpu_place) {
+      : funcs::OneDNNHandlerNoCachingT<T, dnnl::binary>(onednn_engine,
+                                                        cpu_place) {
     auto x_tz = phi::vectorize(x->dims());
 
     auto beta_tz = std::vector<int64_t>(x_tz.size(), 1);
-    auto beta_md =
-        dnnl::memory::desc(beta_tz,
-                           platform::OneDNNGetDataType<T>(),
-                           platform::GetPlainOneDNNFormat(x_tz.size()));
+    auto beta_md = dnnl::memory::desc(beta_tz,
+                                      funcs::OneDNNGetDataType<T>(),
+                                      funcs::GetPlainOneDNNFormat(x_tz.size()));
 
     dnnl::post_ops post_ops;
     post_ops.append_eltwise(
@@ -43,7 +44,7 @@ class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
           1.0f, dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
     }
 
-    platform::AppendActivation(ctx, post_ops);
+    // funcs::AppendActivation(this->dev_ctx_, post_ops);
 
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);
@@ -56,8 +57,8 @@ class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
   }
 
   std::shared_ptr<dnnl::memory> AcquireBetaMemory(const float* beta) {
-    return this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->src1_desc(), platform::to_void_cast<float>(beta));
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->src1_desc(),
+                                            funcs::to_void_cast<float>(beta));
   }
 };
 
