@@ -37,20 +37,20 @@ class BatchSampler(Sampler):
 
 
     Args:
-        dataset(Dataset): this could be a :code:`paddle.io.Dataset`
-                implement or other python object which implemented
+        dataset(Dataset): this should be an instance of a subclass of :code:`paddle.io.Dataset` or :code:`paddle.io.IterableDataset`
+                 or other python object which implemented
                 :code:`__len__` for BatchSampler to get indices as the
-                range of :attr:`dataset` length. Default None.
-        sampler (Sampler): this could be a :code:`paddle.io.Dataset`
-                instance which implemented :code:`__iter__` to yield
+                range of :attr:`dataset` length. Default None, disabled.
+        sampler (Sampler): this should be a :code:`paddle.io.Dataset`
+                instance which implemented :code:`__iter__` to generate
                 sample indices. :attr:`sampler` and :attr:`dataset`
                 can not be set in the same time.  If :attr:`sampler`
-                is set, :attr:`shuffle` should not be set. Default None.
-        shuffle(bool): whether to shuffle indices order before genrating
-                batch indices. Default False.
-        batch_size(int): sample indice number in a mini-batch indices.
-        drop_last(bool): whether drop the last incomplete batch dataset size
-            is not divisible by the batch size. Default False
+                is set, :attr:`dataset` should not be set. Default None, disabled.
+        shuffle(bool): whether to shuffle indices order before generating
+                batch indices. Default False, don't shuffle indices before generating batch indices.
+        batch_size(int): sample indice number in a mini-batch indices. default 1, each mini-batch includes 1 sample.
+        drop_last(bool): whether drop the last incomplete (less than 1 mini-batch) batch dataset. Default False, keep it.
+    see `paddle.io.DataLoader`
 
     Returns:
         BatchSampler: an iterable object for indices iterating
@@ -92,7 +92,6 @@ class BatchSampler(Sampler):
                 print(batch_indices)
 
 
-    see `paddle.io.DataLoader`
 
     """
 
