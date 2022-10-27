@@ -711,7 +711,9 @@ void Reducer::PrepareForBackward(
 
   if (find_unused_vars_once_ || find_unused_vars_each_step_) {
     unused_vars_.clear();
-    TraverseBackwardGraph(outputs);
+    if (grad_need_hooks_) {
+      TraverseBackwardGraph(outputs);
+    }
     // only check once in first step
     find_unused_vars_once_ = false;
   }
