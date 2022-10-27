@@ -305,7 +305,7 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
 
     // get weight tensor
     auto* weight_tensor = scope->GetVar(weight_dequantize_linear_op_x->Name())
-                              ->GetMutable<LoDTensor>();
+                              ->GetMutable<phi::DenseTensor>();
     int8_t* quantized_weight_data =
         weight_tensor->mutable_data<int8_t>(platform::CPUPlace());
     auto w_dims = weight_tensor->dims();
@@ -314,7 +314,7 @@ void DeleteWeightQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     std::vector<float> weight_scale;
     auto* weight_scale_tensor =
         scope->GetVar(weight_dequantize_linear_op_scale->Name())
-            ->GetMutable<LoDTensor>();
+            ->GetMutable<phi::DenseTensor>();
     float* weight_scale_data =
         weight_scale_tensor->mutable_data<float>(platform::CPUPlace());
 

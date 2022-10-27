@@ -82,7 +82,7 @@ TEST(EagerUtils, AutoGradMeta) {
   CHECK_NOTNULL(grad_node0.get());
 
   EagerUtils::SetHistory(autograd_meta1, test_node);
-  EagerUtils::SetHistory({autograd_meta1}, test_node);
+  EagerUtils::SetHistory(autograd_meta1, test_node);
   std::shared_ptr<GradNodeBase> grad_node1 = EagerUtils::grad_node(et1);
   CHECK_NOTNULL(grad_node1.get());
 
