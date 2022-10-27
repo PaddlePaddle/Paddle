@@ -21,7 +21,6 @@ from program_config import TensorConfig, ProgramConfig, OpConfig
 
 
 class TestFCElementwiseAddOneDNNFusePass(PassAutoScanTest):
-
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
         fc_as_x = draw(st.booleans())
@@ -31,64 +30,73 @@ class TestFCElementwiseAddOneDNNFusePass(PassAutoScanTest):
         def generate_data(shape):
             return np.random.random(shape).astype(np.float32)
 
-        relu_op = OpConfig(type='relu',
-                           inputs={'X': ['input_data']},
-                           outputs={'Out': ['relu_out']},
-                           attrs={})
+        relu_op = OpConfig(
+            type='relu',
+            inputs={'X': ['input_data']},
+            outputs={'Out': ['relu_out']},
+            attrs={},
+        )
 
-        fc_op = OpConfig(type='fc',
-                         inputs={
-                             'Input': ['relu_out'],
-                             'W': ['fc_weight'],
-                             'Bias': ['fc_bias']
-                         },
-                         outputs={'Out': ['fc_output']},
-                         attrs={
-                             'use_mkldnn': True,
-                             'padding_weights': False,
-                             'activation_type': '',
-                             'in_num_col_dims': 1,
-                         })
+        fc_op = OpConfig(
+            type='fc',
+            inputs={
+                'Input': ['relu_out'],
+                'W': ['fc_weight'],
+                'Bias': ['fc_bias'],
+            },
+            outputs={'Out': ['fc_output']},
+            attrs={
+                'use_mkldnn': True,
+                'padding_weights': False,
+                'activation_type': '',
+                'in_num_col_dims': 1,
+            },
+        )
 
         if fc_as_x:
             inputs = {'X': ['fc_output'], 'Y': ['input_data']}
         else:
             inputs = {'X': ['input_data'], 'Y': ['fc_output']}
 
-        elt_add_op = OpConfig(type='elementwise_add',
-                              inputs=inputs,
-                              outputs={'Out': ['elementwise_output']},
-                              attrs={
-                                  'axis': axis,
-                                  'use_mkldnn': True
-                              })
+        elt_add_op = OpConfig(
+            type='elementwise_add',
+            inputs=inputs,
+            outputs={'Out': ['elementwise_output']},
+            attrs={'axis': axis, 'use_mkldnn': True},
+        )
 
         model_net = [relu_op, fc_op, elt_add_op]
 
         program_config = ProgramConfig(
             ops=model_net,
             weights={
-                'fc_weight':
-                TensorConfig(data_gen=partial(generate_data, [fc_wei, fc_wei])),
-                'fc_bias':
-                TensorConfig(data_gen=partial(generate_data, [fc_wei])),
+                'fc_weight': TensorConfig(
+                    data_gen=partial(generate_data, [fc_wei, fc_wei])
+                ),
+                'fc_bias': TensorConfig(
+                    data_gen=partial(generate_data, [fc_wei])
+                ),
             },
             inputs={
-                'input_data':
-                TensorConfig(data_gen=partial(generate_data, [fc_in, fc_wei]))
+                'input_data': TensorConfig(
+                    data_gen=partial(generate_data, [fc_in, fc_wei])
+                )
             },
-            outputs=['elementwise_output'])
+            outputs=['elementwise_output'],
+        )
 
         return program_config
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True, passes=['fc_elementwise_add_mkldnn_fuse_pass'])
+            use_mkldnn=True, passes=['fc_elementwise_add_mkldnn_fuse_pass']
+        )
         yield config, ['relu', 'fc'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            passes=['fc_elementwise_add_mkldnn_fuse_pass'])
+        self.run_and_statis(
+            quant=False, passes=['fc_elementwise_add_mkldnn_fuse_pass']
+        )
 
 
 if __name__ == '__main__':
