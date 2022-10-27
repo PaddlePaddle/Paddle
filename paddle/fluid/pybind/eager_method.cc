@@ -1169,27 +1169,11 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
             "please check the type of tensor."));
       }
 
-      if (!value_tensor_tmp.initialized()) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        SetTensorFromPyArray(
-            static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
-            value,
-            platform::Place(platform::CUDAPlace(0)),
-            false);
-#else
-        SetTensorFromPyArray(
-            static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
-            value,
-            platform::Place(platform::CPUPlace()),
-            false);
-#endif
-      } else {
-        SetTensorFromPyArray(
-            static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
-            value,
-            value_tensor_tmp.place(),
-            false);
-      }
+      SetTensorFromPyArray(
+          static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
+          value,
+          self->tensor.place(),
+          false);
 
       value_tensor = value_tensor_tmp;
     } else {
