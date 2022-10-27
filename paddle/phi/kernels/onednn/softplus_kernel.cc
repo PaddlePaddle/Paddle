@@ -23,12 +23,11 @@ template <typename T>
 class SoftplusOneDNNHandler
     : public funcs::OneDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
-  SoftplusOneDNNHandler(const dnnl::engine onednn_engine,
-                        Place cpu_place,
+  SoftplusOneDNNHandler(const OneDNNContext& dev_ctx,
                         const phi::DenseTensor* x,
                         const float beta)
-      : funcs::OneDNNHandlerNoCachingT<T, dnnl::binary>(onednn_engine,
-                                                        cpu_place) {
+      : funcs::OneDNNHandlerNoCachingT<T, dnnl::binary>(dev_ctx.GetEngine(),
+                                                        dev_ctx.GetPlace()) {
     auto x_tz = phi::vectorize(x->dims());
 
     auto beta_tz = std::vector<int64_t>(x_tz.size(), 1);
@@ -44,7 +43,7 @@ class SoftplusOneDNNHandler
           1.0f, dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
     }
 
-    // funcs::AppendActivation(this->dev_ctx_, post_ops);
+    funcs::AppendActivation(dev_ctx, post_ops);
 
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);
@@ -68,8 +67,7 @@ void SoftplusKernel(const Context& dev_ctx,
                     float beta,
                     float threshold,
                     DenseTensor* out) {
-  SoftplusOneDNNHandler<T> handler(
-      dev_ctx.GetEngine(), dev_ctx.GetPlace(), &x, beta);
+  SoftplusOneDNNHandler<T> handler(dev_ctx, &x, beta);
 
   auto src_memory_p = handler.AcquireSrcMemory(&x);
   auto beta_memory_p = handler.AcquireBetaMemory(&beta);
