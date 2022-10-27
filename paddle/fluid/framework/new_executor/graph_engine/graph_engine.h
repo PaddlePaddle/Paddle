@@ -14,7 +14,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -119,6 +119,31 @@ class CustomGraphEngine final : public GraphEngine {
       const std::vector<std::string>& fetch_names) override {
     auto& block = *copy_program_->MutableBlock(0);
 
+    // feed
+    std::vector<char*> feed_tensor_name;
+    std::vector<void*> feed_tensor_data;
+
+    auto* feed_var = local_scope_->FindVar("feed");
+    if (feed_var) {
+      auto* feed_list = feed_var->GetMutable<framework::FeedList>();
+      for (size_t i = 0; i < feed_list->size(); ++i) {
+        auto& out_name = feed_names[i];
+        if (!cache_hit) {
+          auto* out_var = local_scope_->FindVar(out_name);
+          auto& feed_item =
+              paddle::get<0>(feed_list->at(static_cast<size_t>(i)));
+          auto out_tensor = out_var->GetMutable<phi::DenseTensor>();
+          out_tensor->Resize(feed_item.dims());
+          out_tensor->set_lod(feed_item.lod());
+          auto var = copy_program_->MutableBlock(0)->Var(out_name);
+          var->SetShape(phi::vectorize<int64_t>(feed_item.dims()));
+          // set_lod
+        }
+        feed_tensor_name.push_back(const_cast<char*>(out_name.c_str()));
+        feed_tensor_data.push_back(paddle::get<0>(feed_list->at(i)).data());
+      }
+    }
+
     if (!cache_hit) {
       auto var_scope = var_scope_.get();
       auto& local_scope = local_scope_;
@@ -160,6 +185,9 @@ class CustomGraphEngine final : public GraphEngine {
       for (size_t i = 0; i < ops.size(); ++i) {
         auto op = ops[i].get();
         const std::string& op_type = op->Type();
+        if (op_type == "feed" || op_type == "fetch_v2") {
+          continue;
+        }
 
         VLOG(6) << "Build OpFuncNode from : " << op_type;
 
@@ -250,25 +278,10 @@ class CustomGraphEngine final : public GraphEngine {
             if (op_with_kernel->PhiKernel()->IsValid()) {
               run_phi_kernel = true;
             } else {
-              if (!op_with_kernel->SupportsKernelType(expected_kernel_key,
-                                                      exec_ctx)) {
-                auto phi_cpu_kernel_key = FallBackToCpu(
-                    expected_kernel_key, phi_kernel_key, *op_with_kernel);
-                op_with_kernel->ResetPhiKernel(
-                    new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-                        phi_kernel_name, phi_cpu_kernel_key)));
-                if (op_with_kernel->PhiKernel()->IsValid()) {
-                  VLOG(6) << "Static mode PrepareImpl - kernel name: "
-                          << phi_kernel_name
-                          << " | kernel key: " << phi_cpu_kernel_key
-                          << " | kernel: " << *(op_with_kernel->PhiKernel());
-                  op_with_kernel->ResetKernelType(new OpKernelType(
-                      TransPhiKernelKeyToOpKernelType(phi_cpu_kernel_key)));
-                  run_phi_kernel = true;
-                }
-              }
+              run_phi_kernel = false;
             }
           }
+
           VLOG(4) << "if run phi kernel? : " << run_phi_kernel;
           if (!run_phi_kernel) {
             PADDLE_THROW(platform::errors::Fatal("Not found phi kernel for %s",
@@ -305,31 +318,6 @@ class CustomGraphEngine final : public GraphEngine {
       }
     }
 
-    // feed
-    std::vector<char*> feed_tensor_name;
-    std::vector<void*> feed_tensor_data;
-
-    auto* feed_var = local_scope_->FindVar("feed");
-    if (feed_var) {
-      auto* feed_list = feed_var->GetMutable<framework::FeedList>();
-      for (size_t i = 0; i < feed_list->size(); ++i) {
-        auto& out_name = feed_names[i];
-        if (!cache_hit) {
-          auto* out_var = local_scope_->FindVar(out_name);
-          auto& feed_item =
-              paddle::get<0>(feed_list->at(static_cast<size_t>(i)));
-          auto out_tensor = out_var->GetMutable<framework::LoDTensor>();
-          out_tensor->Resize(feed_item.dims());
-          out_tensor->set_lod(feed_item.lod());
-          auto var = copy_program_->MutableBlock(0)->Var(out_name);
-          var->SetShape(phi::vectorize<int64_t>(feed_item.dims()));
-          // set_lo
-        }
-        feed_tensor_name.push_back(const_cast<char*>(out_name.c_str()));
-        feed_tensor_data.push_back(paddle::get<0>(feed_list->at(i)).data());
-      }
-    }
-
     // fetch
     std::vector<char*> fetch_tensor_name;
     std::vector<void*> fetch_tensor_data;
@@ -340,7 +328,7 @@ class CustomGraphEngine final : public GraphEngine {
       for (size_t i = 0; i < fetch_list->size(); ++i) {
         auto* in_var = local_scope_->FindVar(fetch_names[i]);
 
-        if (in_var->IsType<framework::LoDTensor>()) {
+        if (in_var->IsType<phi::DenseTensor>()) {
           auto& fetch_item =
               paddle::get<0>(fetch_list->at(static_cast<size_t>(i)));
           fetch_item.Resize(
@@ -501,7 +489,7 @@ class DeprecatedCustomGraphEngine final : public GraphEngine {
           auto* out_var = local_scope_->FindVar(out_name);
           auto& feed_item =
               paddle::get<0>(feed_list->at(static_cast<size_t>(i)));
-          auto out_tensor = out_var->GetMutable<framework::LoDTensor>();
+          auto out_tensor = out_var->GetMutable<phi::DenseTensor>();
           out_tensor->Resize(feed_item.dims());
           out_tensor->set_lod(feed_item.lod());
           auto var = copy_program_->MutableBlock(0)->Var(out_name);
@@ -565,7 +553,7 @@ class DeprecatedCustomGraphEngine final : public GraphEngine {
       for (size_t i = 0; i < fetch_list->size(); ++i) {
         auto* in_var = local_scope_->FindVar(fetch_names[i]);
 
-        if (in_var->IsType<framework::LoDTensor>()) {
+        if (in_var->IsType<phi::DenseTensor>()) {
           auto& fetch_item =
               paddle::get<0>(fetch_list->at(static_cast<size_t>(i)));
           fetch_item.Resize(
