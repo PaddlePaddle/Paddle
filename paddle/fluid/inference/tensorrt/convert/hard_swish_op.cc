@@ -41,7 +41,6 @@ class HardSwishOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
-    int input_num = op_desc.Input("X").size();
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
     const float threshold =
@@ -94,7 +93,7 @@ class HardSwishOpConverter : public OpConverter {
                                    ElementWise,
                                    *pre_prod_with_input,
                                    *scale_data,
-                                   nvinfer1::ElementWiseOperation::kDIV)
+                                   nvinfer1::ElementWiseOperation::kDIV);
     }
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "hard_swish", {output_name}, test_mode);
