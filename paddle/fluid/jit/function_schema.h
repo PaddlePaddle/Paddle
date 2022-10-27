@@ -19,7 +19,6 @@
 #include <vector>
 
 namespace paddle {
-
 namespace framework {
 class ProgramDesc;
 }  // namespace framework

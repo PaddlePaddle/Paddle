@@ -80,10 +80,6 @@ Layer Deserializer::operator()(const std::string& path,
     } else if (FLAGS_jit_engine_type == "PE") {
       layer.SetEngine(func_name,
                       utils::MakeEngine<PEEngine>(info, params_dict, place));
-    } else if (FLAGS_jit_engine_type == "New") {
-      layer.SetEngine(
-          func_name,
-          utils::MakeEngine<InterpreterEngine>(info, params_dict, place));
     } else if (FLAGS_jit_engine_type == "Predictor") {
       layer.SetEngine(
           info->FunctionName(),

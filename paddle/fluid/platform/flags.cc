@@ -1015,7 +1015,6 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Note:
  * FLAGS_jit_engine_type == Executor, using ExecutorEngine by default
  * FLAGS_jit_engine_type == PE, using PEEngine by default
- * FLAGS_jit_engine_type == New, using InterpreterEngine by default
  * FLAGS_jit_engine_type == Predictor, using inference Predictor by default
  */
 PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
