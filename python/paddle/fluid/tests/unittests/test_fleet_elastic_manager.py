@@ -28,8 +28,13 @@ class MockLease:
 
 
 class MockKVMetadata:
-    def __init__(self):
-        self.key = b"host"
+    def __init__(self, key):
+        self.key = key
+        self.create_revision = 2
+        self.mod_revision = 3
+        self.version = 2
+        self.lease_id = 0
+        self.response_header = None
 
 
 class MockEtcdClient:
@@ -40,24 +45,26 @@ class MockEtcdClient:
         pass
 
     def get(self, key):
-        return b'0', MockKVMetadata()
+        return b'10.10.10.1:6001', MockKVMetadata(
+            b"/paddle/nodes/xyuwtd1666866618.522037"
+        )
 
     def delete_prefix(self, key):
         pass
 
     def get_prefix(self, key_prefix):
         hosts = [
-            (b"10.10.10.1:6001", MockKVMetadata()),
-            (b"10.10.10.2:6001", MockKVMetadata()),
+            (b"/paddle/nodes/xyuwtd1666866618.522037", b"10.10.10.1:6001"),
+            (b"/paddle/nodes/pyputy1666866653.8720498", b"10.10.10.2:6001"),
         ]
-        return hosts
+        return ((v, MockKVMetadata(k)) for k, v in hosts)
 
     def add_watch_callback(self, *args, **kwargs):
-        return "host_watch"
+        return 0
 
     def add_watch_prefix_callback(self, key_prefix, callback, **kwargs):
         callback(None)
-        return "host_watch"
+        return 0
 
     def cancel_watch(self, watch_id):
         pass
