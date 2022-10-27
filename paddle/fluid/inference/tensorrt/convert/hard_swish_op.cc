@@ -88,7 +88,7 @@ class HardSwishOpConverter : public OpConverter {
 
       auto* input_sum_with_offset = Sum(input, offset_data);
       auto* pre_max_with_zero = Max(input_sum_with_offset, zero_data);
-      auto* pre_min_with_threshold = Min(pre_max_with_zero, threshold);
+      auto* pre_min_with_threshold = Min(pre_max_with_zero, threshold_data);
       auto* pre_prod_with_input = Prod(pre_min_with_threshold, input);
       layer = TRT_ENGINE_ADD_LAYER(engine_,
                                    ElementWise,
