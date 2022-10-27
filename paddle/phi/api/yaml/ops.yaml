@@ -1,3 +1,21 @@
+- op : angle
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : angle
+  backward : angle_grad
+
+- op : argsort
+  args : (Tensor x, int axis=-1, bool descending=false)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : ArgsortInferMeta
+  kernel :
+    func : argsort
+  backward : argsort_grad
+
 - op : atan2
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -14,6 +32,15 @@
     func : UnchangedInferMeta
   kernel :
     func : bernoulli
+
+- op : bmm
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : BmmInferMeta
+  kernel :
+    func : bmm
+  backward : bmm_grad
 
 - op : cholesky
   args : (Tensor x, bool upper=false)
@@ -32,6 +59,15 @@
   kernel :
     func : cholesky_solve
   backward : cholesky_solve_grad
+
+- op : det
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : determinant
+  backward : det_grad
 
 - op : exp
   args : (Tensor x)

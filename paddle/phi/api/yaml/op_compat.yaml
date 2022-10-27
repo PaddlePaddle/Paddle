@@ -31,8 +31,19 @@
 
 - op : angle
   backward : angle_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_cudnn = false, bool use_mkldnn = false]
+
+- op : argsort
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    indices : Indices
 
 - op : asinh
   backward : asinh_grad
@@ -70,6 +81,12 @@
   backward : bilinear_interp_grad (bilinear_interp_v2_grad)
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : bmm
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : ceil
   backward : ceil_grad
@@ -187,6 +204,13 @@
 - op : dequantize_linear
   extra :
     attrs : [float moving_rate = 0.9]
+
+- op : det (determinant)
+  backward : det_grad (determinant_grad)
+  inputs :
+    x : Input
+  outputs :
+    out : Out
 
 - op : diag (diag_v2)
   backward : diag_grad (diag_v2_grad)
