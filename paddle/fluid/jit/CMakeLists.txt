@@ -48,6 +48,7 @@ cc_library(
        jit_executor_engine
        jit_pe_engine
        jit_interpreter_engine
+       jit_predictor_engine
        jit_function)
 
 if(WITH_TESTING AND NOT WIN32)
