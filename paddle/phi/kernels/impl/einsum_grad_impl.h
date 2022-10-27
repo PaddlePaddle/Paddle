@@ -115,6 +115,7 @@ void EinsumGradKernel(const Context& dev_ctx,
   for (auto& i : x) {
     input_dims.push_back(i->dims());
   }
+  std::vector<std::string> input_strs;
   std::string right;
   ParseEinsumEquation(equation,
                       input_dims,
@@ -125,7 +126,8 @@ void EinsumGradKernel(const Context& dev_ctx,
                       &ellipsis_dims,
                       &broadcast_dims,
                       &output_dims,
-                      &right);
+                      &right,
+                      &input_strs);
 
   auto gather_labels_except_reduction = [&labeltype](std::string all) {
     std::string res("");
