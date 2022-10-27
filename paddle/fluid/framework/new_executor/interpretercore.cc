@@ -245,6 +245,7 @@ paddle::framework::FetchList InterpreterCore::Run(
         &var_scope_,
         HasLocalScope(),
         execution_config_.used_for_jit);
+
     is_build_ = true;
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph

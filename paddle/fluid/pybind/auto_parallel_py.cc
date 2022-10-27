@@ -215,6 +215,9 @@ void BindAutoParallel(py::module *m) {
       .def_property("impl_idx",
                     &OperatorDistAttr::impl_idx,
                     &OperatorDistAttr::set_impl_idx)
+      .def_property("execution_stream",
+                    &OperatorDistAttr::execution_stream,
+                    &OperatorDistAttr::set_execution_stream)
       .def_property("annotated",
                     &OperatorDistAttr::annotated,
                     &OperatorDistAttr::set_annotated)

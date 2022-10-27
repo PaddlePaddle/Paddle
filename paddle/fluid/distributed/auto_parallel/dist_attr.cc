@@ -319,7 +319,7 @@ bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
 }
 
 std::vector<std::string> OperatorDistAttr::fields_{
-    "process_mesh", "impl_type", "impl_idx"};
+    "process_mesh", "impl_type", "impl_idx", "execution_stream"};
 
 OperatorDistAttr::OperatorDistAttr(const OpDesc& op) : op_(&op) {
   VLOG(4) << "[OperatorDistAttr constructor] op type: " << op_->Type();
@@ -376,8 +376,9 @@ void OperatorDistAttr::initialize() {
       output_dist_attrs_[name] = TensorDistAttr(*output);
     }
   }
-  impl_type_ = "default";
+  impl_type_ = kDefault;
   impl_idx_ = 0;
+  execution_stream_ = kDefault;
 }
 
 void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
@@ -386,6 +387,7 @@ void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
   set_process_mesh(dist_attr.process_mesh());
   set_impl_type(dist_attr.impl_type());
   set_impl_idx(dist_attr.impl_idx());
+  set_execution_stream(dist_attr.execution_stream());
   set_annotated(dist_attr.annotated());
   impl_type_ = dist_attr.impl_type();
   impl_idx_ = dist_attr.impl_idx();
@@ -666,6 +668,7 @@ std::string OperatorDistAttr::to_string() const {
   }
   str += "impl_type: " + impl_type_ + ", ";
   str += "impl_idx: " + std::to_string(impl_idx_) + ", ";
+  str += "execution_stream: " + execution_stream_ + ", ";
   str += "annotated: [" + str_join(annotated_) + "], ";
   str += "\nprocess_mesh: " + process_mesh_.to_string() + ", ";
   str += "\ninput_dist_attrs: [\n";
@@ -745,6 +748,9 @@ bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
     return false;
   }
   if (lhs.impl_idx() != rhs.impl_idx()) {
+    return false;
+  }
+  if (lhs.execution_stream() != rhs.execution_stream()) {
     return false;
   }
   for (auto const& item : lhs.input_dist_attrs()) {
