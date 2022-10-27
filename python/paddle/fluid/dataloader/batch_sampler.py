@@ -198,6 +198,9 @@ class DistributedBatchSampler(BatchSampler):
         drop_last(bool): whether drop the last incomplete(less than a mini-batch) batch dataset size.
              Default False.
 
+    Returns:
+        DistributedBatchSampler, return an iterable object for indices iterating.
+
     Examples:
         .. code-block:: python
 
