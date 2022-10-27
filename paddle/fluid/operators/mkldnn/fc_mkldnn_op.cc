@@ -533,6 +533,12 @@ class FCPrimitiveFactory {
           scale, dnnl::algorithm::eltwise_hardswish, alpha, beta);
     }
 
+    if (ctx.HasAttr("fused_output_scale")) {
+      float scale_alpha = ctx.Attr<float>("fused_output_scale");
+      post_operations.append_eltwise(
+          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+    }
+
     attributes.set_post_ops(post_operations);
     return attributes;
   }
