@@ -37,7 +37,7 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "split",
     // NOTE(jiahongyu): squeeze MKLDNN kernel are disabled
     // (https://github.com/PaddlePaddle/Paddle/pull/35781). If these MKLDNN
-    // kernels and codes are deleted in the future, attributes "use_mkldnn"
+    // kernels and codes are deleted in the future, attributes `use_mkldnn`
     // should be removed from function declaration
     "squeeze",
     "squeeze_grad",
@@ -76,6 +76,8 @@ static const std::unordered_set<std::string> cudnn_white_list = {
     "pool3d_grad",
     "softmax",
     "softmax_grad",
+    "sequence_softmax",
+    "sequence_softmax_grad",
 
     // WIP
     "conv2d",
