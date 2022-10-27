@@ -142,7 +142,7 @@ class TestStatic(unittest.TestCase):
         dense_shape = [1, 1, 3, 4, channels]
         sp_x = sparse.sparse_coo_tensor(indices, values, dense_shape)
 
-        sparse_batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
+        sparse_batch_norm = paddle.sparse.nn.BatchNorm(channels)
         sp_y = sparse_batch_norm(sp_x)
         out = sp_y.to_dense()
 
