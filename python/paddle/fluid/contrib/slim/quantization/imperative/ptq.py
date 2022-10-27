@@ -140,7 +140,7 @@ class ImperativePTQ(object):
         assert isinstance(
             model, paddle.nn.Layer
         ), "The model must be the instance of paddle.nn.Layer."
-        is_postprocess = config.get('postprocess', False)
+        is_postprocess = config.get('postprocess', True)
         config.pop('postprocess', None)
 
         # Convert and save dygraph quantized model
