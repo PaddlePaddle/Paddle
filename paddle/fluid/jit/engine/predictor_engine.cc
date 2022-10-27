@@ -33,14 +33,15 @@ PredictorEngine::PredictorEngine(const std::shared_ptr<FunctionInfo> &info,
     : info_(info), scope_(new framework::Scope()), place_(place) {
   utils::ShareParamsIntoScope(info_->ParamNames(), params_dict, scope_.get());
   VLOG(6) << framework::GenScopeTreeDebugInfo(scope_.get());
+
   AnalysisConfig config;
-  config.SetSkipLoadParams(true);
   config.SetProgFile(info->ProgramFilePath());
   if (platform::is_gpu_place(place_)) {
     config.EnableUseGpu(100, place_.GetDeviceId());
   } else if (platform::is_cpu_place(place_)) {
     config.DisableGpu();
   }
+  config.SetSkipLoadParams(true);
   config.SetApplyOptim(true);
   config.SwitchIrOptim(true);
 
