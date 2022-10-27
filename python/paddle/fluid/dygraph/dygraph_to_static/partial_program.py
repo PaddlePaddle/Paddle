@@ -663,11 +663,10 @@ class PartialProgramLayer:
 
     def _drop_scope_if_no_grad(self, use_interpretorcore, step_scope):
         tracer = framework._dygraph_tracer()
-        scope = (
-            step_scope.value().get_scope()
-            if isinstance(step_scope, (core.VarBase))
-            else step_scope[0]
-        )
+        if isinstance(step_scope, (core.VarBase)):
+            scope = step_scope.value().get_scope()
+        else:
+            scope = step_scope[0]
         if self.training and not tracer._has_grad:
             if use_interpretorcore and not scope._can_reuesd:
                 scope._can_reuesd = True
