@@ -125,7 +125,7 @@ class TestVarBase(unittest.TestCase):
                 )
                 np.testing.assert_array_equal(x.numpy(), [1.0, 2.0])
                 self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
-                self.assertEqual(x.grad, None)
+                self.assertIsNone(x.grad)
                 self.assertEqual(x.shape, [2])
                 self.assertEqual(x.stop_gradient, False)
                 self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
@@ -447,7 +447,7 @@ class TestVarBase(unittest.TestCase):
             y = x**2
             y.backward()
             self.assertTrue(cmp_float(x.grad.numpy(), [20.0]))
-            self.assertEqual(detach_x.grad, None)
+            self.assertIsNone(detach_x.grad)
 
             detach_x.stop_gradient = (
                 False  # Set stop_gradient to be False, supported auto-grad
@@ -1844,7 +1844,7 @@ class TestEagerTensorGradNameValue(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             a.stop_gradient = False
             b = a**2
-            self.assertEqual(a._grad_value(), None)
+            self.assertIsNone(a._grad_value())
             b.backward()
             # Note, for new dygraph, there are no generated grad name, so we skip the name check.
             self.assertNotEqual(a._grad_value(), None)

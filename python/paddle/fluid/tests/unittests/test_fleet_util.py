@@ -50,7 +50,7 @@ class TestFleetUtil(unittest.TestCase):
         context["role_maker"] = role_maker
         context["valid_strategy"] = strategy
         util = factory._create_util(context)
-        self.assertEqual(util.role_maker, None)
+        self.assertIsNone(util.role_maker)
 
     def test_get_util(self):
         import paddle.distributed.fleet as fleet

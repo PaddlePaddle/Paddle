@@ -71,15 +71,15 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
             exe, main_prog, startup_prog
         )
         for i in range(3):
-            self.assertEqual(acp._get_train_epoch_range(), None)
-            self.assertEqual(acp.g_acp_type, None)
+            self.assertIsNone(acp._get_train_epoch_range())
+            self.assertIsNone(acp.g_acp_type)
             for data in data_loader():
-                self.assertEqual(acp.g_acp_type, None)
-                self.assertEqual(acp._get_train_epoch_range(), None)
+                self.assertIsNone(acp.g_acp_type)
+                self.assertIsNone(acp._get_train_epoch_range())
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
-        self.assertEqual(acp.g_acp_type, None)
-        self.assertEqual(acp._get_train_epoch_range(), None)
+        self.assertIsNone(acp.g_acp_type)
+        self.assertIsNone(acp._get_train_epoch_range())
 
         m1 = PaddleModel(exe, compiled)
         m1.serialize(save_dir)
