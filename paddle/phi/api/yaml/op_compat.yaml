@@ -6,9 +6,19 @@
 - op : abs
   backward : abs_grad
   extra :
-    attrs : [bool use_cudnn = false, bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false]
+
+- op : acos
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : acosh
+  inputs :
+    x : X
+  outputs :
+    out : Out
   backward : acosh_grad
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
@@ -36,7 +46,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_cudnn = false, bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : argsort
   inputs :
@@ -45,10 +55,26 @@
     out : Out
     indices : Indices
 
+- op : asin
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : asinh
   backward : asinh_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : atan
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : atan2
   inputs :
@@ -58,6 +84,10 @@
 
 - op : atanh
   backward : atanh_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -162,11 +192,19 @@
 
 - op : cos
   backward : cos_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : cosh
   backward : cosh_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -295,14 +333,12 @@
 
 - op : exp
   backward : exp_grad
-  extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
-
-- op : exp
   inputs :
     x : X
   outputs :
     out : Out
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : expand (expand_v2)
   backward : expand_grad (expand_v2_grad)
@@ -399,7 +435,7 @@
 - op : gelu
   backward : gelu_grad
   extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : grad_add
   extra :
@@ -694,11 +730,19 @@
 
 - op : sin
   backward : sin_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : sinh
   backward : sinh_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -772,6 +816,10 @@
 
 - op : tan
   backward : tan_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 

@@ -965,6 +965,10 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_SetBlackListOpsForMixedModel(
       const std::unordered_set<std::string>& black_list);
 
+  void SetApplyOptim(bool value) { apply_optim_ = value; }
+
+  void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
+
  protected:
   // Update the config.
   void Update();
@@ -1167,6 +1171,13 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // fleet exe related
   DistConfig dist_config_{};
+
+  // jit engine related
+  // NOTE(Aureliue84): In case of Predictor in JITLayer, program is from outer
+  // which means Predictor should apply optimization by calling
+  // PrepareProgram(). So we add this flag to control the process.
+  bool apply_optim_{false};
+  bool skip_load_params_{false};
 };
 
 }  // namespace paddle
