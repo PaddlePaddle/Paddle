@@ -109,7 +109,7 @@ KernelSignature {{api["op_name"] | to_pascal_case }}OpArgumentMapping(const Argu
   {% endfor %}
   {{get_output_list(api["outputs"], kernel_args)}};
   {% if api["kernel"]["func"] | length == 1 %}
-  KernelSignature sig("{{api["name"]}}", std::move(inputs), std::move(attrs), std::move(outputs));
+  KernelSignature sig("{{api["kernel"]["func"][0]}}", std::move(inputs), std::move(attrs), std::move(outputs));
   return sig;
   {% else %}{# it has kernel for selected rows #}
   const char* kernel_name = ctx.IsSelectedRowsInput({{kernel_args[0] | to_opmaker_name_cstr}}) ? "{{api["kernel"]["func"][1]}}" : "{{api["kernel"]["func"][0]}}";
