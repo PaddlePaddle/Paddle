@@ -391,9 +391,10 @@ void BindDistributed(py::module *m) {
                     concat_out_tensor.impl());
                 std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
 
-                const auto *dev_ctx = self.GetDeviceContext(in_tensor.place());
+                const auto &dev_ctx = self.GetDeviceContext(in_tensor.place());
                 auto task = self.AllGather(in_wrapper, out_wrapper, sync_op);
                 distributed::SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
+                task->UpdateWaitChain(dev_ctx);
                 return task;
               },
               py::arg("in"),
@@ -491,10 +492,11 @@ void BindDistributed(py::module *m) {
                 std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
 
                 // in_tensor_list should not be empty
-                const auto *dev_ctx =
+                const auto &dev_ctx =
                     self.GetDeviceContext(in_tensor_list.back().place());
                 auto task = self.AllToAll(in_wrapper, out_wrapper, sync_op);
                 distributed::SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
+                task->UpdateWaitChain(dev_ctx);
                 return task;
               },
               py::arg("in"),
@@ -792,7 +794,7 @@ void BindDistributed(py::module *m) {
                     concat_out_tensor.impl());
                 std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
 
-                const auto *dev_ctx =
+                const auto &dev_ctx =
                     self.GetDeviceContext(in_tensor.place(), true);
                 auto task = self.AllGather(in_wrapper,
                                            out_wrapper,
@@ -901,7 +903,7 @@ void BindDistributed(py::module *m) {
                 std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
 
                 // in_tensor_list must not be empty
-                const auto *dev_ctx = self.GetDeviceContext(
+                const auto &dev_ctx = self.GetDeviceContext(
                     in_tensor_list.back().place(), /*use_calc_stream*/ true);
                 auto task = self.AllToAll(in_wrapper,
                                           out_wrapper,
@@ -1382,11 +1384,14 @@ void BindDistributed(py::module *m) {
       .def(py::init(&CreateEagerReducer))
       .def(
           "prepare_for_backward",
-          [](distributed::EagerReducer &self, py::handle py_tensors) {
+          [](distributed::EagerReducer &self,
+             py::handle py_tensors,
+             bool is_sync) {
             auto params = CastPyArg2VectorOfTensor(py_tensors.ptr(), 0);
-            self.PrepareForBackward(params);
+            self.PrepareForBackward(params, is_sync);
           },
           py::arg("tensors"),
+          py::arg("is_sync"),
           py::call_guard<py::gil_scoped_release>());
 }
 
