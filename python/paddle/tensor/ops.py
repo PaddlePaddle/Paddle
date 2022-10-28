@@ -30,7 +30,6 @@ __deprecated_func_name__ = {
 
 __activations_noattr__ = [
     'sigmoid',
-    'logsigmoid',
     'tanh_shrink',
     'softplus',
     'softsign',
