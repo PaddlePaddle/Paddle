@@ -462,36 +462,11 @@ class TestNumpyTests(unittest.TestCase):
             self.check_output("...,...", a, a)
             self.check_output("i,i", a, a)
 
-        # TODO(@xiongkun): explict broadcast in EinsumOp is not supported, it's not recommend to use einsum like this.
-        # p = np.ones((10, 2)).astype('float')
-        # q = np.ones((1, 2)).astype('float')
-        # self.check_output('ij,ij->j', p, q)
-
-        # TODO(@xiongkun): explict-label-broadcast in EinsumOp is not supported, it's not recommend to use einsum like this.
-        # x = np.array([2., 3.]).astype('float')
-        # y = np.array([4.]).astype('float')
-        # self.check_output("i, i", x, y)
-
-        # TODO(@xiongkun): explict-label-broadcast in EinsumOp is not supported, it's not recommend to use einsum like this.
-        # p = np.ones((1, 5)) / 2
-        # q = np.ones((5, 5)) / 2
-        # self.check_output("...ij,...jk->...ik", p, p)
-        # self.check_output("...ij,...jk->...ik", p, q)
-
         x = np.eye(2).astype('float')
         y = np.ones(2).astype('float')
         self.check_output("ji,i->", x, y)
         self.check_output("i,ij->", y, x)
         self.check_output("ij,i->", x, y)
-
-    def test_large_nops(self):
-        pass
-        # TODO(@xiongkun): explict broadcast in EinsumOp is not supported, it's not recommend to use einsum like this.
-        # a = np.arange(4 * 3 * 1 * 4).reshape(4, 3, 1, 4).astype('float')
-        # self.check_output('a...b,b...c,c...d', a, a, a)
-        # self.check_output('a...b,b...c,c...a', a, a, a)
-        # self.check_output('a...b,b...c,c...a', a, a, a)
-        # self.check_output('...ab,...ba,...ab,...ab', a, a, a, a)
 
     def test_static_graph(self):
         paddle.enable_static()
