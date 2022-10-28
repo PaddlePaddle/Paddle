@@ -19,16 +19,16 @@
 
 namespace phi {
 
-const std::vector<long int> get_slice_strides(
-    const std::vector<long int>& out_vec_dims,
+const std::vector<int64_t> get_slice_strides(
+    const std::vector<int64_t>& out_vec_dims,
     const dnnl::memory::desc& full_md,
     int axis) {
   auto strides = full_md.data.format_desc.blocking.strides;
   auto ndims = full_md.data.ndims;
   auto full_dims = full_md.data.dims;
   auto splitted_stride = strides[axis];
-  std::vector<long int> slice_strides(ndims, splitted_stride);
-  for (unsigned short i = 0; i < ndims; ++i) {
+  std::vector<int64_t> slice_strides(ndims, splitted_stride);
+  for (int16_t i = 0; i < ndims; ++i) {
     slice_strides[i] = strides[i] > splitted_stride
                            ? (strides[i] / full_dims[axis]) * out_vec_dims[axis]
                            : strides[i];

@@ -863,7 +863,7 @@ class ReorderOneDNNHandler {
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
       DenseTensor* output,
       const std::vector<int64_t>& dims,
-      const std::vector<long int>& strides,
+      const std::vector<int64_t>& strides,
       Place place) {
     auto dst_md = dnnl::memory::desc(dims, dtype_dst_, strides);
     auto dst_data = output->mutable_data(place, ptype_dst_, dst_md.get_size());
