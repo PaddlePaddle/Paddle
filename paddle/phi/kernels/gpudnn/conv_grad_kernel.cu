@@ -32,10 +32,17 @@
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+// clang-format off
+#include "paddle/phi/backends/dynload/cudnn_frontend.h"
+#include "paddle/phi/kernels/gpudnn/conv_grad_kernel_impl_v8.h"
+// clang-format on
+#endif
+
 namespace phi {
 
 template <typename T, typename Context>
-void ConvCudnnGradKernel(const Context& ctx,
+void ConvCudnnGradKernelImplV7(const Context& ctx,
                          const DenseTensor& input,
                          const DenseTensor& filter,
                          const DenseTensor& output_grad,
@@ -570,6 +577,75 @@ void ConvCudnnGradKernel(const Context& ctx,
           ctx, &transformed_filter_grad_channel, filter_grad);
     }
   }
+}
+
+template <typename T, typename Context>
+void ConvCudnnGradKernel(const Context& ctx,
+                         const DenseTensor& input,
+                         const DenseTensor& filter,
+                         const DenseTensor& output_grad,
+                         const std::vector<int>& strides_t,
+                         const std::vector<int>& paddings_t,
+                         const std::string& padding_algorithm,
+                         int groups,
+                         const std::vector<int>& dilations_t,
+                         const std::string& data_format,
+                         bool use_addto,
+                         int workspace_size_MB,
+                         bool exhaustive_search_t,
+                         DenseTensor* input_grad,
+                         DenseTensor* filter_grad) {
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  if (paddle::platform::IsCudnnFrontendEnabled() && (groups == 1)) {
+    ConvCudnnGradKernelImplV8<T>(ctx,
+                                 input,
+                                 filter,
+                                 output_grad,
+                                 strides_t,
+                                 paddings_t,
+                                 padding_algorithm,
+                                 groups,
+                                 dilations_t,
+                                 data_format,
+                                 use_addto,
+                                 workspace_size_MB,
+                                 exhaustive_search_t,
+                                 input_grad,
+                                 filter_grad);
+  } else {
+    ConvCudnnGradKernelImplV7<T>(ctx,
+                                 input,
+                                 filter,
+                                 output_grad,
+                                 strides_t,
+                                 paddings_t,
+                                 padding_algorithm,
+                                 groups,
+                                 dilations_t,
+                                 data_format,
+                                 use_addto,
+                                 workspace_size_MB,
+                                 exhaustive_search_t,
+                                 input_grad,
+                                 filter_grad);
+  }
+#elif
+  ConvCudnnGradKernelImplV7<T>(ctx,
+                               input,
+                               filter,
+                               output_grad,
+                               strides_t,
+                               paddings_t,
+                               padding_algorithm,
+                               groups,
+                               dilations_t,
+                               data_format,
+                               use_addto,
+                               workspace_size_MB,
+                               exhaustive_search_t,
+                               input_grad,
+                               filter_grad);
+#endif
 }
 
 template <typename T, typename Context>

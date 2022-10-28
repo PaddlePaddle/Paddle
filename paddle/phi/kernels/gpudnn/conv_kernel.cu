@@ -33,10 +33,17 @@
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+// clang-format off
+#include "paddle/phi/backends/dynload/cudnn_frontend.h"
+#include "paddle/phi/kernels/gpudnn/conv_kernel_impl_v8.h"
+// clang-format on
+#endif
+
 namespace phi {
 
 template <typename T, typename Context>
-void ConvCudnnKernel(const Context& ctx,
+void ConvCudnnKernelImplV7(const Context& ctx,
                      const DenseTensor& input,
                      const DenseTensor& filter,
                      const std::vector<int>& strides,
@@ -377,6 +384,67 @@ void ConvCudnnKernel(const Context& ctx,
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
     TransToChannelLast<Context, T>(ctx, &transformed_output, output);
   }
+}
+
+template <typename T, typename Context>
+void ConvCudnnKernel(const Context& ctx,
+                     const DenseTensor& input,
+                     const DenseTensor& filter,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings_t,
+                     const std::string& padding_algorithm,
+                     int groups,
+                     const std::vector<int>& dilations_t,
+                     const std::string& data_format,
+                     bool use_addto,
+                     int workspace_size_MB,
+                     bool exhaustive_search_t,
+                     DenseTensor* output) {
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  if (paddle::platform::IsCudnnFrontendEnabled() && (groups == 1)) {
+    ConvCudnnKernelImplV8<T>(ctx,
+                             input,
+                             filter,
+                             strides,
+                             paddings_t,
+                             padding_algorithm,
+                             groups,
+                             dilations_t,
+                             data_format,
+                             use_addto,
+                             workspace_size_MB,
+                             exhaustive_search_t,
+                             output);
+  } else {
+    ConvCudnnKernelImplV7<T>(ctx,
+                             input,
+                             filter,
+                             strides,
+                             paddings_t,
+                             padding_algorithm,
+                             groups,
+                             dilations_t,
+                             data_format,
+                             use_addto,
+                             workspace_size_MB,
+                             exhaustive_search_t,
+                             output);
+  }
+#elif
+  ConvCudnnKernelImplV7<T>(ctx,
+                           input,
+                           filter,
+                           strides,
+                           paddings_t,
+                           padding_algorithm,
+                           groups,
+                           dilations_t,
+                           data_format,
+                           use_addto,
+                           workspace_size_MB,
+                           exhaustive_search_t,
+                           output);
+#endif
 }
 
 template <typename T, typename Context>
