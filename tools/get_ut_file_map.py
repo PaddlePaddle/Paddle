@@ -63,15 +63,27 @@ def handle_ut_file_map(rootPath):
     count = 0
     not_success_file = open("%s/build/prec_delta" % rootPath, 'w')
     # if testdir is not made,write the test into prec_delta
-    get_all_uts(rootPath)
-    all_ut = '%s/build/all_uts_paddle' % rootPath
-    with open(all_ut, 'r') as f:
-        all_ut_list = []
+
+    # get_all_uts(rootPath)
+    # all_ut = '%s/build/all_uts_paddle' % rootPath
+    # with open(all_ut, 'r') as f:
+    #    all_ut_list = []
+    #    for ut in f.readlines():
+    #        ut = ut.replace('\n', '')
+    #        all_ut_list.append(ut.strip())
+
+    os.system('mkdir /tmp_test')
+    os.system(
+        'cd /tmp_test && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/prec_delta --no-check-certificate'
+    )
+    all_prec_delta = "/tmp_test/prec_delta"
+    with open(all_prec_delta, 'r') as f:
+        all_prec_delta_list = []
         for ut in f.readlines():
             ut = ut.replace('\n', '')
-            all_ut_list.append(ut.strip())
-        f.close()
-    for ut in all_ut_list:
+            all_prec_delta_list.append(ut.strip())
+
+    for ut in all_prec_delta_list:
         filedir = '%s/build/ut_map/%s' % (rootPath, ut)
         if not os.path.exists(filedir):
             not_success_file.write('%s\n' % ut)
@@ -155,16 +167,52 @@ def notsuccessfuc(rootPath):
             utNotSuccess = utNotSuccess + '^%s$|' % ut
 
     # ut not exec
+    os.system('mkdir pre_tmp/')
+    os.system(
+        'cd /pre_tmp && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/prec_delta --no-check-certificate'
+    )
+    prec_delta_tmp = "/pre_tmp/prec_delta"
 
-    get_all_uts(rootPath)
-    with open("/paddle/build/all_uts_paddle", "r") as f:
-        data = f.readlines()
-    for ut in data:
+    os.system(
+        'cd /pre_tmp && wget --no-proxy https://sys-p0.bj.bcebos.com/prec/disable_ut --no-check-certificate'
+    )
+    disable_ut_tmp = "/pre_tmp/disable_ut"
+
+    with open(prec_delta_tmp, 'r') as f:
+        prec_delta_tmp_list = []
+        for ut in f.readlines():
+            ut = ut.replace('\n', '').strip()
+            prec_delta_tmp_list.append(ut)
+        f.close()
+
+    with open(disable_ut_tmp, 'r') as f:
+        disable_ut_tmp_list = []
+        for ut in f.readlines():
+            ut = ut.replace('\n', '').strip()
+            disable_ut_tmp_list.append(ut)
+        f.close()
+    real_failed_list = []
+    for test in prec_delta_tmp_list:
+        if test not in disable_ut_tmp_list:
+            real_failed_list.append(test)
+    print("failed tests num:", len(real_failed_list))
+
+    for test in real_failed_list:
         ut = ut.replace('\n', '').strip()
         if ut not in files:
             print(ut)
             count = count + 1
             utNotSuccess = utNotSuccess + '^%s$|' % ut
+
+    # get_all_uts(rootPath)
+    # with open("/paddle/build/all_uts_paddle", "r") as f:
+    #    data = f.readlines()
+    # for ut in data:
+    #    ut = ut.replace('\n', '').strip()
+    #    if ut not in files:
+    #        print(ut)
+    #       count = count + 1
+    #        utNotSuccess = utNotSuccess + '^%s$|' % ut
 
     if utNotSuccess != '':
         print("utNotSuccess count: %s" % count)
@@ -175,11 +223,13 @@ def notsuccessfuc(rootPath):
 
 def ut_file_map_supplement(rootPath):
     ut_file_map_new = "%s/build/ut_file_map.json" % rootPath
-    os.system('mkdir /pre_test_tmp')
+    # os.system('mkdir /pre_test_tmp')
     os.system(
-        'cd /pre_test_tmp && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/ut_file_map.json --no-check-certificate'
+        'cd /tmp_test && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/ut_file_map.json --no-check-certificate'
     )
-    ut_file_map_old = "/pre_test_tmp/ut_file_map.json"
+    # ut_file_map_old = "/pre_test_tmp/ut_file_map.json"
+    ut_file_map_old = "/tmp_test/ut_file_map.json"
+
     with open(ut_file_map_new, 'r') as load_f:
         load_dict_new = json.load(load_f)
     with open(ut_file_map_old, 'r') as f:
@@ -193,14 +243,16 @@ def ut_file_map_supplement(rootPath):
             all_uts_paddle_list.append(ut.strip())
         f.close()
 
-    with open("/pre_test_tmp/ut_file_map.json", "w") as f:
+    with open("/tmp_test/ut_file_map.json", "w") as f:
         json.dump(load_dict_new, f, indent=4)
         print("load_dict_new success!!")
 
-    os.system(
-        'cd /pre_test_tmp && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta --no-check-certificate'
-    )
-    prec_delta_old = '/pre_test_tmp/prec_delta'
+    # os.system(
+    #    'cd /tmp_test && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/prec_delta --no-check-certificate'
+    # )
+
+    # prec_delta_old = '/pre_test_tmp/prec_delta'
+    prec_delta_old = '/tmp_test/prec_delta'
     prec_delta_new = "%s/build/prec_delta" % rootPath
     with open(prec_delta_old, 'r') as f:
         prec_delta_old_list = []
@@ -221,7 +273,9 @@ def ut_file_map_supplement(rootPath):
     prec_delta_new_list.append(
         'test_py_reader_error_msg'
     )  # add a python case for pycoverage
-    prec_delta_file = open("/pre_test_tmp/prec_delta", 'w')
+    # prec_delta_file = open("/pre_test_tmp/prec_delta", 'w')
+    prec_delta_file = open("/tmp_test/prec_delta", 'w')
+
     for ut in prec_delta_new_list:
         prec_delta_file.write(ut + '\n')
     print("prec_delta_file success!!")
