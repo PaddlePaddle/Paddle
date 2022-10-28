@@ -943,6 +943,7 @@ void MultiHeadGPUComputeFunctor<T>::operator()(const phi::GPUContext &dev_ctx,
                                                int head_size,
                                                T *qkptr,
                                                const T *bias_qk_ptr,
+                                               bool bias_is_mask,
                                                T *tptr,
                                                T alpha,
                                                T beta) {
@@ -964,6 +965,7 @@ void MultiHeadGPUComputeFunctor<T>::operator()(const phi::GPUContext &dev_ctx,
                       kptr,
                       qkptr,
                       bias_qk_ptr,
+                      bias_is_mask,
                       alpha,
                       beta);
   // batch gemm stride, transpose.
