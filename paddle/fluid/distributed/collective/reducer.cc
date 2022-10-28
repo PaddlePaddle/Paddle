@@ -350,8 +350,6 @@ void EagerGroup::SplitTensorsDev(const platform::DeviceContext &context) {
       VLOG(3) << "Free dense_contents_ " << dense_contents_.numel();
       memory::RecordStream(dense_tensor->Holder(), gpu_context.stream());
       dense_contents_.reset();
-      // dense_tensors_.clear();
-      // dense_tensors_.resize(dense_tensors_.size(),  phi::DenseTensor());
     }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -662,6 +660,22 @@ void EagerReducer::AddDistHook(size_t var_index) {
 
   // gradient synchronization is not required when grad_need_hooks_ is false.
   if (!grad_need_hooks_) {
+    const auto &var_locator = variable_locators_[var_index];
+    const auto group_index = var_locator.group_index;
+    const auto inside_group_index = var_locator.inside_group_index;
+    auto &group = groups_[group_index];
+    auto &group_tensor = group.dense_tensors_[inside_group_index];
+
+    auto *autograd_meta = tensors_[var_index].get_autograd_meta();
+    auto &grad_tensor = static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
+
+    if (!HasGrad(var_index)) {
+      group_tensor.ShareDataWith(phi::DenseTensor());
+    } else {
+      auto grad_dense_tensor =
+          *(std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl()));
+      group_tensor.ShareDataWith(grad_dense_tensor);
+    }
     return;
   }
 
@@ -930,9 +944,6 @@ void EagerReducer::FinalizeBackward() {
   for (auto &group : groups_) {
     if (!group.is_sparse_) {
       group.dense_contents_.reset();
-      // group.dense_tensors_.clear();
-      // group.dense_tensors_.resize(group.dense_tensors_.size(),
-      // phi::DenseTensor());
     }
   }
 
