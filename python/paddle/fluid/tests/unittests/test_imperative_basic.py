@@ -272,7 +272,7 @@ class TestImperative(unittest.TestCase):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
             l0 = fluid.Linear(2, 2)
-            self.assertTrue(l0.weight._grad_ivar() is None)
+            self.assertIsNone(l0.weight._grad_ivar())
             l1 = fluid.Linear(2, 2)
             with fluid.dygraph.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
@@ -283,14 +283,14 @@ class TestImperative(unittest.TestCase):
             o = l1(y)
             o.backward()
 
-            self.assertTrue(tmp._grad_ivar() is None)
+            self.assertIsNone(tmp._grad_ivar())
             self.assertTrue(l0.weight._grad_ivar() is not None)
 
     def test_paddle_imperative_no_grad_guard(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
             l0 = fluid.Linear(2, 2)
-            self.assertTrue(l0.weight._grad_ivar() is None)
+            self.assertIsNone(l0.weight._grad_ivar())
             l1 = fluid.Linear(2, 2)
             with paddle.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
@@ -301,14 +301,14 @@ class TestImperative(unittest.TestCase):
             o = l1(y)
             o.backward()
 
-            self.assertTrue(tmp._grad_ivar() is None)
+            self.assertIsNone(tmp._grad_ivar())
             self.assertTrue(l0.weight._grad_ivar() is not None)
 
     def test_paddle_imperative_set_grad_enabled(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
             l0 = fluid.Linear(2, 2)
-            self.assertTrue(l0.weight._grad_ivar() is None)
+            self.assertIsNone(l0.weight._grad_ivar())
             l1 = fluid.Linear(2, 2)
             with paddle.set_grad_enabled(False):
                 self.assertTrue(l1.weight.stop_gradient is False)
@@ -322,7 +322,7 @@ class TestImperative(unittest.TestCase):
             o = l1(y)
             o.backward()
 
-            self.assertTrue(tmp._grad_ivar() is None)
+            self.assertIsNone(tmp._grad_ivar())
             self.assertTrue(tmp2._grad_ivar() is not None)
             self.assertTrue(l0.weight._grad_ivar() is not None)
 

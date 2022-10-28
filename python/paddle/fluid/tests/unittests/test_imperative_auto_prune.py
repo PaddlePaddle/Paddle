@@ -180,7 +180,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             loss = case2(v1, v2)
 
             loss.backward()
-            self.assertTrue(case2.linear2.weight._grad_ivar() is None)
+            self.assertIsNone(case2.linear2.weight._grad_ivar())
             self.assertTrue(case2.linear1.weight._grad_ivar() is not None)
 
     def test_auto_prune2(self):
@@ -261,8 +261,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out1.stop_gradient = True
             out = fluid.layers.concat(input=[out1, out2, c], axis=1)
             out.backward()
-            self.assertTrue(linear.weight.gradient() is None)
-            self.assertTrue(out1.gradient() is None)
+            self.assertIsNone(linear.weight.gradient())
+            self.assertIsNone(out1.gradient())
 
     def test_auto_prune6(self):
         with _test_eager_guard():
@@ -284,8 +284,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out1.stop_gradient = True
             out = fluid.layers.concat(input=[out1, out2, c], axis=1)
             out.backward()
-            self.assertTrue(linear.weight.gradient() is None)
-            self.assertTrue(out1.gradient() is None)
+            self.assertIsNone(linear.weight.gradient())
+            self.assertIsNone(out1.gradient())
 
     def test_auto_prune7(self):
         with _test_eager_guard():
@@ -377,8 +377,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             # TODO(jiabin): In Eager Mode we don't actually need sort_sum_gradient, this test should be removed when we don't support fluid anymore.
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             out.backward()
-            self.assertTrue(linear.weight.gradient() is None)
-            self.assertTrue(out1.gradient() is None)
+            self.assertIsNone(linear.weight.gradient())
+            self.assertIsNone(out1.gradient())
 
     def test_auto_prune10(self):
         with _test_eager_guard():
@@ -449,7 +449,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             case3 = AutoPruneLayer2(input_size=784)
             loss = case3(v1, v2)
             loss.backward()
-            self.assertTrue(case3.linear2.weight._grad_ivar() is None)
+            self.assertIsNone(case3.linear2.weight._grad_ivar())
             self.assertTrue(case3.linear.weight._grad_ivar() is not None)
 
     def test_case2_prune_no_grad_branch(self):
@@ -468,7 +468,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out = fluid.layers.one_hot(input=label, depth=100)
             loss = paddle.mean(out)
             loss.backward()
-            self.assertTrue(linear.weight._grad_ivar() is None)
+            self.assertIsNone(linear.weight._grad_ivar())
 
     def test_case3_prune_no_grad_branch2(self):
         with _test_eager_guard():
@@ -480,7 +480,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out = fluid.layers.gaussian_random(shape=[20, 30])
             loss = paddle.mean(out)
             loss.backward()
-            self.assertTrue(out._grad_ivar() is None)
+            self.assertIsNone(out._grad_ivar())
 
     def test_case4_with_no_grad_op_maker(self):
         with _test_eager_guard():

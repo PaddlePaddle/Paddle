@@ -62,15 +62,15 @@ class TestSimpleNet(unittest.TestCase):
                     )  # grad_clip=grad_clip
                     input_emb, emb = simplenet(input)
 
-                    self.assertTrue(emb.weight.gradient() is None)
-                    self.assertTrue(input_emb.gradient() is None)
+                    self.assertIsNone(emb.weight.gradient())
+                    self.assertIsNone(input_emb.gradient())
 
                     input_emb.backward()
                     adam.minimize(input_emb)
                     self.assertTrue(emb.weight.gradient() is not None)
 
                     emb.clear_gradients()
-                    self.assertTrue(emb.weight.gradient() is None)
+                    self.assertIsNone(emb.weight.gradient())
 
                     input_emb.clear_gradient()
                     self.assertTrue(input_emb.gradient() is not None)
@@ -107,15 +107,15 @@ class TestSimpleNet(unittest.TestCase):
                     )
                     input_emb, emb = simplenet(input)
 
-                    self.assertTrue(emb.weight.gradient() is None)
-                    self.assertTrue(input_emb.gradient() is None)
+                    self.assertIsNone(emb.weight.gradient())
+                    self.assertIsNone(input_emb.gradient())
 
                     input_emb.backward()
                     adam.minimize(input_emb)
                     self.assertTrue(emb.weight.gradient() is not None)
 
                     emb.clear_gradients()
-                    self.assertTrue(emb.weight.gradient() is None)
+                    self.assertIsNone(emb.weight.gradient())
 
                     input_emb.clear_gradient()
                     self.assertTrue(input_emb.gradient() is not None)

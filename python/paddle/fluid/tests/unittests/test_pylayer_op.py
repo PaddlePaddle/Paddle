@@ -187,7 +187,7 @@ class TestPyLayer(unittest.TestCase):
         for dtype in dtypes:
             input1 = paddle.randn([2, 3])
             input1.stop_gradient = False
-            self.assertTrue(input1.grad is None)
+            self.assertIsNone(input1.grad)
 
             z = tanh.apply(input1, dtype)
             z = paddle.cast(z, "float32")
@@ -283,7 +283,7 @@ class TestPyLayer(unittest.TestCase):
         input1 = paddle.randn([2, 3]).astype("float64")
         z = tanh.apply(input1, paddle.tanh, paddle.square)
         z.mean().backward()
-        self.assertTrue(z.grad is None)
+        self.assertIsNone(z.grad)
 
     def test_pylayer_nograd(self):
         with _test_eager_guard():

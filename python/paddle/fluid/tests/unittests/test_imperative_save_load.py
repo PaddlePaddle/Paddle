@@ -1003,7 +1003,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 os.path.join('saved_dy', 'emb_dy')
             )
 
-            self.assertTrue(opti_state_dict is None)
+            self.assertIsNone(opti_state_dict)
 
             para_state_dict, opti_state_dict = fluid.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy.pdparams')
@@ -1023,7 +1023,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 os.path.join('saved_dy', 'emb_dy'), keep_name_table=True
             )
             self.assertTrue(para_state_dict is not None)
-            self.assertTrue(opti_state_dict is None)
+            self.assertIsNone(opti_state_dict)
 
     def test_main(self):
         self.func_setUp()

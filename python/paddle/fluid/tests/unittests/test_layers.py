@@ -502,7 +502,7 @@ class TestLayer(LayerTest):
                     bias_attr=False,
                 )
                 dy_ret = conv2d(base.to_variable(images))
-                self.assertTrue(conv2d.bias is None)
+                self.assertIsNone(conv2d.bias)
 
             images = np.ones([2, 3, 5, 5], dtype='float32')
             conv2d = nn.Conv2D(
@@ -512,7 +512,7 @@ class TestLayer(LayerTest):
                 bias_attr=False,
             )
             dy_ret = conv2d(base.to_variable(images))
-            self.assertTrue(conv2d.bias is None)
+            self.assertIsNone(conv2d.bias)
 
         with self.static_graph():
             # the input of Conv2D must be Variable.

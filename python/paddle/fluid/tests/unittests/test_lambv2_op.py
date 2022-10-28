@@ -242,7 +242,7 @@ class TestLambOpMultiPrecision(unittest.TestCase):
                 return params[0].astype(np.float32)
             else:
                 self.assertTrue(params[0] is not None)
-                self.assertTrue(params[1] is None)
+                self.assertIsNone(params[1])
                 params[0] = np.array(params[0])
                 return params[0]
 

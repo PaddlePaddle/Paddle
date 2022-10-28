@@ -53,7 +53,7 @@ class TestGlobalVarGetterSetter(unittest.TestCase):
         name = "__any_non_exist_name__"
         self.assertFalse(name in g)
         self.assertFalse(name in g.keys())
-        self.assertTrue(g.get(name, None) is None)
+        self.assertIsNone(g.get(name, None))
         self.assertEquals(g.get(name, -1), -1)
 
 
