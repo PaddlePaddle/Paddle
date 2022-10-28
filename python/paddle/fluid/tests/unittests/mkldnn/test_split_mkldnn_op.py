@@ -19,7 +19,6 @@ from paddle.fluid.tests.unittests.op_test import OpTest
 
 
 class TestSplitSectionsOneDNNOp(OpTest):
-
     def init_data_type(self):
         self.dtype = np.float32
 
@@ -27,11 +26,13 @@ class TestSplitSectionsOneDNNOp(OpTest):
         if self.dtype == np.float32:
             self.x = np.random.random(self.input_shape).astype(self.dtype)
         elif self.dtype == np.int8:
-            self.x = np.random.randint(-5, 5,
-                                       self.input_shape).astype(self.dtype)
+            self.x = np.random.randint(-5, 5, self.input_shape).astype(
+                self.dtype
+            )
         else:  # uint8
-            self.x = np.random.randint(0, 10,
-                                       self.input_shape).astype(self.dtype)
+            self.x = np.random.randint(0, 10, self.input_shape).astype(
+                self.dtype
+            )
 
     def init_test_case(self):
         self.input_shape = (4, 5, 6)
@@ -73,7 +74,6 @@ class TestSplitSectionsOneDNNOp(OpTest):
 
 # test with attr(num)
 class TestSplitNumOneDNNOp(TestSplitSectionsOneDNNOp):
-
     def init_test_case(self):
         self.input_shape = (4, 8, 5, 3)
         self.init_x()
@@ -83,12 +83,11 @@ class TestSplitNumOneDNNOp(TestSplitSectionsOneDNNOp):
         indices_or_sections = 4  # indices
         self.out = np.split(self.x, indices_or_sections, self.axis)
 
-    # def test_check_grad(self):
-    #     self.check_grad(['X'], ['out0', 'out1', 'out2', 'out3'])
+    def test_check_grad(self):
+        self.check_grad(['X'], ['out0', 'out1', 'out2', 'out3'])
 
 
 class TestSplitNumAxisTensorOneDNNOp(TestSplitSectionsOneDNNOp):
-
     def init_test_case(self):
         self.input_shape = (4, 5, 6)
         self.init_x()
@@ -102,7 +101,6 @@ class TestSplitNumAxisTensorOneDNNOp(TestSplitSectionsOneDNNOp):
 
 # attr(sections) is list containing Tensor
 class TestSplitSectionsTensorOneDNNOp(TestSplitSectionsOneDNNOp):
-
     def init_test_case(self):
         self.input_shape = (4, 5, 6)
         self.init_x()
@@ -120,7 +118,6 @@ class TestSplitSectionsTensorOneDNNOp(TestSplitSectionsOneDNNOp):
 
 
 class TestSplitOpUnknownSectionOneDNNOp(TestSplitSectionsOneDNNOp):
-
     def init_test_case(self):
         self.input_shape = (4, 5, 6)
         self.init_x()
@@ -137,7 +134,6 @@ def create_test_class(parent):
     '''
 
     class TestInt8Case(parent):
-
         def init_data_type(self):
             self.dtype = np.int8
 
@@ -145,7 +141,6 @@ def create_test_class(parent):
             pass
 
     class TestUint8Case(parent):
-
         def init_data_type(self):
             self.dtype = np.uint8
 
