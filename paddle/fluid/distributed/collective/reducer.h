@@ -103,8 +103,7 @@ class EagerReducer {
   void InitializeGroups(const std::vector<std::vector<size_t>> &group_indices);
   void InitializeDenseGroups(const std::vector<size_t> &tensor_indices_,
                              EagerGroup *p_group);
-  void PrepareForBackward(const std::vector<Tensor> &outputs,
-                          const bool is_sync);
+  void PrepareForBackward(const std::vector<Tensor> &outputs);
   void AddDistHook(size_t var_index);
   void MarkVarReady(const size_t var_index, const bool is_used_var);
   void MarkGroupReady(const size_t group_index);
