@@ -30,7 +30,7 @@ from .log_util import logger
 __all__ = []
 
 
-def _apply_collective_grads(parameters, comm_group, bucket_size):
+def _apply_collective_grads(parameters, comm_group, bucket_size, scale=None):
     grad_var_set = set()
     grad_vars = []
     sparse_grad_vars = []
@@ -52,21 +52,33 @@ def _apply_collective_grads(parameters, comm_group, bucket_size):
         if comm_group is None
         else comm_group.nranks
     )
+
+    if scale is None:
+        scale = nranks
+    else:
+        scale = 1.0 / scale
+
+    if scale == 1.0:
+        scale = None
+
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
         # need to div nranks
-        div_factor = paddle.to_tensor(nranks, dtype=coalesced_grad.dtype)
-        paddle.fluid.framework._dygraph_tracer().trace_op(
-            type="elementwise_div",
-            inputs={'X': coalesced_grad, 'Y': div_factor},
-            outputs={'Out': coalesced_grad},
-            attrs={'axis': -1},
-        )
+        if scale is not None:
+            div_factor = paddle.to_tensor(scale, dtype=coalesced_grad.dtype)
+            paddle.fluid.framework._dygraph_tracer().trace_op(
+                type="elementwise_div",
+                inputs={'X': coalesced_grad, 'Y': div_factor},
+                outputs={'Out': coalesced_grad},
+                attrs={'axis': -1},
+            )
         paddle.distributed.all_reduce(coalesced_grad, group=comm_group)
 
     _split_tensors(coalesced_grads_and_vars)
 
 
-def _apply_collective_grads_eager(parameters, comm_group, bucket_size):
+def _apply_collective_grads_eager(
+    parameters, comm_group, bucket_size, scale=None
+):
     grad_var_set = set()
     grad_vars = []
 
@@ -87,9 +99,15 @@ def _apply_collective_grads_eager(parameters, comm_group, bucket_size):
         if comm_group is None
         else comm_group.nranks
     )
+    if scale is None:
+        scale = 1.0 / nranks
+    if scale == 1.0:
+        scale = None
+
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
         # need to div nranks
-        coalesced_grad.scale_(1.0 / nranks)
+        if scale is not None:
+            coalesced_grad.scale_(scale)
         paddle.distributed.all_reduce(coalesced_grad, group=comm_group)
 
     _split_tensors(coalesced_grads_and_vars)
@@ -177,7 +195,7 @@ def broadcast_dp_parameters(model, hcg):
 
 
 def fused_allreduce_gradients_with_group(
-    parameter_list, group, bucket_size=128 * 1024 * 1024
+    parameter_list, group, bucket_size=128 * 1024 * 1024, scale=None
 ):
     apply_func = (
         _apply_collective_grads_eager
