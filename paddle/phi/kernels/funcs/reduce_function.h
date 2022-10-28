@@ -1028,7 +1028,7 @@ CubTensorReduceImpl(const Tx* x_data,
 }
 #endif  // PADDLE_WITH_XPU_KP
 
-#if defined(__NVCC__)
+#if !defined(PADDLE_WITH_XPU_KP) && !defined(__HIPCC__)
 template <typename Tx,
           typename Ty,
           template <typename>
@@ -1073,7 +1073,7 @@ CubTensorReduceImpl(const Tx* x_data,
                             reducer.initial(),
                             stream);
 }
-#endif  // __NVCC__
+#endif  // PADDLE_WITH_XPU_KP __NVCC__
 
 template <typename Tx,
           typename Ty,
@@ -1117,7 +1117,13 @@ void ReduceKernel(const KPDevice& dev_ctx,
 
   config.SetOutputData(y_data, dev_ctx, &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
+
+#if !defined(PADDLE_WITH_XPU_KP) && !defined(__HIPCC__)
   bool use_cub_reduce = config.reduce_num == numel;
+#else
+  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
+#endif  // PADDLE_WITH_XPU_KP __NVCC__
+
 #ifndef PADDLE_WITH_XPU_KP
   if (use_cub_reduce) {
     if (is_mean) {
