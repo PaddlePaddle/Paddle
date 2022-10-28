@@ -1237,7 +1237,7 @@ def _build_table(
         if statistic_data.event_summary.items:
             all_row_values = []
             name_column_width = 52
-            if thread_sep == True:
+            if thread_sep:
                 thread_items = statistic_data.event_summary.thread_items
             else:
                 thread_items = {
@@ -1721,7 +1721,7 @@ def _build_table(
                     'ProfileStep'
                 ].general_gpu_time
             )
-            if thread_sep == True:
+            if thread_sep:
                 userdefined_thread_items = (
                     statistic_data.event_summary.userdefined_thread_items
                 )

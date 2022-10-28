@@ -304,7 +304,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
         param_grad_set = set()
         # step 1. create param_list
         for p, g in self.params_grads:
-            if type(p) == Parameter and p.trainable == False:
+            if type(p) == Parameter and not p.trainable:
                 continue
             if p.name not in param_grad_set:
                 param_list.append(p)

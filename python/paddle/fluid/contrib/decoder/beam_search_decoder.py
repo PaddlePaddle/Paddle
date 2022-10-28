@@ -215,7 +215,7 @@ class StateCell(object):
             raise ValueError('out_state must be one state in states')
 
     def _enter_decoder(self, decoder_obj):
-        if self._in_decoder == True or self._cur_decoder_obj is not None:
+        if self._in_decoder or self._cur_decoder_obj is not None:
             raise ValueError('StateCell has already entered a decoder.')
         self._in_decoder = True
         self._cur_decoder_obj = decoder_obj

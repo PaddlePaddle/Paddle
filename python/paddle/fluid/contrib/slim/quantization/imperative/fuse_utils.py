@@ -66,7 +66,7 @@ def fuse_layers(model, layers_to_fuse, inplace=False):
     Return
         fused_model(paddle.nn.Layer): The fused model.
     '''
-    if inplace == False:
+    if not inplace:
         model = copy.deepcopy(model)
     for layers in layers_to_fuse:
         _fuse_layers(model, layers)

@@ -4402,7 +4402,7 @@ class ModelAverage(Optimizer):
         for param in (
             framework.default_main_program().global_block().all_parameters()
         ):
-            if param.do_model_average != False:
+            if param.do_model_average is not False:
                 grad = param.block.create_var(
                     name=unique_name.generate_with_ignorable_key(
                         ".".join([param.name, 'tmp'])
@@ -4729,7 +4729,7 @@ class ExponentialMovingAverage(object):
         self._step_counter_name = "@EMA_STEP_COUNTER@"
         self._params_tmps = []
         for param in default_main_program().global_block().all_parameters():
-            if param.do_model_average != False:
+            if param.do_model_average is not False:
                 tmp = param.block.create_var(
                     name=unique_name.generate(
                         ".".join([self._name + param.name, 'ema_tmp'])

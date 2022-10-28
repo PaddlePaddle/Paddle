@@ -1265,7 +1265,7 @@ class InstanceNorm(layers.Layer):
     ):
         super(InstanceNorm, self).__init__()
 
-        if param_attr == False or bias_attr == False:
+        if not param_attr or not bias_attr:
             assert (
                 bias_attr == param_attr
             ), "param_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
@@ -1274,7 +1274,7 @@ class InstanceNorm(layers.Layer):
         self._bias_attr = bias_attr
         self._dtype = dtype
 
-        if param_attr != False and bias_attr != False:
+        if param_attr is not False and bias_attr is not False:
             self.scale = self.create_parameter(
                 attr=self._param_attr,
                 shape=[num_channels],

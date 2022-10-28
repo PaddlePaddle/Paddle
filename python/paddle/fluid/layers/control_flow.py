@@ -4074,7 +4074,7 @@ class DynamicRNN(object):
             )
             parent_block = self._parent_block_()
             init_tensor = init
-            if need_reorder == True:
+            if need_reorder:
                 if self.lod_rank_table is None:
                     raise ValueError(
                         'If set need_reorder to True, make sure step_input be '

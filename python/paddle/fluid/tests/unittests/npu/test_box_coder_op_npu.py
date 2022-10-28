@@ -27,8 +27,8 @@ np.random.seed(2021)
 
 
 def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
-    pb_w = p_box[:, 2] - p_box[:, 0] + (norm == False)
-    pb_h = p_box[:, 3] - p_box[:, 1] + (norm == False)
+    pb_w = p_box[:, 2] - p_box[:, 0] + (not norm)
+    pb_h = p_box[:, 3] - p_box[:, 1] + (not norm)
     pb_x = pb_w * 0.5 + p_box[:, 0]
     pb_y = pb_h * 0.5 + p_box[:, 1]
 
@@ -63,8 +63,8 @@ def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
 
 
 def box_encoder(t_box, p_box, pb_v, output_box, norm):
-    pb_w = p_box[:, 2] - p_box[:, 0] + (norm == False)
-    pb_h = p_box[:, 3] - p_box[:, 1] + (norm == False)
+    pb_w = p_box[:, 2] - p_box[:, 0] + (not norm)
+    pb_h = p_box[:, 3] - p_box[:, 1] + (not norm)
     pb_x = pb_w * 0.5 + p_box[:, 0]
     pb_y = pb_h * 0.5 + p_box[:, 1]
     shape = (1, p_box.shape[0])

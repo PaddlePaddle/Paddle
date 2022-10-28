@@ -384,7 +384,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         ):
             if (
                 st.get("sparse_embedx_dim") is not None
-                and strategy.get("use_cvm") == True
+                and strategy.get("use_cvm")
                 and st["sparse_embedx_dim"] != emb_to_size[table_name] - 3
             ):
                 raise ValueError(
@@ -394,7 +394,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 )
             if (
                 st.get("sparse_embedx_dim") is not None
-                and strategy.get("use_cvm") == False
+                and not strategy.get("use_cvm")
                 and st["sparse_embedx_dim"] != emb_to_size[table_name] - 1
             ):
                 raise ValueError(
@@ -402,10 +402,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     " equal to embedding dim - 1 = %s"
                     % (st["sparse_embedx_dim"], emb_to_size[table_name] - 1)
                 )
-            if (
-                st.get("sparse_embedx_dim") is None
-                and strategy.get("use_cvm") == True
-            ):
+            if st.get("sparse_embedx_dim") is None and strategy.get("use_cvm"):
                 logger.warning(
                     "sparse embedding dim for table name '{}' is: {}, while sparse_embedx_dim "
                     "with same sparse table name is not set in config_fleet.py. "
@@ -416,9 +413,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     )
                 )
                 st["sparse_embedx_dim"] = emb_to_size[table_name] - 3
-            if (
-                st.get("sparse_embedx_dim") is None
-                and strategy.get("use_cvm") == False
+            if st.get("sparse_embedx_dim") is None and not strategy.get(
+                "use_cvm"
             ):
                 logger.warning(
                     "sparse embedding dim for table name '{}' is: {}, while sparse_embedx_dim "

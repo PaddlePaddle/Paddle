@@ -2803,7 +2803,7 @@ def lstm(
     input_shape = list(input.shape)
     input_size = input_shape[-1]
     weight_size = 0
-    num_dirrection = 2 if is_bidirec == True else 1
+    num_dirrection = 2 if is_bidirec else 1
 
     for i in range(num_layers):
         if i == 0:
