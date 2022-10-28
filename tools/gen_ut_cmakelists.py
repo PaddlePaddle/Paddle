@@ -493,7 +493,11 @@ class CMakeGenerator:
         run_serial_str = (
             f' RUN_SERIAL {run_serial}' if len(run_serial) > 0 else ''
         )
-        if len(time_out_str) > 0 or len(run_serial_str) > 0:
+        if (
+            len(time_out_str) > 0
+            or len(run_serial_str) > 0
+            or len(run_type_str) > 0
+        ):
             set_properties = f'''
         set_tests_properties({name} PROPERTIES{time_out_str}{run_serial_str}{run_type_str})'''
         else:

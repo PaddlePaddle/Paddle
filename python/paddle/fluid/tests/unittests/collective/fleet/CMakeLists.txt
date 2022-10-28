@@ -21,12 +21,15 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_static_mp_layers MODULES test_fleet_static_mp_layers ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_static_mp_layers PROPERTIES LABELS
+                                                              "RUN_TYPE=DIST")
 endif()
 if(WITH_DGC)
   if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
       test_dgc_op MODULES test_dgc_op ENVS
       "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+    set_tests_properties(test_dgc_op PROPERTIES LABELS "RUN_TYPE=DIST")
   endif()
 endif()
 if(WITH_DGC)
@@ -34,6 +37,7 @@ if(WITH_DGC)
     py_test_modules(
       test_dgc_optimizer MODULES test_dgc_optimizer ENVS
       "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+    set_tests_properties(test_dgc_optimizer PROPERTIES LABELS "RUN_TYPE=DIST")
   endif()
 endif()
 if(WITH_NCCL)
@@ -96,6 +100,8 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     test_fleet_fp16_allreduce_meta_optimizer MODULES
     test_fleet_fp16_allreduce_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_fp16_allreduce_meta_optimizer
+                       PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU
     OR WITH_XPU
@@ -190,6 +196,8 @@ if((WITH_GPU
   py_test_modules(
     test_fleet_graph_executor MODULES test_fleet_graph_executor ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_graph_executor PROPERTIES LABELS
+                                                            "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -228,6 +236,8 @@ if((WITH_GPU
     test_fleet_localsgd_meta_optimizer MODULES
     test_fleet_localsgd_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_localsgd_meta_optimizer
+                       PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(WITH_NCCL)
   if((WITH_GPU) AND LOCAL_ALL_PLAT)
@@ -347,6 +357,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_rolemaker_new MODULES test_fleet_rolemaker_new ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_rolemaker_new PROPERTIES LABELS
+                                                           "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX OR WIN32))
   py_test_modules(
@@ -359,6 +371,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_recv_save_op MODULES test_recv_save_op ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_recv_save_op PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
@@ -368,6 +381,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     ENVS
     "FLAGS_communicator_send_queue_size=1;FLAGS_communicator_max_merge_var_num=1;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
+  set_tests_properties(test_communicator_sync PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU
     OR WITH_XPU
@@ -395,11 +409,14 @@ if((WITH_GPU
     test_fleet_gradient_merge_meta_optimizer MODULES
     test_fleet_gradient_merge_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_gradient_merge_meta_optimizer
+                       PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_amp_init MODULES test_fleet_amp_init ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_amp_init PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -418,6 +435,8 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_meta_optimizer_base
+                       PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU
     OR WITH_XPU
@@ -479,12 +498,16 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     test_fleet_distributed_strategy MODULES test_fleet_distributed_strategy
     ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_distributed_strategy
+                       PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(WITH_DGC)
   if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
       test_fleet_dgc_meta_optimizer MODULES test_fleet_dgc_meta_optimizer ENVS
       "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+    set_tests_properties(test_fleet_dgc_meta_optimizer
+                         PROPERTIES LABELS "RUN_TYPE=DIST")
   endif()
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
@@ -509,12 +532,15 @@ if((WITH_GPU
   py_test_modules(
     test_fleet_lamb_meta_optimizer MODULES test_fleet_lamb_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_lamb_meta_optimizer
+                       PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(WITH_DGC)
   if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
       test_dgc_momentum_op MODULES test_dgc_momentum_op ENVS
       "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+    set_tests_properties(test_dgc_momentum_op PROPERTIES LABELS "RUN_TYPE=DIST")
   endif()
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
@@ -556,6 +582,8 @@ if((WITH_GPU
     test_fleet_hybrid_meta_optimizer MODULES test_fleet_hybrid_meta_optimizer
     ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_hybrid_meta_optimizer
+                       PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -608,6 +636,8 @@ if((WITH_GPU
   py_test_modules(
     test_fleet_amp_meta_optimizer MODULES test_fleet_amp_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_amp_meta_optimizer PROPERTIES LABELS
+                                                                "RUN_TYPE=DIST")
 endif()
 if(WITH_NCCL)
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
@@ -643,6 +673,8 @@ if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
   py_test_modules(
     test_distributed_strategy MODULES test_distributed_strategy ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_distributed_strategy PROPERTIES LABELS
+                                                            "RUN_TYPE=DIST")
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -666,6 +698,8 @@ if((WITH_GPU
     test_fleet_recompute_meta_optimizer MODULES
     test_fleet_recompute_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_recompute_meta_optimizer
+                       PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -683,6 +717,8 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_private_function MODULES test_fleet_private_function ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_private_function PROPERTIES LABELS
+                                                              "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU
     OR WITH_XPU
@@ -780,17 +816,21 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_mixed_precision MODULES test_mixed_precision ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_mixed_precision PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_dygraph_recompute MODULES test_dygraph_recompute ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_dygraph_recompute PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_dygraph_recompute_for_eager MODULES test_dygraph_recompute_for_eager
     ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_dygraph_recompute_for_eager
+                       PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
 if(WITH_NCCL OR WITH_RCCL)
   if(WITH_DGC)
@@ -942,4 +982,5 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_log MODULES test_fleet_log ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_log PROPERTIES LABELS "RUN_TYPE=DIST")
 endif()
