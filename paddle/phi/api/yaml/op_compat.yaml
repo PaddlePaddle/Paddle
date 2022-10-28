@@ -382,6 +382,10 @@
 
 - op : floor
   backward : floor_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -441,6 +445,20 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : hardshrink (hard_shrink)
+  backward : hardshrink_grad (hard_shrink_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : hardsigmoid (hard_sigmoid)
+  backward : hardsigmoid_grad (hard_sigmoid_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   extra :
@@ -480,16 +498,28 @@
 
 - op : log10
   backward : log10_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : log1p
   backward : log1p_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : log2
   backward : log2_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -497,6 +527,18 @@
   backward : log_softmax_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : logit
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : logsigmoid
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : logsigmoid
   backward : logsigmoid_grad
@@ -604,6 +646,10 @@
 
 - op : reciprocal
   backward : reciprocal_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -672,6 +718,10 @@
 
 - op : round
   backward : round_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 

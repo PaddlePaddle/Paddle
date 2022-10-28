@@ -860,16 +860,6 @@
   intermediate : xshape
   backward : flatten_grad
 
-- op : floor
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : floor
-  inplace : (x -> out)
-  backward : floor_grad
-
 - op : floor_divide
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -1093,26 +1083,6 @@
   kernel :
     func : gumbel_softmax
   backward : gumbel_softmax_grad
-
-- op : hardshrink
-  args : (Tensor x, float threshold)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : hard_shrink
-  backward : hardshrink_grad
-
-- op : hardsigmoid
-  args : (Tensor x, float slope, float offset)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : hard_sigmoid
-  backward : hardsigmoid_grad
 
 - op : hardswish
   args : (Tensor x, float threshold = 6.0, float scale = 6.0, float offset = 3.0)
@@ -1397,33 +1367,6 @@
     func : log
   backward: log_grad
 
-- op : log10
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : log10
-  backward: log10_grad
-
-- op : log1p
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : log1p
-  backward: log1p_grad
-
-- op : log2
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : log2
-  backward: log2_grad
-
 - op : log_loss
   args : (Tensor input, Tensor label, float epsilon)
   output : Tensor
@@ -1482,25 +1425,6 @@
     func : ElementwiseInferMeta
   kernel :
     func : logical_xor
-
-- op : logit
-  args : (Tensor x, float eps = 1e-6f)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : logit
-  backward : logit_grad
-
-- op : logsigmoid
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : logsigmoid
-  backward : logsigmoid_grad
 
 - op : logsumexp
   args : (Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all)
@@ -2027,16 +1951,6 @@
     func : real
   backward : real_grad
 
-- op : reciprocal
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : reciprocal
-  inplace : (x -> out)
-  backward : reciprocal_grad
-
 - op : reduce_prod
   args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
   output : Tensor
@@ -2167,16 +2081,6 @@
   kernel :
     func : roll
   backward : roll_grad
-
-- op : round
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : round
-  inplace : (x -> out)
-  backward : round_grad
 
 - op : rsqrt
   args : (Tensor x)
@@ -2310,15 +2214,6 @@
   kernel :
     func : sign
   backward : sign_grad
-
-- op : silu
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : silu
-  backward : silu_grad
 
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)

@@ -246,6 +246,16 @@
     func : flip
   backward : flip_grad
 
+- op : floor
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : floor
+  inplace : (x -> out)
+  backward : floor_grad
+
 - op : graph_send_uv
   args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD")
   output : Tensor(out)
@@ -256,6 +266,26 @@
     data_type : x
   backward : graph_send_uv_grad
 
+- op : hardshrink
+  args : (Tensor x, float threshold = 0.5)
+  output : Tensor (out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hard_shrink
+  backward : hardshrink_grad
+
+- op : hardsigmoid
+  args : (Tensor x, float slope = 0.2, float offset = 0.5)
+  output : Tensor (out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hard_sigmoid
+  backward : hardsigmoid_grad
+
 - op : lgamma
   args : (Tensor x)
   output : Tensor(out)
@@ -264,6 +294,52 @@
   kernel :
     func : lgamma
   backward : lgamma_grad
+
+- op : log10
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : log10
+  backward: log10_grad
+
+- op : log1p
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : log1p
+  backward: log1p_grad
+
+- op : log2
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : log2
+  backward: log2_grad
+
+- op : logit
+  args : (Tensor x, float eps = 1e-6f)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : logit
+  backward : logit_grad
+
+- op : logsigmoid
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : logsigmoid
+  backward : logsigmoid_grad
 
 - op : mv
   args : (Tensor x, Tensor vec)
@@ -282,6 +358,35 @@
   kernel :
     func : poisson
   backward : poisson_grad
+
+- op : reciprocal
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : reciprocal
+  inplace : (x -> out)
+  backward : reciprocal_grad
+
+- op : round
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : round
+  inplace : (x -> out)
+  backward : round_grad
+
+- op : silu
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : silu
+  backward : silu_grad
 
 - op : sin
   args : (Tensor x)

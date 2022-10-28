@@ -274,6 +274,17 @@
   output : Tensor(x_grad)
   invoke : flip(out_grad, axis)
 
+- backward_op : floor_grad
+  forward : floor(Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [out_grad]
+  kernel :
+    func : floor_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : graph_send_uv_grad
   forward : graph_send_uv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD") -> Tensor(out)
   args: (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out_grad, str message_op = "ADD")
@@ -285,6 +296,28 @@
     func : graph_send_uv_grad
     data_type : x
 
+- backward_op : hardshrink_grad
+  forward : hardshrink (Tensor x, float threshold) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float threshold)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hard_shrink_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : hardsigmoid_grad
+  forward : hardsigmoid (Tensor x, float slope, float offset) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, float slope, float offset)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : hard_sigmoid_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : lgamma_grad
   forward : lgamma(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -294,6 +327,60 @@
     param: [x]
   kernel :
     func : lgamma_grad
+
+- backward_op : log10_grad
+  forward : log10 (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : log10_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : log1p_grad
+  forward : log1p (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : log1p_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : log2_grad
+  forward : log2 (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : log2_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : logit_grad
+  forward : logit (Tensor x, float eps = 1e-6f) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float eps)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : logit_grad
+
+- backward_op : logsigmoid_grad
+  forward : logsigmoid (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : logsigmoid_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_op : mv_grad
   forward : mv (Tensor x, Tensor vec) -> Tensor(out)
@@ -314,6 +401,39 @@
     param : [out_grad]
   kernel :
     func : poisson_grad
+
+- backward_op : reciprocal_grad
+  forward : reciprocal (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : reciprocal_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : round_grad
+  forward : round(Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [out_grad]
+  kernel :
+    func : round_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : silu_grad
+  forward : silu (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : silu_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_op : sin_grad
   forward : sin (Tensor x) -> Tensor(out)
