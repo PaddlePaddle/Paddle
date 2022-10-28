@@ -221,7 +221,8 @@ if(APPLE)
       -Werror=braced-scalar-init
       -Werror=uninitialized
       -Werror=tautological-constant-out-of-range-compare
-      -Werror=literal-conversion)
+      -Werror=literal-conversion
+      -Werror=pragma-pack)
 endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)

@@ -50,7 +50,7 @@ class TestGraphSendUVOp(OpTest):
         paddle.enable_static()
         self.python_api = graph_send_uv_wrapper
         self.python_out_sig = ['out']
-        self.op_type = "send_uv"
+        self.op_type = "graph_send_uv"
         self.set_config()
         self.inputs = {
             'x': self.x,

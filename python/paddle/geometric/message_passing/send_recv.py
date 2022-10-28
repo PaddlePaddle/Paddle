@@ -467,11 +467,11 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         return _C_ops.send_uv(x, y, src_index, dst_index, message_op.upper())
     else:
         if _in_legacy_dygraph():
-            return _legacy_C_ops.send_uv(
+            return _legacy_C_ops.graph_send_uv(
                 x, y, src_index, dst_index, "message_op", message_op.upper()
             )
         else:
-            helper = LayerHelper("send_uv", **locals())
+            helper = LayerHelper("graph_send_uv", **locals())
             check_variable_and_dtype(
                 x,
                 'x',
@@ -500,7 +500,7 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
             }
             attrs = {'message_op': message_op.upper()}
             helper.append_op(
-                type="send_uv",
+                type="graph_send_uv",
                 inputs=inputs,
                 attrs=attrs,
                 outputs={"out": out},
