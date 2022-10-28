@@ -584,7 +584,8 @@ void BatchNormKernel(const Context &ctx,
   const bool fast_nhwc_batch_norm =
       test_mode ||
       (dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent);
-
+  VLOG(4) << FLAGS_cudnn_batchnorm_spatial_persistent << " dtype " << dtype
+          << " test mode" << test_mode;
   auto compute_format = fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
                             ? DataLayout::kNHWC
                             : DataLayout::kNCHW;

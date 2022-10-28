@@ -131,8 +131,12 @@ class EagerLayoutTransformer {
     bool need_trans =
         !(final_layout_ == Layout::UNDEFINED || final_layout_ == in.layout());
     // This is for Agnostic op when layout is differnet
-    if (need_trans) {
-      auto out_tensor = EagerTraceTransposeOp(final_layout_, in);
+    auto trans_layout = final_layout_;
+    if (final_layout_ == DefaultLayout()) trans_layout = Layout::UNDEFINED;
+    VLOG(4) << "Agnostic op : " << op_name_ << "'s layout is " << final_layout_
+            << "in layout" << in.layout() << "in shape" << in.shape().size();
+    if (need_trans && final_layout_ != DesiredLayout()) {
+      auto out_tensor = EagerTraceTransposeOp(trans_layout, in);
       phi::DenseTensorUtils::GetMutableMeta(
           static_cast<phi::DenseTensor*>(out_tensor.impl().get()))
           ->layout = final_layout_;
@@ -217,6 +221,7 @@ class EagerHeavilyLayoutSensitiveOpTransformer : public EagerLayoutTransformer {
   }
 
   void SetOutTensorLayout(paddle::experimental::Tensor* out_tensor) {
+    VLOG(6) << "Heavily SetOutTensorLayout to " << desired_layout_;
     UpdateLayout(out_tensor, desired_layout_);
   }
 
@@ -378,7 +383,6 @@ class EagerFlattenOpTransformer
     VLOG(4) << "AutoTuneTransformer op: " << op_name;
   }
 
-  // transpose from NHWC to NCHW
   paddle::experimental::Tensor TransInTensor(
       const std::string& in_name, const paddle::experimental::Tensor& in) {
     return in;

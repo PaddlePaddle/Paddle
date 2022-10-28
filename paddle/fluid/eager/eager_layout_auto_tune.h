@@ -131,7 +131,9 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
       VLOG(4) << "LayoutAutoTune from " << *attr << " to " << DesiredLayout();
     }
   }
-
+  if (op_name == "group_norm") {
+    return std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(op_name);
+  }
   if (paddle::imperative::LayoutAutoTune::Instance().IsHeavilyLayoutSensitive(
           op_name)) {
     return std::make_shared<EagerHeavilyLayoutSensitiveOpTransformer>(op_name,

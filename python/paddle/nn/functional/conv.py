@@ -124,6 +124,8 @@ def _conv_nd(x,
         if bias is not None:
             channel_dim = channel_dim + len(
                 x.shape) if channel_dim < 0 else channel_dim
+            if pre_bias.layout == "NHWC":
+                channel_dim = 3
             if isinstance(x, tuple):
                 x = x[0]
             if isinstance(bias, tuple):
