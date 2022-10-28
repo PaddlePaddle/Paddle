@@ -269,7 +269,7 @@ void MultiTensorAdamKernel(
 
   if (!use_global_beta_pow) {
     // Update with gpu
-    UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+    UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
         beta1_tmp,
         beta2_tmp,
         beta1_pow.data<MPDType>(),

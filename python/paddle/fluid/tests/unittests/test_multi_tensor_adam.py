@@ -147,7 +147,12 @@ class TestMultiTensorAdam(unittest.TestCase):
             not use_multi_tensor_adam, use_adamw, test_dict, test_fp16
         )
         for i, j in zip(parameters, parameters_1):
-            np.testing.assert_allclose(i.numpy(), j.numpy(), atol=1e-5)
+            if test_fp16:
+                np.testing.assert_allclose(
+                    i.numpy(), j.numpy(), rtol=1e-2, atol=1e-3
+                )
+            else:
+                np.testing.assert_equal(i.numpy(), j.numpy())
 
     def test_main(self):
         old_device = paddle.get_device()
