@@ -35,6 +35,25 @@ class AdamOpCost(CompOpCost):
 
 
 @register_op_cost
+class ArgsortOpCost(CompOpCost):
+    OP_TYPE = "argsort"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(ArgsortOpCost, self).__init__(
+            op=op, op_desc=op_desc, cluster=cluster
+        )
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
 class AssignOpCost(CompOpCost):
     OP_TYPE = "assign"
 
@@ -325,6 +344,25 @@ class ElementwiseSubGradOpCost(CompOpCost):
 
     def __init__(self, op=None, op_desc=None, cluster=None):
         super(ElementwiseSubGradOpCost, self).__init__(
+            op=op, op_desc=op_desc, cluster=cluster
+        )
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class EqualOpCost(CompOpCost):
+    OP_TYPE = "equal"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(EqualOpCost, self).__init__(
             op=op, op_desc=op_desc, cluster=cluster
         )
 
