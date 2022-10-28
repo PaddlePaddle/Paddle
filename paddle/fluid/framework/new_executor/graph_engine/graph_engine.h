@@ -272,8 +272,9 @@ class CustomGraphEngine final : public GraphEngine {
           auto run_phi_kernel = false;
           if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
                   op_with_kernel->Type())) {
-            auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
-            auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
+            op_with_kernel->ChoosePhiKernel(exec_ctx);
+            // auto phi_kernel_name =
+            // op_with_kernel->PhiKernelSignature()->name;
 
             if (op_with_kernel->PhiKernel()->IsValid()) {
               run_phi_kernel = true;
