@@ -60,7 +60,6 @@ void Conv3dInferMeta(const MetaTensor& x,
                      const int groups,
                      const bool subm,
                      const std::string& key,
-                     const bool cutlass,
                      MetaTensor* out,
                      MetaTensor* rulebook,
                      MetaTensor* counter) {
