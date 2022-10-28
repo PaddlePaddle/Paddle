@@ -49,13 +49,8 @@ def _apply_collective_grads(parameters, comm_group, bucket_size, scale=None):
         else comm_group.nranks
     )
 
-    if scale is None:
-        scale = nranks
-    else:
-        scale = 1.0 / scale
-
-    if scale == 1.0:
-        scale = None
+    scale = nranks if scale is None else 1.0 / scale
+    scale = None if scale == 1.0 else scale
 
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
         # need to div nranks
@@ -95,10 +90,9 @@ def _apply_collective_grads_eager(
         if comm_group is None
         else comm_group.nranks
     )
-    if scale is None:
-        scale = 1.0 / nranks
-    if scale == 1.0:
-        scale = None
+
+    scale = 1.0 / nranks if scale is None else scale
+    scale = None if scale == 1.0 else scale
 
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
         # need to div nranks
