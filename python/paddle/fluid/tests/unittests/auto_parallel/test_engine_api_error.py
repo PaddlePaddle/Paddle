@@ -111,6 +111,38 @@ class MLPLayer(nn.Layer):
 
 
 class TestEngineErrorRaise(unittest.TestCase):
+    def setUp(self):
+        class NoSupportData1:
+            def __getitem__(self, index):
+                input = np.random.uniform(size=image_size).astype("float32")
+                label = np.random.randint(0, class_num - 1, dtype="int64")
+                return input, label
+
+        class NoSupportData2(TrainDataset):
+            def __getitem__(self, index):
+                input = [
+                    list(np.random.uniform(size=image_size).astype("float32"))
+                ]
+                label = [np.random.randint(0, class_num - 1, dtype="int64")]
+                return input, label
+
+        class NoSupportData3:
+            def __getitem__(self, index):
+                input = np.random.uniform(size=image_size).astype("float32")
+                return input
+
+        class NoSupportData4(TestDataset):
+            def __getitem__(self, index):
+                input = [
+                    list(np.random.uniform(size=image_size).astype("float32"))
+                ]
+                return input
+
+        self.no_support_data_1 = NoSupportData1()
+        self.no_support_data_2 = NoSupportData2(10)
+        self.no_support_data_3 = NoSupportData3()
+        self.no_support_data_4 = NoSupportData4(10)
+
     def test_Engine(self):
         with self.assertRaises(TypeError):
             auto.Engine(model=paddle.static.Program())
@@ -129,97 +161,57 @@ class TestEngineErrorRaise(unittest.TestCase):
 
         with self.assertRaises(TypeError):
 
-            class NoSupportData:
-                def __getitem__(self, index):
-                    input = np.random.uniform(size=image_size).astype("float32")
-                    label = np.random.randint(0, class_num - 1, dtype="int64")
-                    return input, label
-
             engine = auto.Engine(
                 model=MLPLayer(),
                 loss=paddle.nn.CrossEntropyLoss(),
                 optimizer=paddle.optimizer.AdamW(0.00001),
             )
-            engine.fit(train_data=NoSupportData())
+            engine.fit(train_data=self.no_support_data_1)
 
         with self.assertRaises(TypeError):
 
-            class NoSupportData(TrainDataset):
-                def __getitem__(self, index):
-                    input = [
-                        list(
-                            np.random.uniform(size=image_size).astype("float32")
-                        )
-                    ]
-                    label = [np.random.randint(0, class_num - 1, dtype="int64")]
-                    return input, label
-
             engine = auto.Engine(
                 model=MLPLayer(),
                 loss=paddle.nn.CrossEntropyLoss(),
                 optimizer=paddle.optimizer.AdamW(0.00001),
             )
-            engine.fit(train_data=NoSupportData(10))
+            engine.fit(train_data=self.no_support_data_2)
 
     def test_evaluate(self):
         with self.assertRaises(TypeError):
 
-            class NoSupportData:
-                def __getitem__(self, index):
-                    input = np.random.uniform(size=image_size).astype("float32")
-                    return input
-
             engine = auto.Engine(
                 model=MLPLayer(),
                 loss=paddle.nn.CrossEntropyLoss(),
                 metrics=paddle.metric.Accuracy(),
             )
-            engine.evaluate(valid_data=NoSupportData())
+            engine.evaluate(valid_data=self.no_support_data_3)
 
         with self.assertRaises(TypeError):
 
-            class NoSupportData(TestDataset):
-                def __getitem__(self, index):
-                    input = [
-                        list(
-                            np.random.uniform(size=image_size).astype("float32")
-                        )
-                    ]
-                    label = [np.random.randint(0, class_num - 1, dtype="int64")]
-                    return input, label
-
             engine = auto.Engine(
                 model=MLPLayer(),
                 loss=paddle.nn.CrossEntropyLoss(),
                 metrics=paddle.metric.Accuracy(),
             )
-            engine.evaluate(valid_data=NoSupportData(10))
+            engine.evaluate(
+                valid_data=self.no_support_data_4, valid_sample_split=1
+            )
 
     def test_predict(self):
         with self.assertRaises(TypeError):
 
-            class NoSupportData:
-                def __getitem__(self, index):
-                    input = np.random.uniform(size=image_size).astype("float32")
-                    return input
-
             engine = auto.Engine(model=MLPLayer())
-            engine.predict(test_data=NoSupportData())
+            engine.predict(
+                test_data=self.no_support_data_3, test_sample_split=1
+            )
 
         with self.assertRaises(TypeError):
 
-            class NoSupportData(TestDataset):
-                def __getitem__(self, index):
-                    input = [
-                        list(
-                            np.random.uniform(size=image_size).astype("float32")
-                        )
-                    ]
-                    label = [np.random.randint(0, class_num - 1, dtype="int64")]
-                    return input, label
-
             engine = auto.Engine(model=MLPLayer())
-            engine.predict(test_data=NoSupportData(10))
+            engine.predict(
+                test_data=self.no_support_data_4, test_sample_split=1
+            )
 
     def build_program(self):
         main_prog = static.Program()
@@ -302,17 +294,17 @@ class TestEngineErrorRaise(unittest.TestCase):
             engine.cost(mode="predict")
 
 
-class TestEngineDynamicErrorRaise(unittest.TestCase):
-    def setUp(self):
-        paddle.disable_static()
+# class TestEngineDynamicErrorRaise(unittest.TestCase):
+#     def setUp(self):
+#         paddle.disable_static()
 
-    def tearDown(self):
-        paddle.enable_static()
+#     def tearDown(self):
+#         paddle.enable_static()
 
-    def test_cost(self):
-        with self.assertRaises(ValueError):
-            engine = auto.Engine(model=MLPLayer())
-            engine.cost(mode="predict")
+#     def test_cost(self):
+#         with self.assertRaises(ValueError):
+#             engine = auto.Engine(model=MLPLayer())
+#             engine.cost(mode="predict")
 
 
 if __name__ == "__main__":
