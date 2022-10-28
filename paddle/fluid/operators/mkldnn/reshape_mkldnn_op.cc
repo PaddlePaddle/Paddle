@@ -367,7 +367,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     astream.wait();
 
     dx->Resize(dx_dims);
-        reorder_dst_memory_p->get_desc().reshape(phi::vectorize(dx_dims)));
+        reorder_dst_memory_p->get_desc().reshape(phi::vectorize(dx_dims));
   }
 
   void InferOutputShapeInGrad(const framework::ExecutionContext& ctx,
