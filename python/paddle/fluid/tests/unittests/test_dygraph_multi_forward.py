@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from paddle.fluid.dygraph.nn import Pool2D, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
@@ -48,17 +48,16 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
     ):
         super(SimpleImgConvPool, self).__init__()
 
-        self._conv2d = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv2d = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=conv_stride,
             padding=conv_padding,
             dilation=conv_dilation,
             groups=conv_groups,
-            param_attr=None,
+            weight_attr=None,
             bias_attr=None,
-            use_cudnn=use_cudnn,
         )
 
         self._pool2d = Pool2D(

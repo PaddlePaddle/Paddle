@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
-from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
+from paddle.fluid.dygraph.nn import BatchNorm
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
@@ -33,18 +34,17 @@ class ConvBNLayer(fluid.dygraph.Layer):
     ):
         super(ConvBNLayer, self).__init__()
 
-        self.conv = Conv2D(
-            num_channels=ch_in,
-            num_filters=ch_out,
-            filter_size=filter_size,
+        self.conv = paddle.nn.Conv2D(
+            in_channels=ch_in,
+            out_channels=ch_out,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
             groups=groups,
-            param_attr=ParamAttr(
+            weight_attr=ParamAttr(
                 initializer=fluid.initializer.Normal(0.0, 0.02)
             ),
             bias_attr=False,
-            act=None,
         )
         self.batch_norm = BatchNorm(
             num_channels=ch_out,

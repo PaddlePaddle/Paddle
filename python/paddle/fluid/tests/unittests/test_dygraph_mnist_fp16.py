@@ -52,11 +52,8 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             padding=conv_padding,
             dilation=conv_dilation,
             groups=conv_groups,
-            param_attr=param_attr,
+            weight_attr=param_attr,
             bias_attr=bias_attr,
-            use_cudnn=use_cudnn,
-            dtype=dtype,
-            act=act,
         )
 
         self._pool2d = Pool2D(

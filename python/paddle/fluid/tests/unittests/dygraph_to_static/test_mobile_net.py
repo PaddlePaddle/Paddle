@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
+from paddle.fluid.dygraph.nn import Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -54,16 +54,14 @@ class ConvBNLayer(fluid.dygraph.Layer):
     ):
         super(ConvBNLayer, self).__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
             groups=num_groups,
-            act=None,
-            use_cudnn=use_cudnn,
-            param_attr=ParamAttr(
+            weight_attr=ParamAttr(
                 initializer=MSRA(), name=self.full_name() + "_weights"
             ),
             bias_attr=False,

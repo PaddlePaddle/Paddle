@@ -37,7 +37,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator
-from paddle.fluid.dygraph.nn import Conv2D, Conv2DTranspose, BatchNorm
+from paddle.fluid.dygraph.nn import Conv2DTranspose, BatchNorm
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -363,14 +363,13 @@ class conv2d(fluid.dygraph.Layer):
                 initializer=fluid.initializer.Constant(0.0)
             )
 
-        self.conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self.conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
-            use_cudnn=use_cudnn,
-            param_attr=fluid.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=fluid.initializer.NormalInitializer(
                     loc=0.0, scale=stddev
                 )

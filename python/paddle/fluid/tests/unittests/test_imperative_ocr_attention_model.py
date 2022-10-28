@@ -95,21 +95,17 @@ class ConvBNPool(fluid.dygraph.Layer):
             out_ch[0],
             3,
             padding=1,
-            param_attr=conv_param_0,
+            weight_attr=conv_param_0,
             bias_attr=False,
-            act=None,
-            use_cudnn=use_cudnn,
         )
         self.bn_0_layer = BatchNorm(out_ch[0], act=act, is_test=is_test)
         self.conv_1_layer = paddle.nn.Conv2D(
             out_ch[0],
-            num_filters=out_ch[1],
-            filter_size=3,
+            out_ch[1],
+            3,
             padding=1,
-            param_attr=conv_param_1,
+            weight_attr=conv_param_1,
             bias_attr=False,
-            act=None,
-            use_cudnn=use_cudnn,
         )
         self.bn_1_layer = BatchNorm(out_ch[1], act=act, is_test=is_test)
 
