@@ -1026,7 +1026,9 @@ CubTensorReduceImpl(const Tx* x_data,
                             reducer.initial(),
                             stream);
 }
+#endif  // PADDLE_WITH_XPU_KP
 
+#if defined(__NVCC__)
 template <typename Tx,
           typename Ty,
           template <typename>
@@ -1071,7 +1073,7 @@ CubTensorReduceImpl(const Tx* x_data,
                             reducer.initial(),
                             stream);
 }
-#endif  // PADDLE_WITH_XPU_KP
+#endif  // __NVCC__
 
 template <typename Tx,
           typename Ty,
