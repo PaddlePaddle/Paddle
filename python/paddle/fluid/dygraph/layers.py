@@ -67,11 +67,10 @@ def _scope_dist2single(dist_scope):
         "row_parallel_linear": "linear",
         "column_parallel_linear": "linear",
         "vocab_parallel_embedding": "embedding",
-        "parallel_cross_entropy": "cross_entropy",
+        # "parallel_cross_entropy": "cross_entropy", while mp_layer has parallel_cross_entropy,
+        # but there is no parameters so the mapping of parallel_cross_entropy is not neccessary.
     }
-    assert (
-        dist_scope != "parallel_cross_entropy"
-    ), f"Not execpted param name: parallel_cross_entropy"
+
     if dist_scope in mapping:
         return mapping[dist_scope]
     return dist_scope
