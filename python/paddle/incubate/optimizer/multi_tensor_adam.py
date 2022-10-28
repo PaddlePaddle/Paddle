@@ -18,9 +18,6 @@ from paddle.optimizer import Adam, AdamW
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.framework import Variable, in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.dygraph import base as imperative_base
-from collections import defaultdict
 
 from paddle import _C_ops, _legacy_C_ops
 
@@ -32,8 +29,8 @@ class MultiTensorAdam(Adam):
     The Adam optimizer is implemented based on the Adam and Adam Optimization
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ and in paper
     `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
-    The MultiTensorAdam optimizer can deal with multiple tensor optimizations using Adam or
-    AdamW at once.
+    The MultiTensorAdam optimizer can deal with multiple tensor optimizations using
+    Adam at once.
 
     The parameter ``param_out`` update rule with gradient ``grad``:
 
@@ -75,8 +72,6 @@ class MultiTensorAdam(Adam):
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
-        use_adamw (boolean, optional): Apply Adam orAdamW.
-            True for decoupled weight decay(also known as AdamW) (default: False)
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -121,7 +116,6 @@ class MultiTensorAdam(Adam):
         epsilon=1e-8,
         parameters=None,
         weight_decay=0.0,
-        use_adamw=False,
         grad_clip=None,
         multi_precision=False,
         name=None,
@@ -135,52 +129,19 @@ class MultiTensorAdam(Adam):
             weight_decay=weight_decay,
             grad_clip=grad_clip,
             multi_precision=multi_precision,
+            use_multi_tensor=True,
             name=name,
         )
 
-        self.type = "multi_tensor_adam"
+        use_adamw = False
+        self.type = "MultiTensorAdam"
         self._weight_decay = weight_decay
         self.use_adamw = use_adamw
         self.lr = 0.0
-        self._default_dict = {
-            'weight_decay': weight_decay,
-            'beta1': beta1,
-            'beta2': beta2,
-            'epsilon': epsilon,
-            'use_adamw': use_adamw,
-            'grad_clip': grad_clip,
-        }
-
-        self._param_groups = []
-        if self._parameter_list and isinstance(self._parameter_list[0], dict):
-            for param_group in self._parameter_list:
-                self._add_param_group(param_group.copy())
-        else:
-            self._param_groups = self._parameter_list
-
-        self._param_dict = self._create_multi_tensor_dict()
-        self._moment1_dict = self._create_multi_tensor_dict()
-        self._moment2_dict = self._create_multi_tensor_dict()
-        self._beta1_pow_acc_dict = self._create_multi_tensor_dict()
-        self._beta2_pow_acc_dict = self._create_multi_tensor_dict()
-        self._master_weight_dict = self._create_multi_tensor_dict()
-        self._master_weight_dict['FP32_LODTensor'] = None
 
         n = len(self._param_groups) if self._param_groups is not None else 1
         self.beta1_pow_acc = [[] for _ in range(n)]
         self.beta2_pow_acc = [[] for _ in range(n)]
-
-    @imperative_base.no_grad
-    @framework.dygraph_only
-    def step(self):
-        step_unit_fun(self)
-
-    def _create_optimization_pass(
-        self, parameters_and_grads, param_group_idx=0
-    ):
-        _create_optimization_pass_unit_fun(
-            self, parameters_and_grads, param_group_idx
-        )
 
 
 class MultiTensorAdamW(AdamW):
@@ -188,7 +149,7 @@ class MultiTensorAdamW(AdamW):
     The Adam optimizer is implemented based on the Adam and Adam Optimization
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ and in paper
     `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
-    The MultiTensorAdamW optimizer can deal with multiple tensor optimizations using Adam or
+    The MultiTensorAdamW optimizer can deal with multiple tensor optimizations using
     AdamW at once.
 
     The parameter ``param_out`` update rule with gradient ``grad``:
@@ -229,8 +190,6 @@ class MultiTensorAdamW(AdamW):
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
-        use_adamw (boolean, optional): Apply Adam orAdamW.
-            True for decoupled weight decay(also known as AdamW) (default: False)
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -275,7 +234,6 @@ class MultiTensorAdamW(AdamW):
         epsilon=1e-8,
         parameters=None,
         weight_decay=0.0,
-        use_adamw=True,
         grad_clip=None,
         multi_precision=False,
         name=None,
@@ -292,19 +250,13 @@ class MultiTensorAdamW(AdamW):
             name=name,
         )
 
-        self.type = "multi_tensor_adamw"
+        use_adamw = True
+        self.type = "MultiTensorAdamW"
         self.use_adamw = use_adamw
+        self.use_multi_tensor = True
         self._weight_decay = weight_decay
         self._grad_clip = grad_clip
         self.lr = 0.0
-        self._default_dict = {
-            'weight_decay': weight_decay,
-            'beta1': beta1,
-            'beta2': beta2,
-            'epsilon': epsilon,
-            'use_adamw': use_adamw,
-            'grad_clip': grad_clip,
-        }
 
         self._param_groups = []
         if self._parameter_list and isinstance(self._parameter_list[0], dict):
@@ -325,205 +277,8 @@ class MultiTensorAdamW(AdamW):
         self.beta1_pow_acc = [[] for _ in range(n)]
         self.beta2_pow_acc = [[] for _ in range(n)]
 
-    @imperative_base.no_grad
-    @framework.dygraph_only
-    def step(self):
-        step_unit_fun(self)
 
-    def _create_optimization_pass(
-        self, parameters_and_grads, param_group_idx=0
-    ):
-        _create_optimization_pass_unit_fun(
-            self, parameters_and_grads, param_group_idx
-        )
-
-
-def _create_optimization_pass_unit_fun(
-    optimizer, parameters_and_grads, param_group_idx=0
-):
-
-    """Add optimization operators to update gradients to tensors.
-
-    Args:
-        parameters_and_grads(list(tuple(Tensor, Tensor))):
-        a list of (tensor, gradient) pair to update.
-
-    Returns:
-        return_op_list: a list of operators that will complete one step of
-        optimization. This will include parameter update ops, global step
-        update ops and any other custom ops required by subclasses to manage
-        their internal state.
-    """
-    # This is a default implementation of create_optimization_pass that
-    # can be shared by most optimizers. This implementation assumes that
-    # the subclass will implement the _append_optimize_op method and the
-    #  _initialize_tensors method. The subclass can extend the
-    # _create_accumulators method if it needs to create accumulators
-    # for parameters and extend _finish_update method to add custom ops.
-
-    # Allways called under program_guard use global block as loss block
-    # But if current block is in control flow, append optimize op in the
-    # grad block of current block
-
-    global_block = framework.default_main_program().global_block()
-    target_block = global_block
-    current_block = framework.default_main_program().current_block()
-    if current_block.idx != global_block.idx:
-        assert (
-            current_block.backward_block_idx != -1
-        ), "current block is not global_block, but it doesn't have backward block."
-        target_block = framework.default_main_program().blocks[
-            current_block.backward_block_idx
-        ]
-
-    start = len(target_block.ops)
-    optimizer.helper = LayerHelper(optimizer.__class__.__name__)
-
-    optimizer._create_global_learning_rate()
-
-    if (
-        len(optimizer._param_dict['FP32_LODTensor'][param_group_idx]) == 0
-        and len(optimizer._param_dict['FP16_LODTensor'][param_group_idx]) == 0
-    ):
-        if isinstance(parameters_and_grads, list):
-            assert param_group_idx == 0
-            _multi_tensor_adam_init(
-                optimizer,
-                target_block,
-                [p[0] for p in parameters_and_grads if not p[0].stop_gradient],
-                param_group_idx,
-            )
-        else:
-            _update_param_group(optimizer, parameters_and_grads)
-            _multi_tensor_adam_init(
-                optimizer,
-                target_block,
-                [
-                    p[0]
-                    for p in parameters_and_grads['params']
-                    if not p[0].stop_gradient
-                ],
-                param_group_idx,
-            )
-    if framework._non_static_mode():
-        _append_optimize_multi_tensor_adam_op(
-            optimizer,
-            target_block,
-            parameters_and_grads,
-            param_group_idx=param_group_idx,
-        )
-    else:
-        optimizer._update_param_device_map(parameters_and_grads, target_block)
-        # NOTE: Multi Tensor requires all parameters to be in the same device and program.
-        # param_grad_list = [p_0,g_0,p_1,g_1,....]
-        param_grad_list = []
-        for param_and_grad in parameters_and_grads:
-            if (
-                not param_and_grad[0].stop_gradient
-                and param_and_grad[1] is not None
-            ):
-                param_grad_list.append(param_and_grad[0])
-                param_grad_list.append(param_and_grad[1])
-        with param_grad_list[0].block.program._optimized_guard(
-            param_grad_list
-        ), name_scope("optimizer"):
-            device = optimizer._get_device_for_param(param_grad_list[0].name)
-            with device_guard(device):
-                _append_optimize_multi_tensor_adam_op(
-                    optimizer,
-                    target_block,
-                    parameters_and_grads,
-                    param_group_idx=param_group_idx,
-                )
-
-    # Get custom finish ops for subclasses
-    # FIXME: Need to fix this once we figure out how to handle dependencies
-    optimizer._finish_update(target_block, parameters_and_grads)
-
-    end = len(target_block.ops)
-    return target_block._slice_ops(start, end)
-
-
-def step_unit_fun(optimizer):
-    """
-    Execute the optimizer and update parameters once.
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            a = paddle.rand([2,13], dtype="float32")
-            linear = paddle.nn.Linear(13, 5)
-            # This can be any optimizer supported by dygraph.
-            adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                                        parameters = linear.parameters())
-            out = linear(a)
-            out.backward()
-            adam.step()
-            adam.clear_grad()
-    """
-    if not isinstance(optimizer._parameter_list[0], dict):
-        params_grads = []
-        for param in optimizer._parameter_list:
-            if param.stop_gradient:
-                continue
-            if param._grad_ivar() is not None:
-                grad_var = param._grad_ivar()
-                if in_dygraph_mode():
-                    if (
-                        hasattr(grad_var, "is_selected_rows")
-                        and grad_var.is_selected_rows()
-                        and optimizer.regularization is not None
-                    ):
-                        raise RuntimeError(
-                            "Adam don't support weight_decay with sparse parameters, please set it to None."
-                        )
-                else:
-                    if (
-                        hasattr(grad_var, "_is_sparse")
-                        and grad_var._is_sparse()
-                        and optimizer.regularization is not None
-                    ):
-                        raise RuntimeError(
-                            "Adam don't support weight_decay with sparse parameters, please set it to None."
-                        )
-                params_grads.append((param, grad_var))
-
-        optimize_ops = optimizer._apply_optimize(
-            loss=None,
-            startup_program=None,
-            params_grads=params_grads,
-            param_group_idx=0,
-        )
-    else:
-        # optimize parameters in groups
-        for idx, param_group in enumerate(optimizer._param_groups):
-            params_grads = defaultdict(lambda: list())
-            for param in param_group['params']:
-                if param.stop_gradient:
-                    continue
-                if param._grad_ivar() is not None:
-                    grad_var = param._grad_ivar()
-                    params_grads['params'].append((param, grad_var))
-            params_grads.update(
-                {k: v for k, v in param_group.items() if k != 'params'}
-            )
-
-            optimizer._apply_optimize(
-                loss=None,
-                startup_program=None,
-                params_grads=params_grads,
-                param_group_idx=idx,
-            )
-
-
-def _multi_tensor_adam_init(
-    optimizer, target_block, parameters, param_group_idx
-):
+def _multi_tensor_init(optimizer, target_block, parameters, param_group_idx):
     """
     All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, float32).
     This function will be overridden in the corresponding optimizer file.
@@ -578,7 +333,7 @@ def _multi_tensor_adam_init(
             )
 
 
-def _append_optimize_multi_tensor_adam_op(
+def _append_optimize_multi_tensor_op(
     optimizer, target_block, parameters_and_grads, param_group_idx
 ):
     """
@@ -758,19 +513,3 @@ def _append_optimize_multi_tensor_adam_op(
                     stop_gradient=True,
                 )
     return multi_tensor_adam_op
-
-
-def _update_param_group(optimizer, parameters):
-    optimizer._beta1 = parameters.get('beta1', optimizer._default_dict['beta1'])
-    optimizer._beta2 = parameters.get('beta2', optimizer._default_dict['beta2'])
-    optimizer._epsilon = parameters.get(
-        'epsilon', optimizer._default_dict['epsilon']
-    )
-    optimizer.use_adamw = parameters.get(
-        'use_adamw', optimizer._default_dict['use_adamw']
-    )
-    optimizer._weight_decay = parameters.get(
-        'weight_decay', optimizer._default_dict['weight_decay']
-    )
-    parameters = parameters.get('params')
-    return parameters

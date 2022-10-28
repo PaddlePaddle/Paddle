@@ -832,6 +832,8 @@ class Optimizer(object):
         if self._use_multi_tensor and self.__class__.__name__ in [
             'Momentum',
             'Adam',
+            'MultiTensorAdam',
+            'MultiTensorAdamW',
         ]:
             if (
                 len(self._param_dict['FP32_LODTensor'][param_group_idx]) == 0

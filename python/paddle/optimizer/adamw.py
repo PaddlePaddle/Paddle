@@ -669,11 +669,14 @@ class AdamW(Optimizer):
                     params_grads.append((param, grad_var))
 
             optimize_ops = self._apply_optimize(
-                loss=None, startup_program=None, params_grads=params_grads
+                loss=None,
+                startup_program=None,
+                params_grads=params_grads,
+                param_group_idx=0,
             )
         else:
             # optimize parameters in groups
-            for param_group in self._param_groups:
+            for idx, param_group in enumerate(self._param_groups):
                 params_grads = defaultdict(lambda: list())
                 for param in param_group['params']:
                     if param.stop_gradient:
@@ -703,7 +706,10 @@ class AdamW(Optimizer):
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
                 self._apply_optimize(
-                    loss=None, startup_program=None, params_grads=params_grads
+                    loss=None,
+                    startup_program=None,
+                    params_grads=params_grads,
+                    param_group_idx=idx,
                 )
 
     def _update_param_group(self, parameters):
