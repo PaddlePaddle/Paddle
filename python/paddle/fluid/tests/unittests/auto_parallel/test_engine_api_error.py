@@ -294,17 +294,17 @@ class TestEngineErrorRaise(unittest.TestCase):
             engine.cost(mode="predict")
 
 
-# class TestEngineDynamicErrorRaise(unittest.TestCase):
-#     def setUp(self):
-#         paddle.disable_static()
+class TestEngineDynamicErrorRaise(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
 
-#     def tearDown(self):
-#         paddle.enable_static()
+    def tearDown(self):
+        paddle.enable_static()
 
-#     def test_cost(self):
-#         with self.assertRaises(ValueError):
-#             engine = auto.Engine(model=MLPLayer())
-#             engine.cost(mode="predict")
+    def test_cost(self):
+        with self.assertRaises(ValueError):
+            engine = auto.Engine(model=MLPLayer())
+            engine.cost(mode="predict")
 
 
 if __name__ == "__main__":
