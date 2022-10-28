@@ -398,10 +398,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
                     layer._name,
                 )
 
-            if (
-                layer._weight_attr is not False
-                and layer._bias_attr is not False
-            ):
+            if layer._weight_attr != False and layer._bias_attr != False:
                 with no_grad():
                     layer_output.weight = layer.weight
                     layer_output.bias = layer.bias
