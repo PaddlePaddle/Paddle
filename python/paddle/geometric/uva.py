@@ -50,8 +50,9 @@ def to_uva_tensor(x, gpu_id=0):
             import numpy as np
             import paddle
 
-            x = np.ones([4, 5])
-            y = paddle.geometric.to_uva_tensor(x)
+            if paddle.device.is_compiled_with_cuda():
+                x = np.ones([4, 5])
+                y = paddle.geometric.to_uva_tensor(x)
 
             # Although we see that y' place is Place(gpu:0), it is actually store on CPU.
             # Tensor(shape=[4, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
