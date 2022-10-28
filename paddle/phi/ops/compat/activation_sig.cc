@@ -162,6 +162,12 @@ KernelSignature SquareDoubleGradOpArgumentMapping(
       "square_double_grad", {"X", "DOut", "DDX"}, {}, {"DX", "DDOut"});
 }
 
+KernelSignature SinDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature(
+      "sin_double_grad", {"X", "DOut", "DDX"}, {}, {"DX", "DDOut"});
+}
+
 KernelSignature PowOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("FactorTensor")) {
     return KernelSignature("pow", {"X"}, {"FactorTensor"}, {"Out"});
@@ -196,6 +202,18 @@ PD_REGISTER_BASE_KERNEL_NAME(square_grad_grad, square_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(brelu, hard_tanh);
 PD_REGISTER_BASE_KERNEL_NAME(brelu_grad, hard_tanh_grad);
 
+PD_REGISTER_ARG_MAPPING_FN(cos_grad, phi::CosGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(tan_grad, phi::TanGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(acos_grad, phi::AcosGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(sin_grad, phi::SinGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(sin_grad_grad, phi::SinDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(asin_grad, phi::AsinGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(atan_grad, phi::AtanGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(sinh_grad, phi::SinhGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(cosh_grad, phi::CoshGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(asinh_grad, phi::AsinhGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(acosh_grad, phi::AcoshGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(atanh_grad, phi::AtanhGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(relu_grad, phi::ReluGradOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(square_grad, phi::SquareGradOpArgumentMapping);

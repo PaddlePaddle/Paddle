@@ -106,6 +106,39 @@ struct SinFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+// sine''(x) = -sin(x)
+template <typename T>
+struct SinGradGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* X,
+                  const DenseTensor* dOut,
+                  const DenseTensor* ddX,
+                  DenseTensor* dX,
+                  DenseTensor* ddOut) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "SinGradGrad"));
+    auto x = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "SinGradGrad"));
+    // sin GradGrad: ddy=cos(x)*ddx, dx=-sin(x)*dy*ddx
+    // calculate dx first, so ddy can inplace ddx
+    if (dX) {
+      auto dx = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "SinGradGrad"));
+      auto dout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "SinGradGrad"));
+      dx.device(*d) = -ddx * x.unaryExpr(Sine<T>()) * dout;
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SinGradGrad"));
+      ddout.device(*d) = ddx * x.unaryExpr(Cosine<T>());
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
 // reciprocal(x) = 1 / x
 template <typename T>
 struct ReciprocalFunctor : public BaseActivationFunctor<T> {
