@@ -30,7 +30,7 @@ from .log_util import logger
 __all__ = []
 
 
-def _apply_collective_grads(parameters, comm_group):
+def _apply_collective_grads(parameters, comm_group, bucket_size):
     grad_var_set = set()
     grad_vars = []
     sparse_grad_vars = []
@@ -45,7 +45,7 @@ def _apply_collective_grads(parameters, comm_group):
             assert g_var not in grad_var_set
             grad_var_set.add(g_var)
 
-    coalesced_grads_and_vars = build_groups(grad_vars, 128 * 1024 * 1024)
+    coalesced_grads_and_vars = build_groups(grad_vars, bucket_size)
 
     nranks = (
         paddle.distributed.get_world_size()
@@ -66,7 +66,7 @@ def _apply_collective_grads(parameters, comm_group):
     _split_tensors(coalesced_grads_and_vars)
 
 
-def _apply_collective_grads_eager(parameters, comm_group):
+def _apply_collective_grads_eager(parameters, comm_group, bucket_size):
     grad_var_set = set()
     grad_vars = []
 
@@ -80,7 +80,7 @@ def _apply_collective_grads_eager(parameters, comm_group):
             assert g_var not in grad_var_set
             grad_var_set.add(g_var)
 
-    coalesced_grads_and_vars = build_groups(grad_vars, 128 * 1024 * 1024)
+    coalesced_grads_and_vars = build_groups(grad_vars, bucket_size)
 
     nranks = (
         paddle.distributed.get_world_size()
@@ -176,16 +176,22 @@ def broadcast_dp_parameters(model, hcg):
     )
 
 
-def fused_allreduce_gradients(parameter_list, hcg):
-    data_parallel_group = None if hcg is None else hcg.get_data_parallel_group()
-    logger.debug("dp start fuse allreduce gradients")
+def fused_allreduce_gradients_with_group(
+    parameter_list, group, bucket_size=128 * 1024 * 1024
+):
     apply_func = (
         _apply_collective_grads_eager
         if in_dygraph_mode()
         else _apply_collective_grads
     )
     with framework.no_grad():
-        apply_func(parameter_list, data_parallel_group)
+        apply_func(parameter_list, group, bucket_size)
+
+
+def fused_allreduce_gradients(parameter_list, hcg):
+    data_parallel_group = None if hcg is None else hcg.get_data_parallel_group()
+    logger.debug("dp start fuse allreduce gradients")
+    fused_allreduce_gradients_with_group(parameter_list, data_parallel_group)
 
 
 def sharding_reduce_gradients(parameter_list, hcg):
