@@ -41,22 +41,6 @@ class TestErrors(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_diagonalize_errors(self):
-        a = np.arange(4 * 3 * 4 * 4).reshape(4, 3, 4, 4).astype('float')
-        a = paddle.to_tensor(a)
-        with self.assertRaisesRegex(
-            AssertionError, ('Duplicate labels are not supported.')
-        ):
-            paddle.einsum('...ii->...i', a)
-        with self.assertRaisesRegex(
-            AssertionError, ('Duplicate labels are not supported.')
-        ):
-            paddle.einsum('i...i', a)
-        with self.assertRaisesRegex(
-            AssertionError, ('Duplicate labels are not supported.')
-        ):
-            paddle.einsum('i...i->i...', a)
-
     def test_param_errors(self):
         a = np.arange(4 * 3 * 4 * 4).reshape(4, 3, 4, 4).astype('float')
         a = paddle.to_tensor(a)
@@ -128,11 +112,6 @@ class TestErrors(unittest.TestCase):
             paddle.einsum('i...->i', a)
         with self.assertRaisesRegex(
             AssertionError,
-            ("Invalid equation: duplicate output labels are found."),
-        ):
-            paddle.einsum('i...->i...i', a)
-        with self.assertRaisesRegex(
-            AssertionError,
             (
                 "Invalid operands: label i "
                 "corresponds to non-broadcastable dimensions."
@@ -168,6 +147,7 @@ class TestEinsum(unittest.TestCase):
             "N": np.random.rand(5, 5, 5),
             "O": np.random.rand(3, 5, 7, 3),
             "P": np.random.rand(5, 7, 5, 7),
+            "S": np.random.rand(4, 3, 4, 4),
         }
 
     def _get_place(self, force_to_use_cpu=False):
@@ -213,16 +193,6 @@ class TestEinsum(unittest.TestCase):
             self.check_output_equal(result.numpy(), expected_result)
 
 
-class TestEinsumVectorDot(TestEinsum):
-    def setUp(self):
-        self.sample = {"paradigm": "i,i->", "data": ["x", "x"]}
-
-
-class TestEinsumVectorMul(TestEinsum):
-    def setUp(self):
-        self.sample = {"paradigm": "i,i->i", "data": ["x", "x"]}
-
-
 class TestEinsumTraceDiag1(TestEinsum):
     def setUp(self):
         self.sample = {"paradigm": "ii->", "data": ["X"]}
@@ -248,9 +218,14 @@ class TestEinsumTraceDiag5(TestEinsum):
         self.sample = {"paradigm": "aaa->a", "data": ["N"]}
 
 
-class TestEinsumTraceDiag6(TestEinsum):
-    def setUp(self):
-        self.sample = {"paradigm": "i->iii", "data": ["x"]}
+# Numpy don't support i->ii, but paddle.einsum support.
+# class TestEinsumTraceDiag6(TestEinsum):
+# def setUp(self):
+# self.sample = {"paradigm": "i->iii", "data": ["x"]}
+
+# class TestEinsumTraceDiag7(TestEinsum):
+# def setUp(self):
+# self.sample = {"paradigm": "i...->i...i", "data": ["S"]}
 
 
 class TestEinsumTraceDiag2Ops(TestEinsum):
@@ -618,6 +593,33 @@ class TestComplex(unittest.TestCase):
         a = paddle.cast(a, 'complex64')
         b = paddle.cast(b, 'complex64')
         c = paddle.einsum('xy,yz->xz', a, b)
+
+
+class TestSimpleUndiagonal(unittest.TestCase):
+    """
+    EinsumOp support undiagonalize.
+    """
+
+    def test_shape(self):
+        paddle.disable_static()
+        A = paddle.to_tensor(np.array([1.0, 2.0]))
+        A_expect = paddle.to_tensor([[1.0, 0.0], [0.0, 2.0]])
+        A_actual = paddle.einsum('i->ii', A)
+        self.assertEqual(np.allclose(A_expect.numpy(), A_actual.numpy()), True)
+
+
+class TestSimpleUndiagonal2(unittest.TestCase):
+    """
+    EinsumOp support undiagonalize.
+    """
+
+    def test_shape(self):
+        paddle.disable_static()
+        A = paddle.to_tensor(np.array([1.0, 2.0]))
+        B = paddle.to_tensor(np.array([1.0, 1.0]))
+        A_expect = paddle.to_tensor([[2.0, 0.0], [0.0, 4.0]])
+        A_actual = paddle.einsum('i,j->ii', A, B)
+        self.assertEqual(np.allclose(A_expect.numpy(), A_actual.numpy()), True)
 
 
 if __name__ == "__main__":

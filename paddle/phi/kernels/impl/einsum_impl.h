@@ -139,6 +139,11 @@ inline std::vector<char> union_labels(const CharIterable1& a,
   return res;
 }
 
+template <typename CharIterable>
+inline std::vector<char> unique_labels(const CharIterable& a) {
+  return union_labels(a, CharIterable());
+}
+
 // Apply transforms to all_labels and get another all_labels
 inline std::vector<char> TransformLabelsOrder(
     const std::vector<char>& all_labels,
@@ -167,7 +172,7 @@ inline static void GlobalInfo(const std::vector<std::string>& op_labels,
   }
 
   for (auto& op : op_labels) {
-    for (auto& ch : op) {  // char
+    for (auto& ch : unique_labels(op)) {  // char
       int c = ch;
       if (!counter.exist(c)) {
         all.push_back(ch);
@@ -340,7 +345,6 @@ inline static void ParseEinsumEquation(
         op_labels[i], ellipsis_dims->at(i).size(), &((*label2perms)[i]));
     (*input_strs).push_back(std::move(op_labels[i]));
   }
-  VLOG(5) << "Einsum Infershape: end";
 }
 
 template <typename T>
@@ -444,15 +448,19 @@ DenseTensor PerformUndiagonal(const Context& dev_ctx,
   LabelMap label2perm(-1);
   InferLabelPerm(equ, n_broadcast, &label2perm);
   // Un-Diagonal
-  int cur = equ.size() + n_broadcast - 1;
+  int tot =
+      equ.size() + n_broadcast + (equ.find(".") != std::string::npos ? -1 : 0);
+  int cur = tot - 1;
   for (auto it = equ.rbegin(); it != equ.rend(); ++it) {
     char c = *it;
     if (c == '.') {
       cur -= n_broadcast;
-    } else if (cur != label2perm[c]) {
-      // do diagonal, followed by movedim().
-      auto insert_pos = cur - equ.size() + n_broadcast + res.dims().size() + 1;
-      res = Undiagonal<T, Context>(dev_ctx, res, insert_pos, label2perm[c]);
+    } else {
+      if (cur != label2perm[c]) {
+        // do diagonal, followed by movedim().
+        auto insert_pos = cur - tot + res.dims().size() + 1;
+        res = Undiagonal<T, Context>(dev_ctx, res, insert_pos, label2perm[c]);
+      }
       --cur;
     }
   }
@@ -469,16 +477,23 @@ DenseTensor PerformDiagonalAndReduction(const Context& dev_ctx,
                                         const LabelMap& label2type) {
   auto res = tensor;
   // Diagonal
-  int cur = equ.size() + ellipsis.size() - 1;
+  int tot = equ.size() + ellipsis.size() +
+            (equ.find(".") != std::string::npos ? -1 : 0);
+  int cur = tot - 1;
   for (auto it = equ.rbegin(); it != equ.rend(); ++it) {
     char c = *it;
     if (c == '.') {
       cur -= ellipsis.size();
-    } else if (cur != label2perm[c]) {
-      // do diagonal, followed by movedim().
-      res = Diagonal<T, Context>(dev_ctx, res, 0, cur, label2perm[c]);
-      res = Transpose<T, Context>(
-          dev_ctx, res, perm_moveto(res.dims().size(), -1, label2perm[c]));
+    } else {
+      if (cur != label2perm[c]) {
+        // do diagonal, followed by movedim().
+        VLOG(5) << "Do diagonal with shape="
+                << paddle::string::join_strings(vectorize<int>(res.dims()), ',')
+                << ", axis1=" << cur << ", axis2=" << label2perm[c];
+        res = Diagonal<T, Context>(dev_ctx, res, 0, cur, label2perm[c]);
+        res = Transpose<T, Context>(
+            dev_ctx, res, perm_moveto(res.dims().size(), -1, label2perm[c]));
+      }
       --cur;
     }
   }
@@ -489,7 +504,7 @@ DenseTensor PerformDiagonalAndReduction(const Context& dev_ctx,
           << paddle::string::join_strings(indices, ",");
   if (indices.size() == 0) return res;
   return Sum<T, Context>(
-      dev_ctx, tensor, phi::IntArray(indices), tensor.dtype(), true);
+      dev_ctx, res, phi::IntArray(indices), res.dtype(), true);
 }
 
 inline bool is_no_need_transpose(const std::vector<int>& axis) {
@@ -520,8 +535,7 @@ DenseTensor PerformTranspose(const Context& dev_ctx,
 template <typename T, typename Context>
 DenseTensor PerformContraction(
     const Context& dev_ctx,
-    const DenseTensor& A,
-    const DenseTensor& B,
+    const std::vector<const DenseTensor*>& operands,
     const std::vector<std::string>& input_strs,
     const std::vector<LabelMap>& label2perm,
     const std::vector<char>& all_labels,
@@ -611,10 +625,18 @@ DenseTensor PerformContraction(
   };
 
   // Reduction, Reshape and Matmul
-  auto trans_a = preprocess(A, label2perm[0], ellipsis_dims[0], 0);
-  auto trans_b = preprocess(B, label2perm[1], ellipsis_dims[1], 1);
-  auto after_contraction =
-      Matmul<T, Context>(dev_ctx, trans_a, trans_b, false, false);
+  DenseTensor after_contraction;
+  if (operands.size() == 2) {
+    auto trans_a =
+        preprocess(*(operands[0]), label2perm[0], ellipsis_dims[0], 0);
+    auto trans_b =
+        preprocess(*(operands[1]), label2perm[1], ellipsis_dims[1], 1);
+    after_contraction =
+        Matmul<T, Context>(dev_ctx, trans_a, trans_b, false, false);
+  } else if (operands.size() == 1) {
+    after_contraction =
+        preprocess(*(operands[0]), label2perm[0], ellipsis_dims[0], 0);
+  }
   VLOG(5) << "PerformContraction: recover_dim: "
           << paddle::string::join_strings(recover_dim, ",");
   after_contraction.Resize(make_ddim(recover_dim));
@@ -622,12 +644,11 @@ DenseTensor PerformContraction(
 }
 
 template <typename T, typename Context>
-void TransposeToOutput(const Context& dev_ctx,
-                       const DenseTensor& to_trans,
-                       const std::vector<char>& right,
-                       const std::vector<char>& all_labels,
-                       int n_broadcast_dims,
-                       DenseTensor* output) {
+DenseTensor TransposeToOutput(const Context& dev_ctx,
+                              const DenseTensor& to_trans,
+                              const std::vector<char>& right,
+                              const std::vector<char>& all_labels,
+                              int n_broadcast_dims) {
   std::vector<int> axis;
   int offset = 0;
   if (std::find(all_labels.begin(), all_labels.end(), '.') !=
@@ -646,12 +667,11 @@ void TransposeToOutput(const Context& dev_ctx,
     }
   }
   if (is_no_need_transpose(axis)) {
-    output->ShareBufferWith(to_trans);
-    return;
+    return to_trans;
   }
   VLOG(5) << "call TransposeToOutput: with axis: "
           << paddle::string::join_strings(axis, ",");
-  TransposeKernel<T, Context>(dev_ctx, to_trans, axis, output);
+  return Transpose<T, Context>(dev_ctx, to_trans, axis);
 }
 
 template <typename T, typename Context>
@@ -693,66 +713,30 @@ void EinsumKernelImpl(const Context& dev_ctx,
                       &right,
                       &input_strs);
   out->Resize(make_ddim(output_dims));
-  if (inputs.size() == 2) {
-    auto& A = inputs[0];
-    auto& B = inputs[1];
-    // Reduction and Contract Procedure
-    auto after_contraction = PerformContraction<T, Context>(dev_ctx,
-                                                            *A,
-                                                            *B,
-                                                            input_strs,
-                                                            label2perms,
-                                                            all_labels,
-                                                            labeltype,
-                                                            labelshape,
-                                                            ellipsis_dims,
-                                                            broadcast_dims,
-                                                            cache,
-                                                            !is_forward);
-    TransposeToOutput<T, Context>(dev_ctx,
-                                  after_contraction,
-                                  union_labels(right, std::vector<char>()),
-                                  all_labels,
-                                  broadcast_dims.size(),
-                                  out);
-    *out = PerformUndiagonal<T, Context>(
-        dev_ctx, *out, broadcast_dims.size(), right);
-    // Reshape Procedure
-  } else if (inputs.size() == 1) {
-    if (cache[0] != nullptr) {  // For compatibility, may be cache is nullptr if
-                                // loading the program from v2.3.0
-      (*cache[0]) = *(inputs[0]);  // ShareBuffer for backward, because backward
-                                   // we can only see cached tensor.
-    }
-    auto reduce_A = PerformDiagonalAndReduction<T, Context>(dev_ctx,
-                                                            *inputs[0],
-                                                            input_strs[0],
-                                                            label2perms[0],
-                                                            all_labels,
-                                                            ellipsis_dims[0],
-                                                            labeltype);
-    auto right_labels = union_labels(right, all_labels);
-    *out = PerformTranspose<T, Context>(dev_ctx,
-                                        reduce_A,
-                                        label2perms[0],
-                                        right_labels,
-                                        broadcast_dims,
-                                        labeltype);
-    VLOG(4) << "Before unary undiagonaled shape is:"
-            << paddle::string::join_strings(vectorize<int>(out->dims()), ",");
-    VLOG(4) << "Output dims is:"
-            << paddle::string::join_strings(output_dims, ",");
-    // TODO(@xiongkun): unify the logic.
-    // 1. Resize to make the shape right
-    //    out->Resize(make_ddim(output_dims));
-    // 2. Union the logics when inputs.size() == 1 and inputs.size() == 2.
-    *out = PerformUndiagonal<T, Context>(
-        dev_ctx, *out, broadcast_dims.size(), right);
-  } else {
+  if (inputs.size() > 2) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "EinsumOp kernel only support len(operands) between (0, 2]. Use "
         "opt_einsum first to convert multi-variable to binary-variable."));
   }
+  auto after_contraction = PerformContraction<T, Context>(dev_ctx,
+                                                          inputs,
+                                                          input_strs,
+                                                          label2perms,
+                                                          all_labels,
+                                                          labeltype,
+                                                          labelshape,
+                                                          ellipsis_dims,
+                                                          broadcast_dims,
+                                                          cache,
+                                                          !is_forward);
+  *out = TransposeToOutput<T, Context>(dev_ctx,
+                                       after_contraction,
+                                       unique_labels(right),
+                                       all_labels,
+                                       broadcast_dims.size());
+  *out = PerformUndiagonal<T, Context>(
+      dev_ctx, *out, broadcast_dims.size(), right);
+  out->Resize(make_ddim(output_dims));
 }
 
 template <typename T, typename Context>
