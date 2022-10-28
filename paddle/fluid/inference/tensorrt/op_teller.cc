@@ -2100,6 +2100,15 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+
+    if (op_type == "preln_layernorm_shift_partition") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the layernorm_shift_partition does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
     if (op_type == "merge_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "The merge_layernorm op does not support "
@@ -2259,9 +2268,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "layernorm_shift_partition",
+      "preln_layernorm_shift_partition",
       "lookup_table",
       "lookup_table_v2",
       "expand_v2"};
+
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -2376,6 +2387,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
+      "preln_layernorm_shift_partition",
       "merge_layernorm",
       "lookup_table",
       "lookup_table_v2",

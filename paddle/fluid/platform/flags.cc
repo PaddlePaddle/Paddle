@@ -1010,13 +1010,14 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Name: FLAGS_jit_engine_type
  * Since Version: 2.3.0
  * Value Range: string, {Executor, PE},
- * default=PE
+ * default=Predictor
  * Example:
  * Note:
  * FLAGS_jit_engine_type == Executor, using ExecutorEngine by default
  * FLAGS_jit_engine_type == PE, using PEEngine by default
  * FLAGS_jit_engine_type == New, using InterpreterEngine by default
+ * FLAGS_jit_engine_type == Predictor, using inference Predictor by default
  */
 PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
-                              "PE",
+                              "Predictor",
                               "Choose default funciton type in JitLayer.");
