@@ -218,7 +218,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
         else:
             count[-1] += 1
 
-    if rhs != None:
+    if rhs is not None:
         validate_rhs(rhs, labels, n_bcast_dims)
         g_labels_out = rhs.replace('...', '.' * n_bcast_dims)
     else:

@@ -1326,7 +1326,7 @@ class TheOnePSRuntime(RuntimeBase):
                 )  # --> HeterClient::GetInstance
 
     def _init_coordinator(self, scopes=None):
-        if self._coordinator == None:
+        if self._coordinator is None:
             self._coordinator = Coordinator(self.string_hosts)
 
         print(">>> curr node ip: {}".format(self.coordinator_hosts[0]))
@@ -1336,7 +1336,7 @@ class TheOnePSRuntime(RuntimeBase):
         )
 
     def _make_fl_strategy(self):
-        if self._coordinator == None:
+        if self._coordinator is None:
             assert "Coordinator py object is null!"
         else:
             self._coordinator.make_fl_strategy()
@@ -1401,7 +1401,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._worker.stop_worker()
         if self.is_heter_ps_mode:
             assert (
-                self._heter_client != None
+                self._heter_client is not None
             ), "heter client should not be None in heterps mode"
             self._heter_client.stop()
 

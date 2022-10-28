@@ -1953,7 +1953,7 @@ def less_than(x, y, force_cpu=None, cond=None, name=None):
     )
     if cond is not None:
         check_type(cond, "cond", Variable, "less_than")
-    if force_cpu != None:
+    if force_cpu is not None:
         check_type(force_cpu, "force_cpu", bool, "less_than")
 
     helper = LayerHelper("less_than", **locals())

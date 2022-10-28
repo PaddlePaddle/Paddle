@@ -70,7 +70,7 @@ def analysisPyXml(rootPath, ut):
                         == False
                     ):
                         pattern = r"""(.*) = ('*')|(.*) = ("*")|(.*) = (\d)|(.*) = (-\d)|(.*) = (None)|(.*) = (True)|(.*) = (False)|(.*) = (URL_PREFIX*)|(.*) = (\[)|(.*) = (\{)|(.*) = (\()"""  # a='b'/a="b"/a=0
-                        if re.match(pattern, output.strip()) == None:
+                        if re.match(pattern, output.strip()) is None:
                             pyCov_file.append(clazz_filename)
                             coverageMessage = 'RELATED'
                             break

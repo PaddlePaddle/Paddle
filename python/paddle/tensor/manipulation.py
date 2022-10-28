@@ -503,14 +503,14 @@ def unstack(x, axis=0, num=None):
 
     """
     if in_dygraph_mode():
-        if num == None:
+        if num is None:
             num = x.shape[axis]
         if num == 0:
             return []
         return _C_ops.unstack(x, axis, num)
 
     if _non_static_mode():
-        if num == None:
+        if num is None:
             num = x.shape[axis]
         if num == 0:
             return []

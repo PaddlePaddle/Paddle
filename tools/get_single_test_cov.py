@@ -88,7 +88,7 @@ def analysisFNDAFile(rootPath, test):
                     fn,
                     re.I,
                 )
-                if matchObj == None:
+                if matchObj is None:
                     OP_REGIST = False
                     break
             if OP_REGIST == False:

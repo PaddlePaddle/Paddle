@@ -136,7 +136,7 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
                     break
 
         o = acp._get_train_epoch_range()
-        assert o == None, "now train epoch must not exits now"
+        assert o is None, "now train epoch must not exits now"
         if break_epoch_no is None:
             self.assertEqual(i, 2)
         else:
@@ -169,7 +169,7 @@ class AutoCheckPointACLBase(AutoCheckpointBase):
                 fetch = exe.run(compiled, feed=data, fetch_list=[loss])
 
         o = acp._get_train_epoch_range()
-        self.assertTrue(o == None, "now train epoch must not exits now")
+        self.assertTrue(o is None, "now train epoch must not exits now")
         self.assertEqual(i, 2)
 
         if break_epoch_no is not None:

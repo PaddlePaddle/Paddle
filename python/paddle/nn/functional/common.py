@@ -1115,7 +1115,7 @@ def dropout(
     if axis and not isinstance(axis, (int, list, tuple)):
         raise TypeError("datatype of axis argument should be int or list")
 
-    if axis == None:  # commonly used dropout
+    if axis is None:  # commonly used dropout
         seed = None
         mode = (
             'downgrade_in_infer' if mode == 'downscale_in_infer' else mode

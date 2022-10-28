@@ -129,7 +129,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 "When training, we now always track global mean and variance."
             )
 
-        if self._use_global_stats == None:
+        if self._use_global_stats is None:
             self._use_global_stats = not self.training
             trainable_statistics = False
         else:
@@ -363,15 +363,15 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
             if (
-                layer._weight_attr != None
+                layer._weight_attr is not None
                 and not isinstance(layer._weight_attr, bool)
-                and layer._weight_attr.name != None
+                and layer._weight_attr.name is not None
             ):
                 layer._weight_attr.name = layer._weight_attr.name + '_sync'
             if (
-                layer._bias_attr != None
+                layer._bias_attr is not None
                 and not isinstance(layer._bias_attr, bool)
-                and layer._bias_attr.name != None
+                and layer._bias_attr.name is not None
             ):
                 layer._bias_attr.name = layer._bias_attr.name + '_sync'
 

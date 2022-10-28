@@ -189,6 +189,6 @@ def wrap_optimizers():
     for classname in optimizer.__all__:
         if classname != 'Optimizer':
             classobject = getattr(optimizer, classname)
-            if getattr(classobject, 'step', None) != None:
+            if getattr(classobject, 'step', None) is not None:
                 classobject.step = optimizer_warpper(classobject.step)
     _has_optimizer_wrapped = True

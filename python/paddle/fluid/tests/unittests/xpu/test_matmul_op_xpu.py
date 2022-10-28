@@ -72,7 +72,7 @@ def generate_compatible_shapes(
     dim_X, dim_Y, transpose_X, transpose_Y, batch_size
 ):
     BATCH_SIZE = 2
-    if batch_size != None:
+    if batch_size is not None:
         BATCH_SIZE = batch_size
 
     M = 3

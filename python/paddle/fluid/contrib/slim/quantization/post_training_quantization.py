@@ -344,7 +344,7 @@ class PostTrainingQuantization(object):
         # Save input params
         self._bias_correction = bias_correction
         self._executor = executor
-        self._scope = global_scope() if scope == None else scope
+        self._scope = global_scope() if scope is None else scope
         self._model_dir = model_dir
         self._model_filename = model_filename
         self._params_filename = params_filename

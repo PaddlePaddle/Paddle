@@ -1874,8 +1874,8 @@ class AddQuantDequantPass(object):
             '%s_grad' % (op) for op in self._quantizable_op_type
         ]
 
-        assert self._scope != None, "scope must not be None."
-        assert self._place != None, "place must not be None."
+        assert self._scope is not None, "scope must not be None."
+        assert self._place is not None, "place must not be None."
 
     def apply(self, graph):
         """
@@ -2737,8 +2737,8 @@ class AddQuantDequantPassV2(object):
             '%s_grad' % (op) for op in self._quantizable_op_type
         ]
 
-        assert self._scope != None, "scope must not be None."
-        assert self._place != None, "place must not be None."
+        assert self._scope is not None, "scope must not be None."
+        assert self._place is not None, "place must not be None."
         self.persistable_vars = []
 
     def apply(self, graph):
@@ -2878,8 +2878,8 @@ class ReplaceFakeQuantDequantPass(object):
         self._place = _get_paddle_place(place)
         self._scope = scope
         self._quant_bits = quant_bits
-        assert self._scope != None, "scope must not be None."
-        assert self._place != None, "place must not be None."
+        assert self._scope is not None, "scope must not be None."
+        assert self._place is not None, "place must not be None."
 
     def apply(self, graph):
         assert isinstance(
@@ -3027,8 +3027,8 @@ class QuantWeightPass(object):
         self._bias_correction = bias_correction
         self._quant_bits = quant_bits
         self._save_int_weight = save_int_weight
-        assert self._scope != None, "scope must not be None."
-        assert self._place != None, "place must not be None."
+        assert self._scope is not None, "scope must not be None."
+        assert self._place is not None, "place must not be None."
 
     def apply(self, graph):
         assert isinstance(

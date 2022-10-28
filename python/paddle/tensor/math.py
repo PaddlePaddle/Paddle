@@ -1291,7 +1291,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return _C_ops.sum(x, axis, dtype, keepdim)
 
     if not isinstance(axis, Variable):
-        axis = axis if axis != None and axis != [] and axis != () else [0]
+        axis = axis if axis is not None and axis != [] and axis != () else [0]
         if utils._contain_var(axis):
             axis = utils._convert_to_tensor_list(axis)
 
@@ -2320,8 +2320,8 @@ def _get_reduce_axis(axis):
                     type(axis)
                 )
             )
-    reduce_all = True if axis == None or axis == [] else False
-    if axis == None:
+    reduce_all = True if axis is None or axis == [] else False
+    if axis is None:
         axis = []
     return reduce_all, axis
 
@@ -2349,8 +2349,8 @@ def _get_reduce_all_value(axis):
                 )
             )
 
-    reduce_all = True if axis == None or axis == [] else False
-    axis = axis if axis != None and axis != [] else [0]
+    reduce_all = True if axis is None or axis == [] else False
+    axis = axis if axis is not None and axis != [] else [0]
     return reduce_all, axis
 
 
@@ -3953,13 +3953,13 @@ def all(x, axis=None, keepdim=False, name=None):
         return _C_ops.all(x, axis, keepdim)
 
     if _in_legacy_dygraph():
-        axis = axis if axis != None and axis != [] else [0]
+        axis = axis if axis is not None and axis != [] else [0]
         return _legacy_C_ops.reduce_all(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all_flag
         )
 
     attrs = {
-        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'dim': axis if axis is not None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag,
     }
@@ -4042,13 +4042,13 @@ def any(x, axis=None, keepdim=False, name=None):
         return _C_ops.any(x, axis, keepdim)
 
     if _in_legacy_dygraph():
-        axis = axis if axis != None and axis != [] else [0]
+        axis = axis if axis is not None and axis != [] else [0]
         return _legacy_C_ops.reduce_any(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all_flag
         )
 
     attrs = {
-        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'dim': axis if axis is not None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag,
     }
@@ -4354,7 +4354,7 @@ def logit(x, eps=None, name=None):
 
     """
 
-    if eps == None:
+    if eps is None:
         eps = 0.0
     if _in_legacy_dygraph():
         return _legacy_C_ops.logit(x, 'eps', eps)
