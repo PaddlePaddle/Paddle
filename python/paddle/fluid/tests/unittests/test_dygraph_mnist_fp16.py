@@ -17,7 +17,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from paddle.fluid.dygraph.nn import Pool2D, Linear
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -44,10 +44,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
     ):
         super(SimpleImgConvPool, self).__init__()
 
-        self._conv2d = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv2d = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=conv_stride,
             padding=conv_padding,
             dilation=conv_dilation,

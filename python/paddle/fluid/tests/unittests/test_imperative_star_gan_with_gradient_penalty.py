@@ -140,10 +140,10 @@ class Conv2DLayer(fluid.dygraph.Layer):
         relufactor=None,
     ):
         super(Conv2DLayer, self).__init__()
-        self._conv = fluid.dygraph.Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
             bias_attr=None if use_bias else False,
