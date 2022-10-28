@@ -70,10 +70,7 @@ def _scope_dist2single(dist_scope):
         # "parallel_cross_entropy": "cross_entropy", while mp_layer has parallel_cross_entropy,
         # but there is no parameters so the mapping of parallel_cross_entropy is not neccessary.
     }
-
-    if dist_scope in mapping:
-        return mapping[dist_scope]
-    return dist_scope
+    return mapping.get(dist_scope, dist_scope)
 
 
 def _convert_camel_to_snake(name):
