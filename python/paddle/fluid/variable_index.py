@@ -334,7 +334,7 @@ def get_value_for_bool_tensor(var, item):
         from .layers.nn import where
         from ..tensor import gather_nd
 
-        bool_2_idx = where(item)
+        bool_2_idx = where(item == True)
         return gather_nd(var, bool_2_idx)
 
     def idx_empty(var):

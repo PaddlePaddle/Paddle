@@ -1327,8 +1327,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 opt_op_on_pserver.append(op)
         # step 3.3
         # prepare if dc asgd is enabled
-        if self.config.enable_dc_asgd:
-            assert not self.sync_mode
+        if self.config.enable_dc_asgd == True:
+            assert self.sync_mode == False
             self.param_bak_list = []
             # add param_bak for each trainer
             for p in self.param_grad_ep_mapping[endpoint]["params"]:
@@ -1827,7 +1827,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         param_grad_set = set()
         for p, g in self.params_grads:
             # skip parameter marked not trainable
-            if type(p) == Parameter and not p.trainable:
+            if type(p) == Parameter and p.trainable == False:
                 continue
             if p.name not in param_grad_set:
                 param_list.append(p)
@@ -2806,7 +2806,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or role_id == int(
                 LR_SCHED_OP_ROLE_ATTR_VALUE
             ) | int(OPT_OP_ROLE_ATTR_VALUE):
-                if not self.sync_mode and op.type == 'increment':
+                if self.sync_mode == False and op.type == 'increment':
                     inputs = self._get_input_map_from_op(
                         self.origin_program.global_block().vars, op
                     )

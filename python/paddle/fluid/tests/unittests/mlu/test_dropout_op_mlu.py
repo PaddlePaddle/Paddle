@@ -42,7 +42,7 @@ class TestDropoutOp(OpTest):
         }
 
         out = self.inputs['X'] * (1.0 - self.dropout_prob)
-        if not self.is_test:
+        if self.is_test == False:
             mask = None
             if self.dropout_prob == 0.0:
                 mask = np.ones(self.shape).astype('uint8')

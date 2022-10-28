@@ -180,7 +180,7 @@ class FetchHandlerMonitor(object):
         elapsed_secs = 0
         while True:
             self.running_lock.acquire()
-            if not self.running:
+            if self.running == False:
                 break
             if elapsed_secs < period_secs:
                 # TODO(guru4elephant): needs customized condition

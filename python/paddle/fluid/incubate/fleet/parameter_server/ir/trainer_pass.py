@@ -210,7 +210,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                                 if found:
                                     break
                             if found:
-                                if output_indexes[j]:
+                                if output_indexes[j] == True:
                                     warnings.warn(
                                         "unable to re-arrange dags order to combine distributed embedding ops"
                                     )
@@ -1305,7 +1305,7 @@ def create_backward_block(
                 ):
                     is_skip = True
                     break
-            if is_skip:
+            if is_skip == True:
                 continue
         block_append_op(program, origin_program, heter_block, op)
 

@@ -334,7 +334,7 @@ class StaticFunction(object):
     def train(self):
         if (
             isinstance(self._class_instance, layers.Layer)
-            and not self._class_instance.training
+            and self._class_instance.training == False
         ):
             raise RuntimeError(
                 "Failed to switch train mode. {} is a Layer's method, "
@@ -347,7 +347,7 @@ class StaticFunction(object):
     def eval(self):
         if (
             isinstance(self._class_instance, layers.Layer)
-            and self._class_instance.training
+            and self._class_instance.training == True
         ):
             raise RuntimeError(
                 "Failed to switch eval mode. {} is a Layer's method, "

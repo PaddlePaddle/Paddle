@@ -422,7 +422,8 @@ class ImperativeQuantizeInputs(object):
 
         for name, cur_layer in model.named_sublayers():
             if not isinstance(cur_layer, self._quantizable_layer_type) or (
-                hasattr(cur_layer, "skip_quant") and cur_layer.skip_quant
+                hasattr(cur_layer, "skip_quant")
+                and cur_layer.skip_quant == True
             ):
                 continue
 

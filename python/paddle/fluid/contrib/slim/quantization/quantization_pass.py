@@ -1181,7 +1181,7 @@ class QuantizationFreezePass(object):
                         )
                         quantized_param_v = np.round(quantized_param_v)
                         # Weight bias correction
-                        if self._bias_correction:
+                        if self._bias_correction == True:
                             quantized_param_v = utils.bias_correction_w(
                                 param_v,
                                 quantized_param_v,
@@ -3073,7 +3073,7 @@ class QuantWeightPass(object):
                     bits_length,
                     onnx_format=True,
                 )
-                if self._bias_correction:
+                if self._bias_correction == True:
                     quantized_param_v = utils.bias_correction_w(
                         param_v,
                         quantized_param_v,

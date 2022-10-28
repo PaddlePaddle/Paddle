@@ -1868,12 +1868,12 @@ class Executor(object):
 
                 # Can not check var build by fluid.layers.data(), bucause fluid.layers.data() had not set need_check_feed
                 if (
-                    not vardesc.persistable()
+                    vardesc.persistable() == False
                     and vardesc.type() == core.VarDesc.VarType.LOD_TENSOR
-                    and vardesc.need_check_feed()
-                    and varobj.stop_gradient
-                    and varobj.is_data
-                    and not varobj.belong_to_optimizer
+                    and vardesc.need_check_feed() == True
+                    and varobj.stop_gradient == True
+                    and varobj.is_data == True
+                    and varobj.belong_to_optimizer == False
                     and varname not in feed
                 ):
                     raise ValueError('Need feed data for variable %s' % varname)

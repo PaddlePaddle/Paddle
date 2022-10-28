@@ -2391,7 +2391,7 @@ def pool2d(
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
             pool_padding = [0, 0]
-            if ceil_mode is not False:
+            if ceil_mode != False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode) must be False. "
                     "Received ceil_mode: True."
@@ -2645,7 +2645,7 @@ def pool3d(
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
             pool_padding = [0, 0, 0]
-            if ceil_mode is not False:
+            if ceil_mode != False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", ceil_mode must be False. "
                     "Received ceil_mode: True."
@@ -3698,7 +3698,7 @@ def instance_norm(
 
     param_shape = [channel_num]
 
-    if param_attr is not False and bias_attr is not False:
+    if param_attr != False and bias_attr != False:
         # create parameter
         scale = helper.create_parameter(
             attr=helper.param_attr,
@@ -3725,7 +3725,7 @@ def instance_norm(
     instance_norm_out = helper.create_variable_for_type_inference(dtype)
 
     inputs = {"X": input}
-    if param_attr is not False and bias_attr is not False:
+    if param_attr != False and bias_attr != False:
         inputs["Scale"] = scale
         inputs["Bias"] = bias
 
@@ -11500,7 +11500,7 @@ def expand(x, expand_times, name=None):
         'expand',
     )
     check_type(expand_times, 'expand_times', (list, tuple, Variable), 'expand')
-    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient:
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
         raise ValueError(
             "expand op bool date type must set the stop_gradient to be False"
         )
@@ -16159,7 +16159,7 @@ def deformable_roi_pooling(
         )
 
     input_channels = input.shape[1]
-    if not position_sensitive:
+    if position_sensitive == False:
         output_channels = input_channels
     else:
         output_channels = input_channels / pooled_height / pooled_width

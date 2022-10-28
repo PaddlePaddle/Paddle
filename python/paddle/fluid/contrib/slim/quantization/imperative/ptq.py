@@ -306,7 +306,7 @@ class ImperativePTQ(object):
             ) and PTQRegistry.is_simulated_quant_layer(sub_layer):
 
                 quant_config = sub_layer._quant_config
-                assert quant_config.enable_in_act_quantizer
+                assert quant_config.enable_in_act_quantizer == True
                 wt_quantizer = quant_config.wt_quantizer
                 in_act_quantizer = quant_config.in_act_quantizer
 
@@ -482,7 +482,7 @@ class ImperativePTQ(object):
 
     @staticmethod
     def _is_skip_layer(layer):
-        return hasattr(layer, "skip_quant") and layer.skip_quant
+        return hasattr(layer, "skip_quant") and layer.skip_quant == True
 
     @staticmethod
     def _is_quant_layer(layer):
