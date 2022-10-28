@@ -63,10 +63,6 @@ std::vector<Tensor> PredictorEngine::operator()(
 
 std::vector<DenseTensor> PredictorEngine::operator()(
     const std::vector<DenseTensor> &inputs) {
-  for (auto t : inputs) {
-    VLOG(1) << "inputs is init: " << t.initialized();
-  }
-
   std::vector<PaddleTensor> pt_inputs;
   std::vector<PaddleTensor> pt_outputs;
   for (auto &t : inputs) {
