@@ -139,7 +139,7 @@ class TestASPDynamicOptimize(unittest.TestCase):
                 name, None
             )
             if ASPHelper._is_supported_layer(program, name):
-                self.assertTrue(mask_var is not None)
+                self.assertIsNotNone(mask_var)
             else:
                 self.assertIsNone(mask_var)
 

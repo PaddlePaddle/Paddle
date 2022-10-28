@@ -162,8 +162,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v2 = fluid.dygraph.to_variable(value2)
             loss = case1(v1, v2)
             loss.backward()
-            self.assertTrue(case1.linear2.weight._grad_ivar() is not None)
-            self.assertTrue(case1.linear1.weight._grad_ivar() is not None)
+            self.assertIsNotNone(case1.linear2.weight._grad_ivar())
+            self.assertIsNotNone(case1.linear1.weight._grad_ivar())
 
     def test_auto_prune(self):
         with _test_eager_guard():
@@ -181,7 +181,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
             loss.backward()
             self.assertIsNone(case2.linear2.weight._grad_ivar())
-            self.assertTrue(case2.linear1.weight._grad_ivar() is not None)
+            self.assertIsNotNone(case2.linear1.weight._grad_ivar())
 
     def test_auto_prune2(self):
         with _test_eager_guard():
@@ -198,7 +198,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v2 = fluid.dygraph.to_variable(value2)
             loss, part2 = case3(v1, v2, 1)
             loss.backward()
-            self.assertTrue(case3.linear.weight._grad_ivar() is not None)
+            self.assertIsNotNone(case3.linear.weight._grad_ivar())
             self.assertTrue((part2.gradient() == 0).all())
 
     def test_auto_prune3(self):
@@ -217,7 +217,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v2 = fluid.dygraph.to_variable(value2)
             loss, part2 = case4(v1, v2, 1)
             part2.backward()
-            self.assertTrue(case4.linear.weight._grad_ivar() is not None)
+            self.assertIsNotNone(case4.linear.weight._grad_ivar())
             self.assertTrue((part2.gradient() == 1).all())
 
     def test_auto_prune4(self):
@@ -236,7 +236,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v2 = fluid.dygraph.to_variable(value2)
             loss, part1, part2 = case4(v1, v2, 2)
             part1.backward()
-            self.assertTrue(case4.linear.weight._grad_ivar() is not None)
+            self.assertIsNotNone(case4.linear.weight._grad_ivar())
             self.assertTrue((part2.gradient() == 0).all())
 
     def test_auto_prune5(self):
@@ -450,7 +450,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             loss = case3(v1, v2)
             loss.backward()
             self.assertIsNone(case3.linear2.weight._grad_ivar())
-            self.assertTrue(case3.linear.weight._grad_ivar() is not None)
+            self.assertIsNotNone(case3.linear.weight._grad_ivar())
 
     def test_case2_prune_no_grad_branch(self):
         with _test_eager_guard():

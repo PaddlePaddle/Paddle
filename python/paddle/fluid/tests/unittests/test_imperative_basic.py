@@ -284,7 +284,7 @@ class TestImperative(unittest.TestCase):
             o.backward()
 
             self.assertIsNone(tmp._grad_ivar())
-            self.assertTrue(l0.weight._grad_ivar() is not None)
+            self.assertIsNotNone(l0.weight._grad_ivar())
 
     def test_paddle_imperative_no_grad_guard(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
@@ -302,7 +302,7 @@ class TestImperative(unittest.TestCase):
             o.backward()
 
             self.assertIsNone(tmp._grad_ivar())
-            self.assertTrue(l0.weight._grad_ivar() is not None)
+            self.assertIsNotNone(l0.weight._grad_ivar())
 
     def test_paddle_imperative_set_grad_enabled(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
@@ -323,8 +323,8 @@ class TestImperative(unittest.TestCase):
             o.backward()
 
             self.assertIsNone(tmp._grad_ivar())
-            self.assertTrue(tmp2._grad_ivar() is not None)
-            self.assertTrue(l0.weight._grad_ivar() is not None)
+            self.assertIsNotNone(tmp2._grad_ivar())
+            self.assertIsNotNone(l0.weight._grad_ivar())
 
     def test_paddle_imperative_is_grad_enabled(self):
         with fluid.dygraph.guard():

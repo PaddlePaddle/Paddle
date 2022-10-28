@@ -67,13 +67,13 @@ class TestSimpleNet(unittest.TestCase):
 
                     input_emb.backward()
                     adam.minimize(input_emb)
-                    self.assertTrue(emb.weight.gradient() is not None)
+                    self.assertIsNotNone(emb.weight.gradient())
 
                     emb.clear_gradients()
                     self.assertIsNone(emb.weight.gradient())
 
                     input_emb.clear_gradient()
-                    self.assertTrue(input_emb.gradient() is not None)
+                    self.assertIsNotNone(input_emb.gradient())
                     paddle.enable_static()
 
     def test_selectedrows_gradient1(self):
@@ -112,13 +112,13 @@ class TestSimpleNet(unittest.TestCase):
 
                     input_emb.backward()
                     adam.minimize(input_emb)
-                    self.assertTrue(emb.weight.gradient() is not None)
+                    self.assertIsNotNone(emb.weight.gradient())
 
                     emb.clear_gradients()
                     self.assertIsNone(emb.weight.gradient())
 
                     input_emb.clear_gradient()
-                    self.assertTrue(input_emb.gradient() is not None)
+                    self.assertIsNotNone(input_emb.gradient())
 
     def test_selectedrows_gradient2(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
