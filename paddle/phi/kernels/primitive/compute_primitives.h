@@ -91,10 +91,13 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
   __shared__ T shared[2 * kWarpSize];
   int block_dim_x = blockDim.x;
   if (blockDim.x > kWarpSize) {
-    block_dim_x = blockDim.x / kWarpSize;
-    int lane = threadIdx.x % kWarpSize;
+    // Bit operation can be used when kWarpSize is 32 or 64 now
+    constexpr int rshift_val =
+        (kWarpSize != 32) ? ((kWarpSize == 64) ? 6 : 5) : 5;
+    block_dim_x = blockDim.x >> rshift_val;
+    int lane = threadIdx.x & (kWarpSize - 1);
     int tid = threadIdx.y * blockDim.x + threadIdx.x;
-    int wid = tid / kWarpSize;
+    int wid = tid >> rshift_val;
     int bid = threadIdx.y;
     val = WarpReduce(val, reducer);
     if (lane == 0) {
@@ -110,6 +113,7 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
     T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
     val = reducer(val, temp);
   }
+  __syncthreads();
   if (threadIdx.x == 0) {
     shared[threadIdx.y] = val;
   }
@@ -385,8 +389,8 @@ __device__ __forceinline__ void CycleBinary(OutT* out,
 /**
  * @brief The Reduce provides collective methods for computing a parallel
  * reduction of items partitioned across a CUDA block and intra thread. When
- * ReduceMode == kLocalMode, thread reduce along nx. When ReduceMode ==
- * kGlobalMode, use shared memory to reduce between threads.
+ * ReduceMode == kLocalMode, use shared memory to reduce between threads.When
+ * ReduceMode == kGlobalMode, thread reduce along nx.
  *
  * @template paraments
  * T: The type of data.
