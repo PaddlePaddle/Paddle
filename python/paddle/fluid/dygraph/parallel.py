@@ -818,13 +818,9 @@ class DataParallel(layers.Layer):
 
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
-        if (
-            self._strategy.nranks > 1
-            and framework._dygraph_tracer()._has_grad
-            and self.grad_need_sync
-        ):
+        if self._strategy.nranks > 1 and framework._dygraph_tracer()._has_grad:
             self._reducer.prepare_for_backward(
-                list(self._find_varbase(outputs))
+                list(self._find_varbase(outputs)), self.grad_need_sync
             )
         return outputs
 
