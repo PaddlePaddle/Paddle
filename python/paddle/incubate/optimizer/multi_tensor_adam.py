@@ -118,6 +118,7 @@ class MultiTensorAdam(Adam):
         weight_decay=0.0,
         grad_clip=None,
         multi_precision=False,
+        chunk_size=2048 * 32,
         name=None,
     ):
         super(MultiTensorAdam, self).__init__(
@@ -138,6 +139,7 @@ class MultiTensorAdam(Adam):
         self._weight_decay = weight_decay
         self.use_adamw = use_adamw
         self.lr = 0.0
+        self.chunk_size = chunk_size
 
         n = len(self._param_groups) if self._param_groups is not None else 1
         self.beta1_pow_acc = [[] for _ in range(n)]
@@ -246,6 +248,7 @@ class MultiTensorAdamW(AdamW):
         weight_decay=0.0,
         grad_clip=None,
         multi_precision=False,
+        chunk_size=2048 * 32,
         name=None,
     ):
 
@@ -264,6 +267,7 @@ class MultiTensorAdamW(AdamW):
         self.type = "MultiTensorAdamW"
         self.use_adamw = use_adamw
         self._use_multi_tensor = True
+        self.chunk_size = chunk_size
         self._weight_decay = weight_decay
         self._grad_clip = grad_clip
         self.lr = 0.0
@@ -415,23 +419,23 @@ def _append_optimize_multi_tensor_adam_op(
         if len(optimizer._param_dict[key][param_group_idx]) > 0:
             find_master = optimizer._multi_precision and key == 'FP16_LODTensor'
 
-            _beta1 = (
-                optimizer._beta1
-                if not isinstance(optimizer._beta1, Variable)
-                else optimizer._beta1.numpy().item(0)
-            )
-            _beta2 = (
-                optimizer._beta2
-                if not isinstance(optimizer._beta2, Variable)
-                else optimizer._beta2.numpy().item(0)
-            )
-
             if framework._non_static_mode():
                 master_weight = optimizer._master_weight_dict[key]
                 master_weight = (
                     master_weight[param_group_idx]
                     if master_weight is not None
                     else None
+                )
+
+                _beta1 = (
+                    optimizer._beta1
+                    if not isinstance(optimizer._beta1, Variable)
+                    else optimizer._beta1.numpy().item(0)
+                )
+                _beta2 = (
+                    optimizer._beta2
+                    if not isinstance(optimizer._beta2, Variable)
+                    else optimizer._beta2.numpy().item(0)
                 )
 
                 if in_dygraph_mode():
@@ -449,7 +453,7 @@ def _append_optimize_multi_tensor_adam_op(
                         _beta1,
                         _beta2,
                         optimizer._epsilon,
-                        2048 * 32,
+                        optimizer.chunk_size,
                         optimizer._weight_decay,
                         optimizer.use_adamw,
                         find_master,
@@ -481,7 +485,7 @@ def _append_optimize_multi_tensor_adam_op(
                         'beta2',
                         _beta2,
                         'chunk_size',
-                        2048 * 32,
+                        optimizer.chunk_size,
                         'weight_decay',
                         optimizer._weight_decay,
                         'use_adamw',
@@ -494,26 +498,31 @@ def _append_optimize_multi_tensor_adam_op(
 
             else:
                 inputs = {
-                    "Param": optimizer._param_dict[key][param_group_idx],
-                    "Grad": grad_dict[key],
-                    "Moment1": optimizer._moment1_dict[key][param_group_idx],
-                    "Moment2": optimizer._moment2_dict[key][param_group_idx],
+                    "Params": optimizer._param_dict[key][param_group_idx],
+                    "Grads": grad_dict[key],
+                    "Moments1": optimizer._moment1_dict[key][param_group_idx],
+                    "Moments2": optimizer._moment2_dict[key][param_group_idx],
                     "Beta1Pow": [optimizer.beta1_pow_acc[param_group_idx]],
                     "Beta2Pow": [optimizer.beta2_pow_acc[param_group_idx]],
                     "LearningRate": [optimizer.lr],
                 }
                 outputs = {
-                    "ParamOut": optimizer._param_dict[key][param_group_idx],
-                    "Moment1Out": optimizer._moment1_dict[key][param_group_idx],
-                    "Moment2Out": optimizer._moment2_dict[key][param_group_idx],
+                    "ParamsOut": optimizer._param_dict[key][param_group_idx],
+                    "Moments1Out": optimizer._moment1_dict[key][
+                        param_group_idx
+                    ],
+                    "Moments2Out": optimizer._moment2_dict[key][
+                        param_group_idx
+                    ],
                     "Beta1PowOut": [optimizer.beta1_pow_acc[param_group_idx]],
                     "Beta2PowOut": [optimizer.beta2_pow_acc[param_group_idx]],
                 }
                 attrs = {
                     "epsilon": optimizer._epsilon,
-                    "beta1": _beta1,
-                    "beta2": _beta2,
+                    "beta1": optimizer._beta1,
+                    "beta2": optimizer._beta2,
                     "use_adamw": optimizer.use_adamw,
+                    "chunk_size": optimizer.chunk_size,
                     "multi_precision": find_master,
                     "weight_decay": optimizer._weight_decay,
                 }

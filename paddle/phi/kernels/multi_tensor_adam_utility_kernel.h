@@ -21,6 +21,9 @@ namespace phi {
 
 const int kMaxChunkSize = 65535;
 
+// This code is referenced from apex's multi_tensor_apply.cuh.
+// https://github.com/NVIDIA/apex
+
 template <int N, int MaxTensorSize, int MaxBlockSize>
 struct TensorAndBlockInfo {
   void *tensor_addrs[N - 1][MaxTensorSize];

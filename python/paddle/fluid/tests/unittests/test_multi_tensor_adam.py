@@ -16,6 +16,8 @@ import unittest
 import paddle
 import paddle.nn as nn
 import numpy as np
+from paddle.fluid import core
+import paddle.fluid as fluid
 
 
 class MLPLayer(nn.Layer):
@@ -171,6 +173,109 @@ class TestMultiTensorAdam(unittest.TestCase):
                         test_fp16 = True
                         self.run_adam_or_adamw(use_adamw, test_dict, test_fp16)
         paddle.set_device(old_device)
+
+
+class TestStaticMultiTensorAdam(unittest.TestCase):
+    def _test(
+        self,
+        place,
+    ):
+
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        SEED = 10
+        paddle.seed(SEED)
+        np.random.seed(SEED)
+
+        a_np = np.random.random(size=(2, 2)).astype('float32')
+        b_np = np.random.random(size=(2, 2)).astype('float32')
+        label_np = np.random.randint(2, size=(2, 1)).astype('int64')
+
+        weight_attr1 = paddle.ParamAttr(
+            name="weight1",
+            initializer=fluid.initializer.Constant(value=1.0),
+            trainable=True,
+        )
+        weight_attr2 = paddle.ParamAttr(
+            name="weight2",
+            initializer=fluid.initializer.Constant(value=2.0),
+            trainable=True,
+        )
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+
+        with paddle.static.program_guard(main_prog, startup_prog):
+            with paddle.utils.unique_name.guard():
+                a = paddle.static.data(name="a", shape=[2, 2], dtype='float32')
+                b = paddle.static.data(name="b", shape=[2, 2], dtype='float32')
+                label = paddle.static.data(
+                    name="label", shape=[2, 1], dtype='int64'
+                )
+
+                sum = paddle.add(a, b)
+                z = paddle.pow(sum, 2.0)
+
+                fc_1 = fluid.layers.fc(input=z, size=2, param_attr=weight_attr1)
+                prediction = fluid.layers.fc(
+                    input=fc_1, size=2, param_attr=weight_attr2, act='softmax'
+                )
+
+                cost = fluid.layers.cross_entropy(input=prediction, label=label)
+                loss = fluid.layers.reduce_mean(cost)
+                beta1_init = 0.9
+                beta2_init = 0.999
+                epsilon_init = 1e-8
+                beta1 = beta1_init
+                beta2 = beta2_init
+                epsilon = epsilon_init
+                multi_tensor_adam = paddle.incubate.optimizer.MultiTensorAdam(
+                    learning_rate=0.01,
+                    beta1=beta1,
+                    beta2=beta2,
+                    epsilon=epsilon,
+                    grad_clip=clip,
+                )
+
+                multi_tensor_adam.minimize(loss)
+
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
+
+            print("Start run on {}".format(place))
+            for epoch in range(10):
+                pred_res, loss_res = exe.run(
+                    main_prog,
+                    feed={"a": a_np, "b": b_np, "label": label_np},
+                    fetch_list=[prediction, loss],
+                )
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
+            paddle.disable_static()
+            return pred_res, loss_res
+
+    def _test_with_place(self, place):
+        preds = []
+        losses = []
+        pred, loss = self._test(
+            place,
+        )
+        preds.append(pred)
+        losses.append(loss)
+        for pred in preds:
+            np.testing.assert_allclose(pred, preds[0], rtol=1e-05)
+        for loss in losses:
+            np.testing.assert_allclose(loss, losses[0], rtol=1e-05)
+
+    def test_adam_api(self):
+        # NOTE(zhiqiu): cpu and gpu has different seed, so should compare separatly.
+        self._test_with_place(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self._test_with_place(paddle.CUDAPlace(0))
 
 
 if __name__ == "__main__":

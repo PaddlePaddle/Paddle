@@ -29,6 +29,9 @@ namespace phi {
 
 const int kBlockSize = 512;
 
+// This code is referenced from apex's multi_tensor_adam.cu.
+// https://github.com/NVIDIA/apex
+
 template <typename T, typename MT, int N, int MaxTensorSize, int MaxBlockSize>
 struct MultiTensorAdamFunctor {
   __device__ __forceinline__ void operator()(
