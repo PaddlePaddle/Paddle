@@ -261,17 +261,6 @@
   invoke : cast (out_grad, x.dtype())
   no_need_buffer : x
 
-- backward_op : ceil_grad
-  forward : ceil(Tensor x) -> Tensor(out)
-  args : (Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [out_grad]
-  kernel :
-    func : ceil_grad
-  inplace : (out_grad -> x_grad)
-
 - backward_op : celu_double_grad
   forward : celu_grad(Tensor x, Tensor grad_out, float alpha) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, float alpha)
@@ -674,17 +663,6 @@
     func : expand_grad
   no_need_buffer : x
   backward : expand_double_grad
-
-- backward_op : expm1_grad
-  forward : expm1 (Tensor x) -> Tensor(out)
-  args : (Tensor out, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out]
-  kernel :
-    func : expm1_grad
-  inplace : (out_grad -> x_grad)
 
 - backward_op : exponential__grad
   forward : exponential_ (Tensor x, float lam) -> Tensor(out)

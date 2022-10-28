@@ -75,7 +75,6 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Softplus,
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu, "relu", );               // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Tanh, "tanh", );               // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sigmoid, "sigmoid", );         // NOLINT
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Expm1, "expm1", );             // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Reciprocal, "reciprocal", );   // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sqrt, "sqrt", );               // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Rsqrt, "rsqrt", );             // NOLINT
@@ -102,7 +101,6 @@ KernelSignature SquareActiOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(Round, "round", );  // NOLINT
 DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(Floor, "floor", );  // NOLINT
-DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(Ceil, "ceil", );    // NOLINT
 
 KernelSignature ReluDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
@@ -231,7 +229,6 @@ PD_REGISTER_BASE_KERNEL_NAME(square_grad_grad, square_double_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(relu_grad, phi::ReluGradOpArgumentMapping);
 
-PD_REGISTER_ARG_MAPPING_FN(expm1_grad, phi::Expm1GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(square_grad, phi::SquareGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reciprocal_grad,
                            phi::ReciprocalGradOpArgumentMapping);
@@ -296,7 +293,6 @@ PD_REGISTER_ARG_MAPPING_FN(hard_swish_grad,
 PD_REGISTER_ARG_MAPPING_FN(swish_grad, phi::SwishGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(round_grad, phi::RoundGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(floor_grad, phi::FloorGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(ceil_grad, phi::CeilGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(pow_grad, phi::PowGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(pow, phi::PowOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(celu_grad, phi::CeluGradOpArgumentMapping);

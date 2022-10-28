@@ -69,6 +69,16 @@
   kernel :
     func : bernoulli
 
+- op : ceil
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : ceil
+  inplace : (x -> out)
+  backward : ceil_grad
+
 - op : cholesky
   args : (Tensor x, bool upper=false)
   output : Tensor
@@ -189,6 +199,16 @@
     func : exp
   inplace : (x -> out)
   backward : exp_grad
+
+- op : expm1
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : expm1
+  backward : expm1_grad
 
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)

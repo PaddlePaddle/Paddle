@@ -206,14 +206,6 @@ $$out = \\frac{1}{\\sqrt{x}}$$
 
 )DOC";
 
-UNUSED constexpr char CeilDoc[] = R"DOC(
-Ceil Operator. Computes ceil of x element-wise.
-
-..  math::
-    out = \left \lceil x \right \rceil
-
-)DOC";
-
 UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator. Computes floor of x element-wise.
 
@@ -686,13 +678,11 @@ It is recommended to use the defaults for this activation.
 REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Silu, SiluDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
-REGISTER_ACTIVATION_OP_MAKER(Expm1, Expm1Doc);
 REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
 REGISTER_ACTIVATION_OP_MAKER(Rsqrt, RsqrtDoc);
-REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
@@ -1298,7 +1288,6 @@ REGISTER_ACTIVATION_OP(logsigmoid,
                        LogSigmoid,
                        LogSigmoidFunctor,
                        LogSigmoidGradFunctor);
-REGISTER_ACTIVATION_OP(expm1, Expm1, Expm1Functor, Expm1GradFunctor);
 REGISTER_ACTIVATION_OP(softplus,
                        Softplus,
                        SoftplusFunctor,
@@ -1320,7 +1309,6 @@ REGISTER_ACTIVATION_OP(hard_swish,
 REGISTER_ACTIVATION_OP(swish, Swish, SwishFunctor, SwishGradFunctor);
 REGISTER_ACTIVATION_OP(round, Round, RoundFunctor, ZeroGradFunctor);
 REGISTER_ACTIVATION_OP(floor, Floor, FloorFunctor, ZeroGradFunctor);
-REGISTER_ACTIVATION_OP(ceil, Ceil, CeilFunctor, ZeroGradFunctor);
 
 /* ==========================    sigmoid register  =============================
  */

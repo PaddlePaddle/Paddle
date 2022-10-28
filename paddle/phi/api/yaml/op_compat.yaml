@@ -103,6 +103,10 @@
 
 - op : ceil
   backward : ceil_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -323,6 +327,10 @@
 
 - op : expm1
   backward : expm1_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 

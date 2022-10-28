@@ -394,16 +394,6 @@
     data_type : x
   backward : cast_grad
 
-- op : ceil
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : ceil
-  inplace : (x -> out)
-  backward : ceil_grad
-
 - op : celu
   args : (Tensor x, float alpha)
   output : Tensor(out)
@@ -802,16 +792,6 @@
     func : expand_as
   optional : y
   backward : expand_as_grad
-
-- op : expm1
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : expm1
-  backward : expm1_grad
 
 - op : exponential_
   args : (Tensor x, float lam)
