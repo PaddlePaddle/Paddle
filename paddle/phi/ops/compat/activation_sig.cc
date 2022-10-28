@@ -39,17 +39,6 @@ namespace phi {
 
 #define comma ,
 
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Cos, "cos", );        // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Tan, "tan", );        // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Acos, "acos", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Sin, "sin", );        // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Asin, "asin", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Atan, "atan", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Sinh, "sinh", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Cosh, "cosh", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Asinh, "asinh", );    // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Acosh, "acosh", );    // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Atanh, "atanh", );    // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Square, "square", );  // NOLINT
 
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(BRelu, "brelu", "t_min" comma "t_max");
@@ -240,17 +229,6 @@ PD_REGISTER_BASE_KERNEL_NAME(rsqrt_grad_grad, rsqrt_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(celu_grad_grad, celu_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(square_grad_grad, square_double_grad);
 
-PD_REGISTER_ARG_MAPPING_FN(cos_grad, phi::CosGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(tan_grad, phi::TanGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(acos_grad, phi::AcosGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(sin_grad, phi::SinGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(asin_grad, phi::AsinGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(atan_grad, phi::AtanGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(sinh_grad, phi::SinhGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(cosh_grad, phi::CoshGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(asinh_grad, phi::AsinhGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(acosh_grad, phi::AcoshGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(atanh_grad, phi::AtanhGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(relu_grad, phi::ReluGradOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(expm1_grad, phi::Expm1GradOpArgumentMapping);
