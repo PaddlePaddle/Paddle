@@ -350,10 +350,8 @@ void EagerGroup::SplitTensorsDev(const platform::DeviceContext &context) {
       VLOG(3) << "Free dense_contents_ " << dense_contents_.numel();
       memory::RecordStream(dense_tensor->Holder(), gpu_context.stream());
       dense_contents_.reset();
-      for (int64_t i = 0; i < static_cast<int64_t>(dense_tensors_.size());
-           i++) {
-        dense_tensors_[i] = phi::DenseTensor();
-      }
+      // dense_tensors_.clear();
+      // dense_tensors_.resize(dense_tensors_.size(),  phi::DenseTensor());
     }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -932,10 +930,9 @@ void EagerReducer::FinalizeBackward() {
   for (auto &group : groups_) {
     if (!group.is_sparse_) {
       group.dense_contents_.reset();
-      for (int64_t i = 0; i < static_cast<int64_t>(group.dense_tensors_.size());
-           i++) {
-        group.dense_tensors_[i] = phi::DenseTensor();
-      }
+      // group.dense_tensors_.clear();
+      // group.dense_tensors_.resize(group.dense_tensors_.size(),
+      // phi::DenseTensor());
     }
   }
 
