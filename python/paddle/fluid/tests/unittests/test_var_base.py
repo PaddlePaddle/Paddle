@@ -1847,7 +1847,7 @@ class TestEagerTensorGradNameValue(unittest.TestCase):
             self.assertIsNone(a._grad_value())
             b.backward()
             # Note, for new dygraph, there are no generated grad name, so we skip the name check.
-            self.assertNotEqual(a._grad_value(), None)
+            self.assertIsNotNone(a._grad_value())
 
 
 if __name__ == '__main__':

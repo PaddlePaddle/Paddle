@@ -58,7 +58,7 @@ class TestFleetUtil(unittest.TestCase):
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        self.assertNotEqual(fleet.util, None)
+        self.assertIsNotNone(fleet.util)
 
     def test_set_user_defined_util(self):
         import paddle.distributed.fleet as fleet
