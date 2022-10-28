@@ -69,6 +69,9 @@ def _scope_dist2single(dist_scope):
         "vocab_parallel_embedding": "embedding",
         "parallel_cross_entropy": "cross_entropy",
     }
+    assert (
+        dist_scope != "parallel_cross_entropy"
+    ), f"Not execpted param name: parallel_cross_entropy"
     if dist_scope in mapping:
         return mapping[dist_scope]
     return dist_scope
