@@ -25,18 +25,18 @@ namespace distributed {
 
 template <typename DeviceContext, typename T>
 struct ConcatDenseTensor {
-  void operator()(const DeviceContext *context,
+  void operator()(const DeviceContext &context,
                   const std::vector<phi::DenseTensor> &in,
                   phi::DenseTensor *out,
                   int axis = 0) {
     phi::funcs::ConcatFunctor<DeviceContext, T> concat_functor;
-    concat_functor(*context, in, axis, out);
+    concat_functor(context, in, axis, out);
   }
 };
 
 template <typename DeviceContext, typename T>
 struct SplitDenseTensor {
-  void operator()(const DeviceContext *context,
+  void operator()(const DeviceContext &context,
                   const phi::DenseTensor &in,
                   std::vector<phi::DenseTensor *> *out,
                   int axis = 0) {
@@ -46,19 +46,19 @@ struct SplitDenseTensor {
       shape_refer.emplace_back(p_tensor);
     }
     phi::funcs::SplitFunctor<DeviceContext, T> split_functor;
-    split_functor(*context, in, shape_refer, axis, out);
+    split_functor(context, in, shape_refer, axis, out);
   }
 };
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <typename T>
 struct ConcatDenseTensor<platform::CustomDeviceContext, T> {
-  void operator()(const platform::CustomDeviceContext *context,
+  void operator()(const platform::CustomDeviceContext &context,
                   const std::vector<phi::DenseTensor> &in,
                   phi::DenseTensor *out,
                   int axis = 0) {
     auto *out_data = out->data<T>();
-    auto *device = phi::DeviceManager::GetDeviceWithPlace(context->GetPlace());
+    auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
     size_t offset = 0;
     for (const auto &tensor : in) {
       const auto *in_data = tensor.data<T>();
@@ -71,12 +71,12 @@ struct ConcatDenseTensor<platform::CustomDeviceContext, T> {
 
 template <typename T>
 struct SplitDenseTensor<platform::CustomDeviceContext, T> {
-  void operator()(const platform::CustomDeviceContext *context,
+  void operator()(const platform::CustomDeviceContext &context,
                   const phi::DenseTensor &in,
                   std::vector<phi::DenseTensor *> *out,
                   int axis = 0) {
     auto *in_data = in.data<T>();
-    auto *device = phi::DeviceManager::GetDeviceWithPlace(context->GetPlace());
+    auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
     size_t offset = 0;
     for (auto *p_tensor : *out) {
       auto *out_data = p_tensor->data<T>();
@@ -89,7 +89,7 @@ struct SplitDenseTensor<platform::CustomDeviceContext, T> {
 #endif
 
 template <typename DeviceContext>
-void ConcatDenseTensorWithType(const DeviceContext *dev_ctx,
+void ConcatDenseTensorWithType(const DeviceContext &dev_ctx,
                                const std::vector<phi::DenseTensor> &t_list,
                                phi::DenseTensor *p_out,
                                phi::DataType type) {
@@ -126,7 +126,7 @@ void ConcatDenseTensorWithType(const DeviceContext *dev_ctx,
 }
 
 template <typename DeviceContext>
-void SplitDenseTensorWithType(const DeviceContext *dev_ctx,
+void SplitDenseTensorWithType(const DeviceContext &dev_ctx,
                               const phi::DenseTensor &t_in,
                               std::vector<phi::DenseTensor *> *p_list,
                               phi::DataType type) {
@@ -162,16 +162,16 @@ void SplitDenseTensorWithType(const DeviceContext *dev_ctx,
   }
 }
 
-void ConcatTensor(const phi::DeviceContext *dev_ctx,
+void ConcatTensor(const phi::DeviceContext &dev_ctx,
                   const std::vector<phi::DenseTensor> &tensor_list,
                   const experimental::Tensor *tensor) {
   auto *dense_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(tensor->impl()).get();
 
-  const auto &place = dev_ctx->GetPlace();
+  const auto &place = dev_ctx.GetPlace();
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    ConcatDenseTensorWithType(static_cast<const phi::GPUContext *>(dev_ctx),
+    ConcatDenseTensorWithType(static_cast<const phi::GPUContext &>(dev_ctx),
                               tensor_list,
                               dense_tensor,
                               tensor->dtype());
@@ -183,7 +183,7 @@ void ConcatTensor(const phi::DeviceContext *dev_ctx,
   } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     ConcatDenseTensorWithType(
-        static_cast<const platform::CustomDeviceContext *>(dev_ctx),
+        static_cast<const platform::CustomDeviceContext &>(dev_ctx),
         tensor_list,
         dense_tensor,
         tensor->dtype());
@@ -194,7 +194,7 @@ void ConcatTensor(const phi::DeviceContext *dev_ctx,
         "CUSTOM_DEVICE support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
-    ConcatDenseTensorWithType(static_cast<const phi::CPUContext *>(dev_ctx),
+    ConcatDenseTensorWithType(static_cast<const phi::CPUContext &>(dev_ctx),
                               tensor_list,
                               dense_tensor,
                               tensor->dtype());
@@ -204,20 +204,20 @@ void ConcatTensor(const phi::DeviceContext *dev_ctx,
   }
 }
 
-void SplitTensor(const phi::DeviceContext *dev_ctx,
+void SplitTensor(const phi::DeviceContext &dev_ctx,
                  const phi::DenseTensor &tensor,
                  const std::vector<experimental::Tensor> *tensor_list) {
   std::vector<phi::DenseTensor *> dense_list;
   for (auto &tensor : *tensor_list) {
-    auto p_tensor =
+    auto *p_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()).get();
     dense_list.emplace_back(p_tensor);
   }
 
-  const auto &place = dev_ctx->GetPlace();
+  const auto &place = dev_ctx.GetPlace();
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    SplitDenseTensorWithType(static_cast<const phi::GPUContext *>(dev_ctx),
+    SplitDenseTensorWithType(static_cast<const phi::GPUContext &>(dev_ctx),
                              tensor,
                              &dense_list,
                              tensor.dtype());
@@ -229,7 +229,7 @@ void SplitTensor(const phi::DeviceContext *dev_ctx,
   } else if (platform::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     SplitDenseTensorWithType(
-        static_cast<const platform::CustomDeviceContext *>(dev_ctx),
+        static_cast<const platform::CustomDeviceContext &>(dev_ctx),
         tensor,
         &dense_list,
         tensor.dtype());
@@ -239,7 +239,7 @@ void SplitTensor(const phi::DeviceContext *dev_ctx,
         "please recompile or reinstall Paddle with CUSTOM_DEVICE support."));
 #endif
   } else if (platform::is_cpu_place(place)) {
-    SplitDenseTensorWithType(static_cast<const phi::CPUContext *>(dev_ctx),
+    SplitDenseTensorWithType(static_cast<const phi::CPUContext &>(dev_ctx),
                              tensor,
                              &dense_list,
                              tensor.dtype());

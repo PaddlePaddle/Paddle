@@ -132,10 +132,10 @@ inline phi::DenseTensor::InplaceVersion* Variable::InplaceVersionCounter() {
                                ->mutable_value()
                                ->InplaceVersionCounter();
   } else {
-    VLOG(4)
-        << "Only supports phi::DenseTensor, LoDTensor, SelectedRows to have "
-           "TensorInplaceVersion, but received type "
-        << platform::demangle(framework::ToTypeName(Type()));
+    VLOG(4) << "Only supports phi::DenseTensor, phi::DenseTensor, SelectedRows "
+               "to have "
+               "TensorInplaceVersion, but received type "
+            << platform::demangle(framework::ToTypeName(Type()));
   }
   return version_counter_ptr;
 }
@@ -160,10 +160,10 @@ inline void Variable::BumpInplaceVersion() {
   if (version_counter_ptr) {
     return version_counter_ptr->Bump();
   } else {
-    VLOG(4)
-        << "Only supports phi::DenseTensor, LoDTensor, SelectedRows to have "
-           "TensorInplaceVersion, but received type "
-        << platform::demangle(framework::ToTypeName(Type()));
+    VLOG(4) << "Only supports phi::DenseTensor, phi::DenseTensor, SelectedRows "
+               "to have "
+               "TensorInplaceVersion, but received type "
+            << platform::demangle(framework::ToTypeName(Type()));
   }
 }
 }  // namespace framework
