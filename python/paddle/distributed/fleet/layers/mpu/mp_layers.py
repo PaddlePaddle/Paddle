@@ -145,7 +145,7 @@ class VocabParallelEmbedding(Layer):
 
         self.weight.is_distributed = True if self.is_mp else False
         if self.weight.is_distributed:
-            setattr(self.weight, "split_aixs", 0)
+            setattr(self.weight, "split_axis", 0)
 
     def forward(self, x):
         if self.is_mp:
@@ -279,7 +279,7 @@ class ColumnParallelLinear(Layer):
         self.weight.is_distributed = True if self.is_mp else False
 
         if self.weight.is_distributed:
-            setattr(self.weight, "split_aixs", 1)
+            setattr(self.weight, "split_axis", 1)
 
         if has_bias:
             # initialize bias to zero like Megatron
