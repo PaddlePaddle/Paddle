@@ -36,7 +36,6 @@
 
 DECLARE_bool(new_executor_use_local_scope);
 DECLARE_bool(control_flow_use_new_executor);
-DECLARE_bool(control_flow_use_new_executor_cache);
 
 namespace paddle {
 namespace framework {

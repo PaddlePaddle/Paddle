@@ -52,9 +52,6 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
                             true,
                             "Use new executor in control flow op");
-PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor_cache,
-                            true,
-                            "Cache new executor in control flow op");
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);

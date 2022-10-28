@@ -115,8 +115,7 @@ class ConditionalBlockOp : public ConditionalOp {
 
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
 
-      if (scopes->size() == 0 || !FLAGS_control_flow_use_new_executor ||
-          !FLAGS_control_flow_use_new_executor_cache) {
+      if (scopes->size() == 0 || !FLAGS_control_flow_use_new_executor) {
         scopes->resize(1);
         scopes->front() = &scope.NewScope();
       }
@@ -144,12 +143,10 @@ class ConditionalBlockOp : public ConditionalOp {
       if (FLAGS_control_flow_use_new_executor) {
         std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
 
-        if (!core || !platform::is_same_place(core->GetPlace(), dev_place) ||
-            !FLAGS_control_flow_use_new_executor_cache) {
+        if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
           VLOG(10) << "[interpreterCore cache]" << core.get();
           VLOG_IF(10, core)
               << platform::is_same_place(core->GetPlace(), dev_place);
-          VLOG(10) << FLAGS_control_flow_use_new_executor_cache;
           core.reset(new InterpreterCore(dev_place,
                                          *block,
                                          skip_gc_vars,
@@ -257,12 +254,10 @@ class ConditionalBlockGradOp : public ConditionalOp {
         std::set<std::string> skip_gc_vars(inside_grads.begin(),
                                            inside_grads.end());
 
-        if (!core || !platform::is_same_place(core->GetPlace(), dev_place) ||
-            !FLAGS_control_flow_use_new_executor_cache) {
+        if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
           VLOG(10) << "[interpreterCore cache]" << core.get();
           VLOG_IF(10, core)
               << platform::is_same_place(core->GetPlace(), dev_place);
-          VLOG(10) << FLAGS_control_flow_use_new_executor_cache;
           core.reset(new InterpreterCore(dev_place,
                                          *block,
                                          skip_gc_vars,
