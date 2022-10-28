@@ -629,7 +629,7 @@ void ConvCudnnGradKernel(const Context& ctx,
                                  input_grad,
                                  filter_grad);
   }
-#elif
+#else
   ConvCudnnGradKernelImplV7<T>(ctx,
                                input,
                                filter,

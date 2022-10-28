@@ -430,7 +430,7 @@ void ConvCudnnKernel(const Context& ctx,
                              exhaustive_search_t,
                              output);
   }
-#elif
+#else
   ConvCudnnKernelImplV7<T>(ctx,
                            input,
                            filter,
