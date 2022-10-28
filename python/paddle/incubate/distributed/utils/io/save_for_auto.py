@@ -25,6 +25,8 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.fluid.framework import dygraph_only
 import copy
 
+import numpy as np
+
 __all__ = ["save_for_auto_inference"]
 
 
@@ -345,13 +347,10 @@ def _name_mapping_dist2single(state_dict, pp_group):
 
     logger.debug(f"param type: {param_types}")
 
-    # 统计起始index
+    # analyse starting index
     for k in param_types.keys():
-        for pp in range(1, pp_group.nranks):
-            param_types[k][pp] += param_types[k][pp - 1]
-        for pp in range(1, pp_group.nranks):
-            param_types[k][pp] = param_types[k][pp - 1]
-        param_types[k][0] = 0
+        param_types[k] = np.cumsum([0] + param_types[k][:-1])
+
     logger.debug(f"params type: {param_types}")
 
     name_mapping = {}
