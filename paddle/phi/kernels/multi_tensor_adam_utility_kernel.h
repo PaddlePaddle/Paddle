@@ -19,7 +19,7 @@
 
 namespace phi {
 
-constexpr int max_chunk_size = 65535;
+const int kMaxChunkSize = 65535;
 
 template <int N, int MaxTensorSize, int MaxBlockSize>
 struct TensorAndBlockInfo {
@@ -113,8 +113,8 @@ void MultiTensorAdamUtilityKernel(
 
     for (int chunk = 0; chunk < chunks_this_tensor; chunk++) {
       t_info.tenosr_for_this_block[block_id] = tensor_id - 1;
-      if (local_chunk > max_chunk_size) {
-        t_info.start_chunk_this_tensor += max_chunk_size;
+      if (local_chunk > kMaxChunkSize) {
+        t_info.start_chunk_this_tensor += kMaxChunkSize;
         local_chunk = 1;
       }
       t_info.chunk_for_this_block[block_id] = local_chunk;

@@ -143,6 +143,16 @@ class MultiTensorAdam(Adam):
         self.beta1_pow_acc = [[] for _ in range(n)]
         self.beta2_pow_acc = [[] for _ in range(n)]
 
+    def _multi_tensor_init(self, target_block, parameters, param_group_idx):
+        _multi_tensor_adam_init(self, target_block, parameters, param_group_idx)
+
+    def _append_optimize_multi_tensor_op(
+        self, target_block, parameters_and_grads, param_group_idx
+    ):
+        _append_optimize_multi_tensor_adam_op(
+            self, target_block, parameters_and_grads, param_group_idx
+        )
+
 
 class MultiTensorAdamW(AdamW):
     r"""
@@ -253,7 +263,7 @@ class MultiTensorAdamW(AdamW):
         use_adamw = True
         self.type = "MultiTensorAdamW"
         self.use_adamw = use_adamw
-        self.use_multi_tensor = True
+        self._use_multi_tensor = True
         self._weight_decay = weight_decay
         self._grad_clip = grad_clip
         self.lr = 0.0
@@ -268,8 +278,6 @@ class MultiTensorAdamW(AdamW):
         self._param_dict = self._create_multi_tensor_dict()
         self._moment1_dict = self._create_multi_tensor_dict()
         self._moment2_dict = self._create_multi_tensor_dict()
-        self._beta1_pow_acc_dict = self._create_multi_tensor_dict()
-        self._beta2_pow_acc_dict = self._create_multi_tensor_dict()
         self._master_weight_dict = self._create_multi_tensor_dict()
         self._master_weight_dict['FP32_LODTensor'] = None
 
@@ -277,8 +285,20 @@ class MultiTensorAdamW(AdamW):
         self.beta1_pow_acc = [[] for _ in range(n)]
         self.beta2_pow_acc = [[] for _ in range(n)]
 
+    def _multi_tensor_init(self, target_block, parameters, param_group_idx):
+        _multi_tensor_adam_init(self, target_block, parameters, param_group_idx)
 
-def _multi_tensor_init(optimizer, target_block, parameters, param_group_idx):
+    def _append_optimize_multi_tensor_op(
+        self, target_block, parameters_and_grads, param_group_idx
+    ):
+        _append_optimize_multi_tensor_adam_op(
+            self, target_block, parameters_and_grads, param_group_idx
+        )
+
+
+def _multi_tensor_adam_init(
+    optimizer, target_block, parameters, param_group_idx
+):
     """
     All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, float32).
     This function will be overridden in the corresponding optimizer file.
@@ -333,7 +353,7 @@ def _multi_tensor_init(optimizer, target_block, parameters, param_group_idx):
             )
 
 
-def _append_optimize_multi_tensor_op(
+def _append_optimize_multi_tensor_adam_op(
     optimizer, target_block, parameters_and_grads, param_group_idx
 ):
     """
@@ -376,7 +396,7 @@ def _append_optimize_multi_tensor_op(
                         if k != 'params'
                     }
                 )
-                param_and_grad = _update_param_group(optimizer, param_grad_dict)
+                param_and_grad = optimizer._update_param_group(param_grad_dict)
                 if (
                     param_and_grad[0].dtype == paddle.float32
                     and param_and_grad[1].type

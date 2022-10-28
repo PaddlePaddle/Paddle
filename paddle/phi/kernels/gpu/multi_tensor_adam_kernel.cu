@@ -27,7 +27,7 @@
 
 namespace phi {
 
-constexpr int block_size = 512;
+const int kBlockSize = 512;
 
 template <typename T, typename MT, int N, int MaxTensorSize, int MaxBlockSize>
 struct MultiTensorAdamFunctor {
@@ -218,27 +218,27 @@ void MultiTensorAdamKernel(
     input_vector.push_back(master_params_out);
   }
 
-  const int max_tensors_size_mp = 24;
-  const int max_blocks_size_mp = 320;
+  const int kMaxTensorSizeMp = 24;
+  const int kMaxBlockSizeMp = 320;
 
-  const int MaxTensorSize = 30;
-  const int MaxBlockSize = 320;
+  const int kMaxTensorSize = 30;
+  const int kMaxBlockSize = 320;
+
+  VLOG(4) << "use_adamw: " << use_adamw;
+  VLOG(4) << "multi_precision: " << multi_precision;
 
   if (multi_precision) {
-    MultiTensorAdamUtilityKernel<5,
-                                 max_tensors_size_mp,
-                                 max_blocks_size_mp,
-                                 MPDType>(
+    MultiTensorAdamUtilityKernel<5, kMaxTensorSizeMp, kMaxBlockSizeMp, MPDType>(
         dev_ctx,
-        block_size,
+        kBlockSize,
         chunk_size,
         input_vector,
         grads,
         MultiTensorAdamFunctor<T,
                                MPDType,
                                5,
-                               max_tensors_size_mp,
-                               max_blocks_size_mp>(),
+                               kMaxTensorSizeMp,
+                               kMaxBlockSizeMp>(),
         beta1_tmp,
         beta2_tmp,
         beta1_pow.data<MPDType>(),
@@ -249,13 +249,13 @@ void MultiTensorAdamKernel(
         multi_precision,
         weight_decay_);
   } else {
-    MultiTensorAdamUtilityKernel<4, MaxTensorSize, MaxBlockSize, MPDType>(
+    MultiTensorAdamUtilityKernel<4, kMaxTensorSize, kMaxBlockSize, MPDType>(
         dev_ctx,
-        block_size,
+        kBlockSize,
         chunk_size,
         input_vector,
         grads,
-        MultiTensorAdamFunctor<T, MPDType, 4, MaxTensorSize, MaxBlockSize>(),
+        MultiTensorAdamFunctor<T, MPDType, 4, kMaxTensorSize, kMaxBlockSize>(),
         beta1_tmp,
         beta2_tmp,
         beta1_pow.data<MPDType>(),
