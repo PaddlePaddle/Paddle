@@ -46,11 +46,11 @@ class DynamicMetaFnFactory {
   }
 
   void Insert(std::string op_name, DynamicMetaFn infer_meta_fn) {
-    PADDLE_ENFORCE_NE(
-        Contains(op_name),
-        true,
-        phi::errors::AlreadyExists(
-            "`%s` op's DynamicInferMetaFn has been registered.", op_name));
+//    PADDLE_ENFORCE_NE(
+//        Contains(op_name),
+//        true,
+//        phi::errors::AlreadyExists(
+//            "`%s` op's DynamicInferMetaFn has been registered.", op_name));
     meta_fn_map_.insert({std::move(op_name), std::move(infer_meta_fn)});
   }
 
