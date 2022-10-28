@@ -141,7 +141,7 @@ class TestDeformConv2D(TestCase):
                 dtype=self.dtype,
             )
 
-            y_v1 = paddle.fluid.layers.deformable_conv(
+            y_v1 = paddle.static.nn.common.deformable_conv(
                 input=x,
                 offset=offset,
                 mask=None,
@@ -158,7 +158,7 @@ class TestDeformConv2D(TestCase):
                 modulated=False,
             )
 
-            y_v2 = paddle.fluid.layers.deformable_conv(
+            y_v2 = paddle.static.nn.common.deformable_conv(
                 input=x,
                 offset=offset,
                 mask=mask,
@@ -357,7 +357,7 @@ class TestDeformConv2DFunctional(TestCase):
                 dtype=self.dtype,
             )
 
-            y_v1 = paddle.fluid.layers.deformable_conv(
+            y_v1 = paddle.static.nn.common.deformable_conv(
                 input=x,
                 offset=offset,
                 mask=None,
@@ -374,7 +374,7 @@ class TestDeformConv2DFunctional(TestCase):
                 modulated=False,
             )
 
-            y_v2 = paddle.fluid.layers.deformable_conv(
+            y_v2 = paddle.static.nn.common.deformable_conv(
                 input=x,
                 offset=offset,
                 mask=mask,
