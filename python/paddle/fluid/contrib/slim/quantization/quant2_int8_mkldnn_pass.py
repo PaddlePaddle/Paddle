@@ -284,6 +284,29 @@ class Quant2Int8MkldnnPass(object):
                         self._var_quant_scales[
                             input_name
                         ] = self._var_quant_scales[output_name]
+                elif op.name() == 'split':
+                    input_name = op.input("X")[0]
+                    output_names = op.output("Out")
+                    tensor_names = [input_name] + output_names
+
+                    if all(
+                        name not in self._var_quant_scales
+                        for name in tensor_names
+                    ):
+                        waiting_for_scale.update(tensor_names)
+                        continue
+                    elif input_name in self._var_quant_scales:
+                        for output_name in output_names:
+                            self._var_quant_scales[
+                                output_name
+                            ] = self._var_quant_scales[input_name]
+                    else:
+                        for output_name in output_names:
+                            if output_name in self._var_quant_scales:
+                                self._var_quant_scales[
+                                    input_name
+                                ] = self._var_quant_scales[output_name]
+
                 elif op.name() == 'concat':
                     output_name = op.output("Out")[0]
                     if output_name in self._var_quant_scales:

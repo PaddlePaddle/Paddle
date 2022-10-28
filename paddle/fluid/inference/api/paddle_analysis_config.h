@@ -1131,7 +1131,8 @@ struct PD_INFER_DECL AnalysisConfig {
       "fusion_gru",
       "fusion_lstm",
       "multi_gru",
-      "slice"};
+      "slice",
+      "split"};
 
   // ipu related.
   bool use_ipu_{false};
