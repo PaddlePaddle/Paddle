@@ -150,6 +150,11 @@ class ProcessGroupGloo : public ProcessGroup {
     return GLOO_BACKEND_NAME;
   }
 
+  const phi::DeviceContext& GetDeviceContext(
+      const Place& place) const override {
+    return *platform::DeviceContextPool::Instance().Get(place);
+  }
+
   // Helper functions for Gloo.
   static std::shared_ptr<::gloo::transport::Device> createDeviceForHostname(
       const std::string& hostname);
