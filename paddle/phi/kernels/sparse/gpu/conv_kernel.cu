@@ -141,7 +141,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                       unique_value_ptr);
   }
 
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && __CUDA_ARCH__ >= 800
   if constexpr (std::is_same<T, phi::dtype::float16>::value &&
                 std::is_same<IntT, int32_t>::value) {
     if (in_channels % 4 == 0 && out_channels % 4 == 0) {

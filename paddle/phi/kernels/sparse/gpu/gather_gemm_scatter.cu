@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_CUTLASS
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 namespace phi {
 namespace sparse {
@@ -2150,3 +2151,4 @@ void cutlass_tensorop_d884gemm_32x16_16x5_nn_align1(const GPUContext& dev_ctx,
 }
 }  // namespace sparse
 }  // namespace phi
+#endif
