@@ -2569,6 +2569,7 @@ void BindImperative(py::module *m_ptr) {
       .def("prepare_for_backward",
            &imperative::Reducer::PrepareForBackward,
            py::arg("vars"),
+           py::arg("is_sync"),
            py::call_guard<py::gil_scoped_release>());
 
   m.def("assign_group_by_size",
