@@ -336,7 +336,9 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                      out_channels,
                                      1,
                                      out_values_ptr);
+#if defined(PADDLE_WITH_CUTLASS) && __CUDA_ARCH__ >= 800
   }
+#endif
 }
 
 /**
