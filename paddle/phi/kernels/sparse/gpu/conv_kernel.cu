@@ -142,120 +142,71 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   }
 
 #ifdef PADDLE_WITH_CUTLASS
-  if (dev_ctx.GetComputeCapability() >= 80) {
-    if constexpr (std::is_same<T, phi::dtype::float16>::value &&
-                  std::is_same<IntT, int32_t>::value) {
-      if (in_channels % 4 == 0 && out_channels % 4 == 0) {
-        auto* out_values = out->mutable_non_zero_elements();
-        T* out_values_ptr = out_values->data<T>();
-        phi::funcs::SetConstant<GPUContext, T> set_zero;
-        set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+  bool cutlass = true;
+  if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
+  if (in_channels % 4 != 0 || out_channels % 4 != 0) {
+    if (std::is_same<T, phi::dtype::float16>::value) cutlass = false;
+    if (std::is_same<T, float>::value) cutlass = false;
+  }
+  if (!std::is_same<IntT, int32_t>::value) cutlass = false;
+  if (cutlass) {
+    auto* out_values = out->mutable_non_zero_elements();
+    T* out_values_ptr = out_values->data<T>();
+    phi::funcs::SetConstant<GPUContext, T> set_zero;
+    set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
 
-        const T* kernel_ptr = kernel.data<T>();
-        for (int i = 0; i < kernel_size; i++) {
-          if (h_counter_ptr[i] <= 0) {
-            continue;
-          }
-
-          const int M = h_counter_ptr[i];
-          const int K = in_channels;
-          const int N = out_channels;
-          const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-          const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
-          const IntT* scatter_indices =
-              rulebook_ptr + rulebook_len + h_offsets_ptr[i];
-
-          fp16_gather_gemm_scatter gather_gemm_scatter =
-              getBestFp16Kernel(M, N, K);
-          gather_gemm_scatter(
-              dev_ctx,
-              reinterpret_cast<const cutlass::half_t*>(
-                  x.non_zero_elements().data<T>()),
-              reinterpret_cast<const cutlass::half_t*>(tmp_kernel_ptr),
-              reinterpret_cast<cutlass::half_t*>(out_values_ptr),
-              reinterpret_cast<cutlass::half_t*>(out_values_ptr),
-              M,
-              N,
-              K,
-              static_cast<const int32_t*>(gather_indices),
-              static_cast<const int32_t*>(scatter_indices),
-              static_cast<cutlass::half_t>(1),
-              static_cast<cutlass::half_t>(1));
-        }
+    const T* kernel_ptr = kernel.data<T>();
+    for (int i = 0; i < kernel_size; i++) {
+      if (h_counter_ptr[i] <= 0) {
+        continue;
       }
-    }
-    if constexpr (std::is_same<T, float>::value &&
-                  std::is_same<IntT, int32_t>::value) {
-      if (in_channels % 4 == 0 && out_channels % 4 == 0) {
-        using ElementInputA = T;
-        using ElementInputB = T;
-        using ElementAccumulator = T;
-        using ElementComputeEpilogue = T;
-        using ElementOutput = T;
-        using LayoutInputA = cutlass::layout::RowMajor;
-        using LayoutInputB = cutlass::layout::RowMajor;
-        using LayoutOutput = cutlass::layout::RowMajor;
-        using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<256, 64, 16>;
-        using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 64, 16>;
-        using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 8>;
-        constexpr int NumStages = 4;
 
-        auto* out_values = out->mutable_non_zero_elements();
-        T* out_values_ptr = out_values->data<T>();
-        phi::funcs::SetConstant<GPUContext, T> set_zero;
-        set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+      const int M = h_counter_ptr[i];
+      const int K = in_channels;
+      const int N = out_channels;
+      const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
+      const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
+      const IntT* scatter_indices =
+          rulebook_ptr + rulebook_len + h_offsets_ptr[i];
 
-        const T* kernel_ptr = kernel.data<T>();
-        for (int i = 0; i < kernel_size; i++) {
-          if (h_counter_ptr[i] <= 0) {
-            continue;
-          }
-
-          const int M = h_counter_ptr[i];
-          const int K = in_channels;
-          const int N = out_channels;
-          const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-          const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
-          const IntT* scatter_indices =
-              rulebook_ptr + rulebook_len + h_offsets_ptr[i];
-          fp32_gather_gemm_scatter gather_gemm_scatter =
-              getBestFp32Kernel(M, N, K);
-          gather_gemm_scatter(dev_ctx,
-                              x.non_zero_elements().data<T>(),
-                              tmp_kernel_ptr,
-                              out_values_ptr,
-                              out_values_ptr,
-                              M,
-                              N,
-                              K,
-                              gather_indices,
-                              scatter_indices,
-                              static_cast<T>(1),
-                              static_cast<T>(1));
-        }
+      if constexpr (std::is_same<T, phi::dtype::float16>::value &&
+                    std::is_same<IntT, int32_t>::value) {
+        fp16_gather_gemm_scatter gather_gemm_scatter =
+            getBestFp16Kernel(M, N, K);
+        gather_gemm_scatter(
+            dev_ctx,
+            reinterpret_cast<const cutlass::half_t*>(
+                x.non_zero_elements().data<T>()),
+            reinterpret_cast<const cutlass::half_t*>(tmp_kernel_ptr),
+            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
+            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
+            M,
+            N,
+            K,
+            static_cast<const int32_t*>(gather_indices),
+            static_cast<const int32_t*>(scatter_indices),
+            static_cast<cutlass::half_t>(1),
+            static_cast<cutlass::half_t>(1));
       }
-    }
-    if constexpr (std::is_same<T, double>::value &&
-                  std::is_same<IntT, int32_t>::value) {
-      auto* out_values = out->mutable_non_zero_elements();
-      T* out_values_ptr = out_values->data<T>();
-      phi::funcs::SetConstant<GPUContext, T> set_zero;
-      set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
-
-      const T* kernel_ptr = kernel.data<T>();
-      for (int i = 0; i < kernel_size; i++) {
-        if (h_counter_ptr[i] <= 0) {
-          continue;
-        }
-
-        const int M = h_counter_ptr[i];
-        const int K = in_channels;
-        const int N = out_channels;
-        const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-        const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
-        const IntT* scatter_indices =
-            rulebook_ptr + rulebook_len + h_offsets_ptr[i];
-
+      if constexpr (std::is_same<T, float>::value &&
+                    std::is_same<IntT, int32_t>::value) {
+        fp32_gather_gemm_scatter gather_gemm_scatter =
+            getBestFp32Kernel(M, N, K);
+        gather_gemm_scatter(dev_ctx,
+                            x.non_zero_elements().data<T>(),
+                            tmp_kernel_ptr,
+                            out_values_ptr,
+                            out_values_ptr,
+                            M,
+                            N,
+                            K,
+                            gather_indices,
+                            scatter_indices,
+                            static_cast<T>(1),
+                            static_cast<T>(1));
+      }
+      if constexpr (std::is_same<T, double>::value &&
+                    std::is_same<IntT, int32_t>::value) {
         fp64_gather_gemm_scatter gather_gemm_scatter =
             getBestFp64Kernel(M, N, K);
         gather_gemm_scatter(dev_ctx,
@@ -272,14 +223,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                             static_cast<T>(1));
       }
     }
-  }
-  if (dev_ctx.GetComputeCapability() < 80 ||
-      !((std::is_same<T, float>::value && in_channels % 4 == 0 &&
-         out_channels % 4 == 0) ||
-        (std::is_same<T, phi::dtype::float16>::value && in_channels % 4 == 0 &&
-         out_channels % 4 == 0) ||
-        (std::is_same<T, double>::value)) ||
-      !std::is_same<IntT, int32_t>::value) {
+  } else {
 #endif
     // 2. gather
     phi::DenseTensor in_features =

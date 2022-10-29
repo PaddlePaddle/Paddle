@@ -115,12 +115,6 @@ void launchKernel(const GPUContext& dev_ctx,
   gemm_op(dev_ctx.stream());
 }
 struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm75;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-  using EpilogueOp = cutlass::epilogue::thread::
-      LinearCombination<cutlass::half_t, 8, cutlass::half_t, cutlass::half_t>;
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
       cutlass::layout::RowMajor,
@@ -129,13 +123,16 @@ struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8 {
       cutlass::half_t,
       cutlass::layout::RowMajor,
       cutlass::half_t,
-      MMAOp,
-      SmArch,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm75,
       cutlass::gemm::GemmShape<128, 64, 32>,
       cutlass::gemm::GemmShape<64, 32, 32>,
       cutlass::gemm::GemmShape<16, 8, 8>,
-      EpilogueOp,
-      SwizzleThreadBlock,
+      cutlass::epilogue::thread::LinearCombination<cutlass::half_t,
+                                                   8,
+                                                   cutlass::half_t,
+                                                   cutlass::half_t>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
       2,
       8,
       8,
@@ -147,12 +144,6 @@ struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8 {
       true>;
 };
 struct cutlass_tensorop_h1688gemm_64x128_32x2_nn_align8 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm75;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-  using EpilogueOp = cutlass::epilogue::thread::
-      LinearCombination<cutlass::half_t, 8, cutlass::half_t, cutlass::half_t>;
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
       cutlass::layout::RowMajor,
@@ -161,13 +152,16 @@ struct cutlass_tensorop_h1688gemm_64x128_32x2_nn_align8 {
       cutlass::half_t,
       cutlass::layout::RowMajor,
       cutlass::half_t,
-      MMAOp,
-      SmArch,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm75,
       cutlass::gemm::GemmShape<64, 128, 32>,
       cutlass::gemm::GemmShape<32, 64, 32>,
       cutlass::gemm::GemmShape<16, 8, 8>,
-      EpilogueOp,
-      SwizzleThreadBlock,
+      cutlass::epilogue::thread::LinearCombination<cutlass::half_t,
+                                                   8,
+                                                   cutlass::half_t,
+                                                   cutlass::half_t>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
       2,
       8,
       8,
@@ -179,12 +173,6 @@ struct cutlass_tensorop_h1688gemm_64x128_32x2_nn_align8 {
       true>;
 };
 struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align4 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm75;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-  using EpilogueOp = cutlass::epilogue::thread::
-      LinearCombination<cutlass::half_t, 4, cutlass::half_t, cutlass::half_t>;
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
       cutlass::layout::RowMajor,
@@ -193,13 +181,16 @@ struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align4 {
       cutlass::half_t,
       cutlass::layout::RowMajor,
       cutlass::half_t,
-      MMAOp,
-      SmArch,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm75,
       cutlass::gemm::GemmShape<128, 64, 32>,
       cutlass::gemm::GemmShape<64, 32, 32>,
       cutlass::gemm::GemmShape<16, 8, 8>,
-      EpilogueOp,
-      SwizzleThreadBlock,
+      cutlass::epilogue::thread::LinearCombination<cutlass::half_t,
+                                                   4,
+                                                   cutlass::half_t,
+                                                   cutlass::half_t>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
       2,
       4,
       4,
@@ -211,108 +202,93 @@ struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align4 {
       true>;
 };
 struct cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm75;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-  using EpilogueOp = cutlass::epilogue::thread::
-      LinearCombination<cutlass::half_t, 4, cutlass::half_t, cutlass::half_t>;
-  using Gemm =
-      cutlass::gemm::device::GemmUniversal<cutlass::half_t,
-                                           cutlass::layout::RowMajor,
-                                           cutlass::half_t,
-                                           cutlass::layout::RowMajor,
-                                           cutlass::half_t,
-                                           cutlass::layout::RowMajor,
-                                           cutlass::half_t,
-                                           MMAOp,
-                                           SmArch,
-                                           cutlass::gemm::GemmShape<64, 64, 32>,
-                                           cutlass::gemm::GemmShape<32, 32, 32>,
-                                           cutlass::gemm::GemmShape<16, 8, 8>,
-                                           EpilogueOp,
-                                           SwizzleThreadBlock,
-                                           2,
-                                           4,
-                                           4,
-                                           cutlass::arch::OpMultiplyAdd,
-                                           cutlass::ComplexTransform::kNone,
-                                           cutlass::ComplexTransform::kNone,
-                                           true,
-                                           false,
-                                           true>;
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm75,
+      cutlass::gemm::GemmShape<64, 64, 32>,
+      cutlass::gemm::GemmShape<32, 32, 32>,
+      cutlass::gemm::GemmShape<16, 8, 8>,
+      cutlass::epilogue::thread::LinearCombination<cutlass::half_t,
+                                                   4,
+                                                   cutlass::half_t,
+                                                   cutlass::half_t>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      2,
+      4,
+      4,
+      cutlass::arch::OpMultiplyAdd,
+      cutlass::ComplexTransform::kNone,
+      cutlass::ComplexTransform::kNone,
+      true,
+      false,
+      true>;
 };
 struct cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm75;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-  using EpilogueOp = cutlass::epilogue::thread::
-      LinearCombination<cutlass::half_t, 8, cutlass::half_t, cutlass::half_t>;
-  using Gemm =
-      cutlass::gemm::device::GemmUniversal<cutlass::half_t,
-                                           cutlass::layout::RowMajor,
-                                           cutlass::half_t,
-                                           cutlass::layout::RowMajor,
-                                           cutlass::half_t,
-                                           cutlass::layout::RowMajor,
-                                           cutlass::half_t,
-                                           MMAOp,
-                                           SmArch,
-                                           cutlass::gemm::GemmShape<64, 64, 32>,
-                                           cutlass::gemm::GemmShape<32, 32, 32>,
-                                           cutlass::gemm::GemmShape<16, 8, 8>,
-                                           EpilogueOp,
-                                           SwizzleThreadBlock,
-                                           2,
-                                           8,
-                                           8,
-                                           cutlass::arch::OpMultiplyAdd,
-                                           cutlass::ComplexTransform::kNone,
-                                           cutlass::ComplexTransform::kNone,
-                                           true,
-                                           false,
-                                           true>;
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm75,
+      cutlass::gemm::GemmShape<64, 64, 32>,
+      cutlass::gemm::GemmShape<32, 32, 32>,
+      cutlass::gemm::GemmShape<16, 8, 8>,
+      cutlass::epilogue::thread::LinearCombination<cutlass::half_t,
+                                                   8,
+                                                   cutlass::half_t,
+                                                   cutlass::half_t>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      2,
+      8,
+      8,
+      cutlass::arch::OpMultiplyAdd,
+      cutlass::ComplexTransform::kNone,
+      cutlass::ComplexTransform::kNone,
+      true,
+      false,
+      true>;
 };
 struct cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm80;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-  using EpilogueOp = cutlass::epilogue::thread::
-      LinearCombination<cutlass::half_t, 8, cutlass::half_t, cutlass::half_t>;
-  using Gemm =
-      cutlass::gemm::device::GemmUniversal<cutlass::half_t,
-                                           cutlass::layout::RowMajor,
-                                           cutlass::half_t,
-                                           cutlass::layout::RowMajor,
-                                           cutlass::half_t,
-                                           cutlass::layout::RowMajor,
-                                           cutlass::half_t,
-                                           MMAOp,
-                                           SmArch,
-                                           cutlass::gemm::GemmShape<64, 64, 64>,
-                                           cutlass::gemm::GemmShape<32, 32, 64>,
-                                           cutlass::gemm::GemmShape<16, 8, 16>,
-                                           EpilogueOp,
-                                           SwizzleThreadBlock,
-                                           5,
-                                           8,
-                                           8,
-                                           cutlass::arch::OpMultiplyAdd,
-                                           cutlass::ComplexTransform::kNone,
-                                           cutlass::ComplexTransform::kNone,
-                                           true,
-                                           false,
-                                           true>;
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
+      cutlass::gemm::GemmShape<64, 64, 64>,
+      cutlass::gemm::GemmShape<32, 32, 64>,
+      cutlass::gemm::GemmShape<16, 8, 16>,
+      cutlass::epilogue::thread::LinearCombination<cutlass::half_t,
+                                                   8,
+                                                   cutlass::half_t,
+                                                   cutlass::half_t>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      5,
+      8,
+      8,
+      cutlass::arch::OpMultiplyAdd,
+      cutlass::ComplexTransform::kNone,
+      cutlass::ComplexTransform::kNone,
+      true,
+      false,
+      true>;
 };
 struct cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm75;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-  using EpilogueOp = cutlass::epilogue::thread::
-      LinearCombination<cutlass::half_t, 8, float, float>;
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
       cutlass::layout::RowMajor,
@@ -321,13 +297,14 @@ struct cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8 {
       cutlass::half_t,
       cutlass::layout::RowMajor,
       float,
-      MMAOp,
-      SmArch,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm75,
       cutlass::gemm::GemmShape<64, 128, 32>,
       cutlass::gemm::GemmShape<32, 64, 32>,
       cutlass::gemm::GemmShape<16, 8, 8>,
-      EpilogueOp,
-      SwizzleThreadBlock,
+      cutlass::epilogue::thread::
+          LinearCombination<cutlass::half_t, 8, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
       2,
       8,
       8,
@@ -339,83 +316,33 @@ struct cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8 {
       true>;
 };
 struct cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm75;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-  using EpilogueOp = cutlass::epilogue::thread::
-      LinearCombination<cutlass::half_t, 8, float, float>;
-  using Gemm =
-      cutlass::gemm::device::GemmUniversal<cutlass::half_t,
-                                           cutlass::layout::RowMajor,
-                                           cutlass::half_t,
-                                           cutlass::layout::RowMajor,
-                                           cutlass::half_t,
-                                           cutlass::layout::RowMajor,
-                                           float,
-                                           MMAOp,
-                                           SmArch,
-                                           cutlass::gemm::GemmShape<64, 64, 32>,
-                                           cutlass::gemm::GemmShape<32, 32, 32>,
-                                           cutlass::gemm::GemmShape<16, 8, 8>,
-                                           EpilogueOp,
-                                           SwizzleThreadBlock,
-                                           2,
-                                           8,
-                                           8,
-                                           cutlass::arch::OpMultiplyAdd,
-                                           cutlass::ComplexTransform::kNone,
-                                           cutlass::ComplexTransform::kNone,
-                                           true,
-                                           false,
-                                           true>;
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm75,
+      cutlass::gemm::GemmShape<64, 64, 32>,
+      cutlass::gemm::GemmShape<32, 32, 32>,
+      cutlass::gemm::GemmShape<16, 8, 8>,
+      cutlass::epilogue::thread::
+          LinearCombination<cutlass::half_t, 8, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      2,
+      8,
+      8,
+      cutlass::arch::OpMultiplyAdd,
+      cutlass::ComplexTransform::kNone,
+      cutlass::ComplexTransform::kNone,
+      true,
+      false,
+      true>;
 };
 struct cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm80;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombination<float,
-
-                                                                  4,
-                                                                  float,
-                                                                  float>;
-  using Gemm =
-      cutlass::gemm::device::GemmUniversal<float,
-                                           cutlass::layout::RowMajor,
-                                           float,
-                                           cutlass::layout::RowMajor,
-                                           float,
-                                           cutlass::layout::RowMajor,
-                                           float,
-                                           MMAOp,
-                                           SmArch,
-                                           cutlass::gemm::GemmShape<64, 64, 16>,
-                                           cutlass::gemm::GemmShape<32, 32, 16>,
-                                           cutlass::gemm::GemmShape<16, 8, 8>,
-                                           EpilogueOp,
-                                           SwizzleThreadBlock,
-                                           10,
-                                           4,
-                                           4,
-                                           cutlass::arch::OpMultiplyAddFastF16,
-                                           cutlass::ComplexTransform::kNone,
-                                           cutlass::ComplexTransform::kNone,
-                                           true,
-                                           false,
-                                           true>;
-};
-struct cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm80;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombination<float,
-
-                                                                  4,
-                                                                  float,
-                                                                  float>;
-
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
       cutlass::layout::RowMajor,
@@ -424,13 +351,39 @@ struct cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4 {
       float,
       cutlass::layout::RowMajor,
       float,
-      MMAOp,
-      SmArch,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
+      cutlass::gemm::GemmShape<64, 64, 16>,
+      cutlass::gemm::GemmShape<32, 32, 16>,
+      cutlass::gemm::GemmShape<16, 8, 8>,
+      cutlass::epilogue::thread::LinearCombination<float, 4, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      10,
+      4,
+      4,
+      cutlass::arch::OpMultiplyAddFastF16,
+      cutlass::ComplexTransform::kNone,
+      cutlass::ComplexTransform::kNone,
+      true,
+      false,
+      true>;
+};
+struct cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4 {
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
       cutlass::gemm::GemmShape<128, 128, 16>,
       cutlass::gemm::GemmShape<64, 64, 16>,
       cutlass::gemm::GemmShape<16, 8, 8>,
-      EpilogueOp,
-      SwizzleThreadBlock,
+      cutlass::epilogue::thread::LinearCombination<float, 4, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
       3,
       4,
       4,
@@ -442,19 +395,6 @@ struct cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4 {
       true>;
 };
 struct cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-
-  using SmArch = cutlass::arch::Sm80;
-
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombination<float,
-
-                                                                  4,
-                                                                  float,
-                                                                  float>;
-
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
       cutlass::layout::RowMajor,
@@ -463,13 +403,13 @@ struct cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4 {
       float,
       cutlass::layout::RowMajor,
       float,
-      MMAOp,
-      SmArch,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
       cutlass::gemm::GemmShape<256, 64, 16>,
       cutlass::gemm::GemmShape<64, 64, 16>,
       cutlass::gemm::GemmShape<16, 8, 8>,
-      EpilogueOp,
-      SwizzleThreadBlock,
+      cutlass::epilogue::thread::LinearCombination<float, 4, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
       4,
       4,
       4,
@@ -481,19 +421,6 @@ struct cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4 {
       true>;
 };
 struct cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-
-  using SmArch = cutlass::arch::Sm80;
-
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombination<float,
-
-                                                                  4,
-                                                                  float,
-                                                                  float>;
-
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
       cutlass::layout::RowMajor,
@@ -502,13 +429,13 @@ struct cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4 {
       float,
       cutlass::layout::RowMajor,
       float,
-      MMAOp,
-      SmArch,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
       cutlass::gemm::GemmShape<256, 128, 16>,
       cutlass::gemm::GemmShape<64, 64, 16>,
       cutlass::gemm::GemmShape<16, 8, 8>,
-      EpilogueOp,
-      SwizzleThreadBlock,
+      cutlass::epilogue::thread::LinearCombination<float, 4, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
       3,
       4,
       4,
@@ -520,19 +447,6 @@ struct cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4 {
       true>;
 };
 struct cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-
-  using SmArch = cutlass::arch::Sm80;
-
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombination<float,
-
-                                                                  4,
-                                                                  float,
-                                                                  float>;
-
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
       cutlass::layout::RowMajor,
@@ -541,13 +455,13 @@ struct cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4 {
       float,
       cutlass::layout::RowMajor,
       float,
-      MMAOp,
-      SmArch,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
       cutlass::gemm::GemmShape<64, 128, 16>,
       cutlass::gemm::GemmShape<32, 64, 16>,
       cutlass::gemm::GemmShape<16, 8, 8>,
-      EpilogueOp,
-      SwizzleThreadBlock,
+      cutlass::epilogue::thread::LinearCombination<float, 4, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
       6,
       4,
       4,
@@ -559,121 +473,82 @@ struct cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4 {
       true>;
 };
 struct cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-
-  using SmArch = cutlass::arch::Sm80;
-
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombination<float,
-
-                                                                  4,
-                                                                  float,
-                                                                  float>;
-
-  using Gemm =
-      cutlass::gemm::device::GemmUniversal<float,
-                                           cutlass::layout::RowMajor,
-                                           float,
-                                           cutlass::layout::RowMajor,
-                                           float,
-                                           cutlass::layout::RowMajor,
-                                           float,
-                                           MMAOp,
-                                           SmArch,
-                                           cutlass::gemm::GemmShape<64, 64, 16>,
-                                           cutlass::gemm::GemmShape<32, 32, 16>,
-                                           cutlass::gemm::GemmShape<16, 8, 8>,
-                                           EpilogueOp,
-                                           SwizzleThreadBlock,
-                                           3,
-                                           4,
-                                           4,
-                                           cutlass::arch::OpMultiplyAddFastF32,
-                                           cutlass::ComplexTransform::kNone,
-                                           cutlass::ComplexTransform::kNone,
-                                           true,
-                                           false,
-                                           true>;
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
+      cutlass::gemm::GemmShape<64, 64, 16>,
+      cutlass::gemm::GemmShape<32, 32, 16>,
+      cutlass::gemm::GemmShape<16, 8, 8>,
+      cutlass::epilogue::thread::LinearCombination<float, 4, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      3,
+      4,
+      4,
+      cutlass::arch::OpMultiplyAddFastF32,
+      cutlass::ComplexTransform::kNone,
+      cutlass::ComplexTransform::kNone,
+      true,
+      false,
+      true>;
 };
 struct cutlass_tensorop_d884gemm_16x32_16x5_nn_align1 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-
-  using SmArch = cutlass::arch::Sm80;
-
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombination<double,
-
-                                                                  1,
-                                                                  double,
-                                                                  double>;
-
-  using Gemm =
-      cutlass::gemm::device::GemmUniversal<double,
-                                           cutlass::layout::RowMajor,
-                                           double,
-                                           cutlass::layout::RowMajor,
-                                           double,
-                                           cutlass::layout::RowMajor,
-                                           double,
-                                           MMAOp,
-                                           SmArch,
-                                           cutlass::gemm::GemmShape<16, 32, 16>,
-                                           cutlass::gemm::GemmShape<16, 16, 16>,
-                                           cutlass::gemm::GemmShape<8, 8, 4>,
-                                           EpilogueOp,
-                                           SwizzleThreadBlock,
-                                           5,
-                                           1,
-                                           1,
-                                           cutlass::arch::OpMultiplyAdd,
-                                           cutlass::ComplexTransform::kNone,
-                                           cutlass::ComplexTransform::kNone,
-                                           true,
-                                           false,
-                                           true>;
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      double,
+      cutlass::layout::RowMajor,
+      double,
+      cutlass::layout::RowMajor,
+      double,
+      cutlass::layout::RowMajor,
+      double,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
+      cutlass::gemm::GemmShape<16, 32, 16>,
+      cutlass::gemm::GemmShape<16, 16, 16>,
+      cutlass::gemm::GemmShape<8, 8, 4>,
+      cutlass::epilogue::thread::LinearCombination<double, 1, double, double>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      5,
+      1,
+      1,
+      cutlass::arch::OpMultiplyAdd,
+      cutlass::ComplexTransform::kNone,
+      cutlass::ComplexTransform::kNone,
+      true,
+      false,
+      true>;
 };
 struct cutlass_tensorop_d884gemm_32x16_16x5_nn_align1 {
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-
-  using SmArch = cutlass::arch::Sm80;
-
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>;
-
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombination<double,
-
-                                                                  1,
-                                                                  double,
-                                                                  double>;
-
-  using Gemm =
-      cutlass::gemm::device::GemmUniversal<double,
-                                           cutlass::layout::RowMajor,
-                                           double,
-                                           cutlass::layout::RowMajor,
-                                           double,
-                                           cutlass::layout::RowMajor,
-                                           double,
-                                           MMAOp,
-                                           SmArch,
-                                           cutlass::gemm::GemmShape<32, 16, 16>,
-                                           cutlass::gemm::GemmShape<16, 16, 16>,
-                                           cutlass::gemm::GemmShape<8, 8, 4>,
-                                           EpilogueOp,
-                                           SwizzleThreadBlock,
-                                           5,
-                                           1,
-                                           1,
-                                           cutlass::arch::OpMultiplyAdd,
-                                           cutlass::ComplexTransform::kNone,
-                                           cutlass::ComplexTransform::kNone,
-                                           true,
-                                           false,
-                                           true>;
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      double,
+      cutlass::layout::RowMajor,
+      double,
+      cutlass::layout::RowMajor,
+      double,
+      cutlass::layout::RowMajor,
+      double,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
+      cutlass::gemm::GemmShape<32, 16, 16>,
+      cutlass::gemm::GemmShape<16, 16, 16>,
+      cutlass::gemm::GemmShape<8, 8, 4>,
+      cutlass::epilogue::thread::LinearCombination<double, 1, double, double>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      5,
+      1,
+      1,
+      cutlass::arch::OpMultiplyAdd,
+      cutlass::ComplexTransform::kNone,
+      cutlass::ComplexTransform::kNone,
+      true,
+      false,
+      true>;
 };
 }  // namespace sparse
 }  // namespace phi
