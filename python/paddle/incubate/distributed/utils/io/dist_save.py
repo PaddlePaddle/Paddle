@@ -318,8 +318,6 @@ def _grouped_gather_data_dict(state_data_dict, dst, group, max_size):
     total = 0
     output_state = dict()
 
-    # import pdb
-    # pdb.set_trace()
     logger.info("start all gather ...")
     # gather all state_dict by groups
     for state in _state_dict_groups(numpy_dict, max_size):
