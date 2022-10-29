@@ -195,7 +195,7 @@ void InterpretercoreInferShapeContext::ShareDim(const std::string& in,
     out_lod_tensor->Resize(in_lod_tensor.dims());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Currently, the input type of ShareDim only can be LoDTensor "
+        "Currently, the input type of ShareDim only can be phi::DenseTensor "
         "or SelectedRows."));
   }
 }
@@ -231,16 +231,17 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
     }
 
     Variable* in_var = in_var_list[i];
-    if (!in_var->IsType<LoDTensor>()) return;
+    if (!in_var->IsType<phi::DenseTensor>()) return;
     Variable* out_var = out_var_list[i];
-    PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(),
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "The %d-th output of Output(%s) must be LoDTensor.",
-                          i,
-                          out_var_names[i]));
-    auto& in_tensor = in_var->Get<LoDTensor>();
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+    PADDLE_ENFORCE_EQ(
+        out_var->IsType<phi::DenseTensor>(),
+        true,
+        platform::errors::PreconditionNotMet(
+            "The %d-th output of Output(%s) must be phi::DenseTensor.",
+            i,
+            out_var_names[i]));
+    auto& in_tensor = in_var->Get<phi::DenseTensor>();
+    auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
     out_tensor->set_lod(in_tensor.lod());
 #ifdef PADDLE_WITH_MKLDNN
     if (in_tensor.layout() != DataLayout::kMKLDNN)
@@ -281,15 +282,15 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
                         j));
 
   Variable* in_var = in_it->second.at(i);
-  if (!in_var->IsType<LoDTensor>()) return;
+  if (!in_var->IsType<phi::DenseTensor>()) return;
   Variable* out_var = out_it->second.at(j);
   PADDLE_ENFORCE_EQ(
-      out_var->IsType<LoDTensor>(),
+      out_var->IsType<phi::DenseTensor>(),
       true,
       platform::errors::InvalidArgument(
-          "The %zu-th output of Output(%s) must be LoDTensor.", j, out));
-  auto& in_tensor = in_var->Get<LoDTensor>();
-  auto* out_tensor = out_var->GetMutable<LoDTensor>();
+          "The %zu-th output of Output(%s) must be phi::DenseTensor.", j, out));
+  auto& in_tensor = in_var->Get<phi::DenseTensor>();
+  auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
   out_tensor->set_lod(in_tensor.lod());
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
@@ -436,13 +437,13 @@ void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
 DDim InterpretercoreInferShapeContext::GetDim(Variable* var) const {
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::InvalidArgument("Input variable is nullptr."));
-  if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().dims();
+  if (var->IsType<phi::DenseTensor>()) {
+    return var->Get<phi::DenseTensor>().dims();
   } else if (var->IsType<phi::SelectedRows>()) {
     return var->Get<phi::SelectedRows>().GetCompleteDims();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Only LoDTensor or SelectedRows support 'GetDim', but input "
+        "Only phi::DenseTensor or SelectedRows support 'GetDim', but input "
         "Variable's type is %s.",
         ToTypeName(var->Type())));
   }
@@ -466,13 +467,14 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetRepeatedDims(
 }
 
 void InterpretercoreInferShapeContext::SetDim(Variable* var, const DDim& dim) {
-  if (var->IsType<LoDTensor>()) {
-    var->GetMutable<LoDTensor>()->Resize(dim);
+  if (var->IsType<phi::DenseTensor>()) {
+    var->GetMutable<phi::DenseTensor>()->Resize(dim);
   } else if (var->IsType<phi::SelectedRows>()) {
     var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Variable type error, expect LoDTensor or SelectedRows, but received "
+        "Variable type error, expect phi::DenseTensor or SelectedRows, but "
+        "received "
         "(%s).",
         ToTypeName(var->Type())));
   }

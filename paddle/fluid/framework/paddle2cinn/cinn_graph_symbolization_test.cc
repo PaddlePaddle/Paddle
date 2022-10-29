@@ -88,7 +88,7 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
 
   std::unique_ptr<CinnGraphSymbolization> symbol_;
   std::unique_ptr<CinnGraphSymbolizationForTest> test_;
-  std::map<std::string, const LoDTensor*> feed_targets_;
+  std::map<std::string, const phi::DenseTensor*> feed_targets_;
 
   OpMapperContext CreateNewContext() {
     return test_->CreateNewContext(builder_.get(), feed_map_);
@@ -101,7 +101,7 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
  private:
   std::unique_ptr<Graph> graph_;
   ::cinn::common::Target target_;
-  std::map<std::string, LoDTensor> feed_tensors_;
+  std::map<std::string, phi::DenseTensor> feed_tensors_;
   std::unique_ptr<NetBuilder> builder_;
   FeedInfoMap feed_map_;
 
@@ -201,11 +201,11 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     return ::cinn::common::DefaultHostTarget();
   }
 
-  std::map<std::string, LoDTensor> CreateFeedTensors() {
-    std::map<std::string, LoDTensor> feed_targets;
+  std::map<std::string, phi::DenseTensor> CreateFeedTensors() {
+    std::map<std::string, phi::DenseTensor> feed_targets;
 
     auto create_tensor = []() {
-      LoDTensor tensor;
+      phi::DenseTensor tensor;
       DDim dims = {256, 1024};
       tensor.Resize(dims);
       tensor.mutable_data(
@@ -227,9 +227,9 @@ class CinnGraphSymbolizationTest : public ::testing::Test {
     return feed_targets;
   }
 
-  std::map<std::string, const LoDTensor*> ConvertFeedType(
-      const std::map<std::string, LoDTensor>& feed_targets) {
-    std::map<std::string, const LoDTensor*> res;
+  std::map<std::string, const phi::DenseTensor*> ConvertFeedType(
+      const std::map<std::string, phi::DenseTensor>& feed_targets) {
+    std::map<std::string, const phi::DenseTensor*> res;
     for (auto& feed_pair : feed_targets) {
       res[feed_pair.first] = &feed_pair.second;
     }

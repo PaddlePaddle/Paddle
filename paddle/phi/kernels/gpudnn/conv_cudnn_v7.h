@@ -75,9 +75,9 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
                            SearchResult<AlgoT>* search_result) {
   int best_algo_idx = -1;
   for (size_t i = 0; i < perf_results.size(); ++i) {
-    auto result = perf_results[i];
+    const auto& result = perf_results[i];
     if (result.status == CUDNN_STATUS_SUCCESS &&
-        result.memory < workspace_limit) {
+        result.memory <= workspace_limit) {
       if (best_algo_idx == -1) {
         // The algorithm which has minimize time cost and need a workspace_size
         // fitting the workspace_limit constraint.
@@ -87,8 +87,10 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
           break;
         }
       } else {
-        float best_algo_time = perf_results[best_algo_idx].time;
-        if ((result.time - best_algo_time) / best_algo_time < 0.01) {
+        // Compared to the next suboptimal algorithm, if the best one only has
+        // 1% performance difference, we'd like to pick the one which need less
+        // memory.
+        if (result.time < 1.01 * perf_results[best_algo_idx].time) {
           best_algo_idx = (result.memory < perf_results[best_algo_idx].memory)
                               ? i
                               : best_algo_idx;
@@ -98,9 +100,15 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
     }
   }
   if (best_algo_idx != -1) {
-    search_result->algo = perf_results[best_algo_idx].algo;
-    search_result->time = perf_results[best_algo_idx].time;
-    search_result->workspace_size = perf_results[best_algo_idx].memory;
+    const auto& result = perf_results[best_algo_idx];
+    search_result->algo = result.algo;
+    search_result->time = result.time;
+    search_result->workspace_size = result.memory;
+    auto math_type_str = (result.mathType == CUDNN_TENSOR_OP_MATH) ? "T" : "F";
+    VLOG(3) << "Choose algo=" << result.algo
+            << ", tensor_core=" << math_type_str << ", time=" << result.time
+            << " ms, memory=" << ToMegaBytes(result.memory)
+            << " MB, status=" << result.status;
   } else {
     VLOG(3) << "Can not find an algorithm that requires memory < "
             << ToMegaBytes(workspace_limit) << " MB";
@@ -626,7 +634,8 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
           perf_results,
           perf_results.size(),
           workspace_size_limit);
-      ChooseAlgo(perf_results, workspace_size_limit, &result);
+      ChooseAlgoByWorkspace<PerfT, AlgoT>(
+          perf_results, workspace_size_limit, &result);
     }
 
     result.workspace_size = GetWorkspaceSize(args, result.algo);
@@ -673,42 +682,6 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
       return workspace_size_limit;
     }
   }
-
-  static void ChooseAlgo(const std::vector<PerfT>& perf_results,
-                         size_t workspace_limit,
-                         SearchResult<AlgoT>* algo_result) {
-    for (size_t i = 0; i != perf_results.size(); ++i) {
-      const auto& result = perf_results[i];
-      if (result.status == CUDNN_STATUS_SUCCESS &&
-          (result.memory <= workspace_limit)) {
-        if ((result.mathType == CUDNN_TENSOR_OP_MATH) &&
-            (i != perf_results.size() - 1)) {
-          const auto& next_result = perf_results[i + 1];
-          if (next_result.status == CUDNN_STATUS_SUCCESS &&
-              next_result.algo == result.algo &&
-              next_result.memory == result.memory &&
-              next_result.mathType != CUDNN_TENSOR_OP_MATH &&
-              next_result.time < 1.01 * result.time) {
-            // Skip over this result- it's not really a Tensor Core algo.
-            // Because it is only 1% performance difference.
-            // Prefer to choose the next equivalent non-Tensor Core algo.
-            continue;
-          }
-        }
-        algo_result->algo = result.algo;
-        algo_result->time = result.time;
-        auto math_type_str = "0";
-        if (result.mathType == CUDNN_TENSOR_OP_MATH) {
-          math_type_str = "1";
-        }
-        VLOG(3) << "    choose algo: " << result.algo
-                << ", TC: " << math_type_str << ", time: " << result.time
-                << " ms, wksp = " << result.memory
-                << ", status = " << result.status;
-        break;
-      }
-    }
-  }
 };
 
 template <typename PerfT>
@@ -735,7 +708,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
       //    Auto tune is only enabled between specified range.
       // 3. After auto-tune process, run cached algorithm if cached, run
       //    default mode for the rest.
-      auto key = args.Convert2ConvCacheKey<T>();
+      auto key = args.ConvertToConvCacheKey<T>();
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetConv(
           SearchAlgorithmBase<PerfT>::kAlgoType);
       bool find_in_cache = cache.Find(key);
@@ -746,7 +719,6 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
         result.exhaustive_search = t.exhaustive_search;
       }
       if (!result.exhaustive_search) {
-        bool need_update_cache = false;
         // In conv2d_tranpose, enable_autotune is set to false because some
         // algorithm picked by exhaustive search method produce wrong result.
         use_autotune = enable_autotune &&
@@ -757,17 +729,18 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
           result =
               SearchAlgorithmBase<PerfT>::template FindAlgoExhaustiveSearch<T>(
                   args, ctx);
-          need_update_cache = true;
+          cache.Set(key,
+                    phi::autotune::ConvAutoTuneResult(
+                        static_cast<int64_t>(result.algo),
+                        result.workspace_size,
+                        true));
         } else if (!find_in_cache) {
           result = SearchAlgorithmBase<PerfT>::FindAlgoHeuristic(args, ctx);
-          need_update_cache = true;
-        }
-        if (need_update_cache) {
-          phi::autotune::ConvAutoTuneResult node(
-              static_cast<int64_t>(result.algo),
-              result.workspace_size,
-              exhaustive_search || use_autotune);
-          cache.Set(key, node);
+          cache.Set(key,
+                    phi::autotune::ConvAutoTuneResult(
+                        static_cast<int64_t>(result.algo),
+                        result.workspace_size,
+                        false));
         }
       }
     }

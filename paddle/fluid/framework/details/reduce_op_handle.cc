@@ -150,8 +150,8 @@ void ReduceOpHandle::RunImpl() {
       }
     });
   } else {
-    std::vector<const LoDTensor *> lod_tensors =
-        GetInputValues<LoDTensor>(in_var_handles, var_scopes);
+    std::vector<const phi::DenseTensor *> lod_tensors =
+        GetInputValues<phi::DenseTensor>(in_var_handles, var_scopes);
 
     if (paddle::platform::is_cpu_place(lod_tensors[0]->place())) {
       WaitInputVarGenerated();

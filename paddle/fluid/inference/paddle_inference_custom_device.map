@@ -6,6 +6,7 @@
 		*phi*;
 		*FLAGS_*;
 		PD_*;
+		*cinn*;
 	local:
 		*;
 };

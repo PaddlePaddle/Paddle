@@ -159,13 +159,6 @@ $$out = \\log \\frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
-UNUSED constexpr char ExpDoc[] = R"DOC(
-Exp Operator. Computes exp of x element-wise with a natural number :math:`e` as the base.
-
-$$out = e^x$$
-
-)DOC";
-
 UNUSED constexpr char Expm1Doc[] = R"DOC(
 Expm1 Operator. Computes expm1 of x element-wise with a natural number :math:`e` as the base.
 
@@ -225,70 +218,6 @@ UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator. Computes floor of x element-wise.
 
 $$out = \\lfloor x \\rfloor$$
-
-)DOC";
-
-UNUSED constexpr char CosDoc[] = R"DOC(
-Cosine Operator. Computes cosine of x element-wise.
-
-Input range is `(-inf, inf)` and output range is `[-1,1]`.
-
-..  math::
-    out = cos(x)
-
-)DOC";
-
-UNUSED constexpr char TanDoc[] = R"DOC(
-Tangent Operator. Computes tangent of x element-wise.
-
-Input range is `(k*pi-pi/2, k*pi+pi/2)` and output range is `(-inf, inf)`.
-
-$$out = tan(x)$$
-
-)DOC";
-
-UNUSED constexpr char SinDoc[] = R"DOC(
-Sine Activation Operator.
-
-$$out = sin(x)$$
-
-)DOC";
-
-UNUSED constexpr char SinhDoc[] = R"DOC(
-Sinh Activation Operator.
-
-$$out = sinh(x)$$
-
-)DOC";
-
-UNUSED constexpr char CoshDoc[] = R"DOC(
-Cosh Activation Operator.
-
-Input range `(-inf, inf)`, output range `(1, inf)`.
-
-..  math::
-    out = \frac{exp(x)+exp(-x)}{2}
-
-)DOC";
-
-UNUSED constexpr char AsinhDoc[] = R"DOC(
-Asinh Activation Operator.
-
-$$out = asinh(x)$$
-
-)DOC";
-
-UNUSED constexpr char AcoshDoc[] = R"DOC(
-Acosh Activation Operator.
-
-$$out = acosh(x)$$
-
-)DOC";
-
-UNUSED constexpr char AtanhDoc[] = R"DOC(
-Atanh Activation Operator.
-
-$$out = atanh(x)$$
 
 )DOC";
 
@@ -363,55 +292,6 @@ Softsign Activation Operator.
 $$out = \\frac{x}{1 + \|x\|}$$
 
 )DOC";
-
-class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of acos operator");
-    AddOutput("Out", "Tensor, same shape and dtype as input");
-    AddComment(R"DOC(
-Arccosine Operator.
-
-..  math::
-    out = \cos^{-1}(x)
-
-)DOC");
-  }
-};
-
-class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X",
-             "Input of asin operator, an N-D Tensor, with data type float32, "
-             "float64 or float16.");
-    AddOutput("Out", "Tensor, same shape and dtype as input.");
-    AddComment(R"DOC(
-Arcsine Operator.
-
-..  math::
-    out = \sin^{-1}(x)
-
-)DOC");
-  }
-};
-
-class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X",
-             "Input of atan operator, an N-D Tensor, with data type float32, "
-             "float64 or float16.");
-    AddOutput("Out", "Tensor, same shape and dtype as input x");
-    AddComment(R"DOC(
-Arctangent Operator.
-
-..  math::
-    out = \tan^{-1}(x)
-
-)DOC");
-  }
-};
 
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -806,7 +686,6 @@ It is recommended to use the defaults for this activation.
 REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Silu, SiluDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
-REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
 REGISTER_ACTIVATION_OP_MAKER(Expm1, Expm1Doc);
 REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
@@ -815,14 +694,6 @@ REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
 REGISTER_ACTIVATION_OP_MAKER(Rsqrt, RsqrtDoc);
 REGISTER_ACTIVATION_OP_MAKER(Ceil, CeilDoc);
 REGISTER_ACTIVATION_OP_MAKER(Floor, FloorDoc);
-REGISTER_ACTIVATION_OP_MAKER(Cos, CosDoc);
-REGISTER_ACTIVATION_OP_MAKER(Tan, TanDoc);
-REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
-REGISTER_ACTIVATION_OP_MAKER(Sinh, SinhDoc);
-REGISTER_ACTIVATION_OP_MAKER(Cosh, CoshDoc);
-REGISTER_ACTIVATION_OP_MAKER(Acosh, AcoshDoc);
-REGISTER_ACTIVATION_OP_MAKER(Asinh, AsinhDoc);
-REGISTER_ACTIVATION_OP_MAKER(Atanh, AtanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
@@ -1396,17 +1267,6 @@ namespace plat = paddle::platform;
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
 
-REGISTER_ACTIVATION_OP(cos, Cos, CosFunctor, CosGradFunctor)
-REGISTER_ACTIVATION_OP(tan, Tan, TanFunctor, TanGradFunctor);
-REGISTER_ACTIVATION_OP(acos, Acos, AcosFunctor, AcosGradFunctor);
-REGISTER_ACTIVATION_OP(sin, Sin, SinFunctor, SinGradFunctor);
-REGISTER_ACTIVATION_OP(asin, Asin, AsinFunctor, AsinGradFunctor);
-REGISTER_ACTIVATION_OP(atan, Atan, AtanFunctor, AtanGradFunctor);
-REGISTER_ACTIVATION_OP(sinh, Sinh, SinhFunctor, SinhGradFunctor);
-REGISTER_ACTIVATION_OP(cosh, Cosh, CoshFunctor, CoshGradFunctor);
-REGISTER_ACTIVATION_OP(asinh, Asinh, AsinhFunctor, AsinhGradFunctor);
-REGISTER_ACTIVATION_OP(acosh, Acosh, AcoshFunctor, AcoshGradFunctor);
-REGISTER_ACTIVATION_OP(atanh, Atanh, AtanhFunctor, AtanhGradFunctor);
 REGISTER_ACTIVATION_OP(brelu, BRelu, BReluFunctor, BReluGradFunctor);
 REGISTER_ACTIVATION_OP(thresholded_relu,
                        ThresholdedRelu,
@@ -1720,23 +1580,6 @@ REGISTER_OPERATOR(pow_grad,
                   ops::PowOpGrad,
                   ops::ActivationGradOpInplaceInferer);
 /* ========================================================================== */
-
-/* ==========================   exp register  ============================ */
-REGISTER_OPERATOR(
-    exp,
-    ops::ActivationOp,
-    ops::ExpOpMaker,
-    ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::ExpGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::ExpGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    std::conditional<ops::CanInplaceAct<ops::ExpGradFunctor<float>>(),
-                     ops::ActFwdInplaceInferer,
-                     void>::type);
-REGISTER_OPERATOR(exp_grad,
-                  ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer);
 
 /* ==========================  Log register ==================================*/
 REGISTER_OPERATOR(

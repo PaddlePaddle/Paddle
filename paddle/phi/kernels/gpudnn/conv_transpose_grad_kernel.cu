@@ -172,8 +172,10 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 #endif
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
+  auto handle = ctx.cudnn_handle();
 
-  ConvArgs args1{&transformed_dout,
+  ConvArgs args1{handle,
+                 &transformed_dout,
                  &filter,
                  &x_transpose,
                  strides,
@@ -182,7 +184,8 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
                  dtype,
                  groups,
                  layout};
-  ConvArgs args2{&transformed_dout,
+  ConvArgs args2{handle,
+                 &transformed_dout,
                  &filter,
                  &x_transpose,
                  strides,
@@ -202,14 +205,13 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 
   auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
   size_t workspace_size = 0;
-  auto handle = ctx.cudnn_handle();
   bool deterministic = FLAGS_cudnn_deterministic;
   T* dx_data = nullptr;
   T* dfilter_data = nullptr;
 
   if (dx) {
     dx_data = ctx.template Alloc<T>(dx);
-    args1.handle = handle;
+
     args1.idesc.set(transformed_dout, iwo_groups);
     args1.wdesc.set(filter, layout_tensor, iwo_groups);
     args1.odesc.set(x_transpose, iwo_groups);
@@ -234,7 +236,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 
   if (dfilter) {
     dfilter_data = ctx.template Alloc<T>(dfilter);
-    args2.handle = handle;
+
     args2.idesc.set(transformed_dout, iwo_groups);
     args2.wdesc.set(*dfilter, layout_tensor, iwo_groups);
     args2.odesc.set(x_transpose, iwo_groups);
@@ -625,7 +627,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   auto handle = ctx.cudnn_handle();
   auto layout = paddle::platform::GetCudnnTensorFormat(GPUDNNDataLayout::kNCHW);
 
-  ConvArgs args1{&transformed_ddout_channel,
+  ConvArgs args1{handle,
+                 &transformed_ddout_channel,
                  &filter,
                  &transformed_ddx,
                  strides,
@@ -634,7 +637,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                  dtype,
                  groups,
                  GPUDNNDataLayout::kNCHW};
-  ConvArgs args2{&transformed_ddout_channel,
+  ConvArgs args2{handle,
+                 &transformed_ddout_channel,
                  &ddfilter,
                  &transformed_x,
                  strides,
@@ -644,7 +648,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                  groups,
                  GPUDNNDataLayout::kNCHW};
 
-  ConvArgs args3{&transformed_dout,
+  ConvArgs args3{handle,
+                 &transformed_dout,
                  dfilter,
                  &transformed_ddx_channel,
                  strides,
@@ -653,7 +658,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                  dtype,
                  groups,
                  GPUDNNDataLayout::kNCHW};
-  ConvArgs args4{&transformed_dout,
+  ConvArgs args4{handle,
+                 &transformed_dout,
                  &ddfilter,
                  &transformed_dx_channel,
                  strides,
@@ -683,7 +689,6 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     ddout_ = ddout->data<T>();
     transformed_ddout_channel_ = transformed_ddout_channel.data<T>();
 
-    args1.handle = handle;
     args1.idesc.set(transformed_ddout_channel, iwo_group);
     args1.wdesc.set(filter, layout, iwo_group);
     args1.odesc.set(transformed_ddx, iwo_group);
@@ -730,7 +735,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 
   if (dfilter) {
     dfilter_ = dfilter->data<T>();
-    args3.handle = handle;
+
     args3.idesc.set(transformed_dout, iwo_group);
     args3.wdesc.set(*dfilter, layout, iwo_group);
     args3.odesc.set(transformed_ddx_channel, iwo_group);
@@ -806,13 +811,13 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
 
-  auto wkspace_handle = ctx.cudnn_workspace_handle();
+  auto workspace_handle = ctx.cudnn_workspace_handle();
 
   if (ddout) {
     ddx_ = transformed_ddx.data<T>();
     for (int i = 0; i < groups; i++) {
 #ifdef PADDLE_WITH_HIP
-      wkspace_handle.RunFunc(
+      workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionBackwardData(
                 handle,
@@ -831,7 +836,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           },
           workspace_size);
 #else   // PADDLE_WITH_HIP
-      wkspace_handle.RunFunc(
+      workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBackwardData(
                 handle,
@@ -858,7 +863,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
       DenseTensor conv_x_ddfilter(dout.type());
       conv_x_ddfilter.Resize(transformed_ddout_channel.dims());
       T* conv_x_ddfilter_data = ctx.template Alloc<T>(&conv_x_ddfilter);
-      wkspace_handle.RunFunc(
+      workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionBackwardData(
                 handle,
@@ -889,7 +894,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           args2.idesc.desc(),
           transformed_ddout_channel_ + i * group_offset_out));
 #else   // PADDLE_WITH_HIP
-      wkspace_handle.RunFunc(
+      workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBackwardData(
                 handle,
@@ -944,7 +949,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     ddx_ = transformed_ddx_channel.data<T>();
     for (int i = 0; i < groups; i++) {
 #ifdef PADDLE_WITH_HIP
-      wkspace_handle.RunFunc(
+      workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 dynload::miopenConvolutionBackwardWeights(
@@ -964,7 +969,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           },
           workspace_size);
 #else   // PADDLE_WITH_HIP
-      wkspace_handle.RunFunc(
+      workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBackwardFilter(
                 handle,
@@ -990,7 +995,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     ddfilter_ = ddfilter.data<T>();
     for (int i = 0; i < groups; i++) {
 #ifdef PADDLE_WITH_HIP
-      wkspace_handle.RunFunc(
+      workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionForward(
                 handle,
@@ -1009,7 +1014,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           },
           workspace_size);
 #else   // PADDLE_WITH_HIP
-      wkspace_handle.RunFunc(
+      workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionForward(
                 handle,
