@@ -476,7 +476,7 @@ class PostTrainingQuantization(object):
 
         self._reset_activation_persistable()
 
-        if self._algo is 'min_max':
+        if self._algo == 'min_max':
             self._save_input_threhold()
         else:
             self._update_program()
