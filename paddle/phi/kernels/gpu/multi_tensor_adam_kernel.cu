@@ -28,6 +28,7 @@
 namespace phi {
 
 const int kBlockSize = 512;
+const int kILP = 4;
 
 // This code is referenced from apex's multi_tensor_adam.cu.
 // https://github.com/NVIDIA/apex
@@ -75,13 +76,13 @@ struct MultiTensorAdamFunctor {
     n -= chunk_idx * chunk_size;
 
     for (int i_start = 0; i_start < n && i_start < chunk_size;
-         i_start += blockDim.x * 4) {
-      phi::AlignedVector<MT, 4> g_v;
-      phi::AlignedVector<MT, 4> p_v;
-      phi::AlignedVector<MT, 4> m_v;
-      phi::AlignedVector<MT, 4> v_v;
+         i_start += blockDim.x * kILP) {
+      phi::AlignedVector<MT, kILP> g_v;
+      phi::AlignedVector<MT, kILP> p_v;
+      phi::AlignedVector<MT, kILP> m_v;
+      phi::AlignedVector<MT, kILP> v_v;
 #pragma unroll
-      for (int ii = 0; ii < 4; ii++) {
+      for (int ii = 0; ii < kILP; ii++) {
         int i = i_start + threadIdx.x + ii * blockDim.x;
         if (i < n && i < chunk_size) {
           g_v[ii] = static_cast<MT>(g[i]);
@@ -96,7 +97,7 @@ struct MultiTensorAdamFunctor {
         }
       }
 #pragma unroll
-      for (int ii = 0; ii < 4; ii++) {
+      for (int ii = 0; ii < kILP; ii++) {
         MT p = p_v[ii];
         MT g = g_v[ii];
         MT m = m_v[ii];
@@ -123,7 +124,7 @@ struct MultiTensorAdamFunctor {
         }
       }
 #pragma unroll
-      for (int ii = 0; ii < 4; ii++) {
+      for (int ii = 0; ii < kILP; ii++) {
         int i = i_start + threadIdx.x + ii * blockDim.x;
         if (i < n && i < chunk_size) {
           p[i] = static_cast<T>(p_v[ii]);
