@@ -62,6 +62,21 @@ _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 _all_cap_re = re.compile('([a-z])([A-Z])')
 
 
+def _scope_dist2single(dist_scope):
+    mapping = {
+        "row_parallel_linear": "linear",
+        "column_parallel_linear": "linear",
+        "vocab_parallel_embedding": "embedding",
+        "parallel_cross_entropy": "cross_entropy",
+    }
+    assert (
+        dist_scope != "parallel_cross_entropy"
+    ), f"Not execpted param name: parallel_cross_entropy"
+    if dist_scope in mapping:
+        return mapping[dist_scope]
+    return dist_scope
+
+
 def _convert_camel_to_snake(name):
     s1 = _first_cap_re.sub(r'\1_\2', name)
     return _all_cap_re.sub(r'\1_\2', s1).lower()
@@ -137,6 +152,7 @@ class Layer(object):
         self.training = True
         if name_scope is None:
             name_scope = _convert_camel_to_snake(self.__class__.__name__)
+            name_scope = _scope_dist2single(name_scope)
         self._full_name = unique_name.generate(name_scope)
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
