@@ -18,9 +18,9 @@
 
 import os
 
-if os.name == 'nt':
-    import sys
 
-    dirname, filename = os.path.split(os.path.abspath(__file__))
-    sys.path.insert(0, dirname)
-    print(sys.path)
+import sys
+
+dirname, filename = os.path.split(os.path.abspath(__file__))
+sys.path.insert(0, dirname)
+print(sys.path)
