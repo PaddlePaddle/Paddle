@@ -814,7 +814,7 @@ void InterpreterCore::ExecuteInstructionList(
 }
 
 void InterpreterCore::RunNextInstructions(
-    const Instruction& instr, std::queue<size_t>* reserved_next_ops) {
+    const Instruction& instr, std::deque<size_t>* reserved_next_ops) {
   platform::RecordEvent record(
       "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
   auto& next_instr = instr.NextInstructions();
@@ -827,7 +827,7 @@ void InterpreterCore::RunNextInstructions(
 
   if (instr.KernelType() == OpFuncType::kQueueAsync) {
     // move all sync_ops into other threads
-    for (auto next_id : next_instr.SyncRunIds()) {
+    for (size_t next_id : next_instr.SyncRunIds()) {
       if (IsReady(next_id)) {
         async_work_queue_->AddTask(
             vec_instruction_[next_id].KernelType(),
@@ -835,14 +835,24 @@ void InterpreterCore::RunNextInstructions(
       }
     }
     // keep all async_ops running in current thread
-    for (auto next_id : next_instr.DirectRunIds()) {
+    for (size_t next_id : next_instr.DirectRunIds()) {
       if (IsReady(next_id)) {
-        reserved_next_ops->push(next_id);
+        if (interpreter::IsCommunicationOp(
+                vec_instruction_[next_id].OpBase()->Type())) {
+          reserved_next_ops->push_back(next_id);
+        } else {
+          reserved_next_ops->push_front(next_id);
+        }
       }
     }
-    for (auto next_id : next_instr.EventRunIds()) {
+    for (size_t next_id : next_instr.EventRunIds()) {
       if (IsReady(next_id)) {
-        reserved_next_ops->push(next_id);
+        if (interpreter::IsCommunicationOp(
+                vec_instruction_[next_id].OpBase()->Type())) {
+          reserved_next_ops->push_back(next_id);
+        } else {
+          reserved_next_ops->push_front(next_id);
+        }
       }
     }
   } else {
@@ -874,16 +884,18 @@ void InterpreterCore::RunNextInstructions(
             [this, next_id] { RunInstructionAsync(next_id); });
       }
     }
-    if (first_op != -1) reserved_next_ops->push(first_op);
+    if (first_op != -1) {
+      reserved_next_ops->push_front(first_op);
+    }
   }
 }
 
 void InterpreterCore::RunInstructionAsync(size_t instr_id) {
-  std::queue<size_t> ready_ops;
-  ready_ops.push(instr_id);
+  std::deque<size_t> ready_ops;
+  ready_ops.push_back(instr_id);
   while (!ready_ops.empty()) {
     instr_id = ready_ops.front();
-    ready_ops.pop();
+    ready_ops.pop_front();
     auto& instr_node = vec_instruction_.at(instr_id);
     VLOG(5) << __func__ << " OP id:" << instr_node.Id()
             << " name:" << instr_node.OpBase()->Type() << " type:"
