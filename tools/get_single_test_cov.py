@@ -21,7 +21,12 @@ def getFNDAFile(rootPath, test):
     filename = '%s/build/ut_map/%s/coverage.info.tmp' % (rootPath, test)
     fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
     os.system('touch %s' % fn_filename)
-    f = open(filename)
+    try:
+        f = open(filename)
+        print("oepn %s succesfully" % filename)
+    except FileNotFoundError:
+        print("%s is not found." % filename)
+        return
     lines = f.readlines()
     for line in lines:
         line = line.replace('\n', '')
@@ -47,8 +52,22 @@ def analysisFNDAFile(rootPath, test):
     )
     os.system('touch %s' % related_ut_map_file)
     os.system('touch %s' % notrelated_ut_map_file)
+
+    if os.path.isfile(related_ut_map_file) and os.path.isfile(
+        notrelated_ut_map_file
+    ):
+        print("make related.txt and not_related.txt succesfully")
+    else:
+        print("make related.txt and not_related.txt failed")
+        return
+
     fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
-    f = open(fn_filename)
+    try:
+        f = open(fn_filename)
+        print("oepn %s succesfully" % fn_filename)
+    except FileNotFoundError:
+        print("%s is not found." % fn_filename)
+        return
     data = f.read().split('SF:')
     related_file_list = []
     for message in data:
@@ -99,14 +118,30 @@ def getCovinfo(rootPath, test):
         'cd %s && lcov --capture -d . -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
         % ut_map_path
     )
+    coverage_info_path = ut_map_path + '/coverage.info'
+    file_size = os.path.getsize(coverage_info_path)
+    if file_size == 0:
+        print("coverage.info is empty,collect coverage rate failed")
+        return
+    else:
+        print("get coverage.info succesfully")
     os.system(
-        "cd %s && lcov --extract coverage.info '/paddle/paddle/fluid/framework/*' '/paddle/paddle/fluid/imperative/*' '/paddle/paddle/fluid/inference/*' '/paddle/paddle/fluid/memory/*' '/paddle/paddle/fluid/operators/*' '/paddle/paddle/fluid/string/*' '/paddle/paddle/fluid/distributed/*' '/paddle/paddle/fluid/platform/*' '/paddle/paddle/fluid/pybind/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
+        "cd %s && lcov --extract coverage.info '/paddle/paddle/phi/*' '/paddle/paddle/utils/*' '/paddle/paddle/fluid/framework/*' '/paddle/paddle/fluid/imperative/*' '/paddle/paddle/fluid/inference/*' '/paddle/paddle/fluid/memory/*' '/paddle/paddle/fluid/operators/*' '/paddle/paddle/fluid/string/*' '/paddle/paddle/fluid/distributed/*' '/paddle/paddle/fluid/platform/*' '/paddle/paddle/fluid/pybind/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
         % ut_map_path
     )
+    coverage_info_tmp = ut_map_path + '/coverage.info.tmp'
+    coverage_tmp_size = os.path.getsize(coverage_info_tmp)
+    if coverage_tmp_size == 0:
+        print("coverage.info.tmp is empty,collect coverage rate failed")
+        return
+    else:
+        print("get coverage.info.tmp succesfully")
+
     os.system('rm -rf %s/paddle' % ut_map_path)
     os.system('rm -rf %s/coverage.info' % ut_map_path)
     getFNDAFile(rootPath, test)
     analysisFNDAFile(rootPath, test)
+    os.system('rm -rf %s/coverage.info.tmp' % ut_map_path)
 
 
 if __name__ == "__main__":

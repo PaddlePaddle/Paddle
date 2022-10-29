@@ -123,6 +123,12 @@ class FCMKLDNNHandler
     }
     platform::AppendActivation(ctx, post_operations, scale);
 
+    if (ctx.HasAttr("fused_output_scale")) {
+      float scale_alpha = ctx.Attr<float>("fused_output_scale");
+      post_operations.append_eltwise(
+          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+    }
+
     attributes.set_post_ops(post_operations);
     return attributes;
   }
@@ -164,17 +170,16 @@ class FCMKLDNNHandler
                             ? 1.0f
                             : ctx.Attr<float>("Scale_out");
     const size_t weight_scales_num = scale_weights_data.size();
-    std::vector<float> output_shift_scale(weight_scales_num);
 
-    for (size_t i = 0; i < weight_scales_num; i++) {
+    for (size_t i = 0; i < weight_scales_num; ++i) {
       if (scale_weights_data[i] == 0.0)
-        output_shift_scale[i] = inner_scale;
+        scale_weights_data[i] = inner_scale;
       else
-        output_shift_scale[i] =
+        scale_weights_data[i] =
             inner_scale / (scale_in_data * scale_weights_data[i]);
     }
 
-    return make_tuple(output_shift_scale, scale);
+    return make_tuple(scale_weights_data, scale);
   }
 
   // Computing MKL-DNN's scaling mask which determines along which dimension
@@ -257,6 +262,7 @@ class FCMKLDNNHandler
             this->fwd_pd_->bias_desc(),
             to_void_cast<float>(bias_data),
             attrs);
+        this->dev_ctx_.SetBlob(bias_key, memory_p);
       }
       return memory_p;
     }
