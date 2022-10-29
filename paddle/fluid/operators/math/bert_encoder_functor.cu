@@ -711,9 +711,9 @@ __global__ void softmax_kernel_v5_half2(T *qk_buf_,
       for (int j = 0; j < NUM; j++) {
         data[j][i] =
             hadd2<T2>(hmul2<T2>(qk[j], type2type2<T, T2>(scalar)), mask_val[j]);
-        local_max[j] =
-            fmax(local_max[j], fmax(static_cast<float>(data[j][i].x),
-            static_cast<float>(data[j][i].y));
+        local_max[j] = fmax(local_max[j],
+                            fmax(static_cast<float>(data[j][i].x),
+                                 static_cast<float>(data[j][i].y)));
       }
     }
 
