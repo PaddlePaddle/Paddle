@@ -74,7 +74,8 @@ class EagerGroup {
   void ConcatTensors(const platform::Place &);
 
   // context is used to select the stream for split
-  void SplitTensors(const platform::Place &);
+
+  void SplitTensorsDev(const platform::DeviceContext &);
 
   friend std::ostream &operator<<(std::ostream &, const EagerGroup &);
 };
@@ -102,7 +103,8 @@ class EagerReducer {
   void InitializeGroups(const std::vector<std::vector<size_t>> &group_indices);
   void InitializeDenseGroups(const std::vector<size_t> &tensor_indices_,
                              EagerGroup *p_group);
-  void PrepareForBackward(const std::vector<Tensor> &outputs);
+  void PrepareForBackward(const std::vector<Tensor> &outputs,
+                          const bool is_sync);
   void AddDistHook(size_t var_index);
   void MarkVarReady(const size_t var_index, const bool is_used_var);
   void MarkGroupReady(const size_t group_index);
