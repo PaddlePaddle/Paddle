@@ -146,8 +146,7 @@ class Reducer {
   void PrepareDeps(const std::unordered_set<GradOpNode*>& init_nodes);
 
   void PrepareForBackward(
-      const std::vector<std::shared_ptr<imperative::VarBase>>& outputs,
-      const bool is_sync);
+      const std::vector<std::shared_ptr<imperative::VarBase>>& outputs);
 
   void AddDistHook(size_t var_index);
 
