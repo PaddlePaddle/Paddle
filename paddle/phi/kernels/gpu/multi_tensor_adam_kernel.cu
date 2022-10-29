@@ -77,31 +77,71 @@ struct MultiTensorAdamFunctor {
 
     for (int i_start = 0; i_start < n && i_start < chunk_size;
          i_start += blockDim.x * kILP) {
-      phi::AlignedVector<MT, kILP> g_v;
-      phi::AlignedVector<MT, kILP> p_v;
+      phi::AlignedVector<T, kILP> g_v;
+      phi::AlignedVector<T, kILP> p_v;
+      phi::AlignedVector<MT, kILP> mp_v;
       phi::AlignedVector<MT, kILP> m_v;
       phi::AlignedVector<MT, kILP> v_v;
-#pragma unroll
-      for (int ii = 0; ii < kILP; ii++) {
-        int i = i_start + threadIdx.x + ii * blockDim.x;
-        if (i < n && i < chunk_size) {
-          g_v[ii] = static_cast<MT>(g[i]);
-          p_v[ii] = multi_precision ? mp[i] : static_cast<MT>(p[i]);
-          m_v[ii] = static_cast<MT>(m[i]);
-          v_v[ii] = static_cast<MT>(v[i]);
+      int i = i_start + threadIdx.x * kILP;
+      if (i < n - kILP && i < chunk_size - kILP) {
+        if (multi_precision) {
+          phi::Load<MT, kILP>(mp + i, &mp_v);
         } else {
-          g_v[ii] = MT(0);
-          p_v[ii] = MT(0);
+          phi::Load<T, kILP>(p + i, &p_v);
+        }
+        phi::Load<T, kILP>(g + i, &g_v);
+        phi::Load<MT, kILP>(m + i, &m_v);
+        phi::Load<MT, kILP>(v + i, &v_v);
+      } else if (i < n && i < chunk_size) {
+        int size = n > chunk_size ? chunk_size - i : n - i;
+#pragma unroll
+        for (int ii = 0; ii < size; ii++) {
+          if (multi_precision) {
+            mp_v[ii] = mp[i + ii];
+          } else {
+            p_v[ii] = p[i + ii];
+          }
+          g_v[ii] = g[i + ii];
+          m_v[ii] = static_cast<MT>(m[i + ii]);
+          v_v[ii] = static_cast<MT>(v[i + ii]);
+        }
+#pragma unroll
+        for (int ii = size; ii < kILP; ii++) {
+          g_v[ii] = T(0);
+          p_v[ii] = T(0);
+          mp_v[ii] = MT(0);
           m_v[ii] = MT(0);
           v_v[ii] = MT(0);
         }
+      } else {
+        g_v[0] = T(0);
+        g_v[1] = T(0);
+        g_v[2] = T(0);
+        g_v[3] = T(0);
+        p_v[0] = T(0);
+        p_v[1] = T(0);
+        p_v[2] = T(0);
+        p_v[3] = T(0);
+        mp_v[0] = MT(0);
+        mp_v[1] = MT(0);
+        mp_v[2] = MT(0);
+        mp_v[3] = MT(0);
+        m_v[0] = MT(0);
+        m_v[1] = MT(0);
+        m_v[2] = MT(0);
+        m_v[3] = MT(0);
+        v_v[0] = MT(0);
+        v_v[1] = MT(0);
+        v_v[2] = MT(0);
+        v_v[3] = MT(0);
       }
+
 #pragma unroll
       for (int ii = 0; ii < kILP; ii++) {
-        MT p = p_v[ii];
-        MT g = g_v[ii];
-        MT m = m_v[ii];
-        MT v = v_v[ii];
+        MT p = multi_precision ? mp_v[ii] : static_cast<MT>(p_v[ii]);
+        MT g = static_cast<MT>(g_v[ii]);
+        MT m = static_cast<MT>(m_v[ii]);
+        MT v = static_cast<MT>(v_v[ii]);
         if (!use_adamw) {
           m = beta1 * m + (static_cast<MT>(1.0) - beta1) * g;
           v = beta2 * v + (static_cast<MT>(1.0) - beta2) * g * g;
@@ -110,7 +150,7 @@ struct MultiTensorAdamFunctor {
           MT denom =
               (sqrt(v) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
           p += (m / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
-          p_v[ii] = p;
+          mp_v[ii] = p;
         } else {  // weight decay
           p *= (static_cast<MT>(1.0) - lr * decay);
           m = beta1 * m + (static_cast<MT>(1.0) - beta1) * g;
@@ -120,19 +160,28 @@ struct MultiTensorAdamFunctor {
           MT denom =
               (sqrt(v) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
           p += (m / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
-          p_v[ii] = p;
+          mp_v[ii] = p;
         }
       }
+      if (i < n && i < chunk_size) {
+        phi::Store<MT, kILP>(m_v, m + i);
+        phi::Store<MT, kILP>(v_v, v + i);
+        if (multi_precision) {
+          phi::Store<MT, kILP>(mp_v, mp + i);
+        }
+        for (int ii = 0; ii < kILP; ii++) {
+          p[i + ii] = static_cast<T>(mp_v[ii]);
+        }
+      } else if (i < n && i < chunk_size) {
+        int size = n > chunk_size ? chunk_size - i : n - i;
 #pragma unroll
-      for (int ii = 0; ii < kILP; ii++) {
-        int i = i_start + threadIdx.x + ii * blockDim.x;
-        if (i < n && i < chunk_size) {
-          p[i] = static_cast<T>(p_v[ii]);
-          m[i] = m_v[ii];
-          v[i] = v_v[ii];
+        for (int ii = 0; ii < size; ii++) {
           if (multi_precision) {
-            mp[i] = p_v[ii];
+            mp[i + ii] = mp_v[ii];
           }
+          p[i + ii] = static_cast<T>(mp_v[ii]);
+          m[i + ii] = m_v[ii];
+          v[i + ii] = v_v[ii];
         }
       }
     }
