@@ -267,7 +267,7 @@ def _name_mapping_dist2single(state_dict, pp_group):
     ]
     dist.all_gather_object(key_list, param_keys, pp_group)
 
-    # find how many a op in a each pp:
+    # find how many ops by type in each pp:
     # {"linear:"[0, 2,0,1,1,...]}
     param_types = {}
 
