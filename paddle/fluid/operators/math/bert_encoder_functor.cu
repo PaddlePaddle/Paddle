@@ -655,8 +655,7 @@ __global__ void softmax_kernel_with_mask(T *qk_buf_,
                                          const T *attr_mask,
                                          const int batch_size,
                                          const int head_num,
-                                         const int seq_len,
-                                         T scalar) {
+                                         const int seq_len) {
   using T2 = half2;
   T2 *qk_buf_half2 = reinterpret_cast<T2 *>(qk_buf_);
   const T2 *attr_mask_half2 = (const T2 *)attr_mask;
@@ -708,8 +707,7 @@ __global__ void softmax_kernel_with_mask(T *qk_buf_,
 
 #pragma unroll
       for (int j = 0; j < NUM; j++) {
-        data[j][i] =
-            hadd2<T2>(hmul2<T2>(qk[j], type2type2<T, T2>(scalar)), mask_val[j]);
+        data[j][i] = hadd2<T2>(qk[j], mask_val[j]);
         local_max[j] = fmax(local_max[j],
                             fmax(static_cast<float>(data[j][i].x),
                                  static_cast<float>(data[j][i].y)));
@@ -853,8 +851,7 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
                                            (const half *)bias_qk,
                                            batch_size,
                                            head_num,
-                                           seq_len,
-                                           static_cast<half>(1.0f));
+                                           seq_len);
         } else {
           SoftmaxKernelWithEltadd2<__half2><<<grid, block, 0, stream>>>(
               reinterpret_cast<__half2 *>(qk_buf_),
