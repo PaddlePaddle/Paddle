@@ -52,6 +52,7 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
 
     auto resize_inputs = op_desc.Inputs();
     auto input_names = op_desc.Input("X");
+
     auto out_h = PADDLE_GET_CONST(int, op_desc.GetAttr("out_h"));
     auto out_w = PADDLE_GET_CONST(int, op_desc.GetAttr("out_w"));
 
@@ -88,10 +89,23 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     bool with_dynamic = engine_->with_dynamic_shape();
     int h_axis = (data_layout == phi::DataLayout::kNCHW) + with_dynamic;
     int w_axis = (data_layout == phi::DataLayout::kNCHW) + 1 + with_dynamic;
+    int c_axis =
+        ((data_layout == phi::DataLayout::kNCHW) ? 0 : 2) + with_dynamic;
 
     if (scale_w > 0. && scale_h > 0.) {
+      std::cout << scale_w << ",  " << scale_h << std::endl;
       out_h = static_cast<int>(in_dim.d[h_axis] * scale_h);
       out_w = static_cast<int>(in_dim.d[w_axis] * scale_w);
+    }
+
+    // Priority: Input(OutSize) > attr(out_h/out_w) > attr(scale)
+    nvinfer1::ITensor* outsize_tensor = nullptr;
+    if (resize_inputs.find("OutSize") != resize_inputs.end()) {
+      if (op_desc.Input("OutSize").size() >= 1) {
+        outsize_tensor = engine_->GetITensor(op_desc.Input("OutSize")[0]);
+        // out_h = outsize_tensor->getDimensions().d[0];
+        // out_w = outsize_tensor->getDimensions().d[1];
+      }
     }
 
     if (out_h > 0 && out_w > 0) {
@@ -100,27 +114,37 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
       scale_w =
           static_cast<float>(out_w) / static_cast<float>(in_dim.d[w_axis]);
     }
-
-    std::vector<float> scales;
+    std::cout << scale_w << ",  " << scale_h << std::endl;
+    std::cout << out_w << ",  " << out_h << std::endl;
 
     if (engine_->with_dynamic_shape()) {
-      scales.push_back(1.f);
-    }
-
-    if (data_layout == phi::DataLayout::kNCHW) {
-      scales.push_back(1.f);
-      scales.push_back(scale_h);
-      scales.push_back(scale_w);
-    } else if (data_layout == phi::DataLayout::kNHWC) {
-      scales.push_back(scale_h);
-      scales.push_back(scale_w);
-      scales.push_back(1.f);
+      std::vector<nvinfer1::ITensor*> outsize_itensors;
+      auto* input_shape = Shape(input);
+      outsize_itensors.push_back(GetEleTensorOfShape(Shape(input), 0));
+      if (data_layout == phi::DataLayout::kNCHW) {
+        outsize_itensors.push_back(GetEleTensorOfShape(input_shape, c_axis));
+        outsize_itensors.push_back(GetEleTensorOfShape(outsize_tensor, 0));
+        outsize_itensors.push_back(GetEleTensorOfShape(outsize_tensor, 1));
+      } else if (data_layout == phi::DataLayout::kNHWC) {
+        outsize_itensors.push_back(GetEleTensorOfShape(outsize_tensor, 0));
+        outsize_itensors.push_back(GetEleTensorOfShape(outsize_tensor, 1));
+        outsize_itensors.push_back(GetEleTensorOfShape(input_shape, c_axis));
+      }
+      layer->setInput(1, *Concat(outsize_itensors));
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Data layout must be NCHW or NHWC."));
+      std::vector<float> scales;
+      if (data_layout == phi::DataLayout::kNCHW) {
+        scales.push_back(1.f);
+        scales.push_back(scale_h);
+        scales.push_back(scale_w);
+      } else if (data_layout == phi::DataLayout::kNHWC) {
+        scales.push_back(scale_h);
+        scales.push_back(scale_w);
+        scales.push_back(1.f);
+      }
+      layer->setScales(scales.data(), scales.size());
     }
 
-    layer->setScales(scales.data(), scales.size());
     RreplenishLayerAndOutput(
         layer, "bilinear_interp_v2", {output_name}, test_mode);
   }

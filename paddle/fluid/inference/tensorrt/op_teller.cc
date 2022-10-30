@@ -801,14 +801,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 
-      if (resize_inputs.find("OutSize") != resize_inputs.end()) {
-        if (desc.Input("OutSize").size() >= 1) {
-          VLOG(3) << "The Paddle-TRT doesn't support the OutSize for op_type "
-                  << op_type;
-          return false;
-        }
-      }
-
       auto data_layout = phi::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != phi::DataLayout::kNCHW &&
