@@ -83,7 +83,20 @@ def handle_ut_file_map(rootPath):
             ut = ut.replace('\n', '')
             all_prec_delta_list.append(ut.strip())
 
-    for ut in all_prec_delta_list:
+    disable_ut_tmp = "%s/build/pre_tmp/disable_ut" % rootPath
+    with open(disable_ut_tmp, 'r') as f:
+        disable_ut_tmp_list = []
+        for ut in f.readlines():
+            ut = ut.replace('\n', '').strip()
+            disable_ut_tmp_list.append(ut)
+        f.close()
+    real_failed_list = []
+    for test in all_prec_delta_list:
+        if test not in disable_ut_tmp_list:
+            real_failed_list.append(test)
+    print("failed tests num:", len(real_failed_list))
+
+    for ut in real_failed_list:
         filedir = '%s/build/ut_map/%s' % (rootPath, ut)
         if not os.path.exists(filedir):
             not_success_file.write('%s\n' % ut)
@@ -198,11 +211,11 @@ def notsuccessfuc(rootPath):
     print("failed tests num:", len(real_failed_list))
 
     for test in real_failed_list:
-        ut = ut.replace('\n', '').strip()
-        if ut not in files:
-            print(ut)
+        test = test.replace('\n', '').strip()
+        if test not in files:
+            print(test)
             count = count + 1
-            utNotSuccess = utNotSuccess + '^%s$|' % ut
+            utNotSuccess = utNotSuccess + '^%s$|' % test
 
     # get_all_uts(rootPath)
     # with open("/paddle/build/all_uts_paddle", "r") as f:
@@ -244,6 +257,7 @@ def ut_file_map_supplement(rootPath):
                 load_dict_new[filename].append(test)
 
     """
+
     all_uts_paddle = '%s/build/all_uts_paddle' % rootPath
 
     with open(all_uts_paddle, 'r') as f:
