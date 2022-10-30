@@ -89,22 +89,18 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     bool with_dynamic = engine_->with_dynamic_shape();
     int h_axis = (data_layout == phi::DataLayout::kNCHW) + with_dynamic;
     int w_axis = (data_layout == phi::DataLayout::kNCHW) + 1 + with_dynamic;
-    int c_axis =
-        ((data_layout == phi::DataLayout::kNCHW) ? 0 : 2) + with_dynamic;
 
     if (scale_w > 0. && scale_h > 0.) {
-      std::cout << scale_w << ",  " << scale_h << std::endl;
       out_h = static_cast<int>(in_dim.d[h_axis] * scale_h);
       out_w = static_cast<int>(in_dim.d[w_axis] * scale_w);
     }
 
     // Priority: Input(OutSize) > attr(out_h/out_w) > attr(scale)
     nvinfer1::ITensor* outsize_tensor = nullptr;
-    if (resize_inputs.find("OutSize") != resize_inputs.end()) {
+    if (engine_->with_dynamic_shape() &&
+        resize_inputs.find("OutSize") != resize_inputs.end()) {
       if (op_desc.Input("OutSize").size() >= 1) {
         outsize_tensor = engine_->GetITensor(op_desc.Input("OutSize")[0]);
-        // out_h = outsize_tensor->getDimensions().d[0];
-        // out_w = outsize_tensor->getDimensions().d[1];
       }
     }
 
@@ -114,23 +110,24 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
       scale_w =
           static_cast<float>(out_w) / static_cast<float>(in_dim.d[w_axis]);
     }
-    std::cout << scale_w << ",  " << scale_h << std::endl;
-    std::cout << out_w << ",  " << out_h << std::endl;
 
     if (engine_->with_dynamic_shape()) {
       std::vector<nvinfer1::ITensor*> outsize_itensors;
       auto* input_shape = Shape(input);
-      outsize_itensors.push_back(GetEleTensorOfShape(Shape(input), 0));
-      if (data_layout == phi::DataLayout::kNCHW) {
-        outsize_itensors.push_back(GetEleTensorOfShape(input_shape, c_axis));
-        outsize_itensors.push_back(GetEleTensorOfShape(outsize_tensor, 0));
-        outsize_itensors.push_back(GetEleTensorOfShape(outsize_tensor, 1));
-      } else if (data_layout == phi::DataLayout::kNHWC) {
-        outsize_itensors.push_back(GetEleTensorOfShape(outsize_tensor, 0));
-        outsize_itensors.push_back(GetEleTensorOfShape(outsize_tensor, 1));
-        outsize_itensors.push_back(GetEleTensorOfShape(input_shape, c_axis));
+      std::vector<int32_t> nc_mask{1, 1, 0, 0};
+      auto* nc_mask_tensor = Add1DConstantLayer(nc_mask);
+      auto* out_mask_tensor =
+          Sum(Prod(input_shape, nc_mask_tensor),
+              Concat(std::vector<nvinfer1::ITensor*>{Add1DConstantLayer({0, 0}),
+                                                     outsize_tensor}));
+      // nchw order
+      auto* outsize_full =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(out_mask_tensor));
+      if (data_layout == phi::DataLayout::kNHWC) {
+        nvinfer1::Permutation transpose{0, 2, 3, 1};
+        outsize_full->setSecondTranspose(transpose);
       }
-      layer->setInput(1, *Concat(outsize_itensors));
+      layer->setInput(1, *(outsize_full->getOutput(0)));
     } else {
       std::vector<float> scales;
       if (data_layout == phi::DataLayout::kNCHW) {

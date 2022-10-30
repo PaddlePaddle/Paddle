@@ -793,6 +793,11 @@ struct SimpleOpTypeSetTeller : public Teller {
 
       auto resize_inputs = desc.Inputs();
       if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
+        if (!with_dynamic_shape) {
+          VLOG(3) << "Static shape don't support the SizeTensor for op_type "
+                  << op_type;
+          return false;
+        }
         if (desc.Input("SizeTensor").size() >= 1) {
           VLOG(3)
               << "The Paddle-TRT doesn't support the SizeTensor for op_type "
