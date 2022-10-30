@@ -651,12 +651,12 @@ __inline__ __device__ T blockReduceMaxV2(T *val) {
 }
 
 template <typename T, int ITEMS_PER_THREAD, int NUM>
-__global__ void softmax_kernel_v5_half2(T *qk_buf_,
-                                        const T *attr_mask,
-                                        const int batch_size,
-                                        const int head_num,
-                                        const int seq_len,
-                                        const T scalar) {
+__global__ void softmax_kernel_with_mask(T *qk_buf_,
+                                         const T *attr_mask,
+                                         const int batch_size,
+                                         const int head_num,
+                                         const int seq_len,
+                                         const T scalar) {
   using T2 = half2;
   T2 *qk_buf_half2 = reinterpret_cast<T2 *>(qk_buf_);
   const T2 *attr_mask_half2 = (const T2 *)attr_mask;
@@ -847,7 +847,8 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
           assert(block.x <= 1024);
           assert(grid.x % 4 == 0);
           grid.x /= 4;
-          softmax_kernel_v5_half2<half, ITEMS_PER_THREAD, 4>
+          constexpr int NUM = 4;
+          softmax_kernel_with_mask<half, ITEMS_PER_THREAD, NUM>
               <<<grid, block, 0, stream>>>(reinterpret_cast<half *>(qk_buf_),
                                            (const half *)bias_qk,
                                            batch_size,
