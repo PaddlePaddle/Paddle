@@ -140,13 +140,13 @@ struct MultiTensorAdamFunctor {
       if (IsMultiPrecision) {
         phi::Load(mp_ptr + idx, &mp_vec);
 #pragma unroll
-        for (volatile int j = 0; j < VecSize; ++j) {
+        for (int j = 0; j < VecSize; ++j) {
           PD_ADAM_UPDATE(p_vec, mp_vec, g_vec, mom1_vec, mom2_vec, j);
         }
       } else {
         phi::Load(p_ptr + idx, &p_vec);
 #pragma unroll
-        for (volatile int j = 0; j < VecSize; ++j) {
+        for (int j = 0; j < VecSize; ++j) {
           PD_ADAM_UPDATE(p_vec, p_vec, g_vec, mom1_vec, mom2_vec, j);
         }
       }
