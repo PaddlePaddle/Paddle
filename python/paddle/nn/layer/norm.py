@@ -74,7 +74,7 @@ class _InstanceNormBase(Layer):
         if weight_attr is False or bias_attr is False:
             assert (
                 weight_attr == bias_attr
-            ), "weight_attr and bias_attr must be set to False at the same time in InstanceNorm"
+            ), "weight_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
         self._epsilon = epsilon
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
