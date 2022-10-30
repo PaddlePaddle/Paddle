@@ -144,15 +144,6 @@
     func : amin
   backward : amin_grad
 
-- op : angle
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : RealAndImagInferMeta
-  kernel :
-    func : angle
-  backward : angle_grad
-
 - op : any
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
   output : Tensor(out)
@@ -190,15 +181,6 @@
     func : ArgMinMaxInferMeta
   kernel :
     func : arg_min
-
-- op : argsort
-  args : (Tensor x, int axis=-1, bool descending=false)
-  output : Tensor(out), Tensor(indices)
-  infer_meta :
-    func : ArgsortInferMeta
-  kernel :
-    func : argsort
-  backward : argsort_grad
 
 - op : as_complex
   args : (Tensor x)
@@ -354,15 +336,6 @@
     func : ElementwiseInferMeta
   kernel :
     func : bitwise_xor
-
-- op : bmm
-  args : (Tensor x, Tensor y)
-  output : Tensor
-  infer_meta :
-    func : BmmInferMeta
-  kernel :
-    func : bmm
-  backward : bmm_grad
 
 - op : box_coder
   args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type, bool box_normalized, int axis, float[] variance)
@@ -607,15 +580,6 @@
   kernel :
     func : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad
-
-- op : det
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : determinant
-  backward : det_grad
 
 - op : diag_embed
   args : (Tensor input, int offset, int dim1, int dim2)
