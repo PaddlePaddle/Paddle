@@ -2835,7 +2835,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             "true_fn returns non-None while false_fn returns None"
         )
 
-    # Merge ture and false output if they are not None
+    # Merge true and false output if they are not None
     if return_names is None:
         is_dy2staic = False
         return_names = ["no name"] * len(_to_sequence_except_dict(true_output))
