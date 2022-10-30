@@ -854,7 +854,7 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
                                            batch_size,
                                            head_num,
                                            seq_len,
-                                           half(1.0f));
+                                           static_cast<half>(1.0f));
         } else {
           SoftmaxKernelWithEltadd2<__half2><<<grid, block, 0, stream>>>(
               reinterpret_cast<__half2 *>(qk_buf_),
