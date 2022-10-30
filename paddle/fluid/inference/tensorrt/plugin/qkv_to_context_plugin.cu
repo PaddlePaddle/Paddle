@@ -514,8 +514,10 @@ int QkvToContextPluginDynamic::enqueue(
     }
     // padding:    mask_half_ = [1.0,....1.0...1.0....,0.0f]
     // no_padding: mask_half_ = [1.0,....1.0,.........,1.0f]
+    bool bias_is_mask = false;
     if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
       qk_bias = mask_half_;
+      bias_is_mask = true;
     }
     const half *input1_data = static_cast<const half *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
@@ -554,7 +556,7 @@ int QkvToContextPluginDynamic::enqueue(
                            head_size_,
                            qkptr,
                            input1_data,
-                           true,
+                           bias_is_mask,
                            tptr,
                            half(1.),
                            half(0.0));
