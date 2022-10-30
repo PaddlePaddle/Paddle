@@ -201,12 +201,16 @@ def _unset_dims_mapping(param):
         delattr(param, "dims_mapping")
 
 
-def _get_dims_mapping(dist_parameter, mp_group, single_parameter=None):
+def _get_dims_mapping(dist_parameter, mp_group):
     """
     Description:
         return the sliting mapping:
             {tensor_name: spiting_strategy}
-
+    Args:
+        dist_parameters(list): distributed model parameters
+        mp_group(ProcessGroup): Model Parallel communication group
+    Return:
+        The sliting mapping
     Examples:
         spliting_strategy's format (-1, -1, -1, 0), meaing the dims
         of  the tennsor is 4 and it is splited along the first strategy axis in mesh
@@ -218,57 +222,7 @@ def _get_dims_mapping(dist_parameter, mp_group, single_parameter=None):
     import numpy as np
 
     dist_shape = np.array(dist_parameter.shape)
-    if single_parameter is not None:
-        single_shape = np.array(single_parameter.shape)
-        logger.debug(f"single shape: {single_shape}, dist shape: {dist_shape}")
-        assert len(dist_shape) == len(single_shape)
-        diff = dist_shape - single_shape
-
-        assert (diff <= 0).all(), (
-            f"Dist shape is larger than single shape in some axis, please check the shapes. "
-            f"dist shape: {dist_shape}, single shape: {single_shape}"
-        )
-        assert np.min(diff) == np.sum(diff), (
-            f"There are more than one axis along which the tensor is splited, which are not allowed now. "
-            f"dist shape: {dist_shape}, single shape: {single_shape}"
-        )
-
-        index = np.argsort(diff)[0]
-
-        if diff[index] < 0:
-            assert (
-                single_shape[index] % dist_shape[index] == 0
-                and dist.get_world_size(mp_group)
-                == single_shape[index] // dist_shape[index]
-            )
-
-        # only tensor for mp is splited, and the mp axis is 1
-        mapping = [-1 if d == 0 else 1 for d in diff]
-    elif re.search(
-        r"^column_|^row_parallel_linear.+\.w_[0-9]+$|^vocab_parallel_embedding",
-        dist_parameter.name,
-    ):
-        assert re.search(
-            r"^column_parallel_linear|^row_parallel_linear.+\.w_[0-9]+$|^vocab_parallel_embedding",
-            dist_parameter.name,
-        ), (
-            f"Only 'column_parallel_linear', 'row_parallel_linear' and 'vocab_parallel_embedding' are allowed to be distributed, "
-            f"while this parameter({dist_parameter.name}) is distributed now."
-        )
-        # using parameter name to determine the aixs along which the parameter is splited
-        assert (
-            1 <= len(dist_shape) <= 2
-        ), f"Only 1 <= dims <= 2 is supported for distributed parameters, while the paramater's shape is {dist_shape}, name: {dist_parameter.name}"
-        mapping = [-1 for _ in dist_shape]
-
-        if len(dist_shape) == 1:
-            mapping[0] = 1
-        else:
-            if re.search(r"^(row|vocab)", dist_parameter.name):
-                mapping[0] = 1
-            else:
-                mapping[1] = 1
-    elif hasattr(dist_parameter, "split_axis"):
+    if hasattr(dist_parameter, "split_axis"):
         aixs = getattr(dist_parameter, "split_axis")
         mapping = [-1 for _ in dist_shape]
         mapping[aixs] = 1
