@@ -90,35 +90,24 @@ def save_for_auto_inference(path_prefix, dist_model, cvt2cpu=False):
 
 
 def _is_first_used(param):
-    return not (
-        hasattr(param, "is_firstly_shared") and not param.is_firstly_shared
-    )
+    return not hasattr(param, "is_firstly_shared") or param.is_firstly_shared
 
 
-def _is_first_shared(param):
-    return hasattr(param, "is_firstly_shared") and param.is_firstly_shared
-
-
-def _get_all_ranks_of_pp(pp_rank):
+def _get_all_ranks_of_pp(pp_rank, dp_degree, mp_degree, pp_degree):
     """
     Description:
         get all global ranks involving given pp_rank
     """
-    hcg = fleet.get_hybrid_communicate_group()
-    dp_degree = hcg.get_data_parallel_world_size()
-    mp_degree = hcg.get_model_parallel_world_size()
-    pp_degree = hcg.get_pipe_parallel_world_size()
-    sharding_degree = hcg.get_sharding_parallel_world_size()
 
     process_group = []
 
-    dp_degree = dp_degree * sharding_degree
+    world_size = dp_degree * mp_degree * pp_degree
 
     for i in range(dp_degree):
         for k in range(mp_degree):
             process_group.append(
-                i * dist.get_world_size() // dp_degree
-                + pp_rank * dist.get_world_size() // dp_degree // pp_degree
+                i * world_size // dp_degree
+                + pp_rank * world_size // dp_degree // pp_degree
                 + k
             )
     return process_group
@@ -156,20 +145,21 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
         hcg = fleet.get_hybrid_communicate_group()
         dp_degree = hcg.get_data_parallel_world_size()
         mp_degree = hcg.get_model_parallel_world_size()
+        pp_degree = hcg.get_pipe_parallel_world_size()
+        sharding_degree = hcg.get_sharding_parallel_world_size()
+        dp_degree = dp_degree * sharding_degree
 
-        dp_group = hcg.get_data_parallel_group()
-        mp_group = hcg.get_model_parallel_group()
         pp_group = hcg.get_pipe_parallel_group()
     else:
+        pp_degree = 1
+        dp_degree = 1
+        mp_degree = 1
         pp_group = None
-        dp_group = None
-        mp_group = None
         hcg = None
 
-    logger.debug(f"dp group: {dp_group}")
-    logger.debug(f"mp group: {mp_group}")
-    logger.debug(f"pp group: {pp_group}")
-    logger.debug(f"sharding group: {pp_group}")
+    logger.debug(f"dp degree * sharding degree : {dp_degree}")
+    logger.debug(f"mp degree: {mp_degree}")
+    logger.debug(f"pp degree: {pp_degree}")
 
     pp_rank = dist.get_rank(pp_group)
 
@@ -177,7 +167,12 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
     # Because if pp_degree = 1, pp_rank is set -1
     pp_rank = 0 if pp_rank <= 0 else pp_rank
 
-    process_group = _get_all_ranks_of_pp(pp_rank)
+    if dist.get_world_size() > 1:
+        process_group = _get_all_ranks_of_pp(
+            pp_rank, dp_degree, mp_degree, pp_degree
+        )
+    else:
+        process_group = [0]
 
     attr_dict = {}
     for k, v in state_dict.items():
@@ -267,25 +262,32 @@ def _name_mapping_dist2single(state_dict, pp_group):
     ]
     dist.all_gather_object(key_list, param_keys, pp_group)
 
-    # find how many ops by type in each pp:
+    # find how many a op in a each pp:
     # {"linear:"[0, 2,0,1,1,...]}
     param_types = {}
+
+    matcher = re.compile(r"^\w+_\d+(?=\.)")
 
     for pp, keys in enumerate(key_list):
         param_type_idx = {}
         for k in keys:
-            matched = re.search(r"^\w+_\d+(?=\.)", k)
+            matched = matcher.search(k)
             logger.debug(f"matched: {k}: {matched}")
-            assert matched is not None
+            assert (
+                matched is not None
+            ), f"the name of param, '{k}', is not satisfyied the format 'name_idx.xxx'"
             name_idx = k[matched.start() : matched.end()]
             logger.debug(f"get param_type_idx: {name_idx}")
-            if name_idx not in param_type_idx:
-                name = "_".join(name_idx.split("_")[:-1])
-                idx = int(name_idx.split("_")[-1])
-                param_type_idx.update({name_idx: (name, idx)})
-                if name not in param_types:
-                    param_types[name] = [0] * pp_group.nranks
-                param_types[name][pp] += 1
+
+            if name_idx in param_type_idx:
+                continue
+
+            name = "_".join(name_idx.split("_")[:-1])
+            idx = int(name_idx.split("_")[-1])
+            param_type_idx.update({name_idx: (name, idx)})
+            if name not in param_types:
+                param_types[name] = [0] * pp_group.nranks
+            param_types[name][pp] += 1
 
         # check if continous
         types_idx = {}
@@ -310,12 +312,12 @@ def _name_mapping_dist2single(state_dict, pp_group):
     name_mapping = {}
     pp_rank = dist.get_rank(pp_group)
     for k in key_list[pp_rank]:
-        matched = re.search(r"^\w+_\d+(?=\.)", k)
-        assert matched is not None
+        matched = matcher.search(k)
         name_idx = k[matched.start() : matched.end()]
         name = "_".join(name_idx.split("_")[:-1])
         idx = int(name_idx.split("_")[-1])
         logger.debug(f"idx: {idx}")
+
         new_idx = param_types[name][pp_rank] + idx
         logger.debug(f"new idx: {new_idx}")
         new_name_idx = name + "_" + str(new_idx)
@@ -326,25 +328,23 @@ def _name_mapping_dist2single(state_dict, pp_group):
 
 def _get_wrapped_dist_state_dict(dist_state_dict):
 
-    state = dist_state_dict
     wrapped_state_dict = dict()
     if dist.get_world_size() <= 1:
-
-        for _, v in state.itmes():
+        for _, v in dist_state_dict.itmes():
             wrapped_state_dict[v.name] = v
         return wrapped_state_dict
 
     hcg = fleet.get_hybrid_communicate_group()
     if hcg.get_pipe_parallel_world_size() <= 1:
-        for _, v in state.itmes():
+        for _, v in dist_state_dict.itmes():
             wrapped_state_dict[v.name] = v
         return wrapped_state_dict
 
     pp_group = hcg.get_pipe_parallel_group()
     mp_group = hcg.get_model_parallel_group()
 
-    name_mapping = _name_mapping_dist2single(state, pp_group)
-    for _, v in state.items():
+    name_mapping = _name_mapping_dist2single(dist_state_dict, pp_group)
+    for _, v in dist_state_dict.items():
         if not _is_first_used(v):
             continue
         wrapped_state_dict[name_mapping[v.name]] = v
