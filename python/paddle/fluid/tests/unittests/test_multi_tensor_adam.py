@@ -66,7 +66,6 @@ class TestMultiTensorAdam(unittest.TestCase):
             inp = paddle.to_tensor(inp)
         else:
             inp = paddle.uniform([10, self.input_size], dtype="float32")
-            out = model(inp)
 
         beta1 = paddle.to_tensor([0.9], dtype="float32")
         beta2 = paddle.to_tensor([0.99], dtype="float32")
@@ -125,18 +124,22 @@ class TestMultiTensorAdam(unittest.TestCase):
                     beta2=beta2,
                 )
 
+        num_batch = 4
         if not test_fp16:
-            out.backward()
-            opt.step()
-            opt.clear_grad()
-        else:
-            with paddle.amp.auto_cast(level='O2'):
+            for _ in range(num_batch):
                 out = model(inp)
-                loss = paddle.mean(out)
-            scaled = scaler.scale(loss)
-            scaled.backward()
-            scaler.step(opt)
-            opt.clear_grad()
+                out.backward()
+                opt.step()
+                opt.clear_grad()
+        else:
+            for _ in range(num_batch):
+                with paddle.amp.auto_cast(level='O2'):
+                    out = model(inp)
+                scaled = scaler.scale(out)
+                scaled.backward()
+                scaler.step(opt)
+                scaler.update()
+                opt.clear_grad()
 
         return model.parameters()
 
@@ -148,13 +151,13 @@ class TestMultiTensorAdam(unittest.TestCase):
         parameters_1 = self.get_adam_or_adamw_out(
             not use_multi_tensor_adam, use_adamw, test_dict, test_fp16
         )
+        self.assertEqual(len(parameters), len(parameters_1))
         for i, j in zip(parameters, parameters_1):
-            if test_fp16:
-                np.testing.assert_allclose(
-                    i.numpy(), j.numpy(), rtol=1e-2, atol=1e-3
-                )
-            else:
-                np.testing.assert_equal(i.numpy(), j.numpy())
+            atol = 1e-3 if test_fp16 else 0
+            rtol = 1e-2 if test_fp16 else 0
+            np.testing.assert_allclose(
+                i.numpy(), j.numpy(), rtol=rtol, atol=atol
+            )
 
     def test_main(self):
         old_device = paddle.get_device()
@@ -168,6 +171,9 @@ class TestMultiTensorAdam(unittest.TestCase):
             for use_adamw in [True, False]:
                 for test_dict in [True, False]:
                     test_fp16 = False
+                    print(
+                        f'use_gpu = {use_gpu} use_adamw = {use_adamw} test_dict = {test_dict} test_fp16 = {test_fp16}'
+                    )
                     self.run_adam_or_adamw(use_adamw, test_dict, test_fp16)
                     if use_gpu:
                         test_fp16 = True

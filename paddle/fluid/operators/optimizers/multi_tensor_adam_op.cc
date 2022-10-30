@@ -38,7 +38,8 @@ class MultiTensorAdamOp : public framework::OperatorWithKernel {
       const std::string& var_name,
       const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "SkipUpdate") {
+    if (var_name == "Beta1Pow" || var_name == "Beta2Pow" ||
+        var_name == "SkipUpdate") {
       return expected_kernel_type;
     } else {
       return framework::OpKernelType(

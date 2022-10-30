@@ -18,8 +18,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
-
-const int kMaxChunkSize = 65535;
+namespace funcs {
 
 // This code is referenced from apex's multi_tensor_apply.cuh.
 // https://github.com/NVIDIA/apex
@@ -29,34 +28,46 @@ struct TensorAndBlockInfo {
   void *tensor_addrs[N - 1][MaxTensorSize];
   const void *grads[MaxTensorSize];
   int sizes[MaxTensorSize];
-  uint8_t tenosr_for_this_block[MaxBlockSize];
+  uint8_t tensor_ids[MaxBlockSize];
   // int16
-  uint16_t chunk_for_this_block[MaxBlockSize];
-  int start_chunk_this_tensor;
+  uint16_t chunk_ids[MaxBlockSize];
+  int start_chunk_id;
+
+  DEVICE void GetChunkIdAndTensorId(int *chunk_id, int *tensor_id) const {
+    int block_id = blockIdx.x;
+    int tmp_tensor_id = tensor_ids[block_id];
+    *chunk_id = static_cast<int>(chunk_ids[block_id]) +
+                (tmp_tensor_id == 0) * start_chunk_id;
+    *tensor_id = tmp_tensor_id;
+  }
 };
 
-template <typename MT, typename T, typename U, typename... ArgTypes>
-__global__ void MultiTensorAdamUtilityCudaKernel(int chunk_size,
-                                                 T t_info,
-                                                 U multi_tensor_adam_functor_op,
-                                                 ArgTypes... args) {
-  multi_tensor_adam_functor_op(chunk_size, t_info, args...);
+template <int N,
+          int MaxTensorSize,
+          int MaxBlockSize,
+          typename Functor,
+          typename... ArgTypes>
+__global__ void MultiTensorApplyCudaKernel(
+    int chunk_size,
+    TensorAndBlockInfo<N, MaxTensorSize, MaxBlockSize> t_info,
+    Functor functor,
+    ArgTypes... args) {
+  functor(chunk_size, t_info, args...);
 }
 
 template <int InputNum,
           int MaxTensorSize,
           int MaxBlockSize,
-          typename MT,
-          typename T,
+          typename Functor,
           typename Context,
           typename... ArgTypes>
-void MultiTensorAdamUtilityKernel(
+void LaunchMultiTensorApplyKernel(
     const Context &dev_ctx,
-    int block_size,  // 512
-    int chunk_size,  // 2048*32
+    int block_size,
+    int chunk_size,
     const std::vector<std::vector<DenseTensor *>> &input_vector,
-    const std::vector<const DenseTensor *> &g,
-    T multi_tensor_adam_functor_op,
+    const std::vector<const DenseTensor *> &grads,
+    Functor functor,
     ArgTypes... args) {
   PADDLE_ENFORCE_EQ(
       input_vector.size(),
@@ -105,23 +116,32 @@ void MultiTensorAdamUtilityKernel(
   int tensor_id = 0;
   for (int t = 0; t < tensors_size; t++) {
     t_info.sizes[tensor_id] = input_vector[0][t]->numel();
-    t_info.grads[tensor_id] = g[t]->data();
-    for (int d = 0; d < InputNum - 1; d++)
+    t_info.grads[tensor_id] = grads[t]->data();
+    for (int d = 0; d < InputNum - 1; d++) {
       t_info.tensor_addrs[d][tensor_id] = input_vector[d][t]->data();
+    }
     tensor_id++;
     int chunks_this_tensor =
         (input_vector[0][t]->numel() + chunk_size - 1) / chunk_size;
-    t_info.start_chunk_this_tensor = 0;
-    int local_chunk = 0;
+    t_info.start_chunk_id = 0;
 
+    constexpr auto kMaxChunkId = std::numeric_limits<uint16_t>::max();
     for (int chunk = 0; chunk < chunks_this_tensor; chunk++) {
-      t_info.tenosr_for_this_block[block_id] = tensor_id - 1;
-      if (local_chunk > kMaxChunkSize) {
-        t_info.start_chunk_this_tensor += kMaxChunkSize;
-        local_chunk = 1;
-      }
-      t_info.chunk_for_this_block[block_id] = local_chunk;
-      local_chunk++;
+      t_info.tensor_ids[block_id] = tensor_id - 1;
+      auto saved_chunk_id =
+          (tensor_id == 1 ? chunk - t_info.start_chunk_id : chunk);
+      PADDLE_ENFORCE_GE(saved_chunk_id,
+                        0,
+                        errors::InvalidArgument(
+                            "The chunk id is less than 0 in "
+                            "MultiTensorApplyKernel. This may be a bug."));
+      PADDLE_ENFORCE_LE(
+          saved_chunk_id,
+          kMaxChunkId,
+          errors::InvalidArgument(
+              "The chunk id exceeds maximum value %d. This may be a bug.",
+              kMaxChunkId));
+      t_info.chunk_ids[block_id] = saved_chunk_id;
       block_id++;
       bool reach_tensors_limit =
           (tensor_id == MaxTensorSize && chunk == chunks_this_tensor - 1);
@@ -129,25 +149,31 @@ void MultiTensorAdamUtilityKernel(
       bool finish_compute =
           (t == tensors_size - 1 && chunk == chunks_this_tensor - 1);
       if (reach_tensors_limit || reach_blocks_limit || finish_compute) {
-        MultiTensorAdamUtilityCudaKernel<MT>
-            <<<block_id, block_size, 0, stream>>>(chunk_size,  // 2048*32
-                                                  t_info,
-                                                  multi_tensor_adam_functor_op,
-                                                  args...);
+        MultiTensorApplyCudaKernel<InputNum,
+                                   MaxTensorSize,
+                                   MaxBlockSize,
+                                   Functor,
+                                   ArgTypes...>
+            <<<block_id, block_size, 0, stream>>>(
+                chunk_size, t_info, functor, args...);
 
         block_id = 0;
         if (chunk == chunks_this_tensor - 1) {
           tensor_id = 0;
+          t_info.start_chunk_id = 0;
         } else {
           t_info.sizes[0] = t_info.sizes[tensor_id - 1];
           t_info.grads[0] = t_info.grads[tensor_id - 1];
-          for (int d = 0; d < InputNum - 1; d++)
+          for (int d = 0; d < InputNum - 1; d++) {
             t_info.tensor_addrs[d][0] = t_info.tensor_addrs[d][tensor_id - 1];
+          }
           tensor_id = 1;
+          t_info.start_chunk_id = chunk + 1;
         }
       }
     }
   }
 }
 
+}  // namespace funcs
 }  // namespace phi
