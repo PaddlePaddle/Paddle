@@ -207,7 +207,7 @@ def select_input_with_buildin_type(inputs, mask, name):
         inputs = [to_static_variable(false_var), to_static_variable(true_var)]
         warnings.warn(
             "Return results from different branches in cond are not same type: "
-            "false_var returned by fasle_fn is '{}' and true_var of true_fn is "
+            "false_var returned by false_fn is '{}' and true_var of true_fn is "
             "'{}'".format(type(false_var), type(true_var))
         )
     elif (
@@ -230,7 +230,7 @@ def select_input_with_buildin_type(inputs, mask, name):
     else:
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
-            "returned by fasle_fn is '{}' and true_var of true_fn is '{}'".format(
+            "returned by false_fn is '{}' and true_var of true_fn is '{}'".format(
                 type(false_var), type(true_var)
             )
         )

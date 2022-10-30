@@ -3678,7 +3678,7 @@ def instance_norm(
     if param_attr is False:
         assert (
             bias_attr is False
-        ), "param_attr and bias_attr must be set to Fasle at the same time in instance_norm"
+        ), "param_attr and bias_attr must be set to False at the same time in instance_norm"
 
     helper = LayerHelper('instance_norm', **locals())
     dtype = helper.input_dtype()
