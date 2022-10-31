@@ -116,4 +116,9 @@ repos:
     rev: v1.7.7
     hooks:
     -   id: autoflake
-        args: ['--in-place', '--remove-all-unused-imports', '--remove-unused-variable']
+        args:
+            - --in-place
+            - --remove-all-unused-imports
+            - --ignore-pass-after-docstring
+            - --ignore-init-module-imports
+            - --exclude=python/paddle/fluid/[!t]**,python/paddle/fluid/tra**
