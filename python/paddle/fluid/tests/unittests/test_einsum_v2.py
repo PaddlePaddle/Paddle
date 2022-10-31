@@ -580,7 +580,7 @@ class TestSimpleUndiagonal(unittest.TestCase):
         A = paddle.to_tensor(np.array([1.0, 2.0]))
         A_expect = paddle.to_tensor([[1.0, 0.0], [0.0, 2.0]])
         A_actual = paddle.einsum('i->ii', A)
-        np.array_equal(A_expect.numpy, A_actual_numpy())
+        np.array_equal(A_expect.numpy(), A_actual.numpy())
 
 
 class TestSimpleUndiagonal2(unittest.TestCase):
