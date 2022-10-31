@@ -73,19 +73,12 @@ __inplace_unary_func__ = [
 
 __all__ = []
 
-for _OP in set(__all__):
-    globals()[_OP] = generate_layer_fn(_OP)
-
 # It is a hot fix in some unittest using:
 #   fluid.layers.scale(x=x, scale=10.0, out=out_var)
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
 
 globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
-
-__all__ += __activations_noattr__
-__all__ += __unary_func__
-__all__ += __inplace_unary_func__
 
 for _OP in set(__activations_noattr__):
     _new_OP = _OP
@@ -505,8 +498,6 @@ Examples:
         # [-0.285714, -0.166667, 0.0909091, 0.230769]
 
 """)
-
-__all__ += ['erf']
 
 _erf_ = generate_layer_fn('erf')
 
