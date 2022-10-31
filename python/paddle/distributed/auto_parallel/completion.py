@@ -127,11 +127,9 @@ def _validate_dims_mapping(dims_mapping, process_mesh):
     if dims_mapping is None:
         return False
     for i in range(len(dims_mapping)):
-        if dims_mapping[i] < -1 or dims_mapping[i] >= len(
-            process_mesh.topology
-        ):
+        if dims_mapping[i] < -1 or dims_mapping[i] >= len(process_mesh.shape):
             return False
-    for i in range(len(process_mesh.topology)):
+    for i in range(len(process_mesh.shape)):
         if dims_mapping.count(i) > 1:
             return False
     return True

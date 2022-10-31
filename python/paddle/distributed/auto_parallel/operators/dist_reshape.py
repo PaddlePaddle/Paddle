@@ -58,7 +58,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         shape_list = op.desc.attr("shape")
         # got dist attribute info
         dim_mapping = dist_attr.get_output_dims_mapping(op.output("Out")[0])
-        process_mesh_shape = dist_attr.process_mesh.topology
+        process_mesh_shape = dist_attr.process_mesh.shape
 
         # modify target shape
         for idx, axis in enumerate(dim_mapping):
@@ -72,7 +72,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_attr.process_mesh.processes
+        processes = dist_attr.process_mesh.process_ids
         for key in desc_mapping:
             desc_mapping[key]["shape"] = shape_list
 
@@ -91,7 +91,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         )
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         op_type = dist_op.serial_op.type
 
         cost_mapping = build_comp_costs_from_descs(
@@ -111,7 +111,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
-                    mesh_shape = process_mesh.topology
+                    mesh_shape = process_mesh.shape
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         parallel_axis = batch_size_axis
@@ -258,7 +258,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
 
         # got dist attribute info
         dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
-        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_shape = op_dist_attr.process_mesh.shape
 
         # modify target shape
         for idx, axis in enumerate(dim_mapping):
@@ -308,7 +308,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         shape_list = op.desc.attr("shape")
         # got dist attribute info
         dim_mapping = dist_attr.get_output_dims_mapping(op.output("Out")[0])
-        process_mesh_shape = dist_attr.process_mesh.topology
+        process_mesh_shape = dist_attr.process_mesh.shape
 
         # modify target shape
         for idx, axis in enumerate(dim_mapping):
@@ -322,7 +322,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_attr.process_mesh.processes
+        processes = dist_attr.process_mesh.process_ids
         for key in desc_mapping:
             desc_mapping[key]["shape"] = shape_list
 
@@ -341,7 +341,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         )
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         op_type = dist_op.serial_op.type
 
         cost_mapping = build_comp_costs_from_descs(
@@ -361,7 +361,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
-                    mesh_shape = process_mesh.topology
+                    mesh_shape = process_mesh.shape
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         parallel_axis = batch_size_axis
@@ -511,7 +511,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
 
         # got dist attribute info
         dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
-        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_shape = op_dist_attr.process_mesh.shape
 
         # modify target shape
         for idx, axis in enumerate(dim_mapping):
@@ -561,7 +561,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         shape_list = op.desc.attr("shape")
         # got dist attribute info
         dim_mapping = dist_attr.get_output_dims_mapping(op.output("Out")[0])
-        process_mesh_shape = dist_attr.process_mesh.topology
+        process_mesh_shape = dist_attr.process_mesh.shape
 
         # modify target shape
         for idx, axis in enumerate(dim_mapping):
@@ -575,7 +575,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
-        processes = dist_attr.process_mesh.processes
+        processes = dist_attr.process_mesh.process_ids
         for key in desc_mapping:
             desc_mapping[key]["shape"] = shape_list
 
@@ -594,7 +594,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         )
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
-        processes = process_mesh.processes
+        processes = process_mesh.process_ids
         op_type = dist_op.serial_op.type
 
         cost_mapping = build_comp_costs_from_descs(
@@ -614,7 +614,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
-                    mesh_shape = process_mesh.topology
+                    mesh_shape = process_mesh.shape
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         parallel_axis = batch_size_axis
@@ -757,7 +757,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
 
         # got dist attribute info
         out_dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
-        process_mesh_shape = op_dist_attr.process_mesh.topology
+        process_mesh_shape = op_dist_attr.process_mesh.shape
 
         # modify target shape
         for idx, axis in enumerate(out_dim_mapping):

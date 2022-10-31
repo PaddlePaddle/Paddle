@@ -92,7 +92,7 @@ def convert_to_dims_mapping(shard_spec, process_mesh):
     for shard in shard_spec:
         if shard is None:
             dims_mapping.append(-1)
-        elif process_mesh.topology[process_mesh.dim_names.index(shard)] == 1:
+        elif process_mesh.shape[process_mesh.dim_names.index(shard)] == 1:
             dims_mapping.append(-1)
         else:
             dims_mapping.append(process_mesh.dim_names.index(shard))
@@ -438,7 +438,7 @@ def _get_corresponding_rank(dist_context, target_mesh, rank):
 def _get_unshard_dist_shape(var, dist_attr):
     var_shape = var.shape
     mapping = dist_attr.dims_mapping
-    mesh = dist_attr.process_mesh.topology
+    mesh = dist_attr.process_mesh.shape
     assert len(var_shape) == len(
         mapping
     ), "variable shape [{}] and dim_mapping [{}] is NOT match !".format(
@@ -822,8 +822,8 @@ def get_dist_attr(program, dist_context=None):
             process_mesh = tensor_dist_attr.process_mesh
             dims_mapping = tensor_dist_attr.dims_mapping
             dist_attr[var.name] = {
-                "process_shape": process_mesh.topology,
-                "process_group": process_mesh.processes,
+                "process_shape": process_mesh.shape,
+                "process_group": process_mesh.process_ids,
                 "dims_mapping": dims_mapping,
             }
     return dist_attr
@@ -1884,16 +1884,16 @@ def get_input_split_info(cur_rank, var, dist_context):
     process_mesh = tensor_dist_attr.process_mesh
     dims_mapping = tensor_dist_attr.dims_mapping
 
-    if cur_rank not in process_mesh.processes:
+    if cur_rank not in process_mesh.process_ids:
         rank_id = _get_corresponding_rank(dist_context, process_mesh, cur_rank)
     else:
         rank_id = cur_rank
 
     batch_size_axis = dims_mapping[0]
-    if batch_size_axis > -1 and process_mesh.topology[batch_size_axis] > 1:
+    if batch_size_axis > -1 and process_mesh.shape[batch_size_axis] > 1:
         group_ranks = _get_comm_group(
-            process_mesh.processes,
-            process_mesh.topology,
+            process_mesh.process_ids,
+            process_mesh.shape,
             batch_size_axis,
             rank_id,
         )
