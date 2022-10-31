@@ -648,6 +648,10 @@ if(WITH_PYTHON)
     target_link_libraries(${SHARD_LIB_NAME} ${MPI_CXX_LIBRARIES})
   endif()
 
+  if(WITH_XPU)
+    target_link_libraries(${SHARD_LIB_NAME} xpulib)
+  endif()
+
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
   add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
