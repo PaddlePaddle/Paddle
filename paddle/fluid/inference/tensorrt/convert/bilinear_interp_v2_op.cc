@@ -111,34 +111,38 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
           static_cast<float>(out_w) / static_cast<float>(in_dim.d[w_axis]);
     }
 
+    std::vector<float> scales;
     if (engine_->with_dynamic_shape()) {
-      std::vector<nvinfer1::ITensor*> outsize_itensors;
-      auto* input_shape = Shape(input);
-      std::vector<int32_t> nc_mask{1, 1, 0, 0};
-      auto* nc_mask_tensor = Add1DConstantLayer(nc_mask);
-      auto* out_mask_tensor =
-          Sum(Prod(input_shape, nc_mask_tensor),
-              Concat(std::vector<nvinfer1::ITensor*>{Add1DConstantLayer({0, 0}),
-                                                     outsize_tensor}));
-      // nchw order
-      auto* outsize_full =
-          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(out_mask_tensor));
-      if (data_layout == phi::DataLayout::kNHWC) {
-        nvinfer1::Permutation transpose{0, 2, 3, 1};
-        outsize_full->setSecondTranspose(transpose);
+      scales.push_back(1.f);
+    }
+    if (data_layout == phi::DataLayout::kNCHW) {
+      scales.push_back(1.f);
+      scales.push_back(scale_h);
+      scales.push_back(scale_w);
+    } else if (data_layout == phi::DataLayout::kNHWC) {
+      scales.push_back(scale_h);
+      scales.push_back(scale_w);
+      scales.push_back(1.f);
+    }
+
+    if (engine_->with_dynamic_shape()) {
+      if (outsize_tensor != nullptr) {
+        std::vector<nvinfer1::ITensor*> outsize_itensors;
+        auto* input_shape = Shape(input);
+        outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 0));
+
+        if (data_layout == phi::DataLayout::kNCHW) {
+          outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 1));
+          outsize_itensors.push_back(outsize_tensor);
+        } else if (data_layout == phi::DataLayout::kNHWC) {
+          outsize_itensors.push_back(outsize_tensor);
+          outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 3));
+        }
+        layer->setInput(1, *Concat(outsize_itensors));
+      } else {
+        layer->setScales(scales.data(), scales.size());
       }
-      layer->setInput(1, *(outsize_full->getOutput(0)));
     } else {
-      std::vector<float> scales;
-      if (data_layout == phi::DataLayout::kNCHW) {
-        scales.push_back(1.f);
-        scales.push_back(scale_h);
-        scales.push_back(scale_w);
-      } else if (data_layout == phi::DataLayout::kNHWC) {
-        scales.push_back(scale_h);
-        scales.push_back(scale_w);
-        scales.push_back(1.f);
-      }
       layer->setScales(scales.data(), scales.size());
     }
 
