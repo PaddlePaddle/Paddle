@@ -81,14 +81,15 @@ class TestMultiTensorAdam(unittest.TestCase):
                     {
                         'params': param,
                         'weight_decay': 0.001 * i,
-                        'learning_rate': 0.01 * i,
-                        'beta1': 0.01 * i,
+                        'learning_rate': 0.1 * i,
+                        'beta1': 0.80 + 0.001 * i,
                     }
                 )
                 i = i + 1
 
                 input_paramters = paramters_dict_list
 
+        multi_precision = True if test_fp16 else False
         if use_multi_tensor_adam:
             if not use_adamw:
                 opt = paddle.incubate.optimizer.MultiTensorAdam(
@@ -97,6 +98,7 @@ class TestMultiTensorAdam(unittest.TestCase):
                     weight_decay=0.01,
                     beta1=beta1,
                     beta2=beta2,
+                    multi_precision=multi_precision,
                 )
             else:
                 opt = paddle.incubate.optimizer.MultiTensorAdamW(
@@ -105,6 +107,7 @@ class TestMultiTensorAdam(unittest.TestCase):
                     weight_decay=0.01,
                     beta1=beta1,
                     beta2=beta2,
+                    multi_precision=multi_precision,
                 )
         else:
             if not use_adamw:
@@ -114,6 +117,7 @@ class TestMultiTensorAdam(unittest.TestCase):
                     weight_decay=0.01,
                     beta1=beta1,
                     beta2=beta2,
+                    multi_precision=multi_precision,
                 )
             else:
                 opt = paddle.optimizer.AdamW(
@@ -122,6 +126,7 @@ class TestMultiTensorAdam(unittest.TestCase):
                     weight_decay=0.01,
                     beta1=beta1,
                     beta2=beta2,
+                    multi_precision=multi_precision,
                 )
 
         num_batch = 4
@@ -153,8 +158,8 @@ class TestMultiTensorAdam(unittest.TestCase):
         )
         self.assertEqual(len(parameters), len(parameters_1))
         for i, j in zip(parameters, parameters_1):
-            atol = 1e-3 if test_fp16 else 0.0
-            rtol = 1e-2 if test_fp16 else 0.0
+            atol = 0.0 if test_fp16 else 0.0
+            rtol = 0.0 if test_fp16 else 0.0
             np.testing.assert_allclose(
                 i.numpy(), j.numpy(), rtol=rtol, atol=atol
             )

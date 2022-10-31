@@ -76,7 +76,7 @@ template <typename T,
 struct MultiTensorAdamFunctor {
   __device__ __forceinline__ void operator()(
       int chunk_size,
-      funcs::TensorAndBlockInfo<N, MaxTensorSize, MaxBlockSize> t_info,
+      const funcs::TensorAndBlockInfo<N, MaxTensorSize, MaxBlockSize>& t_info,
       MT beta1,
       MT beta2,
       MultiTensorAdamBetaPowInfo<T, IsCPUBetaPow> beta_pow,
@@ -86,86 +86,141 @@ struct MultiTensorAdamFunctor {
     MT lr = *learning_rate;
     MT beta1_pow = beta_pow.GetBeta1PowValue();
     MT beta2_pow = beta_pow.GetBeta2PowValue();
+    T* __restrict__ p_ptr;
+    const T* __restrict__ g_ptr;
+    MT* __restrict__ mom1_ptr, * __restrict__ mom2_ptr;
+    MT* __restrict__ mp_ptr;
+    int n;
 
-    int chunk_id, tensor_id;
-    t_info.GetChunkIdAndTensorId(&chunk_id, &tensor_id);
+    {
+      int chunk_id, tensor_id;
+      t_info.GetChunkIdAndTensorId(&chunk_id, &tensor_id);
 
-    int n = t_info.sizes[tensor_id];
-    int offset = chunk_id * chunk_size;
-    const T* g_ptr = static_cast<const T*>(t_info.grads[tensor_id]) + offset;
-    T* p_ptr = static_cast<T*>(t_info.tensor_addrs[0][tensor_id]) + offset;
-    MT* mom1_ptr = static_cast<MT*>(t_info.tensor_addrs[1][tensor_id]) + offset;
-    MT* mom2_ptr = static_cast<MT*>(t_info.tensor_addrs[2][tensor_id]) + offset;
-    MT* mp_ptr =
-        IsMultiPrecision
-            ? static_cast<MT*>(t_info.tensor_addrs[3][tensor_id]) + offset
-            : nullptr;
+      n = t_info.sizes[tensor_id];
+      int offset = chunk_id * chunk_size;
+      g_ptr = static_cast<const T*>(t_info.grads[tensor_id]) + offset;
+      p_ptr = static_cast<T*>(t_info.tensor_addrs[0][tensor_id]) + offset;
+      mom1_ptr = static_cast<MT*>(t_info.tensor_addrs[1][tensor_id]) + offset;
+      mom2_ptr = static_cast<MT*>(t_info.tensor_addrs[2][tensor_id]) + offset;
+      mp_ptr =
+          IsMultiPrecision
+              ? static_cast<MT*>(t_info.tensor_addrs[3][tensor_id]) + offset
+              : nullptr;
 
-    n -= offset;
-    if (n > chunk_size) {
-      n = chunk_size;
+      n -= offset;
+      if (n > chunk_size) {
+        n = chunk_size;
+      }
     }
 
     int stride = blockDim.x * VecSize;
     int idx = threadIdx.x * VecSize;
 
-#define PD_ADAM_UPDATE(                                                     \
-    __p_vec, __mp_vec, __g_vec, __mom1_vec, __mom2_vec, __i)                \
-  MT __p = IsMultiPrecision ? static_cast<MT>(__mp_vec[__i])                \
-                            : static_cast<MT>(__p_vec[__i]);                \
-  MT __g = static_cast<MT>(__g_vec[__i]);                                   \
-  MT __mom1 = static_cast<MT>(__mom1_vec[__i]);                             \
-  MT __mom2 = static_cast<MT>(__mom2_vec[__i]);                             \
-  if (UseAdamW) {                                                           \
-    __p *= (static_cast<MT>(1.0) - lr * decay);                             \
-  }                                                                         \
-  __mom1 = beta1 * __mom1 + (static_cast<MT>(1.0) - beta1) * __g;           \
-  __mom2 = beta2 * __mom2 + (static_cast<MT>(1.0) - beta2) * __g * __g;     \
-  MT __denom =                                                              \
-      (sqrt(__mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;    \
-  __p += (__mom1 / __denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow))); \
-  __mom1_vec[__i] = __mom1;                                                 \
-  __mom2_vec[__i] = __mom2;                                                 \
-  __p_vec[__i] = static_cast<T>(__p);                                       \
-  if (IsMultiPrecision) {                                                   \
-    __mp_vec[__i] = __p;                                                    \
-  }
-
     for (; idx + VecSize <= n; idx += stride) {
-      phi::AlignedVector<T, VecSize> p_vec, g_vec;
+      phi::AlignedVector<T, VecSize> g_vec;
       phi::AlignedVector<MT, VecSize> mom1_vec, mom2_vec, mp_vec;
+
       phi::Load(g_ptr + idx, &g_vec);
       phi::Load(mom1_ptr + idx, &mom1_vec);
       phi::Load(mom2_ptr + idx, &mom2_vec);
-      if (IsMultiPrecision) {
-        phi::Load(mp_ptr + idx, &mp_vec);
-#pragma unroll
-        for (int j = 0; j < VecSize; ++j) {
-          PD_ADAM_UPDATE(p_vec, mp_vec, g_vec, mom1_vec, mom2_vec, j);
-        }
-      } else {
-        phi::Load(p_ptr + idx, &p_vec);
-#pragma unroll
-        for (int j = 0; j < VecSize; ++j) {
-          PD_ADAM_UPDATE(p_vec, p_vec, g_vec, mom1_vec, mom2_vec, j);
-        }
-      }
 
+#pragma unroll
+      for (int j = 0; j < VecSize; ++j) {
+        UpdateMoments(&mom1_vec[j],
+                      &mom2_vec[j],
+                      static_cast<MT>(g_vec[j]),
+                      beta1,
+                      beta2);
+      }
       phi::Store(mom1_vec, mom1_ptr + idx);
       phi::Store(mom2_vec, mom2_ptr + idx);
-      phi::Store(p_vec, p_ptr + idx);
+
+      auto& p_vec = g_vec;
+      if (IsMultiPrecision) {
+        phi::Load(mp_ptr + idx, &mp_vec);
+      } else {
+        phi::Load(p_ptr + idx, &p_vec);
+      }
+
+#pragma unroll
+      for (int j = 0; j < VecSize; ++j) {
+        MT p = IsMultiPrecision ? mp_vec[j] : static_cast<MT>(p_vec[j]);
+        p = UpdateParameter(p,
+                            mom1_vec[j],
+                            mom2_vec[j],
+                            beta1_pow,
+                            beta2_pow,
+                            lr,
+                            epsilon,
+                            decay);
+        if (IsMultiPrecision) {
+          mp_vec[j] = p;
+        }
+        p_vec[j] = static_cast<T>(p);
+      }
+
       if (IsMultiPrecision) {
         phi::Store(mp_vec, mp_ptr + idx);
+      }
+
+      // FIXME(zengjinle): I do not know why if I use
+      // phi::Store here, the calculation results would have
+      // some differences.
+#pragma unroll
+      for (int j = 0; j < VecSize; ++j) {
+        p_ptr[idx + j] = p_vec[j];
       }
     }
 
     for (; idx < n; ++idx) {
+      MT mom1 = mom1_ptr[idx];
+      MT mom2 = mom2_ptr[idx];
+      MT p = IsMultiPrecision ? mp_ptr[idx] : static_cast<MT>(p_ptr[idx]);
+      MT g = static_cast<MT>(g_ptr[idx]);
+
+      UpdateMoments(&mom1, &mom2, g, beta1, beta2);
+      p = UpdateParameter(
+          p, mom1, mom2, beta1_pow, beta2_pow, lr, epsilon, decay);
+
+      mom1_ptr[idx] = mom1;
+      mom2_ptr[idx] = mom2;
+      p_ptr[idx] = static_cast<T>(p);
       if (IsMultiPrecision) {
-        PD_ADAM_UPDATE(p_ptr, mp_ptr, g_ptr, mom1_ptr, mom2_ptr, idx);
-      } else {
-        PD_ADAM_UPDATE(p_ptr, p_ptr, g_ptr, mom1_ptr, mom2_ptr, idx);
+        mp_ptr[idx] = p;
       }
     }
+  }
+
+ private:
+  static __device__ __forceinline__ void UpdateMoments(
+      MT* __restrict__ mom1_ptr,
+      MT* __restrict__ mom2_ptr,
+      MT g,
+      MT beta1,
+      MT beta2) {
+    MT mom1 = static_cast<MT>(mom1_ptr[0]);
+    MT mom2 = static_cast<MT>(mom2_ptr[0]);
+    mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
+    mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
+
+    mom1_ptr[0] = mom1;
+    mom2_ptr[0] = mom2;
+  }
+
+  static __device__ __forceinline__ MT UpdateParameter(MT p,
+                                                       MT mom1,
+                                                       MT mom2,
+                                                       MT beta1_pow,
+                                                       MT beta2_pow,
+                                                       MT lr,
+                                                       MT epsilon,
+                                                       MT decay) {
+    if (UseAdamW) {
+      p *= (static_cast<MT>(1.0) - lr * decay);
+    }
+    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
+    return p;
   }
 };
 
@@ -182,19 +237,13 @@ __global__ void UpdateBetaPow(T beta1,
 
 template <typename Context>
 static void CopyTensorIfDifferent(const Context& dev_ctx,
-                                  const DenseTensor& src,
-                                  DenseTensor* dst) {
-  if (&src != dst) {
-    phi::Copy<Context>(dev_ctx, src, dev_ctx.GetPlace(), false, dst);
-  }
-}
-
-template <typename Context>
-static void CopyTensorIfDifferent(const Context& dev_ctx,
                                   const std::vector<const DenseTensor*>& src,
                                   const std::vector<DenseTensor*>& dst) {
   for (size_t i = 0; i < src.size(); ++i) {
-    CopyTensorIfDifferent<Context>(dev_ctx, *(src[i]), dst[i]);
+    if (src[i] != dst[i]) {
+      VLOG(10) << "Copy Tensor " << i;
+      phi::Copy<Context>(dev_ctx, *(src[i]), dev_ctx.GetPlace(), false, dst[i]);
+    }
   }
 }
 
@@ -329,7 +378,7 @@ void MultiTensorAdamKernel(
         static_cast<MPDType>(weight_decay));                       \
   } while (0)
 
-  constexpr auto kVecSize = 1;
+  constexpr auto kVecSize = 4;
   if (multi_precision) {
     if (is_cpu_betapow) {
       if (use_adamw) {
