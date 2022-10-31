@@ -187,8 +187,8 @@ class TestMultiTensorAdam(unittest.TestCase):
         )
         self.assertEqual(len(parameters), len(parameters_1))
         for i, j in zip(parameters, parameters_1):
-            atol = 0.0 if test_fp16 else 0.0
-            rtol = 0.0 if test_fp16 else 0.0
+            atol = 1e-3 if test_fp16 else 0.0
+            rtol = 1e-2 if test_fp16 else 0.0
             np.testing.assert_allclose(
                 i.numpy(), j.numpy(), rtol=rtol, atol=atol
             )
