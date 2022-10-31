@@ -235,10 +235,10 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
         platform::errors::InvalidArgument(
             "The data of input tensor should not be null."));
     PADDLE_ENFORCE_EQ(
-        pt.data.length(),
+        inputs[i].data.length(),
         input.memory_size(),
         paddle::platform::errors::InvalidArgument(
-            "The data contained in the input PaddleTensor had wrong length."))
+            "The data contained in the input PaddleTensor had wrong length."));
 
     if (platform::is_cpu_place(place_)) {
       // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.

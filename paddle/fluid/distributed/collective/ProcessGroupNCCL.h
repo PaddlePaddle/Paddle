@@ -75,6 +75,8 @@ class ProcessGroupNCCL : public ProcessGroupStream {
 
     virtual ~NCCLTask();
 
+    void UpdateWaitChain(const phi::DeviceContext& ctx) override;
+
     std::vector<EventManager> control_events_;
     std::vector<phi::DenseTensor> barrierTensors_;
 
@@ -96,10 +98,10 @@ class ProcessGroupNCCL : public ProcessGroupStream {
     return std::string(NCCL_BACKEND_NAME);
   }
 
-  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
+  const phi::DeviceContext& GetDeviceContext(const Place& place) const override;
 
-  phi::DeviceContext* GetDeviceContext(const Place& place,
-                                       bool use_calc_stream) const override;
+  const phi::DeviceContext& GetDeviceContext(
+      const Place& place, bool use_calc_stream) const override;
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
