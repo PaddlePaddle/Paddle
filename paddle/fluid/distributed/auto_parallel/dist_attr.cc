@@ -389,8 +389,6 @@ void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
   set_impl_idx(dist_attr.impl_idx());
   set_execution_stream(dist_attr.execution_stream());
   set_annotated(dist_attr.annotated());
-  impl_type_ = dist_attr.impl_type();
-  impl_idx_ = dist_attr.impl_idx();
 }
 
 void OperatorDistAttr::set_input_dist_attrs(

@@ -34,6 +34,9 @@
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
 
+DECLARE_bool(new_executor_use_local_scope);
+DECLARE_bool(control_flow_use_new_executor);
+
 namespace paddle {
 namespace framework {
 
@@ -43,7 +46,8 @@ class InterpreterCore {
                   const BlockDesc& block,
                   const std::set<std::string>& skip_gc_vars,
                   Scope* scope,
-                  bool used_for_jit = false);
+                  bool used_for_jit = false,
+                  bool used_for_control_flow_op = false);
 
   ~InterpreterCore();
 
@@ -55,7 +59,8 @@ class InterpreterCore {
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors);
 
-  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
+                                   bool need_fetch = true);
 
   void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
@@ -66,6 +71,8 @@ class InterpreterCore {
   const VariableScope* GetVariableScope() const;
 
   void reset_scope(Scope* new_scope);
+
+  const platform::Place& GetPlace() const { return place_; }
 
  private:
   // build graph

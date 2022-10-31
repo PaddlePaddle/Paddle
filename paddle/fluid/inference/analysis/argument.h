@@ -150,6 +150,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
   DECL_ARGUMENT_FIELD(enable_analysis_optim, EnableAnalysisOptim, bool);
 
+  // For JITLayer
+  DECL_ARGUMENT_FIELD(skip_load_params, SkipLoadParams, bool);
+
   // The overall graph to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);
   // The overall Scope to work on.
