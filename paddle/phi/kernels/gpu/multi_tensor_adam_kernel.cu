@@ -248,22 +248,6 @@ struct MultiTensorAdamFunctor {
     mom1_ptr[0] = mom1;
     mom2_ptr[0] = mom2;
   }
-
-  static __device__ __forceinline__ MT UpdateParameter(MT p,
-                                                       MT mom1,
-                                                       MT mom2,
-                                                       MT beta1_pow,
-                                                       MT beta2_pow,
-                                                       MT lr,
-                                                       MT epsilon,
-                                                       MT decay) {
-    if (UseAdamW) {
-      p *= (static_cast<MT>(1.0) - lr * decay);
-    }
-    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
-    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
-    return p;
-  }
 };
 
 template <typename T>
