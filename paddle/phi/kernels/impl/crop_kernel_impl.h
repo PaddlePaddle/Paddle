@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/crop_tensor_kernel.h"
+#include "paddle/phi/kernels/crop_kernel.h"
 
 #include <utility>
 #include <vector>
@@ -127,11 +127,11 @@ void CropTensorFunction(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void CropTensorKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const IntArray& shape,
-                      const IntArray& offsets,
-                      DenseTensor* out) {
+void CropKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const IntArray& shape,
+                const IntArray& offsets,
+                DenseTensor* out) {
   int rank = x.dims().size();
   PADDLE_ENFORCE_GE(
       rank,

@@ -12,21 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/crop_kernel.h"
 
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/crop_kernel_impl.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void GaussianRandomKernel(const Context& ctx,
-                          const IntArray& shape,
-                          float mean,
-                          float std,
-                          int seed,
-                          DataType dtype,
-                          DenseTensor* out);
-
-}  // namespace phi
+PD_REGISTER_KERNEL(
+    crop, CPU, ALL_LAYOUT, phi::CropKernel, float, double, int, int64_t) {}

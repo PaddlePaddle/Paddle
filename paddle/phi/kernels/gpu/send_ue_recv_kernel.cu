@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/graph_send_ue_recv_kernel.h"
-#include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
-#include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"
-#include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
+#include "paddle/phi/kernels/send_ue_recv_kernel.h"
 
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
@@ -26,6 +23,9 @@
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
+#include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"
+#include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 
 namespace phi {
 
@@ -282,16 +282,16 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void GraphSendUERecvKernel(const Context& ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& y,
-                           const DenseTensor& src_index,
-                           const DenseTensor& dst_index,
-                           const std::string& message_op,
-                           const std::string& reduce_op,
-                           const IntArray& out_size,
-                           DenseTensor* out,
-                           DenseTensor* dst_count) {
+void SendUERecvKernel(const Context& ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      const DenseTensor& src_index,
+                      const DenseTensor& dst_index,
+                      const std::string& message_op,
+                      const std::string& reduce_op,
+                      const IntArray& out_size,
+                      DenseTensor* out,
+                      DenseTensor* dst_count) {
   auto index_type = src_index.dtype();
   auto& out_size_data = out_size.GetData();
   if (index_type == phi::DataType::INT32) {
@@ -323,10 +323,10 @@ void GraphSendUERecvKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(graph_send_ue_recv,
+PD_REGISTER_KERNEL(send_ue_recv,
                    GPU,
                    ALL_LAYOUT,
-                   phi::GraphSendUERecvKernel,
+                   phi::SendUERecvKernel,
                    float,
                    double,
                    int,

@@ -436,11 +436,11 @@ void CumScalarAxisInferMeta(const MetaTensor& x,
   CumInferMeta(x, axis.to<int>(), flatten, exclusive, reverse, out);
 }
 
-void CropTensorInferMeta(const MetaTensor& x,
-                         const IntArray& shape,
-                         const IntArray& offsets,
-                         MetaTensor* out,
-                         MetaConfig config) {
+void CropInferMeta(const MetaTensor& x,
+                   const IntArray& shape,
+                   const IntArray& offsets,
+                   MetaTensor* out,
+                   MetaConfig config) {
   PADDLE_ENFORCE_NE(
       out,
       nullptr,

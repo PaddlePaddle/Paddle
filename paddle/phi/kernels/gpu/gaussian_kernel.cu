@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gaussian_random_kernel.h"
+#include "paddle/phi/kernels/gaussian_kernel.h"
 
 #include <thrust/random.h>
 
@@ -52,13 +52,13 @@ struct GaussianGenerator {
 };
 
 template <typename T, typename Context>
-void GaussianRandomKernel(const Context& dev_ctx,
-                          const IntArray& shape,
-                          float mean,
-                          float std,
-                          int seed,
-                          DataType dtype,
-                          DenseTensor* out) {
+void GaussianKernel(const Context& dev_ctx,
+                    const IntArray& shape,
+                    float mean,
+                    float std,
+                    int seed,
+                    DataType dtype,
+                    DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
@@ -78,10 +78,10 @@ void GaussianRandomKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(gaussian_random,
+PD_REGISTER_KERNEL(gaussian,
                    GPU,
                    ALL_LAYOUT,
-                   phi::GaussianRandomKernel,
+                   phi::GaussianKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    float,

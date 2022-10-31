@@ -22,13 +22,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GraphSendRecvKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& src_index,
-                         const DenseTensor& dst_index,
-                         const std::string& reduce_op,
-                         const IntArray& out_size,
-                         DenseTensor* out,
-                         DenseTensor* dst_count);
+void SendURecvKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& src_index,
+                     const DenseTensor& dst_index,
+                     const std::string& reduce_op,
+                     const IntArray& out_size,
+                     DenseTensor* out,
+                     DenseTensor* dst_count);
 
 }  // namespace phi

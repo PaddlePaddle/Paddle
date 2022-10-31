@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/graph_send_recv_kernel.h"
+#include "paddle/phi/kernels/send_u_recv_kernel.h"
 
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
@@ -154,14 +154,14 @@ void GraphSendRecvOpCUDAKernelLaunchHelper(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void GraphSendRecvKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& src_index,
-                         const DenseTensor& dst_index,
-                         const std::string& reduce_op,
-                         const IntArray& out_size,
-                         DenseTensor* out,
-                         DenseTensor* dst_count) {
+void SendURecvKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& src_index,
+                     const DenseTensor& dst_index,
+                     const std::string& reduce_op,
+                     const IntArray& out_size,
+                     DenseTensor* out,
+                     DenseTensor* dst_count) {
   auto index_type = src_index.dtype();
   auto& out_size_data = out_size.GetData();
   if (index_type == phi::DataType::INT32) {
@@ -187,10 +187,10 @@ void GraphSendRecvKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(graph_send_recv,
+PD_REGISTER_KERNEL(send_u_recv,
                    GPU,
                    ALL_LAYOUT,
-                   phi::GraphSendRecvKernel,
+                   phi::SendURecvKernel,
                    float,
                    double,
                    int,

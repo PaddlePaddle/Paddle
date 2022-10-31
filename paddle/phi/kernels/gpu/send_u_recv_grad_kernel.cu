@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/graph_send_recv_grad_kernel.h"
+#include "paddle/phi/kernels/send_u_recv_grad_kernel.h"
 
 #include <algorithm>
 #include <vector>
@@ -98,15 +98,15 @@ void GraphSendRecvGradOpCUDAKernelLaunchHelper(
 }
 
 template <typename T, typename Context>
-void GraphSendRecvGradKernel(const Context& ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& src_index,
-                             const DenseTensor& dst_index,
-                             const paddle::optional<DenseTensor>& out,
-                             const paddle::optional<DenseTensor>& dst_count,
-                             const DenseTensor& out_grad,
-                             const std::string& reduce_op,
-                             DenseTensor* x_grad) {
+void SendURecvGradKernel(const Context& ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& src_index,
+                         const DenseTensor& dst_index,
+                         const paddle::optional<DenseTensor>& out,
+                         const paddle::optional<DenseTensor>& dst_count,
+                         const DenseTensor& out_grad,
+                         const std::string& reduce_op,
+                         DenseTensor* x_grad) {
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
     GraphSendRecvGradOpCUDAKernelLaunchHelper<Context, T, int32_t>(
@@ -135,10 +135,10 @@ void GraphSendRecvGradKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(graph_send_recv_grad,
+PD_REGISTER_KERNEL(send_u_recv_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::GraphSendRecvGradKernel,
+                   phi::SendURecvGradKernel,
                    float,
                    double,
                    int,
