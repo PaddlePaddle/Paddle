@@ -88,8 +88,8 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
 
     if (engine_->with_dynamic_shape()) {
       if (flag_varseqlen) {
-          PADDLE_THROW(
-              platform::errors::Fatal("roformer not support varseqlen yet"));
+        PADDLE_THROW(
+            platform::errors::Fatal("roformer not support varseqlen yet"));
       } else {
         PADDLE_ENFORCE_EQ(
             input->getDimensions().nbDims,
