@@ -43,9 +43,9 @@ class MLPLayer(nn.Layer):
 class TestMultiTensorAdam(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        self.input_size = 800
-        self.hidden_size = 500
-        self.output_size = 700
+        self.input_size = 400
+        self.hidden_size = 250
+        self.output_size = 350
         self.n = 10
 
     def get_adam_or_adamw_out(
@@ -144,7 +144,7 @@ class TestMultiTensorAdam(unittest.TestCase):
                     multi_precision=multi_precision,
                 )
 
-        num_batch = 4
+        num_batch = 2
         if not test_fp16:
             for _ in range(num_batch):
                 out = model(inp)
