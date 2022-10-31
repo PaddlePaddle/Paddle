@@ -50,13 +50,13 @@ CUDNN_FRONTEND_APPLY_EACH(CUDNN_FRONTEND_OVERRIDE_SYMBOL);
 #include <cudnn_frontend_get_plan.h>                               // NOLINT
 // clang-format on
 
-namespace paddle {
-namespace platform {
+namespace phi {
+namespace dynload {
 inline bool IsCudnnFrontendEnabled() {
   int cudnn_version = phi::backends::gpu::DnnVersion();
   bool flag_enabled = FLAGS_enable_cudnn_frontend && (cudnn_version >= 8000);
   VLOG(3) << "[cudnn_frontend] flag_enabled=" << flag_enabled;
   return flag_enabled;
 }
-}  // namespace platform
-}  // namespace paddle
+}  // namespace dynload
+}  // namespace phi
