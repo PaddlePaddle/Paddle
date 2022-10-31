@@ -121,7 +121,7 @@ class TranposeTypeClassifier {
   void SimplifyPermAndDims(const size_t rank,
                            const std::vector<int64_t>& in_dims,
                            const std::vector<int32_t>& perm) {
-    int combined_dims[phi::DDim::kMaxRank];
+    int64_t combined_dims[phi::DDim::kMaxRank];
     int valid_map[phi::DDim::kMaxRank];
 
     // Merge consecutive dims to the fist one dim and
