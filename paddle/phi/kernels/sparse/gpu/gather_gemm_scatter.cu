@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000 && !defined(_WIN32) && \
-    !defined(__APPLE__)
+#ifdef PADDLE_WITH_CUTLASS
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 namespace phi {
 namespace sparse {

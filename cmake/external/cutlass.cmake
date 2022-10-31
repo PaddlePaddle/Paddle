@@ -15,6 +15,14 @@
 if(NOT WITH_GPU)
   return()
 endif()
+if(WITH_ARM
+   OR WIN32
+   OR APPLE)
+  return()
+endif()
+if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+  return()
+endif()
 
 include(ExternalProject)
 
@@ -27,6 +35,8 @@ include_directories("${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/")
 include_directories("${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/include/")
 include_directories(
   "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/util/include/")
+
+add_definitions("-DPADDLE_WITH_CUTLASS")
 
 ExternalProject_Add(
   extern_cutlass

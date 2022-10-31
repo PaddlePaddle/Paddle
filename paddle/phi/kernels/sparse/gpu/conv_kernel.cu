@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000 && !defined(_WIN32) && \
-    !defined(__APPLE__)
+#ifdef PADDLE_WITH_CUTLASS
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 #endif
 
@@ -143,8 +142,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                       out_index_ptr,
                                       unique_value_ptr);
   }
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000 && !defined(_WIN32) && \
-    !defined(__APPLE__)
+#ifdef PADDLE_WITH_CUTLASS
   bool cutlass = true;
   if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
   if (in_channels % 4 != 0 || out_channels % 4 != 0) {
@@ -287,8 +285,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                      out_channels,
                                      1,
                                      out_values_ptr);
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000 && !defined(_WIN32) && \
-    !defined(__APPLE__)
+#ifdef PADDLE_WITH_CUTLASS
   }
 #endif
 }
