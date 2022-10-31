@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ def cast(x, dtype):
             bool, float16, float32, float64, int8, int32, int64, uint8.
 
     Returns:
-        Tensor: A Tensor with the same shape as input's.
+        Tensor, A Tensor with the same shape as input's.
 
     Examples:
         .. code-block:: python
@@ -169,7 +169,7 @@ def slice(input, axes, starts, ends):
                 It represents ending indices of corresponding axis in ``axes``.
 
     Returns:
-        Tensor:  A ``Tensor``. The data type is same as ``input``.
+        Tensor, A ``Tensor``. The data type is same as ``input``.
 
     Examples:
         .. code-block:: python
@@ -388,7 +388,7 @@ def transpose(x, perm, name=None):
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Tensor: A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
+        Tensor, A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
 
     For Example:
 
@@ -492,7 +492,7 @@ def unstack(x, axis=0, num=None):
         num (int|None): The number of output variables.
 
     Returns:
-        list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
+        list(Tensor), The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
 
     Examples:
         .. code-block:: python
@@ -666,7 +666,7 @@ def crop(x, shape=None, offsets=None, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The cropped Tensor has same data type with `x`.
+        Tensor, The cropped Tensor has same data type with `x`.
 
     Examples:
 
@@ -824,7 +824,7 @@ def fill_(x, value):
         value (Scale): ``value`` is the value to be filled in x
 
     Returns:
-        x(Tensor): Tensor x filled with value inplace
+        x(Tensor), Tensor x filled with value inplace
 
     Examples:
         .. code-block:: python
@@ -862,7 +862,7 @@ def zero_(x):
         x (Tensor): ``x`` is the Tensor we want to filled with zero inplace
 
     Returns:
-        x (Tensor): Tensor x filled with zero inplace
+        x (Tensor), Tensor x filled with zero inplace
 
     Examples:
         .. code-block:: python
@@ -899,7 +899,7 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
         name(str,optional): Name for the operation (optional, default is None)
 
     Returns:
-        Tensor: Tensor with diagonal filled with value.
+        Tensor, Tensor with diagonal filled with value.
 
     Examples:
         .. code-block:: python
@@ -1000,7 +1000,7 @@ def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Tensor with diagonal filled with y.
+        Tensor, Tensor with diagonal filled with y.
 
     Examples:
         .. code-block:: python
@@ -1031,7 +1031,7 @@ def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Tensor with diagonal filled with y.
+        Tensor, Tensor with diagonal filled with y.
 
     Examples:
         .. code-block:: python
@@ -1061,7 +1061,7 @@ def tolist(x):
         x (Tensor): ``x`` is the Tensor we want to translate to list.
 
     Returns:
-        list: A list that contain the same value of current Tensor.
+        list, A list that contain the same value of current Tensor.
 
 
     Examples:
@@ -1095,7 +1095,7 @@ def concat(x, axis=0, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor with the same data type as ``x``.
+        Tensor, A Tensor with the same data type as ``x``.
 
     Examples:
         .. code-block:: python
@@ -1227,7 +1227,7 @@ def broadcast_tensors(input, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        list(Tensor): The list of broadcasted tensors following the same order as ``input``.
+        list(Tensor), The list of broadcasted tensors following the same order as ``input``.
 
     Examples:
         .. code-block:: python
@@ -1328,7 +1328,7 @@ def flip(x, axis, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Tensor or LoDTensor calculated by flip layer. The data type is same with input x.
+        Tensor, Tensor or LoDTensor calculated by flip layer. The data type is same with input x.
 
     Examples:
         .. code-block:: python
@@ -1386,7 +1386,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Tensor: Tensor or LoDTensor calculated by rot90 layer. The data type is same with input x.
+        Tensor, Tensor or LoDTensor calculated by rot90 layer. The data type is same with input x.
 
     Examples:
         .. code-block:: python
@@ -1529,7 +1529,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A tensor with the contents of the input tensor, with input \
+        Tensor, A tensor with the contents of the input tensor, with input \
                   axes flattened by indicated start axis and end axis. \
                   A Tensor with data type same as input x.
 
@@ -1667,7 +1667,7 @@ def roll(x, shifts, axis=None, name=None):
 
 
     Returns:
-        Tensor: A Tensor with same data type as `x`.
+        Tensor, A Tensor with same data type as `x`.
 
     Examples:
         .. code-block:: python
@@ -1801,7 +1801,7 @@ def stack(x, axis=0, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The stacked tensor with same data type as input.
+        Tensor, The stacked tensor with same data type as input.
 
     Example:
         .. code-block:: python
@@ -1905,7 +1905,7 @@ def split(x, num_or_sections, axis=0, name=None):
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
-        list(Tensor): The list of segmented Tensors.
+        list(Tensor), The list of segmented Tensors.
 
     Example:
         .. code-block:: python
@@ -2171,7 +2171,7 @@ def squeeze(x, axis=None, name=None):
         name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Tensor: Squeezed Tensor with the same data type as input Tensor.
+        Tensor, Squeezed Tensor with the same data type as input Tensor.
 
     Examples:
         .. code-block:: python
@@ -2296,7 +2296,7 @@ def unique_consecutive(
             :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        tuple: (out, inverse, counts). `out` is the unique consecutive tensor for `x`. `inverse` is provided only if `return_inverse` is True. `counts` is provided only if `return_counts` is True.
+        tuple (out, inverse, counts). `out` is the unique consecutive tensor for `x`. `inverse` is provided only if `return_inverse` is True. `counts` is provided only if `return_counts` is True.
 
     Example:
         .. code-block:: python
@@ -2587,7 +2587,7 @@ def unsqueeze(x, axis, name=None):
         name (str|None): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Tensor: Unsqueezed Tensor with the same data type as input Tensor.
+        Tensor, Unsqueezed Tensor with the same data type as input Tensor.
 
     Examples:
         .. code-block:: python
@@ -2731,7 +2731,7 @@ def gather(x, index, axis=None, name=None):
             For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        output (Tensor): The output is a tensor with the same rank as ``x``.
+        output (Tensor), The output is a tensor with the same rank as ``x``.
 
     Examples:
 
@@ -2797,7 +2797,7 @@ def unbind(input, axis=0):
         axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind.
             If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
     Returns:
-        list(Tensor): The list of segmented Tensor variables.
+        list(Tensor), The list of segmented Tensor variables.
 
     Example:
         .. code-block:: python
@@ -2895,7 +2895,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Tensor: The output is a Tensor with the same shape as x.
+        Tensor, The output is a Tensor with the same shape as x.
 
     Examples:
         .. code-block:: python
@@ -3014,7 +3014,7 @@ def scatter_nd_add(x, index, updates, name=None):
         name (str|None): The output tensor name. If set None, the layer will be named automatically.
 
     Returns:
-        output (Tensor): The output is a tensor with the same shape and dtype as x.
+        output (Tensor), The output is a tensor with the same shape and dtype as x.
 
     Examples:
 
@@ -3075,7 +3075,7 @@ def scatter_nd(index, updates, shape, name=None):
         name (str|None): The output Tensor name. If set None, the layer will be named automatically.
 
     Returns:
-        output (Tensor): The output is a tensor with the same type as :attr:`updates` .
+        output (Tensor), The output is a tensor with the same type as :attr:`updates` .
 
     Examples:
 
@@ -3107,7 +3107,7 @@ def chunk(x, chunks, axis=0, name=None):
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
-        list(Tensor): The list of segmented Tensors.
+        list(Tensor), The list of segmented Tensors.
 
     Examples:
         .. code-block:: python
@@ -3262,7 +3262,7 @@ def expand_as(x, y, name=None):
         name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        N-D Tensor: A Tensor with the same shape as ``y``. The data type is the same as ``x``.
+        N-D Tensor, A Tensor with the same shape as ``y``. The data type is the same as ``x``.
 
     Examples:
         .. code-block:: python
@@ -3324,7 +3324,7 @@ def broadcast_to(x, shape, name=None):
             The value -1 in shape means keeping the corresponding dimension unchanged.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        N-D Tensor: A Tensor with the given shape. The data type is the same as ``x``.
+        N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
 
     Examples:
         .. code-block:: python
@@ -3418,7 +3418,7 @@ def expand(x, shape, name=None):
         name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        N-D Tensor: A Tensor with the given shape. The data type is the same as ``x``.
+        N-D Tensor, A Tensor with the given shape. The data type is the same as ``x``.
 
     Examples:
         .. code-block:: python
@@ -3531,7 +3531,7 @@ def reshape(x, shape, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A reshaped Tensor with the same data type as ``x``.
+        Tensor, A reshaped Tensor with the same data type as ``x``.
 
     Examples:
         .. code-block:: python
@@ -3805,7 +3805,7 @@ def gather_nd(x, index, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        output (Tensor): A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
+        output (Tensor), A tensor with the shape index.shape[:-1] + input.shape[index.shape[-1]:]
 
     Examples:
 
@@ -3903,7 +3903,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
                         For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Tensor:  A ``Tensor`` with the same dimension as ``x``. The data type is same as ``x``.
+        Tensor, A ``Tensor`` with the same dimension as ``x``. The data type is same as ``x``.
 
     Examples:
         .. code-block:: python
@@ -4072,7 +4072,7 @@ def tensordot(x, y, axes=2, name=None):
                              For more information, please refer to :ref:`api_guide_Name` .
 
     Return:
-        Output (Tensor): The contraction result with the same data type as ``x`` and ``y``.
+        Output (Tensor), The contraction result with the same data type as ``x`` and ``y``.
         In general, :math:`output.ndim = x.ndim + y.ndim - 2 \times n_{axes}`, where :math:`n_{axes}` denotes the number of axes to be contracted.
 
     NOTES:
@@ -4277,7 +4277,7 @@ def as_complex(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The output. Data type is 'complex64' or 'complex128', with the same precision as the input.
+        Tensor, The output. Data type is 'complex64' or 'complex128', with the same precision as the input.
 
     Examples:
         .. code-block:: python
@@ -4324,7 +4324,7 @@ def as_real(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The output. Data type is 'float32' or 'float64', with the same precision as the input.
+        Tensor, The output. Data type is 'float32' or 'float64', with the same precision as the input.
 
     Examples:
         .. code-block:: python
@@ -4376,7 +4376,7 @@ def repeat_interleave(x, repeats, axis=None, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor with same data type as ``x``.
+        Tensor, A Tensor with same data type as ``x``.
 
     Examples:
         .. code-block:: python
@@ -4445,7 +4445,7 @@ def moveaxis(x, source, destination, name=None):
             property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A new tensor whose axis have been moved.
+        Tensor, A new tensor whose axis have been moved.
 
     Examples:
         .. code-block:: python
@@ -4588,7 +4588,7 @@ def take_along_axis(arr, indices, axis):
         axis (int) : The axis to take 1d slices along.
 
     Returns:
-        Tensor: The indexed element, same dtype with arr
+        Tensor, The indexed element, same dtype with arr
 
     Examples:
         .. code-block:: python
@@ -4658,7 +4658,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
 
     Returns:
-        Tensor: The indexed element, same dtype with arr
+        Tensor, The indexed element, same dtype with arr
 
     Examples:
         .. code-block:: python
@@ -4760,7 +4760,7 @@ def index_add(x, index, axis, value, name=None):
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor: same dimention and dtype with x.
+        Tensor, same dimention and dtype with x.
 
     Examples:
         .. code-block:: python

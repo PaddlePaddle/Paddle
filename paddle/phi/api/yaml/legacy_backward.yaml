@@ -21,28 +21,6 @@
     func : abs_grad
   backward : abs_double_grad
 
-- backward_op : acos_grad
-  forward : acos (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : acos_grad
-  inplace : (out_grad -> x_grad)
-
-- backward_op : acosh_grad
-  forward : acosh (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : acosh_grad
-  inplace : (out_grad -> x_grad)
-
 - backward_op : add_double_grad
   forward : add_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
@@ -122,30 +100,6 @@
   kernel :
     func : amin_grad
 
-- backward_op : angle_grad
-  forward : angle (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : angle_grad
-  data_transform:
-    skip_transform : out_grad
-
-- backward_op : argsort_grad
-  forward : argsort (Tensor x, int axis, bool descending) -> Tensor(out), Tensor(indices)
-  args : (Tensor indices, Tensor x, Tensor out_grad, int axis, bool descending)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : argsort_grad
-    data_type : out_grad
-  no_need_buffer : x
-
 - backward_op : as_complex_grad
   forward : as_complex (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -157,28 +111,6 @@
   args : (Tensor out_grad)
   output : Tensor(x_grad)
   invoke : as_complex(out_grad)
-
-- backward_op : asin_grad
-  forward : asin (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : asin_grad
-  inplace : (out_grad -> x_grad)
-
-- backward_op : asinh_grad
-  forward : asinh (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : asinh_grad
-  inplace : (out_grad -> x_grad)
 
 - backward_op : assign_grad
   forward : assign (Tensor x) -> Tensor(out)
@@ -194,28 +126,6 @@
     func : UnchangedInferMeta
   kernel :
     func : assign
-  inplace : (out_grad -> x_grad)
-
-- backward_op : atan_grad
-  forward : atan (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : atan_grad
-  inplace : (out_grad -> x_grad)
-
-- backward_op : atanh_grad
-  forward : atanh (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : atanh_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : batch_norm_double_grad
@@ -287,15 +197,6 @@
     func : BilinearTensorProductGradInferMeta
   kernel :
     func : bilinear_tensor_product_grad
-
-- backward_op : bmm_grad
-  forward : bmm (Tensor x, Tensor y) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : BmmGradInferMeta
-  kernel :
-    func : bmm_grad
 
 - backward_op : brelu_grad
   forward : brelu (Tensor x, float t_min, float t_max) -> Tensor(out)
@@ -500,28 +401,6 @@
     func : conv3d_transpose_grad
     use_gpudnn : true
 
-- backward_op : cos_grad
-  forward : cos (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : cos_grad
-  inplace : (out_grad -> x_grad)
-
-- backward_op : cosh_grad
-  forward : cosh (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : cosh_grad
-  inplace : (out_grad -> x_grad)
-
 - backward_op : crop_tensor_grad
   forward : crop_tensor (Tensor x, IntArray shape, IntArray offsets) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, IntArray offsets)
@@ -602,16 +481,6 @@
     func : Conv2dTransposeGradInferMeta
   kernel :
     func : depthwise_conv2d_transpose_grad
-
-- backward_op : det_grad
-  forward : det (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : determinant_grad
 
 - backward_op : divide_double_grad
   forward : divide_grad (Tensor x, Tensor y, Tensor out, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
@@ -2106,28 +1975,6 @@
     func : silu_grad
   inplace : (out_grad -> x_grad)
 
-- backward_op : sin_grad
-  forward : sin (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : sin_grad
-  inplace : (out_grad -> x_grad)
-
-- backward_op : sinh_grad
-  forward : sinh (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : sinh_grad
-  inplace : (out_grad -> x_grad)
-
 - backward_op : slice_double_grad
   forward : slice_grad (Tensor input, Tensor grad_out, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis) -> Tensor(grad_input)
   args : (Tensor grad_input_grad, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
@@ -2407,17 +2254,6 @@
     param : [arr]
   kernel :
     func : take_along_axis_grad
-
-- backward_op : tan_grad
-  forward : tan (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : tan_grad
-  inplace : (out_grad -> x_grad)
 
 - backward_op : tanh_double_grad
   forward : tanh_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)

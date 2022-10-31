@@ -1610,9 +1610,9 @@ MLURNNDesc::~MLURNNDesc() {
     const float alpha1_float,
     const float alpha2_float,
     const float beta_float) {
-  const int alpha1_int = static_cast<const int>(alpha1_float);
-  const int alpha2_int = static_cast<const int>(alpha2_float);
-  const int beta_int = static_cast<const int>(beta_float);
+  const int alpha1_int = static_cast<int>(alpha1_float);
+  const int alpha2_int = static_cast<int>(alpha2_float);
+  const int beta_int = static_cast<int>(beta_float);
 
   const void* alpha1_ptr = static_cast<const void*>(&alpha1_float);
   const void* alpha2_ptr = static_cast<const void*>(&alpha2_float);
