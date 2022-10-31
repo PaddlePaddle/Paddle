@@ -1414,13 +1414,16 @@ bool OperatorWithKernel::SupportsKernelType(
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
-    PADDLE_ENFORCE_EQ(paddle::platform::in_cudnn_white_list(type_),
-                      true,
-                      platform::errors::Unimplemented(
-                          "%s operator not in cudnn_white_list", type_));
-    auto tmp_kernel_type = kernel_type;
-    tmp_kernel_type.library_type_ = framework::LibraryType::kCUDNN;
-    return kernels.find(tmp_kernel_type) != kernels.end();
+    if (paddle::platform::in_cudnn_white_list(type_)) {
+      auto tmp_kernel_type = kernel_type;
+      tmp_kernel_type.library_type_ = framework::LibraryType::kCUDNN;
+      return kernels.find(tmp_kernel_type) != kernels.end();
+    } else {
+      PADDLE_ENFORCE_EQ(paddle::platform::in_cudnn_black_list(type_),
+                        true,
+                        platform::errors::Unimplemented(
+                            "%s operator not in cudnn_white_list", type_));
+    }
   }
 #endif
 
@@ -1606,11 +1609,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
-        PADDLE_ENFORCE_EQ(paddle::platform::in_cudnn_white_list(type_),
-                          true,
-                          platform::errors::Unimplemented(
-                              "%s operator not in cudnn_white_list", type_));
-        kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
+        if (paddle::platform::in_cudnn_white_list(type_)) {
+          kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
+        } else {
+          PADDLE_ENFORCE_EQ(paddle::platform::in_cudnn_black_list(type_),
+                            true,
+                            platform::errors::Unimplemented(
+                                "%s operator not in cudnn_white_list", type_));
+        }
       }
 #endif
 
@@ -1859,11 +1865,14 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(ctx)) {
-    PADDLE_ENFORCE_EQ(paddle::platform::in_cudnn_white_list(type_),
-                      true,
-                      platform::errors::Unimplemented(
-                          "%s operator not in cudnn_white_list", type_));
-    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+    if (paddle::platform::in_cudnn_white_list(type_)) {
+      expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+    } else {
+      PADDLE_ENFORCE_EQ(paddle::platform::in_cudnn_white_list(type_),
+                        true,
+                        platform::errors::Unimplemented(
+                            "%s operator not in cudnn_white_list", type_));
+    }
   }
 #endif
 

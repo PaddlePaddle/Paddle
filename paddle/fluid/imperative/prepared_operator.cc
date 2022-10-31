@@ -209,11 +209,14 @@ PreparedOp PrepareImpl(
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!op.DnnFallback() && paddle::platform::CanCUDNNBeUsed(dygraph_exe_ctx)) {
-    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
-    PADDLE_ENFORCE_EQ(paddle::platform::in_cudnn_white_list(op.Type()),
-                      true,
-                      platform::errors::Unimplemented(
-                          "%s operator not in cudnn_white_list", op.Type()));
+    if (paddle::platform::in_cudnn_white_list(op.Type())) {
+      expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+    } else {
+      PADDLE_ENFORCE_EQ(paddle::platform::in_cudnn_white_list(op.Type()),
+                        true,
+                        platform::errors::Unimplemented(
+                            "%s operator not in cudnn_white_list", op.Type()));
+    }
   }
 #endif
 

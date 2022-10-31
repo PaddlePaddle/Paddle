@@ -78,7 +78,9 @@ static const std::unordered_set<std::string> cudnn_white_list = {
     "softmax_grad",
     "sequence_softmax",
     "sequence_softmax_grad",
+};
 
+static const std::unordered_set<std::string> cudnn_black_list = {
     // WIP
     "conv2d",
     "conv2d_grad",
@@ -206,6 +208,10 @@ inline bool in_mkldnn_white_list(const std::string& op_name) {
 
 inline bool in_cudnn_white_list(const std::string& op_name) {
   return cudnn_white_list.find(op_name) != cudnn_white_list.end();
+}
+
+inline bool in_cudnn_black_list(const std::string& op_name) {
+  return cudnn_black_list.find(op_name) != cudnn_black_list.end();
 }
 
 }  // namespace platform

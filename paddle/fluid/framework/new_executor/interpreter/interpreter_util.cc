@@ -561,13 +561,16 @@ void BuildOpFuncList(const platform::Place& place,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         if (!op_with_kernel->DnnFallback() &&
             paddle::platform::CanCUDNNBeUsed(exec_ctx)) {
-          PADDLE_ENFORCE_EQ(
-              paddle::platform::in_cudnn_white_list(op_with_kernel->Type()),
-              true,
-              platform::errors::Unimplemented(
-                  "%s operator not in cudnn_white_list",
-                  op_with_kernel->Type()));
-          expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+          if (paddle::platform::in_cudnn_white_list(op_with_kernel->Type())) {
+            expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+          } else {
+            PADDLE_ENFORCE_EQ(
+                paddle::platform::in_cudnn_white_list(op_with_kernel->Type()),
+                true,
+                platform::errors::Unimplemented(
+                    "%s operator not in cudnn_white_list",
+                    op_with_kernel->Type()));
+          }
         }
 #endif
         VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
