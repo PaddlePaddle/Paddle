@@ -18,9 +18,6 @@
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
 
-namespace paddle {
-namespace platform {
-
 TEST(CudnnFrontendTest, TensorCreation) {
   // Consider creation of a 2d Tensor
   // n,c,h,w as 4,32,32,32
@@ -41,9 +38,7 @@ TEST(CudnnFrontendTest, TensorCreation) {
                       .build();
   } catch (cudnn_frontend::cudnnException &e) {
     std::cout << "Exception in tensor creation " << e.what() << std::endl;
+    FAIL();
   }
   std::cout << "Finished tensor creation." << std::endl;
 }
-
-}  // namespace platform
-}  // namespace paddle

@@ -17,10 +17,10 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 
-DECLARE_bool(cudnn_frontend_enable);
+DECLARE_bool(enable_cudnn_frontend);
 
 // Redirect the CUDNN APIs in the cudnn_frontend namespace to
 // the functions in phi::dynload
@@ -53,8 +53,8 @@ CUDNN_FRONTEND_APPLY_EACH(CUDNN_FRONTEND_OVERRIDE_SYMBOL);
 namespace paddle {
 namespace platform {
 inline bool IsCudnnFrontendEnabled() {
-  int cudnn_version = paddle::platform::DnnVersion();
-  bool flag_enabled = FLAGS_cudnn_frontend_enable && (cudnn_version >= 8200);
+  int cudnn_version = phi::backends::gpu::DnnVersion();
+  bool flag_enabled = FLAGS_enable_cudnn_frontend && (cudnn_version >= 8000);
   VLOG(3) << "[cudnn_frontend] flag_enabled=" << flag_enabled;
   return flag_enabled;
 }

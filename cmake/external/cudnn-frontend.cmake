@@ -14,19 +14,17 @@
 
 include(ExternalProject)
 
-set(CUDNN_FRONTEND_CUDNN_MIN_VERSION 8400)
+set(CUDNN_FRONTEND_CUDNN_MIN_VERSION 8000)
 
 if(NOT WITH_GPU)
   message(FATAL_ERROR "Can't enable CUDNN Frontend API without CUDA.")
 endif()
-if(CUDNN_VERSION LESS 8400)
+if(CUDNN_VERSION LESS 8000)
   message(
     FATAL_ERROR
       "Minimum CUDNN version is ${CUDNN_FRONTEND_CUDNN_MIN_VERSION}. Current: ${CUDNN_VERSION}"
   )
 endif()
-
-message(STATUS "Adding cudnn-frontend.")
 
 # Version: v0.7.1
 set(CUDNN_FRONTEND_PREFIX_DIR ${THIRD_PARTY_PATH}/cudnn-frontend)
@@ -37,6 +35,11 @@ set(CUDNN_FRONTEND_TAG v0.7.1)
 
 set(CUDNN_FRONTEND_INCLUDE_DIR ${CUDNN_FRONTEND_SOURCE_DIR})
 include_directories(${CUDNN_FRONTEND_INCLUDE_DIR})
+
+message(
+  STATUS
+    "Adding cudnn-frontend. Version: ${CUDNN_FRONTEND_TAG}. Directory: ${CUDNN_FRONTEND_INCLUDE_DIR}"
+)
 
 ExternalProject_Add(
   extern_cudnn_frontend
@@ -51,8 +54,7 @@ ExternalProject_Add(
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   INSTALL_COMMAND ""
-  TEST_COMMAND ""
-  TIMEOUT $ENV{DOWNLOAD_TIMEOUT})
+  TEST_COMMAND "")
 
 add_library(cudnn-frontend INTERFACE)
 add_dependencies(cudnn-frontend extern_cudnn_frontend)
