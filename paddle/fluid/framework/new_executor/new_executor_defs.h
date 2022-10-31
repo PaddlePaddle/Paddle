@@ -306,8 +306,6 @@ class Instruction {
 
   const std::unordered_set<int>& NoDataTransformVars() const;
 
-  const Priority GetPriority() const { return priority_; }
-
   OpKernelComputeFunc KernelFunc() const;
 
   phi::Kernel* PhiKernel() const;
@@ -359,6 +357,8 @@ class Instruction {
   void AddOutputEvent(size_t var_id,
                       std::shared_ptr<platform::DeviceEvent> event,
                       platform::DeviceType waiter_type);
+
+  Priority GetPriority() const { return priority_; }
 
  private:
   size_t id_;
