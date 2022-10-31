@@ -329,7 +329,7 @@ void MultiTensorAdamKernel(
         static_cast<MPDType>(weight_decay));                       \
   } while (0)
 
-  constexpr auto kVecSize = 4;
+  constexpr auto kVecSize = 1;
   if (multi_precision) {
     if (is_cpu_betapow) {
       if (use_adamw) {
