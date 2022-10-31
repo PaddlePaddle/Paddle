@@ -90,10 +90,14 @@ def get_h_cu_file(file_path):
     dir_path = file_path[1]
     filename = file_path[2]
     ut = filename.replace('^', '').replace('$', '').replace('.log', '')
-    os.system(
-        "cat %s/%s | grep 'precise test map fileeee:'| uniq >> %s/build/ut_map/%s/related_%s.txt"
-        % (dir_path, filename, rootPath, ut, ut)
-    )
+    ut_path = "%s/build/ut_map/%s" % (rootPath, ut)
+    if os.path.exists(ut_path):
+        os.system(
+            "cat %s/%s | grep 'precise test map fileeee:'| uniq >> %s/build/ut_map/%s/related_%s.txt"
+            % (dir_path, filename, rootPath, ut, ut)
+        )
+    else:
+        print("%s has failed,no has direcotory" % ut)
 
 
 def doFun(file_path):

@@ -232,16 +232,6 @@ def _tukey(
 
 
 @window_function_register.register()
-def _kaiser(
-    M: int, beta: float, sym: bool = True, dtype: str = 'float64'
-) -> Tensor:
-    """Compute a Kaiser window.
-    The Kaiser window is a taper formed by using a Bessel function.
-    """
-    raise NotImplementedError()
-
-
-@window_function_register.register()
 def _gaussian(
     M: int, std: float, sym: bool = True, dtype: str = 'float64'
 ) -> Tensor:
@@ -346,7 +336,7 @@ def get_window(
     """Return a window of a given length and type.
 
     Args:
-        window (Union[str, Tuple[str, float]]): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'kaiser', 'gaussian', 'general_gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor'.
+        window (Union[str, Tuple[str, float]]): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'gaussian', 'general_gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor'.
         win_length (int): Number of samples.
         fftbins (bool, optional): If True, create a "periodic" window. Otherwise, create a "symmetric" window, for use in filter design. Defaults to True.
         dtype (str, optional): The data type of the return window. Defaults to 'float64'.
@@ -363,7 +353,7 @@ def get_window(
             cosine_window = paddle.audio.functional.get_window('cosine', n_fft)
 
             std = 7
-            gussian_window = paddle.audio.functional.get_window(('gaussian',std), n_fft)
+            gaussian_window = paddle.audio.functional.get_window(('gaussian',std), n_fft)
     """
     sym = not fftbins
 
