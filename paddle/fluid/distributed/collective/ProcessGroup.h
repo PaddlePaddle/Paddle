@@ -61,6 +61,7 @@ class ProcessGroup {
          const std::vector<phi::DenseTensor>& inputs,
          CommType comm_type,
          bool sync_op);
+    Task(int rank, CommType comm_type, bool sync_op);
 
     virtual ~Task();
     virtual bool IsCompleted();
@@ -96,6 +97,16 @@ class ProcessGroup {
   virtual const phi::DeviceContext& GetDeviceContext(const Place& place) const {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Does not support to get device_context from ProcessGroup%s.",
+        GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const AllreduceOptions& opts,
+      bool sync_op) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support all_reduce with sync_op flag",
         GetBackendName()));
   }
 

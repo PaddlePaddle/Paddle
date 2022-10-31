@@ -27,6 +27,9 @@ class ProcessGroupStream : public ProcessGroup {
  public:
   class TaskStream : public ProcessGroup::Task {
    public:
+    TaskStream(int rank, CommType comm_type, bool sync_op, bool use_calc_stream)
+        : Task(rank, comm_type, sync_op), use_calc_stream_(use_calc_stream) {}
+
     // TODO(liyurui): This constructor is temporary here for compatible reason,
     // will be deleted soon.
     TaskStream(int rank,
@@ -57,6 +60,19 @@ class ProcessGroupStream : public ProcessGroup {
   virtual const phi::DeviceContext& GetDeviceContext(
       const Place& place, bool use_calc_stream) const;
 
+  std::shared_ptr<ProcessGroup::Task> AllReduce(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const AllreduceOptions& opts,
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const AllreduceOptions& opts,
+      bool sync_op,
+      bool use_calc_stream);
+
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
@@ -65,19 +81,6 @@ class ProcessGroupStream : public ProcessGroup {
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-      bool sync_op,
-      bool use_calc_stream);
-
-  std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& input_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& output_tensors,  // NOLINT
-      const AllreduceOptions& options,
-      bool sync_op) override;
-
-  virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& input_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& output_tensors,  // NOLINT
-      const AllreduceOptions& options,
       bool sync_op,
       bool use_calc_stream);
 

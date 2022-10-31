@@ -147,12 +147,12 @@ void BindDistributed(py::module *m) {
                  distributed::ReduceOp op,
                  bool sync_op) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                distributed::AllreduceOptions opts;
-                opts.reduce_op = op;
-                auto dense =
+                auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.AllReduce(tensors, tensors, opts, sync_op);
+                auto in_dense = *p_dense;
+                auto *out_dense = p_dense.get();
+                distributed::AllreduceOptions opts{op};
+                return self.AllReduce(out_dense, in_dense, opts, sync_op);
               },
               py::arg("tensor"),
               py::arg("op"),
@@ -872,13 +872,13 @@ void BindDistributed(py::module *m) {
                  py::handle py_tensor,
                  distributed::ReduceOp op) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                distributed::AllreduceOptions opts;
-                opts.reduce_op = op;
-                auto dense =
+                auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.AllReduce(tensors,
-                                      tensors,
+                auto in_dense = *p_dense;
+                auto *out_dense = p_dense.get();
+                distributed::AllreduceOptions opts{op};
+                return self.AllReduce(out_dense,
+                                      in_dense,
                                       opts,
                                       /*sync_op*/ true,
                                       /*use_calc_stream*/ true);

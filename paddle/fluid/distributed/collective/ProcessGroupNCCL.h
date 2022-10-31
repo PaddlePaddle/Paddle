@@ -25,6 +25,7 @@
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/device_event.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
@@ -44,46 +45,38 @@ namespace distributed {
 
 using Place = paddle::platform::Place;
 
-class ProcessGroupNCCL : public ProcessGroupStream {
+class ProcessGroupNCCL final : public ProcessGroupStream {
  public:
-  class NCCLTask : public ProcessGroupStream::TaskStream,
-                   public std::enable_shared_from_this<NCCLTask> {
+  class NCCLTask final : public ProcessGroupStream::TaskStream,
+                         public std::enable_shared_from_this<NCCLTask> {
    public:
     NCCLTask(const std::vector<Place>& places,
              int rank,
              CommType CommType,
              const std::vector<phi::DenseTensor>& inputs);
-
     NCCLTask(const std::vector<Place>& places,
              int rank,
              CommType comm_type,
              const std::vector<phi::DenseTensor>& inputs,
              bool sync_op,
              bool use_calc_stream);
-
-    bool IsCompleted();
-
-    void SynchronizeStreams();
-
-    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
-
-    void Synchronize();
-
-    void SetOutputs(std::vector<phi::DenseTensor>& outputs);  // NOLINT
-
+    NCCLTask(const Place& place,
+             int rank,
+             CommType comm_type,
+             bool sync_op,
+             bool use_calc_stream);
     virtual ~NCCLTask();
 
+    bool IsCompleted() override;
+    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout) override;
+    void Synchronize() override;
     void UpdateWaitChain(const phi::DeviceContext& ctx) override;
 
-    std::vector<EventManager> control_events_;
-    std::vector<phi::DenseTensor> barrierTensors_;
-
-   protected:
-    std::vector<Place> places_;
-    std::vector<std::shared_ptr<NCCLCommManager>> ncclComms_;
-    std::shared_ptr<std::vector<phi::DenseTensor>> outputs_;
+    bool barrier_{false};
+    platform::DeviceEvent comm_event_;  // event on comm stream
 
    private:
+    Place place_;
   };
 
   ProcessGroupNCCL(const std::shared_ptr<Store>& store,
@@ -100,9 +93,9 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       const Place& place, bool use_calc_stream) const override;
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-      const AllreduceOptions& options,
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const AllreduceOptions& opts,
       bool sync_op,
       bool use_calc_stream) override;
 
@@ -261,14 +254,14 @@ class ProcessGroupNCCL : public ProcessGroupStream {
 
   ncclComm_t NCCLComm(const Place& place) const;
 
- protected:
-  virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
+ private:
+  std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
       std::vector<Place> places,
       int rank,
       CommType op_type,
       const std::vector<phi::DenseTensor>& inputs);
 
-  virtual std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
+  std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
       const std::vector<Place>& places,
       int rank,
       CommType op_type,
@@ -276,26 +269,27 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream);
 
- protected:
-  std::shared_ptr<Store> store_;
-  std::shared_ptr<NCCLCommManager> nccl_comm_;
-  std::mutex mutex_;
-  std::unordered_map<std::string, std::vector<std::shared_ptr<NCCLCommManager>>>
-      places_to_ncclcomm_;
+  std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,
+                                                         int rank,
+                                                         CommType op_type,
+                                                         bool sync_op,
+                                                         bool use_calc_stream);
 
-  std::unordered_map<std::string, std::vector<EventManager>> places_to_events_;
+  void BroadcastUniqueNCCLID(ncclUniqueId* nccl_id);
 
-  std::unordered_map<std::string, std::vector<std::unique_ptr<phi::GPUContext>>>
-      places_to_ctx_;
+  void CreateNCCLEnvCache(const Place& place, const std::string& place_key);
 
-  std::set<int> used_place_ids_;
+  template <typename Fn>
+  std::shared_ptr<ProcessGroupStream::Task> Collective(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      Fn fn,
+      CommType comm_type,
+      bool sync_op,
+      bool use_calc_stream);
 
- private:
-  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,  // NOLINT
-                   int root,                             // NOLINT
-                   int server_fd);
-
-  void BroadcastUniqueNCCLID(std::vector<ncclUniqueId>& nccl_ids);  // NOLINT
+  void SyncCalcStream(const Place& place,
+                      const std::shared_ptr<platform::DeviceEvent>& event);
 
   template <typename Fn>
   std::shared_ptr<ProcessGroup::Task> Collective(
@@ -340,6 +334,15 @@ class ProcessGroupNCCL : public ProcessGroupStream {
 
   void CheckSplitSizes(std::vector<int64_t>* split_sizes,
                        std::vector<int64_t> tensor_shape);
+
+  std::shared_ptr<Store> store_;
+  std::shared_ptr<platform::DeviceEvent> calc_event_;  // event on calc stream
+  std::unordered_map<std::string, phi::GPUContext*> place_to_calc_ctx_;
+  std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
+      place_to_comm_ctx_;
+
+  std::mutex mutex_;
+  std::unordered_map<std::string, std::vector<phi::GPUContext*>> places_to_ctx_;
 };
 
 }  //  namespace distributed

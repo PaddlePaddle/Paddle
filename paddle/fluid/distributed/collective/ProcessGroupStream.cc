@@ -29,6 +29,28 @@ const phi::DeviceContext& ProcessGroupStream::GetDeviceContext(
       "ProcessGroup%s does not support get device_context.", GetBackendName()));
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllReduce(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const AllreduceOptions& opts,
+    bool sync_op) {
+  return AllReduce(out_tensor,
+                   in_tensor,
+                   opts,
+                   sync_op,
+                   /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllReduce(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const AllreduceOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "ProcessGroup%s does not support do all_reduce", GetBackendName()));
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather(
     std::vector<phi::DenseTensor>& input_tensors,   // NOLINT
     std::vector<phi::DenseTensor>& output_tensors,  // NOLINT
@@ -46,28 +68,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather(
     bool use_calc_stream) {
   PADDLE_THROW(platform::errors::InvalidArgument(
       "ProcessGroup%s does not support do all_gather", GetBackendName()));
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllReduce(
-    std::vector<phi::DenseTensor>& input_tensors,   // NOLINT
-    std::vector<phi::DenseTensor>& output_tensors,  // NOLINT
-    const AllreduceOptions& options,
-    bool sync_op) {
-  return AllReduce(input_tensors,
-                   output_tensors,
-                   options,
-                   sync_op,
-                   /*use_calc_stream*/ false);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllReduce(
-    std::vector<phi::DenseTensor>& input_tensors,   // NOLINT
-    std::vector<phi::DenseTensor>& output_tensors,  // NOLINT
-    const AllreduceOptions& options,
-    bool sync_op,
-    bool use_calc_stream) {
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "ProcessGroup%s does not support do all_reduce", GetBackendName()));
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllToAll(

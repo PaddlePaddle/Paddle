@@ -28,6 +28,9 @@ ProcessGroup::Task::Task(int rank,
                          bool sync_op)
     : rank_(rank), comm_type_(comm_type), sync_op_(sync_op) {}
 
+ProcessGroup::Task::Task(int rank, CommType comm_type, bool sync_op)
+    : rank_(rank), comm_type_(comm_type), sync_op_(sync_op) {}
+
 ProcessGroup::Task::~Task() = default;
 
 bool ProcessGroup::Task::IsCompleted() {
