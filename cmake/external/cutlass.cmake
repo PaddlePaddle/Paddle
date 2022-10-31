@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT WITH_GPU)
-  return()
-endif()
-if(WITH_ARM
-   OR WIN32
-   OR APPLE)
-  return()
-endif()
-if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
-  return()
-endif()
-
 include(ExternalProject)
 
 set(CUTLASS_PREFIX_DIR ${THIRD_PARTY_PATH}/cutlass)
