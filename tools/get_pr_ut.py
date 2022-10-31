@@ -160,8 +160,6 @@ class PRChecker(object):
         )
         if 'cmakelist' in filename.lower():
             isWhiteFile = False
-        if '/xpu/' or '/npu/' or '/mlu/' or 'ipu' in filename.lower():
-            isWhiteFile = True
         elif filename.startswith((not_white_files)):
             isWhiteFile = False
         else:
@@ -340,6 +338,8 @@ class PRChecker(object):
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
+                elif '/xpu/' or '/npu/' or '/mlu/' or 'ipu' in filename.lower():
+                    filterFiles.append(filename)
                 else:
                     file_list.append(filename)
             else:
