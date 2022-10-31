@@ -71,7 +71,7 @@ void LogsumexpKernel(const Context& dev_ctx,
 
   const auto& input_dim_size = x.dims().size();
   // The dims has full dim, set the reduce_all is True
-  reduce_all |= (static_cast<const int>(axis.size()) == input_dim_size);
+  reduce_all |= (static_cast<int>(axis.size()) == input_dim_size);
 
   if (reduce_all) {
     // Flatten and reduce 1-D tensor

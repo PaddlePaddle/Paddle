@@ -170,13 +170,7 @@ if(NOT WIN32)
   if(NOT APPLE)
     if((${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0) OR (WITH_ROCM))
       set(COMMON_FLAGS
-          ${COMMON_FLAGS}
-          -Wno-format-truncation # Warning in boost gcc 8.2
-          -Wno-error=parentheses # Warning in boost gcc 8.2
-          -Wno-error=catch-value # Warning in boost gcc 8.2
-          -Wno-error=nonnull-compare # Warning in boost gcc 8.2
-          -Wno-error=address # Warning in boost gcc 8.2
-          -Wno-ignored-qualifiers # Warning in boost gcc 8.2
+          ${COMMON_FLAGS} -Wno-ignored-qualifiers # Warning in Paddle-Lite
           -Wno-ignored-attributes # Warning in Eigen gcc 8.3
           -Wno-parentheses # Warning in Eigen gcc 8.3
       )
