@@ -511,7 +511,12 @@ void InterpreterCore::Convert(
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
+    Priority priority =
+        interpreter::IsCommunicationOp(op_func_node.operator_base_->Type())
+            ? Priority::kLowest
+            : Priority::kNormal;
+    vec_instruction_.emplace_back(
+        op_idx, std::move(op_func_node), *dev_ctx_, priority);
   }
 
   BuildOperatorDependences();
@@ -837,8 +842,7 @@ void InterpreterCore::RunNextInstructions(
     // keep all async_ops running in current thread
     for (size_t next_id : next_instr.DirectRunIds()) {
       if (IsReady(next_id)) {
-        if (interpreter::IsCommunicationOp(
-                vec_instruction_[next_id].OpBase()->Type())) {
+        if (vec_instruction_[next_id].GetPriority() == Priority::kLowest) {
           reserved_next_ops->push_back(next_id);
         } else {
           reserved_next_ops->push_front(next_id);
@@ -847,8 +851,7 @@ void InterpreterCore::RunNextInstructions(
     }
     for (size_t next_id : next_instr.EventRunIds()) {
       if (IsReady(next_id)) {
-        if (interpreter::IsCommunicationOp(
-                vec_instruction_[next_id].OpBase()->Type())) {
+        if (vec_instruction_[next_id].GetPriority() == Priority::kLowest) {
           reserved_next_ops->push_back(next_id);
         } else {
           reserved_next_ops->push_front(next_id);

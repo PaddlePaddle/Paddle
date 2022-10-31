@@ -34,6 +34,8 @@ using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
 constexpr int kEmptyVarIndex = 0;
 
+enum class Priority { kLowest, kNormal };
+
 class InterpretercoreInferShapeContext : public InferShapeContext {
  public:
   InterpretercoreInferShapeContext(const OperatorBase& op,
@@ -293,7 +295,8 @@ class Instruction {
  public:
   Instruction(size_t id,
               OpFuncNode&& op_func_node,
-              const platform::DeviceContext& dev_ctx);
+              const platform::DeviceContext& dev_ctx,
+              const Priority priority);
 
   size_t Id() const;
 
@@ -302,6 +305,8 @@ class Instruction {
   const std::map<std::string, std::vector<int>>& Outputs() const;
 
   const std::unordered_set<int>& NoDataTransformVars() const;
+
+  const Priority GetPriority() const { return priority_; }
 
   OpKernelComputeFunc KernelFunc() const;
 
@@ -359,6 +364,7 @@ class Instruction {
   size_t id_;
   OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned
+  const Priority priority_;
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<InterpretercoreInferShapeContext> infershape_ctx_;
