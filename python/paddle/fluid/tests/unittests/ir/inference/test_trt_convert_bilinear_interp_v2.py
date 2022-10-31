@@ -41,8 +41,8 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
             )
 
         for data_layout in ["NCHW", "NHWC"]:
-            for scale_y in [2.0, -1.0, 0.0]:
-                for scale_x in [2.0, -1.0, 0.0]:
+            for scale_y in [2.0, 1.0]:
+                for scale_x in [2.0, 1.0]:
                     scale = [scale_y, scale_x]
                     for out_h in [32, 64, 128, 192]:
                         for out_w in [32, 64]:
@@ -140,8 +140,6 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
 
 class TrtConvertBilinearInterpV2Test1(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        inputs = program_config.inputs
-        weights = program_config.weights
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
@@ -158,8 +156,8 @@ class TrtConvertBilinearInterpV2Test1(TrtLayerAutoScanTest):
             )
 
         for data_layout in ["NCHW", "NHWC"]:
-            for scale_y in [2.0, -1.0, 0.0]:
-                for scale_x in [2.0, -1.0, 0.0]:
+            for scale_y in [2.0, 1.0]:
+                for scale_x in [2.0, 1.0]:
                     scale = [scale_y, scale_x]
                     for out_h in [32, 64, 128, 192]:
                         for out_w in [32, 64]:
@@ -194,15 +192,14 @@ class TrtConvertBilinearInterpV2Test1(TrtLayerAutoScanTest):
 
                             program_config = ProgramConfig(
                                 ops=ops,
-                                weights={
-                                    "out_size": TensorConfig(
-                                        data_gen=partial(generate_input2, dics)
-                                    )
-                                },
+                                weights={},
                                 inputs={
                                     "input_data": TensorConfig(
                                         data_gen=partial(generate_input1, dics)
-                                    )
+                                    ),
+                                    "out_size": TensorConfig(
+                                        data_gen=partial(generate_input2, dics)
+                                    ),
                                 },
                                 outputs=["bilinear_interp_v2_output_data"],
                             )
@@ -213,9 +210,18 @@ class TrtConvertBilinearInterpV2Test1(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 64, 64]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [1, 3, 64, 64],
+                "out_size": [2],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [4, 3, 64, 64],
+                "out_size": [2],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [1, 3, 64, 64],
+                "out_size": [2],
+            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -240,7 +246,7 @@ class TrtConvertBilinearInterpV2Test1(TrtLayerAutoScanTest):
             attrs, False
         ), 1e-2
 
-        # # for dynamic_shape
+        # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
