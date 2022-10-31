@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/graph_send_ue_recv_grad_kernel.h"
+#include "paddle/phi/kernels/send_ue_recv_grad_kernel.h"
 
 #include <algorithm>
 #include <vector>
@@ -443,18 +443,18 @@ void GraphSendUERecvGradOpKernelLaunchHelper(
 }
 
 template <typename T, typename Context>
-void GraphSendUERecvGradKernel(const Context& ctx,
-                               const DenseTensor& x,
-                               const DenseTensor& y,
-                               const DenseTensor& src_index,
-                               const DenseTensor& dst_index,
-                               const paddle::optional<DenseTensor>& out,
-                               const paddle::optional<DenseTensor>& dst_count,
-                               const DenseTensor& out_grad,
-                               const std::string& message_op,
-                               const std::string& reduce_op,
-                               DenseTensor* x_grad,
-                               DenseTensor* y_grad) {
+void SendUERecvGradKernel(const Context& ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          const DenseTensor& src_index,
+                          const DenseTensor& dst_index,
+                          const paddle::optional<DenseTensor>& out,
+                          const paddle::optional<DenseTensor>& dst_count,
+                          const DenseTensor& out_grad,
+                          const std::string& message_op,
+                          const std::string& reduce_op,
+                          DenseTensor* x_grad,
+                          DenseTensor* y_grad) {
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
     GraphSendUERecvGradOpKernelLaunchHelper<Context, T, int32_t>(
@@ -489,10 +489,10 @@ void GraphSendUERecvGradKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(graph_send_ue_recv_grad,
+PD_REGISTER_KERNEL(send_ue_recv_grad,
                    CPU,
                    ALL_LAYOUT,
-                   phi::GraphSendUERecvGradKernel,
+                   phi::SendUERecvGradKernel,
                    float,
                    double,
                    int,

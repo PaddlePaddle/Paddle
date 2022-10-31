@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gaussian_random_kernel.h"
+#include "paddle/phi/kernels/gaussian_kernel.h"
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -21,13 +21,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GaussianRandomKernel(const Context& dev_ctx,
-                          const IntArray& shape,
-                          float mean,
-                          float std,
-                          int seed,
-                          DataType dtype,
-                          DenseTensor* out) {
+void GaussianKernel(const Context& dev_ctx,
+                    const IntArray& shape,
+                    float mean,
+                    float std,
+                    int seed,
+                    DataType dtype,
+                    DenseTensor* out) {
   auto tensor = out;
 
   std::normal_distribution<T> dist(mean, std);
@@ -44,9 +44,5 @@ void GaussianRandomKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(gaussian_random,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::GaussianRandomKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    gaussian, CPU, ALL_LAYOUT, phi::GaussianKernel, float, double) {}

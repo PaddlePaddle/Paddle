@@ -14,16 +14,21 @@
 
 #pragma once
 
-#include "paddle/phi/common/int_array.h"
+#include <string>
+
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void CropTensorKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const IntArray& shape,
-                      const IntArray& offsets,
-                      DenseTensor* out);
-
+void SendURecvGradKernel(const Context& ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& src_index,
+                         const DenseTensor& dst_index,
+                         const paddle::optional<DenseTensor>& out,
+                         const paddle::optional<DenseTensor>& dst_count,
+                         const DenseTensor& out_grad,
+                         const std::string& reduce_op,
+                         DenseTensor* x_grad);
 }  // namespace phi

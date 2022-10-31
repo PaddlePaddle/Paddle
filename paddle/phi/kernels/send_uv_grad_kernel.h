@@ -20,12 +20,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GraphSendUVKernel(const Context& ctx,
-                       const DenseTensor& x,
-                       const DenseTensor& y,
-                       const DenseTensor& src_index,
-                       const DenseTensor& dst_index,
-                       const std::string& message_op,
-                       DenseTensor* out);
+void SendUVGradKernel(const Context& ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      const DenseTensor& src_index,
+                      const DenseTensor& dst_index,
+                      const DenseTensor& out_grad,
+                      const std::string& message_op,
+                      DenseTensor* x_grad,
+                      DenseTensor* y_grad);
 
 }  // namespace phi

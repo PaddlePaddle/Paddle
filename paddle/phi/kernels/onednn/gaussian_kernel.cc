@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gaussian_random_kernel.h"
+#include "paddle/phi/kernels/gaussian_kernel.h"
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -20,13 +20,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GaussianRandomKernel(const Context& ctx,
-                          const IntArray& shape,
-                          float mean,
-                          float std,
-                          int seed,
-                          DataType dtype,
-                          DenseTensor* out) {
+void GaussianKernel(const Context& ctx,
+                    const IntArray& shape,
+                    float mean,
+                    float std,
+                    int seed,
+                    DataType dtype,
+                    DenseTensor* out) {
   std::normal_distribution<T> dist(mean, std);
   std::shared_ptr<std::mt19937_64> engine;
   if (seed) {
@@ -51,5 +51,4 @@ void GaussianRandomKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    gaussian_random, OneDNN, ONEDNN, phi::GaussianRandomKernel, float) {}
+PD_REGISTER_KERNEL(gaussian, OneDNN, ONEDNN, phi::GaussianKernel, float) {}
