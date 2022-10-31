@@ -141,7 +141,6 @@ class MultiTensorAdam(Adam):
         self.chunk_size = chunk_size
 
         n = len(self._param_groups) if self._param_groups is not None else 1
-        self.lr = [[] for _ in range(n)]
         self.beta1_pow_acc = [[] for _ in range(n)]
         self.beta2_pow_acc = [[] for _ in range(n)]
 
@@ -285,7 +284,6 @@ class MultiTensorAdamW(AdamW):
         self._master_weight_dict['FP32_LODTensor'] = None
 
         n = len(self._param_groups) if self._param_groups is not None else 1
-        self.lr = [[] for _ in range(n)]
         self.beta1_pow_acc = [[] for _ in range(n)]
         self.beta2_pow_acc = [[] for _ in range(n)]
 
@@ -319,7 +317,6 @@ def _multi_tensor_adam_init(
     optimizer.beta2_pow_acc[param_group_idx] = optimizer._get_accumulator(
         optimizer._beta2_pow_acc_str, parameters[0]
     )
-    optimizer.lr[param_group_idx] = optimizer._create_param_lr(parameters)
 
     for param in parameters:
         moment1 = optimizer._get_accumulator(optimizer._moment1_acc_str, param)
@@ -367,7 +364,11 @@ def _append_optimize_multi_tensor_adam_op(
 
     grad_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
 
+    lr = None
+
     if isinstance(parameters_and_grads, list):
+
+        lr = optimizer._create_param_lr(parameters_and_grads[0])
 
         for param_and_grad in parameters_and_grads:
             if param_and_grad[1] is None:
@@ -388,6 +389,9 @@ def _append_optimize_multi_tensor_adam_op(
     else:
 
         for param_and_grad in parameters_and_grads['params']:
+            if lr == None:
+                lr = optimizer._create_param_lr(param_and_grad)
+
             if param_and_grad[1] is None:
                 continue
             if param_and_grad[0].stop_gradient is False:
@@ -443,7 +447,7 @@ def _append_optimize_multi_tensor_adam_op(
                     _, _, _, _, _, _ = _C_ops.multi_tensor_adam_(
                         optimizer._param_dict[key][param_group_idx],
                         grad_dict[key],
-                        optimizer.lr[param_group_idx],
+                        lr,
                         optimizer._moment1_dict[key][param_group_idx],
                         optimizer._moment2_dict[key][param_group_idx],
                         optimizer.beta1_pow_acc[param_group_idx],
@@ -466,7 +470,7 @@ def _append_optimize_multi_tensor_adam_op(
                     _, _, _, _, _, _ = _legacy_C_ops.multi_tensor_adam(
                         optimizer._param_dict[key][param_group_idx],
                         grad_dict[key],
-                        optimizer.lr[param_group_idx],
+                        lr,
                         optimizer._moment1_dict[key][param_group_idx],
                         optimizer._moment2_dict[key][param_group_idx],
                         optimizer.beta1_pow_acc[param_group_idx],
@@ -504,7 +508,7 @@ def _append_optimize_multi_tensor_adam_op(
                     "Moments2": optimizer._moment2_dict[key][param_group_idx],
                     "Beta1Pow": [optimizer.beta1_pow_acc[param_group_idx]],
                     "Beta2Pow": [optimizer.beta2_pow_acc[param_group_idx]],
-                    "LearningRate": [optimizer.lr[param_group_idx]],
+                    "LearningRate": [lr],
                 }
                 outputs = {
                     "ParamsOut": optimizer._param_dict[key][param_group_idx],

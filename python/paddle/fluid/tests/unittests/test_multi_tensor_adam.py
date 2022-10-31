@@ -49,7 +49,12 @@ class TestMultiTensorAdam(unittest.TestCase):
         self.n = 10
 
     def get_adam_or_adamw_out(
-        self, use_multi_tensor_adam, use_adamw, test_dict, test_fp16
+        self,
+        use_multi_tensor_adam,
+        use_adamw,
+        test_dict,
+        test_fp16,
+        test_lrscheduler,
     ):
 
         paddle.seed(10)
@@ -73,6 +78,15 @@ class TestMultiTensorAdam(unittest.TestCase):
         paramters_dict_list = []
 
         input_paramters = model.parameters()
+        learning_rate = 0.01
+        if test_lrscheduler:
+            learning_rate = paddle.optimizer.lr.LinearWarmup(
+                learning_rate=0.5,
+                warmup_steps=20,
+                start_lr=0,
+                end_lr=0.5,
+                verbose=True,
+            )
 
         if test_dict:
             i = 0
@@ -81,47 +95,54 @@ class TestMultiTensorAdam(unittest.TestCase):
                     {
                         'params': param,
                         'weight_decay': 0.001 * i,
-                        'learning_rate': 0.01 * i,
-                        'beta1': 0.01 * i,
+                        'beta1': 0.80 + 0.001 * i,
                     }
                 )
+                if not test_lrscheduler:
+                    paramters_dict_list[-1]['learning_rate'] = 0.1 * i
                 i = i + 1
 
                 input_paramters = paramters_dict_list
 
+        multi_precision = True if test_fp16 else False
+
         if use_multi_tensor_adam:
             if not use_adamw:
                 opt = paddle.incubate.optimizer.MultiTensorAdam(
-                    learning_rate=0.1,
+                    learning_rate=learning_rate,
                     parameters=input_paramters,
                     weight_decay=0.01,
                     beta1=beta1,
                     beta2=beta2,
+                    multi_precision=multi_precision,
                 )
             else:
                 opt = paddle.incubate.optimizer.MultiTensorAdamW(
-                    learning_rate=0.1,
+                    learning_rate=learning_rate,
                     parameters=input_paramters,
                     weight_decay=0.01,
                     beta1=beta1,
                     beta2=beta2,
+                    multi_precision=multi_precision,
                 )
         else:
             if not use_adamw:
                 opt = paddle.optimizer.Adam(
-                    learning_rate=0.1,
+                    learning_rate=learning_rate,
                     parameters=input_paramters,
                     weight_decay=0.01,
                     beta1=beta1,
                     beta2=beta2,
+                    multi_precision=multi_precision,
                 )
             else:
                 opt = paddle.optimizer.AdamW(
-                    learning_rate=0.1,
+                    learning_rate=learning_rate,
                     parameters=input_paramters,
                     weight_decay=0.01,
                     beta1=beta1,
                     beta2=beta2,
+                    multi_precision=multi_precision,
                 )
 
         num_batch = 4
@@ -131,6 +152,8 @@ class TestMultiTensorAdam(unittest.TestCase):
                 out.backward()
                 opt.step()
                 opt.clear_grad()
+                if test_lrscheduler:
+                    learning_rate.step()
         else:
             for _ in range(num_batch):
                 with paddle.amp.auto_cast(level='O2'):
@@ -140,21 +163,33 @@ class TestMultiTensorAdam(unittest.TestCase):
                 scaler.step(opt)
                 scaler.update()
                 opt.clear_grad()
+                if test_lrscheduler:
+                    learning_rate.step()
 
         return model.parameters()
 
-    def run_adam_or_adamw(self, use_adamw, test_dict, test_fp16):
+    def run_adam_or_adamw(
+        self, use_adamw, test_dict, test_fp16, test_lrscheduler
+    ):
         use_multi_tensor_adam = True
-        parameters = self.get_adam_or_adamw_out(
-            use_multi_tensor_adam, use_adamw, test_dict, test_fp16
-        )
         parameters_1 = self.get_adam_or_adamw_out(
-            not use_multi_tensor_adam, use_adamw, test_dict, test_fp16
+            not use_multi_tensor_adam,
+            use_adamw,
+            test_dict,
+            test_fp16,
+            test_lrscheduler,
+        )
+        parameters = self.get_adam_or_adamw_out(
+            use_multi_tensor_adam,
+            use_adamw,
+            test_dict,
+            test_fp16,
+            test_lrscheduler,
         )
         self.assertEqual(len(parameters), len(parameters_1))
         for i, j in zip(parameters, parameters_1):
-            atol = 1e-3 if test_fp16 else 0.0
-            rtol = 1e-2 if test_fp16 else 0.0
+            atol = 0.0 if test_fp16 else 0.0
+            rtol = 0.0 if test_fp16 else 0.0
             np.testing.assert_allclose(
                 i.numpy(), j.numpy(), rtol=rtol, atol=atol
             )
@@ -170,14 +205,22 @@ class TestMultiTensorAdam(unittest.TestCase):
                 paddle.set_device("cpu")
             for use_adamw in [True, False]:
                 for test_dict in [True, False]:
-                    test_fp16 = False
-                    print(
-                        f'use_gpu = {use_gpu} use_adamw = {use_adamw} test_dict = {test_dict} test_fp16 = {test_fp16}'
-                    )
-                    self.run_adam_or_adamw(use_adamw, test_dict, test_fp16)
-                    if use_gpu:
-                        test_fp16 = True
-                        self.run_adam_or_adamw(use_adamw, test_dict, test_fp16)
+                    for test_lrscheduler in [True, False]:
+                        test_fp16 = False
+                        print(
+                            f'use_gpu = {use_gpu} use_adamw = {use_adamw} test_dict = {test_dict} test_fp16 = {test_fp16}'
+                        )
+                        self.run_adam_or_adamw(
+                            use_adamw, test_dict, test_fp16, test_lrscheduler
+                        )
+                        if use_gpu:
+                            test_fp16 = True
+                            self.run_adam_or_adamw(
+                                use_adamw,
+                                test_dict,
+                                test_fp16,
+                                test_lrscheduler,
+                            )
         paddle.set_device(old_device)
 
 
