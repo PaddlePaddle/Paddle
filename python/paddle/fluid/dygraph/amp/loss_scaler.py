@@ -297,26 +297,22 @@ class AmpScaler(object):
                         else:
                             param_grads_fp32.append(param._grad_ivar())
         else:
-            param_grads = [
-                param._grad_ivar()
-                for param in optimizer._parameter_list
-                if param._grad_ivar() is not None
-            ]
-            param_grads_fp16 = [
-                param
-                for param in param_grads
-                if param.dtype == core.VarDesc.VarType.FP16
-            ]
-            param_grads_bf16 = [
-                param
-                for param in param_grads
-                if param.dtype == core.VarDesc.VarType.BF16
-            ]
-            param_grads_fp32 = [
-                param
-                for param in param_grads
-                if param.dtype == core.VarDesc.VarType.FP32
-            ]
+            param_grads_fp16 = []
+            param_grads_bf16 = []
+            param_grads_fp32 = []
+            type_fp32 = core.VarDesc.VarType.FP32
+            type_fp16 = core.VarDesc.VarType.FP16
+            type_bf16 = core.VarDesc.VarType.BF16
+            for param in optimizer._parameter_list:
+                grad = param._grad_ivar()
+                if grad is not None:
+                    dtype = grad.dtype
+                    if dtype == type_fp32:
+                        param_grads_fp32.append(grad)
+                    elif dtype == type_fp16:
+                        param_grads_fp16.append(grad)
+                    elif dtype == type_bf16:
+                        param_grads_bf16.append(grad)
         if core.is_compiled_with_npu():
             float_status = _legacy_C_ops.alloc_float_status()
             _legacy_C_ops.clear_float_status(float_status, float_status)
