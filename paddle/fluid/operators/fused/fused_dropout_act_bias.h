@@ -25,16 +25,41 @@ namespace operators {
 /**
  *@brief the gelu functor
  */
+// template <typename T>
+// struct GeluFunctor {
+//   inline __host__ __device__ T operator()(const T x) const {
+//     using U = LayerNormParamType<T>;
+//     const U casted_x = static_cast<U>(x);
+//     const U temp = erf(casted_x * static_cast<U>(M_SQRT1_2));
+//     const U out = (casted_x * static_cast<U>(0.5) * (static_cast<U>(1) + temp));
+//     return static_cast<T>(out);
+//   }
+// };
+
+__inline__ __device__ float tanh_opt(float x)
+{
+// #if (__CUDA_ARCH__ >= 750)
+    float r;
+    asm("tanh.approx.f32 %0,%1; \n\t" : "=f"(r) : "f"(x));
+    return r;
+// #else
+//     const float exp_val = -1.f * fabs(2 * x);
+//     return copysignf_pos((1.0f - __expf(exp_val)) / (__expf(exp_val) + 1.0f), x);
+// #endif
+}
+
 template <typename T>
 struct GeluFunctor {
-  inline __host__ __device__ T operator()(const T x) const {
+  inline __device__ T operator()(const T x) const {
     using U = LayerNormParamType<T>;
-    const U casted_x = static_cast<U>(x);
-    const U temp = erf(casted_x * static_cast<U>(M_SQRT1_2));
-    const U out = (casted_x * static_cast<U>(0.5) * (static_cast<U>(1) + temp));
-    return static_cast<T>(out);
+    T val_pow3 = x * x * x; 
+    U casted_pow3 = static_cast<U>(val_pow3); 
+    U casted_x = static_cast<U>(x); 
+    casted_x = 0.5f * (1.0f + tanh_opt((0.7978845608028654f * (casted_x + 0.044715f * casted_pow3))));
+    return x * static_cast<T>(casted_x); 
   }
 };
+
 
 /**
  *@brief the gelu grad functor
@@ -131,6 +156,54 @@ __global__ void FusedDropoutActBias(
   }
 }
 
+template <typename T,
+          typename MaskType,
+          int VecSize,
+          typename Functor,
+          typename InType = T,
+          typename OutType = T>
+__global__ void FusedDropoutActBiasV2(
+    Functor act,
+    const uint64_t seed,
+    const uint64_t elem_cnt,
+    const uint64_t cols,
+    const int increment,
+    const float dropout_prob,
+    const bool is_upscale_in_train,
+    const bool is_test,
+    const InType *__restrict__ src,
+    const T *__restrict__ bias,
+    OutType *dst,
+    MaskType *mask,
+    const float quant_last_in_scale = 1.0,
+    const float *dequant_out_scale_data = nullptr,
+    const int quant_out_scale_offset = 0,
+    const float quant_next_in_scale = 1.0,
+    const int quant_round_type = 1,
+    const float quant_max_bound = 127.0,
+    const float quant_min_bound = -127.0) {
+  const int32_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x; 
+  // const int32_t elem_cnt = rows * cols; 
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadInType = phi::AlignedVector<InType, VecSize>;
+  using LoadFloat = phi::AlignedVector<float, VecSize>;
+  using StoreOutType = phi::AlignedVector<OutType, VecSize>;
+
+  LoadInType src_vec; 
+  LoadT bias_vec; 
+  StoreOutType out_vec; 
+  for(int32_t idx = global_thread_idx * VecSize, step = blockDim.x * gridDim.x * VecSize; idx < elem_cnt; idx += step){
+    const int32_t col_idx = idx % cols; 
+    phi::Load<InType, VecSize>(&src[idx], &src_vec);
+    phi::Load<T, VecSize>(&bias[col_idx], &bias_vec);
+    #pragma unroll 
+    for(int32_t unroll_idx = 0; unroll_idx < VecSize; unroll_idx++){
+      out_vec[unroll_idx] = static_cast<OutType>(act(static_cast<T>(src_vec[unroll_idx]) + bias_vec[unroll_idx])); 
+    }
+    phi::Store<OutType, VecSize>(out_vec, &dst[idx]); 
+  }
+}
+
 /**
  * @brief dst = dropout(activation(src + bias));
  */
@@ -168,13 +241,24 @@ void LaunchDropoutActBias(Functor act_functor,
 
   const int VecSize = MAX_CACHE_BYTES / sizeof(T);
   const int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
-  const auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
+  // const auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
   if (cols % VecSize == 0) {
-    FusedDropoutActBias<T, MaskType, VecSize, Functor, InType, OutType>
+    const int32_t elem_cnt = rows * cols; 
+    const int32_t pack_num = elem_cnt / VecSize; 
+    const int32_t tmp_cols = cols / VecSize;
+    int threads = std::max(static_cast<int32_t>(32),
+                          std::min(tmp_cols, 128));
+    const auto blocks_x =
+        std::max(static_cast<int32_t>(1), (pack_num + threads - 1) / threads);
+    platform::GpuLaunchConfig config;
+    config.block_per_grid.x = blocks_x;
+    config.thread_per_block.x = threads;
+    // FusedDropoutActBias<T, MaskType, VecSize, Functor, InType, OutType>
+    FusedDropoutActBiasV2<T, MaskType, VecSize, Functor, InType, OutType>
         <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
             act_functor,
             seed,
-            rows,
+            elem_cnt,
             cols,
             increment,
             dropout_prob,
@@ -189,6 +273,7 @@ void LaunchDropoutActBias(Functor act_functor,
             quant_out_scale_offset,
             quant_next_in_scale);
   } else {
+    const auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
     FusedDropoutActBias<T, MaskType, 1, Functor, InType, OutType>
         <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
             act_functor,
