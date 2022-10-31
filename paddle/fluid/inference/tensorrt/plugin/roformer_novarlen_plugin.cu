@@ -547,6 +547,7 @@ int RoformerNovarlenPlugin::enqueue(
                            head_size_,
                            qkptr,
                            input3_data,
+                           false,
                            tptr,
                            scale_,
                            static_cast<float>(0.0));
@@ -637,6 +638,7 @@ int RoformerNovarlenPlugin::enqueue(
                            head_size_,
                            qkptr,
                            input3_data,
+                           false,
                            tptr,
                            half(1.),
                            half(0.0));
