@@ -13,6 +13,8 @@
 // limitations under the License.
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11000 && !defined(_WIN32) && \
+    !defined(__APPLE__)
 #include "cutlass/arch/mma.h"
 #include "cutlass/epilogue/thread/linear_combination.h"
 #include "cutlass/gemm/device/gemm_grouped.h"
@@ -551,3 +553,4 @@ struct cutlass_tensorop_d884gemm_32x16_16x5_nn_align1 {
 };
 }  // namespace sparse
 }  // namespace phi
+#endif
