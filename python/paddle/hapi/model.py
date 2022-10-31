@@ -1008,6 +1008,7 @@ class DynamicGraphAdapter(object):
 
 class Model(object):
     """
+
     An Model object is network with training and inference features.
     Dynamic graph and static graph are supported at the same time,
     switched by `paddle.enable_static()`. The usage is as follows.
@@ -1792,6 +1793,7 @@ class Model(object):
                             batch_size=64,
                             save_dir='mnist_checkpoint')
 
+
             2. An example use DataLoader, batch size and shuffle is set in
                DataLoader.
 
@@ -1833,6 +1835,7 @@ class Model(object):
                             val_loader,
                             epochs=2,
                             save_dir='mnist_checkpoint')
+
         """
         assert train_data is not None, "train_data must be given!"
 
@@ -1957,8 +1960,7 @@ class Model(object):
                 If None, evaluate on whole input dataset, otherwise, evaluate `num_iters` times.
                 Default: None.
         Returns:
-            dict: Result of metric. The key is the names of Metric,
-                value is a scalar or numpy.array.
+            dict, Result of metric. The key is the names of Metric, value is a scalar or numpy.array.
 
         Examples:
 
@@ -1982,6 +1984,7 @@ class Model(object):
                 result = model.evaluate(val_dataset, batch_size=64)
                 print(result)
                 # {'acc': 0.0699}
+
         """
 
         if eval_data is not None and isinstance(eval_data, Dataset):
@@ -2066,7 +2069,7 @@ class Model(object):
             callbacks(Callback, optional): A Callback instance, Default: None.
 
         Returns:
-            list: output of models.
+            list, output of models.
 
         Examples:
 
@@ -2303,7 +2306,8 @@ class Model(object):
         return logs
 
     def summary(self, input_size=None, dtype=None):
-        """Prints a string summary of the network.
+        """
+        Prints a string summary of the network.
 
         Args:
             input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor.
