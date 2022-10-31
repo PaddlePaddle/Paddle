@@ -87,10 +87,6 @@ int GroupNormPlugin::enqueue(int batch_size,
   float *variance_d =
       variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
-  phi::DenseTensor temp_variance_t;
-  temp_variance_t.Resize(phi::make_ddim(variance_shape_));
-  float *temp_variance_d =
-      temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
   cudaMemcpyAsync(scale_d,
                   scale_.data(),
                   sizeof(float) * C,
@@ -105,12 +101,11 @@ int GroupNormPlugin::enqueue(int batch_size,
              bias_d,
              scale_d,
              mean_d,
-             temp_variance_d,
+             variance_d,
              groups_,
              eps_,
              output,
              mean_d,
-             variance_d,
              DataLayout::kNCHW);
   return cudaGetLastError() != cudaSuccess;
 }
@@ -220,10 +215,6 @@ int GroupNormPluginDynamic::enqueue(
     float *variance_d =
         variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
-    phi::DenseTensor temp_variance_t;
-    temp_variance_t.Resize(phi::make_ddim(batched_variance_shape));
-    float *temp_variance_d =
-        temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
     cudaMemcpyAsync(scale_d,
                     scale_.data(),
                     sizeof(float) * C,
@@ -242,7 +233,7 @@ int GroupNormPluginDynamic::enqueue(
                bias_d,
                scale_d,
                mean_d,
-               temp_variance_d,
+               variance_d,
                groups,
                eps,
                output,

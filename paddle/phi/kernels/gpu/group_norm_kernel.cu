@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/group_norm_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -67,9 +68,8 @@ __global__ void GroupNormForward(const T* x,
                                  int imsize,
                                  int groups,
                                  int group_size,
-                                 T epsilon,
+                                 float epsilon,
                                  T* y,
-                                 T* real_var,
                                  const DataLayout data_layout) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
@@ -80,11 +80,7 @@ __global__ void GroupNormForward(const T* x,
   auto ng = bid * groups + gid;
   T x_mean = mean[ng];
   T x_var = var[ng];
-  x_var = x_var - x_mean * x_mean;
   T var_inv = rsqrt(x_var + epsilon);
-  if (cid == 0 && threadIdx.x == 0) {
-    real_var[ng] = x_var;
-  }
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
     T val;
     int hid, wid;
@@ -109,6 +105,26 @@ __global__ void GroupNormForward(const T* x,
       y[(bid * H + hid) * W * C + wid * C + ccid] = val;
     }
   }
+}
+
+template <typename T>
+__global__ void UpdateVarianceCUDAKernel(const T* mean, T* var, int numel) {
+  CUDA_KERNEL_LOOP(tid, numel) {
+    T x_mean = mean[tid];
+    T x_var = var[tid];
+    x_var = x_var - x_mean * x_mean;
+    var[tid] = x_var;
+  }
+}
+
+template <typename T>
+void UpdateVariance(
+    const GPUContext& dev_ctx, const T* mean, T* var, int N, int G) {
+  auto launch_config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N * G);
+  UpdateVarianceCUDAKernel<T><<<launch_config.thread_per_block,
+                                launch_config.block_per_grid,
+                                0,
+                                dev_ctx.stream()>>>(mean, var, N * G);
 }
 
 template <typename T, typename Context>
@@ -138,14 +154,10 @@ void GroupNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(mean);
   dev_ctx.template Alloc<T>(var);
   phi::funcs::SetConstant<GPUContext, T> set_zero;
-  DenseTensor temp_var;
-  temp_var.Resize(var->dims());
-  dev_ctx.template Alloc<T>(&temp_var);
   auto* x_data = x.data<T>();
   auto* y_data = y->data<T>();
   auto* mean_data = mean->data<T>();
   auto* var_data = var->data<T>();
-  auto* temp_var_data = temp_var.data<T>();
 
   const T* scale_data = nullptr;
   if (scale_ptr) scale_data = scale_ptr->data<T>();
@@ -186,15 +198,14 @@ void GroupNormKernel(const Context& dev_ctx,
     dim3 blocks(block_size_nchw);
     if (size < vec_size * block_size_nchw) {
       ScalarGetMeanAndVarNCHW<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
-          x_data, mean_data, temp_var_data, size);
+          x_data, mean_data, var_data, size);
     } else {
       VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
           <<<grids, blocks, 0, dev_ctx.stream()>>>(
-              x_data, mean_data, temp_var_data, size);
+              x_data, mean_data, var_data, size);
     }
   } else {
     set_zero(dev_ctx, mean, static_cast<T>(0));
-    set_zero(dev_ctx, &temp_var, static_cast<T>(0));
     GroupNormForwardGetMeanAndVar<T>
         <<<grid, threads, 0, dev_ctx.stream()>>>(x_data,
                                                  x_dims[0],
@@ -204,15 +215,16 @@ void GroupNormKernel(const Context& dev_ctx,
                                                  groups,
                                                  group_size,
                                                  mean_data,
-                                                 temp_var_data);
+                                                 var_data);
   }
+  UpdateVariance<T>(dev_ctx, mean_data, var_data, x_dims[0], groups);
   int flags =
       (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
   UNROLL_ALL_CASES(flags,
                    GroupNormForward,
                    x_data,
                    mean_data,
-                   temp_var_data,
+                   var_data,
                    scale_data,
                    bias_data,
                    x_dims[0],
@@ -223,7 +235,6 @@ void GroupNormKernel(const Context& dev_ctx,
                    group_size,
                    epsilon,
                    y_data,
-                   var_data,
                    data_layout);
 }
 
@@ -301,6 +312,7 @@ void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                        temp_mean,
                                        temp_variance);
   }
+  // UpdateVariance<T>(stream, temp_mean, temp_variance, input_ddim[0], groups);
   GroupNormForward<T, 3><<<grid, threads, 0, stream>>>(
       input,
       temp_mean,
@@ -315,7 +327,6 @@ void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
       group_size,
       eps,
       output,
-      variance,
       data_layout);  // for now, we only support nchw for group norm
 }
 template class GroupNormDirectCUDAFunctor<float>;
