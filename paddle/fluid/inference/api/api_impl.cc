@@ -236,7 +236,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
             "The data of input tensor should not be null."));
     PADDLE_ENFORCE_EQ(
         inputs[i].data.length(),
-        input.memory_size(),
+        input.numel() * paddle::experimental::SizeOf(input.dtype()),
         paddle::platform::errors::InvalidArgument(
             "The data contained in the input PaddleTensor had wrong length."));
 
