@@ -282,12 +282,19 @@ class Optimizer(object):
         # NOTE: Multi Tensor: Pass in all parameters and gradients to the op kernel of the Optimizer at one time for updating for dygraph mode.
         # Optimizer support list: [ paddle.optimizer.Momentum, paddle.optimizer.Adam].
         self._use_multi_tensor = None
-        self._param_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
 
+        self._param_dict = self._create_multi_tensor_dict()
         self._auxiliary_vars = {}
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
+
+    def _create_multi_tensor_dict(self):
+        n = len(self._param_groups) if self._param_groups is not None else 1
+        return {
+            'FP32_LODTensor': [[] for _ in range(n)],
+            'FP16_LODTensor': [[] for _ in range(n)],
+        }
 
     def _get_auxiliary_var(self, key):
         return self._auxiliary_vars.get(key, None)
@@ -779,7 +786,9 @@ class Optimizer(object):
             device = self._param_device_map[param_name]
         return device
 
-    def _create_optimization_pass(self, parameters_and_grads):
+    def _create_optimization_pass(
+        self, parameters_and_grads, param_group_idx=0
+    ):
         """Add optimization operators to update gradients to tensors.
 
         Args:
@@ -825,10 +834,12 @@ class Optimizer(object):
             'Adam',
         ]:
             if (
-                len(self._param_dict['FP32_LODTensor']) == 0
-                and len(self._param_dict['FP16_LODTensor']) == 0
+                len(self._param_dict['FP32_LODTensor'][param_group_idx]) == 0
+                and len(self._param_dict['FP16_LODTensor'][param_group_idx])
+                == 0
             ):
                 if isinstance(parameters_and_grads, list):
+                    assert param_group_idx == 0
                     self._multi_tensor_init(
                         target_block,
                         [
@@ -836,6 +847,7 @@ class Optimizer(object):
                             for p in parameters_and_grads
                             if not p[0].stop_gradient
                         ],
+                        param_group_idx,
                     )
                 else:
                     self._update_param_group(parameters_and_grads)
@@ -846,10 +858,13 @@ class Optimizer(object):
                             for p in parameters_and_grads['params']
                             if not p[0].stop_gradient
                         ],
+                        param_group_idx,
                     )
             if framework._non_static_mode():
                 self._append_optimize_multi_tensor_op(
-                    target_block, parameters_and_grads
+                    target_block,
+                    parameters_and_grads,
+                    param_group_idx=param_group_idx,
                 )
             else:
                 self._update_param_device_map(
@@ -871,7 +886,9 @@ class Optimizer(object):
                     device = self._get_device_for_param(param_grad_list[0].name)
                     with device_guard(device):
                         self._append_optimize_multi_tensor_op(
-                            target_block, parameters_and_grads
+                            target_block,
+                            parameters_and_grads,
+                            param_group_idx=param_group_idx,
                         )
         else:
             if not framework._non_static_mode():
@@ -1095,7 +1112,9 @@ class Optimizer(object):
         optimize_ops = self._create_optimization_pass(params_grads)
         return optimize_ops
 
-    def _apply_optimize(self, loss, startup_program, params_grads):
+    def _apply_optimize(
+        self, loss, startup_program, params_grads, param_group_idx=0
+    ):
         """
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
@@ -1128,8 +1147,11 @@ class Optimizer(object):
                     params_grads['params'] = self.append_regularization_ops(
                         params_grads['params'], self.regularization
                     )
-                optimize_ops = self._create_optimization_pass(params_grads)
+                optimize_ops = self._create_optimization_pass(
+                    params_grads, param_group_idx=param_group_idx
+                )
         else:
+            assert param_group_idx == 0
             program = loss.block.program
             with program_guard(program, startup_program):
                 optimize_ops = self.apply_gradients(params_grads)
@@ -1398,12 +1420,15 @@ class Optimizer(object):
                     params_grads.append((param, grad_var))
 
             self._apply_optimize(
-                loss=None, startup_program=None, params_grads=params_grads
+                loss=None,
+                startup_program=None,
+                params_grads=params_grads,
+                param_group_idx=0,
             )
 
         else:
             # optimize parameters in groups
-            for param_group in self._param_groups:
+            for idx, param_group in enumerate(self._param_groups):
                 params_grads = defaultdict(lambda: list())
                 for param in param_group['params']:
                     if param.stop_gradient:
@@ -1415,7 +1440,10 @@ class Optimizer(object):
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
                 self._apply_optimize(
-                    loss=None, startup_program=None, params_grads=params_grads
+                    loss=None,
+                    startup_program=None,
+                    params_grads=params_grads,
+                    param_group_idx=idx,
                 )
 
     def _add_param_group(self, param_group):
@@ -1475,7 +1503,7 @@ class Optimizer(object):
         pass
 
     @framework.dygraph_only
-    def _multi_tensor_init(self, target_block, parameters):
+    def _multi_tensor_init(self, target_block, parameters, param_group_idx):
         """
         All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, float32).
         This function will be overridden in the corresponding optimizer file.
@@ -1488,7 +1516,7 @@ class Optimizer(object):
 
     @framework.dygraph_only
     def _append_optimize_multi_tensor_op(
-        self, target_block, parameters_and_grads
+        self, target_block, parameters_and_grads, param_group_idx
     ):
         """
         For Multi Tensor, append optimize merged_operator to block.

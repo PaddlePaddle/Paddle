@@ -1,3 +1,66 @@
+- op : acos
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : acos
+  backward : acos_grad
+
+- op : acosh
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : acosh
+  backward : acosh_grad
+
+- op : angle
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : angle
+  backward : angle_grad
+
+- op : argsort
+  args : (Tensor x, int axis=-1, bool descending=false)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : ArgsortInferMeta
+  kernel :
+    func : argsort
+  backward : argsort_grad
+
+- op : asin
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : asin
+  backward : asin_grad
+
+- op : asinh
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : asinh
+  backward : asinh_grad
+
+- op : atan
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : atan
+  backward : atan_grad
+
 - op : atan2
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -7,6 +70,15 @@
     func : atan2
   backward : atan2_grad
 
+- op : atanh
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : atanh
+  backward : atanh_grad
+
 - op : bernoulli
   args : (Tensor x)
   output : Tensor(out)
@@ -14,6 +86,15 @@
     func : UnchangedInferMeta
   kernel :
     func : bernoulli
+
+- op : bmm
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : BmmInferMeta
+  kernel :
+    func : bmm
+  backward : bmm_grad
 
 - op : cholesky
   args : (Tensor x, bool upper=false)
@@ -33,15 +114,23 @@
     func : cholesky_solve
   backward : cholesky_solve_grad
 
-- op : exp
+- op : cos
   args : (Tensor x)
-  output : Tensor(out)
+  output : Tensor
   infer_meta :
     func : UnchangedInferMeta
   kernel :
-    func : exp
-  inplace : (x -> out)
-  backward : exp_grad
+    func : cos
+  backward : cos_grad
+
+- op : cosh
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : cosh
+  backward : cosh_grad
 
 - op : cross
   args : (Tensor x, Tensor y, int axis = 9)
@@ -52,6 +141,15 @@
     func : cross
     data_type : x
   backward : cross_grad
+
+- op : det
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : determinant
+  backward : det_grad
 
 - op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
@@ -118,6 +216,16 @@
   inplace : (x -> out)
   backward : erfinv_grad
 
+- op : exp
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : exp
+  inplace : (x -> out)
+  backward : exp_grad
+
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
   output : Tensor
@@ -144,6 +252,15 @@
   kernel :
     func : fft_r2c
   backward : fft_r2c_grad
+
+- op : flip
+  args : (Tensor x, int[] axis)
+  output : Tensor (out)
+  infer_meta :
+    func : FlipInferMeta
+  kernel :
+    func : flip
+  backward : flip_grad
 
 - op : graph_send_uv
   args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD")
@@ -182,6 +299,24 @@
     func : poisson
   backward : poisson_grad
 
+- op : sin
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sin
+  backward : sin_grad
+
+- op : sinh
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sinh
+  backward : sinh_grad
+
 - op : solve
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -191,6 +326,15 @@
     func : solve
     data_type : x
   backward : solve_grad
+
+- op : tan
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : tan
+  backward : tan_grad
 
 - op : trace
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
@@ -209,12 +353,3 @@
   kernel :
     func : trunc
   backward : trunc_grad
-
-- op : flip
-  args : (Tensor x, int[] axis)
-  output : Tensor (out)
-  infer_meta :
-    func : FlipInferMeta
-  kernel :
-    func : flip
-  backward : flip_grad
