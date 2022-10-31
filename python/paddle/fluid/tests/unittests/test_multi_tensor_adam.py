@@ -105,7 +105,6 @@ class TestMultiTensorAdam(unittest.TestCase):
                 input_paramters = paramters_dict_list
 
         multi_precision = True if test_fp16 else False
-
         if use_multi_tensor_adam:
             if not use_adamw:
                 opt = paddle.incubate.optimizer.MultiTensorAdam(
