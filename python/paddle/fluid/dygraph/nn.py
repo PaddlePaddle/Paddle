@@ -1268,7 +1268,7 @@ class InstanceNorm(layers.Layer):
         if param_attr == False or bias_attr == False:
             assert (
                 bias_attr == param_attr
-            ), "param_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
+            ), "param_attr and bias_attr must be set to False at the same time in InstanceNorm"
         self._epsilon = epsilon
         self._param_attr = param_attr
         self._bias_attr = bias_attr

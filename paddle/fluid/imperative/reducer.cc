@@ -675,10 +675,9 @@ void Reducer::TraverseBackwardGraph(
 // After each batch is calculated, the counter of each group(group.pending_)
 // and allreudce sequence counter(next_group_) will be cleaned up again.
 void Reducer::PrepareForBackward(
-    const std::vector<std::shared_ptr<imperative::VarBase>> &outputs,
-    const bool is_sync) {
+    const std::vector<std::shared_ptr<imperative::VarBase>> &outputs) {
   VLOG(3) << "after forward, then reset count for backward.";
-  grad_need_hooks_ = is_sync;
+  grad_need_hooks_ = true;
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
     group.pending_ = group.variable_indices_.size();
@@ -711,9 +710,7 @@ void Reducer::PrepareForBackward(
 
   if (find_unused_vars_once_ || find_unused_vars_each_step_) {
     unused_vars_.clear();
-    if (grad_need_hooks_) {
-      TraverseBackwardGraph(outputs);
-    }
+    TraverseBackwardGraph(outputs);
     // only check once in first step
     find_unused_vars_once_ = false;
   }

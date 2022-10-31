@@ -1876,3 +1876,151 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
                         break
         process_group.instantiate()
     server_socket.close()
+
+
+def get_input_split_info(cur_rank, var, dist_context):
+    # deduce how the input data is split among the cluster
+    tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
+    process_mesh = tensor_dist_attr.process_mesh
+    dims_mapping = tensor_dist_attr.dims_mapping
+
+    if cur_rank not in process_mesh.processes:
+        rank_id = _get_corresponding_rank(dist_context, process_mesh, cur_rank)
+    else:
+        rank_id = cur_rank
+
+    batch_size_axis = dims_mapping[0]
+    if batch_size_axis > -1 and process_mesh.topology[batch_size_axis] > 1:
+        group_ranks = _get_comm_group(
+            process_mesh.processes,
+            process_mesh.topology,
+            batch_size_axis,
+            rank_id,
+        )
+        return len(group_ranks), group_ranks.index(rank_id)
+
+    return 1, 0
+
+
+def validate_opt(optimizer):
+    if optimizer is not None:
+        optimizer._parameter_list = None
+        optimizer._param_groups = None
+    return optimizer
+
+
+def _copy_tensor_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr):
+    py_process_mesh = py_dist_attr.process_mesh
+    if py_process_mesh is not None:
+        cpp_dist_attr.process_mesh = core.ProcessMesh(
+            py_process_mesh.shape,
+            py_process_mesh.process_ids,
+            ["d" + str(i) for i in range(len(py_process_mesh.shape))],
+        )
+    cpp_dist_attr.dims_mapping = py_dist_attr.dims_mapping
+    cpp_dist_attr.annotated = py_dist_attr._is_annotated
+
+
+def _copy_tensor_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr):
+    from .process_mesh import ProcessMesh
+
+    cpp_process_mesh = cpp_dist_attr.process_mesh
+    if not cpp_process_mesh.empty():
+        py_dist_attr.process_mesh = ProcessMesh(
+            shape=cpp_process_mesh.shape,
+            process_ids=cpp_process_mesh.process_ids,
+        )
+    py_dist_attr.dims_mapping = cpp_dist_attr.dims_mapping
+    py_dist_attr._is_annotated = cpp_dist_attr.annotated
+
+
+def _copy_op_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr):
+    py_process_mesh = py_dist_attr.process_mesh
+    if py_process_mesh is not None:
+        cpp_dist_attr.process_mesh = core.ProcessMesh(
+            py_process_mesh.shape,
+            py_process_mesh.process_ids,
+            ["d" + str(i) for i in range(len(py_process_mesh.shape))],
+        )
+    cpp_dist_attr.impl_type = py_dist_attr.impl_type
+    cpp_dist_attr.impl_idx = py_dist_attr.impl_idx
+    cpp_dist_attr.annotated = py_dist_attr._is_annotated
+    for name, py_tensor_dist_attr in py_dist_attr.inputs_dist_attrs.items():
+        cpp_tensor_dist_attr = cpp_dist_attr.get_input_dist_attr(name)
+        _copy_tensor_dist_attr_to_cpp(cpp_tensor_dist_attr, py_tensor_dist_attr)
+    for name, py_tensor_dist_attr in py_dist_attr.outputs_dist_attrs.items():
+        cpp_tensor_dist_attr = cpp_dist_attr.get_output_dist_attr(name)
+        _copy_tensor_dist_attr_to_cpp(cpp_tensor_dist_attr, py_tensor_dist_attr)
+
+
+def _copy_op_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr):
+    from .process_mesh import ProcessMesh
+
+    cpp_process_mesh = cpp_dist_attr.process_mesh
+    if not cpp_process_mesh.empty():
+        py_dist_attr.process_mesh = ProcessMesh(
+            shape=cpp_process_mesh.shape,
+            process_ids=cpp_process_mesh.process_ids,
+        )
+    py_dist_attr.impl_type = cpp_dist_attr.impl_type
+    py_dist_attr.impl_idx = cpp_dist_attr.impl_idx
+    py_dist_attr._is_annotated = cpp_dist_attr.annotated
+    py_dist_attr.op_type = cpp_dist_attr.op.type()
+    for name, cpp_tensor_dist_attr in cpp_dist_attr.inputs_dist_attrs.items():
+        py_tensor_dist_attr = py_dist_attr.get_input_dist_attr(name)
+        _copy_tensor_dist_attr_from_cpp(
+            cpp_tensor_dist_attr, py_tensor_dist_attr
+        )
+    for name, cpp_tensor_dist_attr in cpp_dist_attr.outputs_dist_attrs.items():
+        py_tensor_dist_attr = py_dist_attr.get_output_dist_attr(name)
+        _copy_tensor_dist_attr_from_cpp(
+            cpp_tensor_dist_attr, py_tensor_dist_attr
+        )
+
+
+def _copy_dist_attr_to_cpp(dist_context):
+    for dist_tensor in dist_context._dist_tensors_for_program.values():
+        _copy_tensor_dist_attr_to_cpp(
+            dist_tensor.serial_tensor.dist_attr, dist_tensor.dist_attr
+        )
+
+    for dist_op in dist_context._dist_ops_for_program.values():
+        _copy_op_dist_attr_to_cpp(
+            dist_op.serial_op.dist_attr, dist_op.dist_attr
+        )
+
+
+def _copy_dist_attr_from_cpp(dist_context):
+    for dist_tensor in dist_context._dist_tensors_for_program.values():
+        _copy_tensor_dist_attr_from_cpp(
+            dist_tensor.serial_tensor.dist_attr, dist_tensor.dist_attr
+        )
+
+    for dist_op in dist_context._dist_ops_for_program.values():
+        _copy_op_dist_attr_from_cpp(
+            dist_op.serial_op.dist_attr, dist_op.dist_attr
+        )
+
+
+def _copy_dist_attr_to_cpp_for_graph(dist_context):
+    for node in dist_context.serial_ordered_nodes:
+        if node.is_var() and node.var() is not None:
+            py_dist_attr = dist_context.get_tensor_dist_attr_for_graph(node)
+            cpp_dist_attr = node.var().dist_attr
+            _copy_tensor_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr)
+        if node.is_op() and node.op() is not None:
+            py_dist_attr = dist_context.get_op_dist_attr_for_graph(node)
+            cpp_dist_attr = node.op().dist_attr
+            _copy_op_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr)
+
+
+def _copy_dist_attr_from_cpp_for_graph(dist_context):
+    for node in dist_context.serial_ordered_nodes:
+        if node.is_var() and node.var() is not None:
+            py_dist_attr = dist_context.get_tensor_dist_attr_for_graph(node)
+            cpp_dist_attr = node.var().dist_attr
+            _copy_tensor_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr)
+        if node.is_op() and node.op() is not None:
+            py_dist_attr = dist_context.get_op_dist_attr_for_graph(node)
+            cpp_dist_attr = node.op().dist_attr
+            _copy_op_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr)
