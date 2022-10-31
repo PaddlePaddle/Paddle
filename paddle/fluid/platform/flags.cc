@@ -70,12 +70,26 @@ PADDLE_DEFINE_EXPORTED_bool(
 
 /**
  * Operator related FLAG
+ * Name: FLAGS_abort_on_nan_inf
+ * Since Version: 2.5.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: Used to debug. Whether abort the process when any operator produce
+ * NAN/INF. It only works when FLAGS_check_nan_inf is set.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    abort_on_nan_inf,
+    true,
+    "Whether abort the process when any operator produce NAN/INF or not.");
+
+/**
+ * Operator related FLAG
  * Name: FLAGS_check_tensor_max_min
  * Since Version: 2.5.0
  * Value Range: bool, default=false
  * Example:
  * Note: Used to debug. Enable to calculate and print the max and min value of
- * each oeprator's output tensor.
+ * each operator's output tensor. It only works when FLAGS_check_nan_inf is set.
  */
 PADDLE_DEFINE_EXPORTED_bool(
     check_tensor_max_min,
