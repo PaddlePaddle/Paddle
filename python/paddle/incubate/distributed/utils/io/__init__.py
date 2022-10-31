@@ -12,10 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['ParameterError']
-
-
-class ParameterError(Exception):
-    """Exception class for Parameter checking"""
-
-    pass
+from .dist_save import save
+from .dist_load import load

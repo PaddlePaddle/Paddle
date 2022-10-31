@@ -2612,7 +2612,7 @@ class Variable(metaclass=VariableMetaClass):
         """Get the names of all attributes defined."""
         return self.desc.attr_names()
 
-    def _get_attr(self, name):
+    def attr(self, name):
         """
         Get the attribute by name.
 

@@ -17,6 +17,7 @@ import paddle.fluid as fluid
 import numpy as np
 import unittest
 
+
 unary_api_list = [
     paddle.nn.functional.elu,
     paddle.nn.functional.gelu,
@@ -155,6 +156,56 @@ class TestUnaryAPI(unittest.TestCase):
                 self.assertEqual(np.array(result[0]).shape, (device_num,))
                 self.assertEqual(np.array(result[1]).shape, (device_num,))
                 self.assertEqual(np.array(result[3]).shape, (device_num, 1))
+
+        paddle.disable_static()
+
+
+reduce_api_list = [
+    paddle.sum,
+    paddle.mean,
+    paddle.nansum,
+    paddle.nanmean,
+]
+
+
+class TestReduceAPI(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        for api in reduce_api_list:
+            x = paddle.rand([])
+            x.stop_gradient = False
+            out = api(x, None)
+            out.backward()
+
+            self.assertEqual(x.shape, [])
+            self.assertEqual(x.grad.shape, [])
+            self.assertEqual(out.shape, [])
+            self.assertEqual(out.grad.shape, [])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+        for api in reduce_api_list:
+            main_prog = fluid.Program()
+            with fluid.program_guard(main_prog, fluid.Program()):
+                x = paddle.rand([])
+
+                x.stop_gradient = False
+                out = api(x, None)
+                fluid.backward.append_backward(out)
+
+                # Test compile shape, grad is always [1]
+                self.assertEqual(x.shape, ())
+                self.assertEqual(out.shape, ())
+
+                exe = fluid.Executor()
+                result = exe.run(main_prog, fetch_list=[x, out])
+
+                # Test runtime shape
+                self.assertEqual(result[0].shape, ())
+                self.assertEqual(result[1].shape, ())
 
         paddle.disable_static()
 
