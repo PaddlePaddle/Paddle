@@ -580,7 +580,7 @@ class TestSimpleUndiagonal(unittest.TestCase):
         A = paddle.to_tensor(np.array([1.0, 2.0]))
         A_expect = paddle.to_tensor([[1.0, 0.0], [0.0, 2.0]])
         A_actual = paddle.einsum('i->ii', A)
-        np.array_equal(A_expect.numpy(), A_actual.numpy())
+        assert np.array_equal(A_expect.numpy(), A_actual.numpy())
 
 
 class TestSimpleUndiagonal2(unittest.TestCase):
@@ -594,7 +594,61 @@ class TestSimpleUndiagonal2(unittest.TestCase):
         B = paddle.to_tensor(np.array([1.0, 1.0]))
         A_expect = paddle.to_tensor([[2.0, 0.0], [0.0, 4.0]])
         A_actual = paddle.einsum('i,j->ii', A, B)
-        np.array_equal(A_expect.numpy(), A_actual.numpy())
+        assert np.array_equal(A_expect.numpy(), A_actual.numpy())
+
+
+class TestSimpleComplexGrad(unittest.TestCase):
+    """
+    EinsumOp support complex grad. but op_test don't support numeric grad for complex dtype.
+    """
+
+    def test_shape(self):
+        paddle.disable_static()
+        A = paddle.to_tensor(
+            [
+                [
+                    [-1.08644637 + 1.30794563j],
+                    [-0.89606513 + 1.84546043j],
+                    [-0.30629937 + 0.82911495j],
+                ],
+                [
+                    [-1.33993366 - 0.02329881j],
+                    [-1.20658558 - 0.20856395j],
+                    [-0.64172681 - 0.91661975j],
+                ],
+            ]
+        )
+
+        B = paddle.to_tensor(
+            [
+                [[-1.07474258 + 0.39477287j], [-0.08614349 - 0.38770082j]],
+                [[1.17583854 + 0.58840176j], [-1.63509173 - 1.43329882j]],
+                [[1.228194 - 0.32357468j], [1.07638625 + 1.25298469j]],
+            ]
+        )
+
+        dOut = paddle.to_tensor(
+            [
+                [[-0.73074259 - 0.1632133j], [1.42848507 - 0.96410727j]],
+                [[0.94465389 - 0.34264733j], [-0.26400278 + 0.04890404j]],
+            ]
+        )
+
+        d_expect = paddle.to_tensor(
+            [
+                [[0.9717 + 1.1008j], [-1.9091 + 3.8619j], [-0.5151 - 3.2645j]],
+                [[-1.1467 - 0.1112j], [1.2707 - 1.4171j], [1.0482 + 0.2683j]],
+            ]
+        )
+
+        A.stop_gradient = False
+        B.stop_gradient = False
+        Out = paddle.einsum('iox,ojx->ijx', A, B)
+        dA = paddle.grad(Out, A, dOut)[0]
+        # set to 1e-4 because copying the data loss accuracy.
+        np.testing.assert_allclose(
+            dA.numpy(), d_expect.numpy(), rtol=1e-4, atol=0
+        )
 
 
 if __name__ == "__main__":
