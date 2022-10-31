@@ -762,5 +762,6 @@ int ProductRuleBook(const Context& dev_ctx,
     return rulebook_len;
   }
 }
+
 }  // namespace sparse
 }  // namespace phi
