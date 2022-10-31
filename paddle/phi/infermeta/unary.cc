@@ -835,6 +835,7 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
   for (auto& i : inputs) {
     input_dims.push_back(i->dims());
   }
+  std::vector<std::string> input_strs;
   std::string right;
   ParseEinsumEquation(equation,
                       input_dims,
@@ -845,7 +846,8 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                       &ellipsis_dims,
                       &broadcast_dims,
                       &output_dims,
-                      &right);
+                      &right,
+                      &input_strs);
 
   VLOG(3) << "Einsum Infershape: input dims:"
           << paddle::string::join_strings(input_dims, "\n");
