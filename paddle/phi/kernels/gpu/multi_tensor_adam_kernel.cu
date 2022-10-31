@@ -178,35 +178,20 @@ struct MultiTensorAdamFunctor {
 #pragma unroll
       for (int j = 0; j < VecSize; j++) {
         MT p = IsMultiPrecision ? mp_vec[j] : static_cast<MT>(p_vec[j]);
-        MT g = static_cast<MT>(g_vec[j]);
-        MT m = static_cast<MT>(mom1_vec[j]);
-        MT v = static_cast<MT>(mom2_vec[j]);
-        if (!UseAdamW) {
-          UpdateMoments(&mom1_vec[j],
-                        &mom2_vec[j],
-                        static_cast<MT>(g_vec[j]),
-                        beta1,
-                        beta2);
-          m = mom1_vec[j];
-          v = mom2_vec[j];
-          MT denom =
-              (sqrt(v) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
-          p += (m / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
-          mp_vec[j] = p;
-        } else {  // weight decay
-          p *= (static_cast<MT>(1.0) - lr * decay);
-          UpdateMoments(&mom1_vec[j],
-                        &mom2_vec[j],
-                        static_cast<MT>(g_vec[j]),
-                        beta1,
-                        beta2);
-          m = mom1_vec[j];
-          v = mom2_vec[j];
-          MT denom =
-              (sqrt(v) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
-          p += (m / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
-          mp_vec[j] = p;
-        }
+        UpdateMoments(&mom1_vec[j],
+                      &mom2_vec[j],
+                      static_cast<MT>(g_vec[j]),
+                      beta1,
+                      beta2);
+        p = UpdateParameter(p,
+                            mom1_vec[j],
+                            mom2_vec[j],
+                            beta1_pow,
+                            beta2_pow,
+                            lr,
+                            epsilon,
+                            decay);
+        mp_vec[j] = p;
       }
 
       if (idx < n && idx < chunk_size) {
@@ -247,6 +232,22 @@ struct MultiTensorAdamFunctor {
 
     mom1_ptr[0] = mom1;
     mom2_ptr[0] = mom2;
+  }
+
+  static __device__ __forceinline__ MT UpdateParameter(MT p,
+                                                       MT mom1,
+                                                       MT mom2,
+                                                       MT beta1_pow,
+                                                       MT beta2_pow,
+                                                       MT lr,
+                                                       MT epsilon,
+                                                       MT decay) {
+    if (UseAdamW) {
+      p *= (static_cast<MT>(1.0) - lr * decay);
+    }
+    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+    p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
+    return p;
   }
 };
 
