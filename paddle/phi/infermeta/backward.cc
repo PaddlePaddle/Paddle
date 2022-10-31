@@ -186,10 +186,10 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
   }
 }
 
-void CropTensorGradInferMeta(const MetaTensor& out_grad,
-                             const MetaTensor& x,
-                             const IntArray& offsets,
-                             MetaTensor* x_grad) {
+void CropGradInferMeta(const MetaTensor& out_grad,
+                       const MetaTensor& x,
+                       const IntArray& offsets,
+                       MetaTensor* x_grad) {
   auto x_dims = x.dims();
 
   if (x_grad != nullptr) {

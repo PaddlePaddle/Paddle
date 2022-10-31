@@ -44,7 +44,7 @@
            add_coo_dense_grad{sparse_coo, dense, sparse_coo -> sparse_coo, dense}
 
 - backward_op : addmm_grad
-  forward : addmm(Tensor input, Tensor x, Tensor y, float alpha=1.0, float beta=1.0) -> Tensor(out)
+  forward : addmm(Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0) -> Tensor(out)
   args : (Tensor input, Tensor x, Tensor y, Tensor out_grad, float alpha=1.0, float beta=1.0)
   output : Tensor(input_grad), Tensor(x_grad), Tensor(y_grad)
   infer_meta :

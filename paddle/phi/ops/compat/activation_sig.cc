@@ -39,20 +39,9 @@ namespace phi {
 
 #define comma ,
 
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Cos, "cos", );        // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Tan, "tan", );        // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Acos, "acos", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Sin, "sin", );        // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Asin, "asin", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Atan, "atan", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Sinh, "sinh", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Cosh, "cosh", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Asinh, "asinh", );    // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Acosh, "acosh", );    // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Atanh, "atanh", );    // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Square, "square", );  // NOLINT
 
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(BRelu, "brelu", "t_min" comma "t_max");
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardTanh, "hard_tanh", "t_min" comma "t_max");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(LeakyRelu, "leaky_relu", "alpha");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(ThresholdedRelu,
                                "thresholded_relu",
@@ -86,7 +75,6 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Softplus,
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu, "relu", );               // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Tanh, "tanh", );               // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sigmoid, "sigmoid", );         // NOLINT
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Exp, "exp", );                 // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Expm1, "expm1", );             // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Reciprocal, "reciprocal", );   // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sqrt, "sqrt", );               // NOLINT
@@ -240,21 +228,11 @@ PD_REGISTER_BASE_KERNEL_NAME(sqrt_grad_grad, sqrt_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(rsqrt_grad_grad, rsqrt_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(celu_grad_grad, celu_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(square_grad_grad, square_double_grad);
+PD_REGISTER_BASE_KERNEL_NAME(brelu, hard_tanh);
+PD_REGISTER_BASE_KERNEL_NAME(brelu_grad, hard_tanh_grad);
 
-PD_REGISTER_ARG_MAPPING_FN(cos_grad, phi::CosGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(tan_grad, phi::TanGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(acos_grad, phi::AcosGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(sin_grad, phi::SinGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(asin_grad, phi::AsinGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(atan_grad, phi::AtanGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(sinh_grad, phi::SinhGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(cosh_grad, phi::CoshGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(asinh_grad, phi::AsinhGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(acosh_grad, phi::AcoshGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(atanh_grad, phi::AtanhGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(relu_grad, phi::ReluGradOpArgumentMapping);
 
-PD_REGISTER_ARG_MAPPING_FN(exp_grad, phi::ExpGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(expm1_grad, phi::Expm1GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(square_grad, phi::SquareGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reciprocal_grad,
@@ -276,7 +254,7 @@ PD_REGISTER_ARG_MAPPING_FN(tanh_grad_grad,
                            phi::TanhDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(tanh_triple_grad,
                            phi::TanhTripleGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(brelu_grad, phi::BReluGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(brelu_grad, phi::HardTanhGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(leaky_relu, phi::LeakyReluOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(leaky_relu_grad,
                            phi::LeakyReluGradOpArgumentMapping);

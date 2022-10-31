@@ -19,7 +19,6 @@ from paddle.static import InputSpec
 
 
 class MySub(paddle.nn.Layer):
-
     def __init__(self):
         super(MySub, self).__init__()
 
@@ -28,7 +27,6 @@ class MySub(paddle.nn.Layer):
 
 
 class NetWithOpAttr(paddle.nn.Layer):
-
     def __init__(self, in_num, out_num):
         super(NetWithOpAttr, self).__init__()
 
@@ -44,7 +42,7 @@ class NetWithOpAttr(paddle.nn.Layer):
 
     @paddle.jit.to_static(input_spec=[InputSpec([10, 16])])
     def with_cond(self, x):
-        if paddle.mean(x) > 0.:
+        if paddle.mean(x) > 0.0:
             out = self.linear(x)
         else:
             out = self.sub(x, x)
@@ -53,7 +51,6 @@ class NetWithOpAttr(paddle.nn.Layer):
 
 
 class CheckOpAttr(unittest.TestCase):
-
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
@@ -65,7 +62,7 @@ class CheckOpAttr(unittest.TestCase):
             "int_val": 10,
             "int_vals": [10, 20],
             "float_val": 3.8,
-            "float_vals": [3.8, -0.2]
+            "float_vals": [3.8, -0.2],
         }
         self.bn_attrs = {"bool_val": True, "bool_vals": [True, False]}
         self.sub_attrs = {"int_vals": [10, 20], "bool_vals": [True, False]}
@@ -75,7 +72,7 @@ class CheckOpAttr(unittest.TestCase):
             'elementwise_add': self.fc_attrs,
             'batch_norm': self.bn_attrs,
             'tanh': self.bn_attrs,
-            'elementwise_sub': self.sub_attrs
+            'elementwise_sub': self.sub_attrs,
         }
 
     def test_set_op_attrs(self):
@@ -89,8 +86,9 @@ class CheckOpAttr(unittest.TestCase):
         self.assertEqual(len(net.linear._forward_pre_hooks), 1)
         self.assertEqual(len(net.linear._forward_post_hooks), 1)
         # to_static
-        net = paddle.jit.to_static(net,
-                                   input_spec=[InputSpec.from_tensor(self.x)])
+        net = paddle.jit.to_static(
+            net, input_spec=[InputSpec.from_tensor(self.x)]
+        )
 
         # assert attrs have be set.
         self.check_op_attrs(net.forward.concrete_program.main_program)
@@ -103,7 +101,8 @@ class CheckOpAttr(unittest.TestCase):
         for cur_block in main_program.blocks:
             ops = cur_block.ops
             for op in ops:
-                if op.type not in self.infos: continue
+                if op.type not in self.infos:
+                    continue
                 for attr_name, expect_vals in self.infos[op.type].items():
                     op_vals = op.desc.attr(attr_name)
                     if not isinstance(expect_vals, list):
@@ -120,8 +119,9 @@ class CheckOpAttr(unittest.TestCase):
     def test_set_op_attrs_with_sub_block(self):
         net = NetWithOpAttr(self.in_num, self.out_num)
         # set attrs
-        net.linear._set_op_attrs({"int_vals": [0,
-                                               0]})  # test overwrite behavior
+        net.linear._set_op_attrs(
+            {"int_vals": [0, 0]}
+        )  # test overwrite behavior
         net.linear._set_op_attrs(self.fc_attrs)
         net.bn._set_op_attrs(self.bn_attrs)
         net.sub._set_op_attrs(self.sub_attrs)

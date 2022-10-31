@@ -133,7 +133,7 @@ bool SaveStaticNameListToDisk(
                                    "that exe.run(startup_program) has "
                                    "been executed.",
                                    vec_tensor_name_list[i]));
-    phi::DenseTensor* tensor = var_ptr->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var_ptr->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
                       true,
                       platform::errors::PreconditionNotMet(
@@ -155,7 +155,7 @@ bool SaveDygraphVarBaseListToDisk(
   for (size_t i = 0; i < vec_var_base_list.size(); ++i) {
     auto var_ptr = vec_var_base_list[i]->MutableVar();
 
-    phi::DenseTensor* tensor = var_ptr->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var_ptr->GetMutable<phi::DenseTensor>();
 
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
                       true,
@@ -216,7 +216,7 @@ bool LoadStaticNameListFromDisk(
             "please make sure that exe.run(startup_program) has been executed.",
             vec_tensor_name_list[i]));
 
-    phi::DenseTensor* tensor = var_ptr->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var_ptr->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         platform::errors::PreconditionNotMet(

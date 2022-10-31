@@ -85,6 +85,7 @@ def get_rng_state_tracker():
 
 def model_parallel_random_seed(seed=None):
     import paddle.distributed.fleet as fleet
+
     hcg = fleet.get_hybrid_communicate_group()
     rank = hcg.get_model_parallel_rank()
 
@@ -105,23 +106,23 @@ def determinate_seed(rng_name):
     helper = LayerHelper('seed', **locals())
     out = helper.create_variable_for_type_inference(dtype=paddle.int32)
     # set force_cpu to reduce sync copy from CPU->GPU->CPU, and reduce pipeline hang
-    helper.append_op(type='seed',
-                     outputs={'Out': out},
-                     attrs={
-                         'deterministic': True,
-                         'rng_name': rng_name,
-                         'force_cpu': True
-                     })
+    helper.append_op(
+        type='seed',
+        outputs={'Out': out},
+        attrs={'deterministic': True, 'rng_name': rng_name, 'force_cpu': True},
+    )
     return out
 
 
-def dropout(x,
-            p=0.5,
-            axis=None,
-            rng_name=None,
-            training=True,
-            mode="upscale_in_train",
-            name=None):
+def dropout(
+    x,
+    p=0.5,
+    axis=None,
+    rng_name=None,
+    training=True,
+    mode="upscale_in_train",
+    name=None,
+):
     """
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training. The dropout operator randomly sets the
@@ -191,53 +192,66 @@ def dropout(x,
         raise TypeError("p argument should be a number(int|float) or Variable")
 
     # fast return for p == 0
-    if isinstance(p, (int, float)) and p == 0: return x
+    if isinstance(p, (int, float)) and p == 0:
+        return x
 
     assert 0 <= p <= 1, ValueError("p argument should between 0 and 1")
-    assert mode in ('downscale_in_infer', 'upscale_in_train'), \
-        ValueError(
-            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
+    assert mode in ('downscale_in_infer', 'upscale_in_train'), ValueError(
+        "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
+    )
 
-    assert axis is None, \
-        TypeError("unsupport axis when using random seed generator")
+    assert axis is None, TypeError(
+        "unsupport axis when using random seed generator"
+    )
 
-    mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+    mode = (
+        'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
+    )  # semantic transfer
 
     # dygraph using tracker, doesn't need determinate seed
     if _non_static_mode():
-        out, mask = _legacy_C_ops.dropout(x, 'dropout_prob', p, 'is_test',
-                                          not training, 'fix_seed', False,
-                                          'seed', 0, 'dropout_implementation',
-                                          mode)
+        out, mask = _legacy_C_ops.dropout(
+            x,
+            'dropout_prob',
+            p,
+            'is_test',
+            not training,
+            'fix_seed',
+            False,
+            'seed',
+            0,
+            'dropout_implementation',
+            mode,
+        )
         return out
 
     seed = determinate_seed(rng_name)
 
     if isinstance(p, Variable) and not p.shape != [1]:
         raise TypeError(
-            "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}"
-            .format(p.shape))
+            "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
+                p.shape
+            )
+        )
 
     helper = LayerHelper('dropout', **locals())
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                             'dropout')
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+    )
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     mask = helper.create_variable_for_type_inference(
-        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
+    )
 
-    helper.append_op(type='dropout',
-                     inputs={
-                         'X': [x],
-                         'Seed': seed
-                     },
-                     outputs={
-                         'Out': [out],
-                         'Mask': [mask]
-                     },
-                     attrs={
-                         'dropout_prob': p,
-                         'is_test': not training,
-                         'dropout_implementation': mode,
-                     })
+    helper.append_op(
+        type='dropout',
+        inputs={'X': [x], 'Seed': seed},
+        outputs={'Out': [out], 'Mask': [mask]},
+        attrs={
+            'dropout_prob': p,
+            'is_test': not training,
+            'dropout_implementation': mode,
+        },
+    )
     return out

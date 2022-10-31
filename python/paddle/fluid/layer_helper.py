@@ -14,7 +14,13 @@
 
 import copy
 
-from .framework import Parameter, dtype_is_floating, _non_static_mode, OpProtoHolder, _global_flags
+from .framework import (
+    Parameter,
+    dtype_is_floating,
+    _non_static_mode,
+    OpProtoHolder,
+    _global_flags,
+)
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
@@ -25,7 +31,6 @@ from .dygraph_utils import _append_activation_in_dygraph
 
 
 class LayerHelper(LayerHelperBase):
-
     def __init__(self, layer_type, **kwargs):
         self.kwargs = kwargs
         name = self.kwargs.get('name', None)
@@ -35,8 +40,9 @@ class LayerHelper(LayerHelperBase):
         if name is None:
             self.kwargs['name'] = unique_name.generate(layer_type)
 
-        super(LayerHelper, self).__init__(self.kwargs['name'],
-                                          layer_type=layer_type)
+        super(LayerHelper, self).__init__(
+            self.kwargs['name'], layer_type=layer_type
+        )
 
     def append_op(self, *args, **kwargs):
         return self.main_program.current_block().append_op(*args, **kwargs)
@@ -65,7 +71,7 @@ class LayerHelper(LayerHelperBase):
     def bias_attr(self):
         return ParamAttr._to_attr(self.kwargs.get('bias_attr', None))
 
-    #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of param_attr
+    # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of param_attr
     def multiple_param_attr(self, length):
         param_attr = self.param_attr
         if isinstance(param_attr, ParamAttr):
@@ -93,8 +99,9 @@ class LayerHelper(LayerHelperBase):
             if dtype is None:
                 dtype = each.dtype
             elif dtype != each.dtype:
-                raise ValueError("Data Type mismatch: %d to %d" %
-                                 (dtype, each.dtype))
+                raise ValueError(
+                    "Data Type mismatch: %d to %d" % (dtype, each.dtype)
+                )
         return dtype
 
     def get_parameter(self, name):
@@ -103,7 +110,7 @@ class LayerHelper(LayerHelperBase):
             raise ValueError("no Parameter name %s found" % name)
         return param
 
-    #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of bias_attr
+    # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of bias_attr
     def append_bias_op(self, input_var, dim_start=1, dim_end=None):
         """
         Append bias operator and return its output. If the user does not set
@@ -123,21 +130,19 @@ class LayerHelper(LayerHelperBase):
         if not bias_attr:
             return input_var
 
-        b = self.create_parameter(attr=bias_attr,
-                                  shape=size,
-                                  dtype=input_var.dtype,
-                                  is_bias=True)
+        b = self.create_parameter(
+            attr=bias_attr, shape=size, dtype=input_var.dtype, is_bias=True
+        )
         tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
-        self.append_op(type='elementwise_add',
-                       inputs={
-                           'X': [input_var],
-                           'Y': [b]
-                       },
-                       outputs={'Out': [tmp]},
-                       attrs={'axis': dim_start})
+        self.append_op(
+            type='elementwise_add',
+            inputs={'X': [input_var], 'Y': [b]},
+            outputs={'Out': [tmp]},
+            attrs={'axis': dim_start},
+        )
         return tmp
 
-    #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of act
+    # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of act
     def append_activation(self, input_var):
         act = self.kwargs.get('act', None)
         if act is None:
@@ -152,24 +157,27 @@ class LayerHelper(LayerHelperBase):
             use_cudnn = self.kwargs.get('use_cudnn')
             act['use_cudnn'] = use_cudnn
         use_mkldnn = self.kwargs.get(
-            'use_mkldnn',
-            _global_flags().get("FLAGS_use_mkldnn", False))
+            'use_mkldnn', _global_flags().get("FLAGS_use_mkldnn", False)
+        )
         if use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
         if _non_static_mode():
-            res = _append_activation_in_dygraph(input_var, act_type, use_cudnn,
-                                                use_mkldnn)
+            res = _append_activation_in_dygraph(
+                input_var, act_type, use_cudnn, use_mkldnn
+            )
             return res
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
-            self.append_op(type=act_type,
-                           inputs={"X": [input_var]},
-                           outputs={"Out": [tmp]},
-                           attrs=act)
+            self.append_op(
+                type=act_type,
+                inputs={"X": [input_var]},
+                outputs={"Out": [tmp]},
+                attrs=act,
+            )
             return tmp
 
-    #TODO (jiabin): should we remove this since it has never be used
+    # TODO (jiabin): should we remove this since it has never be used
     def _get_default_initializer(self, dtype):
         if dtype is None or dtype_is_floating(dtype) is True:
             return Xavier()
@@ -177,9 +185,13 @@ class LayerHelper(LayerHelperBase):
             # For integer and boolean types, initialize with all zeros
             return Constant()
 
-    #TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of kwargs
+    # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of kwargs
     def is_instance(self, param_name, cls):
         param = self.kwargs.get(param_name, None)
         if not isinstance(param, cls):
-            raise TypeError("The input {0} parameter of method {1} must be {2}",
-                            param_name, self.layer_type, cls.__name__)
+            raise TypeError(
+                "The input {0} parameter of method {1} must be {2}",
+                param_name,
+                self.layer_type,
+                cls.__name__,
+            )

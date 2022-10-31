@@ -25,13 +25,12 @@ enable_static()
 
 
 class FCGeluTanhOneDnnFusePassTest(InferencePassTest):
-
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 128, 768],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 128, 768], dtype="float32"
+            )
             fc_out = fluid.layers.fc(input=data, size=3072, num_flatten_dims=2)
             gelu_out = fluid.layers.gelu(fc_out, approximate=False)
 
@@ -48,13 +47,12 @@ class FCGeluTanhOneDnnFusePassTest(InferencePassTest):
 
 
 class FCGeluErfOneDnnFusePassTest(InferencePassTest):
-
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 128, 768],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 128, 768], dtype="float32"
+            )
             fc_out = fluid.layers.fc(input=data, size=3072, num_flatten_dims=2)
             gelu_out = fluid.layers.gelu(fc_out, approximate=True)
 
@@ -72,13 +70,12 @@ class FCGeluErfOneDnnFusePassTest(InferencePassTest):
 
 
 class FCTanhOneDnnFusePassTest(InferencePassTest):
-
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 128, 768],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 128, 768], dtype="float32"
+            )
             fc_out = fluid.layers.fc(input=data, size=3072, num_flatten_dims=2)
             tanh_out = fluid.layers.tanh(fc_out)
 
@@ -96,13 +93,12 @@ class FCTanhOneDnnFusePassTest(InferencePassTest):
 
 
 class FCSigmoidOneDnnFusePassTest(InferencePassTest):
-
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 128, 768],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 128, 768], dtype="float32"
+            )
             fc_out = fluid.layers.fc(input=data, size=3072, num_flatten_dims=2)
             sigmoid_out = fluid.layers.sigmoid(fc_out)
 
@@ -120,13 +116,12 @@ class FCSigmoidOneDnnFusePassTest(InferencePassTest):
 
 
 class FCHardSwishOneDnnFusePassTest(InferencePassTest):
-
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 128, 768],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 128, 768], dtype="float32"
+            )
             fc_out = fluid.layers.fc(input=data, size=3072, num_flatten_dims=2)
             hardswish_out = fluid.layers.hard_swish(fc_out)
 
@@ -144,13 +139,12 @@ class FCHardSwishOneDnnFusePassTest(InferencePassTest):
 
 
 class FCMishOneDnnFusePassTest(InferencePassTest):
-
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 128, 768],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 128, 768], dtype="float32"
+            )
             fc_out = fluid.layers.fc(input=data, size=3072, num_flatten_dims=2)
             mish_out = fluid.layers.mish(fc_out)
 
