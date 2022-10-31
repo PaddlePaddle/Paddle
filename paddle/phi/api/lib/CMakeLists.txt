@@ -185,6 +185,7 @@ message(
   "create or remove auto-geneated operators: ${generated_op_path}.tmp
 create or remove auto-geneated argument mappings: ${generated_argument_mapping_path}.tmp"
 )
+
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
   COMMAND
