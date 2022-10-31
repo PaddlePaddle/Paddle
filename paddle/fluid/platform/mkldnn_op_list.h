@@ -78,9 +78,7 @@ static const std::unordered_set<std::string> cudnn_white_list = {
     "softmax_grad",
     "sequence_softmax",
     "sequence_softmax_grad",
-};
 
-static const std::unordered_set<std::string> cudnn_black_list = {
     // WIP
     "conv2d",
     "conv2d_grad",
@@ -91,7 +89,9 @@ static const std::unordered_set<std::string> cudnn_black_list = {
     "conv3d",
     "conv3d_grad",
     "conv3d_grad_grad",
+};
 
+static const std::unordered_set<std::string> cudnn_black_list = {
     // activation mkldnn operator
     "soft_relu",
     "soft_relu_grad",

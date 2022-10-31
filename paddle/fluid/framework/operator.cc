@@ -1868,7 +1868,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
     if (paddle::platform::in_cudnn_white_list(type_)) {
       expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
     } else {
-      PADDLE_ENFORCE_EQ(paddle::platform::in_cudnn_white_list(type_),
+      PADDLE_ENFORCE_EQ(paddle::platform::in_cudnn_black_list(type_),
                         true,
                         platform::errors::Unimplemented(
                             "%s operator not in cudnn_white_list", type_));
