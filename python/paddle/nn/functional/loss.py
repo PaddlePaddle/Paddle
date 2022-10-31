@@ -1017,7 +1017,7 @@ def hsigmoid_loss(
             #  [1.92374969]]
     """
     if in_dygraph_mode():
-        out, _, _ = _C_ops.hierarchical_sigmoid(
+        out, _, _ = _C_ops.hsigmoid_loss(
             input,
             weight,
             label,

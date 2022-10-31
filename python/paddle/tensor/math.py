@@ -3706,7 +3706,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             dim = [0]
 
     if in_dygraph_mode():
-        return _C_ops.reduce_prod(x, dim, keepdim, reduce_all)
+        return _C_ops.prod(x, dim, keepdim, reduce_all)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_prod(
             x, 'dim', dim, 'keep_dim', keepdim, 'reduce_all', reduce_all

@@ -5385,7 +5385,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
                 )
             )
     if in_dygraph_mode():
-        return _C_ops.reduce_prod(
+        return _C_ops.prod(
             input,
             dim if dim != None and dim != [] else [0],
             keep_dim,
@@ -15549,7 +15549,7 @@ def where(condition):
     """
 
     if in_dygraph_mode():
-        return _C_ops.where_index(condition)
+        return _C_ops.nonzero(condition)
     if _in_legacy_dygraph():
         return _legacy_C_ops.where_index(condition)
 
@@ -16568,7 +16568,7 @@ def uniform_random(
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.uniform_random(
+        return _C_ops.uniform(
             shape,
             dtype,
             float(min),
