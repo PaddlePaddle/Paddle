@@ -295,17 +295,6 @@
   output : Tensor(x_grad)
   invoke : flip(out_grad, axis)
 
-- backward_op : graph_send_uv_grad
-  forward : graph_send_uv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD") -> Tensor(out)
-  args: (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out_grad, str message_op = "ADD")
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : graph_send_uv_grad
-    data_type : x
-
 - backward_op : lgamma_grad
   forward : lgamma(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -335,6 +324,17 @@
     param : [out_grad]
   kernel :
     func : poisson_grad
+
+- backward_op : send_uv_grad
+  forward : send_uv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD") -> Tensor(out)
+  args: (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out_grad, str message_op = "ADD")
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : send_uv_grad
+    data_type : x
 
 - backward_op : sin_grad
   forward : sin (Tensor x) -> Tensor(out)

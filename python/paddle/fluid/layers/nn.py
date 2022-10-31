@@ -11837,7 +11837,7 @@ def gaussian_random(
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         place = _current_expected_place()
-        return _C_ops.gaussian_random(
+        return _C_ops.gaussian(
             shape, float(mean), float(std), seed, dtype, place
         )
 
