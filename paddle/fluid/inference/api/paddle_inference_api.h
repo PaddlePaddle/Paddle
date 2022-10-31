@@ -100,6 +100,13 @@ class PD_INFER_DECL Predictor {
   std::map<std::string, DataType> GetInputTypes();
 
   ///
+  /// \brief Get all input names and their corresponding shape
+  ///
+  /// \return the map of input names and shape
+  ///
+  std::map<std::string, std::vector<int64_t>> GetInputTensorShape();
+
+  ///
   /// \brief Get the input names
   ///
   /// \return input names

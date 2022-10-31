@@ -2344,6 +2344,10 @@ std::map<std::string, DataType> Predictor::GetInputTypes() {
   return predictor_->GetInputTypes();
 }
 
+std::map<std::string, std::vector<int64_t>> Predictor::GetInputTensorShape() {
+  return predictor_->GetInputTensorShape();
+}
+
 std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {
   return predictor_->GetInputTensor(name);
 }
