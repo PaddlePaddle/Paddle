@@ -19,6 +19,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = phi::DenseTensor;
+using Variable = framework::Variable;
+using LoDTensorArray = framework::LoDTensorArray;
+using DDim = framework::DDim;
+
 static void ProcessStridedSliceParams(
     const std::vector<int>& axes,
     const DDim& input_dims,
