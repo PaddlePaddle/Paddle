@@ -73,7 +73,6 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Softplus,
                                "beta" comma "threshold");  // NOLINT
 
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu, "relu", );               // NOLINT
-DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Tanh, "tanh", );               // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Sigmoid, "sigmoid", );         // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Expm1, "expm1", );             // NOLINT
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Reciprocal, "reciprocal", );   // NOLINT
@@ -107,20 +106,6 @@ DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(Ceil, "ceil", );    // NOLINT
 KernelSignature ReluDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("relu_double_grad", {"Out", "DDX"}, {}, {"DDOut"});
-}
-
-KernelSignature TanhDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "tanh_double_grad", {"Out", "DOut", "DDX"}, {}, {"DOutNew", "DDOut"});
-}
-
-KernelSignature TanhTripleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("tanh_triple_grad",
-                         {"Out", "DOut", "DDX", "D_DOut_New", "D_DDOut"},
-                         {},
-                         {"D_OutNew", "D_DOut", "D_DDx"});
 }
 
 KernelSignature SigmoidDoubleGradOpArgumentMapping(
@@ -217,7 +202,6 @@ KernelSignature PowGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(relu_grad_grad, relu_double_grad);
-PD_REGISTER_BASE_KERNEL_NAME(tanh_grad_grad, tanh_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(leaky_relu_grad_grad, leaky_relu_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(softshrink, soft_shrink);
 PD_REGISTER_BASE_KERNEL_NAME(softshrink_grad, soft_shrink_grad);
@@ -247,11 +231,6 @@ PD_REGISTER_ARG_MAPPING_FN(softplus_grad, phi::SoftplusGradOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(relu_grad_grad,
                            phi::ReluDoubleGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(tanh_grad, phi::TanhGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(tanh_grad_grad,
-                           phi::TanhDoubleGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(tanh_triple_grad,
-                           phi::TanhTripleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(brelu_grad, phi::BReluGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(leaky_relu, phi::LeakyReluOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(leaky_relu_grad,
