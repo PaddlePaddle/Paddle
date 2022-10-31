@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/mish_op_plugin.h"
 
 namespace paddle {
 namespace framework {
@@ -49,7 +48,6 @@ class MishOpConverter : public OpConverter {
             : 20.0f;
     nvinfer1::ILayer* layer = nullptr;
 
-#if IS_TRT_VERSION_GE(5130)
     // mish -> clip + softplus + tanh + prod
     auto* layer_clip = TRT_ENGINE_ADD_LAYER(
         engine_, Activation, *input, nvinfer1::ActivationType::kCLIP);
@@ -71,12 +69,6 @@ class MishOpConverter : public OpConverter {
                                  *input,
                                  *(tan_layer->getOutput(0)),
                                  nvinfer1::ElementWiseOperation::kPROD);
-#else
-    int input_num = op_desc.Input("X").size();
-    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-    plugin::MishPlugin* plugin = new plugin::MishPlugin(threshold, with_fp16);
-    layer = engine_->AddPlugin(&input, input_num, plugin);
-#endif
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "mish", {output_name}, test_mode);
