@@ -63,10 +63,7 @@ option(WITH_ASCEND_CL "Compile PaddlePaddle with ASCEND CL" ${WITH_ASCEND})
 option(WITH_ASCEND_CXX11 "Compile PaddlePaddle with ASCEND and CXX11 ABI" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
-# NOTE(umiswing): WITH_CUTLASS can be compile on gpu with sm >= 80. Set WITH_CUTLASS=ON if a
-# gather-gemm-scatter fusion in sparse conv 3d is needed.
-option(WITH_CUTLASS "Compile PaddlePaddle with CUTLASS" OFF)
-# # Note(zhouwei): It use option above, so put here
+# Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
 include(experimental) # experimental build options
@@ -427,10 +424,6 @@ else()
         "If the environment is multi-card, the WITH_NCCL option needs to be turned on, otherwise only a single card can be used."
     )
   endif()
-endif()
-
-if(WITH_CUTLASS)
-  add_definitions("-DPADDLE_WITH_CUTLASS")
 endif()
 
 if(WITH_BRPC_RDMA)

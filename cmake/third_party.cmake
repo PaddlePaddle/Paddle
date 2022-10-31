@@ -505,7 +505,7 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
-if(WITH_CUTLASS)
+if(WITH_GPU)
   include(external/cutlass) # download, build, install cusparselt
   list(APPEND third_party_deps extern_cutlass)
 endif()

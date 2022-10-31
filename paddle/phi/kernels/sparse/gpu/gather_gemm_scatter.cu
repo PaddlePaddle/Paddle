@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_CUTLASS
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 namespace phi {
 namespace sparse {
@@ -185,4 +184,3 @@ fp64_gather_gemm_scatter getBestFp64Kernel(const int M,
 
 }  // namespace sparse
 }  // namespace phi
-#endif

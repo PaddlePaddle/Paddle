@@ -13,7 +13,6 @@
 // limitations under the License.
 #pragma once
 
-#ifdef PADDLE_WITH_CUTLASS
 #include "cutlass/arch/mma.h"
 #include "cutlass/epilogue/thread/linear_combination.h"
 #include "cutlass/gemm/device/gemm_grouped.h"
@@ -552,4 +551,3 @@ struct cutlass_tensorop_d884gemm_32x16_16x5_nn_align1 {
 };
 }  // namespace sparse
 }  // namespace phi
-#endif

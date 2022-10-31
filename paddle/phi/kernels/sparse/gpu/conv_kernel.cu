@@ -22,12 +22,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
+#include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 
 #include "glog/logging.h"
-
-#ifdef PADDLE_WITH_CUTLASS
-#include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
-#endif
 
 namespace phi {
 namespace sparse {
@@ -144,7 +141,6 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                       unique_value_ptr);
   }
 
-#ifdef PADDLE_WITH_CUTLASS
   bool cutlass = true;
   if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
   if (in_channels % 4 != 0 || out_channels % 4 != 0) {
@@ -227,7 +223,6 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       }
     }
   } else {
-#endif
     // 2. gather
     phi::DenseTensor in_features =
         phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
@@ -287,9 +282,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                      out_channels,
                                      1,
                                      out_values_ptr);
-#ifdef PADDLE_WITH_CUTLASS
   }
-#endif
 }
 
 /**
