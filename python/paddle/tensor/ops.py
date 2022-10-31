@@ -30,6 +30,8 @@ __deprecated_func_name__ = {
 
 __activations_noattr__ = [
     'sigmoid',
+    'silu',
+    'logsigmoid',
     'tanh_shrink',
     'softplus',
     'softsign',
@@ -104,6 +106,34 @@ Examples:
         print(out)
         # [0.40131234 0.450166   0.52497919 0.57444252]
 
+""",
+)
+
+add_sample_code(
+    globals()["silu"],
+    r"""
+Examples:
+    .. code-block:: python
+        import paddle
+        import paddle.nn.functional as F
+        x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+        out = F.silu(x)
+        print(out)
+        # [ 0.7310586 1.7615942 2.8577224, 3.9280552 ]
+""",
+)
+
+add_sample_code(
+    globals()["logsigmoid"],
+    r"""
+Examples:
+    .. code-block:: python
+        import paddle
+        import paddle.nn.functional as F
+        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+        out = F.log_sigmoid(x)
+        print(out)
+        # [-0.91301525 -0.79813887 -0.64439666 -0.55435524]
 """,
 )
 
@@ -499,44 +529,6 @@ def ceil(x, name=None):
     return out
 
 
-def expm1(x, name=None):
-    """
-
-    Expm1 Operator. Computes expm1 of x element-wise with a natural number :math:`e` as the base.
-
-    .. math::
-        out = e^x - 1
-
-    Args:
-        x (Tensor): Input of Expm1 operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Expm1 operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = paddle.expm1(x)
-            print(out)
-            # [-0.32967997, -0.18126924,  0.10517092,  0.34985882]
-
-    """
-    if in_dygraph_mode():
-        return _C_ops.expm1(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.expm1(x)
-
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'expm1')
-    helper = LayerHelper('expm1', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='expm1', inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
 def cos(x, name=None):
     """
     Cosine Operator. Computes cosine of x element-wise.
@@ -666,6 +658,44 @@ def exp(x, name=None):
     return out
 
 
+def expm1(x, name=None):
+    """
+
+    Expm1 Operator. Computes expm1 of x element-wise with a natural number :math:`e` as the base.
+
+    .. math::
+        out = e^x - 1
+
+    Args:
+        x (Tensor): Input of Expm1 operator, an N-D Tensor, with data type float32, float64 or float16.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Expm1 operator, a Tensor with shape same as input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = paddle.expm1(x)
+            print(out)
+            # [-0.32967997, -0.18126924,  0.10517092,  0.34985882]
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.expm1(x)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.expm1(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'expm1')
+    helper = LayerHelper('expm1', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='expm1', inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
 def floor(x, name=None):
     """
 
@@ -702,46 +732,6 @@ def floor(x, name=None):
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='floor', inputs={"X": x}, outputs={"Out": out})
     return out
-
-
-def logsigmoid(x, name=None):
-    """
-
-    Logsigmoid Activation Operator.
-
-    .. math::
-        out = log \\frac{1}{1 + e^{-x}}
-
-    Args:
-        x (Tensor): Input of LogSigmoid operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of LogSigmoid operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            out = F.log_sigmoid(x)
-            print(out)
-            # [-0.91301525 -0.79813887 -0.64439666 -0.55435524]
-
-    """
-    if in_dygraph_mode():
-        return _C_ops.logsigmoid(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.logsigmoid(x)
-
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'logsigmoid'
-    )
-    helper = LayerHelper('logsigmoid', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='logsigmoid', inputs={"X": x}, outputs={"Out": out})
 
 
 def reciprocal(x, name=None):
@@ -787,7 +777,7 @@ def reciprocal(x, name=None):
 def round(x, name=None):
     """
 
-    The OP rounds the values in the input to the nearest integer value.
+    Round the values in the input to the nearest integer value.
 
     .. code-block:: text
 
@@ -826,45 +816,6 @@ def round(x, name=None):
     helper = LayerHelper('round', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='round', inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
-def silu(x, name=None):
-    """
-
-    Silu Activation Operator
-
-    .. math::
-        out = x * \\frac{1}{1 + e^{-x}}
-
-
-    Args:
-        x (Tensor): Input of Silu operator, an N-D Tensor, with data type float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Silu operator, a Tensor with shape same as input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            out = F.silu(x)
-            print(out)
-            # [ 0.7310586 1.7615942 2.8577224, 3.9280552 ]
-    """
-    if in_dygraph_mode():
-        return _C_ops.silu(x)
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.silu(x)
-
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'silu')
-    helper = LayerHelper('silu', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='silu', inputs={"X": x}, outputs={"Out": out})
     return out
 
 
