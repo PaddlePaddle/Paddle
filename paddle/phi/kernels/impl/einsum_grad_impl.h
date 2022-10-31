@@ -15,10 +15,10 @@
 
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
 #include "paddle/phi/kernels/tile_kernel.h"
 #include "paddle/utils/string/string_helper.h"
-#include "paddle/phi/kernels/complex_kernel.h"
 
 namespace phi {
 
@@ -221,7 +221,7 @@ void EinsumGradKernel(const Context& dev_ctx,
                                                          ellipsis_dims[0],
                                                          ops[0],
                                                          dA);
-     *(x_grad[0]) = Conj<T, Context>(dev_ctx, *x_grad[0]);
+      *(x_grad[0]) = Conj<T, Context>(dev_ctx, *x_grad[0]);
     }
     if (x_grad[1]) {
       *(x_grad[1]) = PerformTileAndReduction<T, Context>(dev_ctx,
@@ -231,7 +231,7 @@ void EinsumGradKernel(const Context& dev_ctx,
                                                          ellipsis_dims[1],
                                                          ops[1],
                                                          dB);
-     *(x_grad[1]) = Conj<T, Context>(dev_ctx, *x_grad[1]);
+      *(x_grad[1]) = Conj<T, Context>(dev_ctx, *x_grad[1]);
     }
   }
 }
