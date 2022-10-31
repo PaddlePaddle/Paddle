@@ -23,10 +23,7 @@ else()
     #set_tests_properties(heter_ccl_context_test PROPERTIES LABELS "RUN_TYPE=DIST")
   endif()
   if(WITH_XPU_BKCL)
-    cc_test(
-      bkcl_context_test
-      SRCS bkcl_context_test.cc
-      DEPS bkcl_context)
+    cc_test_old(bkcl_context_test SRCS bkcl_context_test.cc DEPS bkcl_context)
   endif()
   if(WITH_CNCL)
     cc_test(
