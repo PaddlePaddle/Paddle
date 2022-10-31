@@ -16,11 +16,6 @@ if(NOT WITH_GPU)
   return()
 endif()
 
-if(WITH_ARM OR WIN32)
-  message(SEND_ERROR "The current cutlass support linux only")
-  return()
-endif()
-
 include(ExternalProject)
 
 set(CUTLASS_PREFIX_DIR ${THIRD_PARTY_PATH}/cutlass)
