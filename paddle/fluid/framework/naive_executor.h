@@ -53,7 +53,7 @@ class NaiveExecutor {
                bool with_feed_fetch_ops);
 
   // Create variables before head.
-  // Create parameters if persistable is ture, or create the temporary variables
+  // Create parameters if persistable is true, or create the temporary variables
   // instead.
   void CreateVariables(const ProgramDesc& desc,
                        int block_id,
@@ -64,7 +64,7 @@ class NaiveExecutor {
   void Run();
 
   // Get an tensor to operating directly, without the need for feed_ops.
-  LoDTensor* FindTensor(const std::string& name);
+  phi::DenseTensor* FindTensor(const std::string& name);
 
   Scope* scope() { return scope_; }
 

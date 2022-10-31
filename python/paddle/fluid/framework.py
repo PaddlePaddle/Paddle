@@ -28,7 +28,6 @@ import subprocess
 import multiprocessing
 import sys
 import logging
-from .. import compat as cpt
 from .proto import framework_pb2
 
 from . import core
@@ -2613,7 +2612,7 @@ class Variable(metaclass=VariableMetaClass):
         """Get the names of all attributes defined."""
         return self.desc.attr_names()
 
-    def _get_attr(self, name):
+    def attr(self, name):
         """
         Get the attribute by name.
 

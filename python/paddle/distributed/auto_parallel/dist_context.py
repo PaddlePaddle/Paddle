@@ -21,7 +21,9 @@ from paddle.distributed.passes import PassContext
 from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperator
 from .process_mesh import ProcessMesh
+from .utils import _copy_dist_attr_to_cpp
 from .utils import is_loss_grad_op
+
 
 # There always exists a default context for user. And user can set it to another one.
 _g_default_distributed_context = None
@@ -76,6 +78,7 @@ class DistributedContext:
         self._serial_optimizer = None
         self._serial_feed_vars = {}
         self._serial_fetch_vars = {}
+        self._lr_optimizer = None  # record the optimzier holding lr_scheduler
 
         # Data members related to the program
         self._dist_tensors_for_program = {}
@@ -392,7 +395,7 @@ class DistributedContext:
         if dist:
             self._restore_dist_info(dist_mode)
 
-    def initialize(self, with_graph=True):
+    def initialize(self, with_graph=True, with_cpp=False):
         if not self._is_initialized:
             if not self._serial_main_program:
                 if self._original_serial_main_program:
@@ -424,6 +427,10 @@ class DistributedContext:
             self._tensors_ids = list(self._dist_tensors_for_program.keys())
             self._ops_ids = list(self._dist_ops_for_program.keys())
             self._is_initialized = True
+
+            # TODO: This will be removed in the future
+            if with_cpp:
+                _copy_dist_attr_to_cpp(self)
 
             if with_graph:
                 set_flags({"FLAGS_convert_all_blocks": True})
@@ -597,7 +604,11 @@ class DistributedContext:
                     tensor
                 )
                 if default_dist_tensor and default_ctx is not self:
-                    self.add_dist_tensor_for_program(default_dist_tensor)
+                    dist_tensor = DistributedTensor(tensor)
+                    dist_tensor.dist_attr = copy.deepcopy(
+                        default_dist_tensor.dist_attr
+                    )
+                    self.add_dist_tensor_for_program(dist_tensor)
                 current_dist_tensor = self.get_dist_tensor_for_program(tensor)
                 if current_dist_tensor is None:
                     dist_tensor = DistributedTensor(tensor)
@@ -606,7 +617,9 @@ class DistributedContext:
                 # Copy the distributed operators in the default context
                 default_dist_op = default_ctx.get_dist_op_for_program(op)
                 if default_dist_op and default_ctx is not self:
-                    self.add_dist_op_for_program(default_dist_op)
+                    dist_op = DistributedOperator(op)
+                    dist_op.dist_attr = copy.deepcopy(default_dist_op.dist_attr)
+                    self.add_dist_op_for_program(dist_op)
                 current_dist_op = self.get_dist_op_for_program(op)
                 if current_dist_op is None:
                     dist_op = DistributedOperator(op)

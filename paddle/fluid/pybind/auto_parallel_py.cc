@@ -165,6 +165,12 @@ void BindAutoParallel(py::module *m) {
                &DeviceMesh::dim_size))
       .def(py::self == py::self)
       .def(py::self != py::self)
+      .def(
+          "__deepcopy__",
+          [](const TensorDistAttr &self, py::dict) {
+            return TensorDistAttr(self);
+          },
+          py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
 
   py::class_<TensorDistAttr>(*m, "TensorDistAttr")
@@ -182,9 +188,17 @@ void BindAutoParallel(py::module *m) {
       .def_property("dynamic_dims",
                     &TensorDistAttr::dynamic_dims,
                     &TensorDistAttr::set_dynamic_dims)
+      .def_property("annotated",
+                    &TensorDistAttr::annotated,
+                    &TensorDistAttr::set_annotated)
       .def("is_annotated", &TensorDistAttr::is_annotated)
       .def("annotate", &TensorDistAttr::annotate)
       .def("verify", &TensorDistAttr::verify)
+      .def("serialize_to_string",
+           [](TensorDistAttr &self) {
+             return py::bytes(self.serialize_to_string());
+           })
+      .def("parse_from_string", &TensorDistAttr::parse_from_string)
       .def(py::self == py::self)
       .def(py::self != py::self)
       .def("__str__", &TensorDistAttr::to_string);
@@ -201,20 +215,23 @@ void BindAutoParallel(py::module *m) {
       .def_property("impl_idx",
                     &OperatorDistAttr::impl_idx,
                     &OperatorDistAttr::set_impl_idx)
+      .def_property("annotated",
+                    &OperatorDistAttr::annotated,
+                    &OperatorDistAttr::set_annotated)
+      .def_property("inputs_dist_attrs",
+                    &OperatorDistAttr::input_dist_attrs,
+                    &OperatorDistAttr::set_input_dist_attrs)
+      .def_property("outputs_dist_attrs",
+                    &OperatorDistAttr::output_dist_attrs,
+                    &OperatorDistAttr::set_output_dist_attrs)
       .def("input", &OperatorDistAttr::input)
       .def("output", &OperatorDistAttr::output)
-      .def("input_dist_attrs",
-           &OperatorDistAttr::input_dist_attrs,
-           py::return_value_policy::reference)
-      .def("output_dist_attrs",
-           &OperatorDistAttr::output_dist_attrs,
-           py::return_value_policy::reference)
-      .def("input_dist_attr",
+      .def("get_input_dist_attr",
            static_cast<TensorDistAttr &(
                OperatorDistAttr::*)(const std::string &)>(
                &OperatorDistAttr::input_dist_attr),
            py::return_value_policy::reference)
-      .def("output_dist_attr",
+      .def("get_output_dist_attr",
            static_cast<TensorDistAttr &(
                OperatorDistAttr::*)(const std::string &)>(
                &OperatorDistAttr::output_dist_attr),
@@ -223,9 +240,25 @@ void BindAutoParallel(py::module *m) {
       .def("set_output_dist_attr", &OperatorDistAttr::set_output_dist_attr)
       .def("is_annotated", &OperatorDistAttr::is_annotated)
       .def("annotate", &OperatorDistAttr::annotate)
+      .def("get_input_dims_mapping", &OperatorDistAttr::input_dims_mapping)
+      .def("set_input_dims_mapping", &OperatorDistAttr::set_input_dims_mapping)
+      .def("get_output_dims_mapping", &OperatorDistAttr::output_dims_mapping)
+      .def("set_output_dims_mapping",
+           &OperatorDistAttr::set_output_dims_mapping)
       .def("verify", &OperatorDistAttr::verify)
+      .def("serialize_to_string",
+           [](OperatorDistAttr &self) {
+             return py::bytes(self.serialize_to_string());
+           })
+      .def("parse_from_string", &OperatorDistAttr::parse_from_string)
       .def(py::self == py::self)
       .def(py::self != py::self)
+      .def(
+          "__deepcopy__",
+          [](const OperatorDistAttr &self, py::dict) {
+            return OperatorDistAttr(self);
+          },
+          py::arg("memo"))
       .def("__str__", &OperatorDistAttr::to_string);
 }
 

@@ -23,7 +23,7 @@ ProcessGroupStream::ProcessGroupStream(int rank,
                                        int gid)
     : ProcessGroup(rank, size, place, gid) {}
 
-phi::DeviceContext* ProcessGroupStream::GetDeviceContext(
+const phi::DeviceContext& ProcessGroupStream::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
   PADDLE_THROW(platform::errors::InvalidArgument(
       "ProcessGroup%s does not support get device_context.", GetBackendName()));
