@@ -237,7 +237,7 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
          .. math::
 
             score_{conf} = \begin{case}
-                             obj, \text{if } iou_aware == flase \\
+                             obj, \text{if } iou_aware == false \\
                              obj^{1 - iou_aware_factor} * iou^{iou_aware_factor}, \text{otherwise}
                            \end{case}
 

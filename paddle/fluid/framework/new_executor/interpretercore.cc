@@ -16,6 +16,8 @@
 
 #include <unordered_set>
 
+#include "gflags/gflags.h"
+
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
@@ -47,6 +49,9 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             true,
                             "Use local_scope in new executor(especially used "
                             "in UT), can turn off for better performance");
+PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
+                            false,
+                            "Use new executor in control flow op");
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
@@ -107,7 +112,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
                                  const std::set<std::string>& skip_gc_vars,
                                  framework::Scope* scope,
-                                 bool used_for_jit)
+                                 bool used_for_jit,
+                                 bool used_for_control_flow_op)
     : place_(place),
       block_(block),
       execution_config_(place, block.OpSize()),
@@ -119,8 +125,10 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
   execution_config_.used_for_jit = used_for_jit;
-  execution_config_.create_local_scope =
-      !used_for_jit && FLAGS_new_executor_use_local_scope;
+  execution_config_.used_for_control_flow_op = used_for_control_flow_op;
+  execution_config_.create_local_scope = !used_for_jit &&
+                                         FLAGS_new_executor_use_local_scope &&
+                                         !used_for_control_flow_op;
   execution_config_.skip_gc_vars = skip_gc_vars;
   execution_config_.Log(/*log_level=*/8);
 
@@ -224,7 +232,7 @@ paddle::framework::FetchList InterpreterCore::Run(
 }
 
 paddle::framework::FetchList InterpreterCore::Run(
-    const std::vector<std::string>& feed_names) {
+    const std::vector<std::string>& feed_names, bool need_fetch) {
   SetDeviceId(place_);
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -243,12 +251,12 @@ paddle::framework::FetchList InterpreterCore::Run(
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
-        HasLocalScope(),
-        execution_config_.used_for_jit);
-    is_build_ = true;
+        execution_config_,
+        HasLocalScope());
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
+    is_build_ = true;
   } else {
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
@@ -281,7 +289,7 @@ paddle::framework::FetchList InterpreterCore::Run(
   Scope* inner_scope =
       HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-  if (fetch_var) {
+  if (fetch_var && need_fetch) {
     return std::move(*fetch_var->GetMutable<framework::FetchList>());
   } else {
     return {};
@@ -311,9 +319,18 @@ void InterpreterCore::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
   auto& var_list = var_scope_.MutableVarList();
   for (size_t i = 0; i < var_list.size(); i++) {
-    var_list[i] = new_scope->FindVar(var_scope_.GetNameById(i));
+    const auto& var_name = var_scope_.GetNameById(i);
+    var_list[i] = new_scope->FindVar(var_name);
   }
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+  // The index should assured valid, cause the InterpreterCore may not be fully
+  // built, but was still cached and used. For example, see unit test
+  // `test_assert.py`, it may exit before `InterpreterCore::Convert`, but still
+  // was cached and used by later tests.
+  for (size_t i = 0; i < std::min(refs_.size(), var_list.size()); i++) {
+    refs_[i]->ResetVariable(var_list[i]);
+  }
+
+  for (size_t i = 0; i < vec_instruction_.size(); i++) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
   }
 }
@@ -540,6 +557,10 @@ void InterpreterCore::Convert(
         if (var_desc && ins.count(item.first) &&
             !info.IsInArgBufferNeeded(var_desc->Name())) {
           continue;
+        } else if (!block_.HasVar(var_scope_.GetNameById(id))) {
+          VLOG(10) << "[gc_check_inputs] skip gc: "
+                   << var_scope_.GetNameById(id);
+          continue;
         }
         gc_check_vars.insert(id);
       }
@@ -661,9 +682,9 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place)) {
-    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
-    // values, but only through special `float_status` to checks whether
-    // the operation is overflow. More about `float_status`, see:
+    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the
+    // variable values, but only through special `float_status` to checks
+    // whether the operation is overflow. More about `float_status`, see:
     // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
     if (FLAGS_check_nan_inf) {
       framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
@@ -734,7 +755,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     }
   }
 
-  VLOG(4) << "End run " << place << " " << op->DebugStringEx(local_scope_);
+  VLOG(4) << "End run " << place << " " << op->DebugStringEx(local_scope);
 
   if (!instr_node.InplaceBackMap().empty()) {
     platform::RecordEvent inplaceback_event(
@@ -965,9 +986,9 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
     if (platform::is_gpu_place(place)) {
       memory::RecordStream(allocation, stream);
     } else if (platform::is_cuda_pinned_place(place)) {
-      // TODO(Ruibiao): Here should do something to make sure that the tensor is
-      // not freed until the H2D copies done. However, simplely launch a CUDA
-      // runtime callback to the H2D stream may lead a high performance
+      // TODO(Ruibiao): Here should do something to make sure that the tensor
+      // is not freed until the H2D copies done. However, simplely launch a
+      // CUDA runtime callback to the H2D stream may lead a high performance
       // overhead. As all the cases we meet in H2D are copies from CPUPlace at
       // present, we just log a WARNING here. A better design is required.
       LOG(WARNING) << "Copy data from a CUDAPinned tensor in an asynchronous "
@@ -984,8 +1005,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
    * instr.GCCheckVars.
    * 2. The stream which initializes this tensor is different from the stream
    * which the instruction run in.
-   * 3. The tensor is the instruction's input, cause we assume that instruction
-   * will initialize all output tensors with its running stream.
+   * 3. The tensor is the instruction's input, cause we assume that
+   * instruction will initialize all output tensors with its running stream.
    * 4. In the OP function of this instruction, the tensor is an input of a
    * async CUDA kernel.
    *
@@ -995,8 +1016,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
    * initialized this tensor has less time overhead. Conversely, it may take
    * more time if we try to extract those cross-stream input vars from
    * instr.GCCheckVars.
-   * 2. Now the instruction has no idea of which vars involving async running in
-   * OP function, and thus we can not recognize condition 4. It should be
+   * 2. Now the instruction has no idea of which vars involving async running
+   * in OP function, and thus we can not recognize condition 4. It should be
    * supported later.
    */
   for (int var_id : instr.GCCheckVars()) {
@@ -1099,12 +1120,12 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
-        HasLocalScope(),
-        execution_config_.used_for_jit);
-    is_build_ = true;
+        execution_config_,
+        HasLocalScope());
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
+    is_build_ = true;
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::BuildOpFuncList, so we should
