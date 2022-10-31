@@ -24,6 +24,7 @@ paddle/phi/infermeta/generated.*
 *.DS_Store
 *.vs
 build/
+ljd_sh/
 build_doc/
 *.user
 *.tmp
