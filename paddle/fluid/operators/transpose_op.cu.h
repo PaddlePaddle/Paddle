@@ -1134,13 +1134,14 @@ inline void PermuteAndTranspose(const int rank,
                                 phi::DenseTensor* out,
                                 const std::vector<int32_t>& perm) {
   const int64_t numel = in.numel();
-  auto classifier = TranposeTypeClassifier<T>(ctx.GetSMCount(),
-                                              rank,
-                                              numel,
-                                              perm,
-                                              phi::vectorize<int>(in.dims()),
-                                              in.data<T>(),
-                                              out->data<T>());
+  auto classifier =
+      TranposeTypeClassifier<T>(ctx.GetSMCount(),
+                                rank,
+                                numel,
+                                perm,
+                                phi::vectorize<int64_t>(in.dims()),
+                                in.data<T>(),
+                                out->data<T>());
 
   if (classifier.GetPermType() == PermuteType::kCopy) {
     // If perm is [0,1,2,3], then just operate a DtoD copy.

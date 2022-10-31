@@ -85,7 +85,7 @@ class TranposeTypeClassifier {
                          const size_t rank,
                          const int64_t numel,
                          const std::vector<int32_t>& perm,
-                         const std::vector<int>& dims,
+                         const std::vector<int64_t>& dims,
                          const T* src,
                          T* dst)
       : perm_(rank), src_dims(rank) {
@@ -119,7 +119,7 @@ class TranposeTypeClassifier {
   PermuteType type_{kCopy};
 
   void SimplifyPermAndDims(const size_t rank,
-                           const std::vector<int>& in_dims,
+                           const std::vector<int64_t>& in_dims,
                            const std::vector<int32_t>& perm) {
     int combined_dims[phi::DDim::kMaxRank];
     int valid_map[phi::DDim::kMaxRank];
