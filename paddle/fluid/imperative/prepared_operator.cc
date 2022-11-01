@@ -25,9 +25,9 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
-// #ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_op_list.h"
-// #endif
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
@@ -208,15 +208,8 @@ PreparedOp PrepareImpl(
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (paddle::platform::CanCUDNNBeUsed(dygraph_exe_ctx)) {
-    if (paddle::platform::in_cudnn_white_list(op.Type())) {
-      expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
-    } else {
-      PADDLE_ENFORCE_EQ(paddle::platform::in_cudnn_black_list(op.Type()),
-                        true,
-                        platform::errors::Unimplemented(
-                            "%s operator not in cudnn_white_list", op.Type()));
-    }
+  if (!op.DnnFallback() && paddle::platform::CanCUDNNBeUsed(dygraph_exe_ctx)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
 #endif
 
