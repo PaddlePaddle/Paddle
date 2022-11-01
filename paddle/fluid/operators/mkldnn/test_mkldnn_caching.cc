@@ -36,7 +36,7 @@ PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 USE_OP_ITSELF(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 USE_OP_ITSELF(conv2d);
-USE_OP_DEVICE_KERNEL(conv2d, MKLDNN);
+PD_DECLARE_KERNEL(conv2d, OneDNN, ONEDNN);
 
 namespace paddle {
 namespace operators {
