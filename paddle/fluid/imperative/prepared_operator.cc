@@ -208,9 +208,7 @@ PreparedOp PrepareImpl(
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if ((paddle::platform::in_cudnn_white_list(op.Type()) ||
-       paddle::platform::in_cudnn_black_list(op.Type())) &&
-      paddle::platform::CanCUDNNBeUsed(dygraph_exe_ctx)) {
+  if (paddle::platform::CanCUDNNBeUsed(dygraph_exe_ctx)) {
     if (paddle::platform::in_cudnn_white_list(op.Type())) {
       expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
     } else {
