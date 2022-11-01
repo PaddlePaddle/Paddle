@@ -52,6 +52,8 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
                 "sin_input": [1, 12, 128, 64],
             },
         )
+        # gpu
+        # config = self.create_inference_config(use_gpu=True)
         yield config, ["multihead_matmul_roformer", "matmul"], (1e-2, 1e-3)
 
     def sample_program_config(self, draw):
@@ -70,6 +72,14 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
 
         def generate_sin_input():
             return np.random.random([1, 12, 128, 64]).astype(np.float32) - 0.5
+
+        def generate_weight1():
+            return (
+                np.random.random((768, 768)).astype(np.float32) - 0.5
+            ) / 100.0
+
+        def generate_weight2():
+            return (np.random.random(768).astype(np.float32) - 0.5) / 100.0
 
         mul_0 = OpConfig(
             "matmul",
@@ -355,14 +365,14 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
                 "cos_input": TensorConfig(data_gen=partial(generate_cos_input)),
                 "sin_input": TensorConfig(data_gen=partial(generate_sin_input)),
             },
-            weights={
-                "mul_0_w": TensorConfig(shape=[768, 768]),
-                "mul_1_w": TensorConfig(shape=[768, 768]),
-                "mul_2_w": TensorConfig(shape=[768, 768]),
-                "mul_3_w": TensorConfig(shape=[768, 768]),
-                "ele_0_w": TensorConfig(shape=[768]),
-                "ele_1_w": TensorConfig(shape=[768]),
-                "ele_2_w": TensorConfig(shape=[768]),
+            weights={  # generate_weight1
+                "mul_0_w": TensorConfig(data_gen=partial(generate_weight1)),
+                "mul_1_w": TensorConfig(data_gen=partial(generate_weight1)),
+                "mul_2_w": TensorConfig(data_gen=partial(generate_weight1)),
+                "mul_3_w": TensorConfig(data_gen=partial(generate_weight1)),
+                "ele_0_w": TensorConfig(data_gen=partial(generate_weight2)),
+                "ele_1_w": TensorConfig(data_gen=partial(generate_weight2)),
+                "ele_2_w": TensorConfig(data_gen=partial(generate_weight2)),
             },
             outputs=[ops[-1].outputs["Out"][0]],
         )
