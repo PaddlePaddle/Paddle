@@ -888,11 +888,11 @@ def group_param(sharding_info, fuse_size):
             cur_group.collect(param, rank)
 
         if cur_group in group_to_param_map:
-            group_to_param_map[cur_group].append(param_name)
+            group_to_param_map[cur_group].append(param.name)
         else:
-            group_to_param_map[cur_group] = [param_name]
+            group_to_param_map[cur_group] = [param.name]
 
-        param_to_group_map[param_name] = cur_group
+        param_to_group_map[param.name] = cur_group
 
     return group_to_param_map, param_to_group_map
 
