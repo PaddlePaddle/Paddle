@@ -636,8 +636,16 @@ class TestSimpleComplexGrad(unittest.TestCase):
 
         d_expect = paddle.to_tensor(
             [
-                [[0.9717 + 1.1008j], [-1.9091 + 3.8619j], [-0.5151 - 3.2645j]],
-                [[-1.1467 - 0.1112j], [1.2707 - 1.4171j], [1.0482 + 0.2683j]],
+                [
+                    [0.971658 + 1.100766j],
+                    [-1.909121 + 3.861908j],
+                    [-0.515092 - 3.264529j],
+                ],
+                [
+                    [-1.146746 - 0.111233j],
+                    [1.270721 - 1.417091j],
+                    [1.048197 + 0.268260j],
+                ],
             ]
         )
 
@@ -647,7 +655,7 @@ class TestSimpleComplexGrad(unittest.TestCase):
         dA = paddle.grad(Out, A, dOut)[0]
         # set to 1e-4 because copying the data loss accuracy.
         np.testing.assert_allclose(
-            dA.numpy(), d_expect.numpy(), rtol=1e-4, atol=0
+            dA.numpy(), d_expect.numpy(), rtol=1e-6, atol=0
         )
 
 
