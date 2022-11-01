@@ -829,6 +829,7 @@ class Engine:
             for epoch in range(epochs):
                 for step, data in enumerate(train_dataloader):
                     self._strategy.return_numpy = True
+                    fetch_names = [fetch_names[0]]
                     fetch_names.append('labels')
                     print_param(self.main_program)
                     try:
@@ -838,7 +839,8 @@ class Engine:
                             use_program_cache=self._strategy.use_cache,
                             return_numpy=self._strategy.return_numpy)
                         print("lables: {}".format(lables[:20]))
-                        outs = [outs]
+                        print("outs: {}".format(outs))
+
                     except core.EOFException:
                         break
                     if lr_scheduler and step % self._k_steps == 0:
@@ -847,11 +849,12 @@ class Engine:
 
                     prof.step()
 
-                    self._prepare_logger(outs, epoch, step, lr,
-                                         fetch_names, fetch_indices,
-                                         prof.step_info(), self._mode)
-                    history = self._prepare_history(outs, fetch_indices,
-                                                    self._mode)
+                    # self._prepare_logger(outs, epoch, step, lr,
+                    #                      fetch_names, fetch_indices,
+                    #                      prof.step_info(), self._mode)
+                    # history = self._prepare_history(outs, fetch_indices,
+                    #                                 self._mode)
+                    history = None
 
                 if valid_data and epoch % valid_freq == 0:
                     self.evaluate(valid_data, valid_sample_split, batch_size,
@@ -1640,7 +1643,7 @@ def print_param(program):
     for i, p in enumerate(program.all_parameters()):
         if i == 10:
             break
-        print(p.name, p.get_value())
+        print(p.name, np.array(p.get_value())[:20])
 
 
 def print_input(program, vars):
