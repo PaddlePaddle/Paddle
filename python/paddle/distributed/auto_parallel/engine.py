@@ -828,14 +828,16 @@ class Engine:
         with profiler.Profiler(timer_only=True) as prof:
             for epoch in range(epochs):
                 for step, data in enumerate(train_dataloader):
-                    print_input(self.main_program, data)
+                    self._strategy.return_numpy = True
+                    fetch_names.append('labels')
                     print_param(self.main_program)
                     try:
-                        outs = self._executor.run(
+                        outs, lables = self._executor.run(
                             self.main_program,
                             fetch_list=fetch_names,
                             use_program_cache=self._strategy.use_cache,
                             return_numpy=self._strategy.return_numpy)
+                        print("lables: {}".format(lables))
                     except core.EOFException:
                         break
                     if lr_scheduler and step % self._k_steps == 0:
