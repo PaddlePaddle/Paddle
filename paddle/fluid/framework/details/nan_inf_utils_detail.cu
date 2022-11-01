@@ -201,7 +201,7 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
 
     max_value = value > max_value ? value : max_value;
     min_value = value < min_value ? value : min_value;
-    mean_value += value;
+    mean_value += value / static_cast<MT>(numel);
 
     if (isnan(value)) {
       has_nan = true;
@@ -254,6 +254,7 @@ __global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
       max_value = tensor_block_max_ptr[0];
       min_value = tensor_block_min_ptr[0];
       mean_value = tensor_block_mean_ptr[0];
+
       // numel_max_min <= 128
       for (int64_t i = 1; i < numel_max_min; ++i) {
         T tmp_max_value = tensor_block_max_ptr[i];
@@ -264,8 +265,6 @@ __global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
         min_value = tmp_min_value < min_value ? tmp_min_value : min_value;
         mean_value += tmp_mean_value;
       }
-
-      mean_value = mean_value / static_cast<T>(numel);
     }
 
     if (has_nan || has_inf) {
