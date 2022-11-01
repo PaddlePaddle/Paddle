@@ -19,6 +19,30 @@
 #include "paddle/phi/kernels/impl/conv_kernel_impl.h"
 
 namespace phi {
+
+template <typename T, typename Context>
+void ConvKernel(const Context& dev_ctx,
+                const DenseTensor& input,
+                const DenseTensor& filter,
+                const std::vector<int>& strides,
+                const std::vector<int>& paddings,
+                const std::string& padding_algorithm,
+                const std::vector<int>& dilations,
+                int groups,
+                const std::string& data_format,
+                DenseTensor* out) {
+  ConvKernelImpl<T>(dev_ctx,
+                    input,
+                    filter,
+                    strides,
+                    paddings,
+                    padding_algorithm,
+                    groups,
+                    dilations,
+                    data_format,
+                    out);
+}
+
 template <typename T, typename Context>
 void DepthwiseConvKernel(const Context& dev_ctx,
                          const DenseTensor& input,
@@ -34,19 +58,16 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          bool exhaustive_search,
                          bool fuse_relu,
                          DenseTensor* out) {
-  ConvKernel<T>(dev_ctx,
-                input,
-                filter,
-                strides,
-                paddings,
-                padding_algorithm,
-                groups,
-                dilations,
-                data_format,
-                use_addto,
-                workspace_size_MB,
-                exhaustive_search,
-                out);
+  ConvKernelImpl<T>(dev_ctx,
+                    input,
+                    filter,
+                    strides,
+                    paddings,
+                    padding_algorithm,
+                    groups,
+                    dilations,
+                    data_format,
+                    out);
 }
 
 template <typename T, typename Context>
@@ -63,19 +84,16 @@ void Conv3DKernel(const Context& dev_ctx,
                   int workspace_size_MB,
                   bool exhaustive_search,
                   DenseTensor* out) {
-  ConvKernel<T>(dev_ctx,
-                input,
-                filter,
-                strides,
-                paddings,
-                padding_algorithm,
-                groups,
-                dilations,
-                data_format,
-                use_addto,
-                workspace_size_MB,
-                exhaustive_search,
-                out);
+  ConvKernelImpl<T>(dev_ctx,
+                    input,
+                    filter,
+                    strides,
+                    paddings,
+                    padding_algorithm,
+                    groups,
+                    dilations,
+                    data_format,
+                    out);
 }
 
 }  // namespace phi

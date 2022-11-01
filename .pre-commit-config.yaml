@@ -111,3 +111,14 @@ repos:
     hooks:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
+
+-   repo: https://github.com/PyCQA/autoflake
+    rev: v1.7.7
+    hooks:
+    -   id: autoflake
+        args:
+            - --in-place
+            - --remove-all-unused-imports
+            - --ignore-pass-after-docstring
+            - --ignore-init-module-imports
+            - --exclude=python/paddle/fluid/[!t]**,python/paddle/fluid/tra**
