@@ -1185,6 +1185,7 @@ class SyncBatchNorm(_BatchNormBase):
                 not self.training,
                 self._momentum,
                 self._epsilon,
+                self._data_format,
                 False,
                 False,
             )

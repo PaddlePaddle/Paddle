@@ -140,17 +140,16 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         if in_dynamic_mode():
             batch_norm_out, _, _, _, _, _ = _C_ops.sparse_batch_norm(
                 input,
-                self.weight,
-                self.bias,
                 self._mean,
                 self._variance,
+                self.weight,
+                self.bias,
+                not self.training,
                 self._momentum,
                 self._epsilon,
                 data_format,
-                not self.training,
                 self._use_global_stats,
                 trainable_statistics,
-                False,
             )
             return batch_norm_out
         else:
@@ -324,15 +323,14 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         self._check_data_format()
         sync_batch_norm_out, _, _, _, _, _ = _C_ops.sparse_sync_batch_norm_(
             x,
-            self.weight,
-            self.bias,
             self._mean,
             self._variance,
+            self.weight,
+            self.bias,
+            not self.training,
             self._momentum,
             self._epsilon,
             self._data_format,
-            not self.training,
-            False,
             False,
             False,
         )
