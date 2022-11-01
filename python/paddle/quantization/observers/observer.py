@@ -12,10 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .lsq import ActLSQPlusQuanter, WeightLSQPlusQuanter
-from .abs_max import FakeQuanterWithAbsMaxObserver
-from .quanter import BaseQuanter
+import six
+import abc
+from paddle.nn import Layer
 
-__all__ = ["ActLSQPlusQuanter", "ActLSQPlusQuanter"]
-__all__ += ["FakeQuanterWithAbsMaxObserver"]
-__all__ += ["BaseQuanter"]
+__all__ = ["BaseObserver"]
+
+
+@six.add_metaclass(abc.ABCMeta)
+class BaseObserver(Layer):
+
+    def __init__(self):
+        super(BaseObserver, self).__init__()
+
+    @abc.abstractmethod
+    def forward(self, input):
+        pass
+
+    @abc.abstractmethod
+    def cal_thresholds(self):
+        pass
+
+    @abc.abstractmethod
+    def scales(self):
+        pass
+
+    @abc.abstractmethod
+    def zero_points(self):
+        pass
+
+    @abc.abstractmethod
+    def quant_axis(self):
+        pass
+
+    @abc.abstractmethod
+    def bit_length(self):
+        pass

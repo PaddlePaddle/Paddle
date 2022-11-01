@@ -12,10 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .lsq import ActLSQPlusQuanter, WeightLSQPlusQuanter
-from .abs_max import FakeQuanterWithAbsMaxObserver
-from .quanter import BaseQuanter
+from paddle.nn import Layer
 
-__all__ = ["ActLSQPlusQuanter", "ActLSQPlusQuanter"]
-__all__ += ["FakeQuanterWithAbsMaxObserver"]
-__all__ += ["BaseQuanter"]
+__all__ = ["ObserveWrapper"]
+
+
+class ObserveWrapper(Layer):
+
+    def __init__(self, observer, observed, observe_input=True):
+        super(ObserveWrapper, self).__init__()
+        self._observer = observer
+        self._observed = observed
+        self._observe_input = observe_input
+
+    def forward(self, *inputs, **kwargs):
+        if self._observe_input:
+            out = self._observer(*inputs, **kwargs)
+            return self._observed(out, **kwargs)
+        else:
+            out = self._observed(*inputs, **kwargs)
+            return self._observer(out, **kwargs)

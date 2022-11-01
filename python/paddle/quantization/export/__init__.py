@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .lsq import ActLSQPlusQuanter, WeightLSQPlusQuanter
-from .abs_max import FakeQuanterWithAbsMaxObserver
-from .quanter import BaseQuanter
+from .linear_quanter import LinearDequanter, LinearQuanter, LinearQuanterDequanter
 
-__all__ = ["ActLSQPlusQuanter", "ActLSQPlusQuanter"]
-__all__ += ["FakeQuanterWithAbsMaxObserver"]
-__all__ += ["BaseQuanter"]
+__all__ = ["LinearDequanter", "LinearQuanter", "LinearQuanterDequanter"]

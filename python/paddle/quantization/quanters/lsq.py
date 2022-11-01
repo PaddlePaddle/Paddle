@@ -28,6 +28,8 @@ from paddle.nn import Layer
 from paddle.autograd import PyLayer
 import math
 import copy
+from ..factory import QuanterFactory
+from .quanter import BaseQuanter
 
 __all__ = ["ActLSQPlusQuanter", "WeightLSQPlusQuanter"]
 
@@ -115,30 +117,7 @@ class LsqPlusActFunc(PyLayer):
         return grad_x, grad_alpha, grad_beta
 
 
-class Quanter(object):
-
-    def __init__(self, **args):
-        self._args = args
-
-    def instance(self, layer):
-        print(f"self._args: {self._args}")
-        return self.get_class()(layer, **self._args)
-
-    @property
-    def args(self):
-        return self._args
-
-    def get_class(self):
-        raise NotImplementedError
-
-    def __str__(self):
-        return f"{self.__class__.__name__}({self.args})"
-
-    def __repr__(self):
-        return self.__str__()
-
-
-class ActLSQPlusQuanter(Quanter):
+class ActLSQPlusQuanter(QuanterFactory):
 
     def __init__(self, **args):
         super(ActLSQPlusQuanter, self).__init__(**args)
@@ -147,7 +126,7 @@ class ActLSQPlusQuanter(Quanter):
         return FakeQuantActLSQPlus
 
 
-class FakeQuantActLSQPlus(Layer):
+class FakeQuantActLSQPlus(BaseQuanter):
 
     def __init__(self,
                  layer,
@@ -210,6 +189,18 @@ class FakeQuantActLSQPlus(Layer):
 
         self.init_state = 0
 
+    def bit_length(self):
+        return self.bits
+
+    def quant_axis(self):
+        return 0
+
+    def scales(self):
+        return None
+
+    def zero_points(self):
+        return None
+
     def forward(self, activation):
         if self.reduce_type == "max":
             paddle.distributed.all_reduce(self.s,
@@ -253,7 +244,7 @@ class FakeQuantActLSQPlus(Layer):
         return q_a
 
 
-class WeightLSQPlusQuanter(Quanter):
+class WeightLSQPlusQuanter(QuanterFactory):
 
     def __init__(self, **args):
         super(WeightLSQPlusQuanter, self).__init__(**args)
@@ -268,7 +259,7 @@ CHANNEL_AXIS = {
 }
 
 
-class FakeQuantWeightLSQPlus(Layer):
+class FakeQuantWeightLSQPlus(BaseQuanter):
 
     def __init__(self,
                  layer,
@@ -330,6 +321,18 @@ class FakeQuantWeightLSQPlus(Layer):
         layer_type = type(layer)
         assert layer_type in CHANNEL_AXIS, ""
         return layer.weight.shape[CHANNEL_AXIS[type(layer)]]
+
+    def bit_length(self):
+        return self.bits
+
+    def quant_axis(self):
+        return 0
+
+    def scales(self):
+        return None
+
+    def zero_points(self):
+        return None
 
     def forward(self, weight):
         if self.reduce_type == "max":

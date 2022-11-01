@@ -14,15 +14,20 @@
 
 import paddle
 from typing import Dict, Any
+from .wrapper import ObserveWrapper
+from .stubs import QuantStub, Stub
 
 __all__ = ["QuantConfig", "TRTQuantConfig"]
 
 DEFAULT_QAT_LAYER_MAPPINGS: Dict[paddle.nn.Layer, paddle.nn.Layer] = {
+    Stub: QuantStub,
     paddle.nn.Conv2D: paddle.nn.quant.qat.QuantConv2D,
     paddle.nn.Conv2DTranspose:
     paddle.nn.quant.quant_layers.QuantizedConv2DTranspose,
     paddle.nn.Linear: paddle.nn.quant.qat.QuantLinear,
 }
+
+DEFAULT_LEAVES = [paddle.nn.ReLU, paddle.nn.AvgPool2D]
 
 
 class QuantConfig(object):
@@ -35,6 +40,7 @@ class QuantConfig(object):
         self._type2config = {}
         self._model = None
         self._qat_layer_mapping = DEFAULT_QAT_LAYER_MAPPINGS
+        self._costum_leaves = []
 
     def add_group(self, group, activation=None, weight=None):
         config = {"weight": weight, "activation": activation}
@@ -55,9 +61,45 @@ class QuantConfig(object):
         ), "The target layer should be a subclass of paddle.nn.qat.Layer"
         self._qat_layer_mapping[source] = target
 
+    def add_costum_leaf(self, layer):
+        self._costum_leaves.append(layer)
+
+    @property
+    def costum_leaves(self):
+        return self._costum_leaves
+
     def get_qat_layer(self, layer):
         q_config = self.get_config_by_layer(layer)
         return self.qat_layer_mappings[type(layer)](layer, q_config)
+
+    def need_observe(self, layer: paddle.nn.Layer):
+        return self.is_leaf(layer) and self.has_observer_config(layer)
+
+    def has_observer_config(self, layer: paddle.nn.Layer):
+        _config = self.get_config_by_layer(layer)
+        return _config is not None and "activation" in _config
+
+    def is_leaf(self, layer: paddle.nn.Layer):
+        return self.is_default_leaf(layer) or self.is_real_leaf(
+            layer) or self.is_custom_leaf(layer)
+
+    def is_default_leaf(self, layer: paddle.nn.Layer):
+        return layer in DEFAULT_LEAVES
+
+    def is_real_leaf(self, layer: paddle.nn.Layer):
+        return layer._sub_layers is None or len(layer._sub_layers) == 0
+
+    def is_custom_leaf(self, layer: paddle.nn.Layer):
+        return layer in self.costum_leaves
+
+    def get_observer(self, layer):
+        _config = self.get_config_by_layer(layer)
+        _observer = None if _config is None else _config.get("activation", None)
+        return None if _observer is None else _observer.instance(layer)
+
+    def get_observe_wrapper(self, layer):
+        _observer = self.get_observer(layer)
+        return ObserveWrapper(_observer, layer)
 
     @property
     def qat_layer_mappings(self):

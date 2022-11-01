@@ -17,15 +17,16 @@ import unittest
 import paddle
 from paddle import fluid
 from paddle.nn import Conv2D, Linear, ReLU, Sequential
-from paddle.quantization import QuantConfig, QAT, TRTQuantConfig
-from paddle.quantization.quanters import ActLSQPlusQuanter, WeightLSQPlusQuanter, FakeQuanterWithAbsMaxObserver
+from paddle.quantization import QuantConfig, PTQ, TRTQuantConfig
+from paddle.quantization.quanters import ActLSQPlusQuanter, WeightLSQPlusQuanter
+from paddle.quantization.observers import AbsmaxObserver
+#from paddle.quantization.observers import PerChannelAbsmaxObserver
+#from paddle.quantization.observers import HistObserver
+from paddle.quantization.observers import KLObserver
 from paddle.quantization import Stub
 import paddle.nn.functional as F
 
-observer = FakeQuanterWithAbsMaxObserver(moving_rate=0.9,
-                                         quant_bits=8,
-                                         dtype='float32',
-                                         reduce_type=None)
+observer = AbsmaxObserver(quant_bits=8)
 
 
 class LeNetDygraph(paddle.nn.Layer):
@@ -58,39 +59,33 @@ class LeNetDygraph(paddle.nn.Layer):
         return out
 
 
-class TestQAT(unittest.TestCase):
+class TestPTQ(unittest.TestCase):
 
-    def test_qat(self):
+    def test_ptq(self):
         model = LeNetDygraph()
 
-        act_quanter = ActLSQPlusQuanter(quant_bits=8,
-                                        all_postive=False,
-                                        symmetric=False,
-                                        batch_init=20,
-                                        reduce_type=None)
-        weight_quanter = WeightLSQPlusQuanter(quant_bits=8,
-                                              all_postive=False,
-                                              per_channel=False,
-                                              batch_init=20,
-                                              quant_linear=False,
-                                              reduce_type=None)
+        # weight_observer = PerChannelAbsmaxObserver(quant_bits=8)
 
-        q_config = TRTQuantConfig(activation=act_quanter, weight=weight_quanter)
+        #hist_observer = HistObserver(quant_bits=8)
+        kl_observer = KLObserver()
+        weight_observer = kl_observer
+        hist_observer = kl_observer
+
+        q_config = TRTQuantConfig(activation=observer, weight=weight_observer)
         q_config.add_group(paddle.nn.Conv2D,
-                           activation=act_quanter,
-                           weight=weight_quanter)
+                           activation=hist_observer,
+                           weight=weight_observer)
         q_config.add_group(paddle.nn.Linear,
-                           activation=None,
-                           weight=weight_quanter)
-        q_config.add_group(["layer1_name", "layer2_name"],
-                           activation=act_quanter,
-                           weight=None)
-        q_config.add_group(paddle.quantization.Stub, activation=act_quanter)
-        q_config.add_group(paddle.nn.ReLU, activation=observer)
+                           activation=kl_observer,
+                           weight=weight_observer)
+        q_config.add_group(paddle.quantization.Stub, activation=kl_observer)
+        q_config.add_group(paddle.nn.ReLU, activation=kl_observer)
         print(q_config)
-        qat = QAT(q_config)
-        quant_model = qat.quantize(model)
+        ptq = PTQ(q_config)
+        quant_model = ptq.quantize(model)
         print(quant_model)
+        onnx_model = ptq.convert(quant_model)
+        print(onnx_model)
 
 
 if __name__ == '__main__':

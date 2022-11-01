@@ -25,9 +25,21 @@
 # from ...fluid.contrib.slim.quantization.imperative.qat import ImperativeQuantAware
 from .qat import *
 from . import qat
-from .quant_config import *
-from . import quant_config
+from .ptq import *
+from . import ptq
+from .config import *
+from . import config
+from .quanters import *
+from . import quanters
+from .stubs import *
+from . import stubs
+from .factory import *
+from . import factory
 
 __all__ = []
 __all__ += qat.__all__
-__all__ += quant_config.__all__
+__all__ += ptq.__all__
+__all__ += config.__all__
+__all__ += quanters.__all__
+__all__ += stubs.__all__
+__all__ += factory.__all__

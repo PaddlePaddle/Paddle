@@ -16,13 +16,16 @@ import copy
 import paddle
 import paddle.nn as nn
 from .config import QuantConfig
+from .quanters import BaseQuanter
+from .observers import BaseObserver
+from .export import LinearQuanterDequanter
 
-__all__ = ["QAT"]
+__all__ = ["PTQ"]
 
 
-class QAT(object):
+class PTQ(object):
     """
-    Applying quantization-aware training (QAT) to the model.
+    Applying post training quantization to the model.
     """
 
     def __init__(self, config: QuantConfig):
@@ -34,6 +37,25 @@ class QAT(object):
         print(f"config: {self._config.details()}")
         self._convert_to_quant_layers(_model, self._config)
         self._insert_activation_observers(_model, self._config)
+        return _model
+
+    def convert(self, model, inplace=False):
+        _model = model if inplace else copy.deepcopy(model)
+        replaced = {}
+        for name, child in _model.named_children():
+            quant_dequant = None
+            if isinstance(child, BaseQuanter):
+                quant_dequant = LinearQuanterDequanter.from_quanter(child)
+            elif isinstance(child, BaseObserver):
+                quant_dequant = LinearQuanterDequanter.from_observer(child)
+            else:
+                self.convert(child, inplace=True)
+            print(f"type: {type(child)}; quant_dequant: {quant_dequant}")
+            if quant_dequant is not None:
+                replaced[name] = quant_dequant
+        for key, value in replaced.items():
+            _model._sub_layers[key] = value
+
         return _model
 
     def _convert_to_quant_layers(self, model: paddle.nn.Layer, config):
