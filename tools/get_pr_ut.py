@@ -288,8 +288,10 @@ class PRChecker(object):
         # determine whether filename is in all_ut_case
         with open(all_ut_file, 'r') as f:
             (filepath, tempfilename) = os.path.split(filename)
-            for f_file in f:
-                if f_file.strip('\n') == tempfilename.split(".")[0]:
+            data = f.readlines()
+            for f_file in data:
+                f_file = f_file.replace('\n', '').strip()
+                if f_file == tempfilename.split(".")[0]:
                     return True
             else:
                 return False

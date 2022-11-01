@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <iostream>
 #include <sstream>
+#include <vector>
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
