@@ -68,7 +68,36 @@ MultiTransformerLayerPattern::operator()(bool enable_int8,
 
     // Links
     if (is_decoder) {
-      fused_multi_transformer->LinksFrom({x0, src_mask}).LinksTo({out});
+      // shape and shape out
+      auto shape_repr =
+          PDNodeName(name_scope_, repr_, id_, "shape_" + std::to_string(i));
+      node_reprs["shape_" + std::to_string(i)] = shape_repr;
+      auto* shape = pattern->NewNode(shape_repr)->assert_is_op("shape");
+
+      auto shape_out_repr =
+          PDNodeName(name_scope_, repr_, id_, "shape_out_" + std::to_string(i));
+      node_reprs["shape_out_" + std::to_string(i)] = shape_out_repr;
+      auto* shape_out =
+          pattern->NewNode(shape_out_repr)->assert_is_op_output("shape", "Out");
+
+      shape->LinksFrom({src_mask}).LinksTo({shape_out});
+
+      // slice and slice out
+      auto slice_repr =
+          PDNodeName(name_scope_, repr_, id_, "slice_" + std::to_string(i));
+      node_reprs["slice_" + std::to_string(i)] = slice_repr;
+      auto* slice = pattern->NewNode(slice_repr)->assert_is_op("slice");
+
+      auto slice_out_repr =
+          PDNodeName(name_scope_, repr_, id_, "slice_out_" + std::to_string(i));
+      node_reprs["slice_out_" + std::to_string(i)] = slice_out_repr;
+      auto* slice_out =
+          pattern->NewNode(slice_out_repr)->assert_is_op_output("slice", "Out");
+
+      slice->LinksFrom({shape_out}).LinksTo({slice_out});
+
+      fused_multi_transformer->LinksFrom({x0, src_mask, slice_out})
+          .LinksTo({out});
     } else {
       // catch_kv
       auto cache_kv_repr =
@@ -155,8 +184,9 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
     return 0;
   }
   if (!is_decoder) {
-    VLOG(4) << "fuse_multi_transformer_layer_pass will match encoder pattern "
-               "cause is_decoder is not been set or set to false";
+    VLOG(4) << "fuse_multi_transformer_layer_pass will match encoder pattern";
+  } else {
+    VLOG(4) << "fuse_multi_transformer_layer_pass will match decoder pattern";
   }
 
   patterns::MultiTransformerLayerPattern multi_layer_pattern(pattern,
@@ -173,6 +203,10 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
     VLOG(0) << "handle FuseMultiTransformerLayerPass";
     VLOG(0) << "subgraph.size()" << subgraph.size();
 
+    ///////////////////
+    //// Get nodes ////
+    ///////////////////
+
     GET_IR_NODE_FROM_SUBGRAPH(src_mask, src_mask, multi_layer_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(x0, x0, multi_layer_pattern);
@@ -181,6 +215,10 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
 
     std::vector<Node*> fuse_op_nodes;
     std::vector<Node*> out_nodes;
+
+    std::vector<std::string> unused_node_prefixes = {
+        "shape_", "shape_out_", "slice_", "slice_out_"};
+    std::vector<Node*> unused_nodes;
 
     std::vector<OpDesc*> fuse_op_descs;
     std::vector<VariableNameMap> fuse_op_input_var_name_maps;
@@ -213,8 +251,20 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
         fill_op_node->Op()->SetInput("Input", {x0->Name()});
         IR_NODE_UNLINK(out_nodes[i - 1], fill_op_node);
         IR_NODE_LINK_TO(x0, fill_op_node);
+      } else if (is_decoder && i != 0) {
+        for (const auto& unused_node_prefix : unused_node_prefixes) {
+          PDNode* unused_pdnode =
+              multi_layer_pattern.PatternBase::pattern->RetrieveNode(
+                  node_reprs[unused_node_prefix + std::to_string(i)]);
+          Node* unused_node = subgraph.at(unused_pdnode);
+          unused_nodes.push_back(unused_node);
+        }
       }
     }
+
+    ///////////////
+    //// Merge ////
+    ///////////////
 
     // Merge inputs
     std::vector<std::string> inputs_names = {"CacheKV",
@@ -269,13 +319,15 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
       }
       VLOG(0) << "Finsh Merge attrs";
     }
-
-    // ReLink
-    // before relink, out nodes (0 -> num_layer-1) should be removed
+    ////////////////
+    //// ReLink ////
+    ////////////////
+    // Before relink, out nodes (0 -> num_layer-1) should be removed
     std::unordered_set<const Node*> marked_out_nodes(out_nodes.begin(),
                                                      out_nodes.end() - 1);
     GraphSafeRemoveNodes(graph, marked_out_nodes);
 
+    // Relink all input nodes of fused_multi_transformer ops to the first op
     auto& merged_inputs = fuse_op_nodes[0]->inputs;
     for (int i = 1; i < num_fuse_op; ++i) {
       merged_inputs.insert(merged_inputs.end(),
@@ -288,8 +340,18 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
     IR_NODE_LINK_TO(fuse_op_nodes[0], out_nodes[num_fuse_op - 1]);
     VLOG(0) << "Finsh relinks";
 
+    /////////////////////////////
+    //// Delete unused nodes ////
+    /////////////////////////////
+    // Delete fused_multi_transformer op expect for the first one
     std::unordered_set<const Node*> marked_fuse_op_nodes(
         fuse_op_nodes.begin() + 1, fuse_op_nodes.end());
+
+    // Delete shape/slice op in decoder subgraph
+    if (is_decoder) {
+      marked_fuse_op_nodes.insert(unused_nodes.begin(), unused_nodes.end());
+    }
+
     GraphSafeRemoveNodes(graph, marked_fuse_op_nodes);
     VLOG(0) << "Finsh remove";
     ++fusion_count;
