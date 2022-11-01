@@ -453,22 +453,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
 
   platform::CUDADeviceGuard cuda_guard;
 
-  if (FLAGS_use_stream_safe_cuda_allocator) {
-    for (size_t i = 0; i < tensors.size(); ++i) {
-      cuda_guard.SetDevice(places[i]);
-      gpuStream_t nccl_stream;
-      if (use_calc_stream) {
-        nccl_stream =
-            static_cast<phi::GPUContext*>(
-                platform::DeviceContextPool::Instance().Get(places[i]))
-                ->stream();
-      } else {
-        nccl_stream = places_to_ctx_[key][i]->stream();
-      }
-      memory::RecordStream(tensors[i].Holder(), nccl_stream);
-    }
-  }
-
   {
     platform::NCCLGroupGuard nccl_guard;
     for (size_t i = 0; i < tensors.size(); ++i) {
@@ -483,6 +467,22 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
         nccl_stream = places_to_ctx_[key][i]->stream();
       }
       fn(tensors[i], nccl_comms[i]->GetNcclComm(), nccl_stream, dst_rank);
+    }
+  }
+
+  if (FLAGS_use_stream_safe_cuda_allocator) {
+    for (size_t i = 0; i < tensors.size(); ++i) {
+      cuda_guard.SetDevice(places[i]);
+      gpuStream_t nccl_stream;
+      if (use_calc_stream) {
+        nccl_stream =
+            static_cast<phi::GPUContext*>(
+                platform::DeviceContextPool::Instance().Get(places[i]))
+                ->stream();
+      } else {
+        nccl_stream = places_to_ctx_[key][i]->stream();
+      }
+      memory::RecordStream(tensors[i].Holder(), nccl_stream);
     }
   }
 
@@ -521,20 +521,20 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
   // construct uninitialize guard for device
   platform::CUDADeviceGuard cuda_guard;
 
-  if (FLAGS_use_stream_safe_cuda_allocator) {
-    for (size_t i = 0; i < tensors.size(); ++i) {
-      cuda_guard.SetDevice(places[i]);
-      memory::RecordStream(tensors[i].Holder(),
-                           places_to_ctx_[key][i]->stream());
-    }
-  }
-
   {
     platform::NCCLGroupGuard nccl_guard;
     for (size_t i = 0; i < tensors.size(); ++i) {
       cuda_guard.SetDevice(places[i]);
       const auto& nccl_stream = places_to_ctx_[key][i]->stream();
       fn(tensors[i], nccl_comms[i]->GetNcclComm(), nccl_stream, dst_rank);
+    }
+  }
+
+  if (FLAGS_use_stream_safe_cuda_allocator) {
+    for (size_t i = 0; i < tensors.size(); ++i) {
+      cuda_guard.SetDevice(places[i]);
+      memory::RecordStream(tensors[i].Holder(),
+                           places_to_ctx_[key][i]->stream());
     }
   }
 
