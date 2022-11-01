@@ -18,8 +18,8 @@ import subprocess
 import sys
 
 
-def strategy_test(saving, loading="static"):
-    cmd = f"{sys.executable} dygraph_to_auto_infer_save_load.py --test_case {saving}:{loading} --cmd main"
+def strategy_test(saving, seed=1024, loading="static"):
+    cmd = f"{sys.executable} dygraph_to_auto_infer_save_load.py --test_case {saving}:{loading} --cmd main --seed {seed}"
     p = subprocess.Popen(cmd.split())
     p.communicate()
     assert p.poll() == 0
