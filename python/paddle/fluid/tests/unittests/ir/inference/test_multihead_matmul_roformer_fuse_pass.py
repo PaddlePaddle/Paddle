@@ -56,10 +56,14 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
 
     def sample_program_config(self, draw):
         def generate_mul_input():
-            return np.random.random([1, 128, 768]).astype(np.float32) - 0.5
+            return (
+                np.random.random([1, 128, 768]).astype(np.float32) - 0.5
+            ) / 100.0
 
         def generate_elewise_input():
-            return np.random.random([1, 12, 128, 128]).astype(np.float32)
+            return (
+                np.random.random([1, 12, 128, 128]).astype(np.float32)
+            ) / 100.0
 
         def generate_cos_input():
             return np.random.random([1, 12, 128, 64]).astype(np.float32) - 0.5
