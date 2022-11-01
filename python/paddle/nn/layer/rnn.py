@@ -964,9 +964,9 @@ class RNNBase(LayerList):
             for direction in range(self.num_directions):
                 suffix = '_reverse' if direction == 1 else ''
                 param_names.extend(['weight_ih_l{}{}', 'weight_hh_l{}{}'])
-                if bias_ih_attr != False:
+                if bias_ih_attr is not False:
                     param_names.append('bias_ih_l{}{}')
-                if bias_hh_attr != False:
+                if bias_hh_attr is not False:
                     param_names.append('bias_hh_l{}{}')
                 param_names = [x.format(layer, suffix) for x in param_names]
         for name, param in zip(param_names, self.parameters()):
@@ -1187,7 +1187,7 @@ class RNNBase(LayerList):
         main_str = '{input_size}, {hidden_size}'
         if self.num_layers != 1:
             main_str += ', num_layers={num_layers}'
-        if self.time_major != False:
+        if self.time_major is not False:
             main_str += ', time_major={time_major}'
         if self.dropout != 0:
             main_str += ', dropout={dropout}'

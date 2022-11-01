@@ -41,7 +41,7 @@ def detach_variable(inputs):
 
 def check_recompute_necessary(inputs):
     if not any(
-        input_.stop_gradient == False
+        not input_.stop_gradient
         for input_ in inputs
         if isinstance(input_, (core.eager.Tensor, paddle.Tensor))
     ):

@@ -231,7 +231,7 @@ class HybridParallelInferenceHelper(object):
             )
         else:
             if isinstance(role_maker, fleet.base.role_maker.RoleMakerBase):
-                assert role_maker._is_collective == True
+                assert role_maker._is_collective
                 self.role_maker = role_maker
 
         # communication_group info

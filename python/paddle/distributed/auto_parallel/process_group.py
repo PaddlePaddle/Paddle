@@ -106,7 +106,7 @@ class ProcessGroup:
             return
         else:
             assert (
-                self.is_instantiate() == False
+                not self.is_instantiate()
             ), "Cannot add new ranks after instantiating the process group"
         self._ranks.extend(new_ranks)
         self._ranks = sorted(list(set(self.ranks)))
