@@ -380,15 +380,22 @@ def _getitem_impl_(var, item):
     item = replace_ellipsis(var, item)
     item, none_axes = replace_none(item)
     slice_info = SliceInfo()
-    is_tensor_array = var.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+    is_tensor_array = (
+        hasattr(var, "desc")
+        and var.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+    )
 
     for dim, slice_item in enumerate(item):
-        if is_integer_or_scalar_tensor(
-                slice_item) and not is_bool_tensor(slice_item):
-            if isinstance(slice_item,
-                          int) and var.shape[dim] is not None and var.shape[
-                              dim] >= 0 and slice_item >= var.shape[
-                                  dim] and not is_tensor_array:
+        if is_integer_or_scalar_tensor(slice_item) and not is_bool_tensor(
+            slice_item
+        ):
+            if (
+                isinstance(slice_item, int)
+                and var.shape[dim] is not None
+                and var.shape[dim] >= 0
+                and slice_item >= var.shape[dim]
+                and not is_tensor_array
+            ):
                 # For python, if users write a, b = var, the __getitem__
                 # method will iterate through 0, 1, 2 ... until __getitem__
                 # throws an IndexError, then stop. The var[0], var[1] will
@@ -418,8 +425,9 @@ def _getitem_impl_(var, item):
                 start = 0 if step > 0 else MAX_INTEGER
             if end is None:
                 if var.shape[dim] != -1 and (
-                        paddle.fluid.framework._non_static_mode()
-                        or not is_tensor_array):
+                    paddle.fluid.framework._non_static_mode()
+                    or not is_tensor_array
+                ):
                     end = var.shape[dim] if step > 0 else -1
                 else:
                     end = MAX_INTEGER if step > 0 else -1
