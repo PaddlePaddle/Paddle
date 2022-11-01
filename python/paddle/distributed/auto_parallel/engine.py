@@ -837,7 +837,7 @@ class Engine:
                             fetch_list=fetch_names,
                             use_program_cache=self._strategy.use_cache,
                             return_numpy=self._strategy.return_numpy)
-                        print("lables: {}".format(lables))
+                        print("lables: {}".format(lables[:20]))
                     except core.EOFException:
                         break
                     if lr_scheduler and step % self._k_steps == 0:
@@ -1637,9 +1637,9 @@ class Engine:
 
 def print_param(program):
     for p in program.all_parameters():
-        print(p.name, p.get_value())
+        print(p.name, p.get_value()[:20])
 
 
 def print_input(program, vars):
     for v in vars:
-        print(v.name, v.get_value())
+        print(v.name, v.get_value()[:20])
