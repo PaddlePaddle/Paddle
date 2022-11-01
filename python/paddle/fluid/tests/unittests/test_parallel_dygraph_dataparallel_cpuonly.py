@@ -14,13 +14,16 @@
 
 import unittest
 import time
-import paddle
-import paddle.fluid as fluid
 import copy
 import os
 import subprocess
 
-from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+from paddle.distributed.utils.launch_utils import (
+    find_free_ports,
+    watch_local_trainers,
+    get_cluster,
+    TrainerProc,
+)
 
 
 def get_cluster_from_args(selected_gpus):
@@ -48,16 +51,14 @@ def get_gpus(selected_gpus):
     return selected_gpus
 
 
-def start_local_trainers(cluster,
-                         pod,
-                         training_script,
-                         training_script_args,
-                         log_dir=None):
+def start_local_trainers(
+    cluster, pod, training_script, training_script_args, log_dir=None
+):
     current_env = copy.copy(os.environ.copy())
-    #paddle broadcast ncclUniqueId use socket, and
-    #proxy maybe make trainers unreachable, so delete them.
-    #if we set them to "", grpc will log error message "bad uri"
-    #so just delete them.
+    # paddle broadcast ncclUniqueId use socket, and
+    # proxy maybe make trainers unreachable, so delete them.
+    # if we set them to "", grpc will log error message "bad uri"
+    # so just delete them.
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
@@ -71,8 +72,7 @@ def start_local_trainers(cluster,
             "MASTER_ADDR": "127.0.0.1",
             "MASTER_PORT": "6170",
             "NCCL_DEBUG": "INFO",
-            "PADDLE_DISTRI_BACKEND":
-            "gloo",  # make init_parallel_env get 'gloo' argument.
+            "PADDLE_DISTRI_BACKEND": "gloo",  # make init_parallel_env get 'gloo' argument.
         }
 
         current_env.update(proc_env)
@@ -102,10 +102,9 @@ def start_local_trainers(cluster,
 
 
 class TestMultipleGpus(unittest.TestCase):
-
     def run_mnist_2gpu(self, target_file_name):
-        #if not fluid.core.is_compiled_with_cuda(
-        #) or fluid.core.get_cuda_device_count() == 0:
+        # if not fluid.core.is_compiled_with_cuda(
+        # ) or fluid.core.get_cuda_device_count() == 0:
         #    return
 
         selected_gpus = get_gpus('0,1')
@@ -113,10 +112,12 @@ class TestMultipleGpus(unittest.TestCase):
         pod = None
 
         cluster, pod = get_cluster_from_args(selected_gpus)
-        procs = start_local_trainers(cluster,
-                                     pod,
-                                     training_script=target_file_name,
-                                     training_script_args=[])
+        procs = start_local_trainers(
+            cluster,
+            pod,
+            training_script=target_file_name,
+            training_script_args=[],
+        )
 
         while True:
             alive = watch_local_trainers(procs, cluster.trainers_nranks())
@@ -128,13 +129,11 @@ class TestMultipleGpus(unittest.TestCase):
 
 
 class TestDataParallelGradientCheck(TestMultipleGpus):
-
     def test_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('parallel_dygraph_gradient_check.py')
 
 
 class TestDataParallelGradientCheckInEagerMode(TestMultipleGpus):
-
     def test_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('parallel_dygraph_gradient_check_in_eager_mode.py')
 

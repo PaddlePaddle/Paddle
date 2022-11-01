@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using phi::SelectedRows;
 
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
@@ -243,7 +243,7 @@ void Communicator::RpcSendSparseParam(const std::string &varname,
   std::vector<float *> push_g_vec;
 
   auto *send_var = scope.FindVar(varname);
-  auto *tensor = send_var->GetMutable<framework::LoDTensor>();
+  auto *tensor = send_var->GetMutable<phi::DenseTensor>();
   auto dim = tensor->dims()[1];
   uint64_t sparse_num = static_cast<uint64_t>(tensor->dims()[0]);
   std::vector<uint64_t> sparse_push_keys(sparse_num);
@@ -340,7 +340,7 @@ void Communicator::RpcRecvSparse(const std::string &varname,
                                      platform::TracerEventType::Communication,
                                      1);
   auto *send_var = scope->Var(varname);
-  auto *tensor = send_var->GetMutable<framework::LoDTensor>();
+  auto *tensor = send_var->GetMutable<phi::DenseTensor>();
   auto dim = tensor->dims()[1];
   uint64_t sparse_num = static_cast<uint64_t>(tensor->dims()[0]);
 
@@ -418,7 +418,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx,
 
   auto &var_name = STEP_COUNTER;
   auto *out_var = send_scope->Var(var_name);
-  auto *out_t = out_var->GetMutable<framework::LoDTensor>();
+  auto *out_t = out_var->GetMutable<phi::DenseTensor>();
   auto *data = out_t->mutable_data<int64_t>({1}, platform::CPUPlace());
   data[0] = static_cast<int64_t>(batches);
   VLOG(3) << "Communicator::SendGlobalStep send: " << batches;
@@ -598,12 +598,12 @@ void AsyncCommunicator::PullSparseToTensorSync(
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
   pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<float> init_value(fea_dim, 0);
-  framework::LoDTensor *output = nullptr;
+  phi::DenseTensor *output = nullptr;
   float *output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const framework::LoDTensor *tensor = inputs->at(index);
+    const phi::DenseTensor *tensor = inputs->at(index);
     const int64_t *ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -646,10 +646,10 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
     int fea_dim,
     uint64_t padding_id,
     platform::Place place,
-    std::vector<const framework::LoDTensor *> *inputs,
-    const framework::LoDTensor *shows,
-    const framework::LoDTensor *clks,
-    std::vector<framework::LoDTensor *> *outputs) {
+    std::vector<const phi::DenseTensor *> *inputs,
+    const phi::DenseTensor *shows,
+    const phi::DenseTensor *clks,
+    std::vector<phi::DenseTensor *> *outputs) {
   int batch_size = -1;
   bool batch_size_consist = true;
   for (auto *input : *inputs) {
@@ -688,7 +688,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   // const long int* clk_tensor = clks->data<int64_t>();
 
   for (size_t index = 0; index < inputs->size(); ++index) {
-    framework::LoDTensor *g_tensor = outputs->at(index);
+    phi::DenseTensor *g_tensor = outputs->at(index);
     float *g = g_tensor->data<float>();
 
     if (batch_size_consist) {  // TODO(zhaocaibei123): add config
@@ -700,7 +700,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
           batch_size;  // hard code here, because of cvm_grad op
     }
 
-    const framework::LoDTensor *tensor = inputs->at(index);
+    const phi::DenseTensor *tensor = inputs->at(index);
     const int64_t *ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     output_len = 0;
@@ -872,7 +872,7 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
   if (table_name == STEP_COUNTER) {
     VLOG(3) << "send step_counter into queue";
     auto tmp_var = std::make_shared<Variable>();
-    auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
+    auto *tensor = tmp_var->GetMutable<phi::DenseTensor>();
     tensor->Resize(phi::make_ddim({1}));
     auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
     out_d[0] = 1;
@@ -1164,13 +1164,13 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
   // copy to old_scope
   for (auto &t : varnames) {
     auto *global_var = recv_scope_->FindVar(t);
-    global_var->GetMutable<framework::LoDTensor>();
+    global_var->GetMutable<phi::DenseTensor>();
     auto *old_var = old_scope_->Var(t);
-    old_var->GetMutable<framework::LoDTensor>();
+    old_var->GetMutable<phi::DenseTensor>();
     framework::CopyVariable(*global_var, old_var);  // src, dst
     // init pserver_scope_
     auto *pserver_var = pserver_scope_->Var(t);
-    pserver_var->GetMutable<framework::LoDTensor>();
+    pserver_var->GetMutable<phi::DenseTensor>();
     framework::CopyVariable(*global_var, pserver_var);
   }
   VLOG(1) << "init dense table " << table_id << " done";
@@ -1196,12 +1196,12 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
                       platform::errors::Unavailable(
                           "%s is not initialized, please check", param_name));
 
-    auto &t_latest = var_latest->Get<framework::LoDTensor>();
-    auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
+    auto &t_latest = var_latest->Get<phi::DenseTensor>();
+    auto t_timestamp = var_timestamp->GetMutable<phi::DenseTensor>();
 
     phi::CPUContext cpu_ctx;
     auto *var_delta = delta_scope_->Var(varname);
-    auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+    auto *t_delta = var_delta->GetMutable<phi::DenseTensor>();
     t_delta->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
 
     auto blas = phi::funcs::GetBlas<phi::CPUContext, float>(cpu_ctx);
@@ -1237,16 +1237,16 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
   phi::CPUContext cpu_ctx;
   for (auto &varname : varnames) {
     auto *var_latest = recv_scope_->FindVar(varname);
-    auto t_latest = var_latest->GetMutable<framework::LoDTensor>();
+    auto t_latest = var_latest->GetMutable<phi::DenseTensor>();
 
     auto *var_old = old_scope_->FindVar(varname);
-    auto t_old = var_old->GetMutable<framework::LoDTensor>();
+    auto t_old = var_old->GetMutable<phi::DenseTensor>();
 
     auto *var_pserver = pserver_scope_->FindVar(varname);
-    auto t_pserver = var_pserver->Get<framework::LoDTensor>();
+    auto t_pserver = var_pserver->Get<phi::DenseTensor>();
 
     auto *var_delta = delta_scope_->Var(varname);
-    auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+    auto *t_delta = var_delta->GetMutable<phi::DenseTensor>();
     t_delta->mutable_data<float>(t_latest->dims(), cpu_ctx.GetPlace());
 
     auto blas = phi::funcs::GetBlas<phi::CPUContext, float>(cpu_ctx);
@@ -1347,8 +1347,8 @@ void GeoCommunicator::SendSparse(const std::string &varname,
                     platform::errors::Unavailable(
                         "%s is not initialized, please check", param_name));
 
-  auto &t_latest = var_latest->Get<framework::LoDTensor>();
-  auto *t_old = var_old->GetMutable<framework::LoDTensor>();
+  auto &t_latest = var_latest->Get<phi::DenseTensor>();
+  auto *t_old = var_old->GetMutable<phi::DenseTensor>();
 
   auto dims1 = t_latest.dims()[1];
   phi::CPUContext cpu_ctx;
@@ -1427,8 +1427,8 @@ void GeoCommunicator::RecvSparse(const std::string &varname,
   auto *var_latest = recv_scope_->FindVar(param);
   auto *var_old = old_scope_->FindVar(param);
 
-  auto *t_latest = var_latest->GetMutable<framework::LoDTensor>();
-  auto *t_old = var_old->GetMutable<framework::LoDTensor>();
+  auto *t_latest = var_latest->GetMutable<phi::DenseTensor>();
+  auto *t_old = var_old->GetMutable<phi::DenseTensor>();
 
   auto dims1 = t_latest->dims()[1];
   auto numel = keys.size() * dims1;

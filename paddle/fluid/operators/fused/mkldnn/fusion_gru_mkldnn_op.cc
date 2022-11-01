@@ -13,14 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/fused/fusion_gru_op.h"
 #include "paddle/fluid/operators/fused/mkldnn/fusion_rnn_mkldnn.h"
+#include "paddle/phi/core/expect.h"
 
 namespace paddle {
 namespace operators {
-
-using paddle::framework::LoDTensor;
 
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
@@ -34,7 +32,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
                    const platform::MKLDNNDeviceContext& dev_ctx,
                    const dnnl::engine mkldnn_engine,
                    platform::Place cpu_place,
-                   const LoDTensor* input,
+                   const phi::DenseTensor* input,
                    const phi::DenseTensor* weight_h,
                    const phi::DenseTensor* h0,
                    const bool is_reverse,
@@ -262,12 +260,12 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     // Get Tensors
-    const auto* input = ctx.Input<LoDTensor>("X");
+    const auto* input = ctx.Input<phi::DenseTensor>("X");
     const auto* h0 = ctx.Input<phi::DenseTensor>("H0");
     const auto* weight_x = ctx.Input<phi::DenseTensor>("WeightX");
     const auto* weight_h = ctx.Input<phi::DenseTensor>("WeightH");
     const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
-    auto* hidden = ctx.Output<LoDTensor>("Hidden");
+    auto* hidden = ctx.Output<phi::DenseTensor>("Hidden");
     auto x_dims = input->dims();
     auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
                           ? phi::flatten_to_2d(x_dims, 1)

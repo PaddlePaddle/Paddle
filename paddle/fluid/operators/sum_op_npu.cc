@@ -25,15 +25,15 @@ namespace operators {
 
 using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class SumNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensor>()) {
-      auto *out = out_var->GetMutable<framework::LoDTensor>();
+    if (out_var->IsType<phi::DenseTensor>()) {
+      auto *out = out_var->GetMutable<phi::DenseTensor>();
       auto x = ctx.MultiInput<phi::DenseTensor>("X");
       out->mutable_data<T>(ctx.GetPlace());
 

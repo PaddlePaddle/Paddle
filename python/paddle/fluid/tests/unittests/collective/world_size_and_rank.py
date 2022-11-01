@@ -17,7 +17,6 @@ import paddle.distributed as dist
 
 
 class TestWorldSizeAndRankAPI(unittest.TestCase):
-
     def setUp(self):
         self._num_of_ranks = 2
         self._subgroup_ranks = [0, 1]
@@ -33,9 +32,11 @@ class TestWorldSizeAndRankAPI(unittest.TestCase):
         self.assertEqual(dist.get_world_size(self._subgroup), world_size)
 
     def test_given_group_rank(self):
-        rank = self._subgroup_ranks.index(
-            self._global_rank
-        ) if self._global_rank in self._subgroup_ranks else -1
+        rank = (
+            self._subgroup_ranks.index(self._global_rank)
+            if self._global_rank in self._subgroup_ranks
+            else -1
+        )
         self.assertEqual(dist.get_rank(self._subgroup), rank)
 
 

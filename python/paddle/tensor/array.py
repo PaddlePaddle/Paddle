@@ -14,7 +14,6 @@
 
 # Define functions about array.
 
-import paddle
 from ..static import Variable
 from ..framework import LayerHelper, core, _non_static_mode
 from ..fluid.data_feeder import check_type
@@ -49,22 +48,24 @@ def array_length(array):
     """
     if _non_static_mode():
         assert isinstance(
-            array,
-            list), "The 'array' in array_write must be a list in dygraph mode"
+            array, list
+        ), "The 'array' in array_write must be a list in dygraph mode"
         return len(array)
 
-    if not isinstance(
-            array,
-            Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+    if (
+        not isinstance(array, Variable)
+        or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
+    ):
         raise TypeError(
-            "array should be tensor array vairable in array_length Op")
+            "array should be tensor array vairable in array_length Op"
+        )
 
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_variable_for_type_inference(dtype='int64')
     tmp.stop_gradient = True
-    helper.append_op(type='lod_array_length',
-                     inputs={'X': [array]},
-                     outputs={'Out': [tmp]})
+    helper.append_op(
+        type='lod_array_length', inputs={'X': [array]}, outputs={'Out': [tmp]}
+    )
     return tmp
 
 
@@ -109,8 +110,8 @@ def array_read(array, i):
     """
     if _non_static_mode():
         assert isinstance(
-            array,
-            list), "The 'array' in array_read must be list in dygraph mode"
+            array, list
+        ), "The 'array' in array_read must be list in dygraph mode"
         assert isinstance(
             i, Variable
         ), "The index 'i' in array_read must be Variable in dygraph mode"
@@ -122,17 +123,17 @@ def array_read(array, i):
 
     check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
     helper = LayerHelper('array_read', **locals())
-    if not isinstance(
-            array,
-            Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+    if (
+        not isinstance(array, Variable)
+        or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
+    ):
         raise TypeError("array should be tensor array vairable")
     out = helper.create_variable_for_type_inference(dtype=array.dtype)
-    helper.append_op(type='read_from_array',
-                     inputs={
-                         'X': [array],
-                         'I': [i]
-                     },
-                     outputs={'Out': [out]})
+    helper.append_op(
+        type='read_from_array',
+        inputs={'X': [array], 'I': [i]},
+        outputs={'Out': [out]},
+    )
     return out
 
 
@@ -181,8 +182,8 @@ def array_write(x, i, array=None):
         if array is None:
             array = create_array(x.dtype)
         assert isinstance(
-            array,
-            list), "The 'array' in array_write must be a list in dygraph mode"
+            array, list
+        ), "The 'array' in array_write must be a list in dygraph mode"
         assert i <= len(
             array
         ), "The index 'i' should not be greater than the length of 'array' in dygraph mode"
@@ -196,22 +197,24 @@ def array_write(x, i, array=None):
     check_type(x, 'x', (Variable), 'array_write')
     helper = LayerHelper('array_write', **locals())
     if array is not None:
-        if not isinstance(
-                array, Variable
-        ) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        if (
+            not isinstance(array, Variable)
+            or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY
+        ):
             raise TypeError(
-                "array should be tensor array vairable in array_write Op")
+                "array should be tensor array vairable in array_write Op"
+            )
     if array is None:
         array = helper.create_variable(
             name="{0}.out".format(helper.name),
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-            dtype=x.dtype)
-    helper.append_op(type='write_to_array',
-                     inputs={
-                         'X': [x],
-                         'I': [i]
-                     },
-                     outputs={'Out': [array]})
+            dtype=x.dtype,
+        )
+    helper.append_op(
+        type='write_to_array',
+        inputs={'X': [x], 'I': [i]},
+        outputs={'Out': [array]},
+    )
     return array
 
 
@@ -248,16 +251,20 @@ def create_array(dtype, initialized_list=None):
     if initialized_list is not None:
         if not isinstance(initialized_list, (list, tuple)):
             raise TypeError(
-                "Require type(initialized_list) should be list/tuple, but received {}"
-                .format(type(initialized_list)))
+                "Require type(initialized_list) should be list/tuple, but received {}".format(
+                    type(initialized_list)
+                )
+            )
         array = list(initialized_list)
 
     # NOTE: Only support plain list like [x, y,...], not support nested list in static mode.
     for val in array:
         if not isinstance(val, Variable):
             raise TypeError(
-                "All values in `initialized_list` should be Variable, but recevied {}."
-                .format(type(val)))
+                "All values in `initialized_list` should be Variable, but recevied {}.".format(
+                    type(val)
+                )
+            )
 
     if _non_static_mode():
         return array
@@ -266,7 +273,8 @@ def create_array(dtype, initialized_list=None):
     tensor_array = helper.create_variable(
         name="{0}.out".format(helper.name),
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-        dtype=dtype)
+        dtype=dtype,
+    )
 
     for val in array:
         array_write(x=val, i=array_length(tensor_array), array=tensor_array)

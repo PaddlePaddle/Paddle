@@ -33,9 +33,9 @@ try:
     if os.name == 'nt':
         third_lib_path = current_path + os.sep + '..' + os.sep + 'libs'
         # Will load shared library from 'path' on windows
-        os.environ[
-            'path'] = current_path + ';' + third_lib_path + ';' + os.environ[
-                'path']
+        os.environ['path'] = (
+            current_path + ';' + third_lib_path + ';' + os.environ['path']
+        )
         sys.path.insert(0, third_lib_path)
         # Note: from python3.8, PATH will not take effect
         # https://github.com/python/cpython/pull/12302
@@ -44,21 +44,23 @@ try:
             os.add_dll_directory(third_lib_path)
 
 except ImportError as e:
-    from .. import compat as cpt
     if os.name == 'nt':
         executable_path = os.path.abspath(os.path.dirname(sys.executable))
         raise ImportError(
             """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
         if you encounters \"DLL load failed\" errors. If you have python
         installed in other directory, replace \"%s\" with your own
-        directory. The original error is: \n %s""" %
-            (executable_path, executable_path, cpt.get_exception_message(e)))
+        directory. The original error is: \n %s"""
+            % (executable_path, executable_path, str(e))
+        )
     else:
         raise ImportError(
             """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
         if you encounters \"libmkldnn.so not found\" errors. If you have python
         installed in other directory, replace \"/usr/local/lib\" with your own
-        directory. The original error is: \n""" + cpt.get_exception_message(e))
+        directory. The original error is: \n"""
+            + str(e)
+        )
 except Exception as e:
     raise e
 
@@ -67,37 +69,43 @@ def avx_supported():
     """
     Whether current system(Linux, MacOS, Windows) is supported with AVX.
     """
-    from .. import compat as cpt
     sysstr = platform.system().lower()
     has_avx = False
     if sysstr == 'linux':
         try:
             has_avx = os.popen('cat /proc/cpuinfo | grep -i avx').read() != ''
         except Exception as e:
-            sys.stderr.write('Can not get the AVX flag from /proc/cpuinfo.\n'
-                             'The original error is: %s\n' %
-                             cpt.get_exception_message(e))
+            sys.stderr.write(
+                'Can not get the AVX flag from /proc/cpuinfo.\n'
+                'The original error is: %s\n' % str(e)
+            )
         return has_avx
     elif sysstr == 'darwin':
         try:
-            has_avx = os.popen(
-                'sysctl machdep.cpu.features | grep -i avx').read() != ''
+            has_avx = (
+                os.popen('sysctl machdep.cpu.features | grep -i avx').read()
+                != ''
+            )
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from machdep.cpu.features.\n'
-                'The original error is: %s\n' % cpt.get_exception_message(e))
+                'The original error is: %s\n' % str(e)
+            )
         if not has_avx:
             import subprocess
+
             pipe = subprocess.Popen(
                 'sysctl machdep.cpu.leaf7_features | grep -i avx',
                 shell=True,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+                stderr=subprocess.PIPE,
+            )
             _ = pipe.communicate()
             has_avx = True if pipe.returncode == 0 else False
         return has_avx
     elif sysstr == 'windows':
         import ctypes
+
         ONE_PAGE = ctypes.c_size_t(0x1000)
 
         def asm_func(code_str, restype=ctypes.c_uint32, argtypes=()):
@@ -107,24 +115,31 @@ def avx_supported():
             pfnVirtualAlloc.restype = ctypes.c_void_p
             MEM_COMMIT = ctypes.c_ulong(0x1000)
             PAGE_READWRITE = ctypes.c_ulong(0x4)
-            address = pfnVirtualAlloc(None, ONE_PAGE, MEM_COMMIT,
-                                      PAGE_READWRITE)
+            address = pfnVirtualAlloc(
+                None, ONE_PAGE, MEM_COMMIT, PAGE_READWRITE
+            )
             if not address:
                 raise Exception("Failed to VirtualAlloc")
 
             # Copy the code into the memory segment
-            memmove = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p,
-                                       ctypes.c_void_p,
-                                       ctypes.c_size_t)(ctypes._memmove_addr)
+            memmove = ctypes.CFUNCTYPE(
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_size_t,
+            )(ctypes._memmove_addr)
             if memmove(address, code_str, len(code_str)) < 0:
                 raise Exception("Failed to memmove")
 
             # Enable execute permissions
             PAGE_EXECUTE = ctypes.c_ulong(0x10)
             pfnVirtualProtect = ctypes.windll.kernel32.VirtualProtect
-            res = pfnVirtualProtect(ctypes.c_void_p(address),
-                                    ONE_PAGE, PAGE_EXECUTE,
-                                    ctypes.byref(ctypes.c_ulong(0)))
+            res = pfnVirtualProtect(
+                ctypes.c_void_p(address),
+                ONE_PAGE,
+                PAGE_EXECUTE,
+                ctypes.byref(ctypes.c_ulong(0)),
+            )
             if not res:
                 raise Exception("Failed VirtualProtect")
 
@@ -133,7 +148,8 @@ def avx_supported():
             pfnGetCurrentProcess.restype = ctypes.c_void_p
             prochandle = ctypes.c_void_p(pfnGetCurrentProcess())
             res = ctypes.windll.kernel32.FlushInstructionCache(
-                prochandle, ctypes.c_void_p(address), ONE_PAGE)
+                prochandle, ctypes.c_void_p(address), ONE_PAGE
+            )
             if not res:
                 raise Exception("Failed FlushInstructionCache")
 
@@ -151,12 +167,14 @@ def avx_supported():
             # Convert the code_str into a function that returns uint
             func, address = asm_func(code_str)
             retval = func()
-            ctypes.windll.kernel32.VirtualFree(ctypes.c_void_p(address),
-                                               ctypes.c_size_t(0), ONE_PAGE)
+            ctypes.windll.kernel32.VirtualFree(
+                ctypes.c_void_p(address), ctypes.c_size_t(0), ONE_PAGE
+            )
         except Exception as e:
-            sys.stderr.write('Failed getting the AVX flag on Windows.\n'
-                             'The original error is: %s\n' %
-                             cpt.get_exception_message(e))
+            sys.stderr.write(
+                'Failed getting the AVX flag on Windows.\n'
+                'The original error is: %s\n' % str(e)
+            )
         return (retval & (1 << avx_bit)) > 0
     else:
         sys.stderr.write('Do not get AVX flag on %s\n' % sysstr)
@@ -165,10 +183,10 @@ def avx_supported():
 
 def run_shell_command(cmd):
     import subprocess
-    out, err = subprocess.Popen(cmd,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
-                                shell=True).communicate()
+
+    out, err = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
+    ).communicate()
     if err:
         return None
     else:
@@ -177,8 +195,9 @@ def run_shell_command(cmd):
 
 def get_dso_path(core_so, dso_name):
     if core_so and dso_name:
-        return run_shell_command("ldd %s|grep %s|awk '{print $3}'" %
-                                 (core_so, dso_name))
+        return run_shell_command(
+            "ldd %s|grep %s|awk '{print $3}'" % (core_so, dso_name)
+        )
     else:
         return None
 
@@ -187,6 +206,7 @@ def load_dso(dso_absolute_path):
     if dso_absolute_path:
         try:
             from ctypes import cdll
+
             cdll.LoadLibrary(dso_absolute_path)
         except:
             warnings.warn("Load {} failed".format(dso_absolute_path))
@@ -245,12 +265,14 @@ if platform.system().lower() == 'linux':
 
 try:
     from . import libpaddle
+
     if avx_supported() and not libpaddle.is_compiled_with_avx():
         sys.stderr.write(
             "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
             "Hence, no-avx core with worse preformance will be imported.\nIf you like, you could "
             "reinstall paddlepaddle by 'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' "
-            "to get better performance.\n")
+            "to get better performance.\n"
+        )
 
     # assign tensor alias
     libpaddle.LoDTensor = libpaddle.Tensor
@@ -280,6 +302,8 @@ try:
     from .libpaddle import _get_current_stream
     from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
     from .libpaddle import _set_current_stream
+    from .libpaddle import _get_phi_kernel_name
+
     if sys.platform != 'win32':
         from .libpaddle import _set_process_pids
         from .libpaddle import _erase_process_pids
@@ -292,12 +316,18 @@ try:
 except Exception as e:
     if has_paddle_dy_lib:
         sys.stderr.write(
-            'Error: Can not import paddle core while this file exists: ' +
-            current_path + os.sep + 'libpaddle.' + dy_lib_suffix + '\n')
+            'Error: Can not import paddle core while this file exists: '
+            + current_path
+            + os.sep
+            + 'libpaddle.'
+            + dy_lib_suffix
+            + '\n'
+        )
     if not avx_supported() and libpaddle.is_compiled_with_avx():
         sys.stderr.write(
             "Error: Your machine doesn't support AVX, but the installed PaddlePaddle is avx core, "
-            "you should reinstall paddlepaddle with no-avx core.\n")
+            "you should reinstall paddlepaddle with no-avx core.\n"
+        )
     raise e
 
 
@@ -314,22 +344,26 @@ def set_paddle_custom_device_lib_path(lib_path):
 
 # set paddle lib path
 def set_paddle_lib_path():
-    site_dirs = site.getsitepackages() if hasattr(
-        site,
-        'getsitepackages') else [x for x in sys.path if 'site-packages' in x]
+    site_dirs = (
+        site.getsitepackages()
+        if hasattr(site, 'getsitepackages')
+        else [x for x in sys.path if 'site-packages' in x]
+    )
     for site_dir in site_dirs:
         lib_dir = os.path.sep.join([site_dir, 'paddle', 'libs'])
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
             set_paddle_custom_device_lib_path(
-                os.path.sep.join([lib_dir, '..', '..', 'paddle-plugins']))
+                os.path.sep.join([lib_dir, '..', '..', 'paddle-plugins'])
+            )
             return
     if hasattr(site, 'USER_SITE'):
         lib_dir = os.path.sep.join([site.USER_SITE, 'paddle', 'libs'])
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
             set_paddle_custom_device_lib_path(
-                os.path.sep.join([lib_dir, '..', '..', 'paddle-plugins']))
+                os.path.sep.join([lib_dir, '..', '..', 'paddle-plugins'])
+            )
 
 
 set_paddle_lib_path()

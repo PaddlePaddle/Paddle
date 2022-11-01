@@ -451,6 +451,23 @@ void RnnInferMeta(const MetaTensor& x,
                   std::vector<MetaTensor*> state,
                   MetaTensor* reserve);
 
+void SendUERecvInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         const MetaTensor& src_index,
+                         const MetaTensor& dst_index,
+                         const std::string& message_op,
+                         const std::string& reduce_op,
+                         const IntArray& out_size,
+                         MetaTensor* out,
+                         MetaTensor* dst_count);
+
+void SendUVInferMeta(const MetaTensor& x,
+                     const MetaTensor& y,
+                     const MetaTensor& src_index,
+                     const MetaTensor& dst_index,
+                     const std::string& message_op,
+                     MetaTensor* out);
+
 void SgdInferMeta(const MetaTensor& param,
                   const MetaTensor& learning_rate,
                   const MetaTensor& grad,
@@ -483,8 +500,8 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
-                      MetaTensor* warpctcgrad,
-                      MetaTensor* loss);
+                      MetaTensor* loss,
+                      MetaTensor* warpctcgrad);
 
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
@@ -505,22 +522,5 @@ void Yolov3LossInferMeta(const MetaTensor& x,
                          MetaTensor* loss,
                          MetaTensor* objectness_mask,
                          MetaTensor* gt_match_mask);
-
-void GraphSendUERecvInferMeta(const MetaTensor& x,
-                              const MetaTensor& y,
-                              const MetaTensor& src_index,
-                              const MetaTensor& dst_index,
-                              const std::string& message_op,
-                              const std::string& reduce_op,
-                              const IntArray& out_size,
-                              MetaTensor* out,
-                              MetaTensor* dst_count);
-
-void GraphSendUVInferMeta(const MetaTensor& x,
-                          const MetaTensor& y,
-                          const MetaTensor& src_index,
-                          const MetaTensor& dst_index,
-                          const std::string& message_op,
-                          MetaTensor* out);
 
 }  // namespace phi

@@ -1,31 +1,28 @@
 #  Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
 #    http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 import argparse
-import math
 import numpy as np
 import os
 import random
 import sys
-import time
 import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator, to_variable
 from paddle.fluid.dygraph.nn import Conv2D, BatchNorm, Linear, Pool2D
-from paddle.fluid.layer_helper import LayerHelper
-from tsm_config_utils import *
+from tsm_config_utils import merge_configs, parse_config, print_configs
 
 random.seed(0)
 np.random.seed(0)
@@ -33,43 +30,52 @@ np.random.seed(0)
 
 def parse_args():
     parser = argparse.ArgumentParser("Paddle Video train script")
-    parser.add_argument('--config',
-                        type=str,
-                        default='tsm.yaml',
-                        help='path to config file of model')
-    parser.add_argument('--use_gpu',
-                        type=bool,
-                        default=fluid.is_compiled_with_cuda(),
-                        help='default use gpu.')
+    parser.add_argument(
+        '--config',
+        type=str,
+        default='tsm.yaml',
+        help='path to config file of model',
+    )
+    parser.add_argument(
+        '--use_gpu',
+        type=bool,
+        default=fluid.is_compiled_with_cuda(),
+        help='default use gpu.',
+    )
     args = parser.parse_args(['--config', 'tsm.yaml'])
     return args
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
-
-    def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
-                 stride=1,
-                 groups=1,
-                 act=None):
+    def __init__(
+        self,
+        num_channels,
+        num_filters,
+        filter_size,
+        stride=1,
+        groups=1,
+        act=None,
+    ):
         super(ConvBNLayer, self).__init__()
 
-        self._conv = Conv2D(num_channels=num_channels,
-                            num_filters=num_filters,
-                            filter_size=filter_size,
-                            stride=stride,
-                            padding=(filter_size - 1) // 2,
-                            groups=None,
-                            act=None,
-                            param_attr=fluid.param_attr.ParamAttr(),
-                            bias_attr=False)
+        self._conv = Conv2D(
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=filter_size,
+            stride=stride,
+            padding=(filter_size - 1) // 2,
+            groups=None,
+            act=None,
+            param_attr=fluid.param_attr.ParamAttr(),
+            bias_attr=False,
+        )
 
-        self._batch_norm = BatchNorm(num_filters,
-                                     act=act,
-                                     param_attr=fluid.param_attr.ParamAttr(),
-                                     bias_attr=fluid.param_attr.ParamAttr())
+        self._batch_norm = BatchNorm(
+            num_filters,
+            act=act,
+            param_attr=fluid.param_attr.ParamAttr(),
+            bias_attr=fluid.param_attr.ParamAttr(),
+        )
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -79,34 +85,38 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
 
 class BottleneckBlock(fluid.dygraph.Layer):
-
-    def __init__(self,
-                 num_channels,
-                 num_filters,
-                 stride,
-                 shortcut=True,
-                 seg_num=8):
+    def __init__(
+        self, num_channels, num_filters, stride, shortcut=True, seg_num=8
+    ):
         super(BottleneckBlock, self).__init__()
 
-        self.conv0 = ConvBNLayer(num_channels=num_channels,
-                                 num_filters=num_filters,
-                                 filter_size=1,
-                                 act='relu')
-        self.conv1 = ConvBNLayer(num_channels=num_filters,
-                                 num_filters=num_filters,
-                                 filter_size=3,
-                                 stride=stride,
-                                 act='relu')
-        self.conv2 = ConvBNLayer(num_channels=num_filters,
-                                 num_filters=num_filters * 4,
-                                 filter_size=1,
-                                 act=None)
+        self.conv0 = ConvBNLayer(
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=1,
+            act='relu',
+        )
+        self.conv1 = ConvBNLayer(
+            num_channels=num_filters,
+            num_filters=num_filters,
+            filter_size=3,
+            stride=stride,
+            act='relu',
+        )
+        self.conv2 = ConvBNLayer(
+            num_channels=num_filters,
+            num_filters=num_filters * 4,
+            filter_size=1,
+            act=None,
+        )
 
         if not shortcut:
-            self.short = ConvBNLayer(num_channels=num_channels,
-                                     num_filters=num_filters * 4,
-                                     filter_size=1,
-                                     stride=stride)
+            self.short = ConvBNLayer(
+                num_channels=num_channels,
+                num_filters=num_filters * 4,
+                filter_size=1,
+                stride=stride,
+            )
         self.shortcut = shortcut
         self.seg_num = seg_num
         self._num_channels_out = int(num_filters * 4)
@@ -125,7 +135,6 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
 
 class TSM_ResNet(fluid.dygraph.Layer):
-
     def __init__(self, name_scope, config, mode):
         super(TSM_ResNet, self).__init__(name_scope)
 
@@ -133,8 +142,9 @@ class TSM_ResNet(fluid.dygraph.Layer):
         self.seg_num = config.MODEL.seg_num
         self.class_dim = config.MODEL.num_classes
         self.reshape_list = [
-            config.MODEL.seglen * 3, config[mode.upper()]['target_size'],
-            config[mode.upper()]['target_size']
+            config.MODEL.seglen * 3,
+            config[mode.upper()]['target_size'],
+            config[mode.upper()]['target_size'],
         ]
 
         if self.layers == 50:
@@ -143,15 +153,12 @@ class TSM_ResNet(fluid.dygraph.Layer):
             raise NotImplementedError
         num_filters = [64, 128, 256, 512]
 
-        self.conv = ConvBNLayer(num_channels=3,
-                                num_filters=64,
-                                filter_size=7,
-                                stride=2,
-                                act='relu')
-        self.pool2d_max = Pool2D(pool_size=3,
-                                 pool_stride=2,
-                                 pool_padding=1,
-                                 pool_type='max')
+        self.conv = ConvBNLayer(
+            num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu'
+        )
+        self.pool2d_max = Pool2D(
+            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+        )
 
         self.bottleneck_block_list = []
         num_channels = 64
@@ -161,19 +168,23 @@ class TSM_ResNet(fluid.dygraph.Layer):
             for i in range(depth[block]):
                 bottleneck_block = self.add_sublayer(
                     'bb_%d_%d' % (block, i),
-                    BottleneckBlock(num_channels=num_channels,
-                                    num_filters=num_filters[block],
-                                    stride=2 if i == 0 and block != 0 else 1,
-                                    shortcut=shortcut,
-                                    seg_num=self.seg_num))
+                    BottleneckBlock(
+                        num_channels=num_channels,
+                        num_filters=num_filters[block],
+                        stride=2 if i == 0 and block != 0 else 1,
+                        shortcut=shortcut,
+                        seg_num=self.seg_num,
+                    ),
+                )
                 num_channels = int(bottleneck_block._num_channels_out)
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-        self.pool2d_avg = Pool2D(pool_size=7,
-                                 pool_type='avg',
-                                 global_pooling=True)
+        self.pool2d_avg = Pool2D(
+            pool_size=7, pool_type='avg', global_pooling=True
+        )
 
         import math
+
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
         self.out = Linear(
@@ -181,9 +192,12 @@ class TSM_ResNet(fluid.dygraph.Layer):
             self.class_dim,
             act="softmax",
             param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)),
+                initializer=fluid.initializer.Uniform(-stdv, stdv)
+            ),
             bias_attr=fluid.param_attr.ParamAttr(
-                learning_rate=2.0, regularizer=fluid.regularizer.L2Decay(0.)))
+                learning_rate=2.0, regularizer=fluid.regularizer.L2Decay(0.0)
+            ),
+        )
 
     @declarative
     def forward(self, inputs):
@@ -202,7 +216,6 @@ class TSM_ResNet(fluid.dygraph.Layer):
 
 
 class FakeDataReader(object):
-
     def __init__(self, mode, cfg):
         self.format = cfg.MODEL.format
         self.num_classes = cfg.MODEL.num_classes
@@ -210,13 +223,18 @@ class FakeDataReader(object):
         self.seglen = cfg.MODEL.seglen
 
         self.target_size = cfg[mode.upper()]['target_size']
-        self.img_mean = np.array(cfg.MODEL.image_mean).reshape(
-            [3, 1, 1]).astype(np.float32)
-        self.img_std = np.array(cfg.MODEL.image_std).reshape([3, 1, 1]).astype(
-            np.float32)
+        self.img_mean = (
+            np.array(cfg.MODEL.image_mean).reshape([3, 1, 1]).astype(np.float32)
+        )
+        self.img_std = (
+            np.array(cfg.MODEL.image_std).reshape([3, 1, 1]).astype(np.float32)
+        )
 
-        self.batch_size = 1 if sys.platform == 'darwin' or os.name == 'nt' else cfg[
-            mode.upper()]['batch_size']
+        self.batch_size = (
+            1
+            if sys.platform == 'darwin' or os.name == 'nt'
+            else cfg[mode.upper()]['batch_size']
+        )
         self.generator_out = []
         self.total_iter = 3
         for i in range(self.total_iter):
@@ -225,15 +243,20 @@ class FakeDataReader(object):
                 label = np.int64(random.randint(0, self.num_classes - 1))
                 random_mean = self.img_mean[0][0][0]
                 random_std = self.img_std[0][0][0]
-                imgs = np.random.normal(random_mean, random_std, [
-                    self.seg_num, self.seglen * 3, self.target_size,
-                    self.target_size
-                ]).astype(np.float32)
+                imgs = np.random.normal(
+                    random_mean,
+                    random_std,
+                    [
+                        self.seg_num,
+                        self.seglen * 3,
+                        self.target_size,
+                        self.target_size,
+                    ],
+                ).astype(np.float32)
                 batch_out.append((imgs, label))
             self.generator_out.append(batch_out)
 
     def create_reader(self):
-
         def batch_reader():
             for i in range(self.total_iter):
                 yield self.generator_out[i]
@@ -243,7 +266,9 @@ class FakeDataReader(object):
 
 def create_optimizer(cfg, params):
     total_videos = cfg.total_videos
-    batch_size = 1 if sys.platform == 'darwin' or os.name == 'nt' else cfg.batch_size
+    batch_size = (
+        1 if sys.platform == 'darwin' or os.name == 'nt' else cfg.batch_size
+    )
     step = int(total_videos / batch_size + 1)
     bd = [e * step for e in cfg.decay_epochs]
     base_lr = cfg.learning_rate
@@ -256,7 +281,8 @@ def create_optimizer(cfg, params):
         learning_rate=fluid.layers.piecewise_decay(boundaries=bd, values=lr),
         momentum=momentum,
         regularization=fluid.regularizer.L2Decay(l2_weight_decay),
-        parameter_list=params)
+        parameter_list=params,
+    )
 
     return optimizer
 
@@ -280,8 +306,9 @@ def train(args, fake_data_reader, to_static):
 
         video_model = TSM_ResNet("TSM", train_config, 'Train')
 
-        optimizer = create_optimizer(train_config.TRAIN,
-                                     video_model.parameters())
+        optimizer = create_optimizer(
+            train_config.TRAIN, video_model.parameters()
+        )
 
         train_reader = fake_data_reader.create_reader()
 
@@ -300,16 +327,16 @@ def train(args, fake_data_reader, to_static):
                 labels = to_variable(y_data)
                 labels.stop_gradient = True
                 outputs = video_model(imgs)
-                loss = fluid.layers.cross_entropy(input=outputs,
-                                                  label=labels,
-                                                  ignore_index=-1)
+                loss = fluid.layers.cross_entropy(
+                    input=outputs, label=labels, ignore_index=-1
+                )
                 avg_loss = paddle.mean(loss)
-                acc_top1 = fluid.layers.accuracy(input=outputs,
-                                                 label=labels,
-                                                 k=1)
-                acc_top5 = fluid.layers.accuracy(input=outputs,
-                                                 label=labels,
-                                                 k=5)
+                acc_top1 = fluid.layers.accuracy(
+                    input=outputs, label=labels, k=1
+                )
+                acc_top5 = fluid.layers.accuracy(
+                    input=outputs, label=labels, k=5
+                )
 
                 avg_loss.backward()
                 optimizer.minimize(avg_loss)
@@ -320,26 +347,35 @@ def train(args, fake_data_reader, to_static):
                 total_acc5 += acc_top5.numpy()[0]
                 total_sample += 1
 
-                print('TRAIN Epoch {}, iter {}, loss = {}, acc1 {}, acc5 {}'.
-                      format(epoch, batch_id,
-                             avg_loss.numpy()[0],
-                             acc_top1.numpy()[0],
-                             acc_top5.numpy()[0]))
-                ret.extend([
-                    avg_loss.numpy()[0],
-                    acc_top1.numpy()[0],
-                    acc_top5.numpy()[0]
-                ])
+                print(
+                    'TRAIN Epoch {}, iter {}, loss = {}, acc1 {}, acc5 {}'.format(
+                        epoch,
+                        batch_id,
+                        avg_loss.numpy()[0],
+                        acc_top1.numpy()[0],
+                        acc_top5.numpy()[0],
+                    )
+                )
+                ret.extend(
+                    [
+                        avg_loss.numpy()[0],
+                        acc_top1.numpy()[0],
+                        acc_top5.numpy()[0],
+                    ]
+                )
 
             print(
-                'TRAIN End, Epoch {}, avg_loss= {}, avg_acc1= {}, avg_acc5= {}'.
-                format(epoch, total_loss / total_sample,
-                       total_acc1 / total_sample, total_acc5 / total_sample))
+                'TRAIN End, Epoch {}, avg_loss= {}, avg_acc1= {}, avg_acc5= {}'.format(
+                    epoch,
+                    total_loss / total_sample,
+                    total_acc1 / total_sample,
+                    total_acc5 / total_sample,
+                )
+            )
         return ret
 
 
 class TestTsm(unittest.TestCase):
-
     def test_dygraph_static_same_loss(self):
         if fluid.is_compiled_with_cuda():
             fluid.set_flags({"FLAGS_cudnn_deterministic": True})

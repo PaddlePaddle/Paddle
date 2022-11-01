@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from op_test import OpTest, _set_use_system_allocator
-from paddle.fluid.framework import grad_var_name
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
@@ -27,11 +23,11 @@ import paddle
 
 
 class TestInstanceNorm(unittest.TestCase):
-
     def test_error(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"):
+            "instance_norm"
+        ):
             places.append(fluid.CUDAPlace(0))
         for p in places:
 
@@ -52,9 +48,9 @@ class TestInstanceNorm(unittest.TestCase):
 
             def weight_bias_false():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                instance_norm3d = paddle.nn.InstanceNorm3D(1,
-                                                           weight_attr=False,
-                                                           bias_attr=False)
+                instance_norm3d = paddle.nn.InstanceNorm3D(
+                    1, weight_attr=False, bias_attr=False
+                )
 
             with fluid.dygraph.guard(p):
                 weight_bias_false()
@@ -65,7 +61,8 @@ class TestInstanceNorm(unittest.TestCase):
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"):
+            "instance_norm"
+        ):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             shape = [4, 10, 4, 4]
@@ -90,7 +87,8 @@ class TestInstanceNorm(unittest.TestCase):
     def test_static(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"):
+            "instance_norm"
+        ):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             exe = fluid.Executor(p)

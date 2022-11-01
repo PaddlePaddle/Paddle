@@ -79,12 +79,12 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
       platform::errors::InvalidArgument(
           "Unable to get input Variable X, Variable name is %s.\n",
           ctx.InputName("X")));
-  auto *y = ctx.Input<framework::LoDTensor>("Y");
+  auto *y = ctx.Input<phi::DenseTensor>("Y");
   phi::DenseTensor *z;
 
-  if (x_var->IsType<framework::LoDTensor>()) {
-    auto *x = ctx.Input<framework::LoDTensor>("X");
-    z = ctx.Output<framework::LoDTensor>("Out");
+  if (x_var->IsType<phi::DenseTensor>()) {
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    z = ctx.Output<phi::DenseTensor>("Out");
     ins->emplace_back(x);
   } else if (x_var->IsType<phi::SelectedRows>()) {
     PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1,

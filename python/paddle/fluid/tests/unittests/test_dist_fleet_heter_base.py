@@ -19,9 +19,7 @@ import os
 import sys
 import subprocess
 
-import six
 import shutil
-import numpy as np
 import argparse
 from contextlib import closing
 import socket
@@ -43,9 +41,9 @@ DIST_UT_PORT = 0
 
 class FleetDistHeterRunnerBase(object):
     """
-        run_pserver,run_trainer : after init role, using transpiler split program
-        net : implment by child class, the network of model
-        do training : exe run program
+    run_pserver,run_trainer : after init role, using transpiler split program
+    net : implment by child class, the network of model
+    do training : exe run program
     """
 
     def build_role(self, args):
@@ -56,33 +54,45 @@ class FleetDistHeterRunnerBase(object):
             environs["PADDLE_PSERVERS_IP_PORT_LIST"] = args.endpoints
             environs["PADDLE_TRAINER_ENDPOINTS"] = args.trainer_endpoints
             environs[
-                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"] = all_heter_trainer_endpoints
-            environs["POD_IP"] = args.endpoints.split(",")[int(
-                args.current_id)].split(":")[0]
-            environs["PADDLE_PORT"] = args.endpoints.split(",")[int(
-                args.current_id)].split(":")[1]
+                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"
+            ] = all_heter_trainer_endpoints
+            environs["POD_IP"] = args.endpoints.split(",")[
+                int(args.current_id)
+            ].split(":")[0]
+            environs["PADDLE_PORT"] = args.endpoints.split(",")[
+                int(args.current_id)
+            ].split(":")[1]
             environs["TRAINING_ROLE"] = args.role.upper()
             environs["PADDLE_TRAINERS_NUM"] = args.trainers
         elif args.role.upper() == "HETER_TRAINER":
-            previous_endpoints = args.trainer_endpoints if args.stage_id == 2 else heter_trainer_endpoints[
-                0]
-            next_endpoints = heter_trainer_endpoints[
-                1] if args.stage_id == 2 else ""
-            heter_device = args.heter_trainer_device.split(";")[args.stage_id -
-                                                                2]
+            previous_endpoints = (
+                args.trainer_endpoints
+                if args.stage_id == 2
+                else heter_trainer_endpoints[0]
+            )
+            next_endpoints = (
+                heter_trainer_endpoints[1] if args.stage_id == 2 else ""
+            )
+            heter_device = args.heter_trainer_device.split(";")[
+                args.stage_id - 2
+            ]
             environs["PADDLE_PSERVERS_IP_PORT_LIST"] = args.endpoints
             environs["PADDLE_TRAINER_ENDPOINTS"] = args.trainer_endpoints
             environs["PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST"] = next_endpoints
             environs[
-                "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"] = previous_endpoints
+                "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"
+            ] = previous_endpoints
             environs[
-                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"] = all_heter_trainer_endpoints
+                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"
+            ] = all_heter_trainer_endpoints
             environs["HETER_DEVICE_TYPE"] = heter_device
             environs["TRAINING_ROLE"] = args.role.upper()
-            environs["POD_IP"] = all_heter_trainer_endpoints.split(",")[int(
-                args.current_id)].split(":")[0]
+            environs["POD_IP"] = all_heter_trainer_endpoints.split(",")[
+                int(args.current_id)
+            ].split(":")[0]
             environs["PADDLE_PORT"] = all_heter_trainer_endpoints.split(",")[
-                int(args.current_id)].split(":")[1]
+                int(args.current_id)
+            ].split(":")[1]
             environs["PADDLE_TRAINERS_NUM"] = args.trainers
             environs["PADDLE_STAGE_TRAINERS_NUM"] = [2, 2, 2]
             environs["FLAGS_selected_gpus"] = 0
@@ -95,18 +105,21 @@ class FleetDistHeterRunnerBase(object):
             environs["PADDLE_PSERVERS_IP_PORT_LIST"] = args.endpoints
             environs["PADDLE_TRAINER_ENDPOINTS"] = args.trainer_endpoints
             environs[
-                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST"] = heter_trainer_endpoints[
-                    0]
+                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST"
+            ] = heter_trainer_endpoints[0]
             environs["PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"] = ""
             environs[
-                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"] = all_heter_trainer_endpoints
+                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"
+            ] = all_heter_trainer_endpoints
             environs["HETER_DEVICE_TYPE"] = "cpu"
             environs["TRAINING_ROLE"] = args.role.upper()
             environs["PADDLE_TRAINER_ID"] = args.current_id
-            environs["POD_IP"] = args.trainer_endpoints.split(",")[int(
-                args.current_id)].split(":")[0]
-            environs["PADDLE_PORT"] = args.trainer_endpoints.split(",")[int(
-                args.current_id)].split(":")[1]
+            environs["POD_IP"] = args.trainer_endpoints.split(",")[
+                int(args.current_id)
+            ].split(":")[0]
+            environs["PADDLE_PORT"] = args.trainer_endpoints.split(",")[
+                int(args.current_id)
+            ].split(":")[1]
             environs["PADDLE_TRAINERS_NUM"] = args.trainers
             environs["PADDLE_STAGE_TRAINERS_NUM"] = [2, 2, 2]
             environs["FLAGS_selected_gpus"] = 0
@@ -128,12 +141,12 @@ class FleetDistHeterRunnerBase(object):
         self.strategy.a_sync = True
         self.strategy.a_sync_configs = {
             "launch_barrier": True,
-            "heter_worker_device_guard": 'gpu'
+            "heter_worker_device_guard": 'gpu',
         }
         self.strategy.pipeline = True
         self.strategy.pipeline_configs = {
             "accumulate_steps": 1,
-            "micro_batch_size": 2048
+            "micro_batch_size": 2048,
         }
         return self.strategy
 
@@ -154,21 +167,24 @@ class FleetDistHeterRunnerBase(object):
 
     def net(self, args, batch_size=4, lr=0.01):
         raise NotImplementedError(
-            "get_model should be implemented by child classes.")
+            "get_model should be implemented by child classes."
+        )
 
     def do_dataset_training(self, fleet):
         raise NotImplementedError(
-            "do_dataset_training should be implemented by child classes.")
+            "do_dataset_training should be implemented by child classes."
+        )
 
     def do_dataset_heter_training(self, fleet):
         raise NotImplementedError(
-            "do_dataset_heter_training should be implemented by child classes.")
+            "do_dataset_heter_training should be implemented by child classes."
+        )
 
 
 class TestFleetHeterBase(unittest.TestCase):
     """
-        start_pserver,start_trainer : add start cmd to test
-        run_cluster : using multi process to test distribute program
+    start_pserver,start_trainer : add start cmd to test
+    run_cluster : using multi process to test distribute program
     """
 
     def _setup_config(self):
@@ -196,23 +212,39 @@ class TestFleetHeterBase(unittest.TestCase):
         if DIST_UT_PORT:
             print("set begin_port:", DIST_UT_PORT)
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-                DIST_UT_PORT, DIST_UT_PORT + 1)
+                DIST_UT_PORT,
+                DIST_UT_PORT + 1,
+            )
             self._tr_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-                DIST_UT_PORT + 2, DIST_UT_PORT + 3)
+                DIST_UT_PORT + 2,
+                DIST_UT_PORT + 3,
+            )
             self._heter_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-                DIST_UT_PORT + 4, DIST_UT_PORT + 5)
+                DIST_UT_PORT + 4,
+                DIST_UT_PORT + 5,
+            )
             self._heter_endpoints_2 = "127.0.0.1:%s,127.0.0.1:%s" % (
-                DIST_UT_PORT + 6, DIST_UT_PORT + 7)
+                DIST_UT_PORT + 6,
+                DIST_UT_PORT + 7,
+            )
             DIST_UT_PORT += 8
         else:
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-                self._find_free_port(), self._find_free_port())
+                self._find_free_port(),
+                self._find_free_port(),
+            )
             self._tr_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-                self._find_free_port(), self._find_free_port())
+                self._find_free_port(),
+                self._find_free_port(),
+            )
             self._heter_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-                self._find_free_port(), self._find_free_port())
+                self._find_free_port(),
+                self._find_free_port(),
+            )
             self._heter_endpoints_2 = "127.0.0.1:%s,127.0.0.1:%s" % (
-                self._find_free_port(), self._find_free_port())
+                self._find_free_port(),
+                self._find_free_port(),
+            )
 
         self._python_interp = sys.executable
         self._geo_sgd_need_push_nums = 5
@@ -220,10 +252,10 @@ class TestFleetHeterBase(unittest.TestCase):
         self._setup_config()
 
     def _find_free_port(self):
-
         def __free_port():
-            with closing(socket.socket(socket.AF_INET,
-                                       socket.SOCK_STREAM)) as s:
+            with closing(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            ) as s:
                 s.bind(('', 0))
                 return s.getsockname()[1]
 
@@ -239,14 +271,18 @@ class TestFleetHeterBase(unittest.TestCase):
         ps0_pipe = open(tempfile.gettempdir() + "/ps0_err.log", "wb+")
         ps1_pipe = open(tempfile.gettempdir() + "/ps1_err.log", "wb+")
 
-        ps0_proc = subprocess.Popen(ps0_cmd.strip().split(" "),
-                                    stdout=subprocess.PIPE,
-                                    stderr=ps0_pipe,
-                                    env=required_envs)
-        ps1_proc = subprocess.Popen(ps1_cmd.strip().split(" "),
-                                    stdout=subprocess.PIPE,
-                                    stderr=ps1_pipe,
-                                    env=required_envs)
+        ps0_proc = subprocess.Popen(
+            ps0_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=ps0_pipe,
+            env=required_envs,
+        )
+        ps1_proc = subprocess.Popen(
+            ps1_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=ps1_pipe,
+            env=required_envs,
+        )
         return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
 
     def _start_trainer(self, cmd, required_envs):
@@ -258,20 +294,28 @@ class TestFleetHeterBase(unittest.TestCase):
         tr0_out = open(tempfile.gettempdir() + "/tr0_out.log", "wb+")
         tr1_out = open(tempfile.gettempdir() + "/tr1_out.log", "wb+")
 
-        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(" "),
-                                    stdout=tr0_out,
-                                    stderr=tr0_pipe,
-                                    env=required_envs)
-        tr1_proc = subprocess.Popen(tr1_cmd.strip().split(" "),
-                                    stdout=tr1_out,
-                                    stderr=tr1_pipe,
-                                    env=required_envs)
+        tr0_proc = subprocess.Popen(
+            tr0_cmd.strip().split(" "),
+            stdout=tr0_out,
+            stderr=tr0_pipe,
+            env=required_envs,
+        )
+        tr1_proc = subprocess.Popen(
+            tr1_cmd.strip().split(" "),
+            stdout=tr1_out,
+            stderr=tr1_pipe,
+            env=required_envs,
+        )
 
         return tr0_proc, tr1_proc, tr0_pipe, tr1_pipe
 
     def _start_heter_trainer(self, cmd, required_envs):
-        heter0_cmd, heter1_cmd, heter2_cmd, heter3_cmd = cmd.format(
-            0, 2), cmd.format(1, 2), cmd.format(2, 3), cmd.format(3, 3)
+        heter0_cmd, heter1_cmd, heter2_cmd, heter3_cmd = (
+            cmd.format(0, 2),
+            cmd.format(1, 2),
+            cmd.format(2, 3),
+            cmd.format(3, 3),
+        )
 
         heter0_pipe = open(tempfile.gettempdir() + "/heter0_err.log", "wb+")
         heter1_pipe = open(tempfile.gettempdir() + "/heter1_err.log", "wb+")
@@ -282,29 +326,46 @@ class TestFleetHeterBase(unittest.TestCase):
         heter2_out = open(tempfile.gettempdir() + "/heter2_out.log", "wb+")
         heter3_out = open(tempfile.gettempdir() + "/heter3_out.log", "wb+")
 
-        heter0_proc = subprocess.Popen(heter0_cmd.strip().split(" "),
-                                       stdout=heter0_out,
-                                       stderr=heter0_pipe,
-                                       env=required_envs)
-        heter1_proc = subprocess.Popen(heter1_cmd.strip().split(" "),
-                                       stdout=heter1_out,
-                                       stderr=heter1_pipe,
-                                       env=required_envs)
-        heter2_proc = subprocess.Popen(heter2_cmd.strip().split(" "),
-                                       stdout=heter2_out,
-                                       stderr=heter2_pipe,
-                                       env=required_envs)
-        heter3_proc = subprocess.Popen(heter3_cmd.strip().split(" "),
-                                       stdout=heter3_out,
-                                       stderr=heter3_pipe,
-                                       env=required_envs)
+        heter0_proc = subprocess.Popen(
+            heter0_cmd.strip().split(" "),
+            stdout=heter0_out,
+            stderr=heter0_pipe,
+            env=required_envs,
+        )
+        heter1_proc = subprocess.Popen(
+            heter1_cmd.strip().split(" "),
+            stdout=heter1_out,
+            stderr=heter1_pipe,
+            env=required_envs,
+        )
+        heter2_proc = subprocess.Popen(
+            heter2_cmd.strip().split(" "),
+            stdout=heter2_out,
+            stderr=heter2_pipe,
+            env=required_envs,
+        )
+        heter3_proc = subprocess.Popen(
+            heter3_cmd.strip().split(" "),
+            stdout=heter3_out,
+            stderr=heter3_pipe,
+            env=required_envs,
+        )
 
-        return heter0_proc, heter1_proc, heter2_proc, heter3_proc, heter0_pipe, heter1_pipe, heter2_pipe, heter3_pipe
+        return (
+            heter0_proc,
+            heter1_proc,
+            heter2_proc,
+            heter3_proc,
+            heter0_pipe,
+            heter1_pipe,
+            heter2_pipe,
+            heter3_pipe,
+        )
 
     def _run_cluster(self, model, envs):
         env = {
             'GRAD_CLIP': str(self._grad_clip_mode),
-            'FLAGS_eager_delete_tensor_gb': str(-1)
+            'FLAGS_eager_delete_tensor_gb': str(-1),
         }
         python_path = self._python_interp
         gloo_path = tempfile.mkdtemp()
@@ -314,31 +375,64 @@ class TestFleetHeterBase(unittest.TestCase):
             python_path += " -m coverage run --branch -p"
         env.update(envs)
         self._all_heter_endpoints = ";".join(
-            (self._heter_endpoints, self._heter_endpoints_2))
+            (self._heter_endpoints, self._heter_endpoints_2)
+        )
 
         tr_cmd = "{0} {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --heter_trainer_endpoints {9} --heter_trainer_device {10}".format(
-            python_path, model, self._ps_endpoints, self._tr_endpoints,
-            self._trainers, self._mode, self._geo_sgd_need_push_nums,
-            self._reader, gloo_path, self._all_heter_endpoints,
-            self._heter_device)
+            python_path,
+            model,
+            self._ps_endpoints,
+            self._tr_endpoints,
+            self._trainers,
+            self._mode,
+            self._geo_sgd_need_push_nums,
+            self._reader,
+            gloo_path,
+            self._all_heter_endpoints,
+            self._heter_device,
+        )
 
         ps_cmd = "{0} {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --heter_trainer_endpoints {9} --heter_trainer_device {10}".format(
-            python_path, model, self._ps_endpoints, self._tr_endpoints,
-            self._trainers, self._mode, self._geo_sgd_need_push_nums,
-            self._reader, gloo_path, self._all_heter_endpoints,
-            self._heter_device)
+            python_path,
+            model,
+            self._ps_endpoints,
+            self._tr_endpoints,
+            self._trainers,
+            self._mode,
+            self._geo_sgd_need_push_nums,
+            self._reader,
+            gloo_path,
+            self._all_heter_endpoints,
+            self._heter_device,
+        )
 
         heter_cmd = "{0} {1} --role heter_trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --stage_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --heter_trainer_endpoints {9} --heter_trainer_device {10}".format(
-            python_path, model, self._ps_endpoints, self._tr_endpoints,
-            self._trainers, self._mode, self._geo_sgd_need_push_nums,
-            self._reader, gloo_path, self._all_heter_endpoints,
-            self._heter_device)
+            python_path,
+            model,
+            self._ps_endpoints,
+            self._tr_endpoints,
+            self._trainers,
+            self._mode,
+            self._geo_sgd_need_push_nums,
+            self._reader,
+            gloo_path,
+            self._all_heter_endpoints,
+            self._heter_device,
+        )
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)
         tr0, tr1, tr0_pipe, tr1_pipe = self._start_trainer(tr_cmd, env)
-        heter0, heter1, heter2, heter3, heter0_pipe, heter1_pipe, heter2_pipe, heter3_pipe = self._start_heter_trainer(
-            heter_cmd, env)
+        (
+            heter0,
+            heter1,
+            heter2,
+            heter3,
+            heter0_pipe,
+            heter1_pipe,
+            heter2_pipe,
+            heter3_pipe,
+        ) = self._start_heter_trainer(heter_cmd, env)
 
         # Wait until trainer process terminate
         while True:
@@ -381,17 +475,15 @@ class TestFleetHeterBase(unittest.TestCase):
         shutil.rmtree(gloo_path)
         return 0, 0
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
-            "http_proxy": ""
+            "http_proxy": "",
         }
 
         required_envs.update(need_envs)
@@ -405,32 +497,30 @@ class TestFleetHeterBase(unittest.TestCase):
 
 def runtime_main(test_class):
     parser = argparse.ArgumentParser(description='Run Fleet test.')
-    parser.add_argument('--role',
-                        type=str,
-                        required=True,
-                        choices=['pserver', 'trainer', 'heter_trainer'])
+    parser.add_argument(
+        '--role',
+        type=str,
+        required=True,
+        choices=['pserver', 'trainer', 'heter_trainer'],
+    )
     parser.add_argument('--endpoints', type=str, required=False, default="")
-    parser.add_argument('--trainer_endpoints',
-                        type=str,
-                        required=False,
-                        default="")
-    parser.add_argument('--heter_trainer_endpoints',
-                        type=str,
-                        required=False,
-                        default="")
-    parser.add_argument('--heter_trainer_device',
-                        type=str,
-                        required=False,
-                        default="gpu")
+    parser.add_argument(
+        '--trainer_endpoints', type=str, required=False, default=""
+    )
+    parser.add_argument(
+        '--heter_trainer_endpoints', type=str, required=False, default=""
+    )
+    parser.add_argument(
+        '--heter_trainer_device', type=str, required=False, default="gpu"
+    )
     parser.add_argument('--gloo_path', type=str, required=False, default="")
     parser.add_argument('--current_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--stage_id', type=int, required=False, default=1)
     parser.add_argument('--mode', type=str, required=False, default='async')
-    parser.add_argument('--geo_sgd_need_push_nums',
-                        type=int,
-                        required=False,
-                        default=2)
+    parser.add_argument(
+        '--geo_sgd_need_push_nums', type=int, required=False, default=2
+    )
     parser.add_argument('--reader', type=str, required=False, default='dataset')
     args = parser.parse_args()
 

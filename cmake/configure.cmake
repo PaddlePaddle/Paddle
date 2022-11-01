@@ -222,6 +222,10 @@ if(WITH_PSCORE)
   add_definitions(-DPADDLE_WITH_PSCORE)
 endif()
 
+if(WITH_RPC)
+  add_definitions(-DPADDLE_WITH_RPC)
+endif()
+
 if(WITH_HETERPS)
   add_definitions(-DPADDLE_WITH_HETERPS)
 endif()

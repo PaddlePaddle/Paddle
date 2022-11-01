@@ -54,9 +54,9 @@ TEST(bfloat16, convert_bfloat16_to_float32_on_gpu) {
 }
 
 TEST(bfloat16, lod_tensor_on_gpu) {
-  framework::LoDTensor src_tensor;
-  framework::LoDTensor gpu_tensor;
-  framework::LoDTensor dst_tensor;
+  phi::DenseTensor src_tensor;
+  phi::DenseTensor gpu_tensor;
+  phi::DenseTensor dst_tensor;
 
   bfloat16 *src_ptr =
       src_tensor.mutable_data<bfloat16>(phi::make_ddim({2, 2}), CPUPlace());

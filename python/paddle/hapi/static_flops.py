@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import numpy as np
-import paddle
 from collections import OrderedDict
-from paddle.static import Program, program_guard, Variable
+from paddle.static import Program, Variable
 
 __all__ = []
 
 
 class VarWrapper(object):
-
     def __init__(self, var, graph):
         assert isinstance(var, Variable)
         assert isinstance(graph, GraphWrapper)
@@ -43,7 +40,6 @@ class VarWrapper(object):
 
 
 class OpWrapper(object):
-
     def __init__(self, op, graph):
         assert isinstance(graph, GraphWrapper)
         self._op = op
@@ -89,8 +85,7 @@ class GraphWrapper(object):
     """
 
     def __init__(self, program=None, in_nodes=[], out_nodes=[]):
-        """
-        """
+        """ """
         super(GraphWrapper, self).__init__()
         self.program = Program() if program is None else program
         self.persistables = {}
@@ -214,7 +209,6 @@ def static_flops(program, print_detail=False):
 
 
 class Table(object):
-
     def __init__(self, table_heads):
         self.table_heads = table_heads
         self.table_len = []
@@ -228,8 +222,10 @@ class Table(object):
             print('The row_str should be a list')
         if len(row_str) != self.col_num:
             print(
-                'The length of row data should be equal the length of table heads, but the data: {} is not equal table heads {}'
-                .format(len(row_str), self.col_num))
+                'The length of row data should be equal the length of table heads, but the data: {} is not equal table heads {}'.format(
+                    len(row_str), self.col_num
+                )
+            )
         for i in range(self.col_num):
             if len(str(row_str[i])) > self.table_len[i]:
                 self.table_len[i] = len(str(row_str[i]))

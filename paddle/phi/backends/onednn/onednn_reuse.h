@@ -39,6 +39,67 @@ using memory = dnnl::memory;
 
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
+static void AppendActivation(const OneDNNContext& dev_ctx,
+                             dnnl::post_ops& post_ops,  // NOLINT
+                             float activation_scale = 1.0f) {
+  const auto invalid_attribute =
+      dev_ctx.HasDnnAttr("fuse_activation")
+          ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"))
+                .empty()
+          : true;
+  if (invalid_attribute) return;
+
+  const auto fuse_activation =
+      dev_ctx.HasDnnAttr("fuse_activation")
+          ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"))
+          : "";
+  const auto fuse_alpha =
+      dev_ctx.HasDnnAttr("fuse_alpha")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"))
+          : 0.0f;
+  const auto fuse_beta =
+      dev_ctx.HasDnnAttr("fuse_beta")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
+          : 0.0f;
+
+  if (fuse_activation == "hard_sigmoid") {
+    post_ops.append_eltwise(activation_scale,
+                            dnnl::algorithm::eltwise_linear,
+                            fuse_alpha,
+                            fuse_beta);
+    post_ops.append_eltwise(
+        activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+  } else {
+    const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
+        {"abs", dnnl::algorithm::eltwise_abs},
+        {"clip", dnnl::algorithm::eltwise_clip},
+        {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
+        {"leaky_relu", dnnl::algorithm::eltwise_relu},
+        {"mish", dnnl::algorithm::eltwise_mish},
+        {"relu", dnnl::algorithm::eltwise_relu},
+        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+        {"sigmoid", dnnl::algorithm::eltwise_logistic},
+        {"sqrt", dnnl::algorithm::eltwise_sqrt},
+        {"swish", dnnl::algorithm::eltwise_swish},
+        {"tanh", dnnl::algorithm::eltwise_tanh}};
+
+    const auto& activation_type = activation_map.find(fuse_activation);
+
+    PADDLE_ENFORCE_NE(
+        activation_type,
+        activation_map.end(),
+        phi::errors::InvalidArgument(
+            "Activation '%s' not found in oneDNN algorithms mapper",
+            fuse_activation));
+
+    post_ops.append_eltwise(
+        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
+  }
+}
+
 template <typename T,
           typename TForward,
           typename TBackward = onednn_dummy_primitive,
@@ -825,6 +886,7 @@ class ReorderOneDNNHandler {
 template <typename T>
 class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
+  bool use_broadcasting_hack;
   BinaryOneDNNHandler(const dnnl::algorithm algo,
                       const int axis,
                       const dnnl::engine engine,
@@ -835,15 +897,17 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                       float scale_x,
                       float scale_y,
                       float scale_out,
+                      bool allow_hack,
                       const dnnl::post_ops& post_ops = dnnl::post_ops{})
       : OneDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
+    use_broadcasting_hack = false;
     const auto src_x_tz = vectorize(x->dims());
     const auto src_y_tz = vectorize(y->dims());
     // if output tensor(z) is nullptr then we are computing into oneDNN
     // managed buffer
     auto rankdiff = x->dims().size() - y->dims().size();
-    const auto dst_tz = (out == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
-                                         : vectorize(out->dims());
+    auto dst_tz = (out == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
+                                   : vectorize(out->dims());
 
     auto src0_md = x->mem_desc();
     auto src1_md = y->mem_desc();
@@ -870,11 +934,47 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
       }
       src0_md = src0_md.reshape(dims0_ex);
     }
-    const auto dst_md =
-        memory::desc(dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
 
     auto attributes =
         CreateAttributes(algo, scale_x, scale_y, scale_out, post_ops);
+
+    // Workaround for U2++ model which deletes first tensor dimensions to enable
+    // optimized oneDNNs broadcasting. Output tensor is reshaped back afterwards
+    // at the end of the kernel, after the computation
+    if (allow_hack && dst_tz.size() == 4 &&
+        src0_md.dims()[2] != src1_md.dims()[2]) {
+      auto are_strides_plain = [](int64_t* strides, int ndims) {
+        for (int i = 0; i < ndims - 1; ++i) {
+          if (strides[i] < strides[i + 1]) {
+            return false;
+          }
+        }
+        return true;
+      };
+
+      auto src0_strides = src0_md.data.format_desc.blocking.strides;
+      auto src1_strides = src1_md.data.format_desc.blocking.strides;
+      auto src0_dims = src0_md.dims();
+      auto src1_dims = src1_md.dims();
+
+      bool can_squeeze = src0_dims[0] == src1_dims[0] &&
+                         src0_dims[1] == src1_dims[1] &&
+                         src0_dims[3] == src1_dims[3];
+
+      if (can_squeeze && are_strides_plain(src0_strides, 4) &&
+          are_strides_plain(src1_strides, 4)) {
+        src0_dims[1] *= dst_tz[0];
+        src1_dims[1] *= dst_tz[0];
+        dst_tz[1] *= dst_tz[0];
+        dst_tz.erase(dst_tz.begin());
+        src0_md = src0_md.reshape({src0_dims.begin() + 1, src0_dims.end()});
+        src1_md = src1_md.reshape({src1_dims.begin() + 1, src1_dims.end()});
+        use_broadcasting_hack = true;
+      }
+    }
+
+    auto dst_md =
+        memory::desc(dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
 
     if (x->numel() < y->numel()) {
       if (algo == dnnl::algorithm::binary_sub) {
@@ -1046,5 +1146,6 @@ class ClipOneDNNHandler
                                             to_void_cast<T>(input_data));
   }
 };
+
 }  // namespace funcs
 }  // namespace phi

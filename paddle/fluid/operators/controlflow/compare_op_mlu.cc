@@ -21,9 +21,9 @@ template <typename DeviceContext, typename T>
 class EqualMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
     MLUCnnlTensorDesc input_x(
@@ -47,9 +47,9 @@ template <typename DeviceContext, typename T>
 class NotEqualMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
     MLUCnnlTensorDesc input_x(
@@ -73,9 +73,9 @@ template <typename DeviceContext, typename T>
 class LessThanMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
     MLUCnnlTensorDesc input_x(
@@ -99,9 +99,9 @@ template <typename DeviceContext, typename T>
 class LessEqualMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
     MLUCnnlTensorDesc input_x(
@@ -125,9 +125,9 @@ template <typename DeviceContext, typename T>
 class GreaterThanMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
     MLUCnnlTensorDesc input_x(
@@ -151,9 +151,9 @@ template <typename DeviceContext, typename T>
 class GreaterEqualMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::LoDTensor>("Y");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<bool>(ctx.GetPlace());
 
     MLUCnnlTensorDesc input_x(

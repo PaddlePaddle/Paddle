@@ -25,35 +25,33 @@ from save_quant_model import transform_and_save_int8_model
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--fp32_model',
-                        type=str,
-                        default='',
-                        help='A path to a FP32 model.')
-    parser.add_argument('--quant_model',
-                        type=str,
-                        default='',
-                        help='A path to a quant model.')
+    parser.add_argument(
+        '--fp32_model', type=str, default='', help='A path to a FP32 model.'
+    )
+    parser.add_argument(
+        '--quant_model', type=str, default='', help='A path to a quant model.'
+    )
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
     parser.add_argument(
         '--warmup_iter',
         type=int,
         default=1,
-        help='Number of the first iterations to skip in performance statistics.'
+        help='Number of the first iterations to skip in performance statistics.',
     )
-    parser.add_argument('--acc_diff_threshold',
-                        type=float,
-                        default=0.01,
-                        help='Accepted accuracy difference threshold.')
-    parser.add_argument('--num_threads',
-                        type=int,
-                        default=1,
-                        help='Number of threads.')
+    parser.add_argument(
+        '--acc_diff_threshold',
+        type=float,
+        default=0.01,
+        help='Accepted accuracy difference threshold.',
+    )
+    parser.add_argument(
+        '--num_threads', type=int, default=1, help='Number of threads.'
+    )
     parser.add_argument(
         '--mkldnn_cache_capacity',
         type=int,
         default=0,
-        help=
-        'Mkldnn cache capacity. The default value in Python API is 15, which can slow down int8 models. Default 0 means unlimited cache.'
+        help='Mkldnn cache capacity. The default value in Python API is 15, which can slow down int8 models. Default 0 means unlimited cache.',
     )
 
     test_args, args = parser.parse_known_args(namespace=unittest)
@@ -61,7 +59,6 @@ def parse_args():
 
 
 class TestLstmModelPTQ(unittest.TestCase):
-
     def get_warmup_tensor(self, data_path, place):
         data = []
         with open(data_path, 'rb') as in_f:
@@ -75,11 +72,13 @@ class TestLstmModelPTQ(unittest.TestCase):
                 seq_len = (alllen >> 16) & 0xFFFF
 
                 label = in_f.read(4 * label_len)
-                label = np.frombuffer(label,
-                                      dtype=np.int32).reshape([len(label) // 4])
+                label = np.frombuffer(label, dtype=np.int32).reshape(
+                    [len(label) // 4]
+                )
                 feat = in_f.read(4 * seq_len * 8)
                 feat = np.frombuffer(feat, dtype=np.float32).reshape(
-                    [len(feat) // 4 // 8, 8])
+                    [len(feat) // 4 // 8, 8]
+                )
                 lod_feat = [feat.shape[0]]
                 minputs = fluid.create_lod_tensor(feat, [lod_feat], place)
 
@@ -97,13 +96,15 @@ class TestLstmModelPTQ(unittest.TestCase):
         inputs = data[1:]
         return warmup_data, inputs
 
-    def set_config(self,
-                   model_path,
-                   num_threads,
-                   mkldnn_cache_capacity,
-                   warmup_data=None,
-                   use_analysis=False,
-                   enable_ptq=False):
+    def set_config(
+        self,
+        model_path,
+        num_threads,
+        mkldnn_cache_capacity,
+        warmup_data=None,
+        use_analysis=False,
+        enable_ptq=False,
+    ):
         config = AnalysisConfig(model_path)
         config.set_cpu_math_library_num_threads(num_threads)
         if use_analysis:
@@ -120,19 +121,27 @@ class TestLstmModelPTQ(unittest.TestCase):
                 config.quantizer_config().set_quant_batch_size(1)
         return config
 
-    def run_program(self,
-                    model_path,
-                    data_path,
-                    num_threads,
-                    mkldnn_cache_capacity,
-                    warmup_iter,
-                    use_analysis=False,
-                    enable_ptq=False):
+    def run_program(
+        self,
+        model_path,
+        data_path,
+        num_threads,
+        mkldnn_cache_capacity,
+        warmup_iter,
+        use_analysis=False,
+        enable_ptq=False,
+    ):
         place = fluid.CPUPlace()
         warmup_data, inputs = self.get_warmup_tensor(data_path, place)
         warmup_data = [item[0] for item in warmup_data]
-        config = self.set_config(model_path, num_threads, mkldnn_cache_capacity,
-                                 warmup_data, use_analysis, enable_ptq)
+        config = self.set_config(
+            model_path,
+            num_threads,
+            mkldnn_cache_capacity,
+            warmup_data,
+            use_analysis,
+            enable_ptq,
+        )
 
         predictor = create_paddle_predictor(config)
         data = [item[0] for item in inputs]
@@ -164,13 +173,17 @@ class TestLstmModelPTQ(unittest.TestCase):
 
                 if this_label_data[0] <= 6350:
                     all_ctc_num += 1
-                    if np_ctc_out.shape[0] == 1 and np_ctc_out.all(
-                    ) == this_label_data.all():
+                    if (
+                        np_ctc_out.shape[0] == 1
+                        and np_ctc_out.all() == this_label_data.all()
+                    ):
                         ok_ctc_num += 1
             else:
                 all_ctc_num += 1
-                if np_ctc_out.shape[0] == this_label.shape[
-                        0] and np_ctc_out.all() == this_label_data.all():
+                if (
+                    np_ctc_out.shape[0] == this_label.shape[0]
+                    and np_ctc_out.all() == this_label_data.all()
+                ):
                     ok_ctc_num += 1
 
             if all_ctc_num > 1000 or all_hz_num > 1000:
@@ -187,44 +200,75 @@ class TestLstmModelPTQ(unittest.TestCase):
             return
 
         fp32_model = test_case_args.fp32_model
-        assert fp32_model, 'The FP32 model path cannot be empty. Please, use the --fp32_model option.'
+        assert (
+            fp32_model
+        ), 'The FP32 model path cannot be empty. Please, use the --fp32_model option.'
         quant_model = test_case_args.quant_model
-        assert quant_model, 'The quant model path cannot be empty. Please, use the --quant_model option.'
+        assert (
+            quant_model
+        ), 'The quant model path cannot be empty. Please, use the --quant_model option.'
         infer_data = test_case_args.infer_data
-        assert infer_data, 'The dataset path cannot be empty. Please, use the --infer_data option.'
+        assert (
+            infer_data
+        ), 'The dataset path cannot be empty. Please, use the --infer_data option.'
         num_threads = test_case_args.num_threads
         mkldnn_cache_capacity = test_case_args.mkldnn_cache_capacity
         warmup_iter = test_case_args.warmup_iter
         acc_diff_threshold = test_case_args.acc_diff_threshold
 
-        (fp32_hx_acc, fp32_ctc_acc,
-         fp32_fps) = self.run_program(fp32_model, infer_data, num_threads,
-                                      mkldnn_cache_capacity, warmup_iter, False,
-                                      False)
+        (fp32_hx_acc, fp32_ctc_acc, fp32_fps) = self.run_program(
+            fp32_model,
+            infer_data,
+            num_threads,
+            mkldnn_cache_capacity,
+            warmup_iter,
+            False,
+            False,
+        )
 
-        (int8_hx_acc, int8_ctc_acc,
-         int8_fps) = self.run_program(fp32_model, infer_data, num_threads,
-                                      mkldnn_cache_capacity, warmup_iter, True,
-                                      True)
+        (int8_hx_acc, int8_ctc_acc, int8_fps) = self.run_program(
+            fp32_model,
+            infer_data,
+            num_threads,
+            mkldnn_cache_capacity,
+            warmup_iter,
+            True,
+            True,
+        )
 
         quant_model_save_path = quant_model + "_int8"
         # transform model to quant2
-        transform_and_save_int8_model(quant_model, quant_model_save_path,
-                                      "fusion_lstm,concat")
+        transform_and_save_int8_model(
+            quant_model, quant_model_save_path, "fusion_lstm,concat"
+        )
 
-        (quant_hx_acc, quant_ctc_acc,
-         quant_fps) = self.run_program(quant_model_save_path, infer_data,
-                                       num_threads, mkldnn_cache_capacity,
-                                       warmup_iter, True, False)
+        (quant_hx_acc, quant_ctc_acc, quant_fps) = self.run_program(
+            quant_model_save_path,
+            infer_data,
+            num_threads,
+            mkldnn_cache_capacity,
+            warmup_iter,
+            True,
+            False,
+        )
 
-        print("FP32: fps {0}, hx_acc {1}, ctc_acc {2}".format(
-            fp32_fps, fp32_hx_acc, fp32_ctc_acc))
+        print(
+            "FP32: fps {0}, hx_acc {1}, ctc_acc {2}".format(
+                fp32_fps, fp32_hx_acc, fp32_ctc_acc
+            )
+        )
 
-        print("PTQ_INT8: fps {0}, hx_acc {1}, ctc_acc {2}".format(
-            int8_fps, int8_hx_acc, int8_ctc_acc))
+        print(
+            "PTQ_INT8: fps {0}, hx_acc {1}, ctc_acc {2}".format(
+                int8_fps, int8_hx_acc, int8_ctc_acc
+            )
+        )
 
-        print("QUANT2_INT8: fps {0}, hx_acc {1}, ctc_acc {2}".format(
-            quant_fps, quant_hx_acc, quant_ctc_acc))
+        print(
+            "QUANT2_INT8: fps {0}, hx_acc {1}, ctc_acc {2}".format(
+                quant_fps, quant_hx_acc, quant_ctc_acc
+            )
+        )
 
         sys.stdout.flush()
 

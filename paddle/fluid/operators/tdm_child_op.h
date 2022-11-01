@@ -29,7 +29,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using DDim = framework::DDim;
 using LoD = framework::LoD;
 
@@ -149,8 +149,8 @@ class TDMChildKernel : public framework::OpKernel<T> {
 
     auto *child_var = ctx.OutputVar("Child");
     auto *leaf_mask_var = ctx.OutputVar("LeafMask");
-    auto *child_tensor = child_var->GetMutable<framework::LoDTensor>();
-    auto *leaf_mask_tensor = leaf_mask_var->GetMutable<framework::LoDTensor>();
+    auto *child_tensor = child_var->GetMutable<phi::DenseTensor>();
+    auto *leaf_mask_tensor = leaf_mask_var->GetMutable<phi::DenseTensor>();
 
     auto output_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));

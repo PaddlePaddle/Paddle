@@ -23,7 +23,7 @@ import inspect
 import numpy as np
 from collections import OrderedDict
 from paddle.distributed.fleet.launch_utils import run_with_coverage
-from paddle.distributed.passes.pass_base import new_pass, PassBase, PassManager
+from paddle.distributed.passes.pass_base import PassBase, PassManager
 
 
 def prepare_python_path_and_return_module(path):
@@ -42,7 +42,7 @@ def prepare_python_path_and_return_module(path):
         python_path = dirname
     os.environ[env_name] = python_path
     print('GLOG_v=', os.environ.get('GLOG_v', None), flush=1)
-    return filename[:-len(py_suffix)]
+    return filename[: -len(py_suffix)]
 
 
 def remove_path_if_exists(path):
@@ -57,7 +57,6 @@ def remove_path_if_exists(path):
 
 # NOTE: only support GPU now
 class DistPassTestBase(unittest.TestCase):
-
     def setUp(self):
         paddle.enable_static()
         if paddle.is_compiled_with_cuda():
@@ -86,30 +85,31 @@ class DistPassTestBase(unittest.TestCase):
         raise NotImplementedError()
 
     def check_main(self, model=None, gpus=None, **kwargs):
-        pass_rets = self._distributed_launch(model=model,
-                                             apply_pass=True,
-                                             gpus=gpus,
-                                             **kwargs)
-        no_pass_rets = self._distributed_launch(model=model,
-                                                apply_pass=False,
-                                                gpus=gpus,
-                                                **kwargs)
+        pass_rets = self._distributed_launch(
+            model=model, apply_pass=True, gpus=gpus, **kwargs
+        )
+        no_pass_rets = self._distributed_launch(
+            model=model, apply_pass=False, gpus=gpus, **kwargs
+        )
         self.check_results(no_pass_rets, pass_rets)
 
     def check_results(self, no_pass_rets, pass_rets):
         self.assertEqual(len(no_pass_rets), len(pass_rets))
         for no_pass_ret, pass_ret in zip(no_pass_rets, pass_rets):
             self.assertEqual(len(no_pass_ret), len(pass_ret))
-            for i, (out_var_no_pass,
-                    out_var_pass) in enumerate(zip(no_pass_ret, pass_ret)):
+            for i, (out_var_no_pass, out_var_pass) in enumerate(
+                zip(no_pass_ret, pass_ret)
+            ):
                 if out_var_no_pass is None:
                     self.assertTrue(out_var_pass is None)
                 else:
-                    np.testing.assert_allclose(out_var_no_pass,
-                                               out_var_pass,
-                                               rtol=self.rtol,
-                                               atol=self.atol,
-                                               equal_nan=self.equal_nan)
+                    np.testing.assert_allclose(
+                        out_var_no_pass,
+                        out_var_pass,
+                        rtol=self.rtol,
+                        atol=self.atol,
+                        equal_nan=self.equal_nan,
+                    )
 
     @classmethod
     def _to_var_names(cls, names_or_vars):
@@ -129,12 +129,14 @@ class DistPassTestBase(unittest.TestCase):
         scope = paddle.static.Scope()
         if model is None:
             model = self.get_model
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             with paddle.static.scope_guard(scope):
                 with paddle.fluid.unique_name.guard():
                     main_prog, startup_prog, inputs, outputs, reader = model(
-                        place, **kwargs)
+                        place, **kwargs
+                    )
                     inputs = self._to_var_names(inputs)
                     outputs = self._to_var_names(outputs)
                     if apply_pass:
@@ -146,7 +148,8 @@ class DistPassTestBase(unittest.TestCase):
             exe.run(startup_prog)
             for batch_id, input_data in enumerate(reader()):
                 assert len(input_data) == len(inputs), "{} vs {}".format(
-                    len(input_data), len(inputs))
+                    len(input_data), len(inputs)
+                )
                 feed = dict(zip(inputs, input_data))
                 fetch_values = exe.run(main_prog, feed=feed, fetch_list=outputs)
                 if paddle.distributed.get_rank() == 0:
@@ -204,26 +207,30 @@ class DistPassTestBase(unittest.TestCase):
                 with open(model_dump_file, 'wb') as f:
                     pickle.dump(model, f)
 
-            cmd = [
-                sys.executable,
-                "-u",
-            ] + coverage_args + [
-                "-m",
-                "launch",
-                "--log_dir",
-                output_dir,
-                "--gpus",
-                gpus,
-                os.path.join(file_dir, "pass_run_main.py"),
-                "--file_path",
-                inspect.getfile(type(self)),
-                "--class_name",
-                type(self).__name__,
-                "--input_file",
-                input_dump_file,
-                "--output_dir",
-                output_dir,
-            ]
+            cmd = (
+                [
+                    sys.executable,
+                    "-u",
+                ]
+                + coverage_args
+                + [
+                    "-m",
+                    "launch",
+                    "--log_dir",
+                    output_dir,
+                    "--gpus",
+                    gpus,
+                    os.path.join(file_dir, "pass_run_main.py"),
+                    "--file_path",
+                    inspect.getfile(type(self)),
+                    "--class_name",
+                    type(self).__name__,
+                    "--input_file",
+                    input_dump_file,
+                    "--output_dir",
+                    output_dir,
+                ]
+            )
             if apply_pass:
                 cmd += ["--apply_pass"]
             if model is not None:
@@ -232,17 +239,22 @@ class DistPassTestBase(unittest.TestCase):
             prepare_python_path_and_return_module(__file__)
             exitcode = os.system(' '.join(cmd))
             self.assertEqual(
-                exitcode, 0,
-                "Pass test failed with apply_pass = {}, please view log in {}".
-                format(apply_pass, output_dir))
+                exitcode,
+                0,
+                "Pass test failed with apply_pass = {}, please view log in {}".format(
+                    apply_pass, output_dir
+                ),
+            )
 
             results = []
             for i in range(num_gpus):
                 dump_file = '{0}/{1}.bin'.format(output_dir, i)
                 self.assertTrue(
                     os.path.exists(dump_file),
-                    "Pass test failed with apply_pass = {}, please view log in {}"
-                    .format(apply_pass, output_dir))
+                    "Pass test failed with apply_pass = {}, please view log in {}".format(
+                        apply_pass, output_dir
+                    ),
+                )
                 with open(dump_file, "rb") as f:
                     results.append(pickle.load(f))
             return results
@@ -252,7 +264,6 @@ class DistPassTestBase(unittest.TestCase):
 
 
 class PassConflictChecker(DistPassTestBase):
-
     def setUp(self):
         os.environ['DEBUG'] = '1'  # to save the debug directory
         super(PassConflictChecker, self).setUp()
@@ -270,14 +281,20 @@ class PassConflictChecker(DistPassTestBase):
         auto_pass_manager = PassManager(passes, auto_solve_conflict=True)
         new_passes = auto_pass_manager.passes
         self.assertEqual(
-            len(passes), len(new_passes),
+            len(passes),
+            len(new_passes),
             "After solving conflicts, the left passes are: {}".format(
-                auto_pass_manager.names))
+                auto_pass_manager.names
+            ),
+        )
 
         for i, (p1, p2) in enumerate(zip(passes, new_passes)):
             self.assertEqual(
-                id(p1), id(p2),
-                "After solving conflicts, the {}-th pass is different: {} vs {}"
-                .format(i, p1.name, p2.name))
+                id(p1),
+                id(p2),
+                "After solving conflicts, the {}-th pass is different: {} vs {}".format(
+                    i, p1.name, p2.name
+                ),
+            )
 
         auto_pass_manager.apply([main_prog], [startup_prog])

@@ -33,13 +33,13 @@ __global__ void FillOutputKernel(const InT* p_in_data,
 
 template <typename DeviceContext, typename InT>
 struct OneHotOpCUDAFunctor {
-  const framework::LoDTensor* in_;
-  framework::LoDTensor* out_;
+  const phi::DenseTensor* in_;
+  phi::DenseTensor* out_;
   const DeviceContext& ctx_;
   int depth_;
 
-  OneHotOpCUDAFunctor(const framework::LoDTensor* in,
-                      framework::LoDTensor* out,
+  OneHotOpCUDAFunctor(const phi::DenseTensor* in,
+                      phi::DenseTensor* out,
                       int depth,
                       const DeviceContext& ctx)
       : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
@@ -60,7 +60,7 @@ struct OneHotOpCUDAFunctor {
   }
 };
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class OneHotCUDAKernel : public framework::OpKernel<T> {
  public:

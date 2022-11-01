@@ -125,7 +125,7 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
 
   auto pad_shape = phi::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
-  framework::LoDTensor table_t_pad;
+  phi::DenseTensor table_t_pad;
 
   size_t mem_size =
       table_t->numel() * framework::DataTypeSize(table_t->dtype());
@@ -202,7 +202,7 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
 
   // padding table_t -> table_t_pad
   auto pad_shape = phi::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
-  framework::LoDTensor table_t_pad;
+  phi::DenseTensor table_t_pad;
 
   // set table_t_pad to zero
   uint8_t *pad_data = reinterpret_cast<uint8_t *>(

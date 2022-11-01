@@ -33,7 +33,7 @@ using Tensor = phi::DenseTensor;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
 using LoD = framework::LoD;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
 
 template <typename T, typename TreeT = int, typename OutT = int>
@@ -262,9 +262,9 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *layer_var = context.InputVar("Layer");
 
     // get all tensor
-    auto &input_tensor = input_var->Get<framework::LoDTensor>();
-    auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
-    auto &layer_lod_tensor = layer_var->Get<framework::LoDTensor>();
+    auto &input_tensor = input_var->Get<phi::DenseTensor>();
+    auto &travel_lod_tensor = travel_var->Get<phi::DenseTensor>();
+    auto &layer_lod_tensor = layer_var->Get<phi::DenseTensor>();
 
     const auto &input_type =
         framework::TransToProtoVarType(input_tensor.dtype());
@@ -323,9 +323,9 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *out_var = context.OutputVar("Out");
     auto *label_var = context.OutputVar("Labels");
     auto *mask_var = context.OutputVar("Mask");
-    auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
-    auto *label_tensor = label_var->GetMutable<framework::LoDTensor>();
-    auto *mask_tensor = mask_var->GetMutable<framework::LoDTensor>();
+    auto *out_tensor = out_var->GetMutable<phi::DenseTensor>();
+    auto *label_tensor = label_var->GetMutable<phi::DenseTensor>();
+    auto *mask_tensor = mask_var->GetMutable<phi::DenseTensor>();
 
     auto output_type = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));

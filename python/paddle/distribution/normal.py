@@ -13,18 +13,24 @@
 # limitations under the License.
 
 import math
-import warnings
-
 import numpy as np
-from paddle import _C_ops, _legacy_C_ops
+import paddle
 from paddle.distribution import distribution
-from paddle.fluid import core
-from paddle.fluid.data_feeder import (check_dtype, check_type,
-                                      check_variable_and_dtype, convert_dtype)
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
-from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
-                                 elementwise_mul, elementwise_sub, nn, ops,
-                                 tensor)
+from paddle.fluid.data_feeder import check_type, convert_dtype
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.layers import (
+    elementwise_add,
+    elementwise_div,
+    elementwise_sub,
+    nn,
+    ops,
+    tensor,
+)
+
+try:
+    from collections.abc import Iterable
+except:
+    from collections import Iterable
 
 
 class Normal(distribution.Distribution):
@@ -90,12 +96,18 @@ class Normal(distribution.Distribution):
 
     def __init__(self, loc, scale, name=None):
         if not _non_static_mode():
-            check_type(loc, 'loc',
-                       (int, float, np.ndarray, tensor.Variable, list, tuple),
-                       'Normal')
-            check_type(scale, 'scale',
-                       (int, float, np.ndarray, tensor.Variable, list, tuple),
-                       'Normal')
+            check_type(
+                loc,
+                'loc',
+                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                'Normal',
+            )
+            check_type(
+                scale,
+                'scale',
+                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                'Normal',
+            )
 
         self.batch_size_unknown = False
         self.all_arg_is_float = False
@@ -115,11 +127,15 @@ class Normal(distribution.Distribution):
         else:
             if isinstance(loc, float) and isinstance(scale, float):
                 self.all_arg_is_float = True
-            if isinstance(loc, np.ndarray) and str(
-                    loc.dtype) in ['float32', 'float64']:
+            if isinstance(loc, np.ndarray) and str(loc.dtype) in [
+                'float32',
+                'float64',
+            ]:
                 self.dtype = loc.dtype
-            elif isinstance(scale, np.ndarray) and str(
-                    scale.dtype) in ['float32', 'float64']:
+            elif isinstance(scale, np.ndarray) and str(scale.dtype) in [
+                'float32',
+                'float64',
+            ]:
                 self.dtype = scale.dtype
             # pylint: disable=unbalanced-tuple-unpacking
             self.loc, self.scale = self._to_tensor(loc, scale)
@@ -128,47 +144,85 @@ class Normal(distribution.Distribution):
                 self.scale = tensor.cast(self.scale, dtype=self.dtype)
         super(Normal, self).__init__(self.loc.shape)
 
-    def sample(self, shape, seed=0):
+    @property
+    def mean(self):
+        """Mean of multinomial distribuion.
+
+        Returns:
+            Tensor: mean value.
+        """
+        return self.loc
+
+    @property
+    def variance(self):
+        """Variance of lognormal distribution.
+
+        Returns:
+            Tensor: variance value.
+        """
+        return self.scale.pow(2)
+
+    def sample(self, shape=(), seed=0):
         """Generate samples of the specified shape.
 
         Args:
-            shape (list): 1D `int32`. Shape of the generated samples.
+            shape (Sequence[int], optional): Shape of the generated samples.
             seed (int): Python integer number.
 
         Returns:
             Tensor, A tensor with prepended dimensions shape.The data type is float32.
 
         """
+        if not isinstance(shape, Iterable):
+            raise TypeError('sample shape must be Iterable object.')
+
         if not _non_static_mode():
-            check_type(shape, 'shape', (list), 'sample')
             check_type(seed, 'seed', (int), 'sample')
 
+        shape = list(shape)
         batch_shape = list((self.loc + self.scale).shape)
         name = self.name + '_sample'
 
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
-                self.loc + self.scale, batch_shape + shape, self.dtype, 0.)
+                self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
+            )
             zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
             zero_tmp_shape = nn.shape(zero_tmp_reshape)
-            normal_random_tmp = nn.gaussian_random(zero_tmp_shape,
-                                                   mean=0.,
-                                                   std=1.,
-                                                   seed=seed,
-                                                   dtype=self.dtype)
+            normal_random_tmp = nn.gaussian_random(
+                zero_tmp_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
+            )
             output = normal_random_tmp * (zero_tmp_reshape + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             return output
         else:
             output_shape = shape + batch_shape
-            output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed, dtype=self.dtype) * \
-                     (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
+            output = nn.gaussian_random(
+                output_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
+            ) * (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)
             else:
                 return output
+
+    def rsample(self, shape=()):
+        """Generate reparameterized samples of the specified shape.
+
+        Args:
+          shape (Sequence[int], optional): Shape of the generated samples.
+
+        Returns:
+          Tensor: A tensor with prepended dimensions shape.The data type is float32.
+
+        """
+        if not isinstance(shape, Iterable):
+            raise TypeError('sample shape must be Iterable object.')
+
+        shape = self._extend_shape(tuple(shape))
+        eps = paddle.normal(shape=shape)
+        return self.loc + eps * self.scale
 
     def entropy(self):
         r"""Shannon entropy in nats.
@@ -189,13 +243,14 @@ class Normal(distribution.Distribution):
         """
         name = self.name + '_entropy'
         batch_shape = list((self.loc + self.scale).shape)
-        zero_tmp = tensor.fill_constant_batch_size_like(self.loc + self.scale,
-                                                        batch_shape, self.dtype,
-                                                        0.)
-        return elementwise_add(0.5 + zero_tmp,
-                               0.5 * math.log(2 * math.pi) + nn.log(
-                                   (self.scale + zero_tmp)),
-                               name=name)
+        zero_tmp = tensor.fill_constant_batch_size_like(
+            self.loc + self.scale, batch_shape, self.dtype, 0.0
+        )
+        return elementwise_add(
+            0.5 + zero_tmp,
+            0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp)),
+            name=name,
+        )
 
     def log_prob(self, value):
         """Log probability density/mass function.
@@ -204,7 +259,7 @@ class Normal(distribution.Distribution):
           value (Tensor): The input tensor.
 
         Returns:
-          Tensor: log probability.The data type is same with value.
+          Tensor: log probability.The data type is same with :attr:`value` .
 
         """
         name = self.name + '_log_prob'
@@ -212,10 +267,11 @@ class Normal(distribution.Distribution):
 
         var = self.scale * self.scale
         log_scale = nn.log(self.scale)
-        return elementwise_sub(-1. * ((value - self.loc) * (value - self.loc)) /
-                               (2. * var),
-                               log_scale + math.log(math.sqrt(2. * math.pi)),
-                               name=name)
+        return elementwise_sub(
+            -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var),
+            log_scale + math.log(math.sqrt(2.0 * math.pi)),
+            name=name,
+        )
 
     def probs(self, value):
         """Probability density/mass function.
@@ -224,17 +280,20 @@ class Normal(distribution.Distribution):
             value (Tensor): The input tensor.
 
         Returns:
-            Tensor, probability. The data type is same with value.
+            Tensor, probability. The data type is same with :attr:`value` .
 
         """
         name = self.name + '_probs'
         value = self._check_values_dtype_in_probs(self.loc, value)
 
         var = self.scale * self.scale
-        return elementwise_div(ops.exp(-1. * ((value - self.loc) *
-                                              (value - self.loc)) / (2. * var)),
-                               (math.sqrt(2 * math.pi) * self.scale),
-                               name=name)
+        return elementwise_div(
+            ops.exp(
+                -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var)
+            ),
+            (math.sqrt(2 * math.pi) * self.scale),
+            name=name,
+        )
 
     def kl_divergence(self, other):
         r"""The KL-divergence between two normal distributions.
@@ -274,9 +333,9 @@ class Normal(distribution.Distribution):
 
         name = self.name + '_kl_divergence'
         var_ratio = self.scale / other.scale
-        var_ratio = (var_ratio * var_ratio)
+        var_ratio = var_ratio * var_ratio
         t1 = (self.loc - other.loc) / other.scale
-        t1 = (t1 * t1)
-        return elementwise_add(0.5 * var_ratio,
-                               0.5 * (t1 - 1. - nn.log(var_ratio)),
-                               name=name)
+        t1 = t1 * t1
+        return elementwise_add(
+            0.5 * var_ratio, 0.5 * (t1 - 1.0 - nn.log(var_ratio)), name=name
+        )

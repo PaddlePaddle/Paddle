@@ -14,11 +14,11 @@
 
 import collections
 import numpy as np
+
 try:
     from tqdm import tqdm
 except:
     from .utils import tqdm
-from ..... import compat as cpt
 from .... import core
 from ....framework import IrGraph
 from ....framework import IrNode
@@ -48,17 +48,21 @@ __all__ = [
 ]
 
 _fake_quant_op_list = [
-    'fake_quantize_abs_max', 'fake_quantize_range_abs_max',
-    'fake_quantize_moving_average_abs_max', 'fake_channel_wise_quantize_abs_max'
+    'fake_quantize_abs_max',
+    'fake_quantize_range_abs_max',
+    'fake_quantize_moving_average_abs_max',
+    'fake_channel_wise_quantize_abs_max',
 ]
 
 _fake_dequant_op_list = [
-    'fake_dequantize_max_abs', 'fake_channel_wise_dequantize_max_abs'
+    'fake_dequantize_max_abs',
+    'fake_channel_wise_dequantize_max_abs',
 ]
 
 _fake_quant_dequant_op_list = [
     'fake_quantize_dequantize_moving_average_abs_max',
     "fake_channel_wise_quantize_dequantize_abs_max",
+    "fake_quantize_dequantize_abs_max",
 ]
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
@@ -67,12 +71,11 @@ _SCALE_DEFAULT_VALUE = 0.001
 
 
 def _init_var_node(var_node, value, scope, place):
-    assert isinstance(value,
-                      np.ndarray), 'The type of value should be numpy array.'
-    assert scope is not None, \
-        'The scope cannot be set None.'
-    assert place is not None, \
-        'The place cannot be set None.'
+    assert isinstance(
+        value, np.ndarray
+    ), 'The type of value should be numpy array.'
+    assert scope is not None, 'The scope cannot be set None.'
+    assert place is not None, 'The place cannot be set None.'
     tensor = scope.var(var_node.name()).get_tensor()
     tensor.set(value, place)
 
@@ -84,8 +87,9 @@ def _is_input_all_not_persistable(graph, op_node):
     is_input_all_not_persistable = True
     for var_name in utils._get_op_input_var_names(op_node):
         in_node = graph._find_node_by_name(op_node.inputs, var_name)
-        is_input_all_not_persistable = (is_input_all_not_persistable and \
-            (not in_node.persistable()))
+        is_input_all_not_persistable = is_input_all_not_persistable and (
+            not in_node.persistable()
+        )
     return is_input_all_not_persistable
 
 
@@ -109,24 +113,26 @@ class QuantizationTransformPass(object):
     the quantized ops's inputs.
     """
 
-    def __init__(self,
-                 scope=None,
-                 place=None,
-                 weight_bits=8,
-                 activation_bits=8,
-                 activation_quantize_type='abs_max',
-                 weight_quantize_type='abs_max',
-                 window_size=10000,
-                 moving_rate=0.9,
-                 skip_pattern=['skip_quant'],
-                 quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'],
-                 weight_quantize_func=None,
-                 act_quantize_func=None,
-                 weight_preprocess_func=None,
-                 act_preprocess_func=None,
-                 optimizer_func=None,
-                 executor=None,
-                 is_test=None):
+    def __init__(
+        self,
+        scope=None,
+        place=None,
+        weight_bits=8,
+        activation_bits=8,
+        activation_quantize_type='abs_max',
+        weight_quantize_type='abs_max',
+        window_size=10000,
+        moving_rate=0.9,
+        skip_pattern=['skip_quant'],
+        quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'],
+        weight_quantize_func=None,
+        act_quantize_func=None,
+        weight_preprocess_func=None,
+        act_preprocess_func=None,
+        optimizer_func=None,
+        executor=None,
+        is_test=None,
+    ):
         r"""
         Constructor.
 
@@ -215,21 +221,26 @@ class QuantizationTransformPass(object):
         self._optimizer = optimizer_func
         self._exe = executor
         quant_type = [
-            'abs_max', 'channel_wise_abs_max', 'range_abs_max',
-            'moving_average_abs_max'
+            'abs_max',
+            'channel_wise_abs_max',
+            'range_abs_max',
+            'moving_average_abs_max',
         ]
-        assert activation_quantize_type != 'channel_wise_abs_max', \
-            "The activation quantization type does not support 'channel_wise_abs_max'."
+        assert (
+            activation_quantize_type != 'channel_wise_abs_max'
+        ), "The activation quantization type does not support 'channel_wise_abs_max'."
         if activation_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown activation_quantize_type : '%s'. It can only be "
-                "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'." %
-                (str(activation_quantize_type)))
+                "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'."
+                % (str(activation_quantize_type))
+            )
         if weight_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown weight_quantize_type: '%s'. It can only be "
                 "'abs_max' or 'channel_wise_abs_max' or 'range_abs_max' "
-                "or 'moving_average_abs_max'." % (str(weight_quantize_type)))
+                "or 'moving_average_abs_max'." % (str(weight_quantize_type))
+            )
 
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
@@ -238,8 +249,9 @@ class QuantizationTransformPass(object):
 
         self._quantizable_ops = quantizable_op_type
         for op in self._quantizable_ops:
-            assert op in utils._weight_supported_quantizable_op_type, \
+            assert op in utils._weight_supported_quantizable_op_type, (
                 op + " is not supported for quantization."
+            )
         self._quantizable_grad_ops = [
             '%s_grad' % (op) for op in self._quantizable_ops
         ]
@@ -260,8 +272,9 @@ class QuantizationTransformPass(object):
         Returns:
             None
         """
-        assert isinstance(graph,
-                          IrGraph), 'graph must be the instance of IrGraph.'
+        assert isinstance(
+            graph, IrGraph
+        ), 'graph must be the instance of IrGraph.'
         if self._is_test is None:
             self._is_test = graph.is_test()
         # marked the variable which has been dequantized.
@@ -272,13 +285,18 @@ class QuantizationTransformPass(object):
         def _quant_preprocess(op_node):
             user_skipped = False
             if isinstance(self._skip_pattern, list):
-                user_skipped = op_node.op().has_attr("op_namescope") and \
-                               any(pattern in op_node.op().attr("op_namescope") \
-                                   for pattern in self._skip_pattern)
+                user_skipped = op_node.op().has_attr("op_namescope") and any(
+                    pattern in op_node.op().attr("op_namescope")
+                    for pattern in self._skip_pattern
+                )
             elif isinstance(self._skip_pattern, str):
-                user_skipped = op_node.op().has_attr("op_namescope") and \
-                               op_node.op().attr("op_namescope").find(
-                                   self._skip_pattern) != -1
+                user_skipped = (
+                    op_node.op().has_attr("op_namescope")
+                    and op_node.op()
+                    .attr("op_namescope")
+                    .find(self._skip_pattern)
+                    != -1
+                )
 
             if user_skipped:
                 op_node.op()._set_attr("skip_quant", True)
@@ -297,8 +315,9 @@ class QuantizationTransformPass(object):
                     name = var_node.name()
                     if name in processed_vars:
                         continue
-                    is_weight = True if var_node.name() in persistable_vars \
-                        else False
+                    is_weight = (
+                        True if var_node.name() in persistable_vars else False
+                    )
 
                     # if var node is weight and weight_preprocess_func is not None,
                     # will insert weight preprocess func
@@ -308,11 +327,14 @@ class QuantizationTransformPass(object):
                     # to preorocess activation before quantization
                     if is_weight and self._weight_preprocess_func is not None:
                         var_node = self._insert_func(
-                            graph, self._weight_preprocess_func, var_node, op)
-                    elif not is_weight and self._act_preprocess_func is not None:
-                        var_node = self._insert_func(graph,
-                                                     self._act_preprocess_func,
-                                                     var_node, op)
+                            graph, self._weight_preprocess_func, var_node, op
+                        )
+                    elif (
+                        not is_weight and self._act_preprocess_func is not None
+                    ):
+                        var_node = self._insert_func(
+                            graph, self._act_preprocess_func, var_node, op
+                        )
 
                     # if var node is weight and weight_quantize_func is not None,
                     # will insert weight quantize func to quantize and dequantize weight
@@ -320,32 +342,55 @@ class QuantizationTransformPass(object):
                     # will insert act quantize func to quantize and dequantize activation
                     if is_weight and self._weight_quantize_func is not None:
                         target_out_node = self._insert_func(
-                            graph, self._weight_quantize_func, var_node, op)
+                            graph, self._weight_quantize_func, var_node, op
+                        )
                         processed_vars.append(name)
                         continue
                     elif not is_weight and self._act_quantize_func is not None:
                         target_out_node = self._insert_func(
-                            graph, self._act_quantize_func, var_node, op)
+                            graph, self._act_quantize_func, var_node, op
+                        )
                         processed_vars.append(name)
                         continue
 
-                    quant_bits = self._weight_bits if var_node.name() in persistable_vars \
+                    quant_bits = (
+                        self._weight_bits
+                        if var_node.name() in persistable_vars
                         else self._activation_bits
-                    quant_type = self._weight_quantize_type if is_weight \
+                    )
+                    quant_type = (
+                        self._weight_quantize_type
+                        if is_weight
                         else self._activation_quantize_type
-                    if quant_type == 'channel_wise_abs_max':  # Weight quantization
-                        quant_axis = 1 if op.name() in \
-                            utils._channelwise_quant_axis1_ops else 0
-                        quant_var_node, scale_var_node = self._insert_channel_quant_op(
-                            graph, var_node, name, quant_bits, quant_axis)
+                    )
+                    if (
+                        quant_type == 'channel_wise_abs_max'
+                    ):  # Weight quantization
+                        quant_axis = (
+                            1
+                            if op.name() in utils._channelwise_quant_axis1_ops
+                            else 0
+                        )
+                        (
+                            quant_var_node,
+                            scale_var_node,
+                        ) = self._insert_channel_quant_op(
+                            graph, var_node, name, quant_bits, quant_axis
+                        )
                         dequant_var_node = self._insert_channel_dequant_op(
-                            graph, quant_var_node, [scale_var_node],
-                            [quant_bits], quant_axis)
+                            graph,
+                            quant_var_node,
+                            [scale_var_node],
+                            [quant_bits],
+                            quant_axis,
+                        )
                     else:
                         quant_var_node, scale_var_node = self._insert_quant_op(
-                            graph, var_node, name, quant_bits, quant_type)
+                            graph, var_node, name, quant_bits, quant_type
+                        )
                         dequant_var_node = self._insert_dequant_op(
-                            graph, quant_var_node, scale_var_node, quant_bits)
+                            graph, quant_var_node, scale_var_node, quant_bits
+                        )
                     dequantized_vars[name] = dequant_var_node
                 graph.update_input_link(var_node, dequant_var_node, op)
 
@@ -373,17 +418,20 @@ class QuantizationTransformPass(object):
         # Do the preproccess of quantization, such as skipping some ops
         # for not being quantized.
         for op in ops:
-            if op.name() in self._quantizable_ops or \
-                    op.name() in self._quantizable_grad_ops:
+            if (
+                op.name() in self._quantizable_ops
+                or op.name() in self._quantizable_grad_ops
+            ):
                 _quant_preprocess(op)
         # Insert mapping table to solve the problem in saving inference model.
         graph.out_node_mapping_table = dict()
         # The process of _transform_forward and _transform_backward is needed in two for loops.
         # The loop for transforming the forward graph:
-        with tqdm(total=len(ops),
-                  bar_format=
-                  'Adding quant op with weight:|{bar}| {n_fmt}/{total_fmt}',
-                  ncols=80) as t:
+        with tqdm(
+            total=len(ops),
+            bar_format='Adding quant op with weight:|{bar}| {n_fmt}/{total_fmt}',
+            ncols=80,
+        ) as t:
             for op in ops:
                 if op.name() in self._quantizable_ops:
                     if not self._is_skip_quant(graph, op) and _has_weight(op):
@@ -397,9 +445,11 @@ class QuantizationTransformPass(object):
         return graph
 
     def _create_global_step(self, graph):
-        if self._weight_quantize_type == 'range_abs_max' or \
-                self._activation_quantize_type == 'range_abs_max':
-            counter_name = cpt.to_text('@STEP_COUNTER@')
+        if (
+            self._weight_quantize_type == 'range_abs_max'
+            or self._activation_quantize_type == 'range_abs_max'
+        ):
+            counter_name = '@STEP_COUNTER@'
             for node in graph.all_var_nodes():
                 if node.name() == counter_name:
                     self._global_step = node
@@ -408,21 +458,27 @@ class QuantizationTransformPass(object):
                     name=counter_name,
                     var_type=core.VarDesc.VarType.LOD_TENSOR,
                     shape=[1],
-                    var_dtype=core.VarDesc.VarType.INT64)
-                _init_var_node(global_step_in, np.zeros([1], dtype='int64'),
-                               self._scope, self._place)
+                    var_dtype=core.VarDesc.VarType.INT64,
+                )
+                _init_var_node(
+                    global_step_in,
+                    np.zeros([1], dtype='int64'),
+                    self._scope,
+                    self._place,
+                )
                 global_step_out = graph.create_var_node_from_desc(
-                    global_step_in.var())
+                    global_step_in.var()
+                )
                 # The attribute of `op_role` is needed by ParallelExecutor.
                 increment_op = graph.create_op_node(
                     op_type='increment',
                     attrs={
                         'step': 1.0,
-                        'op_role':
-                        core.op_proto_and_checker_maker.OpRole.Forward
+                        'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
                     },
                     inputs={'X': global_step_in},
-                    outputs={'Out': global_step_out})
+                    outputs={'Out': global_step_out},
+                )
                 graph.link_to(global_step_in, increment_op)
                 graph.link_to(increment_op, global_step_out)
                 self._global_step = global_step_out
@@ -432,14 +488,17 @@ class QuantizationTransformPass(object):
         Insert fake_quantize_op in the graph.
         """
         if quant_type == 'abs_max':
-            return self._insert_quant_abs_max_op(graph, var_node, name,
-                                                 quant_bits)
+            return self._insert_quant_abs_max_op(
+                graph, var_node, name, quant_bits
+            )
         elif quant_type == 'range_abs_max':
-            return self._insert_quant_range_abs_max_op(graph, var_node, name,
-                                                       quant_bits)
+            return self._insert_quant_range_abs_max_op(
+                graph, var_node, name, quant_bits
+            )
         elif quant_type == 'moving_average_abs_max':
             return self._insert_quant_moving_average_abs_max_op(
-                graph, var_node, name, quant_bits)
+                graph, var_node, name, quant_bits
+            )
 
     def _insert_quant_abs_max_op(self, graph, var_node, name, quant_bits):
         """
@@ -451,33 +510,37 @@ class QuantizationTransformPass(object):
             name=self._quantized_var_name(name),
             var_type=var_node.type(),
             shape=var_node.shape(),
-            var_dtype=var_node.dtype())
+            var_dtype=var_node.dtype(),
+        )
         scale_name = self._quantized_scale_name(name)
-        data_type = 'float64' if var_node.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
+        data_type = (
+            'float64'
+            if var_node.dtype() == core.VarDesc.VarType.FP64
+            else 'float32'
+        )
         try:
             scale_value = np.array(
-                self._scope.find_var(scale_name).get_tensor())
+                self._scope.find_var(scale_name).get_tensor()
+            )
         except:
             scale_value = np.zeros([1], dtype=data_type)
         scale_var_node = graph.create_persistable_node(
             name=scale_name,
             var_type=var_node.type(),
             shape=[1],
-            var_dtype=var_node.dtype())
+            var_dtype=var_node.dtype(),
+        )
         _init_var_node(scale_var_node, scale_value, self._scope, self._place)
 
         quant_op_node = graph.create_op_node(
             op_type='fake_quantize_abs_max',
             attrs={
                 'bit_length': quant_bits,
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
             },
             inputs={'X': var_node},
-            outputs={
-                'Out': quant_var_node,
-                'OutScale': scale_var_node
-            })
+            outputs={'Out': quant_var_node, 'OutScale': scale_var_node},
+        )
         graph.link_to(var_node, quant_op_node)
         graph.link_to(quant_op_node, quant_var_node)
         graph.link_to(quant_op_node, scale_var_node)
@@ -493,21 +556,27 @@ class QuantizationTransformPass(object):
             name=self._quantized_var_name(name),
             var_type=var_node.type(),
             shape=var_node.shape(),
-            var_dtype=var_node.dtype())
+            var_dtype=var_node.dtype(),
+        )
 
         scale_name = self._quantized_scale_name(name)
-        data_type = 'float64' if var_node.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
+        data_type = (
+            'float64'
+            if var_node.dtype() == core.VarDesc.VarType.FP64
+            else 'float32'
+        )
         try:
             scale_value = np.array(
-                self._scope.find_var(scale_name).get_tensor())
+                self._scope.find_var(scale_name).get_tensor()
+            )
         except:
             scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
         scale_in_node = graph.create_persistable_node(
             name=scale_name,
             var_type=core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
-            var_dtype=var_node.dtype())
+            var_dtype=var_node.dtype(),
+        )
         _init_var_node(scale_in_node, scale_value, self._scope, self._place)
 
         scale_out_node = graph.create_var_node_from_desc(scale_in_node.var())
@@ -520,12 +589,19 @@ class QuantizationTransformPass(object):
                 name=unique_name.generate('scales'),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 shape=[self._window_size],
-                var_dtype=var_node.dtype())
-            data_type = 'float64' if var_node.dtype(
-            ) == core.VarDesc.VarType.FP64 else 'float32'
-            _init_var_node(scales_node,
-                           np.zeros([self._window_size], dtype=data_type),
-                           self._scope, self._place)
+                var_dtype=var_node.dtype(),
+            )
+            data_type = (
+                'float64'
+                if var_node.dtype() == core.VarDesc.VarType.FP64
+                else 'float32'
+            )
+            _init_var_node(
+                scales_node,
+                np.zeros([self._window_size], dtype=data_type),
+                self._scope,
+                self._place,
+            )
 
             inputs['Iter'] = self._global_step
             outputs['OutScales'] = scales_node
@@ -533,13 +609,14 @@ class QuantizationTransformPass(object):
             'window_size': self._window_size,
             'bit_length': quant_bits,
             'is_test': self._is_test,
-            'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+            'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
         }
         quant_op_node = graph.create_op_node(
             op_type='fake_quantize_range_abs_max',
             attrs=attrs,
             inputs=inputs,
-            outputs=outputs)
+            outputs=outputs,
+        )
 
         graph.link_to(var_node, quant_op_node)
         graph.link_to(scale_in_node, quant_op_node)
@@ -552,28 +629,34 @@ class QuantizationTransformPass(object):
 
         return quant_var_node, scale_out_node
 
-    def _insert_quant_moving_average_abs_max_op(self, graph, var_node, name,
-                                                quant_bits):
-        """Insert fake_quantize_moving_average_abs_max
-        """
+    def _insert_quant_moving_average_abs_max_op(
+        self, graph, var_node, name, quant_bits
+    ):
+        """Insert fake_quantize_moving_average_abs_max"""
         quant_var_node = graph.create_var_node(
             name=self._quantized_var_name(name),
             var_type=var_node.type(),
             shape=var_node.shape(),
-            var_dtype=var_node.dtype())
+            var_dtype=var_node.dtype(),
+        )
         scale_name = self._quantized_scale_name(name)
-        data_type = 'float64' if var_node.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
+        data_type = (
+            'float64'
+            if var_node.dtype() == core.VarDesc.VarType.FP64
+            else 'float32'
+        )
         try:
             scale_value = np.array(
-                self._scope.find_var(scale_name).get_tensor())
+                self._scope.find_var(scale_name).get_tensor()
+            )
         except:
             scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
         scale_in_node = graph.create_persistable_node(
             name=scale_name,
             var_type=core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
-            var_dtype=var_node.dtype())
+            var_dtype=var_node.dtype(),
+        )
         _init_var_node(scale_in_node, scale_value, self._scope, self._place)
 
         scale_out_node = graph.create_var_node_from_desc(scale_in_node.var())
@@ -584,22 +667,37 @@ class QuantizationTransformPass(object):
                 name=unique_name.generate('state'),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 var_dtype=var_node.dtype(),
-                shape=[1])
-            data_type = 'float64' if var_node.dtype(
-            ) == core.VarDesc.VarType.FP64 else 'float32'
-            _init_var_node(state_in_node, np.ones([1], dtype=data_type),
-                           self._scope, self._place)
+                shape=[1],
+            )
+            data_type = (
+                'float64'
+                if var_node.dtype() == core.VarDesc.VarType.FP64
+                else 'float32'
+            )
+            _init_var_node(
+                state_in_node,
+                np.ones([1], dtype=data_type),
+                self._scope,
+                self._place,
+            )
             accum_in_node = graph.create_persistable_node(
                 name=unique_name.generate('accum'),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 var_dtype=var_node.dtype(),
-                shape=[1])
-            _init_var_node(accum_in_node, np.ones([1], dtype=data_type),
-                           self._scope, self._place)
+                shape=[1],
+            )
+            _init_var_node(
+                accum_in_node,
+                np.ones([1], dtype=data_type),
+                self._scope,
+                self._place,
+            )
             state_out_node = graph.create_var_node_from_desc(
-                state_in_node.var())
+                state_in_node.var()
+            )
             accum_out_node = graph.create_var_node_from_desc(
-                accum_in_node.var())
+                accum_in_node.var()
+            )
 
             ins['InState'] = state_in_node
             ins['InAccum'] = accum_in_node
@@ -610,14 +708,15 @@ class QuantizationTransformPass(object):
             'bit_length': quant_bits,
             'moving_rate': self._moving_rate,
             'is_test': self._is_test,
-            'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+            'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
         }
 
         quant_op_node = graph.create_op_node(
             op_type='fake_quantize_moving_average_abs_max',
             attrs=attrs,
             inputs=ins,
-            outputs=outs)
+            outputs=outs,
+        )
 
         graph.link_to(var_node, quant_op_node)
         graph.link_to(scale_in_node, quant_op_node)
@@ -632,8 +731,9 @@ class QuantizationTransformPass(object):
 
         return quant_var_node, scale_out_node
 
-    def _insert_channel_quant_op(self, graph, var_node, name, quant_bits,
-                                 quant_axis):
+    def _insert_channel_quant_op(
+        self, graph, var_node, name, quant_bits, quant_axis
+    ):
         """
         Insert fake_channel_wise_quantize_abs_max op in the graph.
         """
@@ -643,21 +743,28 @@ class QuantizationTransformPass(object):
             name=self._quantized_var_name(name),
             var_type=var_node.type(),
             shape=var_node.shape(),
-            var_dtype=var_node.dtype())
+            var_dtype=var_node.dtype(),
+        )
         scale_name = self._quantized_scale_name(name)
-        data_type = 'float64' if var_node.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
+        data_type = (
+            'float64'
+            if var_node.dtype() == core.VarDesc.VarType.FP64
+            else 'float32'
+        )
         try:
             scale_value = np.array(
-                self._scope.find_var(scale_name).get_tensor())
+                self._scope.find_var(scale_name).get_tensor()
+            )
         except:
-            scale_value = np.zeros([var_node.shape()[quant_axis]],
-                                   dtype=data_type)
+            scale_value = np.zeros(
+                [var_node.shape()[quant_axis]], dtype=data_type
+            )
         scale_var_node = graph.create_persistable_node(
             name=self._quantized_scale_name(name),
             var_type=var_node.type(),
             shape=[var_node.shape()[quant_axis]],
-            var_dtype=var_node.dtype())
+            var_dtype=var_node.dtype(),
+        )
         _init_var_node(scale_var_node, scale_value, self._scope, self._place)
         quant_op_node = graph.create_op_node(
             op_type='fake_channel_wise_quantize_abs_max',
@@ -665,13 +772,11 @@ class QuantizationTransformPass(object):
                 'bit_length': quant_bits,
                 'quant_axis': quant_axis,
                 'is_test': self._is_test,
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
             },
             inputs={'X': var_node},
-            outputs={
-                'Out': quant_var_node,
-                'OutScale': scale_var_node
-            })
+            outputs={'Out': quant_var_node, 'OutScale': scale_var_node},
+        )
         graph.link_to(var_node, quant_op_node)
         graph.link_to(quant_op_node, quant_var_node)
         graph.link_to(quant_op_node, scale_var_node)
@@ -687,26 +792,26 @@ class QuantizationTransformPass(object):
             name=self._dequantized_var_name(var_node.name()),
             var_type=var_node.type(),
             shape=var_node.shape(),
-            var_dtype=var_node.dtype())
+            var_dtype=var_node.dtype(),
+        )
         max_range = (1 << (quant_bits - 1)) - 1
         dequant_op_node = graph.create_op_node(
             op_type='fake_dequantize_max_abs',
             attrs={
                 'max_range': float(max_range),
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
             },
-            inputs={
-                'X': var_node,
-                'Scale': scale_var_node
-            },
-            outputs={'Out': dequant_var_node})
+            inputs={'X': var_node, 'Scale': scale_var_node},
+            outputs={'Out': dequant_var_node},
+        )
         graph.link_to(var_node, dequant_op_node)
         graph.link_to(scale_var_node, dequant_op_node)
         graph.link_to(dequant_op_node, dequant_var_node)
         return dequant_var_node
 
-    def _insert_channel_dequant_op(self, graph, var_node, scale_var_nodes,
-                                   quant_bits, quant_axis):
+    def _insert_channel_dequant_op(
+        self, graph, var_node, scale_var_nodes, quant_bits, quant_axis
+    ):
         """
         Insert fake_channel_wise_dequantize_max_abs in the graph.
         """
@@ -716,19 +821,18 @@ class QuantizationTransformPass(object):
             name=self._dequantized_var_name(var_node.name()),
             var_type=var_node.type(),
             shape=var_node.shape(),
-            var_dtype=var_node.dtype())
+            var_dtype=var_node.dtype(),
+        )
         dequant_op_node = graph.create_op_node(
             op_type='fake_channel_wise_dequantize_max_abs',
             attrs={
                 'quant_bits': quant_bits,
                 'quant_axis': quant_axis,
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
             },
-            inputs={
-                'X': var_node,
-                'Scales': scale_var_nodes
-            },
-            outputs={'Out': dequant_var_node})
+            inputs={'X': var_node, 'Scales': scale_var_nodes},
+            outputs={'Out': dequant_var_node},
+        )
         graph.link_to(var_node, dequant_op_node)
         for scale_n in scale_var_nodes:
             graph.link_to(scale_n, dequant_op_node)
@@ -815,27 +919,34 @@ class QuantizationTransformPass(object):
         startup_program = Program()
         with program_guard(tmp_program, startup_program):
             with unique_name.guard(var_node.name() + "_"):
-                in_node = data(var_node.name() + '_tmp_input',
-                               shape=var_node.shape(),
-                               dtype='float32')
+                in_node = data(
+                    var_node.name() + '_tmp_input',
+                    shape=var_node.shape(),
+                    dtype='float32',
+                )
                 out_node = func(in_node)
                 graph.out_node_mapping_table[out_node.name] = var_node.name()
                 # loss shape must be 1 when minimize
                 loss = mean(out_node)
                 if not graph._for_test:
-                    assert self._optimizer, "optimizer_func must be set when graph is test graph"
+                    assert (
+                        self._optimizer
+                    ), "optimizer_func must be set when graph is test graph"
                     in_node.stop_gradient = False
                     optimizer = self._optimizer()
                     optimizer.minimize(loss)
         with scope_guard(self._scope):
             self._exe.run(startup_program)
 
-        tmp_graph = IrGraph(core.Graph(tmp_program.desc),
-                            for_test=graph._for_test)
-        in_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
-                                               in_node.name)
-        out_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
-                                                out_node.name)
+        tmp_graph = IrGraph(
+            core.Graph(tmp_program.desc), for_test=graph._for_test
+        )
+        in_node = tmp_graph._find_node_by_name(
+            tmp_graph.all_var_nodes(), in_node.name
+        )
+        out_node = tmp_graph._find_node_by_name(
+            tmp_graph.all_var_nodes(), out_node.name
+        )
 
         in_node_params = []
         in_op_node = []
@@ -854,10 +965,12 @@ class QuantizationTransformPass(object):
         for node in in_op_node:
             self._copy_graph(graph, tmp_graph, node)
 
-        target_in_node = graph._find_node_by_name(graph.all_var_nodes(),
-                                                  in_node.name())
-        target_out_node = graph._find_node_by_name(graph.all_var_nodes(),
-                                                   out_node.name())
+        target_in_node = graph._find_node_by_name(
+            graph.all_var_nodes(), in_node.name()
+        )
+        target_out_node = graph._find_node_by_name(
+            graph.all_var_nodes(), out_node.name()
+        )
         loss_node = graph._find_node_by_name(graph.all_var_nodes(), loss.name)
         outputs = target_in_node.outputs
         for node in outputs:
@@ -867,16 +980,17 @@ class QuantizationTransformPass(object):
         # update grad
         if not graph._for_test:
             op_out = op.outputs[0]
-            op_out_grad = graph._find_node_by_name(graph.all_var_nodes(),
-                                                   op_out.name() + "@GRAD")
+            op_out_grad = graph._find_node_by_name(
+                graph.all_var_nodes(), op_out.name() + "@GRAD"
+            )
             # find op's gradient op, such as conv2d_grad
             op_grad = op_out_grad.outputs[0]
             target_out_grad_node = graph._find_node_by_name(
-                graph.all_var_nodes(),
-                target_out_node.name() + "@GRAD")
+                graph.all_var_nodes(), target_out_node.name() + "@GRAD"
+            )
             in_node_grad = graph._find_node_by_name(
-                graph.all_var_nodes(),
-                target_in_node.name() + "@GRAD")
+                graph.all_var_nodes(), target_in_node.name() + "@GRAD"
+            )
             in_node_grad_op = in_node_grad.inputs
             # update op_grad's input
             graph.update_input_link(var_node, target_out_node, op_grad)
@@ -888,8 +1002,9 @@ class QuantizationTransformPass(object):
                     op_grad_out = node
             # update op_grad's output
             if op_grad_out is not None:
-                graph.update_output_link(op_grad_out, target_out_grad_node,
-                                         op_grad)
+                graph.update_output_link(
+                    op_grad_out, target_out_grad_node, op_grad
+                )
             else:
                 graph.link_to(op_grad, target_out_grad_node)
 
@@ -934,31 +1049,37 @@ class QuantizationTransformPass(object):
         Analyse whether the op node skips quantization.
         """
         is_skip = False
-        if op_node.op().has_attr("skip_quant") and \
-            op_node.op().attr("skip_quant"):
+        if op_node.op().has_attr("skip_quant") and op_node.op().attr(
+            "skip_quant"
+        ):
             is_skip = True
         # if the inputs of mul and matmul are not all persistable, use
         # AddQuantDequantPass to quantize them.
-        if op_node.name() in ["mul", "matmul"] and \
-            _is_input_all_not_persistable(graph, op_node):
+        if op_node.name() in [
+            "mul",
+            "matmul",
+        ] and _is_input_all_not_persistable(graph, op_node):
             is_skip = True
-        if op_node.op().has_attr("quantization_type") and \
-            op_node.op().attr("quantization_type") == "qat_without_weight":
+        if (
+            op_node.op().has_attr("quantization_type")
+            and op_node.op().attr("quantization_type") == "qat_without_weight"
+        ):
             is_skip = True
         return is_skip
 
 
 class QuantizationFreezePass(object):
-
-    def __init__(self,
-                 scope,
-                 place,
-                 bias_correction=False,
-                 weight_bits=8,
-                 activation_bits=8,
-                 round_type='round',
-                 weight_quantize_type='abs_max',
-                 quantizable_op_type=None):
+    def __init__(
+        self,
+        scope,
+        place,
+        bias_correction=False,
+        weight_bits=8,
+        activation_bits=8,
+        round_type='round',
+        weight_quantize_type='abs_max',
+        quantizable_op_type=None,
+    ):
         """
         The freeze pass is used to adjust the quantize operator order, for example:
             1) `activation -> quant -> dequant -> conv2d` will be frozen into
@@ -984,10 +1105,8 @@ class QuantizationFreezePass(object):
             quantizable_op_type(list[str]): This input param will be removed latter. The pass
                 will process all quantized op, so it is not necessary to set the input param.
         """
-        assert scope is not None, \
-            'The scope cannot be set None.'
-        assert place is not None, \
-            'The place cannot be set None.'
+        assert scope is not None, 'The scope cannot be set None.'
+        assert place is not None, 'The place cannot be set None.'
         self._scope = scope
         self._bias_correction = bias_correction
         self._place = _get_paddle_place(place)
@@ -1020,21 +1139,26 @@ class QuantizationFreezePass(object):
                 if hasattr(graph, 'out_node_mapping_table'):
                     if input_arg_name in graph.out_node_mapping_table.keys():
                         input_arg_name = graph.out_node_mapping_table[
-                            input_arg_name]
+                            input_arg_name
+                        ]
                 if input_arg_name not in persistable_vars:
                     scale_v = graph._find_node_by_name(
-                        op_node.outputs,
-                        op_node.output('OutScale')[0])
+                        op_node.outputs, op_node.output('OutScale')[0]
+                    )
                     self._quant_var_scale_map[input_arg_name] = scale_v
                 else:
                     # Obtain scale from OutScale var node
                     scale_v = self._load_var(op_node.output('OutScale')[0])
                     assert scale_v.ndim in [
-                        1, 2
+                        1,
+                        2,
                     ], "the dim of scale_v should be 1 or 2"
                     if scale_v.ndim == 2:
                         scale_v = scale_v[0]
-                    if scale_v.size == 1 and self._weight_quantize_type == 'abs_max':
+                    if (
+                        scale_v.size == 1
+                        and self._weight_quantize_type == 'abs_max'
+                    ):
                         scale_v = scale_v[0]
                     else:
                         scale_v = scale_v.tolist()
@@ -1043,14 +1167,18 @@ class QuantizationFreezePass(object):
                     if self._round_type == 'round':
                         param_v = self._load_var(input_arg_name)
                         if any(
-                                _check_grandchild_op_node(op_node, op)
-                                for op in utils._channelwise_quant_axis1_ops):
+                            _check_grandchild_op_node(op_node, op)
+                            for op in utils._channelwise_quant_axis1_ops
+                        ):
                             quant_axis = 1
                         else:
                             quant_axis = 0
                         quantized_param_v = utils.quant_tensor(
-                            param_v.copy(), scale_v, quant_axis,
-                            self._weight_bits)
+                            param_v.copy(),
+                            scale_v,
+                            quant_axis,
+                            self._weight_bits,
+                        )
                         quantized_param_v = np.round(quantized_param_v)
                         # Weight bias correction
                         if self._bias_correction == True:
@@ -1059,7 +1187,8 @@ class QuantizationFreezePass(object):
                                 quantized_param_v,
                                 scale_v,
                                 quant_axis,
-                                weight_bits=self._weight_bits)
+                                weight_bits=self._weight_bits,
+                            )
                             quantized_param_v = np.round(quantized_param_v)
                         self._restore_var(input_arg_name, quantized_param_v)
                     self._remove_fake_quant_and_dequant_op(graph, op_node)
@@ -1075,13 +1204,19 @@ class QuantizationFreezePass(object):
         ops = graph.all_op_nodes()
         for op_node in ops:
             op_node_desc = op_node.op()
-            if op_node_desc.has_attr("quantization_type") and \
-                op_node_desc.attr("quantization_type") == "qat_with_weight":
+            if (
+                op_node_desc.has_attr("quantization_type")
+                and op_node_desc.attr("quantization_type") == "qat_with_weight"
+            ):
                 if self._weight_quantize_type == 'channel_wise_abs_max':
-                    quant_axis = 1 if op_node.name() in \
-                        utils._channelwise_quant_axis1_ops else 0
+                    quant_axis = (
+                        1
+                        if op_node.name() in utils._channelwise_quant_axis1_ops
+                        else 0
+                    )
                     self._insert_post_channel_dequant_op(
-                        graph, op_node, quant_axis)
+                        graph, op_node, quant_axis
+                    )
                 else:
                     self._insert_post_dequant_op(graph, op_node)
 
@@ -1105,7 +1240,8 @@ class QuantizationFreezePass(object):
             self._op_input_rename_map[k.node] = v
         else:
             self._op_input_rename_map[k.node] = self._op_input_rename_map[
-                v.node]
+                v.node
+            ]
         graph.safe_remove_nodes(op_node)
 
     def _insert_post_channel_dequant_op(self, graph, op_node, quant_axis):
@@ -1123,35 +1259,47 @@ class QuantizationFreezePass(object):
             scale_v = self._quant_var_scale_map[original_var_name]
             if original_var_name in persistable_vars:
                 assert isinstance(
-                    scale_v,
-                    list), 'The scale of parameter %s is not a list.' % (
-                        original_var_name)
+                    scale_v, list
+                ), 'The scale of parameter %s is not a list.' % (
+                    original_var_name
+                )
                 channel_scale = np.array(scale_v)
             else:
                 assert isinstance(scale_v, IrNode)
                 scale_var_node = self._quant_var_scale_map[original_var_name]
 
         if len(op_node.output_arg_names()) != 1:
-            raise ValueError("Only support one output, but op %s has"
-                             " more than one output." % (op_node.name()))
+            raise ValueError(
+                "Only support one output, but op %s has"
+                " more than one output." % (op_node.name())
+            )
 
         output_var_node = graph._find_node_by_name(
-            op_node.outputs,
-            op_node.output_arg_names()[0])
+            op_node.outputs, op_node.output_arg_names()[0]
+        )
         weight_scale_node = graph.create_persistable_node(
             name=unique_name.generate('channel_scale'),
             var_type=core.VarDesc.VarType.LOD_TENSOR,
             shape=[channel_scale.shape[0]],
-            var_dtype=output_var_node.dtype())
-        data_type = 'float64' if output_var_node.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
-        _init_var_node(weight_scale_node, channel_scale.astype(data_type),
-                       self._scope, self._place)
+            var_dtype=output_var_node.dtype(),
+        )
+        data_type = (
+            'float64'
+            if output_var_node.dtype() == core.VarDesc.VarType.FP64
+            else 'float32'
+        )
+        _init_var_node(
+            weight_scale_node,
+            channel_scale.astype(data_type),
+            self._scope,
+            self._place,
+        )
         dequant_var_node = graph.create_var_node(
             name=self._dequantized_var_name(output_var_node.name()),
             var_type=output_var_node.type(),
             shape=output_var_node.shape(),
-            var_dtype=output_var_node.dtype())
+            var_dtype=output_var_node.dtype(),
+        )
         x_num_col_dims = 1
         if op_node.name() in ['matmul', 'matmul_v2', 'mul']:
             x_num_col_dims = len(op_node.outputs[0].shape()) - 1
@@ -1163,13 +1311,14 @@ class QuantizationFreezePass(object):
                 'quant_bits': [self._weight_bits, self._activation_bits],
                 'quant_axis': quant_axis,
                 'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
-                'x_num_col_dims': x_num_col_dims
+                'x_num_col_dims': x_num_col_dims,
             },
             inputs={
                 'X': output_var_node,
-                'Scales': [weight_scale_node, scale_var_node]
+                'Scales': [weight_scale_node, scale_var_node],
             },
-            outputs={'Out': dequant_var_node})
+            outputs={'Out': dequant_var_node},
+        )
         graph.link_to(output_var_node, dequant_op_node)
         graph.link_to(scale_var_node, dequant_op_node)
         graph.link_to(weight_scale_node, dequant_op_node)
@@ -1195,8 +1344,10 @@ class QuantizationFreezePass(object):
             scale_v = self._quant_var_scale_map[original_var_name]
             if original_var_name in persistable_vars:
                 assert self._is_float(
-                    scale_v), 'The scale of parameter %s is not a float.' % (
-                        original_var_name)
+                    scale_v
+                ), 'The scale of parameter %s is not a float.' % (
+                    original_var_name
+                )
                 scale_v = 1e-8 if scale_v == 0.0 else scale_v
                 max_range *= param_range / scale_v
             else:
@@ -1205,28 +1356,29 @@ class QuantizationFreezePass(object):
                 scale_var_node = self._quant_var_scale_map[original_var_name]
 
         if len(op_node.output_arg_names()) != 1:
-            raise ValueError("Only support one output, but op %s has"
-                             " more than one output." % (op_node.name()))
+            raise ValueError(
+                "Only support one output, but op %s has"
+                " more than one output." % (op_node.name())
+            )
 
         output_var_node = graph._find_node_by_name(
-            op_node.outputs,
-            op_node.output_arg_names()[0])
+            op_node.outputs, op_node.output_arg_names()[0]
+        )
         dequant_var_node = graph.create_var_node(
             name=self._dequantized_var_name(output_var_node.name()),
             var_type=output_var_node.type(),
             shape=output_var_node.shape(),
-            var_dtype=output_var_node.dtype())
+            var_dtype=output_var_node.dtype(),
+        )
         dequant_op_node = graph.create_op_node(
             op_type='fake_dequantize_max_abs',
             attrs={
                 'max_range': float(max_range),
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
             },
-            inputs={
-                'X': output_var_node,
-                'Scale': scale_var_node
-            },
-            outputs={'Out': dequant_var_node})
+            inputs={'X': output_var_node, 'Scale': scale_var_node},
+            outputs={'Out': dequant_var_node},
+        )
         graph.link_to(output_var_node, dequant_op_node)
         graph.link_to(scale_var_node, dequant_op_node)
         graph.link_to(dequant_op_node, dequant_var_node)
@@ -1252,8 +1404,10 @@ class QuantizationFreezePass(object):
         all_used_vars = {n.node for n in all_used_vars}
         all_unused_vars = {
             n
-            for n in filter(lambda node: node.node not in all_used_vars,
-                            graph.all_var_nodes())
+            for n in filter(
+                lambda node: node.node not in all_used_vars,
+                graph.all_var_nodes(),
+            )
         }
         graph.safe_remove_nodes(all_unused_vars)
 
@@ -1262,13 +1416,13 @@ class QuantizationFreezePass(object):
         Return the original variable name.
         """
         if var_name.endswith('.quantized.dequantized'):
-            return var_name[:-len('.quantized.dequantized')]
+            return var_name[: -len('.quantized.dequantized')]
         if var_name.endswith('.quantized'):
-            return var_name[:-len('.quantized')]
+            return var_name[: -len('.quantized')]
         if var_name.endswith('.dequantized'):
-            return var_name[:-len('.dequantized')]
+            return var_name[: -len('.dequantized')]
         if var_name.endswith('@scale'):
-            return var_name[:-len('@scale')]
+            return var_name[: -len('@scale')]
         else:
             return var_name
 
@@ -1279,12 +1433,14 @@ class QuantizationFreezePass(object):
         return "%s.dequantized" % (var_name)
 
     def _is_float(self, v):
-        return isinstance(v, float) or isinstance(v, np.float32) \
+        return (
+            isinstance(v, float)
+            or isinstance(v, np.float32)
             or isinstance(v, np.float64)
+        )
 
 
 class ConvertToInt8Pass(object):
-
     def __init__(self, scope, place, quantizable_op_type=None):
         """
         Convert the weights into int8_t type.
@@ -1297,10 +1453,8 @@ class ConvertToInt8Pass(object):
             quantizable_op_type(list[str]): This input param will be removed latter. The pass
                 will process all quantized op, so it is not necessary to set the input param.
         """
-        assert scope is not None, \
-            'The scope cannot be set None.'
-        assert place is not None, \
-            'The place cannot be set None.'
+        assert scope is not None, 'The scope cannot be set None.'
+        assert place is not None, 'The place cannot be set None.'
         self._scope = scope
         self._place = _get_paddle_place(place)
 
@@ -1318,17 +1472,21 @@ class ConvertToInt8Pass(object):
         ops = graph.all_op_nodes()
         input_map = {}
         for op_node in ops:
-            if op_node.op().has_attr("quantization_type") and \
-                op_node.op().attr("quantization_type") == "qat_with_weight":
+            if (
+                op_node.op().has_attr("quantization_type")
+                and op_node.op().attr("quantization_type") == "qat_with_weight"
+            ):
                 for var_node in op_node.inputs:
                     name = var_node.name()
                     if name in persistable_vars:
                         if name not in input_map:
                             int8_var_node = self._convert_to_int8(
-                                graph, var_node)
+                                graph, var_node
+                            )
                             input_map[name] = int8_var_node
-                        graph.update_input_link(var_node, input_map[name],
-                                                op_node)
+                        graph.update_input_link(
+                            var_node, input_map[name], op_node
+                        )
 
         # remove the unused var node in the graph
         self._remove_unused_var_nodes(graph)
@@ -1338,10 +1496,11 @@ class ConvertToInt8Pass(object):
     def _convert_to_int8(self, graph, var_node):
         int8_var_node_name = var_node.name() + ".int8"
         int8_var_node = graph.create_persistable_node(
-            name=cpt.to_text(int8_var_node_name),
+            name=int8_var_node_name,
             var_type=var_node.type(),
             shape=var_node.shape(),
-            var_dtype=core.VarDesc.VarType.INT8)
+            var_dtype=core.VarDesc.VarType.INT8,
+        )
         array = self._load_var(var_node.name())
         self._scope.var(int8_var_node_name)
         self._store_var(int8_var_node_name, array, np.int8)
@@ -1366,14 +1525,15 @@ class ConvertToInt8Pass(object):
         all_used_vars = {n.node for n in all_used_vars}
         all_unused_vars = {
             n
-            for n in filter(lambda node: node.node not in all_used_vars,
-                            graph.all_var_nodes())
+            for n in filter(
+                lambda node: node.node not in all_used_vars,
+                graph.all_var_nodes(),
+            )
         }
         graph.safe_remove_nodes(all_unused_vars)
 
 
 class TransformForMobilePass(object):
-
     def __init__(self):
         """
         This pass is used to convert the frozen graph for paddle-mobile execution.
@@ -1416,13 +1576,14 @@ class TransformForMobilePass(object):
 
 
 class OutScaleForTrainingPass(object):
-
-    def __init__(self,
-                 scope=None,
-                 place=None,
-                 moving_rate=0.9,
-                 is_test=None,
-                 scale_dict=None):
+    def __init__(
+        self,
+        scope=None,
+        place=None,
+        moving_rate=0.9,
+        is_test=None,
+        scale_dict=None,
+    ):
         """
         This pass is used for calculating output scales of some operators.
         These output scales may be used by tensorRT or some other inference engines.
@@ -1449,48 +1610,61 @@ class OutScaleForTrainingPass(object):
         Args:
             graph(IrGraph): the target graph.
         """
-        assert isinstance(graph,
-                          IrGraph), 'graph must be the instance of IrGraph.'
+        assert isinstance(
+            graph, IrGraph
+        ), 'graph must be the instance of IrGraph.'
         if self._is_test is None:
             self._is_test = graph.is_test()
         target_ops = []
         for op in graph.all_op_nodes():
             if op.name() in self._teller_set:
                 target_ops.append(op)
-        with tqdm(total=len(target_ops),
-                  bar_format='Adding OutScale op:|{bar}| {n_fmt}/{total_fmt}',
-                  ncols=80) as t:
+        with tqdm(
+            total=len(target_ops),
+            bar_format='Adding OutScale op:|{bar}| {n_fmt}/{total_fmt}',
+            ncols=80,
+        ) as t:
             for op in target_ops:
                 for output_var_name in utils._get_op_output_var_names(op):
-                    in_node = graph._find_node_by_name(op.outputs,
-                                                       output_var_name)
-                    if in_node.dtype() not in \
-                        [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]:
+                    in_node = graph._find_node_by_name(
+                        op.outputs, output_var_name
+                    )
+                    if in_node.dtype() not in [
+                        core.VarDesc.VarType.FP64,
+                        core.VarDesc.VarType.FP32,
+                    ]:
                         continue
 
-                    data_type = 'float64' if in_node.dtype() \
-                        == core.VarDesc.VarType.FP64 else 'float32'
+                    data_type = (
+                        'float64'
+                        if in_node.dtype() == core.VarDesc.VarType.FP64
+                        else 'float32'
+                    )
                     try:
                         graph._find_node_by_name(
                             graph.all_var_nodes(),
-                            self._scale_name(in_node.name()))
+                            self._scale_name(in_node.name()),
+                        )
                         continue
                     except:
                         scale_node = graph.create_persistable_node(
                             name=self._scale_name(in_node.name()),
                             var_type=core.VarDesc.VarType.LOD_TENSOR,
                             shape=[1],
-                            var_dtype=in_node.dtype())
+                            var_dtype=in_node.dtype(),
+                        )
                         if self._scale_dict is not None:
                             try:
                                 scale_value = np.array(
-                                    [self._scale_dict[in_node.name()]])
+                                    [self._scale_dict[in_node.name()]]
+                                )
                             except:
                                 scale_value = np.ones([1], dtype=data_type)
                         else:
                             scale_value = np.ones([1], dtype=data_type)
-                    _init_var_node(scale_node, scale_value, self._scope,
-                                   self._place)
+                    _init_var_node(
+                        scale_node, scale_value, self._scope, self._place
+                    )
 
                     ins = {'X': in_node}
                     outs = {'OutScale': scale_node}
@@ -1499,22 +1673,32 @@ class OutScaleForTrainingPass(object):
                             name=unique_name.generate('scale_state@'),
                             var_type=core.VarDesc.VarType.LOD_TENSOR,
                             var_dtype=in_node.dtype(),
-                            shape=[1])
-                        _init_var_node(state_in_node,
-                                       np.ones([1], dtype=data_type),
-                                       self._scope, self._place)
+                            shape=[1],
+                        )
+                        _init_var_node(
+                            state_in_node,
+                            np.ones([1], dtype=data_type),
+                            self._scope,
+                            self._place,
+                        )
                         accum_in_node = graph.create_persistable_node(
                             name=unique_name.generate('scale_accum@'),
                             var_type=core.VarDesc.VarType.LOD_TENSOR,
                             var_dtype=in_node.dtype(),
-                            shape=[1])
-                        _init_var_node(accum_in_node,
-                                       np.ones([1], dtype=data_type),
-                                       self._scope, self._place)
+                            shape=[1],
+                        )
+                        _init_var_node(
+                            accum_in_node,
+                            np.ones([1], dtype=data_type),
+                            self._scope,
+                            self._place,
+                        )
                         state_out_node = graph.create_var_node_from_desc(
-                            state_in_node.var())
+                            state_in_node.var()
+                        )
                         accum_out_node = graph.create_var_node_from_desc(
-                            accum_in_node.var())
+                            accum_in_node.var()
+                        )
 
                         ins['InState'] = state_in_node
                         ins['InAccum'] = accum_in_node
@@ -1524,14 +1708,14 @@ class OutScaleForTrainingPass(object):
                     attrs = {
                         'moving_rate': self._moving_rate,
                         'is_test': self._is_test,
-                        'op_role':
-                        core.op_proto_and_checker_maker.OpRole.Forward
+                        'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
                     }
                     scale_op_node = graph.create_op_node(
                         op_type='moving_average_abs_max_scale',
                         attrs=attrs,
                         inputs=ins,
-                        outputs=outs)
+                        outputs=outs,
+                    )
 
                     next_op_node = None
                     if len(in_node.outputs) > 0:
@@ -1558,7 +1742,6 @@ class OutScaleForTrainingPass(object):
 
 
 class OutScaleForInferencePass(object):
-
     def __init__(self, scope=None):
         """
         This pass is used for setting output scales of some operators.
@@ -1578,34 +1761,45 @@ class OutScaleForInferencePass(object):
         Args:
             graph(IrGraph): the target graph.
         """
-        assert isinstance(graph,
-                          IrGraph), 'graph must be the instance of IrGraph.'
+        assert isinstance(
+            graph, IrGraph
+        ), 'graph must be the instance of IrGraph.'
         op_nodes = graph.all_op_nodes()
         for op_node in op_nodes:
             if op_node.name() in self._teller_set:
                 var_names = utils._get_op_output_var_names(op_node)
                 for var_name in var_names:
-                    in_node = graph._find_node_by_name(op_node.outputs,
-                                                       var_name)
-                    if in_node.dtype() not in \
-                        [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]:
+                    in_node = graph._find_node_by_name(
+                        op_node.outputs, var_name
+                    )
+                    if in_node.dtype() not in [
+                        core.VarDesc.VarType.FP64,
+                        core.VarDesc.VarType.FP32,
+                    ]:
                         continue
 
                     scale_name = self._scale_name(var_name)
                     scale_var = self._scope.find_var(scale_name)
-                    assert scale_var is not None, \
-                        "Can not find {} variable in the scope".format(scale_name)
+                    assert (
+                        scale_var is not None
+                    ), "Can not find {} variable in the scope".format(
+                        scale_name
+                    )
                     scale_value = np.array(scale_var.get_tensor())[0]
 
                     # For compatibility, we save output threshold by two methods.
                     op_node.op()._set_attr("out_threshold", float(scale_value))
 
                     argname_index = utils._get_output_name_index(
-                        op_node, var_name)
-                    assert argname_index is not None, \
+                        op_node, var_name
+                    )
+                    assert argname_index is not None, (
                         var_name + " is not the output of the op"
-                    op_node.op()._set_attr(argname_index[0] + str(argname_index[1]) \
-                        + "_threshold", float(scale_value))
+                    )
+                    op_node.op()._set_attr(
+                        argname_index[0] + str(argname_index[1]) + "_threshold",
+                        float(scale_value),
+                    )
                     op_node.op()._set_attr("with_quant_attr", True)
         graph.resolve_hazard()
         return graph
@@ -1626,16 +1820,18 @@ class AddQuantDequantPass(object):
     # To be compatible with PaddleSlim, not remove _activation_type for now
     _activation_type = ["relu", "relu6", "leaky_relu", "tanh", "swish"]
 
-    def __init__(self,
-                 scope=None,
-                 place=None,
-                 moving_rate=0.9,
-                 quant_bits=8,
-                 skip_pattern=["skip_quant"],
-                 quantizable_op_type=["elementwise_add", "pool2d"],
-                 is_full_quantized=False,
-                 is_test=None,
-                 scale_dict=None):
+    def __init__(
+        self,
+        scope=None,
+        place=None,
+        moving_rate=0.9,
+        quant_bits=8,
+        skip_pattern=["skip_quant"],
+        quantizable_op_type=["elementwise_add", "pool2d"],
+        is_full_quantized=False,
+        is_test=None,
+        scale_dict=None,
+    ):
         """
         Constructor.
 
@@ -1671,8 +1867,9 @@ class AddQuantDequantPass(object):
         else:
             self._quantizable_op_type = quantizable_op_type
             for op_type in quantizable_op_type:
-                assert op_type in utils._act_supported_quantizable_op_type, \
+                assert op_type in utils._act_supported_quantizable_op_type, (
                     op_type + " is not supported for quantization."
+                )
         self._quantizable_grad_op_type = [
             '%s_grad' % (op) for op in self._quantizable_op_type
         ]
@@ -1690,50 +1887,71 @@ class AddQuantDequantPass(object):
         Returns:
             None
         """
-        assert isinstance(graph,
-                          IrGraph), 'graph must be the instance of IrGraph.'
+        assert isinstance(
+            graph, IrGraph
+        ), 'graph must be the instance of IrGraph.'
         if self._is_test is None:
             self._is_test = graph.is_test()
         dequantized_vars_map = collections.OrderedDict()
 
         # Forward stage, insert quant_dequant op
         all_op_nodes = graph.all_op_nodes()
-        with tqdm(total=len(all_op_nodes),
-                  bar_format=
-                  'Adding quant activation op:|{bar}| {n_fmt}/{total_fmt}',
-                  ncols=80) as t:
+        with tqdm(
+            total=len(all_op_nodes),
+            bar_format='Adding quant activation op:|{bar}| {n_fmt}/{total_fmt}',
+            ncols=80,
+        ) as t:
             for op_node in all_op_nodes:
                 if op_node.name() in self._quantizable_op_type:
                     is_skip = False
                     if isinstance(self._skip_pattern, list):
-                        is_skip = op_node.op().has_attr("op_namescope") and \
-                                    any(pattern in op_node.op().attr("op_namescope") for pattern in self._skip_pattern)
+                        is_skip = op_node.op().has_attr("op_namescope") and any(
+                            pattern in op_node.op().attr("op_namescope")
+                            for pattern in self._skip_pattern
+                        )
                     elif isinstance(self._skip_pattern, str):
-                        is_skip = op_node.op().has_attr("op_namescope") and \
-                                    op_node.op().attr("op_namescope").find(self._skip_pattern) != -1
-                    is_quantized = op_node.op().has_attr("quantization_type") and \
-                        op_node.op().attr("quantization_type") == "qat_with_weight"
-                    if is_skip or is_quantized or \
-                        (not _is_input_all_not_persistable(graph, op_node)):
+                        is_skip = (
+                            op_node.op().has_attr("op_namescope")
+                            and op_node.op()
+                            .attr("op_namescope")
+                            .find(self._skip_pattern)
+                            != -1
+                        )
+                    is_quantized = (
+                        op_node.op().has_attr("quantization_type")
+                        and op_node.op().attr("quantization_type")
+                        == "qat_with_weight"
+                    )
+                    if (
+                        is_skip
+                        or is_quantized
+                        or (not _is_input_all_not_persistable(graph, op_node))
+                    ):
                         continue
 
-                    op_node.op()._set_attr("quantization_type",
-                                           "qat_without_weight")
+                    op_node.op()._set_attr(
+                        "quantization_type", "qat_without_weight"
+                    )
                     op_node.op()._set_attr("activation_bits", self._quant_bits)
                     op_node.op()._set_attr("with_quant_attr", True)
                     arg_names = utils._get_op_input_var_names(op_node)
                     for arg_name in arg_names:
                         in_node = graph._find_node_by_name(
-                            op_node.inputs, arg_name)
+                            op_node.inputs, arg_name
+                        )
                         if arg_name in dequantized_vars_map:
                             quant_var_node = dequantized_vars_map[arg_name]
                         else:
-                            quant_var_node, _ = \
-                                self._inser_quant_dequant_moving_average_abs_max_op(
-                                graph, in_node, self._quant_bits)
+                            (
+                                quant_var_node,
+                                _,
+                            ) = self._inser_quant_dequant_moving_average_abs_max_op(
+                                graph, in_node, self._quant_bits
+                            )
                             dequantized_vars_map[arg_name] = quant_var_node
-                        graph.update_input_link(in_node, quant_var_node,
-                                                op_node)
+                        graph.update_input_link(
+                            in_node, quant_var_node, op_node
+                        )
             t.update()
 
         # Backward stage, update input link
@@ -1742,35 +1960,45 @@ class AddQuantDequantPass(object):
                 for input_name in op_node.input_arg_names():
                     if input_name in dequantized_vars_map:
                         in_node = graph._find_node_by_name(
-                            op_node.inputs, input_name)
+                            op_node.inputs, input_name
+                        )
                         dequant_var_node = dequantized_vars_map[input_name]
-                        graph.update_input_link(in_node, dequant_var_node,
-                                                op_node)
+                        graph.update_input_link(
+                            in_node, dequant_var_node, op_node
+                        )
 
         graph.resolve_hazard()
         return graph
 
-    def _inser_quant_dequant_moving_average_abs_max_op(self, graph, var_node,
-                                                       quant_bits):
-        """Insert fake_quantize_dequantize_moving_average_abs_max op.
-        """
-        quant_var_node = graph.create_var_node(name="{}.quant_dequant".format(
-            var_node.name()),
-                                               var_type=var_node.type(),
-                                               shape=var_node.shape(),
-                                               var_dtype=var_node.dtype())
+    def _inser_quant_dequant_moving_average_abs_max_op(
+        self, graph, var_node, quant_bits
+    ):
+        """Insert fake_quantize_dequantize_moving_average_abs_max op."""
+        quant_var_node = graph.create_var_node(
+            name="{}.quant_dequant".format(var_node.name()),
+            var_type=var_node.type(),
+            shape=var_node.shape(),
+            var_dtype=var_node.dtype(),
+        )
         scale_name = "{}.quant_dequant@scale".format(var_node.name())
-        data_type = 'float64' if var_node.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
+        data_type = (
+            'float64'
+            if var_node.dtype() == core.VarDesc.VarType.FP64
+            else 'float32'
+        )
         try:
-            if self._scale_dict is not None and var_node.name(
-            ) in self._scale_dict.keys():
-                scale_value = np.array([self._scale_dict[var_node.name()]],
-                                       dtype=data_type)
+            if (
+                self._scale_dict is not None
+                and var_node.name() in self._scale_dict.keys()
+            ):
+                scale_value = np.array(
+                    [self._scale_dict[var_node.name()]], dtype=data_type
+                )
             else:
                 scale_value = np.array(
                     self._scope.find_var(scale_name).get_tensor(),
-                    dtype=data_type)
+                    dtype=data_type,
+                )
         except:
             scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
 
@@ -1778,7 +2006,8 @@ class AddQuantDequantPass(object):
             name="{}.quant_dequant@scale".format(var_node.name()),
             var_type=core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
-            var_dtype=var_node.dtype())
+            var_dtype=var_node.dtype(),
+        )
 
         _init_var_node(scale_in_node, scale_value, self._scope, self._place)
         scale_out_node = graph.create_var_node_from_desc(scale_in_node.var())
@@ -1789,22 +2018,37 @@ class AddQuantDequantPass(object):
                 name=unique_name.generate('quant_dequant.state'),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 var_dtype=var_node.dtype(),
-                shape=[1])
-            data_type = 'float64' if var_node.dtype(
-            ) == core.VarDesc.VarType.FP64 else 'float32'
-            _init_var_node(state_in_node, np.ones([1], dtype=data_type),
-                           self._scope, self._place)
+                shape=[1],
+            )
+            data_type = (
+                'float64'
+                if var_node.dtype() == core.VarDesc.VarType.FP64
+                else 'float32'
+            )
+            _init_var_node(
+                state_in_node,
+                np.ones([1], dtype=data_type),
+                self._scope,
+                self._place,
+            )
             accum_in_node = graph.create_persistable_node(
                 name=unique_name.generate('quant_dequant.accum'),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 var_dtype=var_node.dtype(),
-                shape=[1])
-            _init_var_node(accum_in_node, np.ones([1], dtype=data_type),
-                           self._scope, self._place)
+                shape=[1],
+            )
+            _init_var_node(
+                accum_in_node,
+                np.ones([1], dtype=data_type),
+                self._scope,
+                self._place,
+            )
             state_out_node = graph.create_var_node_from_desc(
-                state_in_node.var())
+                state_in_node.var()
+            )
             accum_out_node = graph.create_var_node_from_desc(
-                accum_in_node.var())
+                accum_in_node.var()
+            )
 
             ins['InState'] = state_in_node
             ins['InAccum'] = accum_in_node
@@ -1815,14 +2059,15 @@ class AddQuantDequantPass(object):
             'bit_length': quant_bits,
             'moving_rate': self._moving_rate,
             'is_test': self._is_test,
-            'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+            'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
         }
 
         quant_op_node = graph.create_op_node(
             op_type='fake_quantize_dequantize_moving_average_abs_max',
             attrs=attrs,
             inputs=ins,
-            outputs=outs)
+            outputs=outs,
+        )
 
         graph.link_to(var_node, quant_op_node)
         graph.link_to(scale_in_node, quant_op_node)
@@ -1856,15 +2101,17 @@ class InsertQuantizeLinear(object):
         scale_dict(dict, optional): calibration ranges of tensors output.
     """
 
-    def __init__(self,
-                 place,
-                 scope,
-                 quant_bits=8,
-                 quant_axis=-1,
-                 channel_wise=False,
-                 moving_rate=0.9,
-                 is_test=True,
-                 scale_dict=None):
+    def __init__(
+        self,
+        place,
+        scope,
+        quant_bits=8,
+        quant_axis=-1,
+        channel_wise=False,
+        moving_rate=0.9,
+        is_test=True,
+        scale_dict=None,
+    ):
         self._place = place
         self._scope = scope
         self.quant_bits = quant_bits
@@ -1881,32 +2128,42 @@ class InsertQuantizeLinear(object):
             name=self._quantized_var_name(var_name),
             var_type=var_node.type(),
             shape=var_node.shape(),
-            var_dtype=var_node.dtype())
-        data_type = 'float64' if var_node.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
+            var_dtype=var_node.dtype(),
+        )
+        data_type = (
+            'float64'
+            if var_node.dtype() == core.VarDesc.VarType.FP64
+            else 'float32'
+        )
         scale_name = self._quantized_scale_name(var_name)
         if self.channel_wise:
             scale_var_shape = var_node.shape()[self.quant_axis]
             scale_var_type = core.VarDesc.VarType.LOD_TENSOR
-            init_scale_value = np.ones(scale_var_shape,
-                                       dtype=data_type) * _SCALE_DEFAULT_VALUE
+            init_scale_value = (
+                np.ones(scale_var_shape, dtype=data_type) * _SCALE_DEFAULT_VALUE
+            )
         else:
             scale_var_shape = 1
             scale_var_type = var_node.type()
             init_scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
 
-        if self._scale_dict is not None and var_node.name(
-        ) in self._scale_dict.keys():
-            init_scale_value = np.array([self._scale_dict[var_node.name()]],
-                                        dtype=data_type)
+        if (
+            self._scale_dict is not None
+            and var_node.name() in self._scale_dict.keys()
+        ):
+            init_scale_value = np.array(
+                [self._scale_dict[var_node.name()]], dtype=data_type
+            )
 
         scale_var_node = graph.create_persistable_node(
             name=scale_name,
             var_type=scale_var_type,
             shape=[scale_var_shape],
-            var_dtype=var_node.dtype())
-        _init_var_node(scale_var_node, init_scale_value, self._scope,
-                       self._place)
+            var_dtype=var_node.dtype(),
+        )
+        _init_var_node(
+            scale_var_node, init_scale_value, self._scope, self._place
+        )
 
         zero_point_node = None
         if zero_point_node is None:
@@ -1914,10 +2171,14 @@ class InsertQuantizeLinear(object):
                 name=self._zero_point_name(quant_var_node.name()),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 shape=scale_var_node.shape(),
-                var_dtype=core.VarDesc.VarType.INT32)
-            _init_var_node(zero_point_node,
-                           np.zeros(scale_var_node.shape(), dtype="int32"),
-                           self._scope, self._place)
+                var_dtype=core.VarDesc.VarType.INT32,
+            )
+            _init_var_node(
+                zero_point_node,
+                np.zeros(scale_var_node.shape(), dtype="int32"),
+                self._scope,
+                self._place,
+            )
 
         inputs = {"X": var_node, "Scale": scale_var_node}
         if zero_point_node is not None:
@@ -1928,27 +2189,43 @@ class InsertQuantizeLinear(object):
         outputs = {"Y": quant_var_node}
         if not self._is_test:
             scale_out_node = graph.create_var_node_from_desc(
-                scale_var_node.var())
+                scale_var_node.var()
+            )
             state_in_node = graph.create_persistable_node(
                 name=unique_name.generate('state'),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 var_dtype=var_node.dtype(),
-                shape=[1])
-            data_type = 'float64' if var_node.dtype(
-            ) == core.VarDesc.VarType.FP64 else 'float32'
-            _init_var_node(state_in_node, np.ones([1], dtype=data_type),
-                           self._scope, self._place)
+                shape=[1],
+            )
+            data_type = (
+                'float64'
+                if var_node.dtype() == core.VarDesc.VarType.FP64
+                else 'float32'
+            )
+            _init_var_node(
+                state_in_node,
+                np.ones([1], dtype=data_type),
+                self._scope,
+                self._place,
+            )
             accum_in_node = graph.create_persistable_node(
                 name=unique_name.generate('accum'),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 var_dtype=var_node.dtype(),
-                shape=[1])
-            _init_var_node(accum_in_node, np.ones([1], dtype=data_type),
-                           self._scope, self._place)
+                shape=[1],
+            )
+            _init_var_node(
+                accum_in_node,
+                np.ones([1], dtype=data_type),
+                self._scope,
+                self._place,
+            )
             state_out_node = graph.create_var_node_from_desc(
-                state_in_node.var())
+                state_in_node.var()
+            )
             accum_out_node = graph.create_var_node_from_desc(
-                accum_in_node.var())
+                accum_in_node.var()
+            )
 
             outputs["OutScale"] = scale_out_node
             inputs['InState'] = state_in_node
@@ -1958,10 +2235,12 @@ class InsertQuantizeLinear(object):
             attrs["is_test"] = self._is_test
             attrs['moving_rate'] = self._moving_rate
 
-        quant_op_node = graph.create_op_node(op_type="quantize_linear",
-                                             attrs=attrs,
-                                             inputs=inputs,
-                                             outputs=outputs)
+        quant_op_node = graph.create_op_node(
+            op_type="quantize_linear",
+            attrs=attrs,
+            inputs=inputs,
+            outputs=outputs,
+        )
 
         graph.link_to(var_node, quant_op_node)
         graph.link_to(scale_var_node, quant_op_node)
@@ -1983,7 +2262,8 @@ class InsertQuantizeLinear(object):
             name=self._dequantized_var_name(var_node.name()),
             var_type=var_node.type(),
             shape=var_node.shape(),
-            var_dtype=var_node.dtype())
+            var_dtype=var_node.dtype(),
+        )
 
         zero_point_node = None
         if zero_point_node is None:
@@ -1991,10 +2271,14 @@ class InsertQuantizeLinear(object):
                 name=self._zero_point_name(dequant_var_node.name()),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 shape=scale_var_node.shape(),
-                var_dtype=core.VarDesc.VarType.INT32)
-            _init_var_node(zero_point_node,
-                           np.zeros(scale_var_node.shape(), dtype="int32"),
-                           self._scope, self._place)
+                var_dtype=core.VarDesc.VarType.INT32,
+            )
+            _init_var_node(
+                zero_point_node,
+                np.zeros(scale_var_node.shape(), dtype="int32"),
+                self._scope,
+                self._place,
+            )
 
         inputs = {"X": var_node, "Scale": scale_var_node}
         if zero_point_node is not None:
@@ -2003,10 +2287,12 @@ class InsertQuantizeLinear(object):
         attrs = {"quant_axis": self.quant_axis, "bit_length": self.quant_bits}
         attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
 
-        quant_op_node = graph.create_op_node(op_type="dequantize_linear",
-                                             attrs=attrs,
-                                             inputs=inputs,
-                                             outputs={"Y": dequant_var_node})
+        quant_op_node = graph.create_op_node(
+            op_type="dequantize_linear",
+            attrs=attrs,
+            inputs=inputs,
+            outputs={"Y": dequant_var_node},
+        )
 
         graph.link_to(var_node, quant_op_node)
         graph.link_to(scale_var_node, quant_op_node)
@@ -2046,24 +2332,26 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
     the quantized ops's inputs. It is used in the new format of quantization.
     """
 
-    def __init__(self,
-                 scope=None,
-                 place=None,
-                 weight_bits=8,
-                 activation_bits=8,
-                 activation_quantize_type='abs_max',
-                 weight_quantize_type='abs_max',
-                 window_size=10000,
-                 moving_rate=0.9,
-                 skip_pattern=['skip_quant'],
-                 quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'],
-                 weight_quantize_func=None,
-                 act_quantize_func=None,
-                 weight_preprocess_func=None,
-                 act_preprocess_func=None,
-                 optimizer_func=None,
-                 executor=None,
-                 is_test=None):
+    def __init__(
+        self,
+        scope=None,
+        place=None,
+        weight_bits=8,
+        activation_bits=8,
+        activation_quantize_type='abs_max',
+        weight_quantize_type='abs_max',
+        window_size=10000,
+        moving_rate=0.9,
+        skip_pattern=['skip_quant'],
+        quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'],
+        weight_quantize_func=None,
+        act_quantize_func=None,
+        weight_preprocess_func=None,
+        act_preprocess_func=None,
+        optimizer_func=None,
+        executor=None,
+        is_test=None,
+    ):
         r"""
         Args:
             scope(paddle.Scope): When activation use 'range_abs_max' as the quantize
@@ -2149,21 +2437,26 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         self._optimizer = optimizer_func
         self._exe = executor
         quant_type = [
-            'abs_max', 'channel_wise_abs_max', 'range_abs_max',
-            'moving_average_abs_max'
+            'abs_max',
+            'channel_wise_abs_max',
+            'range_abs_max',
+            'moving_average_abs_max',
         ]
-        assert activation_quantize_type != 'channel_wise_abs_max', \
-            "The activation quantization type does not support 'channel_wise_abs_max'."
+        assert (
+            activation_quantize_type != 'channel_wise_abs_max'
+        ), "The activation quantization type does not support 'channel_wise_abs_max'."
         if activation_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown activation_quantize_type : '%s'. It can only be "
-                "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'." %
-                (str(activation_quantize_type)))
+                "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'."
+                % (str(activation_quantize_type))
+            )
         if weight_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown weight_quantize_type: '%s'. It can only be "
                 "'abs_max' or 'channel_wise_abs_max' or 'range_abs_max' "
-                "or 'moving_average_abs_max'." % (str(weight_quantize_type)))
+                "or 'moving_average_abs_max'." % (str(weight_quantize_type))
+            )
 
         self._activation_quantize_type = activation_quantize_type
         self._weight_quantize_type = weight_quantize_type
@@ -2172,8 +2465,9 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
 
         self._quantizable_ops = quantizable_op_type
         for op in self._quantizable_ops:
-            assert op in utils._weight_supported_quantizable_op_type, \
+            assert op in utils._weight_supported_quantizable_op_type, (
                 op + " is not supported for quantization."
+            )
         self._quantizable_grad_ops = [
             '%s_grad' % (op) for op in self._quantizable_ops
         ]
@@ -2191,13 +2485,16 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
     def _quant_preprocess(self, op_node):
         user_skipped = False
         if isinstance(self._skip_pattern, list):
-            user_skipped = op_node.op().has_attr("op_namescope") and \
-                            any(pattern in op_node.op().attr("op_namescope") \
-                                for pattern in self._skip_pattern)
+            user_skipped = op_node.op().has_attr("op_namescope") and any(
+                pattern in op_node.op().attr("op_namescope")
+                for pattern in self._skip_pattern
+            )
         elif isinstance(self._skip_pattern, str):
-            user_skipped = op_node.op().has_attr("op_namescope") and \
-                            op_node.op().attr("op_namescope").find(
-                                self._skip_pattern) != -1
+            user_skipped = (
+                op_node.op().has_attr("op_namescope")
+                and op_node.op().attr("op_namescope").find(self._skip_pattern)
+                != -1
+            )
 
         if user_skipped:
             op_node.op()._set_attr("skip_quant", True)
@@ -2215,8 +2512,9 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 name = var_node.name()
                 if name in self.processed_vars:
                     continue
-                is_weight = True if var_node.name() in self.persistable_vars \
-                    else False
+                is_weight = (
+                    True if var_node.name() in self.persistable_vars else False
+                )
 
                 # if var node is weight and weight_preprocess_func is not None,
                 # will insert weight preprocess func
@@ -2225,13 +2523,13 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 # will insert activation preprocess func
                 # to preorocess activation before quantization
                 if is_weight and self._weight_preprocess_func is not None:
-                    var_node = self._insert_func(graph,
-                                                 self._weight_preprocess_func,
-                                                 var_node, op)
+                    var_node = self._insert_func(
+                        graph, self._weight_preprocess_func, var_node, op
+                    )
                 elif not is_weight and self._act_preprocess_func is not None:
-                    var_node = self._insert_func(graph,
-                                                 self._act_preprocess_func,
-                                                 var_node, op)
+                    var_node = self._insert_func(
+                        graph, self._act_preprocess_func, var_node, op
+                    )
 
                 # if var node is weight and weight_quantize_func is not None,
                 # will insert weight quantize func to quantize and dequantize weight
@@ -2239,26 +2537,36 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                 # will insert act quantize func to quantize and dequantize activation
                 if is_weight and self._weight_quantize_func is not None:
                     target_out_node = self._insert_func(
-                        graph, self._weight_quantize_func, var_node, op)
+                        graph, self._weight_quantize_func, var_node, op
+                    )
                     self.processed_vars.append(name)
                     continue
                 elif not is_weight and self._act_quantize_func is not None:
-                    target_out_node = self._insert_func(graph,
-                                                        self._act_quantize_func,
-                                                        var_node, op)
+                    target_out_node = self._insert_func(
+                        graph, self._act_quantize_func, var_node, op
+                    )
                     self.processed_vars.append(name)
                     continue
 
-                quant_bits = self._weight_bits if var_node.name() in self.persistable_vars \
+                quant_bits = (
+                    self._weight_bits
+                    if var_node.name() in self.persistable_vars
                     else self._activation_bits
-                quant_type = self._weight_quantize_type if is_weight \
+                )
+                quant_type = (
+                    self._weight_quantize_type
+                    if is_weight
                     else self._activation_quantize_type
+                )
                 quant_axis = -1
                 channel_wise = False
                 if quant_type == 'channel_wise_abs_max':  # Weight quantization
                     channel_wise = True
-                    quant_axis = 1 if op.name() in \
-                        utils._channelwise_quant_axis1_ops else 0
+                    quant_axis = (
+                        1
+                        if op.name() in utils._channelwise_quant_axis1_ops
+                        else 0
+                    )
                 insert_quant_pass = InsertQuantizeLinear(
                     self._place,
                     self._scope,
@@ -2266,11 +2574,17 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
                     quant_axis=quant_axis,
                     channel_wise=channel_wise,
                     moving_rate=self._moving_rate,
-                    is_test=self._is_test)
-                quant_var_node, scale_var_node = insert_quant_pass.insert_quant_op(
-                    graph, var_node, var_name=name)
+                    is_test=self._is_test,
+                )
+                (
+                    quant_var_node,
+                    scale_var_node,
+                ) = insert_quant_pass.insert_quant_op(
+                    graph, var_node, var_name=name
+                )
                 dequant_var_node = insert_quant_pass.insert_dequant_op(
-                    graph, quant_var_node, scale_var_node)
+                    graph, quant_var_node, scale_var_node
+                )
 
                 self.dequantized_vars[name] = dequant_var_node
             graph.update_input_link(var_node, dequant_var_node, op)
@@ -2304,8 +2618,9 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         Returns:
             None
         """
-        assert isinstance(graph,
-                          IrGraph), 'graph must be the instance of IrGraph.'
+        assert isinstance(
+            graph, IrGraph
+        ), 'graph must be the instance of IrGraph.'
         if self._is_test is None:
             self._is_test = graph.is_test()
 
@@ -2317,21 +2632,25 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         # Do the preproccess of quantization, such as skipping some ops
         # for not being quantized.
         for op in ops:
-            if op.name() in self._quantizable_ops or \
-                    op.name() in self._quantizable_grad_ops:
+            if (
+                op.name() in self._quantizable_ops
+                or op.name() in self._quantizable_grad_ops
+            ):
                 self._quant_preprocess(op)
         # Insert mapping table to solve the problem in saving inference model.
         graph.out_node_mapping_table = dict()
         # The process of _transform_forward and _transform_backward is needed in two for loops.
         # The loop for transforming the forward graph:
-        with tqdm(total=len(ops),
-                  bar_format=
-                  'Adding quant op with weight:|{bar}| {n_fmt}/{total_fmt}',
-                  ncols=80) as t:
+        with tqdm(
+            total=len(ops),
+            bar_format='Adding quant op with weight:|{bar}| {n_fmt}/{total_fmt}',
+            ncols=80,
+        ) as t:
             for op in ops:
                 if op.name() in self._quantizable_ops:
-                    if not self._is_skip_quant(graph,
-                                               op) and self._has_weight(op):
+                    if not self._is_skip_quant(graph, op) and self._has_weight(
+                        op
+                    ):
                         self._transform_forward(graph, op)
                 t.update()
         # The loop for renaming the inputs of backward op.
@@ -2350,16 +2669,18 @@ class AddQuantDequantPassV2(object):
     # To be compatible with PaddleSlim, not remove _activation_type for now
     _activation_type = ["relu", "relu6", "leaky_relu", "tanh", "swish"]
 
-    def __init__(self,
-                 scope=None,
-                 place=None,
-                 moving_rate=0.9,
-                 quant_bits=8,
-                 skip_pattern=["skip_quant"],
-                 quantizable_op_type=["elementwise_add", "pool2d"],
-                 is_full_quantized=False,
-                 is_test=None,
-                 scale_dict=None):
+    def __init__(
+        self,
+        scope=None,
+        place=None,
+        moving_rate=0.9,
+        quant_bits=8,
+        skip_pattern=["skip_quant"],
+        quantizable_op_type=["elementwise_add", "pool2d"],
+        is_full_quantized=False,
+        is_test=None,
+        scale_dict=None,
+    ):
         """
         Args:
             scope(paddle.Scope): The scope is used to initialize these new parameters.
@@ -2409,8 +2730,9 @@ class AddQuantDequantPassV2(object):
         else:
             self._quantizable_op_type = quantizable_op_type
             for op_type in quantizable_op_type:
-                assert op_type in utils._act_supported_quantizable_op_type, \
+                assert op_type in utils._act_supported_quantizable_op_type, (
                     op_type + " is not supported for quantization."
+                )
         self._quantizable_grad_op_type = [
             '%s_grad' % (op) for op in self._quantizable_op_type
         ]
@@ -2429,8 +2751,9 @@ class AddQuantDequantPassV2(object):
         Returns:
             None
         """
-        assert isinstance(graph,
-                          IrGraph), 'graph must be the instance of IrGraph.'
+        assert isinstance(
+            graph, IrGraph
+        ), 'graph must be the instance of IrGraph.'
         if self._is_test is None:
             self._is_test = graph.is_test()
         dequantized_vars_map = collections.OrderedDict()
@@ -2441,28 +2764,40 @@ class AddQuantDequantPassV2(object):
 
         # Forward stage, insert quant_dequant op
         all_op_nodes = graph.all_op_nodes()
-        with tqdm(total=len(all_op_nodes),
-                  bar_format=
-                  'Adding quant activation op:|{bar}| {n_fmt}/{total_fmt}',
-                  ncols=80) as t:
+        with tqdm(
+            total=len(all_op_nodes),
+            bar_format='Adding quant activation op:|{bar}| {n_fmt}/{total_fmt}',
+            ncols=80,
+        ) as t:
             for op_node in all_op_nodes:
                 if op_node.name() in self._quantizable_op_type:
                     is_skip = False
                     if isinstance(self._skip_pattern, list):
-                        is_skip = op_node.op().has_attr("op_namescope") and \
-                                    any(pattern in op_node.op().attr("op_namescope") for pattern in self._skip_pattern)
+                        is_skip = op_node.op().has_attr("op_namescope") and any(
+                            pattern in op_node.op().attr("op_namescope")
+                            for pattern in self._skip_pattern
+                        )
                     elif isinstance(self._skip_pattern, str):
-                        is_skip = op_node.op().has_attr("op_namescope") and \
-                                    op_node.op().attr("op_namescope").find(self._skip_pattern) != -1
-                    is_quantized = op_node.op().has_attr("quantization_type") and \
-                        op_node.op().attr("quantization_type") == "qat_with_weight"
+                        is_skip = (
+                            op_node.op().has_attr("op_namescope")
+                            and op_node.op()
+                            .attr("op_namescope")
+                            .find(self._skip_pattern)
+                            != -1
+                        )
+                    is_quantized = (
+                        op_node.op().has_attr("quantization_type")
+                        and op_node.op().attr("quantization_type")
+                        == "qat_with_weight"
+                    )
                     if is_skip or is_quantized:
                         continue
 
                     arg_names = utils._get_op_input_var_names(op_node)
                     for arg_name in arg_names:
                         in_node = graph._find_node_by_name(
-                            op_node.inputs, arg_name)
+                            op_node.inputs, arg_name
+                        )
                         if in_node.persistable():
                             continue
                         if arg_name in dequantized_vars_map:
@@ -2476,14 +2811,23 @@ class AddQuantDequantPassV2(object):
                                 channel_wise=False,
                                 moving_rate=self._moving_rate,
                                 is_test=self._is_test,
-                                scale_dict=self._scale_dict)
-                            quant_var_node, scale_var_node = insert_quant_pass.insert_quant_op(
-                                graph, in_node)
-                            dequant_var_node = insert_quant_pass.insert_dequant_op(
-                                graph, quant_var_node, scale_var_node)
+                                scale_dict=self._scale_dict,
+                            )
+                            (
+                                quant_var_node,
+                                scale_var_node,
+                            ) = insert_quant_pass.insert_quant_op(
+                                graph, in_node
+                            )
+                            dequant_var_node = (
+                                insert_quant_pass.insert_dequant_op(
+                                    graph, quant_var_node, scale_var_node
+                                )
+                            )
                             dequantized_vars_map[arg_name] = dequant_var_node
-                        graph.update_input_link(in_node, dequant_var_node,
-                                                op_node)
+                        graph.update_input_link(
+                            in_node, dequant_var_node, op_node
+                        )
                 t.update()
 
         # Backward stage, update input link
@@ -2492,10 +2836,12 @@ class AddQuantDequantPassV2(object):
                 for input_name in op_node.input_arg_names():
                     if input_name in dequantized_vars_map:
                         in_node = graph._find_node_by_name(
-                            op_node.inputs, input_name)
+                            op_node.inputs, input_name
+                        )
                         dequant_var_node = dequantized_vars_map[input_name]
-                        graph.update_input_link(in_node, dequant_var_node,
-                                                op_node)
+                        graph.update_input_link(
+                            in_node, dequant_var_node, op_node
+                        )
 
         return graph
 
@@ -2536,13 +2882,16 @@ class ReplaceFakeQuantDequantPass(object):
         assert self._place != None, "place must not be None."
 
     def apply(self, graph):
-        assert isinstance(graph,
-                          IrGraph), 'graph must be the instance of IrGraph.'
+        assert isinstance(
+            graph, IrGraph
+        ), 'graph must be the instance of IrGraph.'
         fake_quant_dequant_ops = []
 
         for op in graph.all_op_nodes():
-            if op.name() in _fake_quant_dequant_op_list or op.name(
-            ) == "moving_average_abs_max_scale":
+            if (
+                op.name() in _fake_quant_dequant_op_list
+                or op.name() == "moving_average_abs_max_scale"
+            ):
                 fake_quant_dequant_ops.append(op)
 
         for _op in fake_quant_dequant_ops:
@@ -2555,13 +2904,18 @@ class ReplaceFakeQuantDequantPass(object):
     def _replace_op(self, graph, op):
         x_node = graph._find_node_by_name(op.inputs, op.input("X")[0])
         out_node = graph._find_node_by_name(op.outputs, op.output("Out")[0])
-        scale_node = graph._find_node_by_name(op.outputs,
-                                              op.output("OutScale")[0])
+        scale_node = graph._find_node_by_name(
+            op.outputs, op.output("OutScale")[0]
+        )
 
-        quant_axis = op.op().attr("quant_axis") if op.op().has_attr(
-            "quant_axis") else -1
-        bit_length = op.op().attr("bit_length") if op.op().has_attr(
-            "bit_length") else self._quant_bits
+        quant_axis = (
+            op.op().attr("quant_axis") if op.op().has_attr("quant_axis") else -1
+        )
+        bit_length = (
+            op.op().attr("bit_length")
+            if op.op().has_attr("bit_length")
+            else self._quant_bits
+        )
 
         zero_point_node = None
         quanted_node = x_node
@@ -2570,43 +2924,46 @@ class ReplaceFakeQuantDequantPass(object):
                 name=self._zero_point_name(quanted_node.name()),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 shape=scale_node.shape(),
-                var_dtype=core.VarDesc.VarType.INT32)
-            _init_var_node(zero_point_node,
-                           np.zeros(scale_node.shape(), dtype="int32"),
-                           self._scope, self._place)
+                var_dtype=core.VarDesc.VarType.INT32,
+            )
+            _init_var_node(
+                zero_point_node,
+                np.zeros(scale_node.shape(), dtype="int32"),
+                self._scope,
+                self._place,
+            )
 
-        quant_var_node = graph.create_var_node(name=self._quantized_var_name(
-            x_node.name()),
-                                               var_type=x_node.type(),
-                                               shape=x_node.shape(),
-                                               var_dtype=x_node.dtype())
-        quant_op_node = graph.create_op_node(op_type="quantize_linear",
-                                             attrs={
-                                                 "quant_axis": quant_axis,
-                                                 "bit_length": bit_length
-                                             },
-                                             inputs={
-                                                 "X": x_node,
-                                                 "Scale": scale_node,
-                                                 "ZeroPoint": zero_point_node
-                                             },
-                                             outputs={"Y": quant_var_node})
+        quant_var_node = graph.create_var_node(
+            name=self._quantized_var_name(x_node.name()),
+            var_type=x_node.type(),
+            shape=x_node.shape(),
+            var_dtype=x_node.dtype(),
+        )
+        quant_op_node = graph.create_op_node(
+            op_type="quantize_linear",
+            attrs={"quant_axis": quant_axis, "bit_length": bit_length},
+            inputs={
+                "X": x_node,
+                "Scale": scale_node,
+                "ZeroPoint": zero_point_node,
+            },
+            outputs={"Y": quant_var_node},
+        )
         graph.link_to(x_node, quant_op_node)
         graph.link_to(scale_node, quant_op_node)
         if zero_point_node is not None:
             graph.link_to(zero_point_node, quant_op_node)
         graph.link_to(quant_op_node, quant_var_node)
-        dequant_op_node = graph.create_op_node(op_type="dequantize_linear",
-                                               attrs={
-                                                   "quant_axis": quant_axis,
-                                                   "bit_length": bit_length
-                                               },
-                                               inputs={
-                                                   "X": quant_var_node,
-                                                   "Scale": scale_node,
-                                                   "ZeroPoint": zero_point_node
-                                               },
-                                               outputs={"Y": out_node})
+        dequant_op_node = graph.create_op_node(
+            op_type="dequantize_linear",
+            attrs={"quant_axis": quant_axis, "bit_length": bit_length},
+            inputs={
+                "X": quant_var_node,
+                "Scale": scale_node,
+                "ZeroPoint": zero_point_node,
+            },
+            outputs={"Y": out_node},
+        )
         graph.link_to(quant_var_node, dequant_op_node)
         graph.link_to(scale_node, dequant_op_node)
         if zero_point_node is not None:
@@ -2657,12 +3014,14 @@ class QuantWeightPass(object):
             quant_weight_pass.apply(graph)
     """
 
-    def __init__(self,
-                 scope,
-                 place,
-                 bias_correction=False,
-                 quant_bits=8,
-                 save_int_weight=True):
+    def __init__(
+        self,
+        scope,
+        place,
+        bias_correction=False,
+        quant_bits=8,
+        save_int_weight=True,
+    ):
         self._place = _get_paddle_place(place)
         self._scope = scope
         self._bias_correction = bias_correction
@@ -2672,8 +3031,9 @@ class QuantWeightPass(object):
         assert self._place != None, "place must not be None."
 
     def apply(self, graph):
-        assert isinstance(graph,
-                          IrGraph), 'graph must be the instance of IrGraph.'
+        assert isinstance(
+            graph, IrGraph
+        ), 'graph must be the instance of IrGraph.'
         fake_quant_ops_for_weight = []
 
         fake_quant_ops = [
@@ -2682,17 +3042,21 @@ class QuantWeightPass(object):
         for _op in fake_quant_ops:
             x_node = graph._find_node_by_name(_op.inputs, _op.input("X")[0])
             if x_node.persistable():
-                scale_node = graph._find_node_by_name(_op.inputs,
-                                                      _op.input("Scale")[0])
+                scale_node = graph._find_node_by_name(
+                    _op.inputs, _op.input("Scale")[0]
+                )
                 zero_point_node = graph._find_node_by_name(
-                    _op.inputs,
-                    _op.input("ZeroPoint")[0])
-                out_node = graph._find_node_by_name(_op.outputs,
-                                                    _op.output("Y")[0])
+                    _op.inputs, _op.input("ZeroPoint")[0]
+                )
+                out_node = graph._find_node_by_name(
+                    _op.outputs, _op.output("Y")[0]
+                )
 
                 scale_v = self._load_var(scale_node.name())
-                assert scale_v.ndim in [1, 2
-                                        ], "the dim of scale_v should be 1 or 2"
+                assert scale_v.ndim in [
+                    1,
+                    2,
+                ], "the dim of scale_v should be 1 or 2"
                 if scale_v.ndim == 2:
                     scale_v = scale_v[0]
                 if scale_v.size == 1 and _op.name() == 'abs_max':
@@ -2702,24 +3066,28 @@ class QuantWeightPass(object):
                 param_v = self._load_var(x_node.name())
                 quant_axis = _op.op().attr("quant_axis")
                 bits_length = _op.op().attr("bit_length")
-                quantized_param_v = utils.quant_tensor(param_v.copy(),
-                                                       scale_v,
-                                                       quant_axis,
-                                                       bits_length,
-                                                       onnx_format=True)
+                quantized_param_v = utils.quant_tensor(
+                    param_v.copy(),
+                    scale_v,
+                    quant_axis,
+                    bits_length,
+                    onnx_format=True,
+                )
                 if self._bias_correction == True:
                     quantized_param_v = utils.bias_correction_w(
                         param_v,
                         quantized_param_v,
                         scale_v,
                         quant_axis,
-                        weight_bits=bits_length)
+                        weight_bits=bits_length,
+                    )
                 if self._save_int_weight:
                     # cast weight type to int
                     if self._quant_bits == 8:
                         save_weight_dtype = np.int8
                     quantized_param_v = quantized_param_v.astype(
-                        save_weight_dtype)
+                        save_weight_dtype
+                    )
                 self._restore_var(x_node.name(), quantized_param_v)
 
                 for next_op_node in out_node.outputs:
@@ -2739,8 +3107,10 @@ class QuantWeightPass(object):
         all_used_vars = {n.node for n in all_used_vars}
         all_unused_vars = {
             n
-            for n in filter(lambda node: node.node not in all_used_vars,
-                            graph.all_var_nodes())
+            for n in filter(
+                lambda node: node.node not in all_used_vars,
+                graph.all_var_nodes(),
+            )
         }
         graph.safe_remove_nodes(all_unused_vars)
 
@@ -2775,24 +3145,29 @@ class AddQuantDequantForInferencePass(object):
         Args:
             graph(IrGraph): the target graph.
         """
-        assert isinstance(graph,
-                          IrGraph), 'graph must be the instance of IrGraph.'
+        assert isinstance(
+            graph, IrGraph
+        ), 'graph must be the instance of IrGraph.'
         dequant_node_map = {}
         dequantized_vars_map = collections.OrderedDict()
         for op_node in graph.all_op_nodes():
             if op_node.name() in self._teller_set:
                 var_names = utils._get_op_output_var_names(op_node)
                 for var_name in var_names:
-                    out_node = graph._find_node_by_name(op_node.outputs,
-                                                        var_name)
-                    if out_node.dtype() not in \
-                        [core.VarDesc.VarType.FP64, core.VarDesc.VarType.FP32]:
+                    out_node = graph._find_node_by_name(
+                        op_node.outputs, var_name
+                    )
+                    if out_node.dtype() not in [
+                        core.VarDesc.VarType.FP64,
+                        core.VarDesc.VarType.FP32,
+                    ]:
                         continue
                     if var_name in dequantized_vars_map:
                         dequant_var_node = dequantized_vars_map[var_name]
                     else:
                         dequant_var_node = self._insert_quant_dequant_op(
-                            graph, out_node)
+                            graph, out_node
+                        )
                         dequantized_vars_map[var_name] = dequant_var_node
                     dequant_node_map[var_name] = dequant_var_node
 
@@ -2805,10 +3180,11 @@ class AddQuantDequantForInferencePass(object):
                 for var_name in var_names:
                     if var_name in dequant_node_map:
                         in_node = graph._find_node_by_name(
-                            op_node.inputs, var_name)
-                        graph.update_input_link(in_node,
-                                                dequant_node_map[var_name],
-                                                op_node)
+                            op_node.inputs, var_name
+                        )
+                        graph.update_input_link(
+                            in_node, dequant_node_map[var_name], op_node
+                        )
 
         return graph
 
@@ -2826,22 +3202,29 @@ class AddQuantDequantForInferencePass(object):
             name="{}.quantized".format(var_name),
             var_type=var_node.type(),
             shape=var_node.shape(),
-            var_dtype=var_node.dtype())
-        scale_var_node = graph._find_node_by_name(graph.all_persistable_nodes(),
-                                                  self._scale_name(var_name))
+            var_dtype=var_node.dtype(),
+        )
+        scale_var_node = graph._find_node_by_name(
+            graph.all_persistable_nodes(), self._scale_name(var_name)
+        )
         try:
             zero_point_node = graph._find_node_by_name(
                 graph.all_persistable_nodes(),
-                "{}@zero_point".format(quant_var_node.name()))
+                "{}@zero_point".format(quant_var_node.name()),
+            )
         except:
             zero_point_node = graph.create_persistable_node(
                 name="{}@zero_point".format(quant_var_node.name()),
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 shape=scale_var_node.shape(),
-                var_dtype=core.VarDesc.VarType.INT32)
-            _init_var_node(zero_point_node,
-                           np.zeros(scale_var_node.shape(), dtype="int32"),
-                           self._scope, self._place)
+                var_dtype=core.VarDesc.VarType.INT32,
+            )
+            _init_var_node(
+                zero_point_node,
+                np.zeros(scale_var_node.shape(), dtype="int32"),
+                self._scope,
+                self._place,
+            )
 
         inputs = {"X": var_node, "Scale": scale_var_node}
         if zero_point_node is not None:
@@ -2851,10 +3234,12 @@ class AddQuantDequantForInferencePass(object):
         attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
         outputs = {"Y": quant_var_node}
 
-        quant_op_node = graph.create_op_node(op_type="quantize_linear",
-                                             attrs=attrs,
-                                             inputs=inputs,
-                                             outputs=outputs)
+        quant_op_node = graph.create_op_node(
+            op_type="quantize_linear",
+            attrs=attrs,
+            inputs=inputs,
+            outputs=outputs,
+        )
 
         graph.link_to(var_node, quant_op_node)
         graph.link_to(scale_var_node, quant_op_node)
@@ -2867,7 +3252,8 @@ class AddQuantDequantForInferencePass(object):
             name="{}.dequantized".format(quant_var_node.name()),
             var_type=quant_var_node.type(),
             shape=quant_var_node.shape(),
-            var_dtype=quant_var_node.dtype())
+            var_dtype=quant_var_node.dtype(),
+        )
 
         inputs = {"X": quant_var_node, "Scale": scale_var_node}
         if zero_point_node is not None:
@@ -2876,10 +3262,12 @@ class AddQuantDequantForInferencePass(object):
         attrs = {"quant_axis": -1, "bit_length": self._quant_bits}
         attrs["op_role"] = core.op_proto_and_checker_maker.OpRole.Forward
 
-        dequant_op_node = graph.create_op_node(op_type="dequantize_linear",
-                                               attrs=attrs,
-                                               inputs=inputs,
-                                               outputs={"Y": dequant_var_node})
+        dequant_op_node = graph.create_op_node(
+            op_type="dequantize_linear",
+            attrs=attrs,
+            inputs=inputs,
+            outputs={"Y": dequant_var_node},
+        )
 
         graph.link_to(quant_var_node, dequant_op_node)
         graph.link_to(scale_var_node, dequant_op_node)

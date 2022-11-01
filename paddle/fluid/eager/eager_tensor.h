@@ -247,8 +247,7 @@ class EagerVariable final {
   std::shared_ptr<phi::TensorBase> GetTensorBase() {
     // Construct allocation only once.
     if (var_.IsInitialized()) {
-      if (var_.IsType<paddle::framework::LoDTensor>() ||
-          var_.IsType<phi::DenseTensor>()) {
+      if (var_.IsType<phi::DenseTensor>() || var_.IsType<phi::DenseTensor>()) {
         return SetImplWithLegacyTensor<phi::DenseTensor>();
       } else if (var_.IsType<phi::SelectedRows>()) {
         return SetImplWithLegacyTensor<phi::SelectedRows>();

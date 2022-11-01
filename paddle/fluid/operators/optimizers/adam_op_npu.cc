@@ -23,14 +23,14 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class AdamNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+    PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
@@ -39,7 +39,7 @@ class AdamNPUKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
-    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(),
+    PADDLE_ENFORCE_EQ(grad_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
                           "The Grad(%s)'s type should be LoDTensor, "
@@ -312,7 +312,7 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
         param_out->mutable_data<T>(ctx.GetPlace());
 
         const auto* param_var = ctx.InputVar("Param");
-        PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+        PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                           true,
                           platform::errors::InvalidArgument(
                               "The Var(%s)'s type should be LoDTensor, "
@@ -324,7 +324,7 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
         const auto& runner =
             NpuOpRunner("Mul",
                         {*param, decay},
-                        {*const_cast<framework::LoDTensor*>(param)},
+                        {*const_cast<phi::DenseTensor*>(param)},
                         {});
         runner.Run(stream);
       }

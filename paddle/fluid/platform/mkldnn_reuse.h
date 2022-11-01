@@ -30,8 +30,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-using framework::DataLayout;
-
 using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = dnnl::memory;
 
@@ -250,6 +248,12 @@ class MatMulV2MKLDNNHandler
     }
 
     AppendActivation(ctx, post_operations);
+
+    if (ctx.HasAttr("fused_output_scale")) {
+      float scale_alpha = ctx.Attr<float>("fused_output_scale");
+      post_operations.append_eltwise(
+          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+    }
 
     matmul_attrs.set_post_ops(post_operations);
     return matmul_attrs;

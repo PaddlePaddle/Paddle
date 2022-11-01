@@ -436,11 +436,11 @@ void CumScalarAxisInferMeta(const MetaTensor& x,
   CumInferMeta(x, axis.to<int>(), flatten, exclusive, reverse, out);
 }
 
-void CropTensorInferMeta(const MetaTensor& x,
-                         const IntArray& shape,
-                         const IntArray& offsets,
-                         MetaTensor* out,
-                         MetaConfig config) {
+void CropInferMeta(const MetaTensor& x,
+                   const IntArray& shape,
+                   const IntArray& offsets,
+                   MetaTensor* out,
+                   MetaConfig config) {
   PADDLE_ENFORCE_NE(
       out,
       nullptr,
@@ -835,6 +835,7 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
   for (auto& i : inputs) {
     input_dims.push_back(i->dims());
   }
+  std::vector<std::string> input_strs;
   std::string right;
   ParseEinsumEquation(equation,
                       input_dims,
@@ -845,7 +846,8 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
                       &ellipsis_dims,
                       &broadcast_dims,
                       &output_dims,
-                      &right);
+                      &right,
+                      &input_strs);
 
   VLOG(3) << "Einsum Infershape: input dims:"
           << paddle::string::join_strings(input_dims, "\n");
@@ -1460,11 +1462,6 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
 void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
                            MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(!shape.empty(),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The parameter 'shape' in ReshapeOp must be set. "
-                        "But received 'shape' is empty."));
   auto x_dims = x.dims();
   auto out_dims = ValidateShape(shape, x_dims);
   out->set_dims(out_dims);
@@ -2668,7 +2665,7 @@ DDim ReduceInferDim(const MetaTensor& x,
                       x_rank,
                       errors::InvalidArgument(
                           "The reduce dim index %d should be in the "
-                          "range [-dimension(X), dimension(X)] "
+                          "range [ -dimension(X), dimension(X) ) "
                           "which dimesion = %d. But received dim index = %d.",
                           i,
                           x_rank,
@@ -2677,7 +2674,7 @@ DDim ReduceInferDim(const MetaTensor& x,
                       -x_rank,
                       errors::InvalidArgument(
                           "The reduce dim index %d should be in the "
-                          "range [-dimension(X), dimension(X)] "
+                          "range [ -dimension(X), dimension(X) )  "
                           "which dimesion = %d. But received dim index = %d.",
                           i,
                           x_rank,
@@ -2690,7 +2687,7 @@ DDim ReduceInferDim(const MetaTensor& x,
 
   bool full_dim = true;
   std::set<int64_t> dims_set(formated_axis.begin(), formated_axis.end());
-  for (int64_t i = 0; i < x.dims().size(); ++i) {
+  for (int64_t i = 0; i < x_rank; ++i) {
     if (dims_set.find(i) == dims_set.end()) {
       full_dim = false;
       break;
@@ -2700,7 +2697,7 @@ DDim ReduceInferDim(const MetaTensor& x,
 
   std::vector<int64_t> out_dim_vector;
   if (keep_dim) {
-    for (int64_t i = 0; i < x.dims().size(); ++i) {
+    for (int64_t i = 0; i < x_rank; ++i) {
       if (reduce_all || dims_set.find(i) != dims_set.end()) {
         out_dim_vector.push_back(1);
       } else {
@@ -2708,7 +2705,7 @@ DDim ReduceInferDim(const MetaTensor& x,
       }
     }
   } else {
-    for (int64_t i = 0; i < x.dims().size(); ++i) {
+    for (int64_t i = 0; i < x_rank; ++i) {
       if (reduce_all || dims_set.find(i) != dims_set.end()) {
         continue;
       } else {
@@ -2716,7 +2713,7 @@ DDim ReduceInferDim(const MetaTensor& x,
       }
     }
 
-    if (out_dim_vector.size() == 0) {
+    if (x_rank > 0 && out_dim_vector.size() == 0) {
       out_dim_vector.push_back(1);
     }
   }
@@ -2833,6 +2830,7 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
   out->share_lod(x);
   out->set_dtype(x.dtype());
 }
+
 void ReshapeInferMeta(const MetaTensor& x,
                       const IntArray& shape,
                       MetaTensor* out,
@@ -2846,10 +2844,6 @@ void ReshapeInferMeta(const MetaTensor& x,
     out->share_lod(x);
     return;
   }
-  PADDLE_ENFORCE_GT(shape_data.size(),
-                    0,
-                    phi::errors::InvalidArgument(
-                        "The shape's size in ReshapeOp can't be zero."));
   InferMetaFromVecValue(x, shape_data, out);
 }
 
@@ -3021,6 +3015,7 @@ void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {
       phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.",
           in_dims.size()));
+  out->set_dims(in_dims);
 }
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
@@ -3116,16 +3111,29 @@ void SliceRawInferMeta(const MetaTensor& input,
 void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out) {
   auto dim_x = x.dims();
   auto rank_x = dim_x.size();
-  PADDLE_ENFORCE_GE(axis,
-                    -rank_x,
-                    phi::errors::InvalidArgument(
-                        "Attr(axis) value should be in range [-R, R-1], "
-                        "R is the rank of Input(X)."));
-  PADDLE_ENFORCE_LT(axis,
-                    rank_x,
-                    phi::errors::InvalidArgument(
-                        "Attr(axis) value should be in range [-R, R-1], "
-                        "R is the rank of Input(X)."));
+  if (rank_x > 0) {
+    PADDLE_ENFORCE_GE(axis,
+                      -rank_x,
+                      phi::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X)."));
+    PADDLE_ENFORCE_LT(axis,
+                      rank_x,
+                      phi::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X)."));
+  } else {
+    PADDLE_ENFORCE_GE(
+        axis,
+        -1,
+        phi::errors::InvalidArgument("Attr(axis) value should be in range [-1, "
+                                     "0] when input is 0D Tensor "));
+    PADDLE_ENFORCE_LE(
+        axis,
+        0,
+        phi::errors::InvalidArgument("Attr(axis) value should be in range [-1, "
+                                     "0] when input is 0D Tensor "));
+  }
 
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
@@ -3713,7 +3721,7 @@ void TileInferMeta(const MetaTensor& x,
           repeat_times_data.size()));
   PADDLE_ENFORCE_GE(
       repeat_times_data.size(),
-      1,
+      0,
       errors::InvalidArgument(
           "The size of the shape of input 'repeat_times' for tile op "
           "must be positive integers, but the value received is %d.",
@@ -3746,7 +3754,7 @@ void TileInferMeta(const MetaTensor& x,
   }
 
   out->set_dims(phi::make_ddim(out_shape));
-  if (out_shape[0] == x_dims[0]) {
+  if (out_rank > 0 && (out_shape[0] == x_dims[0])) {
     out->share_lod(x);
   }
   out->set_dtype(x.dtype());
@@ -3971,22 +3979,29 @@ void UnchangedInferMetaCheckAxis(const MetaTensor& x,
                                  int axis,
                                  MetaTensor* out) {
   auto rank = x.dims().size();
-  PADDLE_ENFORCE_GE(
-      axis,
-      -rank,
-      phi::errors::InvalidArgument(
-          "Attr(axis) value should be in range [-R, R-1], "
-          "R is the rank of Input(X). But received axis: %d, R: %d.",
-          axis,
-          rank));
-  PADDLE_ENFORCE_LT(
-      axis,
-      rank,
-      phi::errors::InvalidArgument(
-          "Attr(axis) value should be in range [-R, R-1], "
-          "R is the rank of Input(X). But received axis: %d, R: %d.",
-          axis,
-          rank));
+  if (rank > 0) {
+    PADDLE_ENFORCE_GE(axis,
+                      -rank,
+                      phi::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X)."));
+    PADDLE_ENFORCE_LT(axis,
+                      rank,
+                      phi::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X)."));
+  } else if (rank == 0) {
+    PADDLE_ENFORCE_GE(
+        axis,
+        -1,
+        phi::errors::InvalidArgument("Attr(axis) value should be in range [-1, "
+                                     "0] when input is 0D Tensor "));
+    PADDLE_ENFORCE_LE(
+        axis,
+        0,
+        phi::errors::InvalidArgument("Attr(axis) value should be in range [-1, "
+                                     "0] when input is 0D Tensor "));
+  }
   out->share_meta(x);
 }
 

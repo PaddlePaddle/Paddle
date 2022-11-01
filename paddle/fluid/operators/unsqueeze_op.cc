@@ -148,7 +148,7 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::TransToProtoVarType(
-            ctx.Input<framework::LoDTensor>("X")->type()),
+            ctx.Input<phi::DenseTensor>("X")->type()),
         ctx.device_context());
   }
 

@@ -78,8 +78,8 @@ void AccuracyInferMeta(const MetaTensor& out,
 void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& x,
                     const MetaTensor& y,
-                    float alpha,
                     float beta,
+                    float alpha,
                     MetaTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -402,13 +402,13 @@ void InstanceNormInferMeta(const MetaTensor& x,
   }
 }
 
-void GraphSendRecvInferMeta(const MetaTensor& x,
-                            const MetaTensor& src_index,
-                            const MetaTensor& dst_index,
-                            const std::string& reduce_op,
-                            const IntArray& out_size,
-                            MetaTensor* out,
-                            MetaTensor* dst_count) {
+void SendURecvInferMeta(const MetaTensor& x,
+                        const MetaTensor& src_index,
+                        const MetaTensor& dst_index,
+                        const std::string& reduce_op,
+                        const IntArray& out_size,
+                        MetaTensor* out,
+                        MetaTensor* dst_count) {
   auto src_index_dims = src_index.dims();
   if (src_index_dims.size() == 2) {
     PADDLE_ENFORCE_EQ(src_index_dims[1],
@@ -493,8 +493,7 @@ void GroupNormInferMeta(const MetaTensor& x,
           x_dim.size(),
           x_dim));
 
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   const int64_t channel_num =
       (data_layout == DataLayout::kNCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
   auto batch_size = x_dim[0];

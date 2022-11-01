@@ -27,7 +27,11 @@ def count_of_sparse_all_reduce_calls(file_name):
     # NOTE(Aurelius84): The log file contains some binary contents that causes error
     # while `grep`. So we add `-a` to fix it.
     # -a, --text equivalent to --binary-files=text, make binaries equivalent to text.
-    cmd = 'grep -a sparse_all_reduce_op_handle ' + file_name + ' | grep in_numel | wc -l'
+    cmd = (
+        'grep -a sparse_all_reduce_op_handle '
+        + file_name
+        + ' | grep in_numel | wc -l'
+    )
     child = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
     result = child.communicate()[0]
     print('test_info: result = ' + str(result))
@@ -37,7 +41,6 @@ def count_of_sparse_all_reduce_calls(file_name):
 
 
 class TestDistMnistNCCL2DGC(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -47,17 +50,22 @@ class TestDistMnistNCCL2DGC(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(os.path.abspath("../../dist_mnist.py"),
-                                  delta=1e-5,
-                                  check_error_log=True,
-                                  log_name=flag_name)
+            self.check_with_place(
+                os.path.abspath("../../dist_mnist.py"),
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name,
+            )
 
     def tearDown(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
-            log_file = os.path.join(self.temp_dir.name,
-                                    'test_dist_mnist_dgc_nccl_tr0_err.log')
+            log_file = os.path.join(
+                self.temp_dir.name, 'test_dist_mnist_dgc_nccl_tr0_err.log'
+            )
             result = count_of_sparse_all_reduce_calls(log_file)
             # only 1 layer use dgc now, run_step=5, rampup_begin_step=2, so 1 * (5 - 2) = 3
 
@@ -68,7 +76,6 @@ class TestDistMnistNCCL2DGC(TestDistBase):
 
 
 class TestDistMnistNCCL2DGCMultiCards(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -78,19 +85,23 @@ class TestDistMnistNCCL2DGCMultiCards(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place_multi_cards(
                 os.path.abspath("../../dist_mnist.py"),
                 delta=1e-5,
                 check_error_log=True,
-                log_name=flag_name)
+                log_name=flag_name,
+            )
 
     def tearDown(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
             log_file = os.path.join(
                 self.temp_dir.name,
-                'test_dist_mnist_dgc_nccl_dgc_2cards_local.log')
+                'test_dist_mnist_dgc_nccl_dgc_2cards_local.log',
+            )
             result = count_of_sparse_all_reduce_calls(log_file)
             # same as above, but use two cards
             self.assertEqual(result, 6)

@@ -23,17 +23,22 @@
 # from ...fluid.contrib.slim.quantization.imperative.ptq_registry import PTQRegistry
 # from ...fluid.contrib.slim.quantization.imperative.ptq import ImperativePTQ
 # from ...fluid.contrib.slim.quantization.imperative.qat import ImperativeQuantAware
-from .qat import *
+from .qat import QAT
 from . import qat
-from .ptq import *
+from .ptq import PTQ
 from . import ptq
-from .config import *
+from .config import QuantConfig, TRTQuantConfig
 from . import config
-from .quanters import *
+from .quanters import (
+    ActLSQPlusQuanter,
+    ActLSQPlusQuanter,
+    FakeQuanterWithAbsMaxObserver,
+    BaseQuanter,
+)
 from . import quanters
-from .stubs import *
+from .stubs import Stub
 from . import stubs
-from .factory import *
+from .factory import ObserverFactory, QuanterFactory
 from . import factory
 
 __all__ = []

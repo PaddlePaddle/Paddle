@@ -16,11 +16,9 @@ import paddle.fluid as fluid
 import paddle
 import numpy as np
 import unittest
-import six
 
 
 class TestClass(unittest.TestCase):
-
     def setUp(self):
         self.use_double_buffer = True
         self.use_py_reader = True
@@ -32,10 +30,11 @@ class TestClass(unittest.TestCase):
         batch_num = 10
 
         def fake_reader():
-            for _ in six.moves.range(batch_size * batch_num):
+            for _ in range(batch_size * batch_num):
                 img = np.random.random(size=img_shape).astype('float32')
                 label = np.random.random_integers(
-                    low=0, high=9, size=label_shape).astype('int64')
+                    low=0, high=9, size=label_shape
+                ).astype('int64')
                 yield img, label
 
         reader = paddle.reader.cache(fake_reader)
@@ -49,18 +48,20 @@ class TestClass(unittest.TestCase):
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
-                img = fluid.layers.data(shape=img_shape,
-                                        dtype='float32',
-                                        name='image')
-                label = fluid.layers.data(shape=label_shape,
-                                          dtype='int64',
-                                          name='label')
+                img = fluid.layers.data(
+                    shape=img_shape, dtype='float32', name='image'
+                )
+                label = fluid.layers.data(
+                    shape=label_shape, dtype='int64', name='label'
+                )
 
                 feeder = fluid.DataFeeder(feed_list=[img, label], place=p)
 
                 use_double_buffer = self.use_double_buffer
-                if p._type() != fluid.CPUPlace()._type(
-                ) and not use_double_buffer:
+                if (
+                    p._type() != fluid.CPUPlace()._type()
+                    and not use_double_buffer
+                ):
                     use_double_buffer = True
 
                 if self.use_py_reader:
@@ -68,19 +69,21 @@ class TestClass(unittest.TestCase):
                         feed_list=[img, label],
                         capacity=4,
                         iterable=True,
-                        use_double_buffer=use_double_buffer)
-                    py_reader.decorate_sample_list_generator(batch_reader,
-                                                             places=p)
+                        use_double_buffer=use_double_buffer,
+                    )
+                    py_reader.decorate_sample_list_generator(
+                        batch_reader, places=p
+                    )
                 else:
                     py_reader = fluid.io.DataLoader.from_generator(
                         feed_list=[img, label],
                         capacity=4,
                         iterable=True,
-                        use_double_buffer=use_double_buffer
+                        use_double_buffer=use_double_buffer,
                     ).set_sample_list_generator(batch_reader, places=p)
 
                 for break_beforehand in [True, False]:
-                    for epoch_id in six.moves.range(10):
+                    for epoch_id in range(10):
                         gen = batch_reader()
                         batch_id = 0
                         for d in py_reader():
@@ -98,7 +101,8 @@ class TestClass(unittest.TestCase):
 
                             batch_id += 1
                             if break_beforehand and batch_id >= int(
-                                    batch_num / 2):
+                                batch_num / 2
+                            ):
                                 break
 
                         if break_beforehand:
@@ -108,21 +112,18 @@ class TestClass(unittest.TestCase):
 
 
 class TestClass2(TestClass):
-
     def setUp(self):
         self.use_double_buffer = False
         self.use_py_reader = True
 
 
 class TestClass3(TestClass):
-
     def setUp(self):
         self.use_double_buffer = True
         self.use_py_reader = False
 
 
 class TestClass4(TestClass):
-
     def setUp(self):
         self.use_double_buffer = False
         self.use_py_reader = False

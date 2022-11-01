@@ -15,7 +15,6 @@
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
@@ -32,7 +31,6 @@ def find_latest_set(num):
 
 
 class CodeTable(object):
-
     def __init__(self, num_classes, code):
         self.c = num_classes + code
 
@@ -47,7 +45,6 @@ class CodeTable(object):
 
 
 class CodeTableWithCustomTree(object):
-
     def __init__(self, path_table, path_code, index):
         self.ptable_ = path_table
         self.pcode_ = path_code
@@ -130,8 +127,9 @@ def hsigmoid_grad(x, w, label, bias, num_classes):
     return [dx, dw, db]
 
 
-def hsigmoidWithCustomTree(x, w, path_table, path_code, label, bias,
-                           num_classes):
+def hsigmoidWithCustomTree(
+    x, w, path_table, path_code, label, bias, num_classes
+):
     batch_size = x.shape[0]
     code_length = len(path_table[0])
     code_table = [0 for _ in range(code_length)]
@@ -170,26 +168,36 @@ def hsigmoidWithCustomTree(x, w, path_table, path_code, label, bias,
     return pre_output, out
 
 
-def python_api(input,
-               weight,
-               label,
-               path_table=None,
-               path_code=None,
-               bias=None,
-               num_classes=-1,
-               is_sparse=False,
-               remote_prefetch=False):
-    assert is_sparse == remote_prefetch, "is_sparse is equal to remote_prefetch in dygraph."
-    return paddle.nn.functional.hsigmoid_loss(input, label, num_classes, weight,
-                                              bias, path_table, path_code,
-                                              is_sparse)
+def python_api(
+    input,
+    weight,
+    label,
+    path_table=None,
+    path_code=None,
+    bias=None,
+    num_classes=-1,
+    is_sparse=False,
+    remote_prefetch=False,
+):
+    assert (
+        is_sparse == remote_prefetch
+    ), "is_sparse is equal to remote_prefetch in dygraph."
+    return paddle.nn.functional.hsigmoid_loss(
+        input,
+        label,
+        num_classes,
+        weight,
+        bias,
+        path_table,
+        path_code,
+        is_sparse,
+    )
 
 
 python_out_sig = ["Out"]
 
 
 class TestHSigmoidOp(OpTest):
-
     def setUp(self):
         self.op_type = "hierarchical_sigmoid"
         self.python_api = python_api
@@ -197,12 +205,15 @@ class TestHSigmoidOp(OpTest):
         num_classes = 101
         feature_size = 5
         batch_size = 20
-        x = np.random.uniform(-1, 1,
-                              (batch_size, feature_size)).astype('float64')
-        w = np.random.uniform(-1, 1,
-                              (num_classes - 1, feature_size)).astype('float64')
-        label = np.random.randint(0, num_classes,
-                                  (batch_size, 1)).astype('int64')
+        x = np.random.uniform(-1, 1, (batch_size, feature_size)).astype(
+            'float64'
+        )
+        w = np.random.uniform(-1, 1, (num_classes - 1, feature_size)).astype(
+            'float64'
+        )
+        label = np.random.randint(0, num_classes, (batch_size, 1)).astype(
+            'int64'
+        )
         bias = np.random.uniform(-1, 1, (num_classes - 1, 1)).astype('float64')
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {'X': x, 'W': w, 'Label': label, 'Bias': bias}
@@ -214,35 +225,48 @@ class TestHSigmoidOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'W', 'Bias'], ['Out'],
-                        user_defined_grads=self.user_grads,
-                        check_eager=True)
+        self.check_grad(
+            ['X', 'W', 'Bias'],
+            ['Out'],
+            user_defined_grads=self.user_grads,
+            check_eager=True,
+        )
 
 
 @skip_check_grad_ci(
-    reason=
-    "For 'TestHSigmoidOpSparse', check_grad is separately calculated by 'TestHSigmoidOpWithSparseGrad'."
+    reason="For 'TestHSigmoidOpSparse', check_grad is separately calculated by 'TestHSigmoidOpWithSparseGrad'."
 )
 class TestHSigmoidOpSparse(OpTest):
-
     def setUp(self):
         self.op_type = "hierarchical_sigmoid"
         self.python_api = python_api
         self.python_out_sig = python_out_sig
-        num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
+        num_classes = 6  # using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
         feature_size = 8
         batch_size = 4
         x = np.random.random((batch_size, feature_size))
         w = np.random.random((num_classes - 1, feature_size))
         label = np.array([0, 1, 4, 5]).astype('int64')
-        path_table = np.array([
-            (0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
-            (0, 2, -1, -1, -1)
-        ]).astype(
-            'int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1),
-                              (1, 0, 0, -1, -1), (0, 1, -1, -1, -1)
-                              ]).astype('int64')  #np.array to store
+        path_table = np.array(
+            [
+                (0, 2, -1, -1, -1),
+                (0, 1, 3, -1, -1),
+                (0, 1, 4, -1, -1),
+                (0, 2, -1, -1, -1),
+            ]
+        ).astype(
+            'int64'
+        )  # np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+        path_code = np.array(
+            [
+                (0, 0, -1, -1, -1),
+                (1, 1, 1, -1, -1),
+                (1, 0, 0, -1, -1),
+                (0, 1, -1, -1, -1),
+            ]
+        ).astype(
+            'int64'
+        )  # np.array to store
         bias = np.random.random((num_classes - 1, 1))
         self.attrs = {'num_classes': num_classes, 'is_sparse': True}
         self.inputs = {
@@ -251,10 +275,11 @@ class TestHSigmoidOpSparse(OpTest):
             'PathTable': path_table,
             'PathCode': path_code,
             'Label': label,
-            'Bias': bias
+            'Bias': bias,
         }
-        pre_output, out = hsigmoidWithCustomTree(x, w, path_table, path_code,
-                                                 label, bias, num_classes)
+        pre_output, out = hsigmoidWithCustomTree(
+            x, w, path_table, path_code, label, bias, num_classes
+        )
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
@@ -262,15 +287,14 @@ class TestHSigmoidOpSparse(OpTest):
 
 
 class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
-
     def hs_net_conf(self, is_sparse):
         input_word = fluid.layers.data(name="x", shape=[1], dtype='int64')
-        path_table = fluid.layers.data(name='path_table',
-                                       shape=[3],
-                                       dtype='int64')
-        path_code = fluid.layers.data(name='path_code',
-                                      shape=[3],
-                                      dtype='int64')
+        path_table = fluid.layers.data(
+            name='path_table', shape=[3], dtype='int64'
+        )
+        path_code = fluid.layers.data(
+            name='path_code', shape=[3], dtype='int64'
+        )
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
         data_list = [input_word, path_table, path_code, label]
@@ -279,17 +303,21 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             input=input_word,
             is_sparse=is_sparse,
             size=[3, 3],
-            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
-                scale=1 / math.sqrt(3))))
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Normal(scale=1 / math.sqrt(3))
+            ),
+        )
 
-        cost = fluid.layers.hsigmoid(input=emb,
-                                     label=label,
-                                     bias_attr=True,
-                                     num_classes=3,
-                                     path_table=path_table,
-                                     path_code=path_code,
-                                     is_custom=True,
-                                     is_sparse=is_sparse)
+        cost = fluid.layers.hsigmoid(
+            input=emb,
+            label=label,
+            bias_attr=True,
+            num_classes=3,
+            path_table=path_table,
+            path_code=path_code,
+            is_custom=True,
+            is_sparse=is_sparse,
+        )
 
         avg_cost = fluid.layers.reduce_mean(cost)
 
@@ -316,45 +344,61 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             exe.run(start_up)
             result = list()
             for i in range(10):
-                data = [([[x[i % 2]]], [list(path_table[i % 2])],
-                         [list(path_code[i % 2])], [label[i % 2]])]
+                data = [
+                    (
+                        [[x[i % 2]]],
+                        [list(path_table[i % 2])],
+                        [list(path_code[i % 2])],
+                        [label[i % 2]],
+                    )
+                ]
 
-                loss_val = exe.run(main_program,
-                                   feed=feeder.feed(data),
-                                   fetch_list=[loss])
+                loss_val = exe.run(
+                    main_program, feed=feeder.feed(data), fetch_list=[loss]
+                )
                 result.append(loss_val)
         return result
 
     def test_hs_grad_with_sparse(self):
         dense_result = self.training_test(is_sparse=False)
         sparse_result = self.training_test(is_sparse=True)
-        assert (dense_result == sparse_result)
+        assert dense_result == sparse_result
 
 
 @skip_check_grad_ci(
-    reason=
-    "[skip shape check] The huffman tree is structed separately. It will be complicated if use large shape."
+    reason="[skip shape check] The huffman tree is structed separately. It will be complicated if use large shape."
 )
 class TestHSigmoidOpWithCostumTree(OpTest):
-
     def setUp(self):
         self.op_type = "hierarchical_sigmoid"
         self.python_api = python_api
         self.python_out_sig = python_out_sig
-        num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
+        num_classes = 6  # using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
         feature_size = 8
         batch_size = 4
         x = np.random.uniform(-1, 1, (batch_size, feature_size))
         w = np.random.uniform(-1, 1, (num_classes - 1, feature_size))
         label = np.array([0, 1, 4, 5]).astype('int64')
-        path_table = np.array([
-            (0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
-            (0, 2, -1, -1, -1)
-        ]).astype(
-            'int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1),
-                              (1, 0, 0, -1, -1), (0, 1, -1, -1, -1)
-                              ]).astype('int64')  #np.array to store
+        path_table = np.array(
+            [
+                (0, 2, -1, -1, -1),
+                (0, 1, 3, -1, -1),
+                (0, 1, 4, -1, -1),
+                (0, 2, -1, -1, -1),
+            ]
+        ).astype(
+            'int64'
+        )  # np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+        path_code = np.array(
+            [
+                (0, 0, -1, -1, -1),
+                (1, 1, 1, -1, -1),
+                (1, 0, 0, -1, -1),
+                (0, 1, -1, -1, -1),
+            ]
+        ).astype(
+            'int64'
+        )  # np.array to store
         bias = np.random.random((num_classes - 1, 1))
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {
@@ -363,45 +407,59 @@ class TestHSigmoidOpWithCostumTree(OpTest):
             'PathTable': path_table,
             'PathCode': path_code,
             'Label': label,
-            'Bias': bias
+            'Bias': bias,
         }
-        pre_output, out = hsigmoidWithCustomTree(x, w, path_table, path_code,
-                                                 label, bias, num_classes)
+        pre_output, out = hsigmoidWithCustomTree(
+            x, w, path_table, path_code, label, bias, num_classes
+        )
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['Bias', 'X', 'W'], ['Out'],
-                        no_grad_set=set('Label'),
-                        check_eager=True)
+        self.check_grad(
+            ['Bias', 'X', 'W'],
+            ['Out'],
+            no_grad_set=set('Label'),
+            check_eager=True,
+        )
 
 
 @skip_check_grad_ci(
-    reason=
-    "[skip shape check] The huffman tree is structed separately. It will be complicated if use large shape."
+    reason="[skip shape check] The huffman tree is structed separately. It will be complicated if use large shape."
 )
 class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
-
     def setUp(self):
         self.op_type = "hierarchical_sigmoid"
         self.python_api = python_api
         self.python_out_sig = python_out_sig
-        num_classes = 6  #using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
+        num_classes = 6  # using 1,2,3,4,5,6 to build a huffman tree and select 1,2,5,6 as sample
         feature_size = 8
         batch_size = 4
         x = np.random.uniform(-1, 1, (batch_size, feature_size))
         w = np.random.uniform(-1, 1, (num_classes - 1, feature_size))
         label = np.array([0, 1, 4, 5]).astype('int64')
-        path_table = np.array([
-            (0, 2, -1, -1, -1), (0, 1, 3, -1, -1), (0, 1, 4, -1, -1),
-            (0, 2, -1, -1, -1)
-        ]).astype(
-            'int64')  #np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
-        path_code = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1),
-                              (1, 0, 0, -1, -1), (0, 1, -1, -1, -1)
-                              ]).astype('int64')  #np.array to store
+        path_table = np.array(
+            [
+                (0, 2, -1, -1, -1),
+                (0, 1, 3, -1, -1),
+                (0, 1, 4, -1, -1),
+                (0, 2, -1, -1, -1),
+            ]
+        ).astype(
+            'int64'
+        )  # np.array to store 1,2,5,6s' non-leaf path(root -> leaf)
+        path_code = np.array(
+            [
+                (0, 0, -1, -1, -1),
+                (1, 1, 1, -1, -1),
+                (1, 0, 0, -1, -1),
+                (0, 1, -1, -1, -1),
+            ]
+        ).astype(
+            'int64'
+        )  # np.array to store
         # bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {
@@ -411,22 +469,24 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
             'PathCode': path_code,
             'Label': label,
         }
-        pre_output, out = hsigmoidWithCustomTree(x=x,
-                                                 w=w,
-                                                 path_table=path_table,
-                                                 path_code=path_code,
-                                                 label=label,
-                                                 bias=None,
-                                                 num_classes=num_classes)
+        pre_output, out = hsigmoidWithCustomTree(
+            x=x,
+            w=w,
+            path_table=path_table,
+            path_code=path_code,
+            label=label,
+            bias=None,
+            num_classes=num_classes,
+        )
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'W'], ['Out'],
-                        no_grad_set=set('Label'),
-                        check_eager=True)
+        self.check_grad(
+            ['X', 'W'], ['Out'], no_grad_set=set('Label'), check_eager=True
+        )
 
 
 class TestHSigmoidLossAPI(unittest.TestCase):
@@ -442,27 +502,38 @@ class TestHSigmoidLossAPI(unittest.TestCase):
         paddle.set_default_dtype(self.dtype)
 
         self.x_np = np.random.uniform(
-            -1, 1, [self.batch_size, self.feature_size]).astype(self.dtype)
-        self.labels_np = np.random.randint(self.num_classes,
-                                           size=(self.batch_size, 1),
-                                           dtype='int64')
+            -1, 1, [self.batch_size, self.feature_size]
+        ).astype(self.dtype)
+        self.labels_np = np.random.randint(
+            self.num_classes, size=(self.batch_size, 1), dtype='int64'
+        )
         self.weight_np = np.random.uniform(
-            -1, 1, [self.num_classes - 1, self.feature_size]).astype(self.dtype)
-        self.bias_np = np.random.uniform(
-            -1, 1, (self.num_classes - 1, )).astype(self.dtype)
+            -1, 1, [self.num_classes - 1, self.feature_size]
+        ).astype(self.dtype)
+        self.bias_np = np.random.uniform(-1, 1, (self.num_classes - 1,)).astype(
+            self.dtype
+        )
         self.path_table_np = None
         self.path_code_np = None
-        _, self.out_np = hsigmoid(self.x_np, self.weight_np, self.labels_np,
-                                  self.bias_np, self.num_classes)
+        _, self.out_np = hsigmoid(
+            self.x_np,
+            self.weight_np,
+            self.labels_np,
+            self.bias_np,
+            self.num_classes,
+        )
         self.set_attrs()
 
         if self.is_custom:
-            _, self.out_np = hsigmoidWithCustomTree(self.x_np, self.weight_np,
-                                                    self.path_table_np,
-                                                    self.path_code_np,
-                                                    self.labels_np,
-                                                    self.bias_np.reshape(-1, 1),
-                                                    self.num_classes)
+            _, self.out_np = hsigmoidWithCustomTree(
+                self.x_np,
+                self.weight_np,
+                self.path_table_np,
+                self.path_code_np,
+                self.labels_np,
+                self.bias_np.reshape(-1, 1),
+                self.num_classes,
+            )
 
     def set_attrs(self):
         pass
@@ -478,13 +549,19 @@ class TestHSigmoidLossAPI(unittest.TestCase):
         if self.is_custom:
             path_table = paddle.to_tensor(self.path_table_np)
             path_code = paddle.to_tensor(self.path_code_np)
-        out1 = F.hsigmoid_loss(x, labels, self.num_classes, weight, bias,
-                               path_table, path_code)
+        out1 = F.hsigmoid_loss(
+            x, labels, self.num_classes, weight, bias, path_table, path_code
+        )
 
         weight_attr = I.NumpyArrayInitializer(self.weight_np)
         bias_attr = I.NumpyArrayInitializer(self.bias_np)
-        m = paddle.nn.HSigmoidLoss(self.feature_size, self.num_classes,
-                                   weight_attr, bias_attr, self.is_custom)
+        m = paddle.nn.HSigmoidLoss(
+            self.feature_size,
+            self.num_classes,
+            weight_attr,
+            bias_attr,
+            self.is_custom,
+        )
         out2 = m(x, labels, path_table, path_code)
 
         for out in [out1, out2]:
@@ -498,23 +575,34 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             x = paddle.static.data('x', [-1, self.feature_size])
             labels = paddle.static.data('labels', [-1, 1], 'int64')
             weight = paddle.static.data('weight', [-1, self.feature_size])
-            bias = paddle.static.data('bias', [
-                -1,
-            ])
+            bias = paddle.static.data(
+                'bias',
+                [
+                    -1,
+                ],
+            )
             path_table = None
             path_code = None
             if self.is_custom:
                 path_table = paddle.static.data('path_table', [-1, -1], 'int64')
                 path_code = paddle.static.data('path_code', [-1, -1], 'int64')
-            out1 = F.hsigmoid_loss(x, labels, self.num_classes, weight, bias,
-                                   path_table, path_code)
+            out1 = F.hsigmoid_loss(
+                x, labels, self.num_classes, weight, bias, path_table, path_code
+            )
 
             weight_attr = paddle.framework.ParamAttr(
-                initializer=I.NumpyArrayInitializer(self.weight_np))
+                initializer=I.NumpyArrayInitializer(self.weight_np)
+            )
             bias_attr = paddle.framework.ParamAttr(
-                initializer=I.NumpyArrayInitializer(self.bias_np))
-            m = paddle.nn.HSigmoidLoss(self.feature_size, self.num_classes,
-                                       weight_attr, bias_attr, self.is_custom)
+                initializer=I.NumpyArrayInitializer(self.bias_np)
+            )
+            m = paddle.nn.HSigmoidLoss(
+                self.feature_size,
+                self.num_classes,
+                weight_attr,
+                bias_attr,
+                self.is_custom,
+            )
             out2 = m(x, labels, path_table, path_code)
 
             exe = paddle.static.Executor(self.place)
@@ -523,14 +611,14 @@ class TestHSigmoidLossAPI(unittest.TestCase):
                 'x': self.x_np,
                 'labels': self.labels_np,
                 'weight': self.weight_np,
-                'bias': self.bias_np
+                'bias': self.bias_np,
             }
             if self.is_custom:
                 feed_dict["path_code"] = self.path_code_np
                 feed_dict["path_table"] = self.path_table_np
-            ret1, ret2 = exe.run(train_program,
-                                 feed=feed_dict,
-                                 fetch_list=[out1, out2])
+            ret1, ret2 = exe.run(
+                train_program, feed=feed_dict, fetch_list=[out1, out2]
+            )
 
             for ret in [ret1, ret2]:
                 np.testing.assert_allclose(self.out_np, ret, rtol=1e-05)
@@ -548,9 +636,17 @@ class TestHSigmoidLossAPI(unittest.TestCase):
                 path_code = fluid.data('path_code', [-1, -1], 'int64')
             weight_attr = I.NumpyArrayInitializer(self.weight_np)
             bias_attr = I.NumpyArrayInitializer(self.bias_np)
-            out = fluid.layers.hsigmoid(x, labels, self.num_classes,
-                                        weight_attr, bias_attr, 'out',
-                                        path_table, path_code, self.is_custom)
+            out = fluid.layers.hsigmoid(
+                x,
+                labels,
+                self.num_classes,
+                weight_attr,
+                bias_attr,
+                'out',
+                path_table,
+                path_code,
+                self.is_custom,
+            )
 
             exe = fluid.Executor(self.place)
             exe.run(startup_program)
@@ -558,13 +654,14 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             if self.is_custom:
                 feed_dict["path_code"] = self.path_code_np
                 feed_dict["path_table"] = self.path_table_np
-            ret, = exe.run(train_program, feed=feed_dict, fetch_list=[out])
+            (ret,) = exe.run(train_program, feed=feed_dict, fetch_list=[out])
 
             np.testing.assert_allclose(ret, self.out_np, rtol=1e-05)
 
     def test_errors(self):
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # test paddle.nn.HSigmoidLoss
             self.assertRaises(ValueError, paddle.nn.HSigmoidLoss, 6, 1)
 
@@ -575,46 +672,52 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             bias = paddle.static.data('bias', [7])
 
             x_int32 = paddle.static.data('x_int32', [4, 6], 'int32')
-            self.assertRaises(TypeError, F.hsigmoid_loss, x_int32, label, 8,
-                              weight)
+            self.assertRaises(
+                TypeError, F.hsigmoid_loss, x_int32, label, 8, weight
+            )
 
-            label_float32 = paddle.static.data('label_float32', [4, 1],
-                                               'float32')
-            self.assertRaises(TypeError, F.hsigmoid_loss, x, label_float32, 8,
-                              weight)
+            label_float32 = paddle.static.data(
+                'label_float32', [4, 1], 'float32'
+            )
+            self.assertRaises(
+                TypeError, F.hsigmoid_loss, x, label_float32, 8, weight
+            )
 
             weight_int32 = paddle.static.data('weight_int32', [7, 6], 'int32')
-            self.assertRaises(TypeError, F.hsigmoid_loss, x, label, 8,
-                              weight_int32)
+            self.assertRaises(
+                TypeError, F.hsigmoid_loss, x, label, 8, weight_int32
+            )
 
             bias_int32 = paddle.static.data('bias_int32', [7], 'int32')
-            self.assertRaises(TypeError,
-                              F.hsigmoid_loss,
-                              x,
-                              label,
-                              8,
-                              weight,
-                              bias=bias_int32)
+            self.assertRaises(
+                TypeError, F.hsigmoid_loss, x, label, 8, weight, bias=bias_int32
+            )
 
-            path_table_int32 = paddle.static.data('path_table_int32', [7],
-                                                  'int32')
-            self.assertRaises(TypeError,
-                              F.hsigmoid_loss,
-                              x,
-                              label,
-                              8,
-                              weight,
-                              path_table=path_table_int32)
+            path_table_int32 = paddle.static.data(
+                'path_table_int32', [7], 'int32'
+            )
+            self.assertRaises(
+                TypeError,
+                F.hsigmoid_loss,
+                x,
+                label,
+                8,
+                weight,
+                path_table=path_table_int32,
+            )
 
-            path_code_int32 = paddle.static.data('path_code_int32', [7],
-                                                 'int32')
-            self.assertRaises(TypeError,
-                              F.hsigmoid_loss,
-                              x,
-                              label,
-                              8,
-                              weight,
-                              path_code=path_code_int32)
+            path_code_int32 = paddle.static.data(
+                'path_code_int32', [7], 'int32'
+            )
+            self.assertRaises(
+                TypeError,
+                F.hsigmoid_loss,
+                x,
+                label,
+                8,
+                weight,
+                path_code=path_code_int32,
+            )
 
         # test paddle.nn.HSigmoidLoss
         paddle.disable_static(self.place)
@@ -637,8 +740,9 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.hsigmoid, 1, label, 2)
             # The input dtype must be float16, float32, float64.
             x_int32 = fluid.data(name='x_int32', shape=[4, 3], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.hsigmoid, x_int32, label,
-                              2)
+            self.assertRaises(
+                TypeError, fluid.layers.hsigmoid, x_int32, label, 2
+            )
             # support the input dtype is float32
             x_fp32 = fluid.data(name='x_fp32', shape=[4, 3], dtype='float32')
             fluid.layers.hsigmoid(x_fp32, label, 2)
@@ -647,20 +751,30 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.hsigmoid, x_fp32, 1, 2)
             # The label dtype must be int64.
             label_int32 = fluid.data('label_int32', [4, 1], 'int32')
-            self.assertRaises(TypeError, fluid.layers.hsigmoid, x_fp32,
-                              label_int32, 2)
+            self.assertRaises(
+                TypeError, fluid.layers.hsigmoid, x_fp32, label_int32, 2
+            )
 
 
 class TestHSigmoidLossAPICustom(TestHSigmoidLossAPI):
-
     def set_attrs(self):
         self.is_custom = True
-        self.path_table_np = np.array([(0, 2, -1, -1, -1), (0, 1, 3, -1, -1),
-                                       (0, 1, 4, -1, -1),
-                                       (0, 2, -1, -1, -1)]).astype(np.int64)
-        self.path_code_np = np.array([(0, 0, -1, -1, -1), (1, 1, 1, -1, -1),
-                                      (1, 0, 0, -1, -1),
-                                      (0, 1, -1, -1, -1)]).astype(np.int64)
+        self.path_table_np = np.array(
+            [
+                (0, 2, -1, -1, -1),
+                (0, 1, 3, -1, -1),
+                (0, 1, 4, -1, -1),
+                (0, 2, -1, -1, -1),
+            ]
+        ).astype(np.int64)
+        self.path_code_np = np.array(
+            [
+                (0, 0, -1, -1, -1),
+                (1, 1, 1, -1, -1),
+                (1, 0, 0, -1, -1),
+                (0, 1, -1, -1, -1),
+            ]
+        ).astype(np.int64)
 
     def test_errors(self):
         pass

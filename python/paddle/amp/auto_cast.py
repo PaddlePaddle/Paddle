@@ -18,11 +18,13 @@ from paddle.fluid.dygraph.amp import amp_decorate
 __all__ = []
 
 
-def auto_cast(enable=True,
-              custom_white_list=None,
-              custom_black_list=None,
-              level='O1',
-              dtype='float16'):
+def auto_cast(
+    enable=True,
+    custom_white_list=None,
+    custom_black_list=None,
+    level='O1',
+    dtype='float16',
+):
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
     If enabled, the input data type (float32 or float16) of each operator is decided
@@ -78,12 +80,14 @@ def auto_cast(enable=True,
     return amp_guard(enable, custom_white_list, custom_black_list, level, dtype)
 
 
-def decorate(models,
-             optimizers=None,
-             level='O1',
-             dtype='float16',
-             master_weight=None,
-             save_dtype=None):
+def decorate(
+    models,
+    optimizers=None,
+    level='O1',
+    dtype='float16',
+    master_weight=None,
+    save_dtype=None,
+):
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
     When level is O2(pure float16/bfloat16), the decorate will cast all parameters of models to float16/bfloat16, except BatchNorm and LayerNorm.
@@ -147,5 +151,6 @@ def decorate(models,
             output = model(data)
             print(output.dtype) # FP16
     """
-    return amp_decorate(models, optimizers, level, dtype, master_weight,
-                        save_dtype)
+    return amp_decorate(
+        models, optimizers, level, dtype, master_weight, save_dtype
+    )

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import six
 import copy
 import re
 
@@ -22,14 +21,41 @@ from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
 
-from .extension_utils import find_cuda_home, find_rocm_home, normalize_extension_kwargs, add_compile_flag, run_cmd
-from .extension_utils import is_cuda_file, prepare_unix_cudaflags, prepare_win_cudaflags
-from .extension_utils import _import_module_from_library, _write_setup_file, _jit_compile
-from .extension_utils import check_abi_compatibility, log_v, CustomOpInfo, parse_op_name_from
-from .extension_utils import clean_object_if_change_cflags, _reset_so_rpath, _get_fluid_path
-from .extension_utils import bootstrap_context, get_build_directory, add_std_without_repeat
+from .extension_utils import (
+    add_compile_flag,
+    find_cuda_home,
+    find_rocm_home,
+    normalize_extension_kwargs,
+)
+from .extension_utils import (
+    is_cuda_file,
+    prepare_unix_cudaflags,
+    prepare_win_cudaflags,
+)
+from .extension_utils import (
+    _import_module_from_library,
+    _write_setup_file,
+    _jit_compile,
+)
+from .extension_utils import (
+    check_abi_compatibility,
+    log_v,
+    CustomOpInfo,
+    parse_op_name_from,
+)
+from .extension_utils import _reset_so_rpath, clean_object_if_change_cflags
+from .extension_utils import (
+    bootstrap_context,
+    get_build_directory,
+    add_std_without_repeat,
+)
 
-from .extension_utils import IS_WINDOWS, OS_NAME, MSVC_COMPILE_FLAGS, MSVC_COMPILE_FLAGS
+from .extension_utils import (
+    IS_WINDOWS,
+    OS_NAME,
+    MSVC_COMPILE_FLAGS,
+    MSVC_COMPILE_FLAGS,
+)
 from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 
 from ...fluid import core
@@ -37,9 +63,10 @@ from ...fluid import core
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
 # refer to https://stackoverflow.com/questions/34689210/error-exporting-symbol-when-building-python-c-extension-in-windows
-if IS_WINDOWS and six.PY3:
+if IS_WINDOWS:
     from distutils.command.build_ext import build_ext as _du_build_ext
     from unittest.mock import Mock
+
     _du_build_ext.get_export_symbols = Mock(return_value=None)
 
 CUDA_HOME = find_cuda_home()
@@ -148,7 +175,8 @@ def setup(**attr):
     # if not specific cmdclass in setup, add it automatically.
     if 'build_ext' not in cmdclass:
         cmdclass['build_ext'] = BuildExtension.with_options(
-            no_python_abi_suffix=True)
+            no_python_abi_suffix=True
+        )
         attr['cmdclass'] = cmdclass
 
     error_msg = """
@@ -168,17 +196,19 @@ def setup(**attr):
     if 'name' not in attr:
         raise ValueError(error_msg)
 
-    assert not attr['name'].endswith('module'),  \
-    "Please don't use 'module' as suffix in `name` argument, "
+    assert not attr['name'].endswith(
+        'module'
+    ), "Please don't use 'module' as suffix in `name` argument, "
     "it will be stripped in setuptools.bdist_egg and cause import error."
 
     ext_modules = attr.get('ext_modules', [])
     if not isinstance(ext_modules, list):
         ext_modules = [ext_modules]
-    assert len(
-        ext_modules
-    ) == 1, "Required only one Extension, but received {}. If you want to compile multi operators, you can include all necessary source files in one Extension.".format(
-        len(ext_modules))
+    assert (
+        len(ext_modules) == 1
+    ), "Required only one Extension, but received {}. If you want to compile multi operators, you can include all necessary source files in one Extension.".format(
+        len(ext_modules)
+    )
     # replace Extension.name with attr['name] to keep consistant with Package name.
     for ext_module in ext_modules:
         ext_module.name = attr['name']
@@ -336,7 +366,6 @@ class BuildExtension(build_ext, object):
         """
 
         class cls_with_options(cls):
-
             def __init__(self, *args, **kwargs):
                 kwargs.update(options)
                 cls.__init__(self, *args, **kwargs)
@@ -381,8 +410,9 @@ class BuildExtension(build_ext, object):
         # cflags have changed and delete the built shared library to re-compile the source
         # even though source file content keep unchanged.
         so_name = self.get_ext_fullpath(self.extensions[0].name)
-        clean_object_if_change_cflags(os.path.abspath(so_name),
-                                      self.extensions[0])
+        clean_object_if_change_cflags(
+            os.path.abspath(so_name), self.extensions[0]
+        )
 
         # Consider .cu, .cu.cc as valid source extensions.
         self.compiler.src_extensions += ['.cu', '.cu.cc']
@@ -394,8 +424,9 @@ class BuildExtension(build_ext, object):
         else:
             original_compile = self.compiler._compile
 
-        def unix_custom_single_compiler(obj, src, ext, cc_args, extra_postargs,
-                                        pp_opts):
+        def unix_custom_single_compiler(
+            obj, src, ext, cc_args, extra_postargs, pp_opts
+        ):
             """
             Monkey patch machanism to replace inner compiler to custom complie process on Unix platform.
             """
@@ -408,7 +439,9 @@ class BuildExtension(build_ext, object):
                 # nvcc or hipcc compile CUDA source
                 if is_cuda_file(src):
                     if core.is_compiled_with_rocm():
-                        assert ROCM_HOME is not None, "Not found ROCM runtime, \
+                        assert (
+                            ROCM_HOME is not None
+                        ), "Not found ROCM runtime, \
                             please use `export ROCM_PATH= XXX` to specify it."
 
                         hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
@@ -417,7 +450,9 @@ class BuildExtension(build_ext, object):
                         if isinstance(cflags, dict):
                             cflags = cflags['hipcc']
                     else:
-                        assert CUDA_HOME is not None, "Not found CUDA runtime, \
+                        assert (
+                            CUDA_HOME is not None
+                        ), "Not found CUDA runtime, \
                             please use `export CUDA_HOME= XXX` to specify it."
 
                         nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
@@ -436,7 +471,8 @@ class BuildExtension(build_ext, object):
                     cflags.append('-D__HIP_PLATFORM_HCC__')
                     cflags.append('-D__HIP_NO_HALF_CONVERSIONS__=1')
                     cflags.append(
-                        '-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP')
+                        '-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP'
+                    )
 
                 # NOTE(Aurelius84): Since Paddle 2.0, we require gcc version > 5.x,
                 # so we add this flag to ensure the symbol names from user compiled
@@ -450,22 +486,24 @@ class BuildExtension(build_ext, object):
                     else:
                         cflags.append('-DPADDLE_WITH_CUDA')
 
-                add_std_without_repeat(cflags,
-                                       self.compiler.compiler_type,
-                                       use_std14=True)
+                add_std_without_repeat(
+                    cflags, self.compiler.compiler_type, use_std14=True
+                )
                 original_compile(obj, src, ext, cc_args, cflags, pp_opts)
             finally:
                 # restore original_compiler
                 self.compiler.set_executable('compiler_so', original_compiler)
 
-        def win_custom_single_compiler(sources,
-                                       output_dir=None,
-                                       macros=None,
-                                       include_dirs=None,
-                                       debug=0,
-                                       extra_preargs=None,
-                                       extra_postargs=None,
-                                       depends=None):
+        def win_custom_single_compiler(
+            sources,
+            output_dir=None,
+            macros=None,
+            include_dirs=None,
+            debug=0,
+            extra_preargs=None,
+            extra_postargs=None,
+            depends=None,
+        ):
 
             self.cflags = copy.deepcopy(extra_postargs)
             extra_postargs = None
@@ -482,27 +520,32 @@ class BuildExtension(build_ext, object):
                 # Using regex to match src, obj and include files
                 src_regex = re.compile('/T(p|c)(.*)')
                 src_list = [
-                    m.group(2) for m in (src_regex.match(elem) for elem in cmd)
+                    m.group(2)
+                    for m in (src_regex.match(elem) for elem in cmd)
                     if m
                 ]
 
                 obj_regex = re.compile('/Fo(.*)')
                 obj_list = [
-                    m.group(1) for m in (obj_regex.match(elem) for elem in cmd)
+                    m.group(1)
+                    for m in (obj_regex.match(elem) for elem in cmd)
                     if m
                 ]
 
                 include_regex = re.compile(r'((\-|\/)I.*)')
                 include_list = [
                     m.group(1)
-                    for m in (include_regex.match(elem) for elem in cmd) if m
+                    for m in (include_regex.match(elem) for elem in cmd)
+                    if m
                 ]
 
                 assert len(src_list) == 1 and len(obj_list) == 1
                 src = src_list[0]
                 obj = obj_list[0]
                 if is_cuda_file(src):
-                    assert CUDA_HOME is not None, "Not found CUDA runtime, \
+                    assert (
+                        CUDA_HOME is not None
+                    ), "Not found CUDA runtime, \
                         please use `export CUDA_HOME= XXX` to specify it."
 
                     nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
@@ -516,8 +559,9 @@ class BuildExtension(build_ext, object):
                     cflags = prepare_win_cudaflags(cflags) + ['--use-local-env']
                     for flag in MSVC_COMPILE_FLAGS:
                         cflags = ['-Xcompiler', flag] + cflags
-                    cmd = [nvcc_cmd, '-c', src, '-o', obj
-                           ] + include_list + cflags
+                    cmd = (
+                        [nvcc_cmd, '-c', src, '-o', obj] + include_list + cflags
+                    )
                 elif isinstance(self.cflags, dict):
                     cflags = MSVC_COMPILE_FLAGS + self.cflags['cxx']
                     cmd += cflags
@@ -532,9 +576,16 @@ class BuildExtension(build_ext, object):
 
             try:
                 self.compiler.spawn = win_custom_spawn
-                return original_compile(sources, output_dir, macros,
-                                        include_dirs, debug, extra_preargs,
-                                        extra_postargs, depends)
+                return original_compile(
+                    sources,
+                    output_dir,
+                    macros,
+                    include_dirs,
+                    debug,
+                    extra_preargs,
+                    extra_postargs,
+                    depends,
+                )
             finally:
                 self.compiler.spawn = original_spawn
 
@@ -547,8 +598,9 @@ class BuildExtension(build_ext, object):
 
             def wrapper(source_filenames, strip_dir=0, output_dir=''):
                 try:
-                    objects = origina_func(source_filenames, strip_dir,
-                                           output_dir)
+                    objects = origina_func(
+                        source_filenames, strip_dir, output_dir
+                    )
                     for i, source in enumerate(source_filenames):
                         # modify xx.o -> xx.cu.o/xx.cu.obj
                         if is_cuda_file(source):
@@ -579,7 +631,8 @@ class BuildExtension(build_ext, object):
             self.compiler._compile = unix_custom_single_compiler
 
         self.compiler.object_filenames = object_filenames_with_cuda(
-            self.compiler.object_filenames, self.build_lib)
+            self.compiler.object_filenames, self.build_lib
+        )
         self._record_op_info()
 
         print("Compiling user custom op, it will cost a few seconds.....")
@@ -594,11 +647,12 @@ class BuildExtension(build_ext, object):
         ext_name = super(BuildExtension, self).get_ext_filename(fullname)
         split_str = '.'
         name_items = ext_name.split(split_str)
-        if self.no_python_abi_suffix and six.PY3:
-            assert len(
-                name_items
-            ) > 2, "Expected len(name_items) > 2, but received {}".format(
-                len(name_items))
+        if self.no_python_abi_suffix:
+            assert (
+                len(name_items) > 2
+            ), "Expected len(name_items) > 2, but received {}".format(
+                len(name_items)
+            )
             name_items.pop(-2)
             ext_name = split_str.join(name_items)
 
@@ -614,11 +668,13 @@ class BuildExtension(build_ext, object):
         """
         compiler_infos = ['clang'] + CLANG_COMPILE_FLAGS
         linker_infos = ['clang'] + CLANG_LINK_FLAGS
-        self.compiler.set_executables(compiler=compiler_infos,
-                                      compiler_so=compiler_infos,
-                                      compiler_cxx=['clang'],
-                                      linker_exe=['clang'],
-                                      linker_so=linker_infos)
+        self.compiler.set_executables(
+            compiler=compiler_infos,
+            compiler_so=compiler_infos,
+            compiler_cxx=['clang'],
+            linker_exe=['clang'],
+            linker_so=linker_infos,
+        )
 
     def _check_abi(self):
         """
@@ -633,11 +689,16 @@ class BuildExtension(build_ext, object):
 
         check_abi_compatibility(compiler)
         # Warn user if VC env is activated but `DISTUTILS_USE_SDK` is not set.
-        if IS_WINDOWS and 'VSCMD_ARG_TGT_ARCH' in os.environ and 'DISTUTILS_USE_SDK' not in os.environ:
+        if (
+            IS_WINDOWS
+            and 'VSCMD_ARG_TGT_ARCH' in os.environ
+            and 'DISTUTILS_USE_SDK' not in os.environ
+        ):
             msg = (
                 'It seems that the VC environment is activated but DISTUTILS_USE_SDK is not set.'
                 'This may lead to multiple activations of the VC env.'
-                'Please run `set DISTUTILS_USE_SDK=1` and try again.')
+                'Please run `set DISTUTILS_USE_SDK=1` and try again.'
+            )
             raise UserWarning(msg)
 
     def _record_op_info(self):
@@ -658,9 +719,9 @@ class BuildExtension(build_ext, object):
             op_names = parse_op_name_from(sources)
 
             for op_name in op_names:
-                CustomOpInfo.instance().add(op_name,
-                                            so_name=so_name,
-                                            so_path=so_path)
+                CustomOpInfo.instance().add(
+                    op_name, so_name=so_name, so_path=so_path
+                )
 
 
 class EasyInstallCommand(easy_install, object):
@@ -713,7 +774,6 @@ class BuildCommand(build, object):
         """
 
         class cls_with_options(cls):
-
             def __init__(self, *args, **kwargs):
                 kwargs.update(options)
                 cls.__init__(self, *args, **kwargs)
@@ -736,14 +796,16 @@ class BuildCommand(build, object):
             self.build_base = self._specified_build_base
 
 
-def load(name,
-         sources,
-         extra_cxx_cflags=None,
-         extra_cuda_cflags=None,
-         extra_ldflags=None,
-         extra_include_paths=None,
-         build_directory=None,
-         verbose=False):
+def load(
+    name,
+    sources,
+    extra_cxx_cflags=None,
+    extra_cuda_cflags=None,
+    extra_ldflags=None,
+    extra_include_paths=None,
+    build_directory=None,
+    verbose=False,
+):
     """
     An Interface to automatically compile C++/CUDA source files Just-In-Time
     and return callable python function as other Paddle layers API. It will
@@ -837,27 +899,42 @@ def load(name,
     file_path = os.path.join(build_directory, "{}_setup.py".format(name))
     sources = [os.path.abspath(source) for source in sources]
 
-    if extra_cxx_cflags is None: extra_cxx_cflags = []
-    if extra_cuda_cflags is None: extra_cuda_cflags = []
+    if extra_cxx_cflags is None:
+        extra_cxx_cflags = []
+    if extra_cuda_cflags is None:
+        extra_cuda_cflags = []
     assert isinstance(
         extra_cxx_cflags, list
     ), "Required type(extra_cxx_cflags) == list[str], but received {}".format(
-        extra_cxx_cflags)
+        extra_cxx_cflags
+    )
     assert isinstance(
         extra_cuda_cflags, list
     ), "Required type(extra_cuda_cflags) == list[str], but received {}".format(
-        extra_cuda_cflags)
+        extra_cuda_cflags
+    )
 
     log_v(
         "additional extra_cxx_cflags: [{}], extra_cuda_cflags: [{}]".format(
-            ' '.join(extra_cxx_cflags), ' '.join(extra_cuda_cflags)), verbose)
+            ' '.join(extra_cxx_cflags), ' '.join(extra_cuda_cflags)
+        ),
+        verbose,
+    )
 
     # write setup.py file and compile it
     build_base_dir = os.path.join(build_directory, name)
 
-    _write_setup_file(name, sources, file_path, build_base_dir,
-                      extra_include_paths, extra_cxx_cflags, extra_cuda_cflags,
-                      extra_ldflags, verbose)
+    _write_setup_file(
+        name,
+        sources,
+        file_path,
+        build_base_dir,
+        extra_include_paths,
+        extra_cxx_cflags,
+        extra_cuda_cflags,
+        extra_ldflags,
+        verbose,
+    )
     _jit_compile(file_path, verbose)
 
     # import as callable python api

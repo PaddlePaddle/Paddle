@@ -313,7 +313,7 @@ Ort::Value ONNXRuntimePredictor::GetOrtValue(const ONNXDesc &desc,
   Ort::MemoryInfo memory_info(
       device_name, OrtDeviceAllocator, place_.GetDeviceId(), OrtMemTypeDefault);
   auto *var = scope_->FindVar(desc.name);
-  auto *tensor = var->GetMutable<framework::LoDTensor>();
+  auto *tensor = var->GetMutable<phi::DenseTensor>();
   size_t size =
       tensor->numel() *
       framework::SizeOfType(framework::TransToProtoVarType(tensor->dtype()));

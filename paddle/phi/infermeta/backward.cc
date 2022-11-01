@@ -186,10 +186,10 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
   }
 }
 
-void CropTensorGradInferMeta(const MetaTensor& out_grad,
-                             const MetaTensor& x,
-                             const IntArray& offsets,
-                             MetaTensor* x_grad) {
+void CropGradInferMeta(const MetaTensor& out_grad,
+                       const MetaTensor& x,
+                       const IntArray& offsets,
+                       MetaTensor* x_grad) {
   auto x_dims = x.dims();
 
   if (x_grad != nullptr) {
@@ -804,6 +804,33 @@ void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
                                 MetaTensor* out_grad_grad) {
   if (out_grad_grad != nullptr) {
     out_grad_grad->share_dims(out_grad);
+  }
+}
+
+void RnnGradInferMeta(const MetaTensor& x,
+                      const std::vector<const MetaTensor*>& pre_state,
+                      const std::vector<const MetaTensor*>& weight_list,
+                      MetaTensor* x_grad,
+                      std::vector<MetaTensor*> pre_state_grad,
+                      std::vector<MetaTensor*> weight_grad_list) {
+  PADDLE_ENFORCE_GT(
+      pre_state.size(),
+      0UL,
+      phi::errors::InvalidArgument(
+          "The input pre_state in RnnGradInferMeta can't be empty."));
+  PADDLE_ENFORCE_GT(
+      weight_grad_list.size(),
+      0UL,
+      phi::errors::InvalidArgument(
+          "The input weight_grad_list in RnnGradInferMeta can't be empty."));
+  if (x_grad) {
+    UnchangedInferMeta(x, x_grad);
+  }
+  if (pre_state_grad.size()) {
+    UnchangedMultiInferMeta(pre_state, pre_state_grad);
+  }
+  if (weight_grad_list.size()) {
+    UnchangedMultiInferMeta(weight_list, weight_grad_list);
   }
 }
 

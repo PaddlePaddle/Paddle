@@ -48,7 +48,7 @@ using BlockDesc = framework::BlockDesc;
 using ProgramDesc = framework::ProgramDesc;
 
 using Variable = framework::Variable;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 
 namespace details {

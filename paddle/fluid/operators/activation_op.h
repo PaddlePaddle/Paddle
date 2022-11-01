@@ -32,9 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 
@@ -134,7 +131,7 @@ inline void ExtractActivationGradTensor(
     *dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     if (out_var) {
-      *Out = &(out_var->Get<framework::LoDTensor>());
+      *Out = &(out_var->Get<phi::DenseTensor>());
     } else {
       *Out = *dOut;  // fake out
     }
@@ -264,6 +261,11 @@ struct BaseActivationFunctor {
   template <typename T>                   \
   using name##TripleGradFunctor = phi::funcs::name##TripleGradFunctor<T>;
 
+template <typename T>
+using BReluFunctor = phi::funcs::HardTanhFunctor<T>;
+template <typename T>
+using BReluGradFunctor = phi::funcs::HardTanhGradFunctor<T>;
+
 USE_PHI_FUNCTOR(Cos)
 USE_PHI_FUNCTOR(Tan)
 USE_PHI_FUNCTOR(Acos)
@@ -276,10 +278,8 @@ USE_PHI_FUNCTOR(Asinh)
 USE_PHI_FUNCTOR(Acosh)
 USE_PHI_FUNCTOR(Atanh)
 USE_PHI_FUNCTOR(Tanh)
-USE_PHI_FUNCTOR(Exp)
 USE_PHI_DOUBLE_GRAD_FUNCTOR(Tanh)
 USE_PHI_TRIPLE_GRAD_FUNCTOR(Tanh)
-USE_PHI_FUNCTOR(BRelu)
 USE_PHI_FUNCTOR(ThresholdedRelu)
 USE_PHI_FUNCTOR(Relu6)
 USE_PHI_FUNCTOR(LeakyRelu)
@@ -304,7 +304,6 @@ USE_PHI_FUNCTOR(Log1p)
 USE_PHI_FUNCTOR(Swish)
 USE_PHI_FUNCTOR(HardSwish)
 USE_PHI_FUNCTOR(Pow)
-USE_PHI_FUNCTOR(Exp)
 USE_PHI_FUNCTOR(Expm1)
 USE_PHI_FUNCTOR(Mish)
 USE_PHI_FUNCTOR(STanh)

@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 
 using framework::LoD;
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class CRFDecodingOpKernel : public framework::OpKernel<T> {

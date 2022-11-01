@@ -27,7 +27,7 @@ class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto out_var = ctx.OutputVar("Out");
-    auto *tensor = out_var->GetMutable<framework::LoDTensor>();
+    auto *tensor = out_var->GetMutable<phi::DenseTensor>();
     T *data = tensor->mutable_data<T>(ctx.GetPlace());
 
     int64_t size = tensor->numel();

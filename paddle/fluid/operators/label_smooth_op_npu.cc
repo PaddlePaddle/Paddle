@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 void LabelSmoothMuls(const platform::Place& place,

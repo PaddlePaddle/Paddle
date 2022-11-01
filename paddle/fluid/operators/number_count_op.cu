@@ -37,7 +37,7 @@ static inline int GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 
 template <typename T>

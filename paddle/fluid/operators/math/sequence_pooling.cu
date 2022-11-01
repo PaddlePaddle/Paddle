@@ -194,8 +194,8 @@ class SequencePoolFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& context,
                   const std::string pooltype,
                   T pad_value,
-                  const framework::LoDTensor& input,
-                  framework::LoDTensor* output,
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* output,
                   bool is_test,
                   phi::DenseTensor* index = nullptr) {
     auto lod_level = input.lod().size();
@@ -412,8 +412,8 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
                   const std::string pooltype,
-                  const framework::LoDTensor& out_grad,
-                  framework::LoDTensor* in_grad,
+                  const phi::DenseTensor& out_grad,
+                  phi::DenseTensor* in_grad,
                   /* max pool has index */
                   const phi::DenseTensor* index = nullptr) {
     auto lod_level = in_grad->lod().size();

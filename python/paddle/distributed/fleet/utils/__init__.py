@@ -22,14 +22,14 @@ import paddle
 from . import log_util  # noqa: F401
 from . import hybrid_parallel_util  # noqa: F401
 
-__all__ = [  #noqa
-    "LocalFS", "recompute", "DistributedInfer", "HDFSClient"
-]
+__all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]  # noqa
 
 
-@deprecated(since="2.4.0",
-            update_to="paddle.distributed.fleet.recompute",
-            level=1,
-            reason="Please use new recompute API(fleet.recompute) ")
+@deprecated(
+    since="2.4.0",
+    update_to="paddle.distributed.fleet.recompute",
+    level=1,
+    reason="Please use new recompute API(fleet.recompute) ",
+)
 def recompute(function, *args, **kwargs):
     return fleet.recompute.recompute(function, *args, **kwargs)

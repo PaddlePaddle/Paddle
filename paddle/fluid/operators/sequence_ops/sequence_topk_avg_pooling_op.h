@@ -28,7 +28,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 static constexpr int TopKPosPaddingId = -1;
 
 namespace details {

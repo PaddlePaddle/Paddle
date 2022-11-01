@@ -25,7 +25,7 @@ TEST(PhiUtils, TransPhiKernelKeyToOpKernelType) {
   auto op_kernel_type =
       paddle::framework::TransPhiKernelKeyToOpKernelType(kernel_key);
   ASSERT_EQ(op_kernel_type.data_type_, paddle::framework::proto::VarType::FP32);
-  ASSERT_EQ(op_kernel_type.data_layout_, paddle::framework::DataLayout::kNCHW);
+  ASSERT_EQ(op_kernel_type.data_layout_, phi::DataLayout::kNCHW);
   ASSERT_TRUE(paddle::platform::is_cpu_place(op_kernel_type.place_));
   ASSERT_EQ(op_kernel_type.library_type_,
             paddle::framework::LibraryType::kPlain);
@@ -36,7 +36,7 @@ TEST(PhiUtils, TransPhiKernelKeyToOpKernelType) {
   op_kernel_type =
       paddle::framework::TransPhiKernelKeyToOpKernelType(kernel_key_mkldnn);
   ASSERT_EQ(op_kernel_type.data_type_, paddle::framework::proto::VarType::FP32);
-  ASSERT_EQ(op_kernel_type.data_layout_, paddle::framework::DataLayout::kNCHW);
+  ASSERT_EQ(op_kernel_type.data_layout_, phi::DataLayout::kNCHW);
   ASSERT_TRUE(paddle::platform::is_cpu_place(op_kernel_type.place_));
   ASSERT_EQ(op_kernel_type.library_type_,
             paddle::framework::LibraryType::kMKLDNN);
@@ -48,7 +48,7 @@ TEST(PhiUtils, TransPhiKernelKeyToOpKernelType) {
   op_kernel_type =
       paddle::framework::TransPhiKernelKeyToOpKernelType(kernel_key_cudnn);
   ASSERT_EQ(op_kernel_type.data_type_, paddle::framework::proto::VarType::FP32);
-  ASSERT_EQ(op_kernel_type.data_layout_, paddle::framework::DataLayout::kNCHW);
+  ASSERT_EQ(op_kernel_type.data_layout_, phi::DataLayout::kNCHW);
   ASSERT_TRUE(paddle::platform::is_gpu_place(op_kernel_type.place_));
   ASSERT_EQ(op_kernel_type.library_type_,
             paddle::framework::LibraryType::kCUDNN);
@@ -59,7 +59,7 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
   paddle::framework::OpKernelType op_kernel_type(
       paddle::framework::proto::VarType::FP32,
       paddle::platform::CPUPlace(),
-      paddle::framework::DataLayout::kNCHW);
+      phi::DataLayout::kNCHW);
   auto kernel_key =
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type);
   ASSERT_EQ(kernel_key.dtype(), phi::DataType::FLOAT32);
@@ -70,7 +70,7 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
   paddle::framework::OpKernelType op_kernel_type_mkldnn(
       paddle::framework::proto::VarType::FP32,
       paddle::platform::CPUPlace(),
-      paddle::framework::DataLayout::kMKLDNN,
+      phi::DataLayout::kMKLDNN,
       paddle::framework::LibraryType::kMKLDNN);
   auto kernel_key_mkldnn =
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type_mkldnn);
@@ -83,7 +83,7 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
   paddle::framework::OpKernelType op_kernel_type_cudnn(
       paddle::framework::proto::VarType::FP32,
       paddle::platform::CPUPlace(),
-      paddle::framework::DataLayout::kNCHW,
+      phi::DataLayout::kNCHW,
       paddle::framework::LibraryType::kCUDNN);
   auto kernel_key_cudnn =
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type_cudnn);

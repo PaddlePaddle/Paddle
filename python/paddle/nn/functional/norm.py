@@ -17,14 +17,11 @@ import paddle
 import paddle.fluid as fluid
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
-from ...framework import create_parameter
-from ..initializer import Constant
-from ...framework import ParamAttr
 from ...fluid import dygraph_utils
 import numbers
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
-from paddle.fluid.framework import core, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 
@@ -86,18 +83,30 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
     if _in_legacy_dygraph():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
-        out = _legacy_C_ops.p_norm(x, 'axis', axis, 'porder', float(p),
-                                   'keepdim', True, 'epsilon', epsilon)
+        out = _legacy_C_ops.p_norm(
+            x,
+            'axis',
+            axis,
+            'porder',
+            float(p),
+            'keepdim',
+            True,
+            'epsilon',
+            epsilon,
+        )
         return x / _legacy_C_ops.elementwise_max(out, eps)
 
     check_type(p, 'p', (float, int), 'normalize')
     check_type(axis, 'axis', (int), 'normalize')
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                             'normalize')
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64'], 'normalize'
+    )
     if len(x.shape) == 1 and axis != 0 and axis != -1:
         raise ValueError(
-            "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}"
-            .format(axis))
+            "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}".format(
+                axis
+            )
+        )
 
     attrs = {
         'axis': axis,
@@ -107,26 +116,27 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     }
     helper = LayerHelper('p_norm', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='p_norm',
-                     inputs={'X': x},
-                     outputs={'Out': out},
-                     attrs=attrs)
+    helper.append_op(
+        type='p_norm', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
+    )
     eps = out.block.create_var(dtype=out.dtype)
     eps = paddle.full(shape=[1], fill_value=epsilon, dtype=out.dtype)
     return paddle.divide(x, paddle.maximum(out, eps), name=name)
 
 
-def batch_norm(x,
-               running_mean,
-               running_var,
-               weight,
-               bias,
-               training=False,
-               momentum=0.9,
-               epsilon=1e-05,
-               data_format="NCHW",
-               use_global_stats=None,
-               name=None):
+def batch_norm(
+    x,
+    running_mean,
+    running_var,
+    weight,
+    bias,
+    training=False,
+    momentum=0.9,
+    epsilon=1e-05,
+    data_format="NCHW",
+    use_global_stats=None,
+    name=None,
+):
     """
     Applies Batch Normalization as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
@@ -178,7 +188,8 @@ def batch_norm(x,
     if data_format not in true_data_format:
         raise ValueError(
             "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-            "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format))
+            "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+        )
 
     data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
@@ -190,29 +201,64 @@ def batch_norm(x,
 
     if in_dygraph_mode():
         batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
-            x, weight, bias, running_mean, running_var, momentum, epsilon,
-            data_format, not training, use_global_stats, trainable_statistics,
-            False)
+            x,
+            weight,
+            bias,
+            running_mean,
+            running_var,
+            momentum,
+            epsilon,
+            data_format,
+            not training,
+            use_global_stats,
+            trainable_statistics,
+            False,
+        )
 
-        return dygraph_utils._append_activation_in_dygraph(batch_norm_out,
-                                                           act=None)
+        return dygraph_utils._append_activation_in_dygraph(
+            batch_norm_out, act=None
+        )
 
     elif _in_legacy_dygraph():
         # for dygraph need tuple
-        attrs = ("momentum", momentum, "epsilon", epsilon, "is_test",
-                 not training, "data_layout", data_format, "use_mkldnn", False,
-                 "fuse_with_relu", False, "use_global_stats", use_global_stats,
-                 "trainable_statistics", trainable_statistics)
+        attrs = (
+            "momentum",
+            momentum,
+            "epsilon",
+            epsilon,
+            "is_test",
+            not training,
+            "data_layout",
+            data_format,
+            "use_mkldnn",
+            False,
+            "fuse_with_relu",
+            False,
+            "use_global_stats",
+            use_global_stats,
+            "trainable_statistics",
+            trainable_statistics,
+        )
 
         batch_norm_out, _, _, _, _, _ = _legacy_C_ops.batch_norm(
-            x, weight, bias, running_mean, running_var, None, mean_out,
-            variance_out, *attrs)
+            x,
+            weight,
+            bias,
+            running_mean,
+            running_var,
+            None,
+            mean_out,
+            variance_out,
+            *attrs
+        )
 
-        return dygraph_utils._append_activation_in_dygraph(batch_norm_out,
-                                                           act=None)
+        return dygraph_utils._append_activation_in_dygraph(
+            batch_norm_out, act=None
+        )
 
-    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
-                             'BatchNorm')
+    check_variable_and_dtype(
+        x, 'input', ['float16', 'float32', 'float64'], 'BatchNorm'
+    )
 
     # for static need dict
     attrs = {
@@ -231,16 +277,18 @@ def batch_norm(x,
         "Scale": [weight],
         "Bias": [bias],
         "Mean": [running_mean],
-        "Variance": [running_var]
+        "Variance": [running_var],
     }
 
     helper = LayerHelper('batch_norm', **locals())
 
     param_dtype = x.dtype if x.dtype != 'float16' else 'float32'
-    saved_mean = helper.create_variable_for_type_inference(dtype=param_dtype,
-                                                           stop_gradient=True)
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=param_dtype, stop_gradient=True
+    )
     saved_variance = helper.create_variable_for_type_inference(
-        dtype=param_dtype, stop_gradient=True)
+        dtype=param_dtype, stop_gradient=True
+    )
     batch_norm_out = helper.create_variable_for_type_inference(x.dtype)
 
     outputs = {
@@ -248,29 +296,26 @@ def batch_norm(x,
         "MeanOut": [running_mean],
         "VarianceOut": [running_var],
         "SavedMean": [saved_mean],
-        "SavedVariance": [saved_variance]
+        "SavedVariance": [saved_variance],
     }
 
     if training or trainable_statistics:
         # reserve_space is only used for training.
         reserve_space = helper.create_variable_for_type_inference(
-            dtype=x.dtype, stop_gradient=True)
+            dtype=x.dtype, stop_gradient=True
+        )
         outputs["ReserveSpace"] = [reserve_space]
 
-    helper.append_op(type="batch_norm",
-                     inputs=inputs,
-                     outputs=outputs,
-                     attrs=attrs)
+    helper.append_op(
+        type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs
+    )
 
     return helper.append_activation(batch_norm_out)
 
 
-def layer_norm(x,
-               normalized_shape,
-               weight=None,
-               bias=None,
-               epsilon=1e-05,
-               name=None):
+def layer_norm(
+    x, normalized_shape, weight=None, bias=None, epsilon=1e-05, name=None
+):
     """
     see more detail in paddle.nn.LayerNorm
 
@@ -307,32 +352,49 @@ def layer_norm(x,
         normalized_shape = list(normalized_shape)
     elif not isinstance(normalized_shape, list):
         raise ValueError(
-            "`normalized_shape` should be int, list of ints or tuple of ints.")
+            "`normalized_shape` should be int, list of ints or tuple of ints."
+        )
 
     normalized_ndim = len(normalized_shape)
     begin_norm_axis = input_ndim - normalized_ndim
-    if input_ndim < normalized_ndim or input_shape[
-            begin_norm_axis:] != normalized_shape:
+    if (
+        input_ndim < normalized_ndim
+        or input_shape[begin_norm_axis:] != normalized_shape
+    ):
         str_normalized_shape = str(normalized_shape)
-        raise ValueError('Given normalized_shape is ' + str_normalized_shape +
-                         ', expected input with shape [*, ' +
-                         str_normalized_shape[1:] + ', but got input shape ' +
-                         str(input_shape))
+        raise ValueError(
+            'Given normalized_shape is '
+            + str_normalized_shape
+            + ', expected input with shape [*, '
+            + str_normalized_shape[1:]
+            + ', but got input shape '
+            + str(input_shape)
+        )
 
     if in_dygraph_mode():
-        pre_act, _, _, = _C_ops.layer_norm(x, weight, bias, epsilon,
-                                           begin_norm_axis, False)
+        (
+            pre_act,
+            _,
+            _,
+        ) = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis, False)
 
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
     if _in_legacy_dygraph():
-        pre_act, _, _ = _legacy_C_ops.layer_norm(x, weight, bias, 'epsilon',
-                                                 epsilon, 'begin_norm_axis',
-                                                 begin_norm_axis)
+        pre_act, _, _ = _legacy_C_ops.layer_norm(
+            x,
+            weight,
+            bias,
+            'epsilon',
+            epsilon,
+            'begin_norm_axis',
+            begin_norm_axis,
+        )
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
-    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
-                             'LayerNorm')
+    check_variable_and_dtype(
+        x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
+    )
 
     inputs = dict()
     inputs['X'] = [x]
@@ -346,49 +408,54 @@ def layer_norm(x,
     helper = LayerHelper('layer_norm', **locals())
 
     dtype = x.dtype
-    mean_out = helper.create_variable_for_type_inference(dtype=dtype,
-                                                         stop_gradient=True)
-    variance_out = helper.create_variable_for_type_inference(dtype=dtype,
-                                                             stop_gradient=True)
+    mean_out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
+    variance_out = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True
+    )
     layer_norm_out = helper.create_variable_for_type_inference(dtype)
 
-    helper.append_op(type="layer_norm",
-                     inputs=inputs,
-                     outputs={
-                         "Y": layer_norm_out,
-                         "Mean": mean_out,
-                         "Variance": variance_out,
-                     },
-                     attrs={
-                         "epsilon": epsilon,
-                         "begin_norm_axis": begin_norm_axis
-                     })
+    helper.append_op(
+        type="layer_norm",
+        inputs=inputs,
+        outputs={
+            "Y": layer_norm_out,
+            "Mean": mean_out,
+            "Variance": variance_out,
+        },
+        attrs={"epsilon": epsilon, "begin_norm_axis": begin_norm_axis},
+    )
 
     return helper.append_activation(layer_norm_out)
 
 
-def instance_norm(x,
-                  running_mean=None,
-                  running_var=None,
-                  weight=None,
-                  bias=None,
-                  use_input_stats=True,
-                  momentum=0.9,
-                  eps=1e-05,
-                  data_format="NCHW",
-                  name=None):
+def instance_norm(
+    x,
+    running_mean=None,
+    running_var=None,
+    weight=None,
+    bias=None,
+    use_input_stats=True,
+    momentum=0.9,
+    eps=1e-05,
+    data_format="NCHW",
+    name=None,
+):
     """
     See more detail in nn.layer.InstanceNorm2D.
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
-        running_mean(Tensor, optional): running mean. Default None.
-        running_var(Tensor, optional): running variance. Default None.
+        running_mean(Tensor, optional): running mean. Default None. Obsolete (that is, no longer usable).
+        running_var(Tensor, optional): running variance. Default None. Obsolete (that is, no longer usable).
         weight(Tensor, optional): The weight tensor of instance_norm. Default: None.
+            If its value is None, this parameter will be initialized by one.
         bias(Tensor, optional): The bias tensor of instance_norm. Default: None.
+            If its value is None, this parameter will be initialized by zero.
         eps(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        use_input_stats(bool, optional): Default True.
+        use_input_stats(bool, optional): Default True. Obsolete (that is, no longer usable).
         data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Defalut "NCHW".
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -411,9 +478,17 @@ def instance_norm(x,
         out = _C_ops.instance_norm(x, weight, bias, eps)
         return out
     if _in_legacy_dygraph():
-        out, _, _ = _legacy_C_ops.instance_norm(x, weight, bias, "epsilon", eps,
-                                                "momentum", momentum,
-                                                "data_format", data_format)
+        out, _, _ = _legacy_C_ops.instance_norm(
+            x,
+            weight,
+            bias,
+            "epsilon",
+            eps,
+            "momentum",
+            momentum,
+            "data_format",
+            data_format,
+        )
         return out
 
     check_variable_and_dtype(x, 'input', ['float32', 'float64'], "InstanceNorm")
@@ -426,104 +501,106 @@ def instance_norm(x,
         inputs = {"X": [x]}
 
     helper = LayerHelper('instance_norm', **locals())
-    saved_mean = helper.create_variable_for_type_inference(dtype=x.dtype,
-                                                           stop_gradient=True)
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True
+    )
     saved_variance = helper.create_variable_for_type_inference(
-        dtype=x.dtype, stop_gradient=True)
+        dtype=x.dtype, stop_gradient=True
+    )
     instance_norm_out = helper.create_variable_for_type_inference(x.dtype)
 
     outputs = {
         "Y": [instance_norm_out],
         "SavedMean": [saved_mean],
-        "SavedVariance": [saved_variance]
+        "SavedVariance": [saved_variance],
     }
 
-    helper.append_op(type="instance_norm",
-                     inputs=inputs,
-                     outputs=outputs,
-                     attrs=attrs)
+    helper.append_op(
+        type="instance_norm", inputs=inputs, outputs=outputs, attrs=attrs
+    )
     return instance_norm_out
 
 
-def local_response_norm(x,
-                        size,
-                        alpha=1e-4,
-                        beta=0.75,
-                        k=1.,
-                        data_format="NCHW",
-                        name=None):
+def local_response_norm(
+    x, size, alpha=1e-4, beta=0.75, k=1.0, data_format="NCHW", name=None
+):
     r"""
-        Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
-        For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
+    Local Response Normalization performs a type of "lateral inhibition" by normalizing over local input regions.
+    For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
 
-        The formula is as follows:
+    The formula is as follows:
 
-        .. math::
+    .. math::
 
-            Output(i, x, y) = Input(i, x, y) / \left(k + \alpha \sum\limits^{\min(C-1, i + size/2)}_{j = \max(0, i - size/2)}(Input(j, x, y))^2\right)^{\beta}
+        Output(i, x, y) = Input(i, x, y) / \left(k + \alpha \sum\limits^{\min(C-1, i + size/2)}_{j = \max(0, i - size/2)}(Input(j, x, y))^2\right)^{\beta}
 
-        In the above equation:
+    In the above equation:
 
-        - :math:`size` : The number of channels to sum over.
-        - :math:`k` : The offset (avoid being divided by 0).
-        - :math:`\\alpha` : The scaling parameter.
-        - :math:`\\beta` : The exponent parameter.
-
-
-        Args:
-            x (Tensor): The input 3-D/4-D/5-D tensor. The data type is float32.
-            size (int): The number of channels to sum over.
-            alpha (float, optional): The scaling parameter, positive. Default:1e-4
-            beta (float, optional): The exponent, positive. Default:0.75
-            k (float, optional): An offset, positive. Default: 1.0
-            data_format (str, optional): Specify the data format of the input, and the data format of the output
-                will be consistent with that of the input. An optional string from:
-                If x is 3-D Tensor, the string could be `"NCL"` or `"NLC"` . When it is `"NCL"`,
-                the data is stored in the order of: `[batch_size, input_channels, feature_length]`.
-                If x is 4-D Tensor, the string could be  `"NCHW"`, `"NHWC"`. When it is `"NCHW"`,
-                the data is stored in the order of: `[batch_size, input_channels, input_height, input_width]`.
-                If x is 5-D Tensor, the string could be  `"NCDHW"`, `"NDHWC"` . When it is `"NCDHW"`,
-                the data is stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
-            name (str, optional): Name for the operation (optional, default is None). For more information,
-                please refer to :ref:`api_guide_Name`.
-
-        Returns:
-            A tensor storing the transformation result with the same shape and data type as input.
+    - :math:`size` : The number of channels to sum over.
+    - :math:`k` : The offset (avoid being divided by 0).
+    - :math:`\\alpha` : The scaling parameter.
+    - :math:`\\beta` : The exponent parameter.
 
 
-        Examples:
+    Args:
+        x (Tensor): The input 3-D/4-D/5-D tensor. The data type is float32.
+        size (int): The number of channels to sum over.
+        alpha (float, optional): The scaling parameter, positive. Default:1e-4
+        beta (float, optional): The exponent, positive. Default:0.75
+        k (float, optional): An offset, positive. Default: 1.0
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from:
+            If x is 3-D Tensor, the string could be `"NCL"` or `"NLC"` . When it is `"NCL"`,
+            the data is stored in the order of: `[batch_size, input_channels, feature_length]`.
+            If x is 4-D Tensor, the string could be  `"NCHW"`, `"NHWC"`. When it is `"NCHW"`,
+            the data is stored in the order of: `[batch_size, input_channels, input_height, input_width]`.
+            If x is 5-D Tensor, the string could be  `"NCDHW"`, `"NDHWC"` . When it is `"NCDHW"`,
+            the data is stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name (str, optional): Name for the operation (optional, default is None). For more information,
+            please refer to :ref:`api_guide_Name`.
 
-        .. code-block:: python
+    Returns:
+        A tensor storing the transformation result with the same shape and data type as input.
 
-            import paddle
 
-            x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
-            y = paddle.nn.functional.local_response_norm(x, size=5)
-            print(y.shape)  # [3, 3, 112, 112]
-        """
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+
+        x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
+        y = paddle.nn.functional.local_response_norm(x, size=5)
+        print(y.shape)  # [3, 3, 112, 112]
+    """
     if not in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32'], 'local_response_norm')
     if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
         raise ValueError(
-            "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], " \
-            "but got {}".format(data_format))
+            "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
+            "but got {}".format(data_format)
+        )
 
     sizes = x.shape
     dim = len(sizes)
     if dim < 3:
         raise ValueError(
-            'Expected 3D or higher dimensionality input, but got {} dimensions'.
-            format(dim))
+            'Expected 3D or higher dimensionality input, but got {} dimensions'.format(
+                dim
+            )
+        )
 
     for i, sz in enumerate(sizes):
         if not sz > 0 and i > 0:
-            raise ValueError("Expected every dim's size to be larger than 0, "
-                             "but the size of the {}-th dim is {}".format(
-                                 i, sz))
+            raise ValueError(
+                "Expected every dim's size to be larger than 0, "
+                "but the size of the {}-th dim is {}".format(i, sz)
+            )
 
     channel_last = True if data_format[-1] == "C" else False
 
     from functools import reduce
+
     sum_sizes = reduce(lambda x, y: x * y, sizes[1:])
 
     div = paddle.unsqueeze(paddle.multiply(x, x), axis=1)
@@ -531,8 +608,11 @@ def local_response_norm(x,
         pad4d_shape = [0, 0, size // 2, (size - 1) // 2]
         pool2d_shape = (size, 1)
         reshape_shape = [
-            sizes[0], 1, sizes[1], sizes[2],
-            int(sum_sizes / (sizes[1] * sizes[2]))
+            sizes[0],
+            1,
+            sizes[1],
+            sizes[2],
+            int(sum_sizes / (sizes[1] * sizes[2])),
         ]
         pad5d_shape = [0, 0, 0, 0, size // 2, (size - 1) // 2]
         pool3d_shape = (size, 1, 1)
@@ -540,26 +620,29 @@ def local_response_norm(x,
         pad4d_shape = [size // 2, (size - 1) // 2, 0, 0]
         pool2d_shape = (1, size)
         reshape_shape = [
-            sizes[0], 1, sizes[1],
-            int(sum_sizes / (sizes[1] * sizes[-1])), sizes[-1]
+            sizes[0],
+            1,
+            sizes[1],
+            int(sum_sizes / (sizes[1] * sizes[-1])),
+            sizes[-1],
         ]
         pad5d_shape = [size // 2, (size - 1) // 2, 0, 0, 0, 0]
         pool3d_shape = (1, 1, size)
 
     if dim == 3:
         div = paddle.nn.functional.pad(div, pad=pad4d_shape)
-        div = paddle.nn.functional.avg_pool2d(div,
-                                              kernel_size=pool2d_shape,
-                                              stride=1)
+        div = paddle.nn.functional.avg_pool2d(
+            div, kernel_size=pool2d_shape, stride=1
+        )
         div = paddle.squeeze(div, axis=1)
     else:
         div = paddle.reshape(div, shape=reshape_shape)
-        div = paddle.nn.functional.pad(div,
-                                       pad=pad5d_shape,
-                                       data_format='NCDHW')
-        div = paddle.nn.functional.avg_pool3d(div,
-                                              kernel_size=pool3d_shape,
-                                              stride=1)
+        div = paddle.nn.functional.pad(
+            div, pad=pad5d_shape, data_format='NCDHW'
+        )
+        div = paddle.nn.functional.avg_pool3d(
+            div, kernel_size=pool3d_shape, stride=1
+        )
         div = paddle.reshape(paddle.squeeze(div, axis=1), sizes)
 
     div = paddle.scale(div, scale=alpha, bias=k)

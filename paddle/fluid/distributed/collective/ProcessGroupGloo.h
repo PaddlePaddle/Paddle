@@ -120,6 +120,12 @@ class ProcessGroupGloo : public ProcessGroup {
       std::vector<phi::DenseTensor>& outputs,
       const AllreduceOptions& opts = AllreduceOptions()) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllReduce(
+      std::vector<phi::DenseTensor>& inputs,
+      std::vector<phi::DenseTensor>& outputs,
+      const AllreduceOptions& opts,
+      bool sync_op) override;
+
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
 
@@ -142,6 +148,11 @@ class ProcessGroupGloo : public ProcessGroup {
 
   const std::string GetBackendName() const override {
     return GLOO_BACKEND_NAME;
+  }
+
+  const phi::DeviceContext& GetDeviceContext(
+      const Place& place) const override {
+    return *platform::DeviceContextPool::Instance().Get(place);
   }
 
   // Helper functions for Gloo.
