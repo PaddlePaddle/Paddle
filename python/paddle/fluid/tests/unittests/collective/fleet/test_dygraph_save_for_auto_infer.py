@@ -19,7 +19,7 @@ import sys
 
 
 def strategy_test(saving, seed=1024, loading="static"):
-    cmd = f"{sys.executable} dygraph_to_auto_infer_save_load.py --test_case {saving}:{loading} --cmd main --seed {seed}"
+    cmd = f"{sys.executable} dygraph_save_for_auto_infer.py --test_case {saving}:{loading} --cmd main --seed {seed}"
     p = subprocess.Popen(cmd.split())
     p.communicate()
     assert p.poll() == 0
@@ -38,7 +38,7 @@ class TestSharding(unittest.TestCase):
         strategy_test("sharding_stage3")
 
 
-class TestsingleCard(unittest.TestCase):
+class TestSingleCard(unittest.TestCase):
     def test_dygraph_save_load_dp_sharding_stage2(self):
         strategy_test("single")
 
