@@ -464,7 +464,7 @@
   backward : conv2d_transpose_grad
 
 - op : conv3d
-  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor
   infer_meta :
     func : Conv3DInferMeta
@@ -551,14 +551,14 @@
   backward : deformable_conv_grad
 
 - op : depthwise_conv2d
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu, bool use_gpudnn)
+  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_gpudnn)
   output : Tensor(out)
   infer_meta :
     func : DepthwiseConvInferMeta
-    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search]
+    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
   kernel :
     func : depthwise_conv2d
-    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search, fuse_relu]
+    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
     use_gpudnn : use_gpudnn
   backward : depthwise_conv2d_grad
 
