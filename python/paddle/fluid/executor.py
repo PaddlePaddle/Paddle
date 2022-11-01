@@ -19,7 +19,6 @@ import sys
 import warnings
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
-import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator
 from .framework import convert_np_dtype_to_dtype_, _apply_pass
@@ -1574,23 +1573,20 @@ class Executor(object):
             ]
             self._log_force_set_program_cache(use_program_cache)
 
-        try:
-            res = self._run_impl(
-                program=program,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name,
-                scope=scope,
-                return_numpy=return_numpy,
-                use_program_cache=use_program_cache,
-                use_prune=use_prune,
-                return_merged=return_merged,
-            )
-            core.update_autotune_status()
-            return res
-        except Exception as e:
-            six.reraise(*sys.exc_info())
+        res = self._run_impl(
+            program=program,
+            feed=feed,
+            fetch_list=fetch_list,
+            feed_var_name=feed_var_name,
+            fetch_var_name=fetch_var_name,
+            scope=scope,
+            return_numpy=return_numpy,
+            use_program_cache=use_program_cache,
+            use_prune=use_prune,
+            return_merged=return_merged,
+        )
+        core.update_autotune_status()
+        return res
 
     def _run_impl(
         self,

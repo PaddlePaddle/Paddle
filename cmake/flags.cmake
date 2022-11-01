@@ -149,7 +149,6 @@ if(NOT WIN32)
       -Wno-unused-parameter
       -Wno-unused-function
       -Wno-error=literal-suffix
-      -Wno-error=unused-local-typedefs
       -Wno-error=ignored-attributes # Warnings in Eigen, gcc 6.3
       -Wno-error=terminate # Warning in PADDLE_ENFORCE
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
@@ -170,13 +169,7 @@ if(NOT WIN32)
   if(NOT APPLE)
     if((${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0) OR (WITH_ROCM))
       set(COMMON_FLAGS
-          ${COMMON_FLAGS}
-          -Wno-format-truncation # Warning in boost gcc 8.2
-          -Wno-error=parentheses # Warning in boost gcc 8.2
-          -Wno-error=catch-value # Warning in boost gcc 8.2
-          -Wno-error=nonnull-compare # Warning in boost gcc 8.2
-          -Wno-error=address # Warning in boost gcc 8.2
-          -Wno-ignored-qualifiers # Warning in boost gcc 8.2
+          ${COMMON_FLAGS} -Wno-ignored-qualifiers # Warning in Paddle-Lite
           -Wno-ignored-attributes # Warning in Eigen gcc 8.3
           -Wno-parentheses # Warning in Eigen gcc 8.3
       )
@@ -221,7 +214,8 @@ if(APPLE)
       -Werror=braced-scalar-init
       -Werror=uninitialized
       -Werror=tautological-constant-out-of-range-compare
-      -Werror=literal-conversion)
+      -Werror=literal-conversion
+      -Werror=pragma-pack)
 endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)

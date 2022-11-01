@@ -3678,7 +3678,7 @@ def instance_norm(
     if param_attr is False:
         assert (
             bias_attr is False
-        ), "param_attr and bias_attr must be set to Fasle at the same time in instance_norm"
+        ), "param_attr and bias_attr must be set to False at the same time in instance_norm"
 
     helper = LayerHelper('instance_norm', **locals())
     dtype = helper.input_dtype()
@@ -5096,9 +5096,6 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
     """
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
     reduce_all, dim = _get_reduce_dim(dim, input)
 
     if in_dygraph_mode():
@@ -11840,7 +11837,7 @@ def gaussian_random(
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         place = _current_expected_place()
-        return _C_ops.gaussian_random(
+        return _C_ops.gaussian(
             shape, float(mean), float(std), seed, dtype, place
         )
 
@@ -15001,7 +14998,6 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
             # example 1:
             import paddle
-            import six
             import numpy as np
 
             paddle.enable_static()
@@ -15027,7 +15023,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
             def simple_net(img, label):
                 hidden = img
-                for idx in six.moves.range(4):
+                for idx in range(4):
                     hidden = paddle.static.nn.fc(hidden, size=200)
                     new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
                         dtype=hidden.dtype, shape=hidden.shape)
@@ -15045,13 +15041,13 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 return ce_loss(prediction, label)
 
             x = paddle.static.data(name='x', shape=[1,4], dtype='float32')
-            y = paddle.static.data(name='y', shape=[1,10], dtype='int64')
+            y = paddle.static.data(name='y', shape=[1], dtype='int64')
             res = simple_net(x, y)
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             exe.run(paddle.static.default_startup_program())
             input1 = np.random.random(size=[1,4]).astype('float32')
-            input2 = np.random.randint(1, 10, size=[1,10], dtype='int64')
+            input2 = np.random.randint(1, 10, size=[1], dtype='int64')
             out = exe.run(paddle.static.default_main_program(),
                           feed={'x':input1, 'y':input2},
                           fetch_list=[res.name])

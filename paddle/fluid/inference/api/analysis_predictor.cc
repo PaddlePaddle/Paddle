@@ -168,20 +168,33 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
     LOG(ERROR) << "unsupported feed type " << pt.dtype;
     return false;
   }
-
-  PADDLE_ENFORCE_NOT_NULL(
-      input_ptr,
-      paddle::platform::errors::Fatal(
-          "Cannot convert to LoDTensor because LoDTensor creation failed."));
-  PADDLE_ENFORCE_NOT_NULL(
-      pt.data.data(),
-      paddle::platform::errors::InvalidArgument(
-          "The data contained in the input PaddleTensor is illegal."));
+  // NOTE(Aurelius84): Some kernels support zero shape input
+  // without memory holder, we should skip enforce logic.
+  bool has_zero_dim = (phi::product(ddim) == 0);
+  VLOG(3) << "Found zero dim: " << has_zero_dim
+          << " from input with ddim: " << ddim;
+  if (!has_zero_dim) {
+    PADDLE_ENFORCE_NOT_NULL(
+        input_ptr,
+        paddle::platform::errors::Fatal(
+            "Cannot convert to LoDTensor because LoDTensor creation failed."));
+    PADDLE_ENFORCE_NOT_NULL(
+        pt.data.data(),
+        paddle::platform::errors::InvalidArgument(
+            "The data contained in the input PaddleTensor is illegal."));
+    PADDLE_ENFORCE_EQ(
+        pt.data.length(),
+        t->numel() * paddle::experimental::SizeOf(t->dtype()),
+        paddle::platform::errors::InvalidArgument(
+            "The data contained in the input PaddleTensor had wrong length."));
+  }
 
   if (platform::is_cpu_place(place)) {
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(
-        static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
+    if (input_ptr != nullptr) {
+      std::memcpy(
+          static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
+    }
   } else if (platform::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
     std::memcpy(
@@ -529,6 +542,11 @@ bool AnalysisPredictor::PrepareProgram(
     // If the program is passed from external, no need to optimize it, this
     // logic is used in the clone scenario.
     inference_program_ = program;
+    if (config_.apply_optim_) {
+      VLOG(3)
+          << "apply_optim is enabled, will call OptimizeInferenceProgram().";
+      OptimizeInferenceProgram();
+    }
   }
 
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
@@ -1065,11 +1083,12 @@ void AnalysisPredictor::PrepareArgument() {
                       false,
                       platform::errors::PreconditionNotMet(
                           "Either model_dir or prog_file should be set."));
-    std::string dir = inference::analysis::GetDirRoot(config_.prog_file());
 
     argument_.SetModelProgramPath(config_.prog_file());
     argument_.SetModelParamsPath(config_.params_file());
   }
+  // For JITLayer
+  argument_.SetSkipLoadParams(config_.skip_load_params_);
 
   argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
   argument_.SetTensorRtUseOSS(config_.trt_use_varseqlen_);
@@ -1129,6 +1148,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuPrecision(config_.xpu_precision_);
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
     argument_.SetXpuDeviceId(config_.xpu_device_id_);
+    argument_.SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
     // NNAdapter related
     argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
     argument_.SetNNAdapterDeviceNames(

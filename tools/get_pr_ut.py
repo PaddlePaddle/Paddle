@@ -303,7 +303,7 @@ class PRChecker(object):
         file_ut_map = None
 
         ret = self.__urlretrieve(
-            'https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/ut_file_map.json',
+            'https://paddle-docker-tar.bj.bcebos.com/tmp_test/ut_file_map.json',
             'ut_file_map.json',
         )
         if not ret:
@@ -338,6 +338,10 @@ class PRChecker(object):
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
+                elif (
+                    '/xpu/' or '/npu/' or '/mlu/' or '/ipu/' in filename.lower()
+                ):
+                    filterFiles.append(filename)
                 else:
                     file_list.append(filename)
             else:
@@ -352,7 +356,7 @@ class PRChecker(object):
         if len(file_list) == 0:
             ut_list.append('filterfiles_placeholder')
             ret = self.__urlretrieve(
-                'https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/prec_delta',
+                'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
                 'prec_delta',
             )
             if ret:
@@ -458,7 +462,7 @@ class PRChecker(object):
             else:
                 if ut_list:
                     ret = self.__urlretrieve(
-                        'https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/prec_delta',
+                        'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
                         'prec_delta',
                     )
                     if ret:

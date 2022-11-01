@@ -55,7 +55,6 @@ requirements:
     - protobuf>=3.1.0
     - gast==0.3.3
     - Pillow
-    - six
     - decorator
     - astor
 """
@@ -67,7 +66,6 @@ requirements:
     - protobuf>=3.1.0
     - gast==0.3.3
     - Pillow
-    - six
     - decorator
     - astor
 """
