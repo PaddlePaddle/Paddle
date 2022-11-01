@@ -289,12 +289,9 @@ class Conv2D(layers.Layer):
                 self._stride,
                 self._padding,
                 "EXPLICIT",
-                self._groups if self._groups else 1,
                 self._dilation,
+                self._groups if self._groups else 1,
                 "NCHW",
-                False,
-                -1,
-                False,
             )
             if self.bias is not None:
                 pre_act = F.elementwise_add(pre_bias, self.bias, axis=1)
