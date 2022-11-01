@@ -552,6 +552,7 @@ class ShardingPass(PassBase):
             if self.bucket_size_numel > 1:
                 if self.stage == 2:
                     _fuse_overlap_parameter_comm_stage_two(self.sharding_infos,
+                                                           self._dist_context,
                                                            fuse_size=1024)
                 elif self.stage == 3:
                     _fuse_overlap_parameter_comm_stage_three(
@@ -914,7 +915,9 @@ def _fuse_overlap_parameter_comm_stage_two(sharding_infos, dist_context,
 
     group_to_param_map, param_to_group_map = group_param(
         sharding_info, fuse_size)
-
+    _logger.info("Sharding Stage2 Optimization:")
+    _logger.info("[{}] Parameters are fused into [{}] Buckets".format(
+        len(param_to_group_map.keys()), len(group_to_param_map.keys())))
     for group in group_to_param_map.keys():
 
         assert len(group) >= 1
@@ -943,6 +946,7 @@ def _fuse_overlap_parameter_comm_stage_two(sharding_infos, dist_context,
                                     })
         else:
             group.coalesce_var = group.params[0]
+        _logger.info("Bucket: {}".format([p.name for p in group.params]))
 
         # TODO Overlap broadcast with opt and next forward
         new_op = main_block.append_op(type='c_broadcast',
