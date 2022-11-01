@@ -240,7 +240,7 @@ class Accuracy(Metric):
     """
 
     def __init__(self, topk=(1,), name=None, *args, **kwargs):
-        super(Accuracy, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.topk = topk
         self.maxk = max(topk)
         self._init_name(name)
@@ -400,7 +400,7 @@ class Precision(Metric):
     """
 
     def __init__(self, name='precision', *args, **kwargs):
-        super(Precision, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.tp = 0  # true positive
         self.fp = 0  # false positive
         self._name = name
@@ -533,7 +533,7 @@ class Recall(Metric):
     """
 
     def __init__(self, name='recall', *args, **kwargs):
-        super(Recall, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.tp = 0  # true positive
         self.fn = 0  # false negative
         self._name = name
@@ -681,7 +681,7 @@ class Auc(Metric):
     def __init__(
         self, curve='ROC', num_thresholds=4095, name='auc', *args, **kwargs
     ):
-        super(Auc, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._curve = curve
         self._num_thresholds = num_thresholds
 

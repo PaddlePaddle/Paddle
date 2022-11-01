@@ -204,7 +204,7 @@ class SingleReturnTransformer(BaseTransformer):
         Self-defined visit for appending ancestor
         """
         self.ancestor_nodes.append(node)
-        ret = super(SingleReturnTransformer, self).visit(node)
+        ret = super().visit(node)
         self.ancestor_nodes.pop()
         return ret
 

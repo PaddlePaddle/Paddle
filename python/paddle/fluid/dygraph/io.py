@@ -337,7 +337,7 @@ class _ProgramHolder(object):
     """
 
     def __init__(self, program_desc):
-        super(_ProgramHolder, self).__init__()
+        super().__init__()
 
         # input, output, persistable, double_grads var info
         self._input_descs = []
@@ -1418,7 +1418,7 @@ class TranslatedLayer(layers.Layer):
     """
 
     def __init__(self, programs, persistable_vars):
-        super(TranslatedLayer, self).__init__()
+        super().__init__()
 
         if not isinstance(programs, dict):
             raise TypeError(

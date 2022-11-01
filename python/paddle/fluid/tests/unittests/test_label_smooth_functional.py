@@ -29,7 +29,7 @@ class LabelSmoothTestCase(unittest.TestCase):
         epsilon=0.1,
         dtype="float32",
     ):
-        super(LabelSmoothTestCase, self).__init__(methodName)
+        super().__init__(methodName)
 
         self.label_shape = label_shape
         self.prior_dist = prior_dist

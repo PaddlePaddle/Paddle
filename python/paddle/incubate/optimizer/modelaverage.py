@@ -170,7 +170,7 @@ class ModelAverage(Optimizer):
         max_average_window=10000,
         name=None,
     ):
-        super(ModelAverage, self).__init__(
+        super().__init__(
             learning_rate=0.0,
             parameters=parameters,
             weight_decay=None,

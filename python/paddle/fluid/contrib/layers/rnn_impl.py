@@ -84,7 +84,7 @@ class BasicGRUUnit(Layer):
         activation=None,
         dtype='float32',
     ):
-        super(BasicGRUUnit, self).__init__(name_scope, dtype)
+        super().__init__(name_scope, dtype)
         # reserve old school _full_name and _helper for static graph save load
         self._full_name = unique_name.generate(
             name_scope + "/" + self.__class__.__name__
@@ -834,7 +834,7 @@ class BasicLSTMUnit(Layer):
         forget_bias=1.0,
         dtype='float32',
     ):
-        super(BasicLSTMUnit, self).__init__(name_scope, dtype)
+        super().__init__(name_scope, dtype)
         # reserve old school _full_name and _helper for static graph save load
         self._full_name = unique_name.generate(
             name_scope + "/" + self.__class__.__name__

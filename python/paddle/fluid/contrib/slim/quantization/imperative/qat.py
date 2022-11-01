@@ -217,7 +217,7 @@ class ImperativeQuantAware(object):
                 layer=model,
                 model_path="./imperative_model_qat")
         """
-        super(ImperativeQuantAware, self).__init__()
+        super().__init__()
         self.fuse_conv_bn = fuse_conv_bn
 
         kwargs = {
@@ -328,7 +328,7 @@ class ImperativeQuantizeInputs(object):
 
         Please refer to the args of ImperativeQuantAware.
         """
-        super(ImperativeQuantizeInputs, self).__init__()
+        super().__init__()
         self.layer_name_map, self.fake_quant_input_layers = lazy_import_fleet(
             utils.layer_name_map, utils.fake_quant_input_layers
         )
@@ -462,7 +462,7 @@ class ImperativeQuantizeOutputs(object):
                                 The default value is 0.9.
             activation_bits(int, optional): quantization bit number for activation. Default is 8.
         """
-        super(ImperativeQuantizeOutputs, self).__init__()
+        super().__init__()
         self._moving_rate = moving_rate
         self._activation_bits = activation_bits
         self._onnx_format = onnx_format

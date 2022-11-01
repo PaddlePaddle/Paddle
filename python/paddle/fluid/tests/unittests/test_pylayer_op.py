@@ -458,7 +458,7 @@ class TestPyLayer(unittest.TestCase):
 
         class Layer(paddle.nn.Layer):
             def __init__(self):
-                super(Layer, self).__init__()
+                super().__init__()
 
             def forward(self, data):
                 data = data**2
@@ -495,7 +495,7 @@ class TestPyLayer(unittest.TestCase):
 
             class Layer(paddle.nn.Layer):
                 def __init__(self):
-                    super(Layer, self).__init__()
+                    super().__init__()
 
                 def forward(self, data):
                     var_b = data**2
@@ -532,7 +532,7 @@ class TestPyLayer(unittest.TestCase):
 
             class Layer(paddle.nn.Layer):
                 def __init__(self):
-                    super(Layer, self).__init__()
+                    super().__init__()
 
                 def forward(self, data):
                     var_b = data**2
@@ -565,7 +565,7 @@ class TestPyLayer(unittest.TestCase):
 
             class Layer(paddle.nn.Layer):
                 def __init__(self):
-                    super(Layer, self).__init__()
+                    super().__init__()
 
                 def forward(self, data):
                     var_b = data**2
@@ -596,7 +596,7 @@ class TestPyLayer(unittest.TestCase):
 
         class Layer(paddle.nn.Layer):
             def __init__(self):
-                super(Layer, self).__init__()
+                super().__init__()
 
             def forward(self, data):
                 z = cus_pylayer_op.apply(data)

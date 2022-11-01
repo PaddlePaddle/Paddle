@@ -329,7 +329,7 @@ class MoELayer(nn.Layer):
         recompute_interval=0,
         recompute_ctx=None,
     ):
-        super(MoELayer, self).__init__()
+        super().__init__()
 
         self.recompute_ctx = recompute_ctx
 

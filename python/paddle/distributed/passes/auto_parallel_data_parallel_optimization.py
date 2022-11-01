@@ -58,7 +58,7 @@ class DataParallelOptimizationPass(PassBase):
     """
 
     def __init__(self):
-        super(DataParallelOptimizationPass, self).__init__()
+        super().__init__()
         # NOTE not use depence on loss and param_grads
         self.set_attr("dist_context", None)
         self.set_attr("global_rank", -1)

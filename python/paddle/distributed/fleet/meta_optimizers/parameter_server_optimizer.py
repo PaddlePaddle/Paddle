@@ -25,7 +25,7 @@ __all__ = []
 
 class ParameterServerOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(ParameterServerOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
@@ -33,7 +33,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
-        super(ParameterServerOptimizer, self)._set_basic_info(
+        super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
 

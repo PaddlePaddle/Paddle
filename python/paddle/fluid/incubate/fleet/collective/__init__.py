@@ -52,7 +52,7 @@ class DistFCConfig(object):
 
 class Collective(Fleet):
     def __init__(self):
-        super(Collective, self).__init__(Mode.COLLECTIVE)
+        super().__init__(Mode.COLLECTIVE)
         self._local_ip = 0
 
         self.startup_program = None
@@ -226,7 +226,7 @@ class DistributedStrategy(fluid.BuildStrategy):
     """
 
     def __init__(self):
-        super(DistributedStrategy, self).__init__()
+        super().__init__()
         self.use_local_sgd = False
         self.use_dist_fc = False
 
@@ -255,7 +255,7 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
         assert isinstance(
             strategy, DistributedStrategy
         ), "strategy must be DistributedStrategy"
-        super(CollectiveOpBasedOptimizer, self).__init__(optimizer, strategy)
+        super().__init__(optimizer, strategy)
 
     def backward(
         self,
@@ -287,7 +287,7 @@ class CollectiveOptimizer(DistributedOptimizer):
     def __init__(self, optimizer, strategy=DistributedStrategy()):
         if strategy is None:
             strategy = DistributedStrategy()
-        super(CollectiveOptimizer, self).__init__(optimizer, strategy)
+        super().__init__(optimizer, strategy)
         self._forward_recompute = strategy.forward_recompute
         if not isinstance(strategy.recompute_checkpoints, list):
             raise ValueError(

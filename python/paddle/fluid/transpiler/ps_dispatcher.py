@@ -108,7 +108,7 @@ class RoundRobin(PSDispatcher):
     """
 
     def __init__(self, pserver_endpoints):
-        super(RoundRobin, self).__init__(pserver_endpoints)
+        super().__init__(pserver_endpoints)
 
     def dispatch(self, varlist):
         """

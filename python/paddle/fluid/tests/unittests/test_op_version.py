@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 
 class OpLastCheckpointCheckerTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
-        super(OpLastCheckpointCheckerTest, self).__init__(methodName)
+        super().__init__(methodName)
         self.checker = utils.OpLastCheckpointChecker()
         self.fake_op = 'for_pybind_test__'
 
@@ -52,7 +52,7 @@ class OpLastCheckpointCheckerTest(unittest.TestCase):
 
 class OpVersionTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
-        super(OpVersionTest, self).__init__(methodName)
+        super().__init__(methodName)
         self.vmap = fluid.core.get_op_version_map()
         self.fake_op = 'for_pybind_test__'
 

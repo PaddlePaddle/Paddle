@@ -59,7 +59,7 @@ class Sequential(Layer):
     """
 
     def __init__(self, *layers):
-        super(Sequential, self).__init__()
+        super().__init__()
         if len(layers) > 0 and isinstance(layers[0], (list, tuple)):
             for name, layer in layers:
                 self.add_sublayer(name, layer)
@@ -153,7 +153,7 @@ class ParameterList(Layer):
     """
 
     def __init__(self, parameters=None):
-        super(ParameterList, self).__init__()
+        super().__init__()
         if parameters is not None:
             for idx, param in enumerate(parameters):
                 assert isinstance(param, Parameter)
@@ -213,7 +213,7 @@ class LayerList(Layer):
     """
 
     def __init__(self, sublayers=None):
-        super(LayerList, self).__init__()
+        super().__init__()
         if sublayers is not None:
             for idx, layer in enumerate(sublayers):
                 self.add_sublayer(str(idx), layer)

@@ -46,7 +46,7 @@ class PyRNNBase(object):
 
 class PySimpleRNN1(PyRNNBase):
     def __init__(self, input_shape, output_shape):
-        super(PySimpleRNN1, self).__init__(input_shape, output_shape)
+        super().__init__(input_shape, output_shape)
 
         seq_len, batch_size, input_dim = input_shape
         self.h_boot = np.random.normal(size=(batch_size, input_dim)).astype(
@@ -68,7 +68,7 @@ class PySimpleRNN1(PyRNNBase):
 
 class PySimpleRNN2(PyRNNBase):
     def __init__(self, input_shape, output_shape):
-        super(PySimpleRNN2, self).__init__(input_shape, output_shape)
+        super().__init__(input_shape, output_shape)
 
         seq_len, batch_size, input_dim = input_shape
         self.W = np.ones(shape=(input_dim, input_dim)).astype("float32")
@@ -324,7 +324,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
         return rnn()
 
     def test_backward(self):
-        super(RecurrentOpTest2, self).test_backward(rtol=0.01)
+        super().test_backward(rtol=0.01)
 
 
 class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):

@@ -624,9 +624,7 @@ class DataParallel(layers.Layer):
         find_unused_parameters=False,
         group=None,
     ):
-        super(DataParallel, self).__init__(
-            layers.full_name() + "_data_parallel"
-        )
+        super().__init__(layers.full_name() + "_data_parallel")
 
         assert (
             _non_static_mode()

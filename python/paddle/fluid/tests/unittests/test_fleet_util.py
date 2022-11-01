@@ -65,7 +65,7 @@ class TestFleetUtil(unittest.TestCase):
 
         class UserDefinedUtil(fleet.UtilBase):
             def __init__(self):
-                super(UserDefinedUtil, self).__init__()
+                super().__init__()
 
             def get_user_id(self):
                 return 10

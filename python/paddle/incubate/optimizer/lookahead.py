@@ -129,7 +129,7 @@ class LookAhead(Optimizer):
         else:
             parameters = self.inner_optimizer._parameter_list
 
-        super(LookAhead, self).__init__(
+        super().__init__(
             learning_rate=alpha,
             parameters=parameters,
             weight_decay=None,

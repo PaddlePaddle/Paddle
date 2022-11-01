@@ -43,7 +43,7 @@ class BaseTransformer(gast.NodeTransformer):
             raise ValueError(msg)
         origin_info = getattr(node, ORIGI_INFO, None)
 
-        result = super(BaseTransformer, self).visit(node)
+        result = super().visit(node)
 
         iter_result = result
         if iter_result is not node and iter_result is not None:

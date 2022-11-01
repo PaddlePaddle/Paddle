@@ -23,7 +23,7 @@ class LayerInfo(object):
     """
 
     def __init__(self, layer, input_names, weight_names, output_names):
-        super(LayerInfo, self).__init__()
+        super().__init__()
         self.layer = layer
         self.input_names = input_names
         self.weight_names = weight_names
@@ -73,7 +73,7 @@ class PTQRegistry(object):
     is_inited = False
 
     def __init__(self):
-        super(PTQRegistry, self).__init__()
+        super().__init__()
 
     @classmethod
     def _init(cls):

@@ -432,7 +432,7 @@ class _JacobianNoBatch(_Jacobian):
     """
 
     def __init__(self, func, xs):
-        super(_JacobianNoBatch, self).__init__(func, xs)
+        super().__init__(func, xs)
 
     @property
     def shape(self):
@@ -461,7 +461,7 @@ class _JacobianBatchFirst(_Jacobian):
     """
 
     def __init__(self, func, xs):
-        super(_JacobianBatchFirst, self).__init__(func, xs)
+        super().__init__(func, xs)
 
     @property
     def shape(self):

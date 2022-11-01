@@ -218,7 +218,7 @@ class Communicator(object):
 class FLCommunicator(Communicator):  ## only for coordinator
     def __init__(self, ps_hosts, kwargs=None):
         mode = None
-        super(FLCommunicator, self).__init__(mode, kwargs)
+        super().__init__(mode, kwargs)
         send_ctx = {}
         dense_map = {}
         prototxt = ""

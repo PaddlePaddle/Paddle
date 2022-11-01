@@ -61,7 +61,7 @@ class _ConvNd(Layer):
         bias_attr=None,
         data_format="NCHW",
     ):
-        super(_ConvNd, self).__init__()
+        super().__init__()
         assert (
             weight_attr is not False
         ), "weight_attr should not be False in Conv."
@@ -345,7 +345,7 @@ class Conv1D(_ConvNd):
         bias_attr=None,
         data_format="NCL",
     ):
-        super(Conv1D, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -528,7 +528,7 @@ class Conv1DTranspose(_ConvNd):
         bias_attr=None,
         data_format="NCL",
     ):
-        super(Conv1DTranspose, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -685,7 +685,7 @@ class Conv2D(_ConvNd):
         bias_attr=None,
         data_format="NCHW",
     ):
-        super(Conv2D, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -858,7 +858,7 @@ class Conv2DTranspose(_ConvNd):
         bias_attr=None,
         data_format="NCHW",
     ):
-        super(Conv2DTranspose, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -1016,7 +1016,7 @@ class Conv3D(_ConvNd):
         bias_attr=None,
         data_format="NCDHW",
     ):
-        super(Conv3D, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,
@@ -1198,7 +1198,7 @@ class Conv3DTranspose(_ConvNd):
         bias_attr=None,
         data_format="NCDHW",
     ):
-        super(Conv3DTranspose, self).__init__(
+        super().__init__(
             in_channels,
             out_channels,
             kernel_size,

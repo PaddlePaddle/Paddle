@@ -52,7 +52,7 @@ class CELU(Layer):
     """
 
     def __init__(self, alpha=1.0, name=None):
-        super(CELU, self).__init__()
+        super().__init__()
         self._alpha = alpha
         self._name = name
 
@@ -100,7 +100,7 @@ class ELU(Layer):
     """
 
     def __init__(self, alpha=1.0, name=None):
-        super(ELU, self).__init__()
+        super().__init__()
         self._alpha = alpha
         self._name = name
 
@@ -152,7 +152,7 @@ class GELU(Layer):
     """
 
     def __init__(self, approximate=False, name=None):
-        super(GELU, self).__init__()
+        super().__init__()
         self._approximate = approximate
         self._name = name
 
@@ -200,7 +200,7 @@ class Hardshrink(Layer):
     """
 
     def __init__(self, threshold=0.5, name=None):
-        super(Hardshrink, self).__init__()
+        super().__init__()
         self._threshold = threshold
         self._name = name
 
@@ -251,7 +251,7 @@ class Hardswish(Layer):
     """
 
     def __init__(self, name=None):
-        super(Hardswish, self).__init__()
+        super().__init__()
         self._name = name
 
     def forward(self, x):
@@ -292,7 +292,7 @@ class Tanh(Layer):
     """
 
     def __init__(self, name=None):
-        super(Tanh, self).__init__()
+        super().__init__()
         self._name = name
 
     def forward(self, x):
@@ -340,7 +340,7 @@ class Hardtanh(Layer):
     """
 
     def __init__(self, min=-1.0, max=1.0, name=None):
-        super(Hardtanh, self).__init__()
+        super().__init__()
         self._min = min
         self._max = max
         self._name = name
@@ -410,7 +410,7 @@ class PReLU(Layer):
         data_format="NCHW",
         name=None,
     ):
-        super(PReLU, self).__init__()
+        super().__init__()
         self._num_parameters = num_parameters
         self._init = init
         self._weight_attr = weight_attr
@@ -511,7 +511,7 @@ class RReLU(Layer):
     """
 
     def __init__(self, lower=1.0 / 8.0, upper=1.0 / 3.0, name=None):
-        super(RReLU, self).__init__()
+        super().__init__()
         self._lower = lower
         self._upper = upper
         self._name = name
@@ -557,7 +557,7 @@ class ReLU(Layer):
     """
 
     def __init__(self, name=None):
-        super(ReLU, self).__init__()
+        super().__init__()
         self._name = name
 
     def forward(self, x):
@@ -597,7 +597,7 @@ class ReLU6(Layer):
     """
 
     def __init__(self, name=None):
-        super(ReLU6, self).__init__()
+        super().__init__()
         self._name = name
 
     def forward(self, x):
@@ -650,7 +650,7 @@ class SELU(Layer):
         alpha=1.6732632423543772848170429916717,
         name=None,
     ):
-        super(SELU, self).__init__()
+        super().__init__()
         self._scale = scale
         self._alpha = alpha
         self._name = name
@@ -702,7 +702,7 @@ class LeakyReLU(Layer):
     """
 
     def __init__(self, negative_slope=0.01, name=None):
-        super(LeakyReLU, self).__init__()
+        super().__init__()
         self._negative_slope = negative_slope
         self._name = name
 
@@ -743,7 +743,7 @@ class Sigmoid(Layer):
     """
 
     def __init__(self, name=None):
-        super(Sigmoid, self).__init__()
+        super().__init__()
         self.name = name
 
     def forward(self, x):
@@ -794,7 +794,7 @@ class Hardsigmoid(Layer):
     """
 
     def __init__(self, name=None):
-        super(Hardsigmoid, self).__init__()
+        super().__init__()
         self.name = name
 
     def forward(self, x):
@@ -835,7 +835,7 @@ class Softplus(Layer):
     """
 
     def __init__(self, beta=1, threshold=20, name=None):
-        super(Softplus, self).__init__()
+        super().__init__()
         self._beta = beta
         self._threshold = threshold
         self._name = name
@@ -887,7 +887,7 @@ class Softshrink(Layer):
     """
 
     def __init__(self, threshold=0.5, name=None):
-        super(Softshrink, self).__init__()
+        super().__init__()
         self._threshold = threshold
         self._name = name
 
@@ -927,7 +927,7 @@ class Softsign(Layer):
     """
 
     def __init__(self, name=None):
-        super(Softsign, self).__init__()
+        super().__init__()
         self._name = name
 
     def forward(self, x):
@@ -966,7 +966,7 @@ class Swish(Layer):
     """
 
     def __init__(self, name=None):
-        super(Swish, self).__init__()
+        super().__init__()
         self._name = name
 
     def forward(self, x):
@@ -1011,7 +1011,7 @@ class Mish(Layer):
     """
 
     def __init__(self, name=None):
-        super(Mish, self).__init__()
+        super().__init__()
         self._name = name
 
     def forward(self, x):
@@ -1050,7 +1050,7 @@ class Tanhshrink(Layer):
     """
 
     def __init__(self, name=None):
-        super(Tanhshrink, self).__init__()
+        super().__init__()
         self._name = name
 
     def forward(self, x):
@@ -1097,7 +1097,7 @@ class ThresholdedReLU(Layer):
     """
 
     def __init__(self, threshold=1.0, name=None):
-        super(ThresholdedReLU, self).__init__()
+        super().__init__()
         self._threshold = threshold
         self._name = name
 
@@ -1137,7 +1137,7 @@ class Silu(Layer):
     """
 
     def __init__(self, name=None):
-        super(Silu, self).__init__()
+        super().__init__()
         self._name = name
 
     def forward(self, x):
@@ -1176,7 +1176,7 @@ class LogSigmoid(Layer):
     """
 
     def __init__(self, name=None):
-        super(LogSigmoid, self).__init__()
+        super().__init__()
         self._name = name
 
     def forward(self, x):
@@ -1299,7 +1299,7 @@ class Softmax(Layer):
     """
 
     def __init__(self, axis=-1, name=None):
-        super(Softmax, self).__init__()
+        super().__init__()
         self._axis = axis
         self._dtype = None
         self._name = name
@@ -1358,7 +1358,7 @@ class LogSoftmax(Layer):
     """
 
     def __init__(self, axis=-1, name=None):
-        super(LogSoftmax, self).__init__()
+        super().__init__()
         self._axis = axis
         self._name = name
 
@@ -1424,7 +1424,7 @@ class Maxout(Layer):
     """
 
     def __init__(self, groups, axis=1, name=None):
-        super(Maxout, self).__init__()
+        super().__init__()
         self._groups = groups
         self._axis = axis
         self._name = name
@@ -1475,7 +1475,7 @@ class Softmax2D(Layer):
     """
 
     def __init__(self, name=None):
-        super(Softmax2D, self).__init__()
+        super().__init__()
         self._dtype = None
         self._name = name
 

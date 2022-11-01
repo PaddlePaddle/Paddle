@@ -66,7 +66,7 @@ class Identity(Layer):
     """
 
     def __init__(self, *args, **kwargs):
-        super(Identity, self).__init__()
+        super().__init__()
 
     def forward(self, input):
         return input
@@ -152,7 +152,7 @@ class Linear(Layer):
         bias_attr=None,
         name=None,
     ):
-        super(Linear, self).__init__()
+        super().__init__()
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
@@ -387,7 +387,7 @@ class Upsample(Layer):
         data_format='NCHW',
         name=None,
     ):
-        super(Upsample, self).__init__()
+        super().__init__()
         self.size = size
         self.scale_factor = scale_factor
         self.mode = mode.lower()
@@ -480,7 +480,7 @@ class UpsamplingNearest2D(Layer):
     def __init__(
         self, size=None, scale_factor=None, data_format='NCHW', name=None
     ):
-        super(UpsamplingNearest2D, self).__init__()
+        super().__init__()
         self.size = size
         self.scale_factor = scale_factor
         self.data_format = data_format
@@ -566,7 +566,7 @@ class UpsamplingBilinear2D(Layer):
     def __init__(
         self, size=None, scale_factor=None, data_format='NCHW', name=None
     ):
-        super(UpsamplingBilinear2D, self).__init__()
+        super().__init__()
         self.size = size
         self.scale_factor = scale_factor
         self.data_format = data_format
@@ -660,7 +660,7 @@ class Bilinear(Layer):
         bias_attr=None,
         name=None,
     ):
-        super(Bilinear, self).__init__()
+        super().__init__()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         self._name = name
@@ -753,7 +753,7 @@ class Dropout(Layer):
     """
 
     def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
-        super(Dropout, self).__init__()
+        super().__init__()
 
         self.p = p
         self.axis = axis
@@ -818,7 +818,7 @@ class Dropout2D(Layer):
     """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
-        super(Dropout2D, self).__init__()
+        super().__init__()
 
         self.p = p
         self.data_format = data_format
@@ -881,7 +881,7 @@ class Dropout3D(Layer):
     """
 
     def __init__(self, p=0.5, data_format='NCDHW', name=None):
-        super(Dropout3D, self).__init__()
+        super().__init__()
 
         self.p = p
         self.data_format = data_format
@@ -943,7 +943,7 @@ class AlphaDropout(Layer):
     """
 
     def __init__(self, p=0.5, name=None):
-        super(AlphaDropout, self).__init__()
+        super().__init__()
         self.p = p
         self.name = name
 
@@ -1003,7 +1003,7 @@ class Pad1D(Layer):
     def __init__(
         self, padding, mode='constant', value=0.0, data_format="NCL", name=None
     ):
-        super(Pad1D, self).__init__()
+        super().__init__()
         self._pad = _npairs(padding, 1)
         self._mode = mode
         self._value = value
@@ -1076,7 +1076,7 @@ class Pad2D(Layer):
     def __init__(
         self, padding, mode='constant', value=0.0, data_format="NCHW", name=None
     ):
-        super(Pad2D, self).__init__()
+        super().__init__()
         self._pad = _npairs(padding, 2)
         self._mode = mode
         self._value = value
@@ -1145,7 +1145,7 @@ class ZeroPad2D(Layer):
     """
 
     def __init__(self, padding, data_format="NCHW", name=None):
-        super(ZeroPad2D, self).__init__()
+        super().__init__()
         self._pad = _npairs(padding, 2)
         self._mode = 'constant'
         self._value = 0.0
@@ -1223,7 +1223,7 @@ class Pad3D(Layer):
         data_format="NCDHW",
         name=None,
     ):
-        super(Pad3D, self).__init__()
+        super().__init__()
         self._pad = _npairs(padding, 3)
         self._mode = mode
         self._value = value
@@ -1293,7 +1293,7 @@ class CosineSimilarity(Layer):
     """
 
     def __init__(self, axis=1, eps=1e-8):
-        super(CosineSimilarity, self).__init__()
+        super().__init__()
         self._axis = axis
         self._eps = eps
 
@@ -1414,7 +1414,7 @@ class Embedding(Layer):
         weight_attr=None,
         name=None,
     ):
-        super(Embedding, self).__init__()
+        super().__init__()
         self._num_embeddings = num_embeddings
         self._embedding_dim = embedding_dim
         self._sparse = sparse
@@ -1527,7 +1527,7 @@ class Unfold(Layer):
     def __init__(
         self, kernel_sizes, dilations=1, paddings=0, strides=1, name=None
     ):
-        super(Unfold, self).__init__()
+        super().__init__()
 
         self.kernel_sizes = kernel_sizes
         self.dilations = dilations
@@ -1622,7 +1622,7 @@ class Fold(Layer):
         strides=1,
         name=None,
     ):
-        super(Fold, self).__init__()
+        super().__init__()
 
         self.output_sizes = output_sizes
         self.kernel_sizes = kernel_sizes

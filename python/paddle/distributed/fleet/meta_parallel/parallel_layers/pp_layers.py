@@ -83,7 +83,7 @@ class SharedLayerDesc(LayerDesc):
         *inputs,
         **kwargs
     ):
-        super(SharedLayerDesc, self).__init__(layer_func, *inputs, **kwargs)
+        super().__init__(layer_func, *inputs, **kwargs)
         self.layer_name = key
         self.forward_func = forward_func
         self.shared_weight_attr = shared_weight_attr
@@ -179,7 +179,7 @@ class SegmentLayers(object):
 
 class PipelineLayerChunk(Layer):
     def __init__(self):
-        super(PipelineLayerChunk, self).__init__()
+        super().__init__()
         self.run_function = []
 
     def append(self, sublayer):
@@ -293,7 +293,7 @@ class PipelineLayer(Layer):
         recompute_ctx=None,
         num_virtual_pipeline_stages=None,
     ):
-        super(PipelineLayer, self).__init__()
+        super().__init__()
         if num_stages is None and topology is None:
             raise ValueError("should provide num_stages or topology")
 

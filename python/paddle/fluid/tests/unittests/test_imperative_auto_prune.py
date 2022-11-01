@@ -21,7 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class AutoPruneLayer0(fluid.Layer):
     def __init__(self, input_size):
-        super(AutoPruneLayer0, self).__init__()
+        super().__init__()
         self.linear1 = fluid.dygraph.Linear(
             input_size,
             5,
@@ -45,7 +45,7 @@ class AutoPruneLayer0(fluid.Layer):
 
 class AutoPruneLayer1(fluid.Layer):
     def __init__(self, input_size):
-        super(AutoPruneLayer1, self).__init__()
+        super().__init__()
         self.linear1 = fluid.dygraph.Linear(
             input_size,
             5,
@@ -70,7 +70,7 @@ class AutoPruneLayer1(fluid.Layer):
 
 class AutoPruneLayer2(fluid.Layer):
     def __init__(self, input_size):
-        super(AutoPruneLayer2, self).__init__()
+        super().__init__()
         self.linear = fluid.dygraph.Linear(input_size, 10, act=None)
         self.linear2 = fluid.dygraph.Linear(1, 1, act=None)
 
@@ -87,7 +87,7 @@ class AutoPruneLayer2(fluid.Layer):
 
 class AutoPruneLayer3(fluid.Layer):
     def __init__(self, input_size):
-        super(AutoPruneLayer3, self).__init__()
+        super().__init__()
         self.linear = fluid.dygraph.Linear(input_size, 20, act=None)
 
     def forward(self, x, label, test_num):
@@ -106,7 +106,7 @@ class AutoPruneLayer3(fluid.Layer):
 
 class MyLayer(fluid.Layer):
     def __init__(self, input_size, vocab_size, size, dtype="float32"):
-        super(MyLayer, self).__init__(dtype=dtype)
+        super().__init__(dtype=dtype)
         self.embed0 = fluid.Embedding(size=(vocab_size, size))
         self.embed1 = fluid.Embedding(size=(vocab_size, size))
         self.linear_0 = fluid.Linear(input_size, size, dtype=dtype)
@@ -128,7 +128,7 @@ class MyLayer(fluid.Layer):
 
 class MyLayer2(fluid.Layer):
     def __init__(self, input_size, vocab_size, size, dtype="float32"):
-        super(MyLayer2, self).__init__(dtype=dtype)
+        super().__init__(dtype=dtype)
         self.embed0 = fluid.Embedding(size=(vocab_size, size))
         self.embed1 = fluid.Embedding(size=(vocab_size, size))
         self.linear_0 = fluid.Linear(input_size, size, dtype=dtype)

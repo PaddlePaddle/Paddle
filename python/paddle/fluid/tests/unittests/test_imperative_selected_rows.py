@@ -24,7 +24,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self, vocab_size, hidden_size, dtype):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.emb = fluid.dygraph.Embedding(
             size=[vocab_size, hidden_size],
             dtype=dtype,

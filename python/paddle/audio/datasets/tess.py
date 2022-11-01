@@ -107,7 +107,7 @@ class TESS(AudioClassificationDataset):
         if archive is not None:
             self.archive = archive
         files, labels = self._get_data(mode, n_folds, split)
-        super(TESS, self).__init__(
+        super().__init__(
             files=files, labels=labels, feat_type=feat_type, **kwargs
         )
 

@@ -265,7 +265,7 @@ class StaticGraphAdapter(object):
     """
 
     def __init__(self, model):
-        super(StaticGraphAdapter, self).__init__()
+        super().__init__()
         self.model = model
         # with `_build_once` gone, parameters are now created in `__init__`
         # so we need to keep track of the parameters already created
@@ -736,7 +736,7 @@ class StaticGraphAdapter(object):
 
 class DynamicGraphAdapter(object):
     def __init__(self, model):
-        super(DynamicGraphAdapter, self).__init__()
+        super().__init__()
         self.model = model
         self._nranks = ParallelEnv().nranks
         self._local_rank = ParallelEnv().local_rank

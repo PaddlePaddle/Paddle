@@ -64,7 +64,7 @@ class TestNanInf(unittest.TestCase):
 
 class TestNanInfEnv(TestNanInf):
     def setUp(self):
-        super(TestNanInfEnv, self).setUp()
+        super().setUp()
         # windows python have some bug with env, so need use str to pass ci
         # otherwise, "TypeError: environment can only contain strings"
         self.env[str("PADDLE_INF_NAN_SKIP_OP")] = str("mul")

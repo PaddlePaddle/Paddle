@@ -23,7 +23,7 @@ PREFIX_META_TENSOR_NAME = 'meta_'
 
 class StringsAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
-        super(StringsAPI, self).__init__(api_item_yaml)
+        super().__init__(api_item_yaml)
 
     def get_api_func_name(self):
         return self.api

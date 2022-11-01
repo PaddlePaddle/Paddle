@@ -1240,7 +1240,7 @@ class DeformConv2D(Layer):
         weight_attr=None,
         bias_attr=None,
     ):
-        super(DeformConv2D, self).__init__()
+        super().__init__()
         assert (
             weight_attr is not False
         ), "weight_attr should not be False in Conv."
@@ -1672,7 +1672,7 @@ class PSRoIPool(Layer):
     """
 
     def __init__(self, output_size, spatial_scale=1.0):
-        super(PSRoIPool, self).__init__()
+        super().__init__()
         self.output_size = output_size
         self.spatial_scale = spatial_scale
 
@@ -1805,7 +1805,7 @@ class RoIPool(Layer):
     """
 
     def __init__(self, output_size, spatial_scale=1.0):
-        super(RoIPool, self).__init__()
+        super().__init__()
         self._output_size = output_size
         self._spatial_scale = spatial_scale
 
@@ -1997,7 +1997,7 @@ class RoIAlign(Layer):
     """
 
     def __init__(self, output_size, spatial_scale=1.0):
-        super(RoIAlign, self).__init__()
+        super().__init__()
         self._output_size = output_size
         self._spatial_scale = spatial_scale
 

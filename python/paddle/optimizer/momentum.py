@@ -157,7 +157,7 @@ class Momentum(Optimizer):
                     param_group['weight_decay'] = py_regular
 
         py_regular = None if predicate(weight_decay) else weight_decay
-        super(Momentum, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=py_regular,
@@ -297,7 +297,7 @@ class Momentum(Optimizer):
             param.regularizer, L2DecayRegularizer
         ):
             return grad
-        return super(Momentum, self)._create_regularization_of_grad(
+        return super()._create_regularization_of_grad(
             param, grad, regularization
         )
 

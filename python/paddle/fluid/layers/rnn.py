@@ -2299,9 +2299,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
                 structure of) tensor variable[s], and `finished` is a tensor with \
                 bool data type.
         """
-        super(SampleEmbeddingHelper, self).__init__(
-            embedding_fn, start_tokens, end_token
-        )
+        super().__init__(embedding_fn, start_tokens, end_token)
         self.softmax_temperature = (
             tensor.fill_constant(
                 shape=[1], dtype="float32", value=softmax_temperature

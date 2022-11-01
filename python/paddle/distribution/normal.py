@@ -142,7 +142,7 @@ class Normal(distribution.Distribution):
             if self.dtype != convert_dtype(self.loc.dtype):
                 self.loc = tensor.cast(self.loc, dtype=self.dtype)
                 self.scale = tensor.cast(self.scale, dtype=self.dtype)
-        super(Normal, self).__init__(self.loc.shape)
+        super().__init__(self.loc.shape)
 
     @property
     def mean(self):

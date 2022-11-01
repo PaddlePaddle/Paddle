@@ -4534,7 +4534,7 @@ class IrVarNode(IrNode):
         assert (
             isinstance(node, core.Node) and node.is_var()
         ), 'node must be the instance of core.Node and it must be a variable node.'
-        super(IrVarNode, self).__init__(node)
+        super().__init__(node)
         self.node = node
 
     def set_shape(self, shape):
@@ -4633,7 +4633,7 @@ class IrOpNode(IrNode):
         assert (
             isinstance(node, core.Node) and node.is_op()
         ), 'node must be the instance of core.Node and it must be a operator node.'
-        super(IrOpNode, self).__init__(node)
+        super().__init__(node)
         self.node = node
 
     def rename_input(self, old_input_name, new_input_name):
@@ -6986,7 +6986,7 @@ class ParamBase(core.VarBase):
 
         name = kwargs.get('name', unique_name.generate('_param_base'))
 
-        super(ParamBase, self).__init__(
+        super().__init__(
             dtype if dtype else core.VarDesc.VarType.FP32,
             list(shape) if shape else [],
             name,
@@ -7041,7 +7041,7 @@ class ParamBase(core.VarBase):
                 #         [-0.54217887,  0.48439729,  0.34082305]])
         """
         return "Parameter containing:\n{tensor}".format(
-            tensor=super(ParamBase, self).__str__()
+            tensor=super().__str__()
         )
 
     def __deepcopy__(self, memo):
@@ -7137,7 +7137,7 @@ class EagerParamBase(_core_eager_eagertensor):
         if isinstance(shape, core.eager.Tensor):
             shape = shape.numpy()
 
-        super(EagerParamBase, self).__init__(
+        super().__init__(
             dtype if dtype else core.VarDesc.VarType.FP32,
             list(shape) if shape else [],
             name,
@@ -7216,7 +7216,7 @@ class EagerParamBase(_core_eager_eagertensor):
                 #         [-0.54217887,  0.48439729,  0.34082305]])
         """
         return "Parameter containing:\n{tensor}".format(
-            tensor=super(EagerParamBase, self).__str__()
+            tensor=super().__str__()
         )
 
     def __deepcopy__(self, memo):
