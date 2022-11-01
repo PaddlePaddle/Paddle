@@ -838,6 +838,7 @@ class Engine:
                             use_program_cache=self._strategy.use_cache,
                             return_numpy=self._strategy.return_numpy)
                         print("lables: {}".format(lables[:20]))
+                        outs = [outs]
                     except core.EOFException:
                         break
                     if lr_scheduler and step % self._k_steps == 0:
@@ -1636,8 +1637,10 @@ class Engine:
 
 
 def print_param(program):
-    for p in program.all_parameters():
-        print(p.name, p.get_value()[:20])
+    for i, p in enumerate(program.all_parameters()):
+        if i == 10:
+            break
+        print(p.name, p.get_value())
 
 
 def print_input(program, vars):
