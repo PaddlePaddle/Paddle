@@ -2270,7 +2270,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "layernorm_shift_partition",
       "preln_layernorm_shift_partition",
       "lookup_table",
-      "lookup_table_v2",
+      // "lookup_table_v2",
       "expand_v2"};
 
   std::unordered_set<std::string> teller_set{
@@ -2390,7 +2390,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_layernorm_shift_partition",
       "merge_layernorm",
       "lookup_table",
-      "lookup_table_v2",
+      // "lookup_table_v2",
       "expand_v2"};
 };
 
