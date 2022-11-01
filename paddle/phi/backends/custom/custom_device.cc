@@ -885,6 +885,19 @@ class CustomDevice : public DeviceInterface {
         reinterpret_cast<C_Stream>(const_cast<void*>(stream.raw_stream())));
   }
 
+  void GraphEnginePrepareGraph(size_t dev_id,
+                               const stream::Stream& stream,
+                               const void* scope,
+                               const void* prog) override {
+    CHECK_PTR(pimpl_->graph_engine_prepare_graph);
+    const auto device = &devices_pool[dev_id];
+    pimpl_->graph_engine_prepare_graph(
+        device,
+        reinterpret_cast<C_Stream>(const_cast<void*>(stream.raw_stream())),
+        reinterpret_cast<C_Scope>(const_cast<void*>(scope)),
+        reinterpret_cast<C_Graph>(const_cast<void*>(prog)));
+  }
+
   void GraphEngineExecuteGraph(size_t dev_id,
                                const stream::Stream& stream,
                                const void* scope,

@@ -665,6 +665,16 @@ void DeviceManager::GraphEngineFinalize(const Place& place,
   dev_impl->GraphEngineFinalize(device_id, stream);
 }
 
+void DeviceManager::GraphEnginePrepareGraph(const Place& place,
+                                            const stream::Stream& stream,
+                                            const void* scope,
+                                            const void* prog) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->GraphEnginePrepareGraph(device_id, stream, scope, prog);
+}
+
 void DeviceManager::GraphEngineExecuteGraph(const Place& place,
                                             const stream::Stream& stream,
                                             const void* scope,

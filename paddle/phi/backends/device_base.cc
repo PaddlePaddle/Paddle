@@ -413,6 +413,13 @@ void DeviceInterface::GraphEngineFinalize(size_t dev_id,
   INTERFACE_UNIMPLEMENT;
 }
 
+void DeviceInterface::GraphEnginePrepareGraph(size_t dev_id,
+                                              const stream::Stream& stream,
+                                              const void* scope,
+                                              const void* prog) {
+  INTERFACE_UNIMPLEMENT;
+}
+
 void DeviceInterface::GraphEngineExecuteGraph(size_t dev_id,
                                               const stream::Stream& stream,
                                               const void* scope,

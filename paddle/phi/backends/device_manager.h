@@ -275,6 +275,11 @@ class DeviceManager {
   static void GraphEngineFinalize(const Place& place,
                                   const stream::Stream& stream);
 
+  static void GraphEnginePrepareGraph(const Place& place,
+                                      const stream::Stream& stream,
+                                      const void* scope,
+                                      const void* prog);
+
   static void GraphEngineExecuteGraph(const Place& place,
                                       const stream::Stream& stream,
                                       const void* scope,

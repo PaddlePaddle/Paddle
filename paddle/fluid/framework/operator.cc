@@ -40,6 +40,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
 
+DECLARE_bool(use_graph_engine);
 namespace phi {
 class DenseTensor;
 }  // namespace phi
@@ -2609,7 +2610,7 @@ void OperatorWithKernel::ParseMultiInputDataType(
         }
       }
       if (t != nullptr) {
-        PADDLE_ENFORCE_EQ(t->IsInitialized(),
+        PADDLE_ENFORCE_EQ(t->IsInitialized() || FLAGS_use_graph_engine,
                           true,
                           platform::errors::InvalidArgument(
                               "The %s Op's Input Variable `%s` "

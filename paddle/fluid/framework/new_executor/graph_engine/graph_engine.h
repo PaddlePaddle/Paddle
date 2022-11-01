@@ -128,21 +128,28 @@ class CustomGraphEngine final : public GraphEngine {
       auto* feed_list = feed_var->GetMutable<framework::FeedList>();
       for (size_t i = 0; i < feed_list->size(); ++i) {
         auto& out_name = feed_names[i];
+        auto* out_var = local_scope_->FindVar(out_name);
+        auto& feed_item = paddle::get<0>(feed_list->at(static_cast<size_t>(i)));
+        auto out_tensor = out_var->GetMutable<phi::DenseTensor>();
         if (!cache_hit) {
-          auto* out_var = local_scope_->FindVar(out_name);
-          auto& feed_item =
-              paddle::get<0>(feed_list->at(static_cast<size_t>(i)));
-          auto out_tensor = out_var->GetMutable<phi::DenseTensor>();
           out_tensor->Resize(feed_item.dims());
           out_tensor->set_lod(feed_item.lod());
           auto var = copy_program_->MutableBlock(0)->Var(out_name);
           var->SetShape(phi::vectorize<int64_t>(feed_item.dims()));
           // set_lod
         }
-        feed_tensor_name.push_back(const_cast<char*>(out_name.c_str()));
-        feed_tensor_data.push_back(paddle::get<0>(feed_list->at(i)).data());
+        feed_tensor_name.push_back(reinterpret_cast<char*>(out_tensor));
+        feed_tensor_data.push_back(
+            paddle::get<phi::DenseTensor>(feed_list->at(i)).data());
       }
     }
+
+    // prepare graph
+    phi::DeviceManager::GraphEnginePrepareGraph(
+        place_,
+        phi::stream::Stream(place_, nullptr),
+        reinterpret_cast<void*>(local_scope_),
+        reinterpret_cast<void*>(copy_program_.get()));
 
     if (!cache_hit) {
       auto var_scope = var_scope_.get();
@@ -328,19 +335,17 @@ class CustomGraphEngine final : public GraphEngine {
       fetch_list->resize(fetch_names.size());
       for (size_t i = 0; i < fetch_list->size(); ++i) {
         auto* in_var = local_scope_->FindVar(fetch_names[i]);
-
         if (in_var->IsType<phi::DenseTensor>()) {
-          auto& fetch_item =
-              paddle::get<0>(fetch_list->at(static_cast<size_t>(i)));
-          fetch_item.Resize(
-              phi::make_ddim(block.FindVar(fetch_names[i])->GetShape()));
-          // set_lod
-          auto fetch_item_data = fetch_item.mutable_data(
-              paddle::CPUPlace(),
-              TransToPhiDataType(block.FindVar(fetch_names[i])->GetDataType()));
+          auto in_tensor = in_var->GetMutable<phi::DenseTensor>();
 
-          fetch_tensor_name.push_back(
-              const_cast<char*>(fetch_names[i].c_str()));
+          auto& fetch_item = paddle::get<phi::DenseTensor>(
+              fetch_list->at(static_cast<size_t>(i)));
+          fetch_item.Resize(in_tensor->dims());
+          // set_lod
+          auto fetch_item_data =
+              fetch_item.mutable_data(paddle::CPUPlace(), in_tensor->dtype());
+
+          fetch_tensor_name.push_back(reinterpret_cast<char*>(in_tensor));
           fetch_tensor_data.push_back(fetch_item_data);
         } else {
           PADDLE_THROW(platform::errors::Unavailable(

@@ -270,6 +270,11 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual void GraphEngineFinalize(size_t dev_id, const stream::Stream& stream);
 
+  virtual void GraphEnginePrepareGraph(size_t dev_id,
+                                       const stream::Stream& stream,
+                                       const void* scope,
+                                       const void* prog);
+
   virtual void GraphEngineExecuteGraph(size_t dev_id,
                                        const stream::Stream& stream,
                                        const void* scope,

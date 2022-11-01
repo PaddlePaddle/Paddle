@@ -685,6 +685,11 @@ struct C_DeviceInterface {
   C_Status (*graph_engine_finalize)(const C_Device device,
                                     const C_Stream stream);
 
+  C_Status (*graph_engine_prepare_graph)(const C_Device device,
+                                         const C_Stream stream,
+                                         const C_Scope scope,
+                                         const C_Graph graph);
+
   C_Status (*graph_engine_execute_graph)(const C_Device device,
                                          const C_Stream stream,
                                          const C_Scope scope,
