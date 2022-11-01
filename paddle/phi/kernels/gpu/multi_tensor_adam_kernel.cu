@@ -122,7 +122,7 @@ struct MultiTensorAdamFunctor {
       phi::AlignedVector<MT, VecSize> mp_vec;
       phi::AlignedVector<MT, VecSize> mom1_vec;
       phi::AlignedVector<MT, VecSize> mom2_vec;
-      if (idx < n - VecSize && idx < chunk_size - VecSize) {
+      if (idx < n - VecSize) {
         if (IsMultiPrecision) {
           phi::Load<MT, VecSize>(mp_ptr + idx, &mp_vec);
         } else {
@@ -131,7 +131,7 @@ struct MultiTensorAdamFunctor {
         phi::Load<T, VecSize>(g_ptr + idx, &g_vec);
         phi::Load<MT, VecSize>(mom1_ptr + idx, &mom1_vec);
         phi::Load<MT, VecSize>(mom2_ptr + idx, &mom2_vec);
-      } else if (idx < n && idx < chunk_size) {
+      } else if (idx < n) {
         int size = n - idx;
 #pragma unroll
         for (int j = 0; j < size; j++) {
@@ -153,26 +153,14 @@ struct MultiTensorAdamFunctor {
           mom2_vec[j] = MT(0);
         }
       } else {
-        g_vec[0] = T(0);
-        g_vec[1] = T(0);
-        g_vec[2] = T(0);
-        g_vec[3] = T(0);
-        p_vec[0] = T(0);
-        p_vec[1] = T(0);
-        p_vec[2] = T(0);
-        p_vec[3] = T(0);
-        mp_vec[0] = MT(0);
-        mp_vec[1] = MT(0);
-        mp_vec[2] = MT(0);
-        mp_vec[3] = MT(0);
-        mom1_vec[0] = MT(0);
-        mom1_vec[1] = MT(0);
-        mom1_vec[2] = MT(0);
-        mom1_vec[3] = MT(0);
-        mom2_vec[0] = MT(0);
-        mom2_vec[1] = MT(0);
-        mom2_vec[2] = MT(0);
-        mom2_vec[3] = MT(0);
+#pragma unroll
+        for (int j = 0; j < VecSize; j++) {
+          g_vec[j] = T(0);
+          p_vec[j] = T(0);
+          mp_vec[j] = MT(0);
+          mom1_vec[j] = MT(0);
+          mom2_vec[j] = MT(0);
+        }
       }
 
 #pragma unroll
@@ -194,7 +182,7 @@ struct MultiTensorAdamFunctor {
         mp_vec[j] = p;
       }
 
-      if (idx < n && idx < chunk_size) {
+      if (idx < n - VecSize) {
         phi::Store<MT, VecSize>(mom1_vec, mom1_ptr + idx);
         phi::Store<MT, VecSize>(mom2_vec, mom2_ptr + idx);
         if (IsMultiPrecision) {
@@ -203,8 +191,8 @@ struct MultiTensorAdamFunctor {
         for (int j = 0; j < VecSize; j++) {
           p_ptr[idx + j] = static_cast<T>(mp_vec[j]);
         }
-      } else if (idx < n && idx < chunk_size) {
-        int size = n > chunk_size ? chunk_size - idx : n - idx;
+      } else if (idx < n) {
+        int size = n - idx;
 #pragma unroll
         for (int j = 0; j < size; j++) {
           if (IsMultiPrecision) {
