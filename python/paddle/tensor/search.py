@@ -904,7 +904,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     """
 
     if in_dygraph_mode():
-        if axis == None:
+        if axis is None:
             axis = -1
         out, indices = _C_ops.topk(x, k, axis, largest, sorted)
         return out, indices

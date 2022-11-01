@@ -94,7 +94,7 @@ class AutoCheckpointTestMul(AutoCheckPointACLBase):
             epochs.append(i)
 
         o = acp._get_train_epoch_range()
-        self.assertTrue(o == None, "now train epoch must not exits now")
+        self.assertTrue(o is None, "now train epoch must not exits now")
         self.assertEqual(i, 2)
         self.assertEqual(epochs, [0, 1, 2])
 
