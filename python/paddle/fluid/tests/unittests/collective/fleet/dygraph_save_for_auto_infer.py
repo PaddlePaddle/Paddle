@@ -156,7 +156,7 @@ def gen_uniq_random_numbers(low, high, size, seed):
         pos = int(np.random.randint(0, len(pool)))
         data[i] = pool[pos]
         pool.remove(pool[pos])
-    np.random(seed)
+    np.random.seed(seed)
     return data.reshape(size)
 
 
