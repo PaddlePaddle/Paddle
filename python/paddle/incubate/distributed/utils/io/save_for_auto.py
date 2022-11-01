@@ -177,13 +177,13 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
     attr_dict = {}
     for k, v in state_dict.items():
         dims = len(v.shape)
-        print("shape: ", k, dims)
+        logger.debug(f"shape: , {k}, {dims}")
         attr_d = {
             "process_shape": [dp_degree, mp_degree] if hcg else [1],
             "process_group": process_group,
             "dims_mapping": v.dims_mapping
             if hasattr(v, "dims_mapping")
-            else dims_mapping_dict[k],
+            else [-1 for _ in v.shape],
         }
         attr_dict[k] = attr_d
 
@@ -260,6 +260,10 @@ def _name_mapping_dist2single(state_dict, pp_group):
         for _, v in state_dict.items()
         if isinstance(v, paddle.Tensor) and _is_first_used(v)
     ]
+
+    if pp_group.nranks == 1:
+        return {k: k for k in param_keys}
+
     dist.all_gather_object(key_list, param_keys, pp_group)
 
     # find how many a op in a each pp:
@@ -330,22 +334,20 @@ def _get_wrapped_dist_state_dict(dist_state_dict):
 
     wrapped_state_dict = dict()
     if dist.get_world_size() <= 1:
-        for _, v in dist_state_dict.itmes():
+        for _, v in dist_state_dict.items():
             wrapped_state_dict[v.name] = v
         return wrapped_state_dict
 
     hcg = fleet.get_hybrid_communicate_group()
-    if hcg.get_pipe_parallel_world_size() <= 1:
-        for _, v in dist_state_dict.itmes():
-            wrapped_state_dict[v.name] = v
-        return wrapped_state_dict
 
     pp_group = hcg.get_pipe_parallel_group()
     mp_group = hcg.get_model_parallel_group()
+    logger.debug("execute _name_mapping_dist2single")
 
     name_mapping = _name_mapping_dist2single(dist_state_dict, pp_group)
     for _, v in dist_state_dict.items():
         if not _is_first_used(v):
+            logger.debug(f"not first used : {v.name}")
             continue
         wrapped_state_dict[name_mapping[v.name]] = v
         setattr(v, "dims_mapping", _get_dims_mapping(v, mp_group))
