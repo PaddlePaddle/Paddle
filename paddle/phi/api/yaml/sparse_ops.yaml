@@ -225,7 +225,7 @@
   backward : relu6_grad
 
 - op : reshape
-  args : (Tensor x,  IntArray shape)
+  args : (Tensor x,  int64_t[] shape)
   output : Tensor(out)
   infer_meta :
     func : ReshapeInferMeta
@@ -280,7 +280,7 @@
   backward : softmax_grad
 
 - op : sparse_coo_tensor
-  args : (Tensor values, Tensor indices, IntArray shape)
+  args : (Tensor values, Tensor indices, int64_t[] shape)
   output : Tensor(out)
   infer_meta :
     func : sparse::SparseCooTensorInferMeta
