@@ -921,7 +921,7 @@ def _fuse_overlap_parameter_comm_stage_two(sharding_infos, dist_context,
         "Bucket size is [{}], [{}] Parameters are fused into [{}] Buckets".
         format(fuse_size, len(param_to_group_map.keys()),
                len(group_to_param_map.keys())))
-    for group in group_to_param_map.keys():
+    for i, group in enumerate(group_to_param_map.keys()):
 
         assert len(group) >= 1
         if len(group) > 1:
