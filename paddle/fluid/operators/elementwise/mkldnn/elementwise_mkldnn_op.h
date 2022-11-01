@@ -143,7 +143,6 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElemwiseGradKernel<T>::Compute(ctx);
-    using Tensor = phi::DenseTensor;
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();

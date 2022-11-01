@@ -1941,7 +1941,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
         )
 
     if in_dygraph_mode():
-        return _C_ops.addmm(input, x, y, alpha, beta)
+        return _C_ops.addmm(input, x, y, beta, alpha)
     else:
         if _in_legacy_dygraph():
             out = _legacy_C_ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
