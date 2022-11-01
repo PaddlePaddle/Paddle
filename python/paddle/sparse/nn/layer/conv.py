@@ -23,23 +23,26 @@ __all__ = []
 
 
 class _Conv3D(Layer):
-
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 groups=1,
-                 subm=False,
-                 key=None,
-                 padding_mode='zeros',
-                 weight_attr=None,
-                 bias_attr=None,
-                 data_format="NDHWC"):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        subm=False,
+        key=None,
+        padding_mode='zeros',
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NDHWC",
+    ):
         super(_Conv3D, self).__init__()
-        assert weight_attr is not False, "weight_attr should not be False in Conv."
+        assert (
+            weight_attr is not False
+        ), "weight_attr should not be False in Conv."
         self._param_attr = weight_attr
         self._bias_attr = bias_attr
         self._groups = groups
@@ -49,56 +52,66 @@ class _Conv3D(Layer):
         self._subm = subm
         self._key = key
 
-        assert padding_mode == 'zeros', "Currently, only support padding_mode='zeros'"
+        assert (
+            padding_mode == 'zeros'
+        ), "Currently, only support padding_mode='zeros'"
         assert groups == 1, "Currently, only support groups=1"
 
         valid_format = {'NDHWC'}
         if data_format not in valid_format:
             raise ValueError(
-                "data_format must be one of {}, but got data_format='{}'".
-                format(valid_format, data_format))
+                "data_format must be one of {}, but got data_format='{}'".format(
+                    valid_format, data_format
+                )
+            )
 
         channel_last = data_format == "NDHWC"
 
         dims = 3
         self._stride = utils.convert_to_list(stride, dims, 'stride')
         self._dilation = utils.convert_to_list(dilation, dims, 'dilation')
-        self._kernel_size = utils.convert_to_list(kernel_size, dims,
-                                                  'kernel_size')
+        self._kernel_size = utils.convert_to_list(
+            kernel_size, dims, 'kernel_size'
+        )
         self._padding = padding
         self._padding_mode = padding_mode
         self._updated_padding, self._padding_algorithm = _update_padding_nd(
-            padding, channel_last, dims)
+            padding, channel_last, dims
+        )
 
         # the sparse conv restricts the shape is [D, H, W, in_channels, out_channels]
         filter_shape = self._kernel_size + [
-            self._in_channels, self._out_channels
+            self._in_channels,
+            self._out_channels,
         ]
 
         def _get_default_param_initializer():
             filter_elem_num = np.prod(self._kernel_size) * self._in_channels
-            std = (2.0 / filter_elem_num)**0.5
+            std = (2.0 / filter_elem_num) ** 0.5
             return Normal(0.0, std)
 
         self.weight = self.create_parameter(
             shape=filter_shape,
             attr=self._param_attr,
-            default_initializer=_get_default_param_initializer())
-        self.bias = self.create_parameter(attr=self._bias_attr,
-                                          shape=[self._out_channels],
-                                          is_bias=True)
+            default_initializer=_get_default_param_initializer(),
+        )
+        self.bias = self.create_parameter(
+            attr=self._bias_attr, shape=[self._out_channels], is_bias=True
+        )
 
     def forward(self, x):
-        out = F.conv._conv3d(x,
-                             self.weight,
-                             bias=self.bias,
-                             stride=self._stride,
-                             padding=self._updated_padding,
-                             dilation=self._dilation,
-                             groups=self._groups,
-                             subm=self._subm,
-                             key=self._key,
-                             data_format=self._data_format)
+        out = F.conv._conv3d(
+            x,
+            self.weight,
+            bias=self.bias,
+            stride=self._stride,
+            padding=self._updated_padding,
+            dilation=self._dilation,
+            groups=self._groups,
+            subm=self._subm,
+            key=self._key,
+            data_format=self._data_format,
+        )
         return out
 
     def extra_repr(self):
@@ -122,11 +135,11 @@ class Conv3D(_Conv3D):
     **Sparse Convlution3d Layer**
     The Sparse convolution3d layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
-    Output(Output) are multidimensional SparseCooTensors with a shape of 
+    Output(Output) are multidimensional SparseCooTensors with a shape of
     :math:`[N, D, H, W, C]` . Where N is batch size, C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
-    and W is the width of the feature. If bias attribution is provided, 
-    bias is added to the output of the convolution. 
+    and W is the width of the feature. If bias attribution is provided,
+    bias is added to the output of the convolution.
     For each input :math:`X`, the equation is:
 
     ..  math::
@@ -150,7 +163,7 @@ class Conv3D(_Conv3D):
             stride_D = stride_H = stride_W = stride. The default value is 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
-            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` 
+            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding`
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
@@ -208,63 +221,65 @@ class Conv3D(_Conv3D):
         .. code-block:: python
 
           import paddle
-          from paddle.fluid.framework import _test_eager_guard
-          
-          with _test_eager_guard():
-            indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-            values = [[1], [2], [3], [4]]
-            indices = paddle.to_tensor(indices, dtype='int32')
-            values = paddle.to_tensor(values, dtype='float32')
-            dense_shape = [1, 1, 3, 4, 1]
-            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
-            conv = paddle.sparse.nn.Conv3D(1, 1, (1, 3, 3))
-            y = conv(sparse_x)
-            print(y.shape)
-            # (1, 1, 1, 2, 1)
+
+          indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+          values = [[1], [2], [3], [4]]
+          indices = paddle.to_tensor(indices, dtype='int32')
+          values = paddle.to_tensor(values, dtype='float32')
+          dense_shape = [1, 1, 3, 4, 1]
+          sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+          conv = paddle.sparse.nn.Conv3D(1, 1, (1, 3, 3))
+          y = conv(sparse_x)
+          print(y.shape)
+          # (1, 1, 1, 2, 1)
     """
 
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 groups=1,
-                 padding_mode='zeros',
-                 weight_attr=None,
-                 bias_attr=None,
-                 data_format="NDHWC"):
-        super(Conv3D, self).__init__(in_channels,
-                                     out_channels,
-                                     kernel_size,
-                                     stride=stride,
-                                     padding=padding,
-                                     dilation=dilation,
-                                     groups=groups,
-                                     subm=False,
-                                     key=None,
-                                     padding_mode=padding_mode,
-                                     weight_attr=weight_attr,
-                                     bias_attr=bias_attr,
-                                     data_format=data_format)
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        padding_mode='zeros',
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NDHWC",
+    ):
+        super(Conv3D, self).__init__(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            subm=False,
+            key=None,
+            padding_mode=padding_mode,
+            weight_attr=weight_attr,
+            bias_attr=bias_attr,
+            data_format=data_format,
+        )
 
 
 class SubmConv3D(_Conv3D):
     r"""
-    **Sparse Submanifold Convlution3d Layer**
-    The Sparse submanifold convolution3d layer calculates the output based on the input, filter
+    **Submanifold Sparse Convlution3d Layer**
+    The submanifold sparse convolution3d layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
-    Output(Output) are multidimensional SparseCooTensors with a shape of 
+    Output(Output) are multidimensional SparseCooTensors with a shape of
     :math:`[N, D, H, W, C]` . Where N is batch size, C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
-    and W is the width of the feature. If bias attribution is provided, 
+    and W is the width of the feature. If bias attribution is provided,
     bias is added to the output of the convolution.
     For each input :math:`X`, the equation is:
 
     ..  math::
 
-        Out =(W \ast X + b
+        Out = W \ast X + b
 
     In the above equation:
 
@@ -283,7 +298,7 @@ class SubmConv3D(_Conv3D):
             stride_D = stride_H = stride_W = stride. The default value is 1.
         padding(int|str|tuple|list, optional): The padding size. Padding coule be in one of the following forms.
             1. a string in ['valid', 'same'].
-            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding` 
+            2. an int, which means each spartial dimension(depth, height, width) is zero paded by size of `padding`
             3. a list[int] or tuple[int] whose length is the number of spartial dimensions, which contains the amount of padding on each side for each spartial dimension. It has the form [pad_d1, pad_d2, ...].
             4. a list[int] or tuple[int] whose length is 2 * number of spartial dimensions. It has the form  [pad_before, pad_after, pad_before, pad_after, ...] for all spartial dimensions.
             5. a list or tuple of pairs of ints. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension are also included. Each pair of integers correspond to the amount of padding for a dimension of the input. Padding in batch dimension and channel dimension should be [0, 0] or (0, 0).
@@ -297,7 +312,7 @@ class SubmConv3D(_Conv3D):
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. The default value is 1.
         padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Currently only support ``'zeros'``.
-        key(str, optional): the key is used to save or use the same rulebook, 
+        key(str, optional): the key is used to save or use the same rulebook,
             the definition and role of rulebook refers to
             https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf. The
             default value is None.
@@ -345,44 +360,46 @@ class SubmConv3D(_Conv3D):
         .. code-block:: python
 
           import paddle
-          from paddle.fluid.framework import _test_eager_guard
-          
-          with _test_eager_guard():
-            indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-            values = [[1], [2], [3], [4]]
-            dense_shape = [1, 1, 3, 4, 1]
-            indices = paddle.to_tensor(indices, dtype='int32')
-            values = paddle.to_tensor(values, dtype='float32')
-            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True) 
-            subm_conv = paddle.sparse.nn.SubmConv3D(1, 1, (1, 3, 3))
-            y = subm_conv(sparse_x)
-            print(y.shape)
-            # (1, 1, 3, 4, 1)
+
+          indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+          values = [[1], [2], [3], [4]]
+          dense_shape = [1, 1, 3, 4, 1]
+          indices = paddle.to_tensor(indices, dtype='int32')
+          values = paddle.to_tensor(values, dtype='float32')
+          sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+          subm_conv = paddle.sparse.nn.SubmConv3D(1, 1, (1, 3, 3))
+          y = subm_conv(sparse_x)
+          print(y.shape)
+          # (1, 1, 3, 4, 1)
     """
 
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 groups=1,
-                 padding_mode='zeros',
-                 key=None,
-                 weight_attr=None,
-                 bias_attr=None,
-                 data_format="NDHWC"):
-        super(SubmConv3D, self).__init__(in_channels,
-                                         out_channels,
-                                         kernel_size,
-                                         stride=stride,
-                                         padding=padding,
-                                         dilation=dilation,
-                                         groups=groups,
-                                         subm=True,
-                                         key=key,
-                                         padding_mode=padding_mode,
-                                         weight_attr=weight_attr,
-                                         bias_attr=bias_attr,
-                                         data_format=data_format)
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        padding_mode='zeros',
+        key=None,
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NDHWC",
+    ):
+        super(SubmConv3D, self).__init__(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            subm=True,
+            key=key,
+            padding_mode=padding_mode,
+            weight_attr=weight_attr,
+            bias_attr=bias_attr,
+            data_format=data_format,
+        )
