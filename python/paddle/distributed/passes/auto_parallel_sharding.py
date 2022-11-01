@@ -25,7 +25,7 @@ from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_o
 from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.operators.common import is_parameter_related, is_data_parallel_reduce_op
 from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_dist_op_attr_for_program_by_mesh_and_mapping, set_var_dist_attr, get_logger
-from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
+from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_numel
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -60,6 +60,9 @@ class ShardingPass(PassBase):
         self.set_attr("stage", None)
         self.set_attr("sharding_degree", None)  # for parallelizer
         self.set_attr("degree", None)  # for parallelizer_v2
+        self.set_attr("overlap_grad_comm", None)
+        self.set_attr("bucket_size_numel", None)
+        self.set_attr("partition_algor", None)
         self.set_attr("params_grads", [])
         self.set_attr("global_rank", -1)
         self.dp_groups = set()
@@ -90,6 +93,12 @@ class ShardingPass(PassBase):
         if (not isinstance(self.get_attr("global_rank"),
                            int)) or self.get_attr("global_rank") < 0:
             return False
+        if self.get_attr("overlap_grad_comm") is None:
+            return False
+        if self.get_attr("bucket_size_numel") is None:
+            return False
+        if self.get_attr("partition_algor") is None:
+            return False
 
         return True
 
@@ -102,11 +111,9 @@ class ShardingPass(PassBase):
             self.get_attr("sharding_degree") or self.get_attr("degree"))
         self.stage = int(self.get_attr("stage"))
         self.global_rank = int(self.get_attr("global_rank"))
-        self.fuse_overlap_optimization = True
-        if self.fuse_overlap_optimization:
-            self.partition_algor = "use_order"
-        else:
-            self.partition_algor = "greedy_even"
+        self.overlap_grad_comm = self.get_attr("overlap_grad_comm")
+        self.bucket_size_numel = int(self.get_attr("bucket_size_numel"))
+        self.partition_algor = self.get_attr("partition_algor")
         params_grads = self.get_attr("params_grads")
         main_block, startup_block = main_program.global_block(
         ), startup_program.global_block()
@@ -126,9 +133,7 @@ class ShardingPass(PassBase):
             self._shard_parameter(block, startup_block)
 
         context.set_attr("params_grads", self.shared_params_grads)
-
-        if self.fuse_overlap_optimization:
-            self._optimization_pass(main_program, startup_program)
+        self._optimization_pass(main_program, startup_program)
 
     def _build_sharding_groups(self, main_block, params_grads):
         self._collective_data_parallel_groups(main_block)
@@ -373,7 +378,7 @@ class ShardingPass(PassBase):
 
     def _insert_optimizer_broadcasts(self, main_block, startup_block):
 
-        if self.stage > 2:
+        if self.stage > 2 or self.bucket_size_numel > 1:
             return
 
         for sharding_info in self.sharding_infos:
@@ -541,14 +546,16 @@ class ShardingPass(PassBase):
     def _optimization_pass(self, main_program, startup_program):
 
         with paddle.static.program_guard(main_program, startup_program):
-            _fuse_overlap_gradient_comm()
+            if self.overlap_grad_comm:
+                _fuse_overlap_gradient_comm()
             # TODO support multiple sub_blocks
-            if self.stage == 2:
-                _fuse_overlap_parameter_comm_stage_two(self.sharding_infos,
-                                                       fuse_size=1024)
-            elif self.stage == 3:
-                _fuse_overlap_parameter_comm_stage_three(self.sharding_infos,
-                                                         fuse_size=1024)
+            if self.bucket_size_numel > 1:
+                if self.stage == 2:
+                    _fuse_overlap_parameter_comm_stage_two(self.sharding_infos,
+                                                           fuse_size=1024)
+                elif self.stage == 3:
+                    _fuse_overlap_parameter_comm_stage_three(
+                        self.sharding_infos, fuse_size=1024)
 
 
 def _insert_init_and_broadcast_op(block, insert_idx, varname, local_rank,
@@ -806,6 +813,164 @@ def partition_parameters(params, group_size, algor="greedy_even"):
     return rank_to_params
 
 
+def re_order_program(block, param_grads, dist_context):
+
+    # record order
+    pname_to_pg_pairs = {}
+    for p, g in param_grads:
+        pname_to_pg_pairs[p.name] = (p, g)
+
+    use_order = []
+    for op in block.ops:
+        for input_name in op.input_arg_names:
+            if (input_name in pname_to_pg_pairs) and (input_name
+                                                      not in use_order):
+                use_order.append(input_name)
+        if len(use_order) == len(pname_to_pg_pairs):
+            break
+
+    # reorder optimzier
+    last_op = block.ops[-1]
+    pname_to_op = {}
+    num_ops = len(block.ops)
+    remove_op_indices = []
+    # TODO support case when optimizer is not the last op
+    if is_optimizer_op(last_op) and last_op.type in _supported_optimizer_type:
+        # record optimizer
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if op.type not in _supported_optimizer_type:
+                break
+            assert len(op.input("Param")) == 1
+            pname_to_op[op.input("Param")[0]] = op
+            remove_op_indices.append(idx)
+        assert len(use_order) == len(pname_to_op)
+
+        # append new opts
+        for pname in use_order:
+            new_op = block.append_op(type='nop')
+            new_op.desc.copy_from(pname_to_op[pname].desc)
+            dist_context.set_op_dist_attr_for_program(
+                new_op,
+                dist_context.get_op_dist_attr_for_program(pname_to_op[pname]))
+
+        # remove old opts
+        for idx in remove_op_indices:
+            block._remove_op(idx, sync=False)
+
+        block._sync_with_cpp()
+        assert len(block.ops) == num_ops
+
+    # TODO reorder gradient clip order
+    _logger.info(
+        "Sharding the Order of param being used: {}.".format(use_order))
+    return [pname_to_pg_pairs[p] for p in use_order]
+
+
+def group_param(sharding_info, fuse_size):
+    """
+    param are group by:
+    rank id
+    fuse_size
+    dtype
+    """
+    group_to_param_map = {}
+    param_to_group_map = {}
+    bucket = []
+    cur_group = ParameterGroup(fuse_size)
+    for param in sharding_info.params:
+        rank = sharding_info.get_var_rank(param.name)
+
+        if cur_group.acceptable(param, rank):
+            cur_group.collect(param, rank)
+        else:
+            cur_group = ParameterGroup(fuse_size)
+            cur_group.collect(param, rank)
+
+        if cur_group in group_to_param_map:
+            group_to_param_map[cur_group].append(param_name)
+        else:
+            group_to_param_map[cur_group] = [param_name]
+
+        param_to_group_map[param_name] = cur_group
+
+    return group_to_param_map, param_to_group_map
+
+
+def _fuse_overlap_gradient_comm():
+    pass
+
+
+def _fuse_overlap_parameter_comm_stage_two(sharding_infos, dist_context,
+                                           fuse_size):
+
+    assert len(
+        sharding_infos
+    ) == 1, "fuse overlap optimization only support one sharding group right now, but got [{}].".format(
+        len(sharding_infos))
+    sharding_info = sharding_infos[0]
+
+    main_block = default_main_program().global_block()
+    startup_block = default_startup_program().global_block()
+
+    group_to_param_map, param_to_group_map = group_param(
+        sharding_info, fuse_size)
+
+    for group in group_to_param_map.keys():
+
+        assert len(group) >= 1
+        if len(group) > 1:
+            coalesce_var_name = unique_name.generate(
+                'coalecse_param_{}'.format(i))
+            startup_block.create_var(name=coalesce_var_name,
+                                     dtype=group.dtype,
+                                     persistable=True,
+                                     stop_gradient=True)
+            group.coalesce_var = main_block.create_var(name=coalesce_var_name,
+                                                       dtype=group.dtype,
+                                                       persistable=True,
+                                                       stop_gradient=True)
+            startup_block.append_op(type="coalesce_tensor",
+                                    inputs={"Input": group.params},
+                                    outputs={
+                                        "Output": group.params,
+                                        "FusedOutput": group.coalesce_var
+                                    },
+                                    attrs={
+                                        "copy_data": True,
+                                        "use_align": True,
+                                        "dtype": group.dtype,
+                                        OP_ROLE_KEY: OpRole.Forward
+                                    })
+        else:
+            group.coalesce_var = group.params[0]
+
+        # TODO Overlap broadcast with opt and next forward
+        new_op = main_block.append_op(type='c_broadcast',
+                                      inputs={'X': group.coalesce_var},
+                                      outputs={'Out': group.coalesce_var},
+                                      attrs={
+                                          'ring_id': sharding_info.group.id,
+                                          'root': group.rank,
+                                          'use_calc_stream': True,
+                                          OP_ROLE_KEY: OpRole.Optimize
+                                      })
+
+        # NOTE the current dist context lack the presentation for bucket tensor which
+        # composes many tensor with different dims_mapping. we assign a fake dist attr
+        # for it currently.
+
+
+def _fuse_overlap_parameter_comm_stage_three(sharding_infos, fuse_size):
+
+    assert len(
+        sharding_infos
+    ) == 1, "fuse overlap optimization only support one sharding group right now, but got [{}].".format(
+        len(sharding_infos))
+    sharding_info = sharding_infos[0]
+
+    pass
+
+
 class ShardingInfo(object):
 
     def __init__(self, group, rank, params_grads, partition_algor):
@@ -886,84 +1051,33 @@ class ShardingInfo(object):
         return self.params_grads.get(param_name, None)
 
 
-def re_order_program(block, param_grads, dist_context):
+class ParameterGroup(object):
 
-    # record order
-    pname_to_pg_pairs = {}
-    for p, g in param_grads:
-        pname_to_pg_pairs[p.name] = (p, g)
+    def __init__(self, max_size):
+        self.max_siez = max_size
+        self.dtype = None
+        self.rank = -1
+        self.numel = 0
+        self.params = []
+        self.coalesce_var = None
 
-    use_order = []
-    for op in block.ops:
-        for input_name in op.input_arg_names:
-            if (input_name in pname_to_pg_pairs) and (input_name
-                                                      not in use_order):
-                use_order.append(input_name)
-        if len(use_order) == len(pname_to_pg_pairs):
-            break
+    def acceptable(param, rank):
+        if self.numel == 0:
+            return True
+        else:
+            if param.dtype is not self.dtype:
+                return False
+            if rank != self.rank:
+                return False
+            if self.numel + get_var_numel(param) > self.max_siez:
+                return False
+            return True
 
-    # reorder optimzier
-    last_op = block.ops[-1]
-    pname_to_op = {}
-    num_ops = len(block.ops)
-    remove_op_indices = []
-    # TODO support case when optimizer is not the last op
-    if is_optimizer_op(last_op) and last_op.type in _supported_optimizer_type:
-        # record optimizer
-        for idx, op in reversed(list(enumerate(block.ops))):
-            if op.type not in _supported_optimizer_type:
-                break
-            assert len(op.input("Param")) == 1
-            pname_to_op[op.input("Param")[0]] = op
-            remove_op_indices.append(idx)
-        assert len(use_order) == len(pname_to_op)
+    def collect(param, rank):
+        self.dtype = param.dtype
+        self.rank = rank
+        self.numel += get_var_numel(param)
+        self.params.append(param)
 
-        # append new opts
-        for pname in use_order:
-            new_op = block.append_op(type='nop')
-            new_op.desc.copy_from(pname_to_op[pname].desc)
-            dist_context.set_op_dist_attr_for_program(
-                new_op,
-                dist_context.get_op_dist_attr_for_program(pname_to_op[pname]))
-
-        # remove old opts
-        for idx in remove_op_indices:
-            block._remove_op(idx, sync=False)
-
-        block._sync_with_cpp()
-        assert len(block.ops) == num_ops
-
-    # TODO reorder gradient clip order
-    _logger.info(
-        "Sharding the Order of param being used: {}.".format(use_order))
-    return [pname_to_pg_pairs[p] for p in use_order]
-
-
-def _fuse_overlap_gradient_comm():
-    pass
-
-
-def _fuse_overlap_parameter_comm_stage_two(sharding_infos, fuse_size):
-
-    assert len(
-        sharding_infos
-    ) == 1, "fuse overlap optimization only support one sharding group right now, but got [{}].".format(
-        len(sharding_infos))
-    sharding_info = sharding_infos[0]
-
-    main_program = default_main_program()
-    startup_program = default_startup_program()
-
-    # for param in sharding_info.params:
-    #      n
-
-
-def _fuse_overlap_parameter_comm_stage_three(sharding_infos, fuse_size):
-
-    assert len(
-        sharding_infos
-    ) == 1, "fuse overlap optimization only support one sharding group right now, but got [{}].".format(
-        len(sharding_infos))
-    sharding_info = sharding_infos[0]
-
-    pass
+    def __len__(self):
+        return len(self.params)

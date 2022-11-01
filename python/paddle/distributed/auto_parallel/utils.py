@@ -22,6 +22,7 @@ import logging
 from functools import reduce
 
 import paddle.fluid.core as core
+from paddle.fluid.framework import Variable
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.auto_parallel.process_group import get_all_process_groups
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
@@ -1587,3 +1588,15 @@ def find_higher_order_backward_op(program):
                     return True
 
     return False
+
+
+def get_var_numel(var):
+    """
+    input:
+        - var: variable
+    return:
+        number of elemnet in var
+    """
+    assert isinstance(var, Variable)
+    assert -1 not in var.shape
+    return reduce(lambda x, y: x * y, var.shape)
