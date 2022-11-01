@@ -28,6 +28,10 @@
 #include "paddle/fluid/inference/analysis/argument.h"
 #include "paddle/fluid/string/pretty_log.h"
 
+#ifdef PADDLE_WITH_TENSORRT
+#include "paddle/fluid/inference/tensorrt/engine.h"
+#endif
+
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -156,7 +160,12 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new AnalysisConfig::Precision(precision_mode));
       pass->Set("context_memory_sharing",
                 new bool(argument->trt_engine_memory_sharing()));
+      auto* device_memory = argument->trt_engine_device_memory()[0];
+      inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+              .setContextMemory(argument->predictor_id(), device_memory);
+
       bool use_static_engine = argument->tensorrt_use_static_engine();
+      std::string static_path = argument->tensorrt_static_path();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
       bool int8_valid = !(model_from_memory && optim_cache_dir.empty() &&
@@ -201,6 +210,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       }
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
+      pass->Set("static_path", new std::string(static_path));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
 

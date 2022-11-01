@@ -313,6 +313,10 @@ class TensorRTEngine {
 
   int GetNbBindings() { return binding_num_; }
 
+  void SetPredictorID(int predictor_id) { predictor_id_ = predictor_id; }
+
+  int GetPredictorID() { return predictor_id_; }
+
   void ResetContext() {
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
@@ -617,8 +621,11 @@ class TensorRTEngine {
   void SetScope(const framework::Scope& scope) { scope_ = &scope; }
 
   void SetContextMemorySharing(bool context_memory_sharing) {
+    LOG(INFO) << "SetContextMemorySharing " << context_memory_sharing;
     context_memory_sharing_ = context_memory_sharing;
   }
+
+  size_t GetDeviceMemorySize();
 
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
@@ -704,6 +711,7 @@ class TensorRTEngine {
 #endif
   std::mutex mutex_;
   bool use_inspector_;
+  int predictor_id_;
 
  public:
   thread_local static int predictor_id_per_thread;
@@ -795,6 +803,18 @@ class TRTEngineManager {
     }
   }
 
+  size_t GetDeviceMemorySize(PredictorID predictor_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    size_t memory_size = 0;
+    for (auto& iter: engines_) {
+      if (iter.second->GetPredictorID() == predictor_id) {
+        memory_size = std::max(memory_size, iter.second->GetDeviceMemorySize());
+        LOG(INFO) << "trt engine predictor id: " << predictor_id << " update memory_size " << memory_size;
+      }
+    }
+    return memory_size;
+  }
+
   void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
     bool size_updated{false};
 
@@ -815,6 +835,11 @@ class TRTEngineManager {
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
     std::lock_guard<std::mutex> lock(mutex_);
+
+    // find external context memory source
+    if (external_context_memorys_.count(predictor_id) > 0)
+      return external_context_memorys_[predictor_id];
+
     static auto alignment = getAlignmentSize(place);
     if (context_memorys_.count(predictor_id) == 0) {
       auto context_memory =
@@ -823,6 +848,15 @@ class TRTEngineManager {
       context_memorys_[predictor_id] = std::move(context_memory);
     }
     return getAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
+  }
+
+  void setContextMemory(PredictorID predictor_id, void* memory) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (external_context_memorys_.count(predictor_id) > 0) {
+      LOG(WARNING) << "re setContextMemory for predictor_id " << predictor_id;
+      return;
+    }
+    external_context_memorys_[predictor_id] = memory;
   }
 
   void releaseContextMemory(PredictorID predictor_id) {
@@ -846,6 +880,7 @@ class TRTEngineManager {
   mutable std::mutex mutex_;
   size_t max_ctx_mem_size_{0};
   std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
+  std::unordered_map<PredictorID, void*> external_context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };
 

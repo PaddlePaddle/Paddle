@@ -558,7 +558,8 @@ struct PD_INFER_DECL AnalysisConfig {
                             int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
                             bool use_static = false,
-                            bool use_calib_mode = true);
+                            bool use_calib_mode = true,
+                            std::string static_path = "");
   ///
   /// \brief A boolean state telling whether the TensorRT engine is used.
   ///
@@ -572,6 +573,12 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the tensorrt engine memory sharing is activated.
   ///
   bool trt_engine_memory_sharing() const;
+  ///
+  /// \brief A device memory pointer for tensorrt engine to setDeviceMemory
+  ///
+  /// \return void*, device memory pointer
+  ///
+  void* trt_engine_device_memory() { return trt_engine_device_memory_; };
   ///
   /// \brief  Get the TensorRT engine precision.
   ///
@@ -621,6 +628,20 @@ struct PD_INFER_DECL AnalysisConfig {
   /// runtime.
   ///
   bool trt_allow_build_at_runtime() const;
+
+  ///
+  /// \brief Set TensorRT engine context device memory
+  ///
+  void SetTrtEngineDeviceMemory(void* device_memory) {
+    trt_engine_device_memory_ = device_memory;
+  }
+
+  ///
+  /// \brief Set whether TensorRT engine share device memory
+  ///
+  void SetTrtEngineMemorySharing(bool memory_share) {
+    trt_engine_memory_sharing_ = memory_share;
+  }
 
   ///
   /// \brief Set execution stream. If not set a stream will be created
@@ -1029,6 +1050,7 @@ struct PD_INFER_DECL AnalysisConfig {
   int tensorrt_min_subgraph_size_{3};
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
+  std::string trt_static_path_{""};
   bool trt_use_calib_mode_{true};
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
@@ -1066,6 +1088,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // memory reuse related.
   bool enable_memory_optim_{false};
   bool trt_engine_memory_sharing_{false};
+  void* trt_engine_device_memory_{nullptr};
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;

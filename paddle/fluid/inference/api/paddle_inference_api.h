@@ -137,6 +137,13 @@ class PD_INFER_DECL Predictor {
   std::unique_ptr<Tensor> GetOutputHandle(const std::string& name);
 
   ///
+  /// \brief Get the TensorRT engine device memory size
+  ///
+  /// \return size_t
+  ///
+  size_t GetDeviceMemorySize();
+
+  ///
   /// \brief Clone to get the new predictor. thread safe.
   ///
   /// \return get a new predictor

@@ -418,12 +418,15 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     op_desc->SetAttr("model_opt_cache_dir",
                      Get<std::string>("model_opt_cache_dir"));
 
+  auto static_path = Get<std::string>("static_path");
+  op_desc->SetAttr("static_path", static_path);
+
   // TODO(NHZlX)
   // There are models with the same structure but the different parameters,
   // when running in the 'use_serialize' mode, there is a bug.
   // serialization is affected by max_batch_size, but calibration is not.
   // So we use separate engine keys in serialization and calibration.
-  auto engine_key =
+  auto engine_key = static_path != "" ? static_path :
       GenerateEngineKey(input_names_with_id,
                         output_names_with_id,
                         std::to_string(0),
@@ -526,6 +529,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   opt_shape_tensor,
                   disable_trt_plugin_fp16,
                   static_cast<phi::DataType>(Get<int>("model_precision")));
+  trt_engine->SetPredictorID(predictor_id);
   trt_engine->SetUseOSS(Get<bool>("use_varseqlen"));
   trt_engine->SetWithInterleaved(Get<bool>("with_interleaved"));
   trt_engine->SetTransformerPosid(

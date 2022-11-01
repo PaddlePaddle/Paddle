@@ -84,6 +84,7 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
 #endif
 
 #ifdef PADDLE_WITH_IPU
@@ -487,6 +488,15 @@ void *AnalysisPredictor::GetExecStream() const {
   // TODO(inference): Support other backends.
   return nullptr;
 #endif
+}
+
+size_t AnalysisPredictor::GetDeviceMemorySize() const {
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    return inference::Singleton<inference::tensorrt::TRTEngineManager>::Global().GetDeviceMemorySize(predictor_id_);
+  }
+#endif
+  return 0;
 }
 
 const void *AnalysisPredictor::GetDeviceContexts() const {
@@ -1111,6 +1121,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtUseDLA(config_.trt_use_dla_);
     argument_.SetTensorRtDLACore(config_.trt_dla_core_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
+    argument_.SetTensorRtStaticPath(config_.trt_static_path_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
     argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
     argument_.SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
@@ -1118,6 +1129,7 @@ void AnalysisPredictor::PrepareArgument() {
         config_.trt_allow_build_at_runtime());
     argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);
     argument_.SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
+    argument_.SetTrtEngineDeviceMemory({config_.trt_engine_device_memory()});
   }
 
   if (config_.dlnne_enabled()) {
@@ -2386,6 +2398,10 @@ std::vector<std::string> Predictor::GetOutputNames() {
 
 std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
   return predictor_->GetOutputTensor(name);
+}
+
+size_t Predictor::GetDeviceMemorySize() {
+  return predictor_->GetDeviceMemorySize();
 }
 
 bool Predictor::Run() { return predictor_->ZeroCopyRun(); }

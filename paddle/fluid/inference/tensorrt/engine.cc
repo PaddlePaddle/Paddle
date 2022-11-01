@@ -121,13 +121,14 @@ void TensorRTEngine::Execute(int batch_size,
   freshDeviceId();
   auto infer_context = context();
   if (context_memory_sharing_) {
-    void *context_memory{nullptr};
+    void* context_memory{nullptr};
     context_memory =
         inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
             .getContextMemory(
                 predictor_id_per_thread,
                 phi::GPUPlace(device_id_),
                 phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+    LOG(INFO) << "predictor " << predictor_id_per_thread << " setDeviceMemory " << context_memory;
     infer_context->setDeviceMemory(context_memory);
   }
   if (!with_dynamic_shape()) {
@@ -419,6 +420,7 @@ void TensorRTEngine::DeclareOutput(const std::string &name) {
                         name));
   network()->markOutput(*output);
 }
+
 void TensorRTEngine::DeleteITensor(const std::string &name,
                                    nvinfer1::ITensor *tensor) {
   PADDLE_ENFORCE_NOT_NULL(
@@ -543,6 +545,10 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
   }
 
   GetEngineInfo();
+}
+
+size_t TensorRTEngine::GetDeviceMemorySize() {
+  return infer_engine_->getDeviceMemorySize();
 }
 
 void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {

@@ -199,6 +199,12 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return The execution stream or nullptr (CPU).
   ///
   void *GetExecStream() const override;
+  ///
+  /// \brief get TensorRT engine device memory size
+  ///
+  /// \return (size_t) TensorRT engine device memory size
+  ///
+  size_t GetDeviceMemorySize() const override;
 
   ///
   /// \brief Create feed fetch variables

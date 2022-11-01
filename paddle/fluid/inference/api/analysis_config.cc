@@ -390,6 +390,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_use_dla_);
   CP_MEMBER(trt_dla_core_);
   CP_MEMBER(trt_use_static_engine_);
+  CP_MEMBER(trt_static_path_);
   CP_MEMBER(trt_use_calib_mode_);
   CP_MEMBER(trt_use_varseqlen_);
   CP_MEMBER(trt_with_interleaved_);
@@ -401,6 +402,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
   CP_MEMBER(trt_engine_memory_sharing_);
+  CP_MEMBER(trt_engine_device_memory_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -657,7 +659,8 @@ void AnalysisConfig::EnableTensorRtEngine(
     int min_subgraph_size,
     AnalysisConfig::Precision precision_mode,
     bool use_static,
-    bool use_calib_mode) {
+    bool use_calib_mode,
+    std::string static_path) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
@@ -683,6 +686,7 @@ void AnalysisConfig::EnableTensorRtEngine(
   tensorrt_min_subgraph_size_ = min_subgraph_size;
   tensorrt_precision_mode_ = precision_mode;
   trt_use_static_engine_ = use_static;
+  trt_static_path_ = static_path;
   trt_use_calib_mode_ = use_calib_mode;
 
   Update();
@@ -1225,6 +1229,7 @@ std::string AnalysisConfig::Summary() {
                     std::to_string(tensorrt_min_subgraph_size_)});
       os.InsertRow({"tensorrt_use_static_engine",
                     trt_use_static_engine_ ? "true" : "false"});
+      os.InsertRow({"tensorrt_static_path", trt_static_path_});
       os.InsertRow(
           {"tensorrt_use_calib_mode", trt_use_calib_mode_ ? "true" : "false"});
 
