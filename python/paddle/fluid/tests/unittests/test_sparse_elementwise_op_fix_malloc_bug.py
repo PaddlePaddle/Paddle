@@ -17,13 +17,14 @@ from operator import __add__, __sub__, __mul__, __truediv__
 
 import numpy as np
 import paddle
-import paddle.incubate.sparse as sparse
+# import paddle.sparse as sparse
 
 op_list = [__truediv__]
 
+
 def get_actual_res(x, y, op):
     if op == __truediv__:
-        res = paddle.incubate.sparse.divide(x, y)
+        res = paddle.sparse.divide(x, y)
     else:
         raise ValueError("unsupported op")
     return res
@@ -47,7 +48,7 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         # self.support_dtypes = ['int64']
         # self.support_dtypes = ['float32']
         # self.support_dtypes = ['float64']
-        self.support_dtypes = ['int32', 'int64'] # double free or corruption (!prev) / corrupted double-linked list
+        self.support_dtypes = ['int32', 'int64']  # double free or corruption (!prev) / corrupted double-linked list
         # self.support_dtypes = ['int32', 'float32']
         # self.support_dtypes = ['int32', 'float64']
         # self.support_dtypes = ['int32', 'int32'] # free(): corrupted unsorted chunks
@@ -96,4 +97,3 @@ class TestSparseElementWiseAPI(unittest.TestCase):
 if __name__ == "__main__":
     paddle.device.set_device('cpu')
     unittest.main()
-
