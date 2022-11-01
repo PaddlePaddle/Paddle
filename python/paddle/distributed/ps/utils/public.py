@@ -1744,7 +1744,7 @@ def create_backward_block(
                 ):
                     is_skip = True
                     break
-            if is_skip == True:
+            if is_skip:
                 continue
         block_append_op(program, origin_program, heter_block, op)
 

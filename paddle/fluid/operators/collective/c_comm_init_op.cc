@@ -54,7 +54,6 @@ class CCommInitOp : public framework::OperatorBase {
 // TODO(wangxi): Put this in the unified header file
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     using UniqueId = ncclUniqueId;
-    using Place = platform::CUDAPlace;
     using CommContext = platform::NCCLCommContext;
 #elif defined(PADDLE_WITH_XPU_BKCL)
     using UniqueId = BKCLUniqueId;

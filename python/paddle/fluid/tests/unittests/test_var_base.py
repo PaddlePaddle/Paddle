@@ -1147,10 +1147,10 @@ class TestVarBase(unittest.TestCase):
             if var2:
                 var2_bool = True
 
-            assert var1_bool == False, "if var1 should be false"
-            assert var2_bool == True, "if var2 should be true"
-            assert bool(var1) == False, "bool(var1) is False"
-            assert bool(var2) == True, "bool(var2) is True"
+            assert not var1_bool, "if var1 should be false"
+            assert var2_bool, "if var2 should be true"
+            assert not bool(var1), "bool(var1) is False"
+            assert bool(var2), "bool(var2) is True"
 
     def test_if(self):
         with _test_eager_guard():

@@ -26,7 +26,6 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from paddle.fluid.executor import global_scope
 import numpy as np
-import six
 import pickle
 import os
 import errno
