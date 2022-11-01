@@ -39,7 +39,6 @@ import subprocess
 import argparse
 import copy
 from paddle import distributed as dist
-import pickle
 
 from paddle.distributed.utils.log_utils import get_logger
 
@@ -110,9 +109,7 @@ class MLP_Hybrid(fluid.Layer):
         self._linear3 = Linear(linear_size, 10)
 
     def forward(self, src):
-        logger.debug(f"src {src.shape}")
         inputs = self.embedding(src)
-        logger.debug(f"inputs {inputs.shape}")
         # slice for a bug in row parallel linear
         mp_group = (
             fleet.get_hybrid_communicate_group().get_model_parallel_group()
@@ -120,12 +117,8 @@ class MLP_Hybrid(fluid.Layer):
         step = inputs.shape[-1] // mp_group.nranks
         mp_rank = dist.get_rank(mp_group)
         mp_rank = mp_rank if mp_rank >= 0 else 0
-        logger.debug(
-            f"mp nranks: {mp_group.nranks} slice step: {step} slice: rangle({step * mp_rank} - {step * mp_rank + step})"
-        )
-
         inputs = inputs[..., step * mp_rank : step * mp_rank + step]
-        logger.debug(f"inputs {inputs.shape}")
+
         y = self._linear1(inputs)
         y = self._linear2(y)
         y = self._linear3(y)
@@ -154,32 +147,30 @@ class MLP(fluid.Layer):
         return y
 
 
-def gen_uniq_random_numbers(low, high, size):
+def gen_uniq_random_numbers(low, high, size, seed):
     assert np.prod(size) <= high - low
     pool = list(range(low, high))
     data = np.zeros(size).astype("int32").reshape(-1)
+    np.random.seed(10245)
     for i in range(np.prod(size)):
         pos = int(np.random.randint(0, len(pool)))
         data[i] = pool[pos]
         pool.remove(pool[pos])
-        logger.debug(f"pop: pos: {pos}, num: {data[i]}")
+    np.random(seed)
     return data.reshape(size)
 
 
 class RangeIterableDataset(IterableDataset):
-    def __init__(self, data_path, ebd=1000, start=0, end=100, linear_size=1000):
+    def __init__(
+        self, data_path, ebd=1000, start=0, end=100, linear_size=1000, seed=1024
+    ):
         self.start = start
         self.end = end
-        if not os.path.exists(data_path):
-            self.img = gen_uniq_random_numbers(0, 1000, (100, 1))
-            logger.debug(f"data: {self.img}")
-            pickle.dump(self.img, open(data_path, "wb"))
-        else:
-            self.img = pickle.load(open(data_path, "rb"))
+        self.img = gen_uniq_random_numbers(0, 1000, (100, 1), seed)
 
     def __iter__(self):
         for idx in range(self.start, self.end):
-            label = np.ones(1).astype('int64')
+            label = np.ones(1).astype('int32')
             yield self.img[idx], label
 
 
@@ -211,7 +202,7 @@ def train_mlp(args, model, loss, opt_state=None, save_model=False):
         raise ValueError(f"not supported strategy: {args.strategy}")
 
     dataset = RangeIterableDataset(
-        data_path=os.path.join(args.output_dir, "data.npy")
+        data_path=os.path.join(args.output_dir, "data.npy"), seed=args.seed
     )
 
     train_loader = paddle.io.DataLoader(dataset, batch_size=100, drop_last=True)
@@ -237,9 +228,6 @@ def train_mlp(args, model, loss, opt_state=None, save_model=False):
                 optimizer.step()
             else:
                 avg_loss = model.train_batch(data, optimizer)
-            logger.debug(
-                f"train epoch: {epo}, step: {step}, loss: {avg_loss.numpy()}"
-            )
 
     model.eval()
     print("=============== predict in dygraph mode =================")
@@ -247,14 +235,10 @@ def train_mlp(args, model, loss, opt_state=None, save_model=False):
         img, label = data
         if pp_degree <= 1:
             out = model(img)
-            logger.debug(f"out shape: {out.shape}")
             out = out.numpy()
         else:
             out = model.eval_batch(data)
             out = np.array(out)
-            logger.debug(f"out: {out}")
-
-        logger.debug(f"eval step: {step}")
 
     paddle.device.cuda.synchronize()
     if save_model:
@@ -268,7 +252,7 @@ def train_mlp_static(args, model, loss, opt_state=None, save_model=False):
     model = engine.Engine(model, loss=loss, optimizer=optimizer, strategy=None)
 
     dataset = RangeIterableDataset(
-        data_path=os.path.join(args.output_dir, "data.npy")
+        data_path=os.path.join(args.output_dir, "data.npy"), seed=args.seed
     )
     model.load(os.path.join(args.load_dir, "saved"), load_optimizer=False)
     model.fit(dataset, epochs=1)
@@ -310,7 +294,7 @@ def step_save(strategy, output_dir, seed):
     else:
         cmd = f"{python_exe} {filename} --cmd save --strategy {strategy} --output_dir {output_dir} --seed {seed}"
 
-    logger.debug(f"exe: {cmd}")
+    logger.info(f"exe: {cmd}")
     p = subprocess.Popen(cmd.split())
     p.communicate()
     assert p.poll() == 0
@@ -325,7 +309,7 @@ def step_load(curent_strateggy, saved_dir, seed):
         f"{python_exe} -m paddle.distributed.launch --log_dir {saved_dir}/load/logs"
         f" --gpus 0  {filename} --cmd load --strategy {curent_strateggy} --output_dir {saved_dir} --load_dir {saved_dir} --seed {seed}"
     )
-    logger.debug(f"exe: {cmd}")
+    logger.info(f"exe: {cmd}")
     env = copy.copy(os.environ)
     env["CUDA_VISIBLE_DEVICES"] = "0"
     p = subprocess.Popen(cmd.split(), env=env)
@@ -398,7 +382,6 @@ def test_save_load(args):
 
     fleet.set_log_level("INFO")
     if dist.get_world_size() <= 1:
-        logger.debug("build single model")
         mlp1 = MLP()
         if args.strategy == "static":
             out_static = train_mlp_static(args, mlp1, loss, save_model=False)
@@ -408,7 +391,6 @@ def test_save_load(args):
             np.save(os.path.join(args.output_dir, "dygraph.npy"), out_dygraph)
     else:
         fleet.init(is_collective=True, strategy=strategy)
-        logger.debug("build hybrid model")
         pp_group = (
             fleet.get_hybrid_communicate_group().get_pipe_parallel_group()
         )
@@ -433,10 +415,9 @@ def run_case(args):
     loading_strategy = args.test_case.split(":")[1]
 
     output_dir = tempfile.mkdtemp()
-    logger.debug(f"output dir: {output_dir}")
     if os.path.isdir(output_dir):
         shutil.rmtree(output_dir)
-    os.makedirs(output_dir + "/load_save", exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
     try:
         step_save(saving_strategy, output_dir, args.seed)
         step_load(loading_strategy, output_dir, args.seed + 1)
