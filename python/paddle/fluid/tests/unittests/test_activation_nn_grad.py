@@ -472,7 +472,6 @@ class TestLogDoubleGradCheck(unittest.TestCase):
 
 
 class TestSinDoubleGradCheck(unittest.TestCase):
-
     def sin_wrapper(self, x):
         return paddle.sin(x[0])
 
@@ -486,16 +485,13 @@ class TestSinDoubleGradCheck(unittest.TestCase):
         y = paddle.sin(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
-        gradient_checker.double_grad_check([x],
-                                           y,
-                                           x_init=x_arr,
-                                           place=place,
-                                           eps=eps)
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps
+        )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(self.sin_wrapper, [x],
-                                                       y,
-                                                       x_init=x_arr,
-                                                       place=place)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.sin_wrapper, [x], y, x_init=x_arr, place=place
+        )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
@@ -508,4 +504,4 @@ class TestSinDoubleGradCheck(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    unittest.main()

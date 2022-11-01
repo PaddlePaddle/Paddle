@@ -25,8 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-#include "paddle/phi/core/errors.h"
-
 DECLARE_bool(use_mkldnn);
 
 namespace paddle {
@@ -980,16 +978,6 @@ namespace plat = paddle::platform;
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
 
-REGISTER_ACTIVATION_OP(cos, Cos, CosFunctor, CosGradFunctor)
-REGISTER_ACTIVATION_OP(tan, Tan, TanFunctor, TanGradFunctor);
-REGISTER_ACTIVATION_OP(acos, Acos, AcosFunctor, AcosGradFunctor);
-REGISTER_ACTIVATION_OP(asin, Asin, AsinFunctor, AsinGradFunctor);
-REGISTER_ACTIVATION_OP(atan, Atan, AtanFunctor, AtanGradFunctor);
-REGISTER_ACTIVATION_OP(sinh, Sinh, SinhFunctor, SinhGradFunctor);
-REGISTER_ACTIVATION_OP(cosh, Cosh, CoshFunctor, CoshGradFunctor);
-REGISTER_ACTIVATION_OP(asinh, Asinh, AsinhFunctor, AsinhGradFunctor);
-REGISTER_ACTIVATION_OP(acosh, Acosh, AcoshFunctor, AcoshGradFunctor);
-REGISTER_ACTIVATION_OP(atanh, Atanh, AtanhFunctor, AtanhGradFunctor);
 REGISTER_ACTIVATION_OP(brelu, BRelu, BReluFunctor, BReluGradFunctor);
 REGISTER_ACTIVATION_OP(thresholded_relu,
                        ThresholdedRelu,

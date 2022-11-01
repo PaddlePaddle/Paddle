@@ -478,6 +478,17 @@
     func : silu_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : sin_double_grad
+  forward : sin_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, x]
+  kernel :
+    func : sin_double_grad
+  inplace : (grad_x_grad -> grad_out_grad)
+
 - backward_op : sin_grad
   forward : sin (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -487,6 +498,7 @@
     param : [x]
   kernel :
     func : sin_grad
+  backward : sin_double_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : sinh_grad
