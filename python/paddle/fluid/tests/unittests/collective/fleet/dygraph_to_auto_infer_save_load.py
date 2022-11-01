@@ -18,7 +18,7 @@ import numpy as np
 import tempfile
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.dygraph.nn import Linear, Embedding
 from paddle.distributed import fleet
 from paddle.distributed.fleet.layers.mpu.mp_layers import (
     RowParallelLinear,
@@ -39,6 +39,7 @@ import subprocess
 import argparse
 import copy
 from paddle import distributed as dist
+import pickle
 
 from paddle.distributed.utils.log_utils import get_logger
 
@@ -46,62 +47,41 @@ from paddle.fluid.dataloader.dataset import IterableDataset
 
 from paddle.incubate.distributed.utils.io import save_for_auto_inference
 
-logger = get_logger("DEBUG", __file__)
+logger = get_logger("INFO", __file__)
 
 
 epoch = 2
 linear_size = 1000
 
-print(VocabParallelEmbedding)
-
-
-class RL(RowParallelLinear):
-    def __init__(self, *args, **kwargs):
-        self.__class__.__name__ = "RowParallelLinear"
-        super(RL, self).__init__(*args, **kwargs)
-
-    def forward(self, x):
-        out = super(RL, self).forward(x)
-        return out
-
-
-class CL(ColumnParallelLinear):
-    def __init__(self, *args, **kwargs):
-        self.__class__.__name__ = "ColumnParallelLinear"
-        super(CL, self).__init__(*args, **kwargs)
-
-    def forward(self, x):
-        out = super(CL, self).forward(x)
-        return out
-
-
-class L(Linear):
-    def __init__(self, *args, **kwargs):
-        self.__class__.__name__ = "Linear"
-        super(L, self).__init__(*args, **kwargs)
-
-    def forward(self, x):
-        out = super(L, self).forward(x)
-        return out
-
 
 class MLP_pipe(PipelineLayer):
-    def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
+    def __init__(
+        self,
+        embedding_size=1000,
+        linear_size=1000,
+        param_attr=None,
+        bias_attr=None,
+    ):
         desc = [
             LayerDesc(
-                RL,
+                VocabParallelEmbedding,
+                num_embeddings=embedding_size,
+                embedding_dim=linear_size,
+            ),
+            LayerDesc(
+                RowParallelLinear,
                 in_features=linear_size,
                 out_features=linear_size,
                 has_bias=True,
             ),
             LayerDesc(
-                CL,
+                ColumnParallelLinear,
                 in_features=linear_size,
                 out_features=linear_size,
                 gather_output=True,
                 has_bias=True,
             ),
-            LayerDesc(L, input_dim=linear_size, output_dim=10),
+            LayerDesc(Linear, input_dim=linear_size, output_dim=10),
         ]
         super(MLP_pipe, self).__init__(
             desc,
@@ -112,17 +92,40 @@ class MLP_pipe(PipelineLayer):
 
 
 class MLP_Hybrid(fluid.Layer):
-    def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
+    def __init__(
+        self,
+        embedding_size=1000,
+        linear_size=1000,
+        param_attr=None,
+        bias_attr=None,
+    ):
         super(MLP_Hybrid, self).__init__()
+        self.embedding = VocabParallelEmbedding(embedding_size, linear_size)
         self._linear1 = RowParallelLinear(
-            linear_size, linear_size, has_bias=True
+            linear_size, linear_size, has_bias=True, input_is_parallel=True
         )
         self._linear2 = ColumnParallelLinear(
             linear_size, linear_size, gather_output=True, has_bias=True
         )
         self._linear3 = Linear(linear_size, 10)
 
-    def forward(self, inputs):
+    def forward(self, src):
+        logger.debug(f"src {src.shape}")
+        inputs = self.embedding(src)
+        logger.debug(f"inputs {inputs.shape}")
+        # slice for a bug in row parallel linear
+        mp_group = (
+            fleet.get_hybrid_communicate_group().get_model_parallel_group()
+        )
+        step = inputs.shape[-1] // mp_group.nranks
+        mp_rank = dist.get_rank(mp_group)
+        mp_rank = mp_rank if mp_rank >= 0 else 0
+        logger.debug(
+            f"mp nranks: {mp_group.nranks} slice step: {step} slice: rangle({step * mp_rank} - {step * mp_rank + step})"
+        )
+
+        inputs = inputs[..., step * mp_rank : step * mp_rank + step]
+        logger.debug(f"inputs {inputs.shape}")
         y = self._linear1(inputs)
         y = self._linear2(y)
         y = self._linear3(y)
@@ -130,31 +133,49 @@ class MLP_Hybrid(fluid.Layer):
 
 
 class MLP(fluid.Layer):
-    def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
+    def __init__(
+        self,
+        embedding_size=1000,
+        linear_size=1000,
+        param_attr=None,
+        bias_attr=None,
+    ):
         super(MLP, self).__init__()
-
+        self.embedding = Embedding((embedding_size, linear_size))
         self._linear1 = Linear(linear_size, linear_size)
         self._linear2 = Linear(linear_size, linear_size)
         self._linear3 = Linear(linear_size, 10)
 
-    def forward(self, inputs):
+    def forward(self, src):
+        inputs = self.embedding(src)
         y = self._linear1(inputs)
         y = self._linear2(y)
         y = self._linear3(y)
         return y
 
 
+def gen_uniq_random_numbers(low, high, size):
+    assert np.prod(size) <= high - low
+    pool = list(range(low, high))
+    data = np.zeros(size).astype("int32").reshape(-1)
+    for i in range(np.prod(size)):
+        pos = int(np.random.randint(0, len(pool)))
+        data[i] = pool[pos]
+        pool.remove(pool[pos])
+        logger.debug(f"pop: pos: {pos}, num: {data[i]}")
+    return data.reshape(size)
+
+
 class RangeIterableDataset(IterableDataset):
-    def __init__(self, data_path, start=0, end=100, linear_size=1000):
+    def __init__(self, data_path, ebd=1000, start=0, end=100, linear_size=1000):
         self.start = start
         self.end = end
         if not os.path.exists(data_path):
-            self.img = np.random.rand(
-                self.end - self.start, linear_size
-            ).astype('float32')
-            np.save(data_path, self.img)
+            self.img = gen_uniq_random_numbers(0, 1000, (100, 1))
+            logger.debug(f"data: {self.img}")
+            pickle.dump(self.img, open(data_path, "wb"))
         else:
-            self.img = np.load(data_path)
+            self.img = pickle.load(open(data_path, "rb"))
 
     def __iter__(self):
         for idx in range(self.start, self.end):
@@ -211,6 +232,7 @@ def train_mlp(args, model, loss, opt_state=None, save_model=False):
             if pp_degree <= 1:
                 out = model(img)
                 avg_loss = loss(out, label)
+                paddle.device.cuda.synchronize()
                 avg_loss.backward()
                 optimizer.step()
             else:
@@ -374,7 +396,7 @@ def test_save_load(args):
 
     loss = paddle.nn.CrossEntropyLoss()
 
-    fleet.set_log_level("DEBUG")
+    fleet.set_log_level("INFO")
     if dist.get_world_size() <= 1:
         logger.debug("build single model")
         mlp1 = MLP()
@@ -386,7 +408,6 @@ def test_save_load(args):
             np.save(os.path.join(args.output_dir, "dygraph.npy"), out_dygraph)
     else:
         fleet.init(is_collective=True, strategy=strategy)
-        fleet.set_log_level("DEBUG")
         logger.debug("build hybrid model")
         pp_group = (
             fleet.get_hybrid_communicate_group().get_pipe_parallel_group()
@@ -413,6 +434,8 @@ def run_case(args):
 
     output_dir = tempfile.mkdtemp()
     logger.debug(f"output dir: {output_dir}")
+    if os.path.isdir(output_dir):
+        shutil.rmtree(output_dir)
     os.makedirs(output_dir + "/load_save", exist_ok=True)
     try:
         step_save(saving_strategy, output_dir, args.seed)
@@ -420,8 +443,8 @@ def run_case(args):
         step_check(output_dir)
     except Exception as e:
         shutil.rmtree(output_dir)
-        raise RuntimeError(f"Test failed:\n{e}")
-    # shutil.rmtree(output_dir)
+        raise RuntimeError(f"Test failed.\n {e.__str__()}")
+    shutil.rmtree(output_dir)
 
 
 if __name__ == '__main__':
