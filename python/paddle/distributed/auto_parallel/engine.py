@@ -828,6 +828,8 @@ class Engine:
         with profiler.Profiler(timer_only=True) as prof:
             for epoch in range(epochs):
                 for step, _ in enumerate(train_dataloader):
+                    print_input(self.main_program, self._labels)
+                    print_param(self.main_program)
                     try:
                         outs = self._executor.run(
                             self.main_program,
@@ -1629,3 +1631,13 @@ class Engine:
     @property
     def labels(self):
         return self._labels
+
+
+def print_param(program):
+    for p in program.all_parameters():
+        print(p)
+
+
+def print_input(program, vars):
+    for v in vars:
+        print(p)
