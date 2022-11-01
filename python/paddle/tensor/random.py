@@ -584,7 +584,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.uniform_random(
+        return _C_ops.uniform(
             shape,
             dtype,
             float(min),
@@ -664,7 +664,7 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
             #  [ 0.433519,    0.39483607, -0.8660099,   0.83664286]] # random
     """
     if in_dygraph_mode():
-        return _C_ops.uniform_random_inplace_(x, min, max, seed, 0, 0, 1.0)
+        return _C_ops.uniform_inplace_(x, min, max, seed, 0, 0, 1.0)
     else:
         return _legacy_C_ops.uniform_random_inplace_(
             x, 'min', min, 'max', max, 'seed', seed

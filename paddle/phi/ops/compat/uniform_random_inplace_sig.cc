@@ -18,7 +18,7 @@ namespace phi {
 KernelSignature UniformRandomInplaceOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "uniform_random_inplace",
+      "uniform_inplace",
       {"X"},
       {"min", "max", "seed", "diag_num", "diag_step", "diag_val"},
       {"Out"});
@@ -27,13 +27,15 @@ KernelSignature UniformRandomInplaceOpArgumentMapping(
 KernelSignature UniformRandomInplaceGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "uniform_random_inplace_grad",
+      "uniform_inplace_grad",
       {"Out@GRAD"},
       {"min", "max", "seed", "diag_num", "diag_step", "diag_val"},
       {"X@GRAD"});
 }
 
 }  // namespace phi
+
+PD_REGISTER_BASE_KERNEL_NAME(uniform_random_inplace, uniform_inplace);
 
 PD_REGISTER_ARG_MAPPING_FN(uniform_random_inplace,
                            phi::UniformRandomInplaceOpArgumentMapping);
