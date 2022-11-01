@@ -113,8 +113,8 @@ class MNIST(fluid.dygraph.Layer):
         )
 
     def forward(self, inputs, label):
-        x = self._simple_img_conv_pool_1(inputs)
-        x = self._simple_img_conv_pool_2(x)
+        x = paddle.nn.functional.relu(self._simple_img_conv_pool_1(inputs))
+        x = paddle.nn.functional.relu(self._simple_img_conv_pool_2(x))
         x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
         cost = self._linear(x)
         loss = fluid.layers.cross_entropy(cost, label)
@@ -126,13 +126,16 @@ class TestMnist(unittest.TestCase):
     def func_mnist_fp16(self):
         if not fluid.is_compiled_with_cuda():
             return
-        x = np.random.randn(1, 3, 224, 224).astype("float16")
+        x = np.random.randn(1, 3, 224, 224).astype("float32")
         y = np.random.randint(10, size=[1, 1], dtype="int64")
         with fluid.dygraph.guard(fluid.CUDAPlace(0)):
-            model = MNIST(dtype="float16")
+            model = MNIST(dtype="float32")
             x = fluid.dygraph.to_variable(x)
             y = fluid.dygraph.to_variable(y)
-            loss = model(x, y)
+
+            # using amp.auto_cast because paddle.nn.Conv2D doesn't suppport setting dtype
+            with paddle.amp.auto_cast(dtype='float16'):
+                loss = model(x, y)
             print(loss.numpy())
 
     def test_mnist_fp16(self):
