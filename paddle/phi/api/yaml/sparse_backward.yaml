@@ -273,7 +273,7 @@
            relu_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
 - backward_op : reshape_grad
-  forward : reshape(Tensor x, int64_t[] shape) -> Tensor(out)
+  forward : reshape(Tensor x, IntArray shape) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
