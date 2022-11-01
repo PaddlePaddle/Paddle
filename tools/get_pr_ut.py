@@ -338,6 +338,10 @@ class PRChecker(object):
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
+                elif (
+                    '/xpu/' or '/npu/' or '/mlu/' or '/ipu/' in filename.lower()
+                ):
+                    filterFiles.append(filename)
                 else:
                     file_list.append(filename)
             else:
