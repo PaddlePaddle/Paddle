@@ -1072,7 +1072,7 @@ class ParameterGroup(object):
         if self.numel == 0:
             return True
         else:
-            if param.dtype is not self.dtype:
+            if param.dtype != self.dtype:
                 return False
             if rank != self.rank:
                 return False
