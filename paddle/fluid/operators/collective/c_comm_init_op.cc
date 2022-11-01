@@ -58,11 +58,9 @@ class CCommInitOp : public framework::OperatorBase {
     using CommContext = platform::NCCLCommContext;
 #elif defined(PADDLE_WITH_XPU_BKCL)
     using UniqueId = BKCLUniqueId;
-    using Place = platform::XPUPlace;
     using CommContext = platform::BKCLCommContext;
 #elif defined(PADDLE_WITH_CNCL)
     using UniqueId = cnclCliqueId;
-    using Place = platform::MLUPlace;
     using CommContext = platform::CNCLCommContext;
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
