@@ -1076,6 +1076,16 @@
     func : hard_swish
   backward : hardswish_grad
 
+- op : hardtanh
+  args : (Tensor x, float t_min, float t_max)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hard_tanh
+  backward : hardtanh_grad
+
 - op : histogram
   args : (Tensor input, int64_t bins, int min, int max)
   output : Tensor(out)
