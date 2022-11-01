@@ -1148,6 +1148,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuPrecision(config_.xpu_precision_);
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
     argument_.SetXpuDeviceId(config_.xpu_device_id_);
+    argument_.SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
     // NNAdapter related
     argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
     argument_.SetNNAdapterDeviceNames(
