@@ -28,6 +28,49 @@ def test_squared_l2_norm(x):
         return _legacy_C_ops.squared_l2_norm(x)
 
 
+class TestSquaredL2NormF16Op(OpTest):
+    def init_test_case(self):
+        self.max_relative_error = 0.1
+        X = np.random.uniform(-0.1, 0.1, (5, 5, 2)).astype('float16')
+        X[np.abs(X) < self.max_relative_error] = 0.1
+        return X
+
+    def setUp(self):
+        self.python_api = test_squared_l2_norm
+        self.op_type = "squared_l2_norm"
+        X = self.init_test_case()
+        self.inputs = {'X': X}
+        self.target = np.square(LA.norm(X))
+        self.outputs = {'Out': np.array([self.target])}
+
+    def test_check_output(self):
+        self.check_output(atol=0.05, check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=self.max_relative_error,
+            check_eager=True,
+        )
+
+
+class TestSquaredL2NormF16Op1(TestSquaredL2NormF16Op):
+    def init_test_case(self):
+        self.max_relative_error = 0.5
+        X = np.random.uniform(-2.0, 2.0, (3, 10)).astype('float16')
+        X[np.abs(X) < self.max_relative_error] = 0.1
+        return X
+
+
+class TestSquaredL2NormF16Op2(TestSquaredL2NormF16Op):
+    def init_test_case(self):
+        self.max_relative_error = 0.5
+        X = np.random.uniform(-1.0, 1.0, (10, 10)).astype('float16')
+        X[np.abs(X) < self.max_relative_error] = 0.1
+        return X
+
+
 class TestL2LossOp(OpTest):
     """Test squared_l2_norm"""
 

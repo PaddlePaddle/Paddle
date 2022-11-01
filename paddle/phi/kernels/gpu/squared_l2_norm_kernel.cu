@@ -15,9 +15,28 @@
 #include "paddle/phi/kernels/squared_l2_norm_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/squared_l2_norm_kernel_impl.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/primitive/functor_primitives.h"
 
-PD_REGISTER_KERNEL(
-    squared_l2_norm, GPU, ALL_LAYOUT, phi::SquaredL2NormKernel, float, double) {
+namespace phi {
+template <typename T, typename Context>
+void SquaredL2NormKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  phi::Reduce<T, phi::kps::AddFunctor, phi::kps::SquareFunctor>(
+      dev_ctx, x, true, phi::vectorize(x.dims()), true, x.dtype(), out);
 }
+
+}  // namespace phi
+
+PD_REGISTER_KERNEL(squared_l2_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SquaredL2NormKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
