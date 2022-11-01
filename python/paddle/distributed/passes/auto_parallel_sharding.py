@@ -949,7 +949,9 @@ def _fuse_overlap_parameter_comm_stage_two(sharding_infos, dist_context,
                                     })
         else:
             group.coalesce_var = group.params[0]
-        _logger.info("Bucket: {}".format([p.name for p in group.params]))
+        _logger.info("Bucket[{}] size [{}]MB : {}".format(
+            i, sum([get_var_size(p) for p in group.params]),
+            [p.name for p in group.params]))
 
         # TODO Overlap broadcast with opt and next forward
         new_op = main_block.append_op(type='c_broadcast',
