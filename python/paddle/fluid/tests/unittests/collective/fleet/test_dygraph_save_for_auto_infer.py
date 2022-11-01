@@ -38,6 +38,11 @@ class TestSharding(unittest.TestCase):
         strategy_test("sharding_stage3")
 
 
+class TestsingleCard(unittest.TestCase):
+    def test_dygraph_save_load_dp_sharding_stage2(self):
+        strategy_test("single")
+
+
 if __name__ == "__main__":
     os.environ["FLAGS_enable_eager_mode"] = "1"
     os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"

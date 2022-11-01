@@ -48,7 +48,7 @@ from paddle.incubate.distributed.utils.io import save_for_auto_inference
 
 logger = get_logger("DEBUG", __file__)
 
-print(load)
+
 epoch = 2
 linear_size = 1000
 
@@ -186,6 +186,8 @@ def train_mlp(args, model, loss, opt_state=None, save_model=False):
         model, optimizer, _ = wrap_sharding_2_3(
             model, optimizer, None, False, 3
         )
+    elif args.strategy != "single":
+        raise ValueError(f"not supported strategy: {args.strategy}")
 
     dataset = RangeIterableDataset(
         data_path=os.path.join(args.output_dir, "data.npy")
@@ -278,10 +280,14 @@ def step_save(strategy, output_dir, seed):
     # save data
     os.makedirs(output_dir + "/logs", exist_ok=True)
     filename = os.path.basename(__file__)
-    cmd = (
-        f"{python_exe} -m paddle.distributed.launch  --log_dir {output_dir}/logs"
-        f" --gpus 0,1 {filename} --cmd save --strategy {strategy} --output_dir {output_dir} --seed {seed}"
-    )
+    if strategy != "single":
+        cmd = (
+            f"{python_exe} -m paddle.distributed.launch  --log_dir {output_dir}/logs"
+            f" --gpus 0,1 {filename} --cmd save --strategy {strategy} --output_dir {output_dir} --seed {seed}"
+        )
+    else:
+        cmd = f"{python_exe} {filename} --cmd save --strategy {strategy} --output_dir {output_dir} --seed {seed}"
+
     logger.debug(f"exe: {cmd}")
     p = subprocess.Popen(cmd.split())
     p.communicate()
@@ -363,7 +369,7 @@ def test_save_load(args):
         }
     elif args.strategy == "static":
         paddle.enable_static()
-    else:
+    elif args.strategy != "single":
         raise ValueError(f"Not supported strategy: {args.strategy}")
 
     loss = paddle.nn.CrossEntropyLoss()
@@ -372,8 +378,12 @@ def test_save_load(args):
     if dist.get_world_size() <= 1:
         logger.debug("build single model")
         mlp1 = MLP()
-        out_static = train_mlp_static(args, mlp1, loss, save_model=False)
-        np.save(os.path.join(args.output_dir, "static.npy"), out_static)
+        if args.strategy == "static":
+            out_static = train_mlp_static(args, mlp1, loss, save_model=False)
+            np.save(os.path.join(args.output_dir, "static.npy"), out_static)
+        else:
+            model, _, out_dygraph = train_mlp(args, mlp1, loss, save_model=True)
+            np.save(os.path.join(args.output_dir, "dygraph.npy"), out_dygraph)
     else:
         fleet.init(is_collective=True, strategy=strategy)
         fleet.set_log_level("DEBUG")
@@ -386,11 +396,13 @@ def test_save_load(args):
         else:
             mlp1 = MLP_Hybrid()
         model, _, out_dygraph = train_mlp(args, mlp1, loss, save_model=True)
-        if dist.get_rank() == dist.get_world_size() - 1:
+        if (
+            dist.get_world_size() == 0
+            or dist.get_rank() == dist.get_world_size() - 1
+        ):
             np.save(os.path.join(args.output_dir, "dygraph.npy"), out_dygraph)
 
     if args.cmd == "save":
-        # path_prefix, dist_model, cvt2cpu=False
         save_for_auto_inference(os.path.join(args.output_dir, "saved"), model)
 
 
@@ -402,7 +414,6 @@ def run_case(args):
     output_dir = tempfile.mkdtemp()
     logger.debug(f"output dir: {output_dir}")
     os.makedirs(output_dir + "/load_save", exist_ok=True)
-    # save dp
     try:
         step_save(saving_strategy, output_dir, args.seed)
         step_load(loading_strategy, output_dir, args.seed + 1)
@@ -410,7 +421,7 @@ def run_case(args):
     except Exception as e:
         shutil.rmtree(output_dir)
         raise RuntimeError(f"Test failed:\n{e}")
-    shutil.rmtree(output_dir)
+    # shutil.rmtree(output_dir)
 
 
 if __name__ == '__main__':
@@ -423,6 +434,7 @@ if __name__ == '__main__':
         "--strategy",
         required=False,
         choices=[
+            "single",
             "dp",
             "mp",
             "pp",
@@ -446,6 +458,7 @@ if __name__ == '__main__':
             "pp:static",
             "sharding_stage2:static",
             "sharding_stage3:static",
+            "single:static",
         ],
     )
     parser.add_argument("--gather_to", required=False, default=0)
