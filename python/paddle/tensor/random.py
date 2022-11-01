@@ -188,7 +188,7 @@ def multinomial(x, num_samples=1, replacement=False, name=None):
     """
 
     assert (
-        core.is_compiled_with_rocm() == False
+        not core.is_compiled_with_rocm()
     ), "multinomial op is not supported on ROCM yet."
 
     if in_dygraph_mode():
@@ -257,7 +257,7 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
         place = _current_expected_place()
-        return _C_ops.gaussian_random(
+        return _C_ops.gaussian(
             shape, float(mean), float(std), seed, dtype, place
         )
 

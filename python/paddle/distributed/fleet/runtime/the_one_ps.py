@@ -337,7 +337,7 @@ class CommonAccessor:
         self.table_num = size
         self.table_dim = single_dim
 
-        if oop.type != 'adam' and adam_d2sum == True:
+        if oop.type != 'adam' and adam_d2sum:
             print('optimization algorithm is not adam, set adam_d2sum False')
             adam_d2sum = False
         print("adam_d2sum:", adam_d2sum)

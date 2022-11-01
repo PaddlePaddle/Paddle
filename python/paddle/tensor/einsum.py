@@ -727,14 +727,6 @@ def preprocess(equation, *operands):
         '...' in lhs and '...' not in rhs
     ), 'Invalid equation: missing ellipsis in output labels.'
 
-    assert not (
-        len(list(filter(has_duplicated_labels, lhs.split(',')))) > 0
-    ), 'Duplicate labels are not supported.'
-
-    assert not has_duplicated_labels(
-        rhs
-    ), 'Invalid equation: duplicate output labels are found.'
-
     return lhs, rhs, labels
 
 

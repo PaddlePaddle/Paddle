@@ -159,10 +159,10 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             if self.num_input == 0:
-                if dynamic_shape == True:
+                if dynamic_shape:
                     return 0, 5
             elif self.num_input == 1:
-                if dynamic_shape == True:
+                if dynamic_shape:
                     return 1, 3
                 else:
                     return 0, 4

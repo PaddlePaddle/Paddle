@@ -137,12 +137,9 @@ def _conv_nd(
             stride,
             padding,
             padding_algorithm,
-            groups,
             dilation,
+            groups,
             data_format,
-            False,
-            -1,
-            False,
         )
         if bias is not None:
             channel_dim = (
@@ -486,21 +483,33 @@ def conv1d(
     x = unsqueeze(x, axis=[squeeze_aixs])
 
     if in_dygraph_mode():
-        out = getattr(_C_ops, l_type)(
-            x,
-            weight,
-            stride,
-            padding,
-            padding_algorithm,
-            groups,
-            dilation,
-            conv2d_data_format,
-            False,
-            -1,
-            False,
-            False,
-            use_cudnn,
-        )
+        if l_type == 'conv2d':
+            out = _C_ops.conv2d(
+                x,
+                weight,
+                stride,
+                padding,
+                padding_algorithm,
+                dilation,
+                groups,
+                conv2d_data_format,
+            )
+        else:
+            out = getattr(_C_ops, l_type)(
+                x,
+                weight,
+                stride,
+                padding,
+                padding_algorithm,
+                groups,
+                dilation,
+                conv2d_data_format,
+                False,
+                -1,
+                False,
+                False,
+                use_cudnn,
+            )
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
     elif _in_legacy_dygraph():
@@ -746,12 +755,9 @@ def conv2d(
                 stride,
                 padding,
                 padding_algorithm,
-                groups,
                 dilation,
+                groups,
                 data_format,
-                False,
-                -1,
-                False,
             )
             if bias is not None:
                 out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)

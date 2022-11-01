@@ -182,6 +182,11 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
         pt.data.data(),
         paddle::platform::errors::InvalidArgument(
             "The data contained in the input PaddleTensor is illegal."));
+    PADDLE_ENFORCE_EQ(
+        pt.data.length(),
+        t->numel() * paddle::experimental::SizeOf(t->dtype()),
+        paddle::platform::errors::InvalidArgument(
+            "The data contained in the input PaddleTensor had wrong length."));
   }
 
   if (platform::is_cpu_place(place)) {
@@ -1143,6 +1148,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuPrecision(config_.xpu_precision_);
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
     argument_.SetXpuDeviceId(config_.xpu_device_id_);
+    argument_.SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
     // NNAdapter related
     argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
     argument_.SetNNAdapterDeviceNames(

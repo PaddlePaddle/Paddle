@@ -466,9 +466,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         if in_dygraph_mode():
             out = _C_ops.abs(input)
             reduce_all = (
-                True
-                if axis is None or axis == [] or asvector == True
-                else False
+                True if axis is None or axis == [] or asvector else False
             )
             axis = axis if axis is not None and axis != [] else [0]
             if reduce_all:
@@ -487,9 +485,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             dtype=helper.input_dtype()
         )
 
-        reduce_all = (
-            True if axis is None or axis == [] or asvector == True else False
-        )
+        reduce_all = True if axis is None or axis == [] or asvector else False
         axis = axis if axis is not None and axis != [] else [0]
 
         reduce_type = (
@@ -1322,7 +1318,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         avg = nx.sum(axis=1) / w_sum
         nx_w = nx
 
-    if w is not None and aweights is not None and ddof == True:
+    if w is not None and aweights is not None and ddof:
         norm_factor = w_sum - (w * aweights).sum() / w_sum
     else:
         norm_factor = w_sum - ddof

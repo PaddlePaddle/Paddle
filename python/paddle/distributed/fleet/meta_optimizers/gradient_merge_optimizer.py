@@ -53,7 +53,7 @@ class GradientMergeOptimizer(MetaOptimizerBase):
             return False
 
         can_apply = (
-            self.user_defined_strategy.gradient_merge == True
+            self.user_defined_strategy.gradient_merge
         ) and self.user_defined_strategy.gradient_merge_configs["k_steps"] > 1
         return can_apply
 

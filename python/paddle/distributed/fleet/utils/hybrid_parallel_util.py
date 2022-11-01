@@ -193,7 +193,7 @@ def fused_allreduce_gradients_with_group(
         else _apply_collective_grads
     )
     with framework.no_grad():
-        apply_func(parameter_list, group, bucket_size)
+        apply_func(parameter_list, group, bucket_size, scale)
 
 
 def fused_allreduce_gradients(parameter_list, hcg):

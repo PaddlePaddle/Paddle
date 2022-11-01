@@ -2033,7 +2033,7 @@ def margin_cross_entropy(
     """
 
     assert reduction in ['mean', 'sum', 'none', None]
-    if not (group == False or group is None or hasattr(group, 'is_member')):
+    if not (group is False or group is None or hasattr(group, 'is_member')):
         raise ValueError(
             'Expected group is False, None or instance of paddle.distributed.collective.Group \
              (got group: {})'.format(
@@ -2048,7 +2048,7 @@ def margin_cross_entropy(
     ring_id = 0
     rank = 0
     nranks = 1
-    if group != False:
+    if group is not False:
         ring_id = 0 if group is None else group.id
         if core.is_compiled_with_dist():
             parallel_env = paddle.distributed.ParallelEnv()
@@ -2537,7 +2537,7 @@ def cross_entropy(
             "should be 'sum', 'mean' or 'none', but received %s, which is not allowed."
             % reduction
         )
-    if ignore_index > 0 and soft_label == True:
+    if ignore_index > 0 and soft_label:
         raise ValueError(
             "When soft_label == True, the value of 'ignore_index' in softmax_cross_entropy"
             "should be '-100', but received %s, which is not allowed."
@@ -2560,12 +2560,12 @@ def cross_entropy(
         label = paddle.unsqueeze(label, axis=axis)
 
     if in_dygraph_mode():
-        if soft_label == False:
+        if not soft_label:
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
             )
         if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
-            if soft_label == False:
+            if not soft_label:
                 _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     valid_label,
@@ -2603,7 +2603,7 @@ def cross_entropy(
         if weight is not None:
 
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
-            if soft_label == True:
+            if soft_label:
                 # chajchaj:
                 # weight's shape is C, where C is class num.
                 # for 1d case: label's shape is [N,C], weight_gather's shape is N.
@@ -2710,7 +2710,7 @@ def cross_entropy(
             return out
 
     elif _in_legacy_dygraph():
-        if soft_label == False:
+        if not soft_label:
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
             )
@@ -2725,7 +2725,7 @@ def cross_entropy(
                     "Target {} is out of upper bound.".format(label_max.item())
                 )
         if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
-            if soft_label == False:
+            if not soft_label:
                 _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     valid_label,
@@ -2774,7 +2774,7 @@ def cross_entropy(
         if weight is not None:
 
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
-            if soft_label == True:
+            if soft_label:
                 # chajchaj:
                 # weight's shape is C, where C is class num.
                 # for 1d case: label's shape is [N,C], weight_gather's shape is N.
@@ -2921,7 +2921,7 @@ def cross_entropy(
             weight, 'weight', ['float32', 'float64'], 'softmax_cross_entropy'
         )
         weight_name = name if reduction == 'none' else None
-        if soft_label == True:
+        if soft_label:
             # chajchaj:
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
             # weight's shape is C, where C is class num.

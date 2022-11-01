@@ -177,7 +177,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             gradient_scale_configs['scale_strategy']
         ]
 
-        if self.user_defined_strategy.recompute == True:
+        if self.user_defined_strategy.recompute:
             logging.warn(
                 "set enable_sequential_execution=True since you have enable the recompute strategy"
             )

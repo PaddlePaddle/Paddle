@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import six
 import sys
 import time
 import signal
@@ -284,9 +283,9 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 except:
                     self._exit_thread_expectedly()
 
-            except:
+            except Exception as e:
                 self._exit_thread_unexpectedly()
-                six.reraise(*sys.exc_info())
+                raise e
 
         self._exit_thread_expectedly()
 
@@ -334,7 +333,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         except StopIteration:
             self._reader.shutdown()
             self._try_shutdown_all()
-            six.reraise(*sys.exc_info())
+            raise
         finally:
             if in_profiler_mode():
                 trace_event.end()
@@ -629,7 +628,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                             self._blocking_queue.close()
                     except Exception as e:
                         self._exit_thread_unexpectedly()
-                        six.reraise(*sys.exc_info())
+                        raise e
                     finally:
                         self._rcvd_idx += 1
 
@@ -715,7 +714,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     "DataLoader reader thread failed({}) to read data from "
                     "workers' result queue.".format(e)
                 )
-                six.reraise(*sys.exc_info())
+                raise e
             else:
                 if self._dataset_kind == _DatasetKind.ITER and isinstance(
                     data, _IterableDatasetStopIteration
@@ -850,7 +849,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             if not self._persistent_workers:
                 self._reader.shutdown()
                 self._try_shutdown_all()
-            six.reraise(*sys.exc_info())
+            raise
         finally:
             if in_profiler_mode():
                 trace_event.end()

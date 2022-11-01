@@ -164,7 +164,7 @@ def load_profiler_result(filename: str):
 
 
 def in_profiler_mode():
-    return _is_profiler_used == True
+    return _is_profiler_used
 
 
 def wrap_optimizers():
@@ -182,7 +182,7 @@ def wrap_optimizers():
         return warpper
 
     global _has_optimizer_wrapped
-    if _has_optimizer_wrapped == True:
+    if _has_optimizer_wrapped:
         return
     import paddle.optimizer as optimizer
 

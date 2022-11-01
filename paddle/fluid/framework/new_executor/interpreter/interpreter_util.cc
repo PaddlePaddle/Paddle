@@ -16,6 +16,7 @@
 
 #include <algorithm>
 
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
@@ -125,18 +126,60 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   }
 }
 
-void LogDeviceMemoryStats(const platform::Place& place) {
-  if (FLAGS_new_executor_log_memory_stats && platform::is_gpu_place(place)) {
-    VLOG(0) << "memory_allocated: "
-            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
-                   "Allocated", place.device)) /
-                   1024 / 1024
-            << " MB";
-    VLOG(0) << "max_memory_allocated: "
-            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
-                   "Allocated", place.device)) /
-                   1024 / 1024
-            << " MB";
+bool IsCommunicationOp(const Instruction& instr) {
+  const std::set<std::string> special_comm_op_set = {
+      "send",
+      "recv",
+      "send_v2",
+      "recv_v2",
+  };
+  const std::string& op_name = instr.OpBase()->Type();
+  const std::string communication_op_prefix = "c_";
+  if (op_name.find(communication_op_prefix) != std::string::npos ||
+      special_comm_op_set.count(op_name)) {
+    return true;
+  }
+  return false;
+}
+
+bool IsCpuOp(const Instruction& instr) {
+  return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
+bool IsSupportedHeterPlace(const phi::Place& place) {
+  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
+         platform::is_xpu_place(place) || platform::is_ipu_place(place) ||
+         platform::is_custom_place(place);
+}
+
+bool IsMemcpyD2H(const Instruction& instr) {
+  return instr.OpBase()->Type() == kMemcpyD2H;
+}
+
+bool IsMemcpyH2D(const Instruction& instr) {
+  return instr.OpBase()->Type() == kMemcpyH2D;
+}
+
+bool IsMemcpyOp(const Instruction& instr) {
+  return IsMemcpyD2H(instr) || IsMemcpyH2D(instr);
+}
+
+void AddFetch(const std::vector<std::string>& fetch_names,
+              framework::BlockDesc* block) {
+  auto* fetch_holder = block->Var(kFetchVarName);
+  fetch_holder->SetType(proto::VarType::FETCH_LIST);
+  fetch_holder->SetPersistable(true);
+
+  int i = 0;
+  for (auto& fetch_name : fetch_names) {
+    // append fetch op
+    auto* op = block->AppendOp();
+    op->SetType("fetch_v2");
+    op->SetInput("X", {fetch_name});
+    op->SetOutput("Out", {kFetchVarName});
+    op->SetAttr("col", {static_cast<int>(i)});
+    op->CheckAttrs();
+    i++;
   }
 }
 
@@ -517,6 +560,12 @@ void BuildOpFuncList(const platform::Place& place,
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
 
+    const OperatorDistAttr* dist_attr = block.Op(i)->DistAttr();
+    if (dist_attr &&
+        dist_attr->execution_stream() != distributed::auto_parallel::kDefault) {
+      op_func_node.execution_stream_ = dist_attr->execution_stream();
+    }
+
     SingleStreamGuard single_stream_guard(ops[i]);
 
     VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
@@ -748,38 +797,19 @@ void BuildOpFuncList(const platform::Place& place,
   memory::Release(place);
 }
 
-void AddFetch(const std::vector<std::string>& fetch_names,
-              framework::BlockDesc* block) {
-  auto* fetch_holder = block->Var(kFetchVarName);
-  fetch_holder->SetType(proto::VarType::FETCH_LIST);
-  fetch_holder->SetPersistable(true);
-
-  int i = 0;
-  for (auto& fetch_name : fetch_names) {
-    // append fetch op
-    auto* op = block->AppendOp();
-    op->SetType("fetch_v2");
-    op->SetInput("X", {fetch_name});
-    op->SetOutput("Out", {kFetchVarName});
-    op->SetAttr("col", {static_cast<int>(i)});
-    op->CheckAttrs();
-    i++;
+void LogDeviceMemoryStats(const platform::Place& place) {
+  if (FLAGS_new_executor_log_memory_stats && platform::is_gpu_place(place)) {
+    VLOG(0) << "memory_allocated: "
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Allocated", place.device)) /
+                   1024 / 1024
+            << " MB";
+    VLOG(0) << "max_memory_allocated: "
+            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
+                   "Allocated", place.device)) /
+                   1024 / 1024
+            << " MB";
   }
-}
-
-bool IsCommunicationOp(const std::string& op_name) {
-  const std::set<std::string> special_comm_op_set = {
-      "send",
-      "recv",
-      "send_v2",
-      "recv_v2",
-  };
-  const std::string communication_op_prefix = "c_";
-  if (op_name.find(communication_op_prefix) != std::string::npos ||
-      special_comm_op_set.count(op_name)) {
-    return true;
-  }
-  return false;
 }
 
 }  // namespace interpreter

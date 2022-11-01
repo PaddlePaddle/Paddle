@@ -50,6 +50,7 @@ struct EngineConfig {
   std::string autotune_file = "";
   std::string precision = "int16";
   bool adaptive_seqlen = false;
+  bool enable_multi_stream = false;
 
   // for x86 or arm
   int cpu_math_library_num_threads{1};
