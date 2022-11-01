@@ -167,13 +167,12 @@ class DenseTensor : public TensorBase,
   /// \brief Returns the storage_properties of the tensor.
   /// \return The storage_properties of the tensor.
   template <typename DeviceT>
-  const DeviceT& storage_properties() const {
-    return dynamic_cast<DeviceT&>(*storage_properties_);
-  }
+  const DeviceT& storage_properties() const;
 
   /// \brief Sets the storage_properties of the tensor.
   /// \param storage_properties The storage_properties of the tensor.
-  void set_storage_properties(StorageProperties* storage_properties);
+  void set_storage_properties(
+      std::unique_ptr<StorageProperties>&& storage_properties);
 
  private:
   friend class DenseTensorUtils;

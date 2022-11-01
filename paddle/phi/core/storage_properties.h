@@ -18,6 +18,10 @@ limitations under the License. */
 
 #include "paddle/phi/core/utils/type_registry.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "dnnl.hpp"  // NOLINT
+#endif
+
 namespace phi {
 
 struct StorageProperties {
@@ -32,28 +36,57 @@ struct StorageProperties {
       TypeInfo<StorageProperties>::kUnknownType};
 };
 
-struct CustomDeviceProperties
+struct NPUStorageProperties
     : public StorageProperties,
-      public TypeInfoTraits<StorageProperties, CustomDeviceProperties> {
-  virtual ~CustomDeviceProperties() = default;
-  static const char* name() { return "CustomDeviceProperties"; }
+      public TypeInfoTraits<StorageProperties, NPUStorageProperties> {
+  virtual ~NPUStorageProperties() = default;
+  static const char* name() { return "NPUStorageProperties"; }
 
   int64_t storage_format;
   int64_t storage_layout;
 };
 
-inline std::unique_ptr<StorageProperties> CopyStorageProperties(
-    const std::unique_ptr<StorageProperties>& storage_properties) {
-  if (storage_properties) {
-    if (CustomDeviceProperties::classof(storage_properties.get())) {
-      auto result = std::make_unique<CustomDeviceProperties>();
+// Add OneDNNStorageProperties firstly for unittest covergae
+#ifdef PADDLE_WITH_MKLDNN
+struct OneDNNStorageProperties
+    : public StorageProperties,
+      public TypeInfoTraits<StorageProperties, OneDNNStorageProperties> {
+  virtual ~OneDNNStorageProperties() = default;
+  static const char* name() { return "OneDNNStorageProperties"; }
+
+  /**
+   * @brief the detail format of memory block which have layout as ONEDNN
+   *
+   * @note ONEDNN lib support various memory format like nchw, nhwc, nChw8C,
+   *       nChw16c, etc. For a ONEDNN memory block, layout will be set as
+   *       DataLayout::ONEDNN meanwhile detail memory format will be kept in
+   *       this field.
+   */
+  dnnl::memory::format_tag format = dnnl::memory::format_tag::undef;
+
+  /// \brief memory descriptor of tensor which have layout set as ONEDNN
+  dnnl::memory::desc mem_desc;
+};
+#endif
+
+static std::unique_ptr<StorageProperties> CopyStorageProperties(
+    const std::unique_ptr<StorageProperties>& sp) {
+  if (sp) {
+    if (NPUStorageProperties::classof(sp.get())) {
+      auto result = std::make_unique<NPUStorageProperties>();
       result->storage_format =
-          static_cast<CustomDeviceProperties*>(storage_properties.get())
-              ->storage_format;
+          static_cast<NPUStorageProperties*>(sp.get())->storage_format;
       result->storage_layout =
-          static_cast<CustomDeviceProperties*>(storage_properties.get())
-              ->storage_layout;
+          static_cast<NPUStorageProperties*>(sp.get())->storage_layout;
       return result;
+#ifdef PADDLE_WITH_MKLDNN
+    } else if (OneDNNStorageProperties::classof(sp.get())) {
+      auto result = std::make_unique<OneDNNStorageProperties>();
+      result->format = static_cast<OneDNNStorageProperties*>(sp.get())->format;
+      result->mem_desc =
+          static_cast<OneDNNStorageProperties*>(sp.get())->mem_desc;
+      return result;
+#endif
     } else {
       return nullptr;
     }

@@ -246,9 +246,29 @@ DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>);
 
 #undef DATA_MEMBER_FUNC_INSTANTIATION
 
+template <typename DeviceT>
+const DeviceT& DenseTensor::storage_properties() const {
+  PADDLE_ENFORCE_NOT_NULL(
+      storage_properties_,
+      phi::errors::PreconditionNotMet(
+          "The storage_properties of current DenseTensor is nullptr."));
+  if (DeviceT::classof(storage_properties_.get())) {
+    return static_cast<DeviceT&>(*storage_properties_);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The actual type of storage_properties is inconsistent with the type "
+        "of the template parameter passed in."));
+  }
+}
+
+template const NPUStorageProperties& DenseTensor::storage_properties() const;
+#ifdef PADDLE_WITH_MKLDNN
+template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
+#endif
+
 void DenseTensor::set_storage_properties(
-    StorageProperties* storage_properties) {
-  storage_properties_.reset(storage_properties);
+    std::unique_ptr<StorageProperties>&& storage_properties) {
+  storage_properties_ = std::move(storage_properties);
 }
 
 }  // namespace phi
