@@ -47,6 +47,8 @@ class AutoGrowthBestFitAllocator : public Allocator {
     return FreeIdleChunks();
   }
 
+  uint64_t GetAllocatedSize();
+
  private:
   uint64_t FreeIdleChunks();
 

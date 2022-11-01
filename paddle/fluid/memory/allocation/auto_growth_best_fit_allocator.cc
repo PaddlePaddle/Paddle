@@ -153,6 +153,13 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
                        block_it);
 
   delete allocation;
+    size_t bytes = GetAllocatedSize();
+    size_t limit = ((size_t)1 << 30) * 22;
+    if (bytes > limit)
+    {
+       //std::cout<<bytes<<" free 2\n";
+       FreeIdleChunks();
+    }
 
   if (FLAGS_free_idle_chunk) {
     FreeIdleChunks();
@@ -175,6 +182,16 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
     } else {
       ++chunk_it;
     }
+  }
+  return bytes;
+}
+
+uint64_t AutoGrowthBestFitAllocator::GetAllocatedSize()
+{
+  uint64_t bytes = 0;
+  for (auto chunk_it = chunks_.begin(); chunk_it != chunks_.end(); ++chunk_it)
+  {
+    bytes += chunk_it->allocation_->size();
   }
   return bytes;
 }
