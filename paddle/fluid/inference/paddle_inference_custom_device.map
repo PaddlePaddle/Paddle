@@ -1,6 +1,29 @@
 {
 	global:
-		*paddle*;
+		extern "C++" {
+			paddle::AnalysisConfig::*;
+			paddle::PaddlePredictor::*;
+			paddle::CreatePaddlePredictor*;
+			paddle::NativePaddlePredictor*;
+			paddle::AnalysisPredictor*;
+			paddle::PaddleDtypeSize*;
+			paddle::ZeroCopyTensor*;
+
+			paddle_infer::GetVersion*;
+			paddle_infer::UpdateDllFlag*;
+			paddle_infer::experimental::InternalUtils*;
+			paddle_infer::Tensor*;
+			paddle_infer::CreatePredictor*;
+			paddle_infer::GetTrtCompileVersion*;
+			paddle_infer::GetTrtRuntimeVersion*;
+			paddle_infer::GetNumBytesOfDataType*;
+			paddle_infer::ConvertToMixedPrecision*;
+
+			paddle_infer::contrib::TensorUtils*;
+			paddle_infer::contrib::Status*;
+			paddle_infer::services::PredictorPool*;
+		};
+
 		*Pass*;
 		*profile*;
 		*phi*;
