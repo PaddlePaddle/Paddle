@@ -551,12 +551,13 @@ class ShardingPass(PassBase):
             # TODO support multiple sub_blocks
             if self.bucket_size_numel > 1:
                 if self.stage == 2:
-                    _fuse_overlap_parameter_comm_stage_two(self.sharding_infos,
-                                                           self._dist_context,
-                                                           fuse_size=1024)
+                    _fuse_overlap_parameter_comm_stage_two(
+                        self.sharding_infos,
+                        self._dist_context,
+                        fuse_size=self.bucket_size_numel)
                 elif self.stage == 3:
                     _fuse_overlap_parameter_comm_stage_three(
-                        self.sharding_infos, fuse_size=1024)
+                        self.sharding_infos, fuse_size=self.bucket_size_numel)
 
 
 def _insert_init_and_broadcast_op(block, insert_idx, varname, local_rank,
@@ -916,8 +917,10 @@ def _fuse_overlap_parameter_comm_stage_two(sharding_infos, dist_context,
     group_to_param_map, param_to_group_map = group_param(
         sharding_info, fuse_size)
     _logger.info("Sharding Stage2 Optimization:")
-    _logger.info("[{}] Parameters are fused into [{}] Buckets".format(
-        len(param_to_group_map.keys()), len(group_to_param_map.keys())))
+    _logger.info(
+        "Bucket size is [{}], [{}] Parameters are fused into [{}] Buckets".
+        format(fuse_size, len(param_to_group_map.keys()),
+               len(group_to_param_map.keys())))
     for group in group_to_param_map.keys():
 
         assert len(group) >= 1
