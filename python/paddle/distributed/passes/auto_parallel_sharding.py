@@ -1065,7 +1065,7 @@ class ParameterGroup(object):
         self.params = []
         self.coalesce_var = None
 
-    def acceptable(param, rank):
+    def acceptable(self, param, rank):
         if self.numel == 0:
             return True
         else:
@@ -1077,7 +1077,7 @@ class ParameterGroup(object):
                 return False
             return True
 
-    def collect(param, rank):
+    def collect(self, param, rank):
         self.dtype = param.dtype
         self.rank = rank
         self.numel += get_var_numel(param)
