@@ -898,14 +898,6 @@
     x : X
   outputs :
     out : Out
-  # double_grad_inputs :
-  #   {grad_out : DOut, grad_x_grad : DDX}
-  # double_grad_outputs :
-  #   {out_grad : DOutNew, grad_out_grad : DDOut}
-  # triple_grad_inputs :
-  #   {grad_out_forward : DOut, grad_x_grad_forward : DDX, grad_out_new_grad : D_DOut_New, grad_out_grad_grad : D_DDOut}
-  # triple_grad_outputs :
-  #   {out_grad : D_OutNew, grad_out_forward_grad : D_DOut, grad_x_grad_forward_grad : D_DDx}
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
