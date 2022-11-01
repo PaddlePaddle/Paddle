@@ -127,7 +127,7 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
   }
 }
 
-template <typename T, typename U>
+template <typename T, typename U=T>
 __device__ __forceinline__ void ReduceMeanAndVar(
     T* mean, T* var, U x_mean, U x_var, int size) {
   const int nc = blockIdx.x;
@@ -142,8 +142,8 @@ __device__ __forceinline__ void ReduceMeanAndVar(
   }
 }
 
-template <typename T, typename U>
-__global__ void ScalarGetMeanAndVarNCHW(const T* x, T* mean, T* var, int size) {
+template <typename T, typename U=T>
+__global__ void ScalarGetMeanAndVarNCHW(const T* x, U* mean, U* var, int size) {
   int i = blockIdx.x;
   U x_mean = static_cast<U>(0);
   U x_var = static_cast<U>(0);
@@ -153,13 +153,13 @@ __global__ void ScalarGetMeanAndVarNCHW(const T* x, T* mean, T* var, int size) {
     x_mean += val;
     x_var += val * val;
   }
-  ReduceMeanAndVar<T, U>(mean, var, x_mean, x_var, size);
+  ReduceMeanAndVar<U>(mean, var, x_mean, x_var, size);
 }
 
-template <typename T, typename AccT, int VecSize>
+template <typename T, typename AccT=T, int VecSize>
 __global__ void VectorizedGetMeanAndVarNCHW(const T* x,
-                                            T* mean,
-                                            T* var,
+                                            AccT* mean,
+                                            AccT* var,
                                             int size) {
   int i = blockIdx.x;
   AccT x_mean = static_cast<AccT>(0);
@@ -169,7 +169,7 @@ __global__ void VectorizedGetMeanAndVarNCHW(const T* x,
   phi::Array<const T*, 1> ins;
   ins[0] = x;
   ThreadReduce<T, AccT, VecSize, 1>(ins, size, input_offset, &x_mean, &x_var);
-  ReduceMeanAndVar<T, AccT>(mean, var, x_mean, x_var, size);
+  ReduceMeanAndVar<AccT>(mean, var, x_mean, x_var, size);
 }
 
 }  // namespace phi
