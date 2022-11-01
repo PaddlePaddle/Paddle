@@ -25,6 +25,7 @@ from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_o
 from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.operators.common import is_parameter_related, is_data_parallel_reduce_op
 from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_dist_op_attr_for_program_by_mesh_and_mapping, set_var_dist_attr, get_var_numel, get_logger
+from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
