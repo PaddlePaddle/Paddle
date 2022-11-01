@@ -129,5 +129,34 @@ TEST(dense_tensor, shallow_copy) {
   CHECK(tensor_0.meta() == tensor_1.meta());
 }
 
+TEST(dense_tensor, storage_properties) {
+  const DataType dtype{DataType::FLOAT32};
+  const DDim dims({1, 2});
+  DenseTensorMeta meta(dtype, dims);
+
+  auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
+  DenseTensor tensor(fancy_allocator.get(), meta);
+
+  auto* npu_properties = new CustomDeviceProperties;
+  npu_properties->storage_format = 1;
+  npu_properties->storage_layout = 2;
+
+  tensor.set_device_properties(npu_properties);
+
+  auto& get_npu_properties =
+      tensor.storage_properties<CustomDeviceProperties>();
+
+  CHECK_EQ(get_npu_properties.storage_format, 1);
+  CHECK_EQ(get_npu_properties.storage_layout, 2);
+
+  auto cp_tensor = tensor;
+
+  auto& get_cp_npu_properties =
+      cp_tensor.storage_properties<CustomDeviceProperties>();
+
+  CHECK_EQ(get_cp_npu_properties.storage_format, 1);
+  CHECK_EQ(get_cp_npu_properties.storage_layout, 2);
+}
+
 }  // namespace tests
 }  // namespace phi

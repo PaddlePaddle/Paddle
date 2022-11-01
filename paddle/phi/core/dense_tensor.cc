@@ -53,6 +53,8 @@ DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
 
 DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
   holder_ = other.holder_;
+  storage_properties_ =
+      std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -64,6 +66,8 @@ DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   meta_ = other.meta();
   holder_ = other.holder_;
+  storage_properties_ =
+      std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
@@ -75,6 +79,7 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
 DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
+  storage_properties_ = std::move(other.storage_properties_);
   std::swap(inplace_version_counter_, other.inplace_version_counter_);
 #ifdef PADDLE_WITH_MKLDNN
   format_ = other.format_;
@@ -240,5 +245,9 @@ DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<float>);
 DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>);
 
 #undef DATA_MEMBER_FUNC_INSTANTIATION
+
+void DenseTensor::set_device_properties(StorageProperties* storage_properties) {
+  storage_properties_.reset(storage_properties);
+}
 
 }  // namespace phi
