@@ -987,7 +987,7 @@ class FusedTransformer(Layer):
         custom_encoder=None,
         custom_decoder=None,
     ):
-        super(fusedTransformer, self).__init__()
+        super().__init__()
         raise NotImplementedError()
 
     def forward(self, src, tgt, src_mask=None, tgt_mask=None, memory_mask=None):

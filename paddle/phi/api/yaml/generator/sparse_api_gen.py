@@ -26,7 +26,7 @@ class SparseAPI(ForwardAPI):
     def gene_api_declaration(self):
         return f"""
 // {", ".join(self.outputs['names'])}
-{super(SparseAPI, self).gene_api_declaration()}
+{super().gene_api_declaration()}
 """
 
     def gene_output(

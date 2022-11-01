@@ -191,7 +191,7 @@ class BaseTransform(object):
 
             class CustomRandomFlip(BaseTransform):
                 def __init__(self, prob=0.5, keys=None):
-                    super(CustomRandomFlip, self).__init__(keys)
+                    super().__init__(keys)
                     self.prob = prob
 
                 def _get_params(self, inputs):

@@ -31,7 +31,7 @@ class StringsAPI(ForwardAPI):
     def gene_api_declaration(self):
         return f"""
 // {", ".join(self.outputs['names'])}
-{super(StringsAPI, self).gene_api_declaration()}
+{super().gene_api_declaration()}
 """
 
     def get_kernel_tensor_out_type(self, output_name):

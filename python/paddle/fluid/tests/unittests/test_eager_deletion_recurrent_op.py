@@ -529,9 +529,7 @@ class EagerDeletionTwoRecurrentOpsTest(EagerDeletionRecurrentOpTest1):
 
     class PySimpleRNN5(PyRNNBase):
         def __init__(self, input_shape, output_shape):
-            super(EagerDeletionTwoRecurrentOpsTest.PySimpleRNN5, self).__init__(
-                input_shape, output_shape
-            )
+            super().__init__(input_shape, output_shape)
             self.mem_0 = np.zeros(shape=input_shape).astype("float32")
             self.mem_1 = np.zeros(shape=input_shape).astype("float32")
             self.rnn_0_output = np.zeros(shape=input_shape).astype("float32")

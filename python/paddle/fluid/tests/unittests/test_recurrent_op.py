@@ -344,9 +344,7 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
 
     class PySimpleRNN3(PyRNNBase):
         def __init__(self, input_shape, output_shape):
-            super(RecurrentOpMultipleMemoryTest.PySimpleRNN3, self).__init__(
-                input_shape, output_shape
-            )
+            super().__init__(input_shape, output_shape)
 
             seq_len, batch_size, input_dim = input_shape
             self.h_boot1 = np.random.normal(
@@ -446,9 +444,7 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
 
     class PySimpleRNN4(PyRNNBase):
         def __init__(self, input_shape, output_shape):
-            super(RecurrentOpNoMemBootTest.PySimpleRNN4, self).__init__(
-                input_shape, output_shape
-            )
+            super().__init__(input_shape, output_shape)
             men_dim = input_shape
             self.mems = np.zeros(shape=men_dim).astype("float32")
 
@@ -522,9 +518,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
 
     class PySimpleRNN5(PyRNNBase):
         def __init__(self, input_shape, output_shape):
-            super(RecurrentOpSubBlockTest.PySimpleRNN5, self).__init__(
-                input_shape, output_shape
-            )
+            super().__init__(input_shape, output_shape)
 
             seq_len, batch_size, input_dim = input_shape
             self.w1 = np.random.uniform(

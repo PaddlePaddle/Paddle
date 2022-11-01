@@ -420,7 +420,7 @@ class Profiler:
 
                 class SimpleNet(paddle.nn.Layer):
                     def __init__(self):
-                        super(SimpleNet, self).__init__()
+                        super().__init__()
                         self.fc = paddle.nn.Linear(100, 10)
 
                     def forward(self, image, label=None):

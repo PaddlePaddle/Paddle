@@ -1335,7 +1335,7 @@ class Model(object):
 
                 class Mnist(nn.Layer):
                     def __init__(self):
-                        super(Mnist, self).__init__()
+                        super().__init__()
                         self.net = nn.Sequential(
                             nn.Flatten(1),
                             nn.Linear(784, 200),
@@ -2078,7 +2078,7 @@ class Model(object):
 
                 class MnistDataset(paddle.vision.datasets.MNIST):
                     def __init__(self, mode, return_label=True):
-                        super(MnistDataset, self).__init__(mode=mode)
+                        super().__init__(mode=mode)
                         self.return_label = return_label
 
                     def __getitem__(self, idx):

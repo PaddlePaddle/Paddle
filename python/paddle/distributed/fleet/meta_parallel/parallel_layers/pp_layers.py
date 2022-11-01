@@ -240,7 +240,7 @@ class PipelineLayer(Layer):
 
         class ReshapeHelp(Layer):
             def __init__(self, shape):
-                super(ReshapeHelp, self).__init__()
+                super().__init__()
                 self.shape = shape
 
             def forward(self, x):
@@ -275,7 +275,7 @@ class PipelineLayer(Layer):
                         ReshapeHelp, shape=[-1, 256]),
                     LayerDesc(nn.Linear, 256, self.num_classes),  # classifier
                 ]
-                super(AlexNetPipeDesc, self).__init__(
+                super().__init__(
                     layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
 
         model = AlexNetPipeDesc(num_stages=pipeline_parallel_size, topology=hcg._topo)

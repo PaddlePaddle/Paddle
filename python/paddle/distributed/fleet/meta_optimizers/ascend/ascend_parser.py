@@ -592,7 +592,7 @@ class ReduceSumParser(AscendParserBase):
 
 # class IncrementParser(AscendParserBase):
 #    def __init__(self, graph, var2geop):
-#        super(IncrementParser, self).__init__(graph, var2geop)
+#        super().__init__(graph, var2geop)
 #        self.parser_name = "increment"
 #
 #    def _apply(self):

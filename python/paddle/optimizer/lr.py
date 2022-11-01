@@ -82,7 +82,7 @@ class LRScheduler(object):
 
                     self.step_size = step_size
                     self.gamma = gamma
-                    super(StepDecay, self).__init__(learning_rate, last_epoch, verbose)
+                    super().__init__(learning_rate, last_epoch, verbose)
 
                 def get_lr(self):
                     i = self.last_epoch // self.step_size

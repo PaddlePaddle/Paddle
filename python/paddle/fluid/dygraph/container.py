@@ -115,7 +115,7 @@ class ParameterList(Layer):
 
             class MyLayer(paddle.nn.Layer):
                 def __init__(self, num_stacked_param):
-                    super(MyLayer, self).__init__()
+                    super().__init__()
                     # create ParameterList with iterable Parameters
                     self.params = paddle.nn.ParameterList(
                         [paddle.create_parameter(
@@ -201,7 +201,7 @@ class LayerList(Layer):
 
             class MyLayer(paddle.nn.Layer):
                 def __init__(self):
-                    super(MyLayer, self).__init__()
+                    super().__init__()
                     self.linears = paddle.nn.LayerList(
                         [paddle.nn.Linear(10, 10) for i in range(10)])
 

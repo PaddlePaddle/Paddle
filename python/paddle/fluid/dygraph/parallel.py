@@ -512,7 +512,7 @@ class DataParallel(layers.Layer):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
 
@@ -582,7 +582,7 @@ class DataParallel(layers.Layer):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
                     self.linear = paddle.nn.Linear(2, 2)
 
                 def forward(self, inputs):
@@ -791,7 +791,7 @@ class DataParallel(layers.Layer):
 
                 class SimpleNet(nn.Layer):
                     def __init__(self):
-                        super(SimpleNet, self).__init__()
+                        super().__init__()
                         self._linear = nn.Linear(10, 1)
 
                     def forward(self, x):

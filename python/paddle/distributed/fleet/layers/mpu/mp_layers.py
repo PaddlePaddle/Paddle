@@ -59,7 +59,7 @@ class VocabParallelEmbedding(Layer):
 
         class SimpleMPNet(paddle.nn.Layer):
            def __init__(self, vocab_size, hidden_size, inner_size, output_size):
-              super(SimpleMPNet, self).__init__()
+              super().__init__()
               self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
                     hidden_size,
                     inner_size,
@@ -193,7 +193,7 @@ class ColumnParallelLinear(Layer):
 
         class SimpleMPNet(paddle.nn.Layer):
            def __init__(self, vocab_size, hidden_size, inner_size, output_size):
-              super(SimpleMPNet, self).__init__()
+              super().__init__()
               self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
                     hidden_size,
                     inner_size,
@@ -347,7 +347,7 @@ class RowParallelLinear(Layer):
 
         class SimpleMPNet(paddle.nn.Layer):
            def __init__(self, vocab_size, hidden_size, inner_size, output_size):
-              super(SimpleMPNet, self).__init__()
+              super().__init__()
               self.linear1 = fleet.meta_parallel.ColumnParallelLinear(
                     hidden_size,
                     inner_size,

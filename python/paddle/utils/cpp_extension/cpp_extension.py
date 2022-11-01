@@ -376,7 +376,7 @@ class BuildExtension(build_ext, object):
         """
         Attributes is initialized with following oreder:
 
-            1. super(self).__init__()
+            1. super().__init__()
             2. initialize_options(self)
             3. the reset of current __init__()
             4. finalize_options(self)

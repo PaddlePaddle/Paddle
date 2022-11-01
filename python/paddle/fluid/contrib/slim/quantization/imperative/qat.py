@@ -183,7 +183,7 @@ class ImperativeQuantAware(object):
 
             class ImperativeModel(paddle.nn.Layer):
                 def __init__(self):
-                    super(ImperativeModel, self).__init__()
+                    super().__init__()
                     # self.linear_0 would skip the quantization.
                     self.linear_0 = paddle.nn.Linear(784, 400)
                     self.linear_0.skip_quant = True
@@ -261,7 +261,7 @@ class ImperativeQuantAware(object):
 
             class ImperativeModel(paddle.nn.Layer):
                 def __init__(self):
-                    super(ImperativeModel, self).__init__()
+                    super().__init__()
                     # self.linear_0 would skip the quantization.
                     self.linear_0 = paddle.nn.Linear(784, 400)
                     self.linear_0.skip_quant = True
