@@ -59,9 +59,11 @@ class TestCloudRoleMaker(unittest.TestCase):
         """Set up, set envs."""
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36001,127.0.0.2:36001"
         os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.2:36001"
+            "PADDLE_TRAINER_ENDPOINTS"
+        ] = "127.0.0.1:36001,127.0.0.2:36001"
         os.environ["POD_IP"] = "127.0.0.1"
 
     def test_tr_rolemaker(self):
@@ -103,8 +105,9 @@ class TestCloudRoleMaker(unittest.TestCase):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
 
-        ro = role_maker.PaddleCloudRoleMaker(is_collective=False,
-                                             init_gloo=False)
+        ro = role_maker.PaddleCloudRoleMaker(
+            is_collective=False, init_gloo=False
+        )
         self.assertEqual(ro._server_index(), 0)
         self.assertFalse(ro._is_worker())
         self.assertTrue(ro._is_server())
@@ -139,7 +142,8 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
             server_endpoints=["127.0.0.1:36001", "127.0.0.1:36001"],
             role=role_maker.Role.SERVER,
             current_id=0,
-            worker_num=2)
+            worker_num=2,
+        )
         self.assertEqual(ro._server_num(), 2)
         ro._generate_role()
         self.assertTrue(ro._is_server())
@@ -152,7 +156,8 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
             server_endpoints=["127.0.0.1:36001", "127.0.0.1:36001"],
             role=role_maker.Role.WORKER,
             current_id=0,
-            worker_num=2)
+            worker_num=2,
+        )
 
         self.assertIn("127.0.0.1:36001", ro._get_pserver_endpoints())
         self.assertTrue(ro._is_worker())
@@ -160,7 +165,6 @@ class TestUserDefinedRoleMaker(unittest.TestCase):
 
 
 class TestGlooWithCloudRoleMaker(unittest.TestCase):
-
     def setUp(self):
         os.environ["PADDLE_TRAINERS_NUM"] = "1"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001"
@@ -287,6 +291,7 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         role._generate_role()
         import time
+
         time.sleep(3)
 
     def test_fs_gloo5(self):
@@ -443,8 +448,9 @@ class TestGlooWithCloudRoleMaker(unittest.TestCase):
             x = paddle.fluid.layers.data(name='x', shape=[13], dtype='float32')
             y_predict = paddle.fluid.layers.fc(input=x, size=1, act=None)
             y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
-            cost = paddle.fluid.layers.square_error_cost(input=y_predict,
-                                                         label=y)
+            cost = paddle.fluid.layers.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 

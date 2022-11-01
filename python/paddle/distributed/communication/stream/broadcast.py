@@ -72,11 +72,13 @@ def broadcast(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be True in sync op behavior.")
+            "use_calc_stream can only be True in sync op behavior."
+        )
 
     if framework.in_dygraph_mode():
-        return _broadcast_in_dygraph(tensor, src, group, sync_op,
-                                     use_calc_stream)
+        return _broadcast_in_dygraph(
+            tensor, src, group, sync_op, use_calc_stream
+        )
 
     raise RuntimeError(
         "paddle.distributed.stream.broadcast is only supported in dygraph mode now."

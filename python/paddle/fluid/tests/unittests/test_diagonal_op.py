@@ -22,7 +22,6 @@ paddle.enable_static()
 
 
 class TestDiagonalOp(OpTest):
-
     def setUp(self):
         self.op_type = "diagonal"
         self.python_api = paddle.diagonal
@@ -39,62 +38,68 @@ class TestDiagonalOp(OpTest):
         self.case = np.random.randn(10, 5, 2).astype('float64')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
-        self.target = np.diagonal(self.inputs['Input'],
-                                  offset=self.attrs['offset'],
-                                  axis1=self.attrs['axis1'],
-                                  axis2=self.attrs['axis2'])
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
 
 
 class TestDiagonalOpCase1(TestDiagonalOp):
-
     def init_config(self):
         self.case = np.random.randn(4, 2, 4, 4).astype('float32')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': -2, 'axis1': 3, 'axis2': 0}
-        self.target = np.diagonal(self.inputs['Input'],
-                                  offset=self.attrs['offset'],
-                                  axis1=self.attrs['axis1'],
-                                  axis2=self.attrs['axis2'])
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
 
 
 class TestDiagonalOpCase2(TestDiagonalOp):
-
     def init_config(self):
         self.case = np.random.randn(100, 100).astype('int64')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
-        self.target = np.diagonal(self.inputs['Input'],
-                                  offset=self.attrs['offset'],
-                                  axis1=self.attrs['axis1'],
-                                  axis2=self.attrs['axis2'])
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
         self.grad_x = np.eye(100).astype('int64')
         self.grad_out = np.ones(100).astype('int64')
 
     def test_check_grad(self):
-        self.check_grad(['Input'],
-                        'Out',
-                        user_defined_grads=[self.grad_x],
-                        user_defined_grad_outputs=[self.grad_out],
-                        check_eager=True)
+        self.check_grad(
+            ['Input'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True,
+        )
 
 
 class TestDiagonalOpCase3(TestDiagonalOp):
-
     def init_config(self):
         self.case = np.random.randint(0, 2, (4, 2, 4, 4)).astype('bool')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': -2, 'axis1': 3, 'axis2': 0}
-        self.target = np.diagonal(self.inputs['Input'],
-                                  offset=self.attrs['offset'],
-                                  axis1=self.attrs['axis1'],
-                                  axis2=self.attrs['axis2'])
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
 
     def test_check_grad(self):
         pass
 
 
 class TestDiagonalAPI(unittest.TestCase):
-
     def setUp(self):
         self.shape = [10, 3, 4]
         self.x = np.random.random((10, 3, 4)).astype(np.float32)

@@ -46,20 +46,18 @@ def run_pserver(pserver_id):
             param.set(param_array, place)
 
             optimize_block = program._create_block(program.global_block().idx)
-            program.global_block().append_op(type="listen_and_serv",
-                                             inputs={'X': []},
-                                             outputs={},
-                                             attrs={
-                                                 "optimize_blocks":
-                                                 [optimize_block],
-                                                 "endpoint":
-                                                 '127.0.0.1:0',
-                                                 "Fanin":
-                                                 1,
-                                                 "distributed_mode":
-                                                 DistributedMode.SYNC,
-                                                 "grad_to_block_id": []
-                                             })
+            program.global_block().append_op(
+                type="listen_and_serv",
+                inputs={'X': []},
+                outputs={},
+                attrs={
+                    "optimize_blocks": [optimize_block],
+                    "endpoint": '127.0.0.1:0',
+                    "Fanin": 1,
+                    "distributed_mode": DistributedMode.SYNC,
+                    "grad_to_block_id": [],
+                },
+            )
 
             exe = fluid.Executor(place)
             exe.run(program)
@@ -67,12 +65,11 @@ def run_pserver(pserver_id):
 
 @unittest.skip("do not need currently")
 class TestListenAndServOp(unittest.TestCase):
-
     def setUp(self):
         self.ps_timeout = 5
 
     def _start_pserver(self, pserver_id, pserver_func):
-        p = Process(target=pserver_func, args=(pserver_id, ))
+        p = Process(target=pserver_func, args=(pserver_id,))
         p.daemon = True
         p.start()
         return p
@@ -104,15 +101,17 @@ class TestListenAndServOp(unittest.TestCase):
                 emaps = ['127.0.0.1:' + str(port0), '127.0.0.1:' + str(port1)]
 
                 # create and run recv and save operator
-                remote_recv_op = Operator("recv_save",
-                                          trainer_id=0,
-                                          shape=[10, 8],
-                                          slice_shapes=["5,8", "5,8"],
-                                          slice_varnames=["table", "table"],
-                                          remote_varnames=['table', 'table'],
-                                          is_sparse=False,
-                                          endpoints=emaps,
-                                          file_path=model_file)
+                remote_recv_op = Operator(
+                    "recv_save",
+                    trainer_id=0,
+                    shape=[10, 8],
+                    slice_shapes=["5,8", "5,8"],
+                    slice_varnames=["table", "table"],
+                    remote_varnames=['table', 'table'],
+                    is_sparse=False,
+                    endpoints=emaps,
+                    file_path=model_file,
+                )
 
                 remote_recv_op.run(scope, place)
 
@@ -125,44 +124,53 @@ class TestListenAndServOp(unittest.TestCase):
             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
             shape=[10, 8],
             dtype="float32",
-            persistable=True)
+            persistable=True,
+        )
 
         slice0 = load_block.create_var(
             name="var.slice0",
             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
             shape=[3, 8],
             dtype="float32",
-            persistable=True)
+            persistable=True,
+        )
 
         slice1 = load_block.create_var(
             name="var.slice1",
             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
             shape=[5, 8],
             dtype="float32",
-            persistable=True)
+            persistable=True,
+        )
 
-        load_block.append_op(type='load',
-                             inputs={},
-                             outputs={'Out': [origin]},
-                             attrs={'file_path': model_file})
+        load_block.append_op(
+            type='load',
+            inputs={},
+            outputs={'Out': [origin]},
+            attrs={'file_path': model_file},
+        )
 
-        load_block.append_op(type='load',
-                             inputs={},
-                             outputs={'Out': [slice0]},
-                             attrs={
-                                 'file_path': model_file,
-                                 'seek': 2 * 8,
-                                 'shape': slice0.shape
-                             })
+        load_block.append_op(
+            type='load',
+            inputs={},
+            outputs={'Out': [slice0]},
+            attrs={
+                'file_path': model_file,
+                'seek': 2 * 8,
+                'shape': slice0.shape,
+            },
+        )
 
-        load_block.append_op(type='load',
-                             inputs={},
-                             outputs={'Out': [slice1]},
-                             attrs={
-                                 'file_path': model_file,
-                                 'seek': 5 * 8,
-                                 'shape': slice1.shape
-                             })
+        load_block.append_op(
+            type='load',
+            inputs={},
+            outputs={'Out': [slice1]},
+            attrs={
+                'file_path': model_file,
+                'seek': 5 * 8,
+                'shape': slice1.shape,
+            },
+        )
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         exe.run(load_prog)
@@ -179,8 +187,9 @@ class TestListenAndServOp(unittest.TestCase):
         np.testing.assert_equal(origin[5:10], slice1)
 
     def _save_by_io_persistables(self, place, port0, port1, dirname, var_name):
-        self._run_nce_op_two_pserver(place, port0, port1,
-                                     os.path.join(dirname, var_name))
+        self._run_nce_op_two_pserver(
+            place, port0, port1, os.path.join(dirname, var_name)
+        )
 
     def test_recv_save_op_remote(self):
         # run pserver on CPU in sync mode
@@ -198,8 +207,9 @@ class TestListenAndServOp(unittest.TestCase):
         param_name = "table"
 
         for place in places:
-            self._save_by_io_persistables(place, port0, port1, param_dir,
-                                          param_name)
+            self._save_by_io_persistables(
+                place, port0, port1, param_dir, param_name
+            )
 
         # raise SIGTERM to pserver
         os.kill(p0.pid, signal.SIGINT)

@@ -64,7 +64,6 @@ class Master(object):
 
 
 class HTTPMaster(Master):
-
     def lazy_init(self):
         if self.initialized:
             return
@@ -83,7 +82,8 @@ class HTTPMaster(Master):
                         break
                     except Exception as e:
                         self.ctx.logger.warning(
-                            "start master failed {}".format(e))
+                            "start master failed {}".format(e)
+                        )
                         time.sleep(0.1)
                         continue
         else:
@@ -94,7 +94,9 @@ class HTTPMaster(Master):
 
             print("Copy the following command to other nodes to run.")
             cmd = [
-                sys.executable.split('/')[-1], "-m", "paddle.distributed.launch"
+                sys.executable.split('/')[-1],
+                "-m",
+                "paddle.distributed.launch",
             ]
             cmd.extend(["--master", self.endpoint])
             cmd.extend(sys.argv[1:])
@@ -104,7 +106,8 @@ class HTTPMaster(Master):
 
             if int(self.ctx.args.rank) >= 0:
                 self.ctx.logger.warning(
-                    "--rank set in the command may not compatible in auto mode")
+                    "--rank set in the command may not compatible in auto mode"
+                )
 
         if '127.0.0.1' in self.endpoint:
             self.endpoint = self.endpoint.replace('127.0.0.1', self.ctx.node.ip)
@@ -173,7 +176,6 @@ class HTTPMaster(Master):
 
 
 class ETCDMaster(Master):
-
     def __init__(self, ctx):
         super().__init__(ctx)
 
@@ -225,7 +227,8 @@ class ETCDMaster(Master):
                         ii = int(six.ensure_str(k.key).split('/')[-1])
                         if ii < 0:
                             self.ctx.logger.error(
-                                "rank {} error in sync".format(ii))
+                                "rank {} error in sync".format(ii)
+                            )
                         ret[ii] = six.ensure_str(v)
                     return ret, rank
             else:
@@ -241,7 +244,7 @@ class ETCDMaster(Master):
 
         lease = self.client.lease(ttl)
 
-        #self.client.delete_prefix(self.job_prefix)
+        # self.client.delete_prefix(self.job_prefix)
 
         beat_path = "{}/{}".format(self.heartbeat_prefix, pod_id)
         self.client.put(beat_path, pod_id.encode('latin-1'), lease=lease)
@@ -250,16 +253,17 @@ class ETCDMaster(Master):
             self.ctx.status.restart()
 
         beat_watch = self.client.add_watch_prefix_callback(
-            self.heartbeat_prefix, _beat_watch)
+            self.heartbeat_prefix, _beat_watch
+        )
 
         def _heartbeat():
             while not self.ctx.status.is_done():
                 try:
                     lease.refresh()
                     if pod_id not in self.fetch_peer_alive():
-                        self.client.put(beat_path,
-                                        pod_id.encode('latin-1'),
-                                        lease=lease)
+                        self.client.put(
+                            beat_path, pod_id.encode('latin-1'), lease=lease
+                        )
                         self.ctx.logger.debug("Heartbeat register again")
                 except Exception as e:
                     self.ctx.logger.error("Heartbeat error {}".format(e))
@@ -267,9 +271,9 @@ class ETCDMaster(Master):
             self.ctx.logger.debug("Heartbeat done")
             self.client.cancel_watch(beat_watch)
 
-        self.beat_thread = threading.Thread(name='heartbeat',
-                                            target=_heartbeat,
-                                            daemon=True)
+        self.beat_thread = threading.Thread(
+            name='heartbeat', target=_heartbeat, daemon=True
+        )
         self.beat_thread.start()
 
     def fetch_peer_alive(self):
@@ -311,7 +315,8 @@ class ETCDMaster(Master):
         assert self.client.put(
             self.job_prefix,
             status.encode('latin-1'),
-            lease=self.client.lease(600)), "set status failed {}".format(status)
+            lease=self.client.lease(600),
+        ), "set status failed {}".format(status)
 
     def get_status(self):
         return six.ensure_str(self.client.get(self.job_prefix)[0] or '')
@@ -320,4 +325,4 @@ class ETCDMaster(Master):
         if hasattr(self, 'beat_thread'):
             self.ctx.status.done()
             # daemon thread
-            #self.beat_thread.join()
+            # self.beat_thread.join()

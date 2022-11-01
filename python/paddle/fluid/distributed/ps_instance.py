@@ -16,12 +16,12 @@ from .helper import MPIHelper
 
 class PaddlePSInstance(object):
     """
-        PaddlePSInstance class is used to generate A instance of server or worker
-        Args:
-            server_worker_mode: is a value 0 or 1, default is 1
-            proc_per_node: process per node, default is 2
-        Examples:
-            instance = PaddlePSInstance(1, 2)
+    PaddlePSInstance class is used to generate A instance of server or worker
+    Args:
+        server_worker_mode: is a value 0 or 1, default is 1
+        proc_per_node: process per node, default is 2
+    Examples:
+        instance = PaddlePSInstance(1, 2)
     """
 
     def __init__(self, server_worker_mode=1, proc_per_node=2):
@@ -35,7 +35,7 @@ class PaddlePSInstance(object):
         self._worker_num = self._nodes * self._proc_per_node / 2
         self._server_num = self._nodes * self._proc_per_node / 2
         self._total_server_worker = self._worker_num + self._server_num
-        self._node_type = None  #IDLE=-1, WORKER=1, SERVER=0
+        self._node_type = None  # IDLE=-1, WORKER=1, SERVER=0
         self._set_nodetype()
         self._comm = None
         self._split_comm()
@@ -104,7 +104,7 @@ class PaddlePSInstance(object):
 
     def set_ip(self, ip):
         """
-            set server ip
+        set server ip
         """
         self._ip = ip
 

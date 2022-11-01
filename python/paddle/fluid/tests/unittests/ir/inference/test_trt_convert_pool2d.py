@@ -23,7 +23,6 @@ import itertools
 
 
 class TrtConvertPool2dTest(TrtLayerAutoScanTest):
-
     def is_paddings_valid(self, program_config: ProgramConfig) -> bool:
         exclusive = program_config.ops[0].attrs['exclusive']
         paddings = program_config.ops[0].attrs['paddings']
@@ -65,39 +64,54 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         ceil_mode_options = [True, False]
 
         configurations = [
-            strides_options, paddings_options, pooling_type_options,
-            padding_algorithm_options, ksize_options, data_format_options,
-            global_pooling_options, exclusive_options, adaptive_option,
-            ceil_mode_options
+            strides_options,
+            paddings_options,
+            pooling_type_options,
+            padding_algorithm_options,
+            ksize_options,
+            data_format_options,
+            global_pooling_options,
+            exclusive_options,
+            adaptive_option,
+            ceil_mode_options,
         ]
 
-        for (strides, paddings, pooling_type, padding_algorithm, ksize,
-             data_format, global_pooling, exclusive, adaptive,
-             ceil_mode) in itertools.product(*configurations):
+        for (
+            strides,
+            paddings,
+            pooling_type,
+            padding_algorithm,
+            ksize,
+            data_format,
+            global_pooling,
+            exclusive,
+            adaptive,
+            ceil_mode,
+        ) in itertools.product(*configurations):
 
-            attrs = [{
-                "strides": strides,
-                "paddings": paddings,
-                "pooling_type": pooling_type,
-                "padding_algorithm": padding_algorithm,
-                "ksize": ksize,
-                "data_format": data_format,
-                "global_pooling": global_pooling,
-                "exclusive": exclusive,
-                "adaptive": adaptive,
-                "ceil_mode": ceil_mode,
-            }]
+            attrs = [
+                {
+                    "strides": strides,
+                    "paddings": paddings,
+                    "pooling_type": pooling_type,
+                    "padding_algorithm": padding_algorithm,
+                    "ksize": ksize,
+                    "data_format": data_format,
+                    "global_pooling": global_pooling,
+                    "exclusive": exclusive,
+                    "adaptive": adaptive,
+                    "ceil_mode": ceil_mode,
+                }
+            ]
 
-            ops_config = [{
-                "op_type": "pool2d",
-                "op_inputs": {
-                    "X": ["input_data"]
-                },
-                "op_outputs": {
-                    "Out": ["output_data"]
-                },
-                "op_attrs": attrs[0]
-            }]
+            ops_config = [
+                {
+                    "op_type": "pool2d",
+                    "op_inputs": {"X": ["input_data"]},
+                    "op_outputs": {"Out": ["output_data"]},
+                    "op_attrs": attrs[0],
+                }
+            ]
 
             ops = self.generate_op_config(ops_config)
 
@@ -105,16 +119,18 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
                 ops=ops,
                 weights={},
                 inputs={
-                    "input_data":
-                    TensorConfig(data_gen=partial(generate_input1, attrs))
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1, attrs)
+                    )
                 },
-                outputs=["output_data"])
+                outputs=["output_data"],
+            )
 
             yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [1, 3, 64, 64]}
@@ -136,34 +152,40 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-3, 1e-3)
+            attrs, False
+        ), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-3, 1e-3)
+            attrs, True
+        ), (1e-3, 1e-3)
 
     def add_skip_trt_case(self):
-
         def teller(program_config, predictor_config):
-            if program_config.ops[0].attrs['pooling_type'] == 'avg' and \
-               program_config.ops[0].attrs['global_pooling'] == False and \
-               program_config.ops[0].attrs['exclusive'] == True and \
-               program_config.ops[0].attrs['adaptive'] == False and \
-               program_config.ops[0].attrs['ceil_mode'] == True:
+            if (
+                program_config.ops[0].attrs['pooling_type'] == 'avg'
+                and program_config.ops[0].attrs['global_pooling'] == False
+                and program_config.ops[0].attrs['exclusive'] == True
+                and program_config.ops[0].attrs['adaptive'] == False
+                and program_config.ops[0].attrs['ceil_mode'] == True
+            ):
                 return True
             return False
 
         self.add_skip_case(
-            teller, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The results of some cases are Nan, but the results of TensorRT and GPU are the same."
+            teller,
+            SkipReasons.TRT_NOT_IMPLEMENTED,
+            "The results of some cases are Nan, but the results of TensorRT and GPU are the same.",
         )
 
     def test(self):

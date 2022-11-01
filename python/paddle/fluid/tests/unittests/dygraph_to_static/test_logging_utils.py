@@ -26,7 +26,6 @@ from unittest import mock
 
 
 class TestLoggingUtils(unittest.TestCase):
-
     def setUp(self):
         self.verbosity_level = 1
         self.code_level = 3
@@ -50,19 +49,23 @@ class TestLoggingUtils(unittest.TestCase):
     def test_also_to_stdout(self):
         logging_utils._TRANSLATOR_LOGGER.need_to_echo_log_to_stdout = None
         self.assertEqual(
-            logging_utils._TRANSLATOR_LOGGER.need_to_echo_log_to_stdout, False)
+            logging_utils._TRANSLATOR_LOGGER.need_to_echo_log_to_stdout, False
+        )
 
         paddle.jit.set_verbosity(also_to_stdout=False)
         self.assertEqual(
-            logging_utils._TRANSLATOR_LOGGER.need_to_echo_log_to_stdout, False)
+            logging_utils._TRANSLATOR_LOGGER.need_to_echo_log_to_stdout, False
+        )
 
         logging_utils._TRANSLATOR_LOGGER.need_to_echo_node_to_stdout = None
         self.assertEqual(
-            logging_utils._TRANSLATOR_LOGGER.need_to_echo_code_to_stdout, False)
+            logging_utils._TRANSLATOR_LOGGER.need_to_echo_code_to_stdout, False
+        )
 
         paddle.jit.set_code_level(also_to_stdout=True)
         self.assertEqual(
-            logging_utils._TRANSLATOR_LOGGER.need_to_echo_code_to_stdout, True)
+            logging_utils._TRANSLATOR_LOGGER.need_to_echo_code_to_stdout, True
+        )
 
         with self.assertRaises(AssertionError):
             paddle.jit.set_verbosity(also_to_stdout=1)
@@ -99,8 +102,9 @@ class TestLoggingUtils(unittest.TestCase):
         logging_utils.set_code_level(1, True)
         logging_utils.log_transformed_code(1, ast_code, "TestTransformer")
         logging_utils.set_code_level(logging_utils.LOG_AllTransformer, True)
-        logging_utils.log_transformed_code(logging_utils.LOG_AllTransformer,
-                                           ast_code, "TestTransformer")
+        logging_utils.log_transformed_code(
+            logging_utils.LOG_AllTransformer, ast_code, "TestTransformer"
+        )
 
     def test_log_message(self):
         stream = io.StringIO()
@@ -121,7 +125,8 @@ class TestLoggingUtils(unittest.TestCase):
             logging_utils.log(2, log_msg_2)
 
         result_msg = '\n'.join(
-            [warn_msg, error_msg, "(Level 1) " + log_msg_1, ""])
+            [warn_msg, error_msg, "(Level 1) " + log_msg_1, ""]
+        )
         self.assertEqual(result_msg, stream.getvalue())
 
     def test_log_transformed_code(self):
@@ -135,12 +140,14 @@ class TestLoggingUtils(unittest.TestCase):
 
         with mock.patch.object(sys, 'stdout', stream):
             paddle.jit.set_code_level(1)
-            logging_utils.log_transformed_code(1, ast_code,
-                                               "BasicApiTransformer")
+            logging_utils.log_transformed_code(
+                1, ast_code, "BasicApiTransformer"
+            )
 
             paddle.jit.set_code_level()
-            logging_utils.log_transformed_code(logging_utils.LOG_AllTransformer,
-                                               ast_code, "All Transformers")
+            logging_utils.log_transformed_code(
+                logging_utils.LOG_AllTransformer, ast_code, "All Transformers"
+            )
 
         self.assertIn(source_code, stream.getvalue())
 

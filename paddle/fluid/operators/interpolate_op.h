@@ -502,7 +502,7 @@ HOSTDEVICE inline T cubic_convolution2(T x, T A) {
 
 template <typename T>
 HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
-  T A = -0.75;
+  T A = static_cast<T>(-0.75);
 
   T x1 = t;
   coeffs[0] = cubic_convolution2<T>(x1 + 1.0, A);

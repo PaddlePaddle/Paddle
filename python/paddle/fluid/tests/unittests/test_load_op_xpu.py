@@ -21,11 +21,11 @@ import paddle.fluid.layers as layers
 import paddle
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
+@unittest.skipIf(
+    not paddle.is_compiled_with_xpu(), "core is not compiled with XPU"
+)
 class TestLoadOpXpu(unittest.TestCase):
-    """ Test load operator.
-    """
+    """Test load operator."""
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -41,12 +41,15 @@ class TestLoadOpXpu(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name='w',
                     initializer=fluid.initializer.NumpyArrayInitializer(
-                        self.ones)))
+                        self.ones
+                    ),
+                ),
+            )
         exe = fluid.Executor(fluid.XPUPlace(0))
         exe.run(start_prog)
-        fluid.io.save_persistables(exe,
-                                   dirname=self.model_path,
-                                   main_program=main_prog)
+        fluid.io.save_persistables(
+            exe, dirname=self.model_path, main_program=main_prog
+        )
 
     def tearDown(self):
         self.temp_dir.cleanup()

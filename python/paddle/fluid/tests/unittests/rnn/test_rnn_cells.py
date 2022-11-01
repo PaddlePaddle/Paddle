@@ -24,20 +24,19 @@ from convert import convert_params_for_cell
 
 
 class TestSimpleRNNCell(unittest.TestCase):
-
     def __init__(self, bias=True, place="cpu"):
         super(TestSimpleRNNCell, self).__init__(methodName="runTest")
         self.bias = bias
-        self.place = paddle.CPUPlace() if place == "cpu" \
-            else paddle.CUDAPlace(0)
+        self.place = (
+            paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
+        )
 
     def setUp(self):
         paddle.disable_static(self.place)
         rnn1 = SimpleRNNCell(16, 32, bias=self.bias)
-        rnn2 = paddle.nn.SimpleRNNCell(16,
-                                       32,
-                                       bias_ih_attr=self.bias,
-                                       bias_hh_attr=self.bias)
+        rnn2 = paddle.nn.SimpleRNNCell(
+            16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
+        )
         convert_params_for_cell(rnn1, rnn2)
 
         self.rnn1 = rnn1
@@ -65,7 +64,6 @@ class TestSimpleRNNCell(unittest.TestCase):
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
 
     def test_errors(self):
-
         def test_zero_hidden_size():
             cell = paddle.nn.SimpleRNNCell(-1, 0)
 
@@ -78,20 +76,19 @@ class TestSimpleRNNCell(unittest.TestCase):
 
 
 class TestGRUCell(unittest.TestCase):
-
     def __init__(self, bias=True, place="cpu"):
         super(TestGRUCell, self).__init__(methodName="runTest")
         self.bias = bias
-        self.place = paddle.CPUPlace() if place == "cpu" \
-            else paddle.CUDAPlace(0)
+        self.place = (
+            paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
+        )
 
     def setUp(self):
         paddle.disable_static(self.place)
         rnn1 = GRUCell(16, 32, bias=self.bias)
-        rnn2 = paddle.nn.GRUCell(16,
-                                 32,
-                                 bias_ih_attr=self.bias,
-                                 bias_hh_attr=self.bias)
+        rnn2 = paddle.nn.GRUCell(
+            16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
+        )
         convert_params_for_cell(rnn1, rnn2)
 
         self.rnn1 = rnn1
@@ -119,7 +116,6 @@ class TestGRUCell(unittest.TestCase):
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
 
     def test_errors(self):
-
         def test_zero_hidden_size():
             cell = paddle.nn.GRUCell(-1, 0)
 
@@ -132,19 +128,18 @@ class TestGRUCell(unittest.TestCase):
 
 
 class TestLSTMCell(unittest.TestCase):
-
     def __init__(self, bias=True, place="cpu"):
         super(TestLSTMCell, self).__init__(methodName="runTest")
         self.bias = bias
-        self.place = paddle.CPUPlace() if place == "cpu" \
-            else paddle.CUDAPlace(0)
+        self.place = (
+            paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
+        )
 
     def setUp(self):
         rnn1 = LSTMCell(16, 32, bias=self.bias)
-        rnn2 = paddle.nn.LSTMCell(16,
-                                  32,
-                                  bias_ih_attr=self.bias,
-                                  bias_hh_attr=self.bias)
+        rnn2 = paddle.nn.LSTMCell(
+            16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
+        )
         convert_params_for_cell(rnn1, rnn2)
 
         self.rnn1 = rnn1
@@ -159,9 +154,10 @@ class TestLSTMCell(unittest.TestCase):
         prev_c = np.random.randn(4, 32)
 
         y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
-        y2, (h2,
-             c2) = rnn2(paddle.to_tensor(x),
-                        (paddle.to_tensor(prev_h), paddle.to_tensor(prev_c)))
+        y2, (h2, c2) = rnn2(
+            paddle.to_tensor(x),
+            (paddle.to_tensor(prev_h), paddle.to_tensor(prev_c)),
+        )
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
 
@@ -177,7 +173,6 @@ class TestLSTMCell(unittest.TestCase):
         np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
 
     def test_errors(self):
-
         def test_zero_hidden_size():
             cell = paddle.nn.LSTMCell(-1, 0)
 
@@ -191,8 +186,9 @@ class TestLSTMCell(unittest.TestCase):
 
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
-    devices = ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() \
-        else ["cpu"]
+    devices = (
+        ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() else ["cpu"]
+    )
     for bias in [True, False]:
         for device in devices:
             for test_class in [TestSimpleRNNCell, TestGRUCell, TestLSTMCell]:
