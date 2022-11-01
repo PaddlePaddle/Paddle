@@ -312,6 +312,11 @@ void ConcatTensorsWithType<platform::XPUDeviceContext>(
       ConcatTensorsForAllReduce<platform::XPUDeviceContext, float>()(
           context, dense_tensors_, p_dense_contents);
       break;
+    case phi::DataType::FLOAT16:
+      ConcatTensorsForAllReduce<platform::XPUDeviceContext,
+                                platform::float16>()(
+          context, dense_tensors_, p_dense_contents);
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
@@ -330,6 +335,10 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
   switch (type) {
     case phi::DataType::FLOAT32:
       SplitTensorsForAllReduce<platform::XPUDeviceContext, float>()(
+          context, p_dense_contents, p_dense_tensors);
+      break;
+    case phi::DataType::FLOAT16:
+      SplitTensorsForAllReduce<platform::XPUDeviceContext, platform::float16>()(
           context, p_dense_contents, p_dense_tensors);
       break;
     default:

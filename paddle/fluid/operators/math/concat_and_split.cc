@@ -353,6 +353,7 @@ FOR_ALL_TYPES(DEFINE_FUNCTOR);
   template class SplitFunctor<platform::XPUDeviceContext, type>;
 
 DEFINE_XPU_FUNCTOR(float)
+DEFINE_XPU_FUNCTOR(platform::float16)
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL

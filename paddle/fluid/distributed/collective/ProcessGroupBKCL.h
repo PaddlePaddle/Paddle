@@ -48,6 +48,9 @@ class ProcessGroupBKCL : public ProcessGroup {
              CommType CommType,
              const std::vector<phi::DenseTensor>& inputs);
 
+    // TODO(zhangxiaoci): XPU do not support event query for now
+    // bool IsCompleted();
+
     void SynchronizeStreams();
 
     bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
@@ -94,9 +97,20 @@ class ProcessGroupBKCL : public ProcessGroup {
       std::vector<phi::DenseTensor>& out_tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
 
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      const BroadcastOptions&,
+      bool sync_op) override;
+
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;

@@ -288,6 +288,37 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
       CommType::BROADCAST);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    const BroadcastOptions& opts,
+    bool sync_op) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInXPUPlace(in_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in XPUPlace."));
+
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          BKCLContext_t comm,
+          const XPUStream& stream) {
+        const auto root =
+            opts.source_rank * in_tensors.size() + opts.source_root;
+        return bkcl_broadcast(comm,
+                              input.data(),
+                              output.data(),
+                              input.numel(),
+                              platform::ToBKCLDataType(
+                                  framework::TransToProtoVarType(input.type())),
+                              root,
+                              stream);
+      },
+      CommType::BROADCAST);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors) {
@@ -317,6 +348,38 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
       },
       CommType::ALLGATHER);
 }
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    bool sync_op) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInXPUPlace(in_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in XPUPlace."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInXPUPlace(out_tensors),
+      true,
+      platform::errors::InvalidArgument("All outputs should be in XPUPlace."));
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](const phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          BKCLContext_t comm,
+          const XPUStream& stream) {
+        return bkcl_all_gather(
+            comm,
+            input.data(),
+            input.numel(),
+            output.data(),
+            platform::ToBKCLDataType(
+                framework::TransToProtoVarType(input.type())),
+            stream);
+      },
+      CommType::ALLGATHER);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
     const BarrierOptions& opts) {
   // Only support single card single process

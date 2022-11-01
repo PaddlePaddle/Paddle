@@ -137,6 +137,7 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
+    xpu_streams_py.cc
     jit.cc
     auto_parallel_py.cc
     op_function1.cc
