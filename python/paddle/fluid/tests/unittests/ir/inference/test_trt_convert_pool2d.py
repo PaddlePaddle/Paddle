@@ -20,6 +20,7 @@ from functools import partial
 from typing import Any, Dict, List
 import unittest
 import itertools
+import copy
 
 
 class TrtConvertPool2dTest(TrtLayerAutoScanTest):
@@ -187,6 +188,39 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
             SkipReasons.TRT_NOT_IMPLEMENTED,
             "The results of some cases are Nan, but the results of TensorRT and GPU are the same.",
         )
+
+    def assert_tensors_near(
+        self,
+        atol: float,
+        rtol: float,
+        tensor: Dict[str, np.array],
+        baseline: Dict[str, np.array],
+    ):
+        for key, arr in tensor.items():
+            self.assertEqual(
+                baseline[key].shape,
+                arr.shape,
+                'The output shapes are not equal, the baseline shape is '
+                + str(baseline[key].shape)
+                + ', but got '
+                + str(arr.shape),
+            )
+
+            # The result of Pool2d may have some elements that is the least value (-65504 for FP16),
+            # but for FP32 and FP16 precision, their least value are different.
+            # We set a threshold that is the least value of FP16,
+            # and make the values less than the threshold to be the threshold.
+            def align_less_threshold(arr, threshold):
+                return np.clip(arr, threshold, None)
+
+            fp16_min = np.finfo(np.float16).min
+            baseline_threshold = align_less_threshold(
+                copy.deepcopy(baseline[key]), fp16_min
+            )
+            arr_threshold = align_less_threshold(copy.deepcopy(arr), fp16_min)
+            np.testing.assert_allclose(
+                baseline_threshold, arr_threshold, rtol=rtol, atol=atol
+            )
 
     def test(self):
         self.add_skip_trt_case()
