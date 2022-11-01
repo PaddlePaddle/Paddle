@@ -653,7 +653,6 @@ class TestSimpleComplexGrad(unittest.TestCase):
         B.stop_gradient = False
         Out = paddle.einsum('iox,ojx->ijx', A, B)
         dA = paddle.grad(Out, A, dOut)[0]
-        # set to 1e-4 because copying the data loss accuracy.
         np.testing.assert_allclose(
             dA.numpy(), d_expect.numpy(), rtol=1e-6, atol=0
         )
