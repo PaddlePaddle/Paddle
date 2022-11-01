@@ -305,6 +305,12 @@ option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
 option(WITH_ARM_BRPC "Supprot Brpc in Arm" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
 option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
+option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
+       OFF)
+
+if(WITH_CUDNN_DSO AND NOT WITH_GPU)
+  message(FATAL_ERROR "Can't compile with cuDNN libraries when WITH_GPU is OFF")
+endif()
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
