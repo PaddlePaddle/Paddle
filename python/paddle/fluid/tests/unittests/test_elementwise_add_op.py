@@ -102,6 +102,27 @@ class TestElementwiseAddOp(OpTest):
         self.axis = -1
 
 
+class TestElementwiseAddOp_ZeroDim1(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestElementwiseAddOp_ZeroDim2(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestElementwiseAddOp_ZeroDim3(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
