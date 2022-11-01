@@ -44,9 +44,9 @@ class MLPLayer(nn.Layer):
 class TestMultiTensorAdam(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        self.input_size = 400
-        self.hidden_size = 250
-        self.output_size = 350
+        self.input_size = 80
+        self.hidden_size = 50
+        self.output_size = 70
         self.n = 10
 
     def get_adam_or_adamw_out(

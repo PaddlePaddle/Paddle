@@ -122,7 +122,7 @@ struct MultiTensorAdamFunctor {
       phi::AlignedVector<MT, VecSize> mp_vec;
       phi::AlignedVector<MT, VecSize> mom1_vec;
       phi::AlignedVector<MT, VecSize> mom2_vec;
-      if (idx < n - VecSize) {
+      if (idx <= n - VecSize) {
         if (IsMultiPrecision) {
           phi::Load<MT, VecSize>(mp_ptr + idx, &mp_vec);
         } else {
@@ -182,7 +182,7 @@ struct MultiTensorAdamFunctor {
         mp_vec[j] = p;
       }
 
-      if (idx < n - VecSize) {
+      if (idx <= n - VecSize) {
         phi::Store<MT, VecSize>(mom1_vec, mom1_ptr + idx);
         phi::Store<MT, VecSize>(mom2_vec, mom2_ptr + idx);
         if (IsMultiPrecision) {
