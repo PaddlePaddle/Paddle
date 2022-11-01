@@ -173,7 +173,7 @@ class DenseTensor : public TensorBase,
 
   /// \brief Sets the storage_properties of the tensor.
   /// \param storage_properties The storage_properties of the tensor.
-  void set_device_properties(StorageProperties* storage_properties);
+  void set_storage_properties(StorageProperties* storage_properties);
 
  private:
   friend class DenseTensorUtils;

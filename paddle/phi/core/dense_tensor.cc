@@ -246,7 +246,8 @@ DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>);
 
 #undef DATA_MEMBER_FUNC_INSTANTIATION
 
-void DenseTensor::set_device_properties(StorageProperties* storage_properties) {
+void DenseTensor::set_storage_properties(
+    StorageProperties* storage_properties) {
   storage_properties_.reset(storage_properties);
 }
 

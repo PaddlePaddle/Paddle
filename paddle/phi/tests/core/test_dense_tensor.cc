@@ -141,7 +141,7 @@ TEST(dense_tensor, storage_properties) {
   npu_properties->storage_format = 1;
   npu_properties->storage_layout = 2;
 
-  tensor.set_device_properties(npu_properties);
+  tensor.set_storage_properties(npu_properties);
 
   auto& get_npu_properties =
       tensor.storage_properties<CustomDeviceProperties>();
