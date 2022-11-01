@@ -356,7 +356,7 @@ class conv2d(fluid.dygraph.Layer):
     ):
         super(conv2d, self).__init__()
 
-        if use_bias == False:
+        if not use_bias:
             con_bias_attr = False
         else:
             con_bias_attr = fluid.ParamAttr(
@@ -425,7 +425,7 @@ class DeConv2D(fluid.dygraph.Layer):
     ):
         super(DeConv2D, self).__init__()
 
-        if use_bias == False:
+        if not use_bias:
             de_bias_attr = False
         else:
             de_bias_attr = fluid.ParamAttr(

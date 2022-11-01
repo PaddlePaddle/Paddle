@@ -784,7 +784,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             type="mean", inputs={"X": b2_out}, outputs={"Out": mean_out}
         )
 
-        if return_input == True:
+        if return_input:
             return mul_x, mul_out, b1_out, b2_out, mean_out
         return mul_out, b1_out, b2_out, mean_out
 

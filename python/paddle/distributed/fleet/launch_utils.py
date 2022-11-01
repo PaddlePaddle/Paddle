@@ -1582,7 +1582,7 @@ class ParameterServerLauncher(object):
             x.strip().split(":")[0] for x in self.worker_endpoints.split(",")
         ]
 
-        if self.with_coordinator == True:
+        if self.with_coordinator:
             self.coordinator_endpoints_ips = [
                 x.strip().split(":")[0]
                 for x in self.coordinator_endpoints.split(",")

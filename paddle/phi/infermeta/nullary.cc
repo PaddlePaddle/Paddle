@@ -73,12 +73,12 @@ void EyeInferMeta(const Scalar& num_rows,
   out->set_dtype(dtype);
 }
 
-void GaussianRandomInferMeta(const IntArray& shape,
-                             float mean,
-                             float std,
-                             int seed,
-                             DataType dtype,
-                             MetaTensor* out) {
+void GaussianInferMeta(const IntArray& shape,
+                       float mean,
+                       float std,
+                       int seed,
+                       DataType dtype,
+                       MetaTensor* out) {
   auto out_dims = phi::make_ddim(shape.GetData());
   out->set_dims(out_dims);
   out->set_dtype(dtype);

@@ -429,7 +429,7 @@ def nonzero(x, as_tuple=False):
     rank = len(shape)
 
     if in_dygraph_mode():
-        outs = _C_ops.where_index(x)
+        outs = _C_ops.nonzero(x)
     elif paddle.in_dynamic_mode():
         outs = _legacy_C_ops.where_index(x)
     else:

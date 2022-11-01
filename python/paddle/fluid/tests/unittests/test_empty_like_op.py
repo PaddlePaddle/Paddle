@@ -47,8 +47,8 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
             )
         elif data_type in ['bool']:
             total_num = out.size
-            true_num = np.sum(out == True)
-            false_num = np.sum(out == False)
+            true_num = np.sum(out)
+            false_num = np.sum(~out)
             self.assertTrue(
                 total_num == true_num + false_num,
                 'The value should always be True or False.',

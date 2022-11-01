@@ -91,7 +91,7 @@ def analysisFNDAFile(rootPath, test):
                 if matchObj == None:
                     OP_REGIST = False
                     break
-            if OP_REGIST == False:
+            if not OP_REGIST:
                 related_file_list.append(clazz_filename)
                 os.system(
                     'echo %s >> %s' % (clazz_filename, related_ut_map_file)

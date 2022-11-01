@@ -71,16 +71,16 @@ class _InstanceNormBase(Layer):
     ):
         super(_InstanceNormBase, self).__init__()
 
-        if weight_attr == False or bias_attr == False:
+        if weight_attr is False or bias_attr is False:
             assert (
                 weight_attr == bias_attr
-            ), "weight_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
+            ), "weight_attr and bias_attr must be set to False at the same time in InstanceNorm"
         self._epsilon = epsilon
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         self._num_features = num_features
 
-        if weight_attr != False and bias_attr != False:
+        if weight_attr is not False and bias_attr is not False:
             self.scale = self.create_parameter(
                 attr=self._weight_attr,
                 shape=[num_features],
@@ -382,7 +382,7 @@ class GroupNorm(Layer):
 
         param_shape = [self._num_channels]
 
-        if weight_attr == False:
+        if weight_attr is False:
             self.weight = self.create_parameter(
                 attr=None, shape=param_shape, default_initializer=Constant(1.0)
             )
@@ -398,7 +398,7 @@ class GroupNorm(Layer):
                 and self._weight_attr.learning_rate == 0.0
             )
 
-        if bias_attr == False:
+        if bias_attr is False:
             self.bias = self.create_parameter(
                 attr=None,
                 shape=param_shape,
@@ -619,7 +619,7 @@ class _BatchNormBase(Layer):
         param_shape = [num_features]
 
         # create parameter
-        if weight_attr == False:
+        if weight_attr is False:
             self.weight = self.create_parameter(
                 attr=None,
                 shape=param_shape,
@@ -639,7 +639,7 @@ class _BatchNormBase(Layer):
                 and self._weight_attr.learning_rate == 0.0
             )
 
-        if bias_attr == False:
+        if bias_attr is False:
             self.bias = self.create_parameter(
                 attr=None,
                 shape=param_shape,
@@ -779,11 +779,11 @@ class BatchNorm1D(_BatchNormBase):
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-            will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
+            will create ParamAttr as weight_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
-            will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
+            will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Default "NCL".
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
@@ -892,11 +892,11 @@ class BatchNorm2D(_BatchNormBase):
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-            will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
+            will create ParamAttr as weight_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
-            will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
+            will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
@@ -978,11 +978,11 @@ class BatchNorm3D(_BatchNormBase):
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-            will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
+            will create ParamAttr as weight_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the weight_attr is not set, the parameter is initialized with ones. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
-            will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
+            will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, the data format can be "NCDHW" or "NDHWC. Default: NCDHW.
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
@@ -1315,7 +1315,10 @@ class SyncBatchNorm(_BatchNormBase):
                 layer._name,
             )
 
-            if layer._weight_attr != False and layer._bias_attr != False:
+            if (
+                layer._weight_attr is not False
+                and layer._bias_attr is not False
+            ):
                 with no_grad():
                     layer_output.weight = layer.weight
                     layer_output.bias = layer.bias

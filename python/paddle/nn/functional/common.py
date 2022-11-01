@@ -2109,7 +2109,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         #Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
         #       [0, 1, 2, 3, 5, 7, 8])
     """
-    if not (group == False or group is None or hasattr(group, 'is_member')):
+    if not (group is False or group is None or hasattr(group, 'is_member')):
         raise ValueError(
             'Expected group is False, None or instance of paddle.distributed.collective.Group \
              (got group: {})'.format(
@@ -2124,7 +2124,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     ring_id = 0
     rank = 0
     nranks = 1
-    if group != False:
+    if group is not False:
         if core.is_compiled_with_dist():
             parallel_env = paddle.distributed.ParallelEnv()
             global_rank = parallel_env.rank
