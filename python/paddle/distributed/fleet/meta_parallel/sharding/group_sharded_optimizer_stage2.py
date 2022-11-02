@@ -162,7 +162,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                 "While using ClipGradByGlobalNorm in GroupShardedOptimizerStage2, the grad clip of original optimizer will be changed."
             )
 
-            hcg = fleet.fleet._hcg
+            hcg = fleet.fleet._hcg if hasattr(fleet.fleet, "_hcg") else None
             if (
                 hcg
                 and hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL
