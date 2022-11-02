@@ -101,7 +101,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
         def test_check_grad(self):
             if (
                 hasattr(self.__class__, "no_need_check_grad")
-                and self.__class__.no_need_check_grad == True
+                and self.__class__.no_need_check_grad
             ):
                 return
             place = paddle.XPUPlace(0)

@@ -885,6 +885,10 @@ void OpDesc::RenameOutput(const std::string &old_name,
     std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
   }
 
+  if (dist_attr_) {
+    dist_attr_->rename_output(old_name, new_name);
+  }
+
   need_update_ = true;
 }
 
@@ -898,6 +902,10 @@ void OpDesc::RenameInput(const std::string &old_name,
   if (it != attrs_.end()) {
     auto &op_vars = PADDLE_GET(std::vector<std::string>, it->second);
     std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
+  }
+
+  if (dist_attr_) {
+    dist_attr_->rename_input(old_name, new_name);
   }
 
   need_update_ = true;
@@ -1095,6 +1103,10 @@ void OpDesc::InferVarType(BlockDesc *block) const {
     InferVarTypeContext context(this, block);
     info.infer_var_type_(&context);
   }
+}
+
+const OperatorDistAttr *OpDesc::DistAttr() const {
+  return dist_attr_ ? dist_attr_.get() : nullptr;
 }
 
 OperatorDistAttr *OpDesc::MutableDistAttr() {

@@ -34,9 +34,9 @@ class FileSystem(object):
         passwd=None,
         hadoop_bin="",
     ):
-        assert user != None
-        assert passwd != None
-        assert hadoop_bin != None
+        assert user is not None
+        assert passwd is not None
+        assert hadoop_bin is not None
         import ps_pb2 as pslib
 
         self.fs_client = pslib.FsClientParameter()

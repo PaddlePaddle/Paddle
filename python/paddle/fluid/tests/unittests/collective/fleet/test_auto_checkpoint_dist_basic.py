@@ -98,7 +98,7 @@ class AutoCheckpointTestDist(AutoCheckPointACLBase):
             self.assertEqual(len(o._exe_status), 1)
 
         o = acp._get_train_epoch_range()
-        assert o == None, "now train epoch must not exits now"
+        assert o is None, "now train epoch must not exits now"
         self.assertEqual(i, 2)
 
         fs.delete(save_dir)

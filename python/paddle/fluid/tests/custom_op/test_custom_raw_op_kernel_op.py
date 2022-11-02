@@ -66,7 +66,7 @@ class TestCustomRawReluOp(unittest.TestCase):
     def custom_raw_relu(self, x):
         module = importlib.import_module(MODULE_NAME)
         custom_raw_relu_op = getattr(module, "custom_raw_relu")
-        self.assertTrue(custom_raw_relu_op is not None)
+        self.assertIsNotNone(custom_raw_relu_op)
         return custom_raw_relu_op(x)
 
     def test_static(self):

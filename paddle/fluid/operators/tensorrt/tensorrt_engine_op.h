@@ -269,7 +269,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (param_names_.count(x)) continue;
       runtime_input_names_.emplace_back(x);
     }
-    // calibration_mode is ture represents we need to
+    // calibration_mode is true represents we need to
     // generate the calibration table data.
     calibration_mode_ =
         (enable_int8_ && calibration_data_.size() == 0 && use_calib_mode_);
