@@ -19,6 +19,7 @@ import logging
 import inspect
 import pdb
 import re
+import six
 import types
 
 import numpy
@@ -54,6 +55,7 @@ __all__ = ["convert_call"]
 BUILTIN_LIKELY_MODULES = [
     collections,
     pdb,
+    six,
     copy,
     inspect,
     re,

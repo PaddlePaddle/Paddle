@@ -347,8 +347,14 @@ fi
 
 HAS_INPLACE_TESTS=`git diff -U0 upstream/$BRANCH |grep "+" |grep -E "inplace_atol[[:space:]]*=.*" || true`
 if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="The calculation results of setting inplace enabled and disabled must be equal, that is, it's not recommended to set inplace_atol.\n If you do need to use inplace_atol, you must have one RD (XiaoguangHu01, lanxianghit, phlrain, luotao1, QingshuChen) approval for the usage of inplace_atol.\nThe corresponding lines are as follows:\n${HAS_INPLACE_TESTS}\n"
+    echo_line="The calculation results of setting inplace enabled and disabled must be equal, that is,  to set inplace_atol.\n If you do need to use inplace_atol, you must have one RD (XiaoguangHu01, lanxianghit, phlrain, luotao1, QingshuChen) approval for the usage of inplace_atol.\nThe corresponding lines are as follows:\n${HAS_INPLACE_TESTS}\n"
     check_approval 1 46782768 47554610 43953930 6836917 2002279
+fi
+
+HAS_IMPORT_SIX =`git diff -U0 upstream/$BRANCH |grep "+" |grep -E "import six" || true`
+if [ "${HAS_IMPORT_SIX}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="Since v2.4 Paddle DO NOT support Python2.7 any more, it's not recommended to use builtin 'six' package. You must have one RD (phlrain, Aurelius84, luotao1) approval for this PR."
+    check_approval 1 43953930 6836917 9301846
 fi
 
 OP_FILE_CHANGED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE ".+_op..*" || true`
