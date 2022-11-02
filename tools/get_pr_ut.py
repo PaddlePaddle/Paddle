@@ -278,20 +278,20 @@ class PRChecker(object):
                 all_counts = line.split()[-1]
         return int(all_counts)
 
-    def file_is_unnit_test(self, filename):
+    def file_is_unnit_test(self, unittest_path):
         # get all testcases by ctest-N
         all_ut_file = '%s/build/all_ut_file' % PADDLE_ROOT
         os.system(
             "cd %s/build && ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > %s"
             % (PADDLE_ROOT, all_ut_file)
         )
+        (unittest_directory, unittest_name) = os.path.split(unittest_path)
         # determine whether filename is in all_ut_case
         with open(all_ut_file, 'r') as f:
-            (filepath, tempfilename) = os.path.split(filename)
-            data = f.readlines()
-            for f_file in data:
-                f_file = f_file.replace('\n', '').strip()
-                if f_file == tempfilename.split(".")[0]:
+            all_unittests = f.readlines()
+            for test in all_unittests:
+                test = test.replace('\n', '').strip()
+                if test == unittest_name.split(".")[0]:
                     return True
             else:
                 return False
