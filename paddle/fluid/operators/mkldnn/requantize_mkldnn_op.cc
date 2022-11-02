@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <iterator>  // NOLINT
 #include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -85,15 +86,19 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
 
     if (reorder_p == nullptr) {
-      auto dst_tz = phi::vectorize(output->dims());
       auto src_dt = framework::ToMKLDNNDataType(
           framework::TransToProtoVarType(input->dtype()));
       auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
 
-      auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());
       src_memory = std::make_shared<dnnl::memory>(
-          src_md, engine, to_void_cast<T>(input_data));
-      auto dst_md = platform::MKLDNNMemDesc({dst_tz}, dst_dt, input->format());
+          input->mem_desc(), engine, to_void_cast<T>(input_data));
+
+      std::vector<dnnl_dim_t> vstrides(
+          input->mem_desc().data.format_desc.blocking.strides,
+          input->mem_desc().data.format_desc.blocking.strides +
+              input->mem_desc().data.ndims);
+
+      auto dst_md = dnnl::memory::desc({src_tz}, dst_dt, vstrides);
 
       dnnl::primitive_attr attri;
       int mask = 0;
