@@ -129,7 +129,7 @@ inline void MergeInput(OpDesc* op,
                        const std::vector<VariableNameMap>& input_name_maps,
                        const std::string& input_name) {
   std::vector<std::string> tmp = input_name_maps[0].at(input_name);
-  for (int i = 1; i < input_name_maps.size(); ++i) {
+  for (size_t i = 1; i < input_name_maps.size(); ++i) {
     tmp.insert(tmp.end(),
                input_name_maps[i].at(input_name).begin(),
                input_name_maps[i].at(input_name).end());
@@ -141,7 +141,7 @@ template <typename T>
 inline void MergeAttrs(const std::vector<OpDesc*>& ops,
                        const std::string& attr_name) {
   std::vector<T> res;
-  for (int i = 0; i < ops.size(); ++i) {
+  for (size_t i = 0; i < ops.size(); ++i) {
     auto scale_vec =
         PADDLE_GET_CONST(std::vector<T>, ops[i]->GetAttr(attr_name));
     res.insert(res.end(), scale_vec.begin(), scale_vec.end());
@@ -156,25 +156,19 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
   auto* pattern = gpd.mutable_pattern();
   VLOG(0) << "In build fusion";
 
+  // TODO(wufeisheng): Get enable_int8 attr from graph after
+  // fused_multi_transformer pass with int8 merged
   bool enable_int8 = false;
-  if (graph->Has("enable_int8")) {
-    enable_int8 = graph->Get<bool>("enable_int8");
-  }
-  if (!enable_int8) {
-    VLOG(4)
-        << "fuse_multi_transformer_layer_pass will match float transformer op "
-           "cause enable_int8 is not been set or set to false";
-  }
+
   int num_fuse_op = 0;
   bool is_decoder = false;
-  if (graph->Has("enable_int8")) {
-    num_fuse_op = graph->Get<int>("num_fused_multi_transformer_op");
-  }
 
   if (graph->Has(kFusedMultiTransformerEncoderFusionCount)) {
+    VLOG(0) << "encoder fusion count";
     num_fuse_op = graph->Get<int>(kFusedMultiTransformerEncoderFusionCount);
     is_decoder = false;
   } else if (graph->Has(kFusedMultiTransformerDecoderFusionCount)) {
+    VLOG(0) << "decoder fusion count";
     num_fuse_op = graph->Get<int>(kFusedMultiTransformerDecoderFusionCount);
     is_decoder = true;
   }
@@ -280,13 +274,7 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
                                              "OutLinearW",
                                              "QKVBias",
                                              "QKVW"};
-    if (enable_int8) {
-      std::vector<std::string> inputs_names_int8_supp = {
-          "FFN1OutScale", "FFN2OutScale", "OutLinearOutScale", "QKVOutScale"};
-      inputs_names.insert(inputs_names.end(),
-                          inputs_names_int8_supp.begin(),
-                          inputs_names_int8_supp.end());
-    }
+
     for (const auto& input_name : inputs_names) {
       MergeInput(fuse_op_descs[0], fuse_op_input_var_name_maps, input_name);
     }
@@ -308,17 +296,6 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
     // }
     fuse_op_descs[0]->SetOutput("CacheKVOut", merged_cache_kv_out_names);
 
-    if (enable_int8) {
-      // Merge inputs scale
-      std::vector<std::string> attr_names = {"qkv_in_scale",
-                                             "out_linear_in_scale",
-                                             "ffn1_in_scale",
-                                             "ffn2_in_scale"};
-      for (const auto& name : attr_names) {
-        MergeAttrs<float>(fuse_op_descs, name);
-      }
-      VLOG(0) << "Finsh Merge attrs";
-    }
     ////////////////
     //// ReLink ////
     ////////////////

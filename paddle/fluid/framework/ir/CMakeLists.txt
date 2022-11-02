@@ -325,6 +325,10 @@ cc_test(
   SRCS fused_multi_transformer_decoder_pass_tester.cc
   DEPS fused_multi_transformer_decoder_pass)
 cc_test(
+  test_fuse_multi_transformer_layer_pass
+  SRCS fuse_multi_transformer_layer_pass_tester.cc
+  DEPS fuse_multi_transformer_layer_pass)
+cc_test(
   test_conv_bn_fuse_pass_cc
   SRCS conv_bn_fuse_pass_tester.cc
   DEPS conv_bn_fuse_pass)
