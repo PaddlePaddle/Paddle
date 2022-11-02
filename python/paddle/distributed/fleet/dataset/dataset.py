@@ -514,7 +514,7 @@ class InMemoryDataset(DatasetBase):
                 self._set_fleet_send_batch_size(kwargs[key])
             elif key == "fleet_send_sleep_seconds":
                 self._set_fleet_send_sleep_seconds(kwargs[key])
-            elif key == "fea_eval" and kwargs[key] == True:
+            elif key == "fea_eval" and kwargs[key]:
                 candidate_size = kwargs.get("candidate_size", 10000)
                 self._set_fea_eval(candidate_size, True)
 

@@ -466,11 +466,9 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         if in_dygraph_mode():
             out = _C_ops.abs(input)
             reduce_all = (
-                True
-                if axis == None or axis == [] or asvector == True
-                else False
+                True if axis is None or axis == [] or asvector else False
             )
-            axis = axis if axis != None and axis != [] else [0]
+            axis = axis if axis is not None and axis != [] else [0]
             if reduce_all:
                 assert (axis == []) or (axis is None)
             if porder == np.float64('inf'):
@@ -487,10 +485,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             dtype=helper.input_dtype()
         )
 
-        reduce_all = (
-            True if axis == None or axis == [] or asvector == True else False
-        )
-        axis = axis if axis != None and axis != [] else [0]
+        reduce_all = True if axis is None or axis == [] or asvector else False
+        axis = axis if axis is not None and axis != [] else [0]
 
         reduce_type = (
             'reduce_max' if porder == np.float64('inf') else 'reduce_min'
@@ -834,7 +830,7 @@ def cond(x, p=None, name=None):
             when porder is in (1, -1, inf, -inf)
         """
         reduce_all = True if axis is None or axis == [] else False
-        axis = axis if axis != None and axis != [] else [0]
+        axis = axis if axis is not None and axis != [] else [0]
         keepdim = False
 
         if in_dygraph_mode():
@@ -1110,7 +1106,7 @@ def cond(x, p=None, name=None):
             "input should be a matrix or batches of matrices, "
             + "but the dimention of received input is {}".format(len(x_shape))
         )
-    if p == None:
+    if p is None:
         p = 2
     x_size = 0 if (0 in x_shape) else 1
     if p in ("fro", "nuc", 1, -1, np.inf, -np.inf):
@@ -1322,7 +1318,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         avg = nx.sum(axis=1) / w_sum
         nx_w = nx
 
-    if w is not None and aweights is not None and ddof == True:
+    if w is not None and aweights is not None and ddof:
         norm_factor = w_sum - (w * aweights).sum() / w_sum
     else:
         norm_factor = w_sum - ddof

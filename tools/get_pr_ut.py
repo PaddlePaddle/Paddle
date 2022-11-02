@@ -303,7 +303,7 @@ class PRChecker(object):
         file_ut_map = None
 
         ret = self.__urlretrieve(
-            'https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/ut_file_map.json',
+            'https://paddle-docker-tar.bj.bcebos.com/tmp_test/ut_file_map.json',
             'ut_file_map.json',
         )
         if not ret:
@@ -338,6 +338,10 @@ class PRChecker(object):
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
+                elif (
+                    '/xpu/' or '/npu/' or '/mlu/' or '/ipu/' in filename.lower()
+                ):
+                    filterFiles.append(filename)
                 else:
                     file_list.append(filename)
             else:
@@ -345,14 +349,14 @@ class PRChecker(object):
                     file_list.append(filename)
                 else:
                     isWhiteFile = self.get_is_white_file(filename)
-                    if isWhiteFile == False:
+                    if not isWhiteFile:
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
         if len(file_list) == 0:
             ut_list.append('filterfiles_placeholder')
             ret = self.__urlretrieve(
-                'https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/prec_delta',
+                'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
                 'prec_delta',
             )
             if ret:
@@ -413,7 +417,7 @@ class PRChecker(object):
                                         == tempfilename.split(".")[0]
                                     ):
                                         f_judge_in_added_ut = True
-                            if f_judge_in_added_ut == True:
+                            if f_judge_in_added_ut:
                                 print(
                                     "Adding new unit tests not hit mapFiles: %s"
                                     % f_judge
@@ -458,7 +462,7 @@ class PRChecker(object):
             else:
                 if ut_list:
                     ret = self.__urlretrieve(
-                        'https://paddle-docker-tar.bj.bcebos.com/pre_test_tmp/prec_delta',
+                        'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
                         'prec_delta',
                     )
                     if ret:

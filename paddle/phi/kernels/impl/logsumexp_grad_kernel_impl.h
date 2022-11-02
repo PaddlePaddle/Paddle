@@ -61,7 +61,7 @@ void LogsumexpGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(in_grad);
 
   const auto input_dim_size = in.dims().size();
-  reduce_all |= (static_cast<const int>(axis.size()) == input_dim_size);
+  reduce_all |= (static_cast<int>(axis.size()) == input_dim_size);
 
   if (reduce_all) {
     auto x = phi::EigenVector<T>::Flatten(in);

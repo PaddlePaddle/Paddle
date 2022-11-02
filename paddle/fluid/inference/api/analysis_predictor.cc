@@ -32,6 +32,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type_traits.h"
@@ -171,8 +172,9 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
   // NOTE(Aurelius84): Some kernels support zero shape input
   // without memory holder, we should skip enforce logic.
   bool has_zero_dim = (phi::product(ddim) == 0);
-  if (has_zero_dim) {
-    VLOG(3) << "Found zero dim from input with ddim: " << ddim;
+  VLOG(3) << "Found zero dim: " << has_zero_dim
+          << " from input with ddim: " << ddim;
+  if (!has_zero_dim) {
     PADDLE_ENFORCE_NOT_NULL(
         input_ptr,
         paddle::platform::errors::Fatal(
@@ -181,6 +183,11 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
         pt.data.data(),
         paddle::platform::errors::InvalidArgument(
             "The data contained in the input PaddleTensor is illegal."));
+    PADDLE_ENFORCE_EQ(
+        pt.data.length(),
+        t->numel() * paddle::experimental::SizeOf(t->dtype()),
+        paddle::platform::errors::InvalidArgument(
+            "The data contained in the input PaddleTensor had wrong length."));
   }
 
   if (platform::is_cpu_place(place)) {
@@ -1142,6 +1149,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuPrecision(config_.xpu_precision_);
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
     argument_.SetXpuDeviceId(config_.xpu_device_id_);
+    argument_.SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
     // NNAdapter related
     argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
     argument_.SetNNAdapterDeviceNames(
@@ -1550,10 +1558,10 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
   } else {
-    scope = executor_->scope();
+    scope = executor_->GetScope();
   }
 #else
-  scope = executor_->scope();
+  scope = executor_->GetScope();
 #endif
   PADDLE_ENFORCE_NOT_NULL(
       scope->FindVar(name),
@@ -1605,10 +1613,10 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
   } else {
-    scope = executor_->scope();
+    scope = executor_->GetScope();
   }
 #else
-  scope = executor_->scope();
+  scope = executor_->GetScope();
 #endif
   PADDLE_ENFORCE_NOT_NULL(
       scope->FindVar(name),
@@ -1990,7 +1998,7 @@ void AnalysisPredictor::ClearIntermediateTensor() {
   for (auto *var : global_block->AllVars()) {
     if (!IsPersistable(var)) {
       const std::string name = var->Name();
-      auto *variable = executor_->scope()->FindVar(name);
+      auto *variable = executor_->GetScope()->FindVar(name);
       if (variable != nullptr && variable->IsType<phi::DenseTensor>() &&
           name != "feed" && name != "fetch") {
         VLOG(3) << "Clear Intermediate Tensor: " << name;
@@ -2169,6 +2177,33 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   platform::CPUPlace place;
   framework::Executor exe(place);
   exe.Run(save_program, scope(), 0, true, true);
+}
+
+void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
+  if (config_.enable_memory_optim()) {
+    LOG(WARNING) << "If you want to run output hook function, you should "
+                    "use config.EnableMemoryOptim(false) to turn off memory "
+                    "reuse!";
+    return;
+  }
+  static std::once_flag register_hook_flag;
+  std::call_once(register_hook_flag, [this] {
+    executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
+      for (auto &output : op->Outputs()) {
+        for (auto &var_name : output.second) {
+          auto *var = this->sub_scope_->FindVar(var_name);
+          if (!var || !var->IsType<phi::DenseTensor>()) continue;
+          auto dense_tensor = var->Get<phi::DenseTensor>();
+          if (!dense_tensor.initialized()) continue;
+          auto tensor = this->GetOutputTensor(var_name);
+          for (auto &hookfunc : this->hookfuncs_) {
+            hookfunc(op->Type(), var_name, *tensor);
+          }
+        }
+      }
+    });
+  });
+  hookfuncs_.push_back(hookfunc);
 }
 
 template <>
@@ -2364,6 +2399,10 @@ void Predictor::ClearIntermediateTensor() {
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
+void Predictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
+  predictor_->RegisterOutputHook(hookfunc);
+}
+
 void *Predictor::GetExecStream() const { return predictor_->GetExecStream(); }
 
 int GetNumBytesOfDataType(DataType dtype) {
@@ -2445,10 +2484,9 @@ PredictorPool::PredictorPool(const Config &config, size_t size) {
   for (size_t i = 0; i < size - 1; i++) {
     if (config.tensorrt_engine_enabled()) {
       Config config_tmp(copy_config);
-      preds_.push_back(
-          std::move(std::unique_ptr<Predictor>(new Predictor(config_tmp))));
+      preds_.emplace_back(new Predictor(config_tmp));
     } else {
-      preds_.push_back(std::move(main_pred_->Clone()));
+      preds_.emplace_back(main_pred_->Clone());
     }
   }
 }

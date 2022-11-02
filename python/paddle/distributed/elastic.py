@@ -31,7 +31,7 @@ class Command(object):
         self.etcd.put(self.np_path, '{}'.format(np).encode('latin-1'))
 
     def scale_np(self, np):
-        if self.etcd.get(self.np_path)[0] != None:
+        if self.etcd.get(self.np_path)[0] is not None:
             self.set_np(np)
             return True
         return False

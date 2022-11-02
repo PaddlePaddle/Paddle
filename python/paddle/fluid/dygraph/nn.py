@@ -289,12 +289,9 @@ class Conv2D(layers.Layer):
                 self._stride,
                 self._padding,
                 "EXPLICIT",
-                self._groups if self._groups else 1,
                 self._dilation,
+                self._groups if self._groups else 1,
                 "NCHW",
-                False,
-                -1,
-                False,
             )
             if self.bias is not None:
                 pre_act = F.elementwise_add(pre_bias, self.bias, axis=1)
@@ -1268,7 +1265,7 @@ class InstanceNorm(layers.Layer):
         if param_attr == False or bias_attr == False:
             assert (
                 bias_attr == param_attr
-            ), "param_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
+            ), "param_attr and bias_attr must be set to False at the same time in InstanceNorm"
         self._epsilon = epsilon
         self._param_attr = param_attr
         self._bias_attr = bias_attr

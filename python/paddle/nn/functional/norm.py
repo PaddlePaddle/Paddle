@@ -193,7 +193,7 @@ def batch_norm(
 
     data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
-    if use_global_stats == None:
+    if use_global_stats is None:
         use_global_stats = not training
         trainable_statistics = False
     else:
