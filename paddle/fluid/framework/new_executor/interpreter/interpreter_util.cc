@@ -32,9 +32,6 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#endif
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
@@ -129,20 +126,23 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   }
 }
 
-bool IsCommunicationOp(const Instruction& instr) {
+bool IsCommunicationOp(const std::string& op_name) {
   const std::set<std::string> special_comm_op_set = {
       "send",
       "recv",
       "send_v2",
       "recv_v2",
   };
-  const std::string& op_name = instr.OpBase()->Type();
   const std::string communication_op_prefix = "c_";
   if (op_name.find(communication_op_prefix) != std::string::npos ||
       special_comm_op_set.count(op_name)) {
     return true;
   }
   return false;
+}
+
+bool IsCommunicationOp(const Instruction& instr) {
+  return IsCommunicationOp(instr.OpBase()->Type());
 }
 
 bool IsCpuOp(const Instruction& instr) {
@@ -618,12 +618,6 @@ void BuildOpFuncList(const platform::Place& place,
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
         auto expected_kernel_key =
             op_with_kernel->GetExpectedKernelType(exec_ctx);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        if (!op_with_kernel->DnnFallback() &&
-            paddle::platform::CanCUDNNBeUsed(exec_ctx)) {
-          expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
-        }
-#endif
         VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
         // change device by the device_guard()
         ApplyDeviceGuard(op, place, &expected_kernel_key);
