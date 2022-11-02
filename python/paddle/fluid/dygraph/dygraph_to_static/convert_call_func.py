@@ -110,6 +110,8 @@ def builtin_modules():
     except:
         pass  # do nothing
 
+    return moduels
+
 
 BUILTIN_LIKELY_MODULES = builtin_modules()
 
