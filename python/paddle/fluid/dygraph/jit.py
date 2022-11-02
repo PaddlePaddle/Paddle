@@ -1573,7 +1573,7 @@ class TracedLayer(object):
 
                 class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super().__init__()
+                        super(ExampleLayer, self).__init__()
                         self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
@@ -1623,7 +1623,7 @@ class TracedLayer(object):
 
                 class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super().__init__()
+                        super(ExampleLayer, self).__init__()
                         self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
@@ -1728,7 +1728,7 @@ class TracedLayer(object):
 
                 class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super().__init__()
+                        super(ExampleLayer, self).__init__()
                         self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):

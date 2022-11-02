@@ -531,7 +531,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super().__init__()
+                    super(LinearNet, self).__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
 
