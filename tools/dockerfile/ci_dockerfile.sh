@@ -145,7 +145,7 @@ function make_ce_framework_dockcerfile(){
   sed -i 's#python setup.py install#python3.7 setup.py install#g' ${dockerfile_name}
 }
 
-function make_117_dockerfile(){
+function make_unbuntu18_cu117_dockerfile(){
   dockerfile_name="Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage"
   sed "s#<baseimg>#nvidia/cuda:11.7.0-cudnn8-devel-ubuntu18.04#g" ./Dockerfile.ubuntu18 >${dockerfile_name}
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-11.7/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
@@ -171,7 +171,7 @@ function main() {
   make_centos_dockerfile
   make_cinn_dockerfile
   make_ce_framework_dockcerfile
-  make_117_dockerfile
+  make_unbuntu18_cu117_dockerfile
 }
 
 main "$@"
