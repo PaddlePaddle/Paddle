@@ -153,8 +153,10 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
                        block_it);
 
   delete allocation;
+
+  delete allocation;
     size_t bytes = GetAllocatedSize();
-    size_t limit = ((size_t)1 << 30) * 22;
+    size_t limit = ((size_t)1 << 30) * 24;
     if (bytes > limit)
     {
        //std::cout<<bytes<<" free 2\n";
