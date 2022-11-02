@@ -23,6 +23,7 @@
 
 namespace phi {
 
+constexpr int threads_per_block = 256;
 template <typename T, typename AccT = T>
 struct GroupNormFunctor {
   inline HOSTDEVICE T operator()(const T& x,
@@ -256,19 +257,20 @@ void GroupNormKernel(const Context& dev_ctx,
         x_data, N, C, W, imsize, groups, group_size, mean_data, temp_var_data);
   }
 
-  const int64_t block_num = (N * C + 256 - 1) / 256;
-  UpdateParams<T><<<block_num, 256, 0, dev_ctx.stream()>>>(mean_data,
-                                                           temp_var_data,
-                                                           scale_data,
-                                                           bias_data,
-                                                           N,
-                                                           C,
-                                                           groups,
-                                                           group_size,
-                                                           epsilon,
-                                                           var_data,
-                                                           eq_scale_data,
-                                                           eq_bias_data);
+  const int64_t block_num = (N * C + threads_per_block - 1) / threads_per_block;
+  UpdateParams<T>
+      <<<block_num, threads_per_block, 0, dev_ctx.stream()>>>(mean_data,
+                                                              temp_var_data,
+                                                              scale_data,
+                                                              bias_data,
+                                                              N,
+                                                              C,
+                                                              groups,
+                                                              group_size,
+                                                              epsilon,
+                                                              var_data,
+                                                              eq_scale_data,
+                                                              eq_bias_data);
   std::vector<const DenseTensor*> ins{&x, &eq_scale, &eq_bias};
   std::vector<DenseTensor*> outs{y};
   funcs::BroadcastKernel<ElementwiseType::kTernary, T, T>(
