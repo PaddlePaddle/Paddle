@@ -1150,8 +1150,8 @@ class PermuteDispatch {
   // A Gerneral transpose method.
   template <int VecSize>
   void LaunchTransposeKernel(const phi::GPUContext& ctx, const T* src, T* dst) {
-    constexpr bool kIsSmallByte = sizeof(T) < sizeof(float);
     constexpr int kVecRow = sizeof(float) / sizeof(T);
+    constexpr bool kIsSmallByte = sizeof(T) < sizeof(float);
     constexpr int ReadVecSize = sizeof(T) > sizeof(float) ? 1 : VecSize;
     const bool IsTrans = perm_type_ == PermuteType::kGeneralTranspose;
 
@@ -1277,19 +1277,13 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
       simplifier.GetPerm(),
       paddle::experimental::CppTypeToDataType<T>::Type());
 
-  // tuner->Run(ctx,
-  //            phi::autotune::AlgorithmType::kTranspose,
-  //            key,
-  //            ctx,
-  //            const_cast<phi::DenseTensor*>(&in),
-  //            out,
-  //            simplifier);
-
-  // TransposeWithSimple<T>(ctx, const_cast<phi::DenseTensor*>(&in), out,
-  // simplifier); PermuteWithEigen<T>(ctx, const_cast<phi::DenseTensor*>(&in),
-  // out, simplifier);
-  PermuteAndTranspose<T>(
-      ctx, const_cast<phi::DenseTensor*>(&in), out, simplifier);
+  tuner->Run(ctx,
+             phi::autotune::AlgorithmType::kTranspose,
+             key,
+             ctx,
+             const_cast<phi::DenseTensor*>(&in),
+             out,
+             simplifier);
 }
 
 }  // namespace operators
