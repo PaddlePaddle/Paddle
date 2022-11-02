@@ -171,26 +171,27 @@ class WhileOp : public framework::OperatorBase {
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
 
-    framework::Executor *executor{nullptr};
-    std::unique_ptr<framework::ExecutorPrepareContext> ctx{nullptr};
-
-    framework::InterpreterCore *core{nullptr};
-
     if (FLAGS_control_flow_use_new_executor) {
-      std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
-      framework::Scope placeholder;  // Don't care if it's valid, just for
-                                     // initialize InterpreterCore
-      core =
-          new framework::InterpreterCore(dev_place,
-                                         *block,
-                                         skip_gc_vars,
-                                         &placeholder,
-                                         /* used_for_jit */ false,
-                                         /* used_for_control_flow_op */ true);
+      if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
+        std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
+        framework::Scope placeholder;  // Don't care if it's valid, just for
+                                       // initialize InterpreterCore
+        core.reset(new framework::InterpreterCore(
+            dev_place,
+            *block,
+            skip_gc_vars,
+            &placeholder,
+            /* used_for_jit */ false,
+            /* used_for_control_flow_op */ true));
+      }
     } else {
-      executor = new framework::Executor(dev_place);
-      ctx = std::move(executor->Prepare(*program, block->ID(), skip_vars));
+      if (!executor ||
+          !platform::is_same_place(executor->GetPlace(), dev_place)) {
+        executor.reset(new framework::Executor(dev_place));
+        ctx = executor->Prepare(*program, block->ID(), skip_vars);
+      }
     }
+
     if (!is_test) {
       while (cond_data) {
         auto &current_scope = scope.NewScope();
@@ -267,6 +268,11 @@ class WhileOp : public framework::OperatorBase {
       scope.DeleteScope(&current_scope);
     }
   }
+
+ private:
+  mutable std::shared_ptr<framework::Executor> executor{nullptr};
+  mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx{nullptr};
+  mutable std::shared_ptr<framework::InterpreterCore> core{nullptr};
 };
 
 class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -325,26 +331,6 @@ class WhileGradOp : public framework::OperatorBase {
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
 
-    framework::Executor *executor{nullptr};
-    std::unique_ptr<framework::ExecutorPrepareContext> ctx{nullptr};
-    framework::InterpreterCore *core{nullptr};
-
-    if (FLAGS_control_flow_use_new_executor) {
-      std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
-      framework::Scope placeholder;  // Don't care if it's valid, just for
-                                     // initialize InterpreterCore
-      core =
-          new framework::InterpreterCore(dev_place,
-                                         *block,
-                                         skip_gc_vars,
-                                         &placeholder,
-                                         /* used_for_jit */ false,
-                                         /* used_for_control_flow_op */ true);
-    } else {
-      executor = new framework::Executor(dev_place);
-      ctx = executor->Prepare(*program, block->ID(), skip_vars);
-    }
-
     auto *step_scopes =
         scope.FindVar(Input(kStepScopes))->GetMutable<StepScopeVar>();
 
@@ -362,6 +348,27 @@ class WhileGradOp : public framework::OperatorBase {
                           "gradient names is %d.",
                           outside_og_names.size(),
                           inside_og_names.size()));
+
+    if (FLAGS_control_flow_use_new_executor) {
+      if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
+        std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
+        framework::Scope placeholder;  // Don't care if it's valid, just for
+                                       // initialize InterpreterCore
+        core.reset(new framework::InterpreterCore(
+            dev_place,
+            *block,
+            skip_gc_vars,
+            &placeholder,
+            /* used_for_jit */ false,
+            /* used_for_control_flow_op */ true));
+      }
+    } else {
+      if (!executor ||
+          !platform::is_same_place(executor->GetPlace(), dev_place)) {
+        executor.reset(new framework::Executor(dev_place));
+        ctx = executor->Prepare(*program, block->ID(), skip_vars);
+      }
+    }
 
     for (auto cur_scope_iter = step_scopes->rbegin();
          cur_scope_iter != step_scopes->rend();
@@ -544,6 +551,11 @@ class WhileGradOp : public framework::OperatorBase {
     }
     step_scopes->clear();
   }
+
+ private:
+  mutable std::shared_ptr<framework::Executor> executor{nullptr};
+  mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx{nullptr};
+  mutable std::shared_ptr<framework::InterpreterCore> core{nullptr};
 };
 
 template <typename T>

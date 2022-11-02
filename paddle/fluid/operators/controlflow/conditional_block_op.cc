@@ -141,9 +141,9 @@ class ConditionalBlockOp : public ConditionalOp {
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
 
       if (FLAGS_control_flow_use_new_executor) {
-        std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
-
         if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
+          std::set<std::string> skip_gc_vars(skip_vars.begin(),
+                                             skip_vars.end());
           VLOG(10) << "[interpreterCore cache]" << core.get();
           VLOG_IF(10, core)
               << platform::is_same_place(core->GetPlace(), dev_place);
@@ -251,13 +251,12 @@ class ConditionalBlockGradOp : public ConditionalOp {
               << ", scope = " << &cur_scope;
 
       if (FLAGS_control_flow_use_new_executor) {
-        std::set<std::string> skip_gc_vars(inside_grads.begin(),
-                                           inside_grads.end());
-
         if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
           VLOG(10) << "[interpreterCore cache]" << core.get();
           VLOG_IF(10, core)
               << platform::is_same_place(core->GetPlace(), dev_place);
+          std::set<std::string> skip_gc_vars(inside_grads.begin(),
+                                             inside_grads.end());
           core.reset(new InterpreterCore(dev_place,
                                          *block,
                                          skip_gc_vars,
