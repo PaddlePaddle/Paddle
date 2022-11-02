@@ -137,7 +137,7 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
                 and self.dynamic_shape.min_input_shape
             ):
                 return True
-            if program_config.ops[0].attrs['align_corners'] == True:
+            if program_config.ops[0].attrs['align_corners']:
                 return True
             return False
 

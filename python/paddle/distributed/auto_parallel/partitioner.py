@@ -84,7 +84,7 @@ class Partitioner(object):
         dist_op_context.rank_id = self._rank_id
 
         # partition startup program
-        if serial_startup_program == None:
+        if serial_startup_program is None:
             partitioned_startup_prog = None
         else:
             partitioned_startup_prog = self.partition_startup_program(

@@ -57,7 +57,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
         if not self.role_maker._is_collective:
             return False
 
-        if self.user_defined_strategy.tensor_parallel == True:
+        if self.user_defined_strategy.tensor_parallel:
             return True
         return False
 

@@ -893,7 +893,7 @@ add_subdirectory(asp)
 
 add_subdirectory(ir)
 
-add_subdirectory(interpreter)
+add_subdirectory(standalone_executor)
 
 if(WITH_TESTING)
   set_property(TEST test_parallel_executor_mnist
