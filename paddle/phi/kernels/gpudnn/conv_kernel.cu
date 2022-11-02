@@ -44,15 +44,15 @@ namespace phi {
 
 template <typename T, typename Context>
 void ConvCudnnKernelImplV7(const Context& ctx,
-                     const DenseTensor& input,
-                     const DenseTensor& filter,
-                     const std::vector<int>& strides,
-                     const std::vector<int>& paddings_t,
-                     const std::string& padding_algorithm,
-                     const std::vector<int>& dilations_t,
-                     int groups,
-                     const std::string& data_format,
-                     DenseTensor* output) {
+                           const DenseTensor& input,
+                           const DenseTensor& filter,
+                           const std::vector<int>& strides,
+                           const std::vector<int>& paddings_t,
+                           const std::string& padding_algorithm,
+                           const std::vector<int>& dilations_t,
+                           int groups,
+                           const std::string& data_format,
+                           DenseTensor* output) {
   ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
@@ -393,27 +393,21 @@ void ConvCudnnKernel(const Context& ctx,
                      const std::vector<int>& strides,
                      const std::vector<int>& paddings_t,
                      const std::string& padding_algorithm,
-                     int groups,
                      const std::vector<int>& dilations_t,
+                     int groups,
                      const std::string& data_format,
-                     bool use_addto,
-                     int workspace_size_MB,
-                     bool exhaustive_search_t,
                      DenseTensor* output) {
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
-  if (paddle::platform::IsCudnnFrontendEnabled() && (groups == 1)) {
+  if (dynload::IsCudnnFrontendEnabled() && (groups == 1)) {
     ConvCudnnKernelImplV8<T>(ctx,
                              input,
                              filter,
                              strides,
                              paddings_t,
                              padding_algorithm,
-                             groups,
                              dilations_t,
+                             groups,
                              data_format,
-                             use_addto,
-                             workspace_size_MB,
-                             exhaustive_search_t,
                              output);
   } else {
     ConvCudnnKernelImplV7<T>(ctx,
@@ -422,12 +416,9 @@ void ConvCudnnKernel(const Context& ctx,
                              strides,
                              paddings_t,
                              padding_algorithm,
-                             groups,
                              dilations_t,
+                             groups,
                              data_format,
-                             use_addto,
-                             workspace_size_MB,
-                             exhaustive_search_t,
                              output);
   }
 #else
@@ -437,12 +428,9 @@ void ConvCudnnKernel(const Context& ctx,
                            strides,
                            paddings_t,
                            padding_algorithm,
-                           groups,
                            dilations_t,
+                           groups,
                            data_format,
-                           use_addto,
-                           workspace_size_MB,
-                           exhaustive_search_t,
                            output);
 #endif
 }

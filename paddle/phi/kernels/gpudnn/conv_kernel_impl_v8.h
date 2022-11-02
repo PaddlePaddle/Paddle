@@ -145,18 +145,23 @@ void ConvCudnnKernelImplV8(const Context& ctx,
                            const std::vector<int>& strides,
                            const std::vector<int>& paddings_t,
                            const std::string& padding_algorithm,
-                           int groups,
                            const std::vector<int>& dilations_t,
+                           int groups,
                            const std::string& data_format,
-                           bool use_addto,
-                           int workspace_size_MB,
-                           bool exhaustive_search_t,
                            DenseTensor* output) {
   ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
 
-  bool exhaustive_search = FLAGS_cudnn_exhaustive_search || exhaustive_search_t;
+  bool has_exhaustive_search = ctx.HasDnnAttr("exhaustive_search");
+  VLOG(4) << "GPUContext contains `exhaustive_search`: "
+          << has_exhaustive_search;
+  bool exhaustive_search_attr =
+      has_exhaustive_search
+          ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("exhaustive_search"))
+          : false;
+  bool exhaustive_search =
+      FLAGS_cudnn_exhaustive_search || exhaustive_search_attr;
   bool deterministic = FLAGS_cudnn_deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
@@ -167,6 +172,10 @@ void ConvCudnnKernelImplV8(const Context& ctx,
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
+#ifdef PADDLE_WITH_HIP
+  // HIP MIOPEN ONLY SUPPORT NCHW format
+  auto compute_format = paddle::platform::DataLayout::kNCHW;
+#else
   // Tensor Core introduced from Volta GPUs supports more faster conv op
   // with FP16 in NHWC data format.
   const bool compute_in_nhwc = dtype == CUDNN_DATA_HALF && IsVoltaOrLater(ctx);
@@ -175,6 +184,7 @@ void ConvCudnnKernelImplV8(const Context& ctx,
   auto compute_format = compute_in_nhwc && channel_last
                             ? paddle::platform::DataLayout::kNHWC
                             : paddle::platform::DataLayout::kNCHW;
+#endif
   VLOG(3) << "Compute ConvOp with cuDNN:"
           << " data_format=" << data_format << " compute_format="
           << (compute_format == paddle::platform::DataLayout::kNHWC ? "NHWC"
@@ -184,6 +194,7 @@ void ConvCudnnKernelImplV8(const Context& ctx,
   DenseTensor transformed_input_channel(input.type());
   DenseTensor transformed_output(output->type());
   DenseTensor transformed_filter_channel(filter.type());
+  T* output_data = nullptr;
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
     VLOG(3) << "Transform input tensor from NHWC to NCHW.";
     ResizeToChannelFirst<Context, T>(ctx, &input, &transformed_input_channel);
@@ -202,6 +213,8 @@ void ConvCudnnKernelImplV8(const Context& ctx,
   } else {
     transformed_filter_channel.ShareDataWith(filter);
   }
+  output_data = transformed_output.data<T>();
+
   // update padding and dilation
   auto in_dims = transformed_input_channel.dims();
   auto filter_dims = transformed_filter_channel.dims();
@@ -294,6 +307,9 @@ void ConvCudnnKernelImplV8(const Context& ctx,
       }
     }
   }
+
+  auto handle = ctx.cudnn_handle();
+  auto workspace_handle = ctx.cudnn_workspace_handle();
 
   paddle::platform::DataLayout layout =
       compute_format == paddle::platform::DataLayout::kNHWC

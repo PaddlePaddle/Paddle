@@ -43,17 +43,17 @@ namespace phi {
 
 template <typename T, typename Context>
 void ConvCudnnGradKernelImplV7(const Context& ctx,
-                         const DenseTensor& input,
-                         const DenseTensor& filter,
-                         const DenseTensor& output_grad,
-                         const std::vector<int>& strides_t,
-                         const std::vector<int>& paddings_t,
-                         const std::string& padding_algorithm,
-                         const std::vector<int>& dilations_t,
-                         int groups,
-                         const std::string& data_format,
-                         DenseTensor* input_grad,
-                         DenseTensor* filter_grad) {
+                               const DenseTensor& input,
+                               const DenseTensor& filter,
+                               const DenseTensor& output_grad,
+                               const std::vector<int>& strides_t,
+                               const std::vector<int>& paddings_t,
+                               const std::string& padding_algorithm,
+                               const std::vector<int>& dilations_t,
+                               int groups,
+                               const std::string& data_format,
+                               DenseTensor* input_grad,
+                               DenseTensor* filter_grad) {
   if (input_grad) {
     ctx.template Alloc<T>(input_grad);
   }
@@ -587,16 +587,13 @@ void ConvCudnnGradKernel(const Context& ctx,
                          const std::vector<int>& strides_t,
                          const std::vector<int>& paddings_t,
                          const std::string& padding_algorithm,
-                         int groups,
                          const std::vector<int>& dilations_t,
+                         int groups,
                          const std::string& data_format,
-                         bool use_addto,
-                         int workspace_size_MB,
-                         bool exhaustive_search_t,
                          DenseTensor* input_grad,
                          DenseTensor* filter_grad) {
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
-  if (paddle::platform::IsCudnnFrontendEnabled() && (groups == 1)) {
+  if (dynload::IsCudnnFrontendEnabled() && (groups == 1)) {
     ConvCudnnGradKernelImplV8<T>(ctx,
                                  input,
                                  filter,
@@ -604,12 +601,9 @@ void ConvCudnnGradKernel(const Context& ctx,
                                  strides_t,
                                  paddings_t,
                                  padding_algorithm,
-                                 groups,
                                  dilations_t,
+                                 groups,
                                  data_format,
-                                 use_addto,
-                                 workspace_size_MB,
-                                 exhaustive_search_t,
                                  input_grad,
                                  filter_grad);
   } else {
@@ -620,12 +614,9 @@ void ConvCudnnGradKernel(const Context& ctx,
                                  strides_t,
                                  paddings_t,
                                  padding_algorithm,
-                                 groups,
                                  dilations_t,
+                                 groups,
                                  data_format,
-                                 use_addto,
-                                 workspace_size_MB,
-                                 exhaustive_search_t,
                                  input_grad,
                                  filter_grad);
   }
@@ -637,12 +628,9 @@ void ConvCudnnGradKernel(const Context& ctx,
                                strides_t,
                                paddings_t,
                                padding_algorithm,
-                               groups,
                                dilations_t,
+                               groups,
                                data_format,
-                               use_addto,
-                               workspace_size_MB,
-                               exhaustive_search_t,
                                input_grad,
                                filter_grad);
 #endif
