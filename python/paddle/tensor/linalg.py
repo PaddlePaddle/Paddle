@@ -3033,12 +3033,7 @@ def triangular_solve(x,
         #      2*x2  +   x3 = -9
         #               -x3 = 5
 
-<<<<<<< HEAD
         import paddle
-        import numpy as np
-=======
-            import paddle
->>>>>>> 912be4f897 (fix numpy issue in codeblock examples for operators under python/paddle/tensor folder (#46765))
 
         x = paddle.to_tensor([[1, 1, 1], 
                               [0, 2, 1],
