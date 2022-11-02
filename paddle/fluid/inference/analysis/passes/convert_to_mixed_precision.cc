@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/ir/constant_folding_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -399,10 +400,12 @@ void ConvertToMixedPrecisionPass::LoadAndPrepare() {
   }
 
   // Remove all control var
-  IrInferCleanGraphPass pass;
   Argument arg;
   arg.SetMainGraphNotOwned(main_graph_.get());
-  pass.Run(&arg);
+  IrInferCleanGraphPass().Run(&arg);
+
+  // Remove all constant op
+  framework::ir::ConstantFoldingPass().Apply(main_graph_.get());
 
   FindVarsInMultiBlock();
 }
@@ -456,15 +459,7 @@ void ConvertToMixedPrecisionPass::ConvertAllFp64ToFp32(
     auto op_type = op_node->Op()->Type();
     if (op_type == "feed" || op_type == "fetch") continue;
 
-    if (op_type == "fill_constant") {
-      if (PADDLE_GET_CONST(int, op_node->Op()->GetAttr("dtype")) ==
-          static_cast<int>(VarType::FP64))
-        op_node->Op()->SetAttr("dtype", static_cast<int>(VarType::FP32));
-    } else if (op_type == "assign_value") {
-      if (PADDLE_GET_CONST(int, op_node->Op()->GetAttr("dtype")) ==
-          static_cast<int>(VarType::FP64))
-        op_node->Op()->SetAttr("dtype", static_cast<int>(VarType::FP32));
-    } else if (op_type == "eye") {
+    if (op_type == "eye") {
       if (PADDLE_GET_CONST(int, op_node->Op()->GetAttr("dtype")) ==
           static_cast<int>(VarType::FP64))
         op_node->Op()->SetAttr("dtype", static_cast<int>(VarType::FP32));
