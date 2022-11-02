@@ -13,28 +13,43 @@
 # limitations under the License.
 
 import paddle
-from typing import Dict, Any
+import paddle.nn as nn
+from paddle.nn import Layer
+from typing import Dict
 from .wrapper import ObserveWrapper
-from .stubs import QuantStub, Stub
+from .stubs import ObserverStub, Stub
+from .factory import ObserverFactory
+from typing import Union
 
 __all__ = ["QuantConfig", "TRTQuantConfig"]
 
-DEFAULT_QAT_LAYER_MAPPINGS: Dict[paddle.nn.Layer, paddle.nn.Layer] = {
-    Stub: QuantStub,
-    paddle.nn.Conv2D: paddle.nn.quant.qat.QuantConv2D,
-    paddle.nn.Conv2DTranspose:
-    paddle.nn.quant.quant_layers.QuantizedConv2DTranspose,
-    paddle.nn.Linear: paddle.nn.quant.qat.QuantLinear,
+DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {
+    Stub: ObserverStub,
+    nn.Conv2D: nn.quant.qat.QuantConv2D,
+    nn.Conv2DTranspose: nn.quant.quant_layers.QuantizedConv2DTranspose,
+    nn.Linear: nn.quant.qat.QuantLinear,
 }
 
-DEFAULT_LEAVES = [paddle.nn.ReLU, paddle.nn.AvgPool2D]
+DEFAULT_LEAVES = [nn.ReLU, nn.AvgPool2D]
+
+
+class SingleLayerConfig(object):
+    def __init__(self, activation: ObserverFactory, weight: ObserverFactory):
+        self._activation = activation
+        self._weight = weight
+
+    @property
+    def activation(self):
+        return self._activation
+
+    @property
+    def weight(self):
+        return self._weight
 
 
 class QuantConfig(object):
-
-    def __init__(self, activation, weight):
-        self._activation = activation
-        self._weight = weight
+    def __init__(self, activation: ObserverFactory, weight: ObserverFactory):
+        self._global_config = SingleLayerConfig(activation, weight)
         self._layer2config = {}
         self._prefix2config = {}
         self._type2config = {}
@@ -42,8 +57,13 @@ class QuantConfig(object):
         self._qat_layer_mapping = DEFAULT_QAT_LAYER_MAPPINGS
         self._costum_leaves = []
 
-    def add_group(self, group, activation=None, weight=None):
-        config = {"weight": weight, "activation": activation}
+    def add_group(
+        self,
+        group: Union[type, str, list],
+        activation: ObserverFactory = None,
+        weight: ObserverFactory = None,
+    ):
+        config = SingleLayerConfig(activation, weight)
         if isinstance(group, type) and issubclass(group, paddle.nn.Layer):
             self._type2config[group] = config
         if isinstance(group, str):
@@ -52,7 +72,7 @@ class QuantConfig(object):
             for _element in group:
                 self.add_group(_element, activation=activation, weight=weight)
 
-    def add_qat_layer_mapping(self, source, target):
+    def add_qat_layer_mapping(self, source: Layer, target: Layer):
         assert isinstance(source, type) and issubclass(
             source, paddle.nn.Layer
         ), "The source layer to be placed should be a subclass of paddle.nn.Layer"
@@ -61,43 +81,46 @@ class QuantConfig(object):
         ), "The target layer should be a subclass of paddle.nn.qat.Layer"
         self._qat_layer_mapping[source] = target
 
-    def add_costum_leaf(self, layer):
+    def add_costum_leaf(self, layer: Layer):
         self._costum_leaves.append(layer)
 
     @property
     def costum_leaves(self):
         return self._costum_leaves
 
-    def get_qat_layer(self, layer):
+    def get_qat_layer(self, layer: Layer):
         q_config = self.get_config_by_layer(layer)
         return self.qat_layer_mappings[type(layer)](layer, q_config)
 
-    def need_observe(self, layer: paddle.nn.Layer):
+    def need_observe(self, layer: Layer):
         return self.is_leaf(layer) and self.has_observer_config(layer)
 
-    def has_observer_config(self, layer: paddle.nn.Layer):
+    def has_observer_config(self, layer: Layer):
         _config = self.get_config_by_layer(layer)
-        return _config is not None and "activation" in _config
+        return _config is not None and _config.activation is not None
 
-    def is_leaf(self, layer: paddle.nn.Layer):
-        return self.is_default_leaf(layer) or self.is_real_leaf(
-            layer) or self.is_custom_leaf(layer)
+    def is_leaf(self, layer: Layer):
+        return (
+            self.is_default_leaf(layer)
+            or self.is_real_leaf(layer)
+            or self.is_custom_leaf(layer)
+        )
 
-    def is_default_leaf(self, layer: paddle.nn.Layer):
+    def is_default_leaf(self, layer: Layer):
         return layer in DEFAULT_LEAVES
 
-    def is_real_leaf(self, layer: paddle.nn.Layer):
+    def is_real_leaf(self, layer: Layer):
         return layer._sub_layers is None or len(layer._sub_layers) == 0
 
-    def is_custom_leaf(self, layer: paddle.nn.Layer):
+    def is_custom_leaf(self, layer: Layer):
         return layer in self.costum_leaves
 
     def get_observer(self, layer):
         _config = self.get_config_by_layer(layer)
-        _observer = None if _config is None else _config.get("activation", None)
+        _observer = None if _config is None else _config.activation
         return None if _observer is None else _observer.instance(layer)
 
-    def get_observe_wrapper(self, layer):
+    def get_observe_wrapper(self, layer: Layer):
         _observer = self.get_observer(layer)
         return ObserveWrapper(_observer, layer)
 
@@ -110,40 +133,47 @@ class QuantConfig(object):
         return DEFAULT_QAT_LAYER_MAPPINGS
 
     @property
-    def global_config(self):
-        return {"weight": self._weight, "activation": self._activation}
+    def global_config(self) -> SingleLayerConfig:
+        return self._global_config
 
-    def get_config_by_layer(self, layer):
+    def get_config_by_layer(self, layer) -> SingleLayerConfig:
         return self._layer2config.get(layer, None)
 
-    def is_quantable(self, layer):
+    def is_quantable(self, layer: Layer):
         return layer in self._layer2config
 
-    def specify(self, model):
+    def specify(self, model: Layer):
         self._model = model
         self.specify_helper(self._model)
 
-    def specify_helper(self, model, prefix=""):
+    def specify_helper(self, model: Layer, prefix: str = ""):
         for name, child in model.named_children():
             layer_prefix = "/".join([prefix, name])
             config = self._layer2config.get(model, self.global_config)
             config = self._type2config.get(type(child), config)
             self._layer2config[child] = self._prefix2config.get(
-                layer_prefix, config)
+                layer_prefix, config
+            )
             self.specify_helper(child, prefix=layer_prefix)
         return self
 
     def details(self):
         return self.details_helper(self._model)
 
-    def details_helper(self, layer):
+    def details_helper(self, layer: Layer):
         extra_lines = []
         sublayer_lines = []
         for name, sublayer in layer.named_children():
             sublayer_str = self.details_helper(sublayer)
             sublayer_str = self._addindent(sublayer_str, 2)
-            sublayer_lines.append('(' + name + '): ' + sublayer_str + ', ' +
-                                  str(self._layer2config[sublayer]))
+            sublayer_lines.append(
+                '('
+                + name
+                + '): '
+                + sublayer_str
+                + ', '
+                + str(self._layer2config[sublayer])
+            )
 
         final_str = layer.__class__.__name__ + '('
         if extra_lines:
@@ -182,6 +212,5 @@ class QuantConfig(object):
 
 
 class TRTQuantConfig(QuantConfig):
-
-    def __init__(self, activation, weight):
+    def __init__(self, activation: ObserverFactory, weight: ObserverFactory):
         super(TRTQuantConfig, self).__init__(activation, weight)

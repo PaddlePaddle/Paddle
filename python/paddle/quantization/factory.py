@@ -14,14 +14,16 @@
 
 import six
 import abc
-import paddle
+from paddle.nn import Layer
+from .quanters import BaseQuanter
+from .observers import BaseObserver
+from typing import Union
 
 __all__ = ["ObserverFactory", "QuanterFactory"]
 
 
 @six.add_metaclass(abc.ABCMeta)
 class ClassWithArguments(object):
-
     def __init__(self, **args):
         self._args = args
 
@@ -41,15 +43,13 @@ class ClassWithArguments(object):
 
 
 class ObserverFactory(ClassWithArguments):
-
     def __init__(self, **args):
         super(ObserverFactory, self).__init__(**args)
 
-    def instance(self, layer):
+    def instance(self, layer: Layer) -> Union[BaseObserver, BaseQuanter]:
         return self.get_class()(layer, **self._args)
 
 
 class QuanterFactory(ObserverFactory):
-
     def __init__(self, **args):
         super(QuanterFactory, self).__init__(**args)

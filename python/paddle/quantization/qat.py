@@ -13,8 +13,7 @@
 # limitations under the License.
 
 import copy
-import paddle
-import paddle.nn as nn
+from paddle.nn import Layer
 from .config import QuantConfig
 
 __all__ = ["QAT"]
@@ -28,7 +27,7 @@ class QAT(object):
     def __init__(self, config: QuantConfig):
         self._config = copy.deepcopy(config)
 
-    def quantize(self, model, inplace=False):
+    def quantize(self, model: Layer, inplace=False):
         _model = model if inplace else copy.deepcopy(model)
         self._config.specify(_model)
         print(f"config: {self._config.details()}")
@@ -36,7 +35,7 @@ class QAT(object):
         self._insert_activation_observers(_model, self._config)
         return _model
 
-    def _convert_to_quant_layers(self, model: paddle.nn.Layer, config):
+    def _convert_to_quant_layers(self, model: Layer, config: QuantConfig):
         replaced = {}
         for name, child in model.named_children():
             if config.is_quantable(child):
@@ -47,8 +46,7 @@ class QAT(object):
         for key, value in replaced.items():
             model._sub_layers[key] = value
 
-    def _insert_activation_observers(self, model: paddle.nn.Layer,
-                                     config: QuantConfig):
+    def _insert_activation_observers(self, model: Layer, config: QuantConfig):
         replaced = {}
         for name, child in model.named_children():
             if config.need_observe(child):
@@ -67,4 +65,4 @@ class QAT(object):
     def __repr__(self):
         return self.__str__()
 
-    #def convert(self, model, inplce=False):
+    # def convert(self, model, inplce=False):

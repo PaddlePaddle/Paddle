@@ -16,6 +16,7 @@ Layers used for QAT.
 """
 from paddle.nn import functional as F
 from paddle.nn import Layer
+from paddle.quantization.config import SingleLayerConfig
 
 __all__ = ["QuantConv2D"]
 
@@ -26,7 +27,7 @@ class QuantConv2D(Layer):
     The only difference is that its inputs are all fake quantized.
     """
 
-    def __init__(self, layer: Layer, q_config):
+    def __init__(self, layer: Layer, q_config: SingleLayerConfig):
         super(QuantConv2D, self).__init__()
 
         # For Conv2D
@@ -36,7 +37,8 @@ class QuantConv2D(Layer):
         self._padding_mode = getattr(layer, '_padding_mode')
         if self._padding_mode != 'zeros':
             self._reversed_padding_repeated_twice = getattr(
-                layer, '_reversed_padding_repeated_twice')
+                layer, '_reversed_padding_repeated_twice'
+            )
         self._dilation = getattr(layer, '_dilation')
         self._data_format = getattr(layer, '_data_format')
         self.weight = getattr(layer, 'weight')
@@ -44,10 +46,10 @@ class QuantConv2D(Layer):
 
         self.weight_quanter = None
         self.activation_quanter = None
-        if "weight" in q_config and q_config["weight"] != None:
-            self.weight_quanter = q_config["weight"].instance(layer)
-        if "activation" in q_config and q_config["activation"] != None:
-            self.activation_quanter = q_config["activation"].instance(layer)
+        if q_config.weight != None:
+            self.weight_quanter = q_config.weight.instance(layer)
+        if q_config.activation != None:
+            self.activation_quanter = q_config.activation.instance(layer)
 
     def forward(self, input):
         quant_input = input
@@ -60,17 +62,21 @@ class QuantConv2D(Layer):
 
     def _conv_forward(self, inputs, weights):
         if self._padding_mode != 'zeros':
-            inputs = F.pad(inputs,
-                           self._reversed_padding_repeated_twice,
-                           mode=self._padding_mode,
-                           data_format=self._data_format)
+            inputs = F.pad(
+                inputs,
+                self._reversed_padding_repeated_twice,
+                mode=self._padding_mode,
+                data_format=self._data_format,
+            )
             self._padding = 0
 
-        return F.conv2d(inputs,
-                        weights,
-                        bias=self.bias,
-                        padding=self._padding,
-                        stride=self._stride,
-                        dilation=self._dilation,
-                        groups=self._groups,
-                        data_format=self._data_format)
+        return F.conv2d(
+            inputs,
+            weights,
+            bias=self.bias,
+            padding=self._padding,
+            stride=self._stride,
+            dilation=self._dilation,
+            groups=self._groups,
+            data_format=self._data_format,
+        )

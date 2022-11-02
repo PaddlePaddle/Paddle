@@ -13,13 +13,20 @@
 # limitations under the License.
 
 from paddle.nn import Layer
+from .quanters import BaseQuanter
+from .observers import BaseObserver
+from typing import Union
 
 __all__ = ["ObserveWrapper"]
 
 
 class ObserveWrapper(Layer):
-
-    def __init__(self, observer, observed, observe_input=True):
+    def __init__(
+        self,
+        observer: Union[BaseQuanter, BaseObserver],
+        observed: Layer,
+        observe_input=True,
+    ):
         super(ObserveWrapper, self).__init__()
         self._observer = observer
         self._observed = observed

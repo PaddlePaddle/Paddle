@@ -13,33 +13,32 @@
 # limitations under the License.
 
 from paddle.nn import Layer
-from .factory import QuanterFactory
+from .factory import ObserverFactory
+from .config import SingleLayerConfig
 
 __all__ = ["Stub"]
 
 
 class Stub(Layer):
-
-    def __init__(self, quanter: QuanterFactory = None):
+    def __init__(self, observer: ObserverFactory = None):
         super(Stub, self).__init__()
-        self._quanter = quanter
+        self._observer = observer
 
     def forward(self, input):
         return input
 
 
-class QuantStub(Layer):
-
-    def __init__(self, layer: Stub, q_config: dict):
-        super(QuantStub, self).__init__()
-        self._quanter = None
-        if layer._quanter is not None:
-            self._quanter = layer._quanter.instance(layer)
-        elif "activation" in q_config and q_config["activation"] is not None:
-            self._quanter = q_config["activation"].instance(layer)
+class ObserverStub(Layer):
+    def __init__(self, layer: Stub, q_config: SingleLayerConfig):
+        super(ObserverStub, self).__init__()
+        self._observer = None
+        if layer._observer is not None:
+            self._observer = layer._observer.instance(layer)
+        elif q_config.activation is not None:
+            self._observer = q_config.activation.instance(layer)
 
     def forward(self, input):
-        if self._quanter is not None:
-            return self._quanter(input)
+        if self._observer is not None:
+            return self._observer(input)
         else:
             return input
