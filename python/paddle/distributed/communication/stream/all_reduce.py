@@ -34,10 +34,21 @@ def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
 
 
 def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
-    data_feeder.check_variable_and_dtype(tensor, 'tensor', [
-        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
-        'bool'
-    ], 'all_reduce')
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+        ],
+        'all_reduce',
+    )
 
     op_type = _get_reduce_op(op, "all_reduce")
     ring_id = 0 if group is None else group.id
@@ -48,22 +59,19 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
     # TODO: Support task and use task.wait in static mode
     #       Use use_calc_stream rather than sync_op
     helper = layer_helper.LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type,
-                     inputs={'X': [tensor]},
-                     outputs={'Out': [tensor]},
-                     attrs={
-                         'ring_id': ring_id,
-                         'use_calc_stream': sync_op
-                     })
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+        attrs={'ring_id': ring_id, 'use_calc_stream': sync_op},
+    )
 
     return None
 
 
-def all_reduce(tensor,
-               op=ReduceOp.SUM,
-               group=None,
-               sync_op=True,
-               use_calc_stream=False):
+def all_reduce(
+    tensor, op=ReduceOp.SUM, group=None, sync_op=True, use_calc_stream=False
+):
     """
 
     Perform specific reduction (for example, sum, max) on inputs across devices.
@@ -106,11 +114,14 @@ def all_reduce(tensor,
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be true in sync op behavior.")
+            "use_calc_stream can only be true in sync op behavior."
+        )
 
     if framework.in_dygraph_mode():
-        return _all_reduce_in_dygraph(tensor, op, group, sync_op,
-                                      use_calc_stream)
+        return _all_reduce_in_dygraph(
+            tensor, op, group, sync_op, use_calc_stream
+        )
     else:
-        return _all_reduce_in_static_mode(tensor, op, group, sync_op,
-                                          use_calc_stream)
+        return _all_reduce_in_static_mode(
+            tensor, op, group, sync_op, use_calc_stream
+        )

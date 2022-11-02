@@ -32,11 +32,9 @@ class TrialStatus:
 
 
 class Trial(Storable):
-
-    def __init__(self,
-                 tunable_space,
-                 trial_id=None,
-                 status=TrialStatus.RUNNING):
+    def __init__(
+        self, tunable_space, trial_id=None, status=TrialStatus.RUNNING
+    ):
         self._id = _generate_trial_id() if trial_id is None else trial_id
         self._space = tunable_space
         self._recorder = MetricsRecorder()
@@ -115,13 +113,14 @@ class Trial(Storable):
 
 
 class OptimizationTunerTrial(Trial):
-
-    def __init__(self,
-                 config,
-                 name,
-                 changed_configs,
-                 trial_id=None,
-                 status=TrialStatus.RUNNING):
+    def __init__(
+        self,
+        config,
+        name,
+        changed_configs,
+        trial_id=None,
+        status=TrialStatus.RUNNING,
+    ):
         super(OptimizationTunerTrial, self).__init__(config, trial_id, status)
         self._name = name
         self._changed_configs = changed_configs
@@ -140,7 +139,8 @@ class OptimizationTunerTrial(Trial):
 
         h1_format = "    " + "|{{:^{}s}}|\n".format(length)
         h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
-            max_k, " " * spacing, max_v)
+            max_k, " " * spacing, max_v
+        )
 
         border = "    +" + "".join(["="] * length) + "+"
         line = "    +" + "".join(["-"] * length) + "+"
@@ -158,7 +158,8 @@ class OptimizationTunerTrial(Trial):
             keys = my_configs.to_dict().keys()
             for key in keys:
                 draws += h2_format.format(
-                    key, str(my_configs.to_dict().get(key, None)))
+                    key, str(my_configs.to_dict().get(key, None))
+                )
 
         result_res = draws + border
         return result_res

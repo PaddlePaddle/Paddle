@@ -68,9 +68,7 @@ const Place& DenseTensor::place() const {
 
 paddle::experimental::DataType DenseTensor::type() const { return meta_.dtype; }
 
-void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
-  meta_.layout = layout;
-}
+void DenseTensor::set_layout(const DataLayout layout) { meta_.layout = layout; }
 
 // Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
@@ -372,6 +370,8 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.dtype = src.meta_.dtype;
   meta_.layout = src.meta_.layout;
   meta_.offset = src.meta_.offset;
+  storage_properties_ =
+      std::move(CopyStorageProperties(src.storage_properties_));
 #ifdef PADDLE_WITH_MKLDNN
   format_ = src.format_;
   mem_desc_ = src.mem_desc_;

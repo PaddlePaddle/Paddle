@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pybind/inference_api.h"
 
+#include <pybind11/functional.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 
@@ -35,6 +36,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/cuda_stream.h"
@@ -401,6 +403,12 @@ void BindInferenceApi(py::module *m) {
                new paddle_infer::Predictor(config));
            return pred;
          });
+  m->def(
+      "_get_phi_kernel_name",
+      [](const std::string &fluid_op_name) {
+        return phi::TransToPhiKernelName(fluid_op_name);
+      },
+      py::return_value_policy::reference);
   m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
@@ -649,7 +657,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("autotune") = true,
            py::arg("autotune_file") = "",
            py::arg("precision") = "int16",
-           py::arg("adaptive_seqlen") = false)
+           py::arg("adaptive_seqlen") = false,
+           py::arg("enable_multi_stream") = false)
       .def("set_xpu_device_id",
            &AnalysisConfig::SetXpuDeviceId,
            py::arg("device_id") = 0)
@@ -938,7 +947,9 @@ void BindPaddleInferPredictor(py::module *m) {
 #endif
       .def("try_shrink_memory", &paddle_infer::Predictor::TryShrinkMemory)
       .def("clear_intermediate_tensor",
-           &paddle_infer::Predictor::ClearIntermediateTensor);
+           &paddle_infer::Predictor::ClearIntermediateTensor)
+      .def("register_output_hook",
+           &paddle_infer::Predictor::RegisterOutputHook);
 }
 
 void BindZeroCopyTensor(py::module *m) {

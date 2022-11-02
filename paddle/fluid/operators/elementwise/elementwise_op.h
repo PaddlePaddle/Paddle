@@ -115,7 +115,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       bool should_rotate =
           ctx->IsRunMKLDNNKernel() &&
           (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
-           framework::DataLayout::kNHWC) &&
+           phi::DataLayout::kNHWC) &&
           (x_dims.size() >= 3 || y_dims.size() >= 3);
       if (should_rotate) {
         // Pick bigger shape and rotate this one
@@ -174,15 +174,13 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // When elementwise is first oneDNN op (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ ==
-           framework::DataLayout::kMKLDNN) &&
-          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+      if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+          (tensor.layout() != phi::DataLayout::kMKLDNN) &&
           paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() ==
-              framework::DataLayout::kNHWC) {
+                  .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,
                                        tensor.place(),
-                                       framework::DataLayout::kNHWC);
+                                       phi::DataLayout::kNHWC);
       }
 #endif
       return framework::OpKernelType(
@@ -359,7 +357,7 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
@@ -411,7 +409,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
@@ -463,7 +461,7 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(

@@ -81,7 +81,11 @@ AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_ty
   {% set default_value = attr["default_value"] %}
   {% set typename = attr["typename"] %}
   {% if typename == "DataType" %}{# convert back to VarType #}
+    {% if default_value == "DataType::UNDEFINED" %}
+-1
+    {%- else %}
 static_cast<int>(framework::TransToProtoVarType(experimental::{{default_value}}))
+    {%- endif %}
   {%- elif typename == "DataLayout" %} {# does DataLayout need any processing?#}
 static_cast<int>(experimental::{{default_value}})
   {%- elif typename == "Place" %}{# construct a Place to get the type #}
@@ -94,7 +98,7 @@ static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}
 
 {# --------------------------------------- name mapping ---------------------------------------------- #}
 {% macro name_map(api) %}
-KernelSignature {{api["name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature {{api["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
   {% set kernel_args = api["kernel"]["param"] %}
   {{get_input_list(api["inputs"], kernel_args)}};
   paddle::small_vector<const char*> attrs;
@@ -105,7 +109,7 @@ KernelSignature {{api["name"] | to_pascal_case }}OpArgumentMapping(const Argumen
   {% endfor %}
   {{get_output_list(api["outputs"], kernel_args)}};
   {% if api["kernel"]["func"] | length == 1 %}
-  KernelSignature sig("{{api["name"]}}", std::move(inputs), std::move(attrs), std::move(outputs));
+  KernelSignature sig("{{api["kernel"]["func"][0]}}", std::move(inputs), std::move(attrs), std::move(outputs));
   return sig;
   {% else %}{# it has kernel for selected rows #}
   const char* kernel_name = ctx.IsSelectedRowsInput({{kernel_args[0] | to_opmaker_name_cstr}}) ? "{{api["kernel"]["func"][1]}}" : "{{api["kernel"]["func"][0]}}";
@@ -124,12 +128,64 @@ All possible KernelSignatures returned by {{api["name"] | to_pascal_case }}OpArg
 */
 {% endmacro %}
 
+{% macro get_kernel_dispatch(inputs, kernel_config) %}{# inline #}
+{%- for kernel_func in kernel_config["func"] %}
+  {% set input_idx = namespace(idx=0) %}
+  {% set kernel_in_type_list = kernel_config["dispatch"][kernel_func][0] %}
+
+  if ( {%- for input in inputs %}
+    {%- if input["name"] in kernel_config["param"] %}
+      {%- if kernel_in_type_list[input_idx.idx] == "dense" %}
+ctx.IsDenseTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
+      {%- elif kernel_in_type_list[input_idx.idx] == "selected_rows" %}
+ctx.IsSelectedRowsInput("{{input["name"]}}"){{" && " if not loop.last}}
+      {%- elif kernel_in_type_list[input_idx.idx] == "sparse_coo" %}
+ctx.IsSparseCooTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
+      {%- elif kernel_in_type_list[input_idx.idx] == "sparse_csr" %}
+ctx.IsSparseCsrTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
+      {%- endif %}
+      {% set input_idx.idx = input_idx.idx + 1 %}
+    {%- endif %}
+  {%- endfor %}) {
+    kernel_name = "{{kernel_func}}";
+  }
+{%- endfor %}
+{%- endmacro %}
+
+{% macro sparse_op_name_map(api) %}
+KernelSignature {{api["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
+  {% set kernel_args = api["kernel"]["param"] %}
+  {{get_input_list(api["inputs"], kernel_args)}};
+  paddle::small_vector<const char*> attrs;
+  {% for attr in api["attrs"]%}
+  {% filter indent(2)%}
+  {{get_an_attr(attr)}};
+  {% endfilter %}
+  {% endfor %}
+  {{get_output_list(api["outputs"], kernel_args)}};
+
+  const char* kernel_name = "unregistered";
+{{get_kernel_dispatch(api["inputs"], api["kernel"])}}
+  KernelSignature sig (kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
+  return sig;
+}
+
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by {{api["name"] | to_pascal_case }}OpArgumentMapping:
+
+{{api | cartesian_prod_mapping}}
+******************************************************************
+*/
+{% endmacro %}
+
 {% macro register_base_kernel_name(api) %}
 PD_REGISTER_BASE_KERNEL_NAME({{api["op_name"]}}, {{api["name"]}});
 {%- endmacro %}
 
 {% macro register_name_map(api) %}
-PD_REGISTER_ARG_MAPPING_FN({{api["op_name"]}}, phi::{{api["name"] | to_pascal_case}}OpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN({{api["op_name"]}}, phi::{{api["op_name"] | to_pascal_case}}OpArgumentMapping);
 {%- endmacro %}
 
 {% macro get_input_list(inputs, kernel_args) %}{# inline #}
@@ -218,7 +274,7 @@ DECLARE_INFER_SHAPE_FUNCTOR({{api["op_name"]}}, {{api["op_name"] | to_pascal_cas
 {% if api["inplace"] is not none %}
   {% set inplace_map %}
   {% for source, target in api["inplace"].items() %}
-{{"{"}}{{source | to_opmaker_name}}, {{target | to_opmaker_name}}{{"}"}}{{", " if not loop.last}}
+{{"{"}}{{target | to_opmaker_name}}, {{source | to_opmaker_name}}{{"}"}}{{", " if not loop.last}}
   {%- endfor %}
   {%- endset %}
 DECLARE_INPLACE_OP_INFERER({{api["op_name"] | to_pascal_case}}InplaceInferer,
@@ -333,7 +389,7 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       forward_output_orig_names)}});
   {% endfor %}
 
-  grad_op->SetAttrMap(this->Attrs());
+    grad_op->SetAttrMap(this->Attrs());
   {% for attr in api["attrs"] %}
     {% set attr_name = attr["name"] %}
     {% if attr_name in forward_attr_names %}
@@ -400,15 +456,15 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
   input_orig_names, output_orig_names) %}{# inline #}
   {% if name in input_names %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name)]%}
-Input("{{name_in_forward_orig}}")
+Input({{name_in_forward_orig | to_opmaker_name}})
   {%- elif name in output_names %}
     {% set name_in_forward_orig = output_orig_names[output_names.index(name)]%}
-Output("{{name}}")
+Output({{name | to_opmaker_name}})
   {%- elif name.endswith("_grad") %}{# output grad#}
     {% set name_in_forward = name[:-5] %}
     {% if name_in_forward in output_names %}
       {% set name_in_forward_orig = output_orig_names[output_names.index(name_in_forward)] %}
-OutputGrad("{{name_in_forward_orig}}")
+OutputGrad({{name_in_forward_orig | to_opmaker_name}})
     {%- endif %}
   {%- endif %}
 {%- endmacro %}
@@ -418,11 +474,11 @@ OutputGrad("{{name_in_forward_orig}}")
   {% if name[:-5] in input_names %}
     {% set name_in_forward = name[:-5] %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
-InputGrad("{{name[:-5]}}")
+InputGrad({{name_in_forward_orig | to_opmaker_name}})
   {%- elif (name | to_input_name) in input_names %}
     {% set name_in_forward = name | to_input_name %}
     {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
-InputGrad("{{name | to_input_name}}")
+InputGrad({{name | to_input_name | to_opmaker_name}})
   {%- endif %}
 {%- endmacro %}
 

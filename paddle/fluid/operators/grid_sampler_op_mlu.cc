@@ -47,8 +47,7 @@ class GridSamplerMLUKernel : public framework::OpKernel<T> {
     const std::string mode = ctx.Attr<std::string>("mode");
     const std::string padding_mode = ctx.Attr<std::string>("padding_mode");
     bool align_corners = ctx.Attr<bool>("align_corners");
-    const std::string data_format =
-        paddle::framework::DataLayoutToString(input->layout());
+    const std::string data_format = phi::DataLayoutToString(input->layout());
 
     PADDLE_ENFORCE_EQ(
         mode == "bilinear",

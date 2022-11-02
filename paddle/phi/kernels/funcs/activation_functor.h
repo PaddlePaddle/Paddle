@@ -956,7 +956,7 @@ struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct BReluFunctor : public BaseActivationFunctor<T> {
+struct HardTanhFunctor : public BaseActivationFunctor<T> {
   float t_min;
   float t_max;
 
@@ -974,7 +974,7 @@ struct BReluFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct BReluGradFunctor : public BaseActivationFunctor<T> {
+struct HardTanhGradFunctor : public BaseActivationFunctor<T> {
   float t_min;
   float t_max;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
@@ -2707,7 +2707,7 @@ struct CudaTanhGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaBReluFunctor : public BaseActivationFunctor<T> {
+struct CudaHardTanhFunctor : public BaseActivationFunctor<T> {
   float t_min;
   float t_max;
 
@@ -2775,7 +2775,7 @@ struct CudaMishGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaBReluGradFunctor : public BaseActivationFunctor<T> {
+struct CudaHardTanhGradFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);
   float t_min;
   float t_max;

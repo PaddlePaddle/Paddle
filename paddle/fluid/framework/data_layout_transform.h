@@ -67,7 +67,7 @@ inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Fail to convert layout %s to MKLDNN format.",
-          DataLayoutToString(layout)));
+          phi::DataLayoutToString(layout)));
   }
 }
 

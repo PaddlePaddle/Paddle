@@ -20,7 +20,7 @@ from github import Github
 
 
 class PRChecker(object):
-    """ PR Checker. """
+    """PR Checker."""
 
     def __init__(self):
         self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)

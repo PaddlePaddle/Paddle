@@ -96,36 +96,51 @@ class BatchSampler(Sampler):
 
     """
 
-    def __init__(self,
-                 dataset=None,
-                 sampler=None,
-                 shuffle=False,
-                 batch_size=1,
-                 drop_last=False):
+    def __init__(
+        self,
+        dataset=None,
+        sampler=None,
+        shuffle=False,
+        batch_size=1,
+        drop_last=False,
+    ):
         if dataset is None:
-            assert sampler is not None, \
-                "either dataset or sampler should be set"
-            assert isinstance(sampler, Sampler), \
-                "sampler should be a paddle.io.Sampler, but got {}".format(type(sampler))
+            assert (
+                sampler is not None
+            ), "either dataset or sampler should be set"
+            assert isinstance(
+                sampler, Sampler
+            ), "sampler should be a paddle.io.Sampler, but got {}".format(
+                type(sampler)
+            )
             assert not shuffle, "shuffle should be False when sampler is set"
             self.sampler = sampler
         else:
-            assert not isinstance(dataset, IterableDataset), \
-                "dataset should not be a paddle.io.IterableDataset"
-            assert sampler is None, \
-                "should not set both dataset and sampler"
-            assert isinstance(shuffle, bool), \
-                "shuffle should be a boolean value, but got {}".format(type(shuffle))
+            assert not isinstance(
+                dataset, IterableDataset
+            ), "dataset should not be a paddle.io.IterableDataset"
+            assert sampler is None, "should not set both dataset and sampler"
+            assert isinstance(
+                shuffle, bool
+            ), "shuffle should be a boolean value, but got {}".format(
+                type(shuffle)
+            )
             if shuffle:
                 self.sampler = RandomSampler(dataset)
             else:
                 self.sampler = SequenceSampler(dataset)
 
-        assert isinstance(batch_size, int) and batch_size > 0, \
-            "batch_size should be a positive integer, but got {}".format(batch_size)
+        assert (
+            isinstance(batch_size, int) and batch_size > 0
+        ), "batch_size should be a positive integer, but got {}".format(
+            batch_size
+        )
         self.batch_size = batch_size
-        assert isinstance(drop_last, bool), \
-            "drop_last should be a boolean value, but got {}".format(type(drop_last))
+        assert isinstance(
+            drop_last, bool
+        ), "drop_last should be a boolean value, but got {}".format(
+            type(drop_last)
+        )
         self.drop_last = drop_last
 
     def __iter__(self):
@@ -145,7 +160,6 @@ class BatchSampler(Sampler):
 
 
 class _InfiniteIterableSampler(object):
-
     def __init__(self, dataset, batch_size=1):
         assert isinstance(
             dataset, IterableDataset
@@ -214,36 +228,41 @@ class DistributedBatchSampler(BatchSampler):
                 break
     """
 
-    def __init__(self,
-                 dataset,
-                 batch_size,
-                 num_replicas=None,
-                 rank=None,
-                 shuffle=False,
-                 drop_last=False):
+    def __init__(
+        self,
+        dataset,
+        batch_size,
+        num_replicas=None,
+        rank=None,
+        shuffle=False,
+        drop_last=False,
+    ):
         self.dataset = dataset
 
-        assert isinstance(batch_size, int) and batch_size > 0, \
-                "batch_size should be a positive integer"
+        assert (
+            isinstance(batch_size, int) and batch_size > 0
+        ), "batch_size should be a positive integer"
         self.batch_size = batch_size
-        assert isinstance(shuffle, bool), \
-                "shuffle should be a boolean value"
+        assert isinstance(shuffle, bool), "shuffle should be a boolean value"
         self.shuffle = shuffle
-        assert isinstance(drop_last, bool), \
-                "drop_last should be a boolean number"
+        assert isinstance(
+            drop_last, bool
+        ), "drop_last should be a boolean number"
 
         from paddle.fluid.dygraph.parallel import ParallelEnv
 
         if num_replicas is not None:
-            assert isinstance(num_replicas, int) and num_replicas > 0, \
-                    "num_replicas should be a positive integer"
+            assert (
+                isinstance(num_replicas, int) and num_replicas > 0
+            ), "num_replicas should be a positive integer"
             self.nranks = num_replicas
         else:
             self.nranks = ParallelEnv().nranks
 
         if rank is not None:
-            assert isinstance(rank, int) and rank >= 0, \
-                    "rank should be a non-negative integer"
+            assert (
+                isinstance(rank, int) and rank >= 0
+            ), "rank should be a non-negative integer"
             self.local_rank = rank
         else:
             self.local_rank = ParallelEnv().local_rank
@@ -256,7 +275,7 @@ class DistributedBatchSampler(BatchSampler):
     def __iter__(self):
         num_samples = len(self.dataset)
         indices = np.arange(num_samples).tolist()
-        indices += indices[:(self.total_size - len(indices))]
+        indices += indices[: (self.total_size - len(indices))]
         assert len(indices) == self.total_size
         if self.shuffle:
             np.random.RandomState(self.epoch).shuffle(indices)
@@ -269,16 +288,21 @@ class DistributedBatchSampler(BatchSampler):
             assert last_batch_size % self.nranks == 0
             last_local_batch_size = last_batch_size // self.nranks
 
-            for i in range(self.local_rank * self.batch_size,
-                           len(indices) - last_batch_size,
-                           self.batch_size * self.nranks):
-                subsampled_indices.extend(indices[i:i + self.batch_size])
+            for i in range(
+                self.local_rank * self.batch_size,
+                len(indices) - last_batch_size,
+                self.batch_size * self.nranks,
+            ):
+                subsampled_indices.extend(indices[i : i + self.batch_size])
 
-            indices = indices[len(indices) - last_batch_size:]
+            indices = indices[len(indices) - last_batch_size :]
             subsampled_indices.extend(
-                indices[self.local_rank *
-                        last_local_batch_size:(self.local_rank + 1) *
-                        last_local_batch_size])
+                indices[
+                    self.local_rank
+                    * last_local_batch_size : (self.local_rank + 1)
+                    * last_local_batch_size
+                ]
+            )
             return subsampled_indices
 
         if self.nranks > 1:

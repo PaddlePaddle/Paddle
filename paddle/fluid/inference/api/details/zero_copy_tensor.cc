@@ -309,12 +309,12 @@ struct DataTypeInfo<int32_t> {
   paddle::experimental::DataType TYPE = paddle::experimental::DataType::INT32;
 };
 
-paddle::experimental::DataLayout LayoutConvert(DataLayout layout) {
+phi::DataLayout LayoutConvert(DataLayout layout) {
   PADDLE_ENFORCE_EQ(
       layout,
       DataLayout::kNCHW,
       paddle::platform::errors::InvalidArgument("Only NCHW is supported now."));
-  return paddle::experimental::DataLayout::NCHW;
+  return phi::DataLayout::NCHW;
 }
 
 template <typename T>
@@ -377,7 +377,7 @@ void Tensor::CopyToCpuImpl(T *data,
 
   if (paddle::platform::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_MKLDNN
-    if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
+    if (tensor->layout() == phi::DataLayout::kMKLDNN)
       paddle::framework::innerTransDataLayoutFromMKLDNN(
           tensor->layout(),
           paddle::platform::MKLDNNDeviceContext::tls()
@@ -664,13 +664,12 @@ std::vector<int> Tensor::shape() const {
 // mkldnn may does layout transform internally, so need to reorder before
 // return
 #ifdef PADDLE_WITH_MKLDNN
-  if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN) {
-    paddle::framework::DataLayout out_layout =
-        paddle::platform::MKLDNNDeviceContext::tls()
-            .get_cur_paddle_data_layout();
+  if (tensor->layout() == phi::DataLayout::kMKLDNN) {
+    phi::DataLayout out_layout = paddle::platform::MKLDNNDeviceContext::tls()
+                                     .get_cur_paddle_data_layout();
     // Set default as NCHW in case not specified
-    out_layout = out_layout == paddle::framework::DataLayout::kAnyLayout
-                     ? paddle::framework::DataLayout::kNCHW
+    out_layout = out_layout == phi::DataLayout::kAnyLayout
+                     ? phi::DataLayout::kNCHW
                      : out_layout;
     // In these data layouts, channel dimension is either on 2nd position: nChw
     // or
@@ -678,8 +677,8 @@ std::vector<int> Tensor::shape() const {
     // be done. Similarly for dim==1 when you have just one possible
     // combination.
     if (tensor->dims().size() < 3) return phi::vectorize<int>(tensor->dims());
-    if (out_layout == paddle::framework::DataLayout::kNHWC ||
-        out_layout == paddle::framework::DataLayout::kNDHWC) {
+    if (out_layout == phi::DataLayout::kNHWC ||
+        out_layout == phi::DataLayout::kNDHWC) {
       auto dims = phi::vectorize<int>(tensor->dims());
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       return dims;
@@ -853,7 +852,7 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
 
   if (paddle::platform::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_MKLDNN
-    if (tensor->layout() == paddle::framework::DataLayout::kMKLDNN)
+    if (tensor->layout() == phi::DataLayout::kMKLDNN)
       paddle::framework::innerTransDataLayoutFromMKLDNN(
           tensor->layout(),
           paddle::platform::MKLDNNDeviceContext::tls()

@@ -19,7 +19,6 @@ import struct
 
 
 class TestLookupTableDequantOp(OpTest):
-
     def setUp(self):
         self.op_type = "lookup_table_dequant"
         table = np.random.random((17, 32)).astype("float32")

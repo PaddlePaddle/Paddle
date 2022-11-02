@@ -152,15 +152,13 @@ class MatMulV2Op : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
       // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
       // op previously) then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ ==
-           framework::DataLayout::kMKLDNN) &&
-          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+      if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+          (tensor.layout() != phi::DataLayout::kMKLDNN) &&
           paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() ==
-              framework::DataLayout::kNHWC) {
+                  .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,
                                        tensor.place(),
-                                       framework::DataLayout::kNHWC);
+                                       phi::DataLayout::kNHWC);
       }
 #endif
       return framework::OpKernelType(

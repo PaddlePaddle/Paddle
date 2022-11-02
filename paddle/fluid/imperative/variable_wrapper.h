@@ -187,11 +187,9 @@ class VariableWrapper {
     return fwd_data_type_;
   }
 
-  paddle::experimental::DataLayout DataLayout() { return layout_; }
+  phi::DataLayout DataLayout() { return layout_; }
 
-  void SetDataLayout(const paddle::experimental::DataLayout layout) {
-    layout_ = layout;
-  }
+  void SetDataLayout(const phi::DataLayout layout) { layout_ = layout; }
 
   const platform::Place Place() const {
     const phi::DenseTensor* tensor = nullptr;
@@ -368,8 +366,7 @@ class VariableWrapper {
   std::vector<std::shared_ptr<std::function<void()>>> void_hooks_;
 
   // DataLayout for layoutAutotune
-  paddle::experimental::DataLayout layout_{
-      paddle::experimental::DataLayout::UNDEFINED};
+  phi::DataLayout layout_{phi::DataLayout::UNDEFINED};
 };
 
 }  // namespace imperative

@@ -23,7 +23,6 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TensorRTMultiClassNMSTest(InferencePassTest):
-
     def setUp(self):
         self.enable_trt = True
         self.enable_tensorrt_varseqlen = True
@@ -31,24 +30,27 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
         self.serialize = False
         self.bs = 1
         self.background_label = -1
-        self.score_threshold = .5
+        self.score_threshold = 0.5
         self.nms_top_k = 8
-        self.nms_threshold = .3
+        self.nms_threshold = 0.3
         self.keep_top_k = 8
         self.normalized = False
         self.num_classes = 8
         self.num_boxes = 8
         self.trt_parameters = InferencePassTest.TensorRTParam(
-            1 << 30, self.bs, 2, self.precision, self.serialize, False)
+            1 << 30, self.bs, 2, self.precision, self.serialize, False
+        )
 
     def build(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            boxes = fluid.data(name='bboxes',
-                               shape=[-1, self.num_boxes, 4],
-                               dtype='float32')
-            scores = fluid.data(name='scores',
-                                shape=[-1, self.num_classes, self.num_boxes],
-                                dtype='float32')
+            boxes = fluid.data(
+                name='bboxes', shape=[-1, self.num_boxes, 4], dtype='float32'
+            )
+            scores = fluid.data(
+                name='scores',
+                shape=[-1, self.num_classes, self.num_boxes],
+                dtype='float32',
+            )
             multiclass_nms_out = fluid.layers.multiclass_nms(
                 bboxes=boxes,
                 scores=scores,
@@ -57,17 +59,26 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
                 nms_top_k=self.nms_top_k,
                 nms_threshold=self.nms_threshold,
                 keep_top_k=self.keep_top_k,
-                normalized=self.normalized)
-            mutliclass_nms_out = multiclass_nms_out + 1.
+                normalized=self.normalized,
+            )
+            mutliclass_nms_out = multiclass_nms_out + 1.0
             multiclass_nms_out = fluid.layers.reshape(
-                multiclass_nms_out, [self.bs, 1, self.keep_top_k, 6],
-                name='reshape')
+                multiclass_nms_out,
+                [self.bs, 1, self.keep_top_k, 6],
+                name='reshape',
+            )
             out = fluid.layers.batch_norm(multiclass_nms_out, is_test=True)
 
-        boxes_data = np.arange(self.num_boxes * 4).reshape(
-            [self.bs, self.num_boxes, 4]).astype('float32')
-        scores_data = np.arange(1 * self.num_classes * self.num_boxes).reshape(
-            [self.bs, self.num_classes, self.num_boxes]).astype('float32')
+        boxes_data = (
+            np.arange(self.num_boxes * 4)
+            .reshape([self.bs, self.num_boxes, 4])
+            .astype('float32')
+        )
+        scores_data = (
+            np.arange(1 * self.num_classes * self.num_boxes)
+            .reshape([self.bs, self.num_classes, self.num_boxes])
+            .astype('float32')
+        )
         self.feeds = {
             'bboxes': boxes_data,
             'scores': scores_data,
@@ -80,7 +91,8 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
 
     def run_test_all(self):
         precision_opt = [
-            AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
+            AnalysisConfig.Precision.Float32,
+            AnalysisConfig.Precision.Half,
         ]
         serialize_opt = [False, True]
         max_shape = {
@@ -91,13 +103,15 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
         dynamic_shape_opt = [
             None,
             InferencePassTest.DynamicShapeParam(
-                {
-                    'bboxes': [1, 1, 4],
-                    'scores': [1, 1, 1]
-                }, max_shape, opt_shape, False)
+                {'bboxes': [1, 1, 4], 'scores': [1, 1, 1]},
+                max_shape,
+                opt_shape,
+                False,
+            ),
         ]
         for precision, serialize, dynamic_shape in itertools.product(
-                precision_opt, serialize_opt, dynamic_shape_opt):
+            precision_opt, serialize_opt, dynamic_shape_opt
+        ):
             self.precision = precision
             self.serialize = serialize
             self.dynamic_shape_params = dynamic_shape
@@ -109,7 +123,8 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
     def test_base(self):
         self.run_test()
@@ -129,10 +144,11 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
         }
         opt_shape = max_shape
         self.dynamic_shape_params = InferencePassTest.DynamicShapeParam(
-            {
-                'bboxes': [1, 1, 4],
-                'scores': [1, 1, 1]
-            }, max_shape, opt_shape, False)
+            {'bboxes': [1, 1, 4], 'scores': [1, 1, 1]},
+            max_shape,
+            opt_shape,
+            False,
+        )
         self.run_test()
 
     def test_background(self):

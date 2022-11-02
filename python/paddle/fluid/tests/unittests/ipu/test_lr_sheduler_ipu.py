@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class LR_New(LRScheduler):
-
     def __init__(self, learning_rate=1e-5, last_epoch=-1, verbose=False):
         super(LR_New, self).__init__(learning_rate, last_epoch, verbose)
 
@@ -32,16 +31,14 @@ class LR_New(LRScheduler):
 
 
 class TestConvNet(IPUOpTest):
-
     @IPUOpTest.static_graph
     def build_model(self):
-        image = paddle.static.data(name='image',
-                                   shape=[1, 3, 10, 10],
-                                   dtype='float32')
-        conv1 = paddle.static.nn.conv2d(image,
-                                        num_filters=3,
-                                        filter_size=3,
-                                        bias_attr=False)
+        image = paddle.static.data(
+            name='image', shape=[1, 3, 10, 10], dtype='float32'
+        )
+        conv1 = paddle.static.nn.conv2d(
+            image, num_filters=3, filter_size=3, bias_attr=False
+        )
         loss = paddle.mean(conv1)
 
         opt = paddle.optimizer.Lamb(learning_rate=LR_New())
@@ -61,9 +58,8 @@ class TestConvNet(IPUOpTest):
             ipu_strategy = paddle.static.IpuStrategy()
             ipu_strategy.set_graph_config(is_training=True)
             program = paddle.static.IpuCompiledProgram(
-                self.main_prog,
-                ipu_strategy=ipu_strategy).compile(self.feed_list,
-                                                   self.fetch_list)
+                self.main_prog, ipu_strategy=ipu_strategy
+            ).compile(self.feed_list, self.fetch_list)
         else:
             program = self.main_prog
 
@@ -71,9 +67,9 @@ class TestConvNet(IPUOpTest):
         for _ in range(100):
             if hasattr(program, "lr_sheduler"):
                 program.lr_sheduler.step()
-            loss_res = exe.run(program,
-                               feed=self.feed,
-                               fetch_list=self.fetch_list)
+            loss_res = exe.run(
+                program, feed=self.feed, fetch_list=self.fetch_list
+            )
             result.append(loss_res)
         return np.array(result)
 
