@@ -192,7 +192,6 @@ def deformable_conv(
     name=None,
 ):
     r"""
-    :api_attr: Static Graph
 
     **Deformable Convolution op**
 
@@ -239,9 +238,9 @@ def deformable_conv(
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Args:
-        input (Variable): The input image with [N, C, H, W] format. A Tensor with type
+        input (Tensor): The input image with [N, C, H, W] format. A Tensor with type
             float32, float64.
-        offset (Variable): The input coordinate offset of deformable convolution layer.
+        offset (Tensor): The input coordinate offset of deformable convolution layer.
             A Tensor with type float32, float64.
         Mask (Variable, Optional): The input mask of deformable convolution layer.
             A Tensor with type float32, float64. It should be None when you use
@@ -288,11 +287,8 @@ def deformable_conv(
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
     Returns:
-        Variable: The tensor variable storing the deformable convolution \
+        Tensor: The tensor variable storing the deformable convolution \
                   result. A Tensor with type float32, float64.
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
     Examples:
         .. code-block:: python
 
@@ -311,7 +307,7 @@ def deformable_conv(
 
           #deformable conv v1:
 
-          import paddle.fluid as fluid
+          import paddle
           C_in, H_in, W_in = 3, 32, 32
           filter_size, deformable_groups = 3, 1
           data = paddle.static.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
