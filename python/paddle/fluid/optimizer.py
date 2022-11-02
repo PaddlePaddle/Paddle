@@ -707,7 +707,7 @@ class Optimizer(object):
                     name, param.name
                 )
             )
-        if shape == None:
+        if shape is None:
             shape = param.shape
         assert isinstance(self.helper, LayerHelper)
 
@@ -770,7 +770,7 @@ class Optimizer(object):
             if framework._non_static_mode():
                 return self._global_accumulators[name]
             raise Exception("Global accumulator {} already exists".format(name))
-        if shape == None:
+        if shape is None:
             shape = [1]  # most case, global accumulator is of shape [1]
         assert isinstance(self.helper, LayerHelper)
 
@@ -1268,7 +1268,7 @@ class Optimizer(object):
 
         # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
         if self._flatten_param_grads and self.regularization is None:
-            if self._grad_clip == None or isinstance(
+            if self._grad_clip is None or isinstance(
                 self._grad_clip, ClipGradByGlobalNorm
             ):
                 params_grads = self.flatten_param_grads(params_grads)
@@ -3344,7 +3344,7 @@ class DpsgdOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
 
         # create the dpsgd optimize op
-        if self._seed == None:
+        if self._seed is None:
             self._seed = 0
 
         if framework._non_static_mode():
@@ -4454,10 +4454,10 @@ class ModelAverage(Optimizer):
         tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
         sum = layers.sum(x=[sum_1, sum_2, sum_3])
         tmp = layers.cast(
-            x=tmp, dtype='float32' if self._dtype == None else self._dtype
+            x=tmp, dtype='float32' if self._dtype is None else self._dtype
         )
         sum = layers.cast(
-            x=sum, dtype='float32' if self._dtype == None else self._dtype
+            x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
         ops._elementwise_div(x=sum, y=tmp, out=param)
 
@@ -5254,7 +5254,7 @@ class PipelineOptimizer(object):
             var_name = var_name.replace('.cast_fp16', '')
 
         post_ops = self.input_var_to_op[var_name]
-        if post_ops == None:
+        if post_ops is None:
             return None
         result_op = None
         for post_op, post_idx in reversed(post_ops):
@@ -5269,7 +5269,7 @@ class PipelineOptimizer(object):
         variable named var_name.
         """
         prev_ops = self.output_var_to_op[var_name]
-        if prev_ops == None:
+        if prev_ops is None:
             return None
         result_op = None
         for prev_op, prev_idx in reversed(prev_ops):
@@ -7270,7 +7270,7 @@ class RecomputeOptimizer(Optimizer):
 
                     if output_var in self.un_offload_checkpoint_names:
                         # insert sync op if last checkpoint has not been sync
-                        if last_offload_checkpoint != None:
+                        if last_offload_checkpoint is not None:
                             if (
                                 self.checkpoint_usage_count_and_idx[
                                     last_offload_checkpoint
@@ -7400,7 +7400,7 @@ class RecomputeOptimizer(Optimizer):
         """
         self._main_program = loss.block.program
         self.block = loss.block
-        if startup_program == None:
+        if startup_program is None:
             startup_program = paddle.static.default_startup_program()
 
         with program_guard(self._main_program, startup_program):

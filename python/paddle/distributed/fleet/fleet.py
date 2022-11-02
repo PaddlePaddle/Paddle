@@ -303,7 +303,7 @@ class Fleet(object):
                 paddle.distributed.init_parallel_env()
 
             # hybrid parallel not support for npu/xpu
-            if self._user_defined_strategy.heter_ccl_mode == False:
+            if not self._user_defined_strategy.heter_ccl_mode:
                 # init hybrid parallel environment in dygraph
                 if tp._HYBRID_PARALLEL_GROUP is None:
                     self._init_hybrid_parallel_env()
@@ -1285,7 +1285,7 @@ class Fleet(object):
         context["origin_main_program"] = self.origin_main_program
         context["origin_main_programs"] = [self.origin_main_program]
         context["loss"] = loss
-        if startup_program == None:
+        if startup_program is None:
             self.origin_startup_program = (
                 paddle.static.default_startup_program().clone(for_test=False)
             )

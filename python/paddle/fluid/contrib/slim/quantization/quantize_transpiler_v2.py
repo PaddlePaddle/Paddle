@@ -162,7 +162,7 @@ class QuantizeTranspilerV2(object):
             scope(fluid.Scope, optional): The scope of the program, use it to load
                 and save variables. If scope=None, get scope by global_scope().
         """
-        scope = global_scope() if scope == None else scope
+        scope = global_scope() if scope is None else scope
 
         for block in test_program.blocks:
             for op in block.ops:

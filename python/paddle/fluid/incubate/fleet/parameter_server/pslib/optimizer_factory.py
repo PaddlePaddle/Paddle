@@ -499,7 +499,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         for num in range(len(losses)):
             loss = losses[num]
             parameters = None
-            if parameter_list != None:
+            if parameter_list is not None:
                 parameters = parameter_list[num]
             prog_id = str(id(loss.block.program))
             # param_grads of program

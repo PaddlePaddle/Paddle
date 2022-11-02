@@ -29,7 +29,7 @@ class TestFunctionSpec(unittest.TestCase):
         args_name = foo_spec.args_name
         self.assertListEqual(args_name, ['a', 'b', 'c', 'd'])
         self.assertTrue(foo_spec.dygraph_function == foo_func)
-        self.assertTrue(foo_spec.input_spec is None)
+        self.assertIsNone(foo_spec.input_spec)
 
     def test_verify_input_spec(self):
         a_spec = InputSpec([None, 10], name='a')

@@ -131,7 +131,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             softmax, labels, self.soft_label, self.axis, self.ignore_index
         )
 
-        if self.use_softmax == False:
+        if not self.use_softmax:
             self.inputs = {"Logits": softmax, "Label": labels}
         else:
             self.inputs = {"Logits": logits, "Label": labels}

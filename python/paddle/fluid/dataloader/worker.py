@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import six
 import sys
 import paddle
 import numpy as np
@@ -395,7 +394,7 @@ def _worker_loop(
         # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
         pass
     except:
-        six.reraise(*sys.exc_info())
+        raise
     finally:
         if use_shared_memory:
             _cleanup_mmap()

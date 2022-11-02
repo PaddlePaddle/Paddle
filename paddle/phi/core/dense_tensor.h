@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/storage_properties.h"
 #include "paddle/phi/core/stream.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -163,12 +164,58 @@ class DenseTensor : public TensorBase,
 
   void* data();
 
+  /// \brief Returns the storage_properties of the tensor.
+  /// \return The storage_properties of the tensor.
+  template <typename DeviceT>
+  const DeviceT& storage_properties() const;
+
+  /// \brief Sets the storage_properties of the tensor.
+  /// \param storage_properties The storage_properties of the tensor.
+  void set_storage_properties(
+      std::unique_ptr<StorageProperties>&& storage_properties);
+
  private:
   friend class DenseTensorUtils;
 
  protected:
   DenseTensorMeta meta_;
   std::shared_ptr<phi::Allocation> holder_;
+
+  /** [ Why need StorageProperties? ]
+   *
+   * 1. Some hardware or third-party libraries add some additional storage
+   * properties on top of the description of the basic DenseTensor, such as
+   * memory desc of MKLDNN, storage_format and storage_layout of NPU,
+   * these members are necessary for optimal performance, but if the properties
+   * of each device are added to the DenseTensor with different macro isolation,
+   * the memory layout of the DenseTensor will become more fragmented.
+   * Under different compilation conditions, the member layout of the
+   * DenseTensor is very unstable, which may introduce bugs that are difficult
+   * to debug.
+   *
+   * 2. If the layout of DenseTensor is very different from the framework
+   * itself, it is recommended to directly inherit TensorBase to implement
+   * SpatialTensor.
+   *
+   * TODO(chenweihang): merge the dnnl::memory::desc and
+   * dnnl::memory::format_tag into StorageProperties, dnnl::memory::desc is a
+   * type that takes up a lot of space, original tensor members' size:
+   *
+   * DenseTensor size: 880
+   * -------- ordered members --------:
+   * DenseTensorMeta size: 128
+   *  - is_scalar_ size: 1
+   *  - DDim size: 80
+   *  - DataType size: 4
+   *  - DataLayout size: 4
+   *  - LoD size: 24
+   *  - offset size: 8
+   *  std::shared_ptr<phi::Allocation> size: 16
+   *  std::shared_ptr<InplaceVersion> size: 16 // need to be moved
+   *  dnnl::memory::format_tag size: 4 // need to be moved
+   *  dnnl::memory::desc size: 696 // need to be moved
+   */
+  std::unique_ptr<StorageProperties> storage_properties_{nullptr};
 
  public:
   /* Temporarily put InplaceVersion inside DenseTensor.

@@ -376,7 +376,7 @@ Please use '.. code-block:: python' to format the sample code."""
         # None - no sample code found;
         # False - it need other special equipment or environment.
         # so, the following conditional statements are intentionally arranged.
-        if matched == True:
+        if matched:
             tfname = os.path.join(
                 SAMPLECODE_TEMPDIR,
                 '{}_example{}'.format(
@@ -395,7 +395,7 @@ Please use '.. code-block:: python' to format the sample code."""
                 )
             )
             SUMMARY_INFO['skiptest'].append("{}-{}".format(name, cb['id']))
-        elif matched == False:
+        elif not matched:
             logger.info(
                 '{}\' code block (name:{}, id:{}) required({}) not match capacity({}).'.format(
                     name,
