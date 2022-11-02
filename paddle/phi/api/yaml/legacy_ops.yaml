@@ -2394,16 +2394,6 @@
     data_type : arr
   backward : take_along_axis_grad
 
-- op : tanh
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : tanh
-  inplace : (x -> out)
-  backward : tanh_grad
-
 - op : tanh_shrink
   args : (Tensor x)
   output : Tensor
