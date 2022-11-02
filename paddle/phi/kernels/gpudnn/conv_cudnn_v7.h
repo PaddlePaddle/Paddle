@@ -783,4 +783,138 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
   }
 };
 
+template <typename T, ConvKind CK>
+struct ConvRunner {};
+
+template <typename T>
+struct ConvRunner<T, ConvKind::kForward> {
+  static void Apply(
+      const phi::GPUContext& ctx,
+      const ConvArgs& args,
+      const SearchResult<cudnnConvolutionFwdAlgo_t>& search_result,
+      const T* input_ptr,
+      const T* filter_ptr,
+      T* output_ptr,
+      int groups,
+      int group_offset_in,
+      int group_offset_filter,
+      int group_offset_out,
+      size_t workspace_size,
+      phi::DnnWorkspaceHandle* workspace_handle,
+      bool use_addto = false) {
+    ScalingParamType<T> alpha = 1.0f;
+    ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
+
+    auto cudnn_handle = ctx.cudnn_handle();
+    for (int i = 0; i < groups; i++) {
+      workspace_handle->RunFunc(
+          [&](void* workspace_ptr) {
+            PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnConvolutionForward(
+                cudnn_handle,
+                &alpha,
+                args.idesc.desc(),
+                input_ptr + i * group_offset_in,
+                args.wdesc.desc(),
+                filter_ptr + i * group_offset_filter,
+                args.cdesc.desc(),
+                search_result.algo,
+                workspace_ptr,
+                workspace_size,
+                &beta,
+                args.odesc.desc(),
+                output_ptr + i * group_offset_out));
+          },
+          workspace_size);
+    }
+  }
+};
+
+template <typename T>
+struct ConvRunner<T, ConvKind::kBackwardData> {
+  static void Apply(
+      const phi::GPUContext& ctx,
+      const ConvArgs& args,
+      const SearchResult<cudnnConvolutionBwdDataAlgo_t>& search_result,
+      const T* output_grad_ptr,
+      const T* filter_ptr,
+      T* input_grad_ptr,
+      int groups,
+      int group_offset_in,
+      int group_offset_filter,
+      int group_offset_out,
+      size_t workspace_size,
+      phi::DnnWorkspaceHandle* workspace_handle,
+      bool use_addto = false) {
+    ScalingParamType<T> alpha = 1.0f;
+    ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
+
+    auto cudnn_handle = ctx.cudnn_handle();
+    for (int i = 0; i < groups; i++) {
+      workspace_handle->RunFunc(
+          [&](void* workspace_ptr) {
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                phi::dynload::cudnnConvolutionBackwardData(
+                    cudnn_handle,
+                    &alpha,
+                    args.wdesc.desc(),
+                    filter_ptr + i * group_offset_filter,
+                    args.odesc.desc(),
+                    output_grad_ptr + i * group_offset_out,
+                    args.cdesc.desc(),
+                    search_result.algo,
+                    workspace_ptr,
+                    workspace_size,
+                    &beta,
+                    args.idesc.desc(),
+                    input_grad_ptr + i * group_offset_in));
+          },
+          workspace_size);
+    }
+  }
+};
+
+template <typename T>
+struct ConvRunner<T, ConvKind::kBackwardFilter> {
+  static void Apply(
+      const phi::GPUContext& ctx,
+      const ConvArgs& args,
+      const SearchResult<cudnnConvolutionBwdFilterAlgo_t>& search_result,
+      const T* output_grad_ptr,
+      const T* input_ptr,
+      T* filter_grad_ptr,
+      int groups,
+      int group_offset_in,
+      int group_offset_filter,
+      int group_offset_out,
+      size_t workspace_size,
+      phi::DnnWorkspaceHandle* workspace_handle,
+      bool use_addto = false) {
+    ScalingParamType<T> alpha = 1.0f;
+    ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
+
+    auto cudnn_handle = ctx.cudnn_handle();
+    for (int i = 0; i < groups; i++) {
+      workspace_handle->RunFunc(
+          [&](void* workspace_ptr) {
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                phi::dynload::cudnnConvolutionBackwardFilter(
+                    cudnn_handle,
+                    &alpha,
+                    args.idesc.desc(),
+                    input_ptr + i * group_offset_in,
+                    args.odesc.desc(),
+                    output_grad_ptr + i * group_offset_out,
+                    args.cdesc.desc(),
+                    search_result.algo,
+                    workspace_ptr,
+                    workspace_size,
+                    &beta,
+                    args.wdesc.desc(),
+                    filter_grad_ptr + i * group_offset_filter));
+          },
+          workspace_size);
+    }
+  }
+};
+
 }  // namespace phi
