@@ -108,7 +108,7 @@ struct SinFunctor : public BaseActivationFunctor<T> {
 
 // sine''(x) = -sin(x)
 template <typename T>
-struct SinGradGradFunctor : public BaseActivationFunctor<T> {
+struct SinDoubleGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device>
   void operator()(const Device& dev,
                   const DenseTensor* X,
@@ -118,21 +118,21 @@ struct SinGradGradFunctor : public BaseActivationFunctor<T> {
                   DenseTensor* ddOut) const {
     auto* d = dev.eigen_device();
     auto ddx = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(ddX, "Input", "DDX", "SinGradGrad"));
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "SinDoubleGrad"));
     auto x = EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(X, "Input", "X", "SinGradGrad"));
+        GET_DATA_SAFELY(X, "Input", "X", "SinDoubleGrad"));
     // sin GradGrad: ddy=cos(x)*ddx, dx=-sin(x)*dy*ddx
     // calculate dx first, so ddy can inplace ddx
     if (dX) {
       auto dx = EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(dX, "Output", "DX", "SinGradGrad"));
+          GET_DATA_SAFELY(dX, "Output", "DX", "SinDoubleGrad"));
       auto dout = EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(dOut, "Output", "DOut", "SinGradGrad"));
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "SinDoubleGrad"));
       dx.device(*d) = -ddx * x.unaryExpr(Sine<T>()) * dout;
     }
     if (ddOut) {
       auto ddout = EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SinGradGrad"));
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SinDoubleGrad"));
       ddout.device(*d) = ddx * x.unaryExpr(Cosine<T>());
     }
   }

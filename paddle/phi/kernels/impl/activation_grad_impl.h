@@ -430,7 +430,7 @@ void SinDoubleGradKernel(const Context& dev_ctx,
   if (ddout) {
     dev_ctx.template Alloc<T>(ddout);
   }
-  phi::funcs::SinGradGradFunctor<T> functor;
+  phi::funcs::SinDoubleGradFunctor<T> functor;
   functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
 }
 
