@@ -2116,6 +2116,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "take_along_axis") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
     if (op_type == "expand_v2") {
       if (!with_dynamic_shape) {
         return false;
@@ -2261,6 +2267,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "layernorm_shift_partition",
       "lookup_table",
       "lookup_table_v2",
+      "take_along_axis",
       "expand_v2"};
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -2379,6 +2386,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "merge_layernorm",
       "lookup_table",
       "lookup_table_v2",
+      "take_along_axis",
       "expand_v2"};
 };
 
