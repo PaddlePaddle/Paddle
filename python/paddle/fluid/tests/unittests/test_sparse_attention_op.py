@@ -221,7 +221,7 @@ class TestSparseAttentionOp(OpTest):
 
         self.key_padding_mask = key_padding_mask.astype(self.dtype)
         self.attn_mask = attn_mask.astype(self.dtype)
-        if self.use_mask == True:
+        if self.use_mask:
             result, result_sdd, result_softmax = ref_batch_sparse_attention(
                 self.q,
                 self.k,
@@ -236,7 +236,7 @@ class TestSparseAttentionOp(OpTest):
                 self.q, self.k, self.v, self.offset, self.columns
             )
 
-        if self.use_mask == True:
+        if self.use_mask:
             self.inputs = {
                 'Q': self.q,
                 'K': self.k,
@@ -326,7 +326,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
             )
             key_padding_mask_shape = (self.shape[0], self.shape[2])
             attn_mask_shape = (self.shape[2], self.shape[2])
-            if self.use_mask == True:
+            if self.use_mask:
                 key_padding_mask = paddle.static.data(
                     name="KeyPaddingMask",
                     shape=key_padding_mask_shape,
@@ -367,7 +367,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
             attn_mask_np = attn_mask_np.astype(self.dtype)
 
             exe = fluid.Executor(self.place)
-            if self.use_mask == True:
+            if self.use_mask:
                 fetches_result = exe.run(
                     feed={
                         "Q": Q_np,
@@ -405,7 +405,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
                 )
 
             np.testing.assert_allclose(
-                fetches_result, expected_result, rtol=1e-05, atol=1e-05
+                fetches_result[0], expected_result, rtol=1e-05, atol=1e-05
             )
 
     def test_dygraph(self):
@@ -436,7 +436,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
         paddle_kp_mask = paddle.to_tensor(key_padding_mask, place=self.place)
         paddle_attn_mask = paddle.to_tensor(attn_mask, place=self.place)
 
-        if self.use_mask == True:
+        if self.use_mask:
             paddle_result = F.sparse_attention(
                 paddle_query,
                 paddle_key,

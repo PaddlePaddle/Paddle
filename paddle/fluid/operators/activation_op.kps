@@ -130,6 +130,11 @@ class ActivationGradCudaKernel
   }
 };
 
+template <typename T>
+using CudaBReluFunctor = phi::funcs::CudaHardTanhFunctor<T>;
+template <typename T>
+using CudaBReluGradFunctor = phi::funcs::CudaHardTanhGradFunctor<T>;
+
 USE_PHI_FUNCTOR(CudaCos)
 USE_PHI_FUNCTOR(CudaTan)
 USE_PHI_FUNCTOR(CudaAcos)
@@ -142,7 +147,6 @@ USE_PHI_FUNCTOR(CudaAsinh)
 USE_PHI_FUNCTOR(CudaAcosh)
 USE_PHI_FUNCTOR(CudaAtanh)
 USE_PHI_FUNCTOR(CudaTanh)
-USE_PHI_FUNCTOR(CudaBRelu)
 USE_PHI_FUNCTOR(CudaLeakyRelu)
 USE_PHI_FUNCTOR(CudaThresholdedRelu)
 USE_PHI_FUNCTOR(CudaRelu6)
@@ -276,13 +280,13 @@ REGISTER_OP_KERNEL(
     KP,
     plat::XPUPlace,
     ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                              phi::funcs::CudaBReluFunctor<float>>);
+                              phi::funcs::CudaHardTanhFunctor<float>>);
 REGISTER_OP_KERNEL(
     brelu_grad,
     KP,
     plat::XPUPlace,
     ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
-                                  phi::funcs::CudaBReluGradFunctor<float>>);
+                                  phi::funcs::CudaHardTanhGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(ceil,
                    KP,

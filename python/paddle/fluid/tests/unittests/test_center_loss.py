@@ -58,7 +58,7 @@ class TestCenterLossOp(OpTest):
             'CenterUpdateRate': rate,
         }
 
-        if self.need_update == True:
+        if self.need_update:
             self.outputs = {
                 'SampleCenterDiff': output,
                 'Loss': loss,

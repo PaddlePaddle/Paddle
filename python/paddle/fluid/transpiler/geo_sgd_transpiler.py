@@ -104,7 +104,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
 
         # distribute lookup table
         self.table_name = find_distributed_lookup_table(self.origin_program)
-        self.has_distributed_lookup_table = self.table_name != None
+        self.has_distributed_lookup_table = self.table_name is not None
         self.origin_program._distributed_lookup_table = (
             self.table_name if self.table_name else None
         )

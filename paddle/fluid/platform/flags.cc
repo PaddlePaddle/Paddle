@@ -70,6 +70,34 @@ PADDLE_DEFINE_EXPORTED_bool(
 
 /**
  * Operator related FLAG
+ * Name: FLAGS_abort_on_nan_inf
+ * Since Version: 2.5.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: Used to debug. Whether abort the process when any operator produce
+ * NAN/INF. It only works when FLAGS_check_nan_inf is set.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    abort_on_nan_inf,
+    true,
+    "Whether abort the process when any operator produce NAN/INF or not.");
+
+/**
+ * Operator related FLAG
+ * Name: FLAGS_check_tensor_max_min
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Enable to calculate and print the max and min value of
+ * each operator's output tensor. It only works when FLAGS_check_nan_inf is set.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    check_tensor_max_min,
+    false,
+    "Whether to check all the output tensors's min and max value.");
+
+/**
+ * Operator related FLAG
  * Name: FLAGS_check_nan_inf
  * Since Version: 0.13.0
  * Value Range: bool, default=false
@@ -1010,13 +1038,26 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Name: FLAGS_jit_engine_type
  * Since Version: 2.3.0
  * Value Range: string, {Executor, PE},
- * default=PE
+ * default=Predictor
  * Example:
  * Note:
  * FLAGS_jit_engine_type == Executor, using ExecutorEngine by default
  * FLAGS_jit_engine_type == PE, using PEEngine by default
  * FLAGS_jit_engine_type == New, using InterpreterEngine by default
+ * FLAGS_jit_engine_type == Predictor, using inference Predictor by default
  */
 PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
-                              "PE",
+                              "Predictor",
                               "Choose default funciton type in JitLayer.");
+
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+/**
+ * CUDNNv8 related FLAG
+ * Name: enable_cudnn_frontend
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Enable CUDNNv8 Frontend API for CUDNN kernels.
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
+#endif  // PADDLE_WITH_CUDNN_FRONTEND

@@ -947,7 +947,6 @@ def fused_multi_transformer(
             # required: gpu
             import paddle
             import paddle.incubate.nn.functional as F
-            import numpy as np
 
             # input: [batch_size, seq_len, embed_dim]
             x = paddle.rand(shape=(2, 4, 128), dtype="float32")

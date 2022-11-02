@@ -50,6 +50,9 @@ TEST_META_SHAPE_DATA = {
     'Axis1InLargerDim': {'x_shape': [1, 4, 5], 'y_shape': [2, 3, 1, 5]},
     'EqualDim1': {'x_shape': [10, 7], 'y_shape': [10, 7]},
     'EqualDim2': {'x_shape': [1, 1, 4, 5], 'y_shape': [2, 3, 1, 5]},
+    'ZeroDim1': {'x_shape': [], 'y_shape': []},
+    'ZeroDim2': {'x_shape': [2, 3, 4, 5], 'y_shape': []},
+    'ZeroDim3': {'x_shape': [], 'y_shape': [2, 3, 4, 5]},
 }
 
 TEST_META_WRONG_SHAPE_DATA = {
@@ -116,7 +119,7 @@ def np_data_generator(np_shape, dtype, *args, **kwargs):
     if dtype == bool:
         return np.random.choice(a=[True, False], size=np_shape).astype(bool)
     else:
-        return np.random.randn(*np_shape).astype(dtype)
+        return np.random.normal(0, 1, np_shape).astype(dtype)
 
 
 def test(unit_test, use_gpu=False, test_error=False):

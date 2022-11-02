@@ -79,16 +79,17 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
-        "relu",     "relu6", "sigmoid",
-        "elu",      "selu",  "softsign",
-        "softplus", "stanh", "thresholded_relu",
-        "exp",      "log",   "sqrt",
-        "abs",      "sin",   "cos",
-        "tan",      "tanh",  "sinh",
-        "cosh",     "asin",  "acos",
-        "atan",     "asinh", "atanh",
-        "ceil",     "floor", "erf",
-        "silu"};
+        "relu",      "relu6", "sigmoid",
+        "elu",       "selu",  "softsign",
+        "softplus",  "stanh", "thresholded_relu",
+        "exp",       "log",   "sqrt",
+        "abs",       "sin",   "cos",
+        "tan",       "tanh",  "sinh",
+        "cosh",      "asin",  "acos",
+        "atan",      "asinh", "atanh",
+        "ceil",      "floor", "erf",
+        "silu",      "celu",  "tanh_shrink",
+        "logsigmoid"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -2102,6 +2103,15 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+
+    if (op_type == "preln_layernorm_shift_partition") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the layernorm_shift_partition does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
     if (op_type == "merge_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "The merge_layernorm op does not support "
@@ -2205,6 +2215,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shuffle_channel",
       "swish",
       "silu",
+      "celu",
       "split",
       "instance_norm",
       "gelu",
@@ -2261,9 +2272,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "layernorm_shift_partition",
+      "tanh_shrink",
+      "logsigmoid",
+      "preln_layernorm_shift_partition",
       "lookup_table",
       "lookup_table_v2",
       "expand_v2"};
+
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -2321,6 +2336,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shuffle_channel",
       "swish",
       "silu",
+      "celu",
       "split",
       "instance_norm",
       "gelu",
@@ -2378,6 +2394,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
+      "tanh_shrink",
+      "logsigmoid",
+      "preln_layernorm_shift_partition",
       "merge_layernorm",
       "lookup_table",
       "lookup_table_v2",
