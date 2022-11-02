@@ -376,7 +376,7 @@ void ConvCudnnGradKernel(const Context& ctx,
     bwd_result.algo = search1::Find<T>(
         args1, exhaustive_search, deterministic, workspace_size, ctx);
 #else
-    using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+    using search1 = SearchAlgorithm<ConvKind::kBackwardData>;
     bwd_result = search1::Find<T>(ctx, args1, exhaustive_search, deterministic);
     workspace_size = std::max(workspace_size, bwd_result.workspace_size);
 #endif
@@ -401,7 +401,7 @@ void ConvCudnnGradKernel(const Context& ctx,
     filter_result.algo = search2::Find<T>(
         args2, exhaustive_search, deterministic, workspace_size, ctx);
 #else
-    using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+    using search2 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result =
         search2::Find<T>(ctx, args2, exhaustive_search, deterministic);
     VLOG(3) << "filter algo: " << filter_result.algo << ", time "
@@ -937,7 +937,7 @@ void ConvCudnnGradGradKernel(
       fwd_result1.algo = search1::Find<T>(
           args1, exhaustive_search, false, workspace_size, ctx);
 #else
-      using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+      using search1 = SearchAlgorithm<ConvKind::kForward>;
       fwd_result1 = search1::Find<T>(ctx, args1, exhaustive_search, false);
       workspace_size = search1::GetWorkspaceSize(args1, fwd_result1.algo);
 #endif
@@ -962,7 +962,7 @@ void ConvCudnnGradGradKernel(
       fwd_result2.algo = search2::Find<T>(
           args2, exhaustive_search, false, workspace_size, ctx);
 #else
-      using search2 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+      using search2 = SearchAlgorithm<ConvKind::kForward>;
       fwd_result2 = search2::Find<T>(ctx, args2, exhaustive_search, false);
       workspace_size = std::max(
           workspace_size, search2::GetWorkspaceSize(args2, fwd_result2.algo));
@@ -988,7 +988,7 @@ void ConvCudnnGradGradKernel(
     filter_result.algo = search3::Find<T>(
         args3, exhaustive_search, deterministic, workspace_size, ctx);
 #else
-    using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+    using search3 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result =
         search3::Find<T>(ctx, args3, exhaustive_search, deterministic);
     workspace_size = std::max(
@@ -1015,7 +1015,7 @@ void ConvCudnnGradGradKernel(
     data_result.algo = search4::Find<T>(
         args4, exhaustive_search, deterministic, workspace_size, ctx);
 #else
-    using search4 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+    using search4 = SearchAlgorithm<ConvKind::kBackwardData>;
     data_result =
         search4::Find<T>(ctx, args4, exhaustive_search, deterministic);
     workspace_size = std::max(
@@ -1154,19 +1154,19 @@ void ConvCudnnGradGradKernel(
         },
         workspace_size);
 #else
-    ConvRunner<T, kBackwardFilter>::Apply(ctx,
-                                          args3,
-                                          filter_result,
-                                          transformed_dy_channel,
-                                          ddx,
-                                          dw,
-                                          groups,
-                                          group_offset_in,
-                                          group_offset_filter,
-                                          group_offset_out,
-                                          workspace_size,
-                                          &workspace_handle,
-                                          false);
+    ConvRunner<T, ConvKind::kBackwardFilter>::Apply(ctx,
+                                                    args3,
+                                                    filter_result,
+                                                    transformed_dy_channel,
+                                                    ddx,
+                                                    dw,
+                                                    groups,
+                                                    group_offset_in,
+                                                    group_offset_filter,
+                                                    group_offset_out,
+                                                    workspace_size,
+                                                    &workspace_handle,
+                                                    false);
 #endif
   }
 

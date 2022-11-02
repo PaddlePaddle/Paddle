@@ -227,7 +227,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
       search::Find<T>(args, false, deterministic, workspace_size, ctx);
 #else
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
-  using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+  using search = SearchAlgorithm<ConvKind::kBackwardData>;
   bwd_result = search::Find<T>(ctx, args, false, deterministic, false);
   workspace_size =
       std::max(workspace_size, search::GetWorkspaceSize(args, bwd_result.algo));

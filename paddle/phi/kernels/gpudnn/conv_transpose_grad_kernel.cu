@@ -227,7 +227,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     fwd_result.algo =
         search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
 #else
-    using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+    using search1 = SearchAlgorithm<ConvKind::kForward>;
     fwd_result = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search1::GetWorkspaceSize(args1, fwd_result.algo));
@@ -252,7 +252,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     filter_result.algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
 #else
-    using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+    using search2 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search2::GetWorkspaceSize(args2, filter_result.algo));
@@ -698,7 +698,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     bwd_result1.algo =
         search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
 #else
-    using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+    using search1 = SearchAlgorithm<ConvKind::kBackwardData>;
     bwd_result1 = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = search1::GetWorkspaceSize(args1, bwd_result1.algo);
 #endif
@@ -720,7 +720,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     bwd_result2.algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
 #else
-    using search2 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+    using search2 = SearchAlgorithm<ConvKind::kBackwardData>;
     bwd_result2 = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search2::GetWorkspaceSize(args2, bwd_result2.algo));
@@ -745,7 +745,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     filter_result.algo =
         search3::Find<T>(args3, false, deterministic, workspace_size, ctx);
 #else
-    using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+    using search3 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result = search3::Find<T>(ctx, args3, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search3::GetWorkspaceSize(args3, filter_result.algo));
@@ -771,7 +771,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     fwd_result.algo =
         search4::Find<T>(args4, false, deterministic, workspace_size, ctx);
 #else
-    using search4 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+    using search4 = SearchAlgorithm<ConvKind::kForward>;
     fwd_result = search4::Find<T>(ctx, args4, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search4::GetWorkspaceSize(args4, fwd_result.algo));

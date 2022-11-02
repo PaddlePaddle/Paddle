@@ -315,7 +315,7 @@ void ConvCudnnKernel(const Context& ctx,
       args, exhaustive_search, deterministic, workspace_size, ctx);
 #else
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
-  using search = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+  using search = SearchAlgorithm<ConvKind::kForward>;
   fwd_result = search::Find<T>(ctx, args, exhaustive_search, deterministic);
   workspace_size = fwd_result.workspace_size;
 #endif
