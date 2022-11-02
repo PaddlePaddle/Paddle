@@ -19,7 +19,6 @@ import logging
 import inspect
 import pdb
 import re
-import six
 import types
 
 import numpy
@@ -51,17 +50,7 @@ from paddle.fluid.dygraph.layers import Layer
 
 __all__ = ["convert_call"]
 
-# TODO(liym27): A better way to do this.
-BUILTIN_LIKELY_MODULES = [
-    collections,
-    pdb,
-    six,
-    copy,
-    inspect,
-    re,
-    numpy,
-    logging,
-]
+
 # The api(s) should be considered as plain function and convert
 # them into static layer code.
 PADDLE_NEED_CONVERT_APIS = [Sequential]
@@ -99,6 +88,30 @@ def is_builtin(func, name=None):
         return True
     else:
         return False
+
+
+def builtin_modules():
+    """
+    Return builtin modules.
+    """
+    moduels = [
+        collections,
+        pdb,
+        copy,
+        inspect,
+        re,
+        numpy,
+        logging,
+    ]
+    try:
+        import six
+
+        moduels.append(six)
+    except:
+        pass  # do nothing
+
+
+BUILTIN_LIKELY_MODULES = builtin_modules()
 
 
 def is_unsupported(func):
