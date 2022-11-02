@@ -23,6 +23,53 @@ namespace paddle {
 namespace framework {
 namespace ir {
 namespace patterns {
+/*
+ * \brief   Fuse the subgraph representing multihead attention part of roformer
+ * into multihead_matmul_roformer op.
+ *
+ * \note    The following graph represents this equation:
+ *
+ *          x        - input data
+ *          cos      - input data of cos mat
+ *          sin      - input data of sin mat
+ *          ele_add  - elementwise_add
+ *          ele_mul  - elementwise_mul
+ *
+ *                 x
+ *              /  |         \
+ *           /     |            \
+ *       /         |              \
+ *       |         |               |
+ *       |         |               |
+ *      mul        mul            mul
+ *       |         |               |
+ *    ele_add    ele_add        ele_add
+ *       |         |               |
+ *    reshape2   reshape2       reshape2
+ *       |         |               |
+ *  transpose2  transpose2     transpose2
+ *       |        /    \         /     \
+ *       |       |      |       |       |
+ *       |       | cos  split   | sin  split
+ *       |       | /     |      | /      |
+ *       |     ele_mul concat ele_mul  concat
+ *       |       |      |       |       |
+ *       |        \    /         \     /
+ *       |        ele_add        ele_add
+ *       |           |              |
+ *       |           |            scale
+ *       |           |              |
+ *       |             \          /
+ *       |                matmul
+ *       |                   |
+ *       |                ele_add
+ *        \                  |
+ *          \             softmax
+ *            \              |
+ *               \         /
+ *                  matmmul
+ *
+ */
 
 struct MultiHeadMatmulRoformerPattern : public PatternBase {
   MultiHeadMatmulRoformerPattern(PDPattern* pattern,
