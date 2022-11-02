@@ -197,6 +197,8 @@ function cmake_base() {
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
 
+    WITH_CUDNN_DSO=${WITH_GPU:-OFF}
+
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
 
