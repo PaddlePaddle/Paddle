@@ -168,9 +168,13 @@ void set_constant_with_place<paddle::platform::XPUPlace>(
     const paddle::platform::DeviceContext& context,
     phi::DenseTensor* tensor,
     float value) {
+#ifdef PADDLE_WITH_XPU
   phi::VisitDataType(
       tensor->dtype(),
       TensorSetConstantXPU<float>(tensor, value, tensor->place()));
+#else
+  PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with XPU!"));
+#endif
 }
 
 template <>
