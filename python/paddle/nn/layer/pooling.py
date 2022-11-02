@@ -1171,7 +1171,6 @@ class MaxUnPool1D(Layer):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
             data = paddle.rand(shape=[1, 3, 16])
             pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
@@ -1351,7 +1350,6 @@ class MaxUnPool3D(Layer):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
             data = paddle.rand(shape=[1, 1, 4, 4, 6])
             pool_out, indices = F.max_pool3d(data, kernel_size=2, stride=2, padding=0, return_mask=True)

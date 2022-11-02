@@ -144,7 +144,7 @@ class TestToStatic(unittest.TestCase):
         # inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
         # labels = InputSpec([batch_size], 'int64', 'label')
 
-        assert _non_static_mode() == True
+        assert _non_static_mode()
         engine = auto.Engine(
             model=mlp,
             loss=loss,
@@ -155,7 +155,7 @@ class TestToStatic(unittest.TestCase):
         engine.fit(dataset, batch_size=batch_size)
         engine.evaluate(dataset, batch_size=batch_size)
         engine.predict(dataset, batch_size=batch_size)
-        assert _non_static_mode() == False
+        assert not _non_static_mode()
 
 
 class TestLazyInit(unittest.TestCase):

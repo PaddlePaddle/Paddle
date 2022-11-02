@@ -112,7 +112,7 @@ class Imdb(Dataset):
         data = []
         with tarfile.open(self.data_file) as tarf:
             tf = tarf.next()
-            while tf != None:
+            while tf is not None:
                 if bool(pattern.match(tf.name)):
                     # newline and punctuations removal and ad-hoc tokenization.
                     data.append(

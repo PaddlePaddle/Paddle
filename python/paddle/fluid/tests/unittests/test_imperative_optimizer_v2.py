@@ -81,7 +81,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
     def _check_exception(self, exception_message, place=None):
         seed = 90
         batch_size = 128
-        if place == None:
+        if place is None:
             place = (
                 fluid.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
@@ -105,7 +105,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         seed = 90
         batch_size = 128
 
-        if place == None:
+        if place is None:
             place = (
                 fluid.CPUPlace()
                 if not core.is_compiled_with_cuda()
@@ -170,7 +170,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
-            if place == None:
+            if place is None:
                 place = (
                     fluid.CPUPlace()
                     if not core.is_compiled_with_cuda()

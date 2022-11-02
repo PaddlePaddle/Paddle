@@ -588,10 +588,9 @@ void EagerReducer::TraverseBackwardGraph(const std::vector<Tensor> &outputs) {
   }
 }
 
-void EagerReducer::PrepareForBackward(const std::vector<Tensor> &outputs,
-                                      const bool is_sync) {
+void EagerReducer::PrepareForBackward(const std::vector<Tensor> &outputs) {
   VLOG(3) << "after forward, then reset count for backward.";
-  grad_need_hooks_ = is_sync;
+  grad_need_hooks_ = true;
 
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](EagerGroup &group) {
@@ -660,9 +659,25 @@ void EagerReducer::AddDistHook(size_t var_index) {
                         var_index));
 
   // gradient synchronization is not required when grad_need_hooks_ is false.
-  // if (!grad_need_hooks_) {
-  //   return;
-  // }
+  if (!grad_need_hooks_) {
+    const auto &var_locator = variable_locators_[var_index];
+    const auto group_index = var_locator.group_index;
+    const auto inside_group_index = var_locator.inside_group_index;
+    auto &group = groups_[group_index];
+    auto &group_tensor = group.dense_tensors_[inside_group_index];
+
+    auto *autograd_meta = tensors_[var_index].get_autograd_meta();
+    auto &grad_tensor = static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
+
+    if (!HasGrad(var_index)) {
+      group_tensor.ShareDataWith(phi::DenseTensor());
+    } else {
+      auto grad_dense_tensor =
+          *(std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl()));
+      group_tensor.ShareDataWith(grad_dense_tensor);
+    }
+    return;
+  }
 
   VLOG(3) << "Tensor[" << var_index << "] [" << tensors_[var_index].name()
           << "@Grad] arrived and triggered disthook";
@@ -828,12 +843,10 @@ void EagerReducer::MarkGroupReady(size_t group_index) {
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
     UNUSED auto &group = groups_[next_group_];
-    if (grad_need_hooks_) {
-      if (group.is_sparse_) {
-        AllReduceSparse(&group, next_group_);
-      } else {
-        FusedAllReduceSchedule(&group, next_group_);
-      }
+    if (group.is_sparse_) {
+      AllReduceSparse(&group, next_group_);
+    } else {
+      FusedAllReduceSchedule(&group, next_group_);
     }
   }
 }
@@ -921,14 +934,15 @@ void EagerReducer::ProcessUnusedDenseVars() {
 
 void EagerReducer::FinalizeBackward() {
   groups_need_finalize_ = false;
+  grad_need_hooks_ = false;
   for (auto &group : groups_) {
-    if (!group.is_sparse_ && grad_need_hooks_) {
+    if (!group.is_sparse_) {
       group.task->Synchronize();
     }
   }
 
   for (auto &group : groups_) {
-    if (!group.is_sparse_ && grad_need_hooks_) {
+    if (!group.is_sparse_) {
       group.dense_contents_.reset();
     }
   }
@@ -940,7 +954,6 @@ void EagerReducer::FinalizeBackward() {
     VLOG(3) << "ProcessUnusedDenseVars is finished.";
   }
 
-  grad_need_hooks_ = false;
   VLOG(3) << "In the batch, Reducer is finished.";
 }
 

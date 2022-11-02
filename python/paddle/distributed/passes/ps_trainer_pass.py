@@ -304,7 +304,7 @@ class DistributedOpsPass(PassBase):
                                 if found:
                                     break
                             if found:
-                                if output_indexes[j] == True:
+                                if output_indexes[j]:
                                     warnings.warn(
                                         "unable to re-arrange dags order to combine distributed embedding ops"
                                     )

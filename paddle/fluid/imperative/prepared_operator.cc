@@ -28,6 +28,9 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_op_list.h"
 #endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#endif
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -149,6 +152,48 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       kernel_signature_(std::move(kernel_signature)),
       phi_kernel_(phi_kernel) {}
 
+#ifdef PADDLE_WITH_MLU
+
+static void tokenize(const std::string& ops,
+                     char delim,
+                     std::unordered_set<std::string>* op_set) {
+  std::string::size_type beg = 0;
+  for (uint64_t end = 0; (end = ops.find(delim, end)) != std::string::npos;
+       ++end) {
+    op_set->insert(ops.substr(beg, end - beg));
+    beg = end + 1;
+  }
+
+  op_set->insert(ops.substr(beg));
+}
+
+static bool is_in_mlu_black_list(const std::string& op_name) {
+  static bool inited = false;
+  static std::unordered_set<std::string> mlu_black_list;
+  static std::mutex s_mtx;
+  if (!inited) {
+    std::lock_guard<std::mutex> guard(s_mtx);
+    if (!inited) {
+      if (std::getenv("MLU_BLACK_LIST") != nullptr) {
+        std::string ops(std::getenv("MLU_BLACK_LIST"));
+        tokenize(ops, ',', &mlu_black_list);
+      }
+      inited = true;
+      VLOG(3) << "MLU Black List: ";
+      for (auto iter = mlu_black_list.begin(); iter != mlu_black_list.end();
+           ++iter) {
+        VLOG(3) << *iter << " ";
+      }
+    }
+  }
+  if (mlu_black_list.find(op_name) != mlu_black_list.end()) {
+    return true;
+  }
+  return false;
+}
+
+#endif
+
 template <typename VarType>
 PreparedOp PrepareImpl(
     const NameVarMap<VarType>& ins,
@@ -204,12 +249,24 @@ PreparedOp PrepareImpl(
   }
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (!op.DnnFallback() && paddle::platform::CanCUDNNBeUsed(dygraph_exe_ctx)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+  }
+#endif
+
 #if defined(PADDLE_WITH_XPU)
   bool is_xpu_unsupport =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
           !paddle::platform::is_xpu_support_op(op.Type(),
                                                expected_kernel_key) ||
       paddle::platform::is_in_xpu_black_list(op.Type());
+#endif
+
+#ifdef PADDLE_WITH_MLU
+  if (is_in_mlu_black_list(op.Type())) {
+    expected_kernel_key.place_ = platform::CPUPlace();
+  }
 #endif
 
   bool has_phi_kernel = false;

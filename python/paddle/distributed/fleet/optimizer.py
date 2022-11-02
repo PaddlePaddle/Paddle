@@ -59,7 +59,7 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
     fleet_env._context = {}
 
     if fleet_env.worker_num() > 1:
-        if fleet_env._user_defined_strategy.heter_ccl_mode == False:
+        if not fleet_env._user_defined_strategy.heter_ccl_mode:
             return HybridParallelOptimizer(
                 optimizer, fleet_env._hcg, fleet_env._user_defined_strategy
             )
