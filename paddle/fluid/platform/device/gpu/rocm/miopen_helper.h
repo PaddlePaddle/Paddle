@@ -554,8 +554,8 @@ class ScopedActivationDescriptor {
 };
 
 inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
-  bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
+  bool use_cudnn = paddle::platform::is_gpu_place(ctx.GetPlace()) &&
+                   ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn");
 #ifdef PADDLE_WITH_HIP
   if (use_cudnn) {
     auto& dev_ctx = ctx.device_context<phi::GPUContext>();

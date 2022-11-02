@@ -65,6 +65,9 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
 #endif
+    if (hookfunc_) {
+      hookfunc_(op.get());
+    }
   }
 #ifdef PADDLE_WITH_INFERENCE_NVTX
   platform::CudaNvtxRangePop();
@@ -142,14 +145,8 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
   return tensor;
 }
 
-void NaiveExecutor::CleanFeedFetchOps() {
-  std::vector<std::unique_ptr<OperatorBase>> ops;
-  for (auto &op : ops_) {
-    if (op->Type() != "feed" && op->Type() != "fetch") {
-      ops.emplace_back(std::move(op));
-    }
-  }
-  ops_.swap(ops);
+void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
+  hookfunc_ = hookfunc;
 }
 
 NaiveExecutor::~NaiveExecutor() {

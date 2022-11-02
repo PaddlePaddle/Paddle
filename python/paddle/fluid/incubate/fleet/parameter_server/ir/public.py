@@ -19,7 +19,6 @@ import math
 import os
 import warnings
 import logging
-import six
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.core import CommContext

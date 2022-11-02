@@ -65,7 +65,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
         if not self.role_maker._is_collective:
             return False
 
-        if self.without_graph_optimization == True:
+        if self.without_graph_optimization:
             return True
         return False
 

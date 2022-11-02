@@ -1328,22 +1328,22 @@ void GraphSampleNeighborsInferMeta(const MetaTensor& row,
   out_count->set_dtype(DataType::INT32);
 }
 
-void HierarchicalSigmoidInferMeta(const MetaTensor& x,
-                                  const MetaTensor& w,
-                                  const MetaTensor& label,
-                                  const MetaTensor& path,
-                                  const MetaTensor& code,
-                                  const MetaTensor& bias,
-                                  int num_classes,
-                                  bool remote_prefetch,
-                                  int trainer_id,
-                                  const std::vector<int64_t>& height_sections,
-                                  const std::vector<std::string>& epmap,
-                                  const std::vector<std::string>& table_names,
-                                  bool is_sparse,
-                                  MetaTensor* out,
-                                  MetaTensor* pre_out,
-                                  MetaTensor* w_out) {
+void HSigmoidLossInferMeta(const MetaTensor& x,
+                           const MetaTensor& w,
+                           const MetaTensor& label,
+                           const MetaTensor& path,
+                           const MetaTensor& code,
+                           const MetaTensor& bias,
+                           int num_classes,
+                           bool remote_prefetch,
+                           int trainer_id,
+                           const std::vector<int64_t>& height_sections,
+                           const std::vector<std::string>& epmap,
+                           const std::vector<std::string>& table_names,
+                           bool is_sparse,
+                           MetaTensor* out,
+                           MetaTensor* pre_out,
+                           MetaTensor* w_out) {
   const int64_t input_dims = x.dims()[0];
   const int64_t label_dims = label.dims()[0];
   PADDLE_ENFORCE_EQ(input_dims,
@@ -2762,20 +2762,20 @@ void WhereInferMeta(const MetaTensor& condition,
   out->share_meta(x);
 }
 
-void Yolov3LossInferMeta(const MetaTensor& x,
-                         const MetaTensor& gt_box,
-                         const MetaTensor& gt_label,
-                         const MetaTensor& gt_score,
-                         const std::vector<int>& anchors,
-                         const std::vector<int>& anchor_mask,
-                         int class_num,
-                         float ignore_thresh,
-                         int downsample_ratio,
-                         bool use_label_smooth,
-                         float scale_x_y,
-                         MetaTensor* loss,
-                         MetaTensor* objectness_mask,
-                         MetaTensor* gt_match_mask) {
+void YoloLossInferMeta(const MetaTensor& x,
+                       const MetaTensor& gt_box,
+                       const MetaTensor& gt_label,
+                       const MetaTensor& gt_score,
+                       const std::vector<int>& anchors,
+                       const std::vector<int>& anchor_mask,
+                       int class_num,
+                       float ignore_thresh,
+                       int downsample_ratio,
+                       bool use_label_smooth,
+                       float scale_x_y,
+                       MetaTensor* loss,
+                       MetaTensor* objectness_mask,
+                       MetaTensor* gt_match_mask) {
   auto dim_x = x.dims();
   auto dim_gtbox = gt_box.dims();
   auto dim_gtlabel = gt_label.dims();

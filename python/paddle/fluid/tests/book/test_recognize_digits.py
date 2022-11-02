@@ -237,7 +237,7 @@ def main(use_cuda, parallel, nn_type, combine):
     if not use_cuda and not parallel:
         save_dirname = "recognize_digits_" + nn_type + ".inference.model"
         save_full_dirname = "recognize_digits_" + nn_type + ".train.model"
-        if combine == True:
+        if combine:
             model_filename = "__model_combined__"
             params_filename = "__params_combined__"
 

@@ -2880,7 +2880,8 @@ class Operator(object):
                     )
                 if 'force_cpu' in op_attrs:
                     if (
-                        type == 'less_than' and op_attrs['force_cpu'] != None
+                        type == 'less_than'
+                        and op_attrs['force_cpu'] is not None
                     ) or op_attrs['force_cpu'] != False:
                         warnings.warn(
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
@@ -5777,10 +5778,10 @@ class Program(object):
 
             .. code-block:: python
 
-                import six
+                import paddle
 
                 def print_prog(prog):
-                    for name, value in sorted(six.iteritems(prog.block(0).vars)):
+                    for name, value in sorted(prog.block(0).vars.items()):
                         print(value)
                     for op in prog.block(0).ops:
                         print("op type is {}".format(op.type))

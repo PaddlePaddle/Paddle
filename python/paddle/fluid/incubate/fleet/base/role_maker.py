@@ -1010,7 +1010,7 @@ class GeneralRoleMaker(RoleMakerBase):
             if "Gateway" in item and "Iface" in item:
                 gateway_idx = item.index("Gateway")
                 iface_idx = item.index("Iface")
-            elif gateway_idx != None and iface_idx != None:
+            elif gateway_idx is not None and iface_idx is not None:
                 gateway = None
                 if len(item) > gateway_idx:
                     gateway = item[gateway_idx]
