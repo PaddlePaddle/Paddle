@@ -111,6 +111,17 @@ void run(Predictor *predictor, std::vector<float> *out_data) {
       1, 6100, 2, 6100, 703, 136, 102, 1882, 729, 2};
   int64_t i2[run_seq_len * run_batch] = {0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
 
+  /*
+  int64_t i1[run_seq_len * run_batch] = {0};
+  int64_t i2[run_seq_len * run_batch] = {0};
+  for (int i = 0; i < run_batch; ++i) {
+    for (int j = 0; j < run_seq_len; ++j) {
+      i1[i * run_batch + j] = i * run_batch + j;
+      i2[i * run_batch + j] = 0;
+    }
+  }
+  */
+
   auto input_names = predictor->GetInputNames();
   // first input
   auto input_t1 = predictor->GetInputHandle(input_names[0]);
@@ -141,7 +152,7 @@ void run(Predictor *predictor, std::vector<float> *out_data) {
     output_t->CopyToCpu(out_data->data());
     benchmark.Stop();
   }
-  std::cout << benchmark.Summerize({0, 0.5, 0.99}) << '\n';
+  std::cout << benchmark.Summerize({0, 0.5, 0.8, 0.9, 0.95, 0.99}) << '\n';
 
   // std::cout << "The run time is: " <<(double)(endTime - startTime)*0.1 /
   // CLOCKS_PER_SEC << "s" << std::endl;
