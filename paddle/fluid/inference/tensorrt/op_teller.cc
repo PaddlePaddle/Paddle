@@ -572,9 +572,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-      auto x_var_name = desc.Input("X")[0];
+
       auto index_var_name = desc.Input("Index")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
       auto* index_var_desc = block->FindVar(index_var_name);
 
       // The index input must be int32 datatype.
@@ -584,6 +583,9 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
+#if IS_TRT_VERSION_LT(8200)
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
       const auto index_shape = index_var_desc->GetShape();
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.size() <= 2) {
@@ -597,6 +599,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                 << " ] not equal to x dims size [" << x_shape.size() << "]";
         return false;
       }
+#endif
     }
 
     if (op_type == "anchor_generator") {
