@@ -157,7 +157,7 @@ void GroupNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(y);
   dev_ctx.template Alloc<T>(mean);
   dev_ctx.template Alloc<T>(var);
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
+  phi::funcs::SetConstant<GPUContext, AccT> set_zero;
   DenseTensor temp_var;
   temp_var.Resize(var->dims());
   DenseTensor temp_mean;
@@ -219,8 +219,8 @@ void GroupNormKernel(const Context& dev_ctx,
               x_data, temp_mean_data, temp_var_data, size);
     }
   } else {
-    set_zero(dev_ctx, mean, static_cast<T>(0));
-    set_zero(dev_ctx, &temp_var, static_cast<T>(0));
+    set_zero(dev_ctx, &temp_mean, static_cast<AccT>(0));
+    set_zero(dev_ctx, &temp_var, static_cast<AccT>(0));
     GroupNormForwardGetMeanAndVar<T, AccT>
         <<<grid, threads, 0, dev_ctx.stream()>>>(x_data,
                                                  x_dims[0],
@@ -329,7 +329,7 @@ void GroupNormDirectCUDAFunctor<T,AccT>::operator()(gpuStream_t stream,
                                        temp_variance);
   }
 
-  GroupNormForward<T,T, 3><<<grid, threads, 0, stream>>>(
+  GroupNormForward<T, T, 3><<<grid, threads, 0, stream>>>(
       input,
       temp_mean,
       temp_variance,
