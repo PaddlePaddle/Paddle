@@ -55,6 +55,6 @@ __all__ = [
     'identity_loss',
 ]
 
-# from .multiprocessing.reductions import init_reductions
+from .multiprocessing.reductions import init_reductions
 
-# init_reductions()
+init_reductions()
