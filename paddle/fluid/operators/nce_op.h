@@ -32,7 +32,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;

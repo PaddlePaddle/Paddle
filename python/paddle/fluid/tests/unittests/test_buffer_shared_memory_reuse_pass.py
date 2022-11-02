@@ -14,26 +14,22 @@
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import Parameter
 import numpy as np
 from simple_nets import simple_fc_net
 import random
 import unittest
-import os
 
 batch_size = 32
 
 feed_dict = {
-    'image':
-    np.random.random([batch_size, 784]).astype('float32'),
-    'label':
-    np.random.random_integers(low=0, high=9, size=[batch_size,
-                                                   1]).astype('int64')
+    'image': np.random.random([batch_size, 784]).astype('float32'),
+    'label': np.random.random_integers(
+        low=0, high=9, size=[batch_size, 1]
+    ).astype('int64'),
 }
 
 
 class InplaceTestBase(unittest.TestCase):
-
     def initParameter(self):
         self.use_cuda = True
         self.fuse_all_optimizer_ops = False
@@ -63,8 +59,10 @@ class InplaceTestBase(unittest.TestCase):
 
                 with fluid.scope_guard(scope):
                     exe = fluid.Executor(
-                        fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace(
-                        ))
+                        fluid.CUDAPlace(0)
+                        if self.use_cuda
+                        else fluid.CPUPlace()
+                    )
                     exe.run(startup_program)
 
         return main_program, scope, exe, loss
@@ -95,11 +93,14 @@ class InplaceTestBase(unittest.TestCase):
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.memory_optimize = memory_optimize
                 build_strategy.enable_inplace = enable_inplace
-                build_strategy.fuse_all_optimizer_ops = self.fuse_all_optimizer_ops
+                build_strategy.fuse_all_optimizer_ops = (
+                    self.fuse_all_optimizer_ops
+                )
                 compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
                     loss_name=loss.name,
                     build_strategy=build_strategy,
-                    places=self.place)
+                    places=self.place,
+                )
                 compiled_programs.append(compiled_prog)
 
         all_vars_name = self.get_all_vars(prog1)
@@ -109,24 +110,26 @@ class InplaceTestBase(unittest.TestCase):
         for fetch_var in repeated_var_names[:4]:
             for _ in range(2):
                 with fluid.scope_guard(scope1):
-                    fetch_val1, = exe.run(prog1,
-                                          feed=feed_dict,
-                                          fetch_list=[fetch_var])
+                    (fetch_val1,) = exe.run(
+                        prog1, feed=feed_dict, fetch_list=[fetch_var]
+                    )
 
                 for scope, compiled_prog in zip(scopes, compiled_programs):
                     with fluid.scope_guard(scope):
-                        fetch_val2, = exe.run(compiled_prog,
-                                              feed=feed_dict,
-                                              fetch_list=[fetch_var])
+                        (fetch_val2,) = exe.run(
+                            compiled_prog,
+                            feed=feed_dict,
+                            fetch_list=[fetch_var],
+                        )
                         np.testing.assert_array_equal(
                             fetch_val1,
                             fetch_val2,
-                            err_msg=
-                            'error var name: {}, fetch_val1: {}, fetch_val2: {}'
-                            .format(
+                            err_msg='error var name: {}, fetch_val1: {}, fetch_val2: {}'.format(
                                 fetch_var,
                                 fetch_val1[~np.equal(fetch_val1, fetch_val2)],
-                                fetch_val2[~np.equal(fetch_val1, fetch_val2)]))
+                                fetch_val2[~np.equal(fetch_val1, fetch_val2)],
+                            ),
+                        )
 
     def check_multi_card_fetch_var(self):
         if self.is_invalid_test():
@@ -148,11 +151,16 @@ class InplaceTestBase(unittest.TestCase):
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.memory_optimize = memory_optimize
                 build_strategy.enable_inplace = enable_inplace
-                build_strategy.fuse_all_optimizer_ops = self.fuse_all_optimizer_ops
+                build_strategy.fuse_all_optimizer_ops = (
+                    self.fuse_all_optimizer_ops
+                )
                 compiled_program = fluid.CompiledProgram(
-                    prog).with_data_parallel(loss_name=loss.name,
-                                             build_strategy=build_strategy,
-                                             places=places)
+                    prog
+                ).with_data_parallel(
+                    loss_name=loss.name,
+                    build_strategy=build_strategy,
+                    places=places,
+                )
                 compiled_programs.append(compiled_program)
 
         repeated_var_names = self.get_all_vars(prog1)
@@ -163,9 +171,11 @@ class InplaceTestBase(unittest.TestCase):
                 fetch_vals = []
                 for scope, compiled_prog in zip(scopes, compiled_programs):
                     with fluid.scope_guard(scope):
-                        fetch_val, = exe.run(compiled_prog,
-                                             feed=feed_dict,
-                                             fetch_list=[fetch_var])
+                        (fetch_val,) = exe.run(
+                            compiled_prog,
+                            feed=feed_dict,
+                            fetch_list=[fetch_var],
+                        )
                         fetch_vals.append(fetch_val)
 
                 for item in fetch_vals:
@@ -173,14 +183,15 @@ class InplaceTestBase(unittest.TestCase):
                     np.testing.assert_array_equal(
                         fetch_vals[0],
                         item,
-                        err_msg='error var name: {}, fetch_vals[0]: {}, item: {}'
-                        .format(fetch_var,
-                                fetch_vals[0][~np.equal(fetch_vals[0], item)],
-                                item[~np.equal(fetch_vals[0], item)]))
+                        err_msg='error var name: {}, fetch_vals[0]: {}, item: {}'.format(
+                            fetch_var,
+                            fetch_vals[0][~np.equal(fetch_vals[0], item)],
+                            item[~np.equal(fetch_vals[0], item)],
+                        ),
+                    )
 
 
 class CUDAInplaceTest(InplaceTestBase):
-
     def initParameter(self):
         self.use_cuda = True
         self.fuse_all_optimizer_ops = False
@@ -193,7 +204,6 @@ class CUDAInplaceTest(InplaceTestBase):
 
 
 class CPUInplaceTest(InplaceTestBase):
-
     def initParameter(self):
         self.use_cuda = False
         self.fuse_all_optimizer_ops = False

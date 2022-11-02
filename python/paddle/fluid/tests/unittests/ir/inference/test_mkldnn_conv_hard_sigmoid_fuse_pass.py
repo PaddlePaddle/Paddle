@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
 class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -43,46 +38,43 @@ class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
 
         def generate_input():
             if data_format == "NCHW":
-                return np.random.random([batch_size, 48, 64,
-                                         64]).astype(np.float32)
+                return np.random.random([batch_size, 48, 64, 64]).astype(
+                    np.float32
+                )
             else:
-                return np.random.random([batch_size, 64, 64,
-                                         48]).astype(np.float32)
+                return np.random.random([batch_size, 64, 64, 48]).astype(
+                    np.float32
+                )
 
         def generate_weight():
-            return np.random.random([16, int(48 / groups), 3,
-                                     3]).astype(np.float32)
+            return np.random.random([16, int(48 / groups), 3, 3]).astype(
+                np.float32
+            )
 
-        ops_config = [{
-            "op_type": "conv2d",
-            "op_inputs": {
-                "Input": ["input_data"],
-                "Filter": ["input_weight"]
+        ops_config = [
+            {
+                "op_type": "conv2d",
+                "op_inputs": {
+                    "Input": ["input_data"],
+                    "Filter": ["input_weight"],
+                },
+                "op_outputs": {"Output": ["conv_output"]},
+                "op_attrs": {
+                    "data_format": data_format,
+                    "dilations": dilations,
+                    "padding_algorithm": padding_algorithm,
+                    "groups": groups,
+                    "paddings": paddings,
+                    "strides": strides,
+                },
             },
-            "op_outputs": {
-                "Output": ["conv_output"]
+            {
+                "op_type": "hard_sigmoid",
+                "op_inputs": {"X": ["conv_output"]},
+                "op_outputs": {"Out": ["sigmoid_output"]},
+                "op_attrs": {"slope": slope, "offset": offset},
             },
-            "op_attrs": {
-                "data_format": data_format,
-                "dilations": dilations,
-                "padding_algorithm": padding_algorithm,
-                "groups": groups,
-                "paddings": paddings,
-                "strides": strides
-            }
-        }, {
-            "op_type": "hard_sigmoid",
-            "op_inputs": {
-                "X": ["conv_output"]
-            },
-            "op_outputs": {
-                "Out": ["sigmoid_output"]
-            },
-            "op_attrs": {
-                "slope": slope,
-                "offset": offset
-            },
-        }]
+        ]
 
         ops = self.generate_op_config(ops_config)
 
@@ -94,7 +86,8 @@ class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
             inputs={
                 "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
-            outputs=["sigmoid_output"])
+            outputs=["sigmoid_output"],
+        )
 
         return program_config
 
@@ -103,8 +96,9 @@ class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
         yield config, ["conv2d"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            passes=["conv_activation_mkldnn_fuse_pass"])
+        self.run_and_statis(
+            quant=False, passes=["conv_activation_mkldnn_fuse_pass"]
+        )
 
 
 if __name__ == "__main__":

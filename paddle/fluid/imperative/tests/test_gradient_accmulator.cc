@@ -91,8 +91,8 @@ int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
   }
 
   std::vector<int64_t> dims = {2, 5};
-  auto* src = var1.GetMutable<framework::LoDTensor>();
-  auto* dst = var2.GetMutable<framework::LoDTensor>();
+  auto* src = var1.GetMutable<phi::DenseTensor>();
+  auto* dst = var2.GetMutable<phi::DenseTensor>();
   src->Resize(phi::make_ddim(dims));
   dst->Resize(phi::make_ddim(dims));
   auto* src_mutable = src->mutable_data<T>(place1);
@@ -132,7 +132,7 @@ int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
 #endif
   }
   imperative::TensorAdd<framework::Variable>(var1, &var2);
-  framework::LoDTensor rlt;
+  phi::DenseTensor rlt;
   platform::CPUPlace rlt_place;
   framework::TensorCopySync(*dst, rlt_place, &rlt);
 
@@ -257,9 +257,9 @@ static void CopyVar(const framework::Variable& var,
                     framework::Variable* dst_ptr) {
   auto& dst = *dst_ptr;
   dst.Clear();
-  if (var.IsType<framework::LoDTensor>()) {
-    const auto& src_tensor = var.Get<framework::LoDTensor>();
-    auto* dst_tensor = dst.GetMutable<framework::LoDTensor>();
+  if (var.IsType<phi::DenseTensor>()) {
+    const auto& src_tensor = var.Get<phi::DenseTensor>();
+    auto* dst_tensor = dst.GetMutable<phi::DenseTensor>();
     framework::TensorCopySync(src_tensor, src_tensor.place(), dst_tensor);
   } else {
     const auto& src_selected_rows = var.Get<phi::SelectedRows>();
@@ -280,11 +280,11 @@ static bool IsEqualVar(const framework::Variable& var1,
 
   phi::DenseTensor t1, t2;
 
-  if (var1.IsType<framework::LoDTensor>()) {
+  if (var1.IsType<phi::DenseTensor>()) {
     framework::TensorCopySync(
-        var1.Get<framework::LoDTensor>(), platform::CPUPlace(), &t1);
+        var1.Get<phi::DenseTensor>(), platform::CPUPlace(), &t1);
     framework::TensorCopySync(
-        var2.Get<framework::LoDTensor>(), platform::CPUPlace(), &t2);
+        var2.Get<phi::DenseTensor>(), platform::CPUPlace(), &t2);
   } else {
     auto& s1 = var1.Get<phi::SelectedRows>();
     auto& s2 = var2.Get<phi::SelectedRows>();
@@ -340,7 +340,7 @@ static framework::Variable RandomTensor(const framework::DDim& dims,
 
   framework::Variable ret;
   framework::TensorCopySync(
-      cpu_tensor, place, ret.GetMutable<framework::LoDTensor>());
+      cpu_tensor, place, ret.GetMutable<phi::DenseTensor>());
   return ret;
 }
 
@@ -357,7 +357,7 @@ static framework::Variable RandomSelectedRows(framework::DDim dims,
   auto* sr = ret.GetMutable<phi::SelectedRows>();
   auto tensor_var = RandomTensor<T>(dims, place, low, high);
   sr->mutable_value()->ShareDataWith(
-      tensor_var.template Get<framework::LoDTensor>());
+      tensor_var.template Get<phi::DenseTensor>());
   sr->set_height(height);
   sr->mutable_rows()->resize(row_number);
   auto* row_data = sr->mutable_rows()->data();

@@ -16,8 +16,6 @@ from ...device import get_cudnn_version
 from ...static import Variable
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid import dygraph_utils
-import numpy as np
 from paddle import _C_ops, _legacy_C_ops
 from ...device import is_compiled_with_rocm
 from paddle import in_dynamic_mode
@@ -84,45 +82,65 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     if theta.shape[1] == 3:
         use_cudnn = False
     if is_compiled_with_rocm():
-        use_cudnn = False  # ROCM platform do not have MIOPEN kernel for affine_grid
+        use_cudnn = (
+            False  # ROCM platform do not have MIOPEN kernel for affine_grid
+        )
 
     if in_dygraph_mode():
-        _out_shape = out_shape.numpy().tolist() if isinstance(
-            out_shape, Variable) else out_shape
+        _out_shape = (
+            out_shape.numpy().tolist()
+            if isinstance(out_shape, Variable)
+            else out_shape
+        )
         return _C_ops.affine_grid(theta, _out_shape, use_cudnn, align_corners)
     elif in_dynamic_mode():
-        _out_shape = out_shape.numpy().tolist() if isinstance(
-            out_shape, Variable) else out_shape
-        return _legacy_C_ops.affine_grid(theta, "output_shape", _out_shape,
-                                         "align_corners", align_corners,
-                                         "use_cudnn", use_cudnn)
+        _out_shape = (
+            out_shape.numpy().tolist()
+            if isinstance(out_shape, Variable)
+            else out_shape
+        )
+        return _legacy_C_ops.affine_grid(
+            theta,
+            "output_shape",
+            _out_shape,
+            "align_corners",
+            align_corners,
+            "use_cudnn",
+            use_cudnn,
+        )
 
     helper = LayerHelper('affine_grid')
-    check_variable_and_dtype(theta, 'theta', ['float32', 'float64'],
-                             'affine_grid')
+    check_variable_and_dtype(
+        theta, 'theta', ['float32', 'float64'], 'affine_grid'
+    )
     out = helper.create_variable_for_type_inference(theta.dtype)
     ipts = {'Theta': theta}
     attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
     if isinstance(out_shape, Variable):
         ipts['OutputShape'] = out_shape
-        check_variable_and_dtype(out_shape, 'out_shape', ['int32'],
-                                 'affine_grid')
+        check_variable_and_dtype(
+            out_shape, 'out_shape', ['int32'], 'affine_grid'
+        )
     else:
         attrs['output_shape'] = out_shape
 
-    helper.append_op(type='affine_grid',
-                     inputs=ipts,
-                     outputs={'Output': out},
-                     attrs=None if len(attrs) == 0 else attrs)
+    helper.append_op(
+        type='affine_grid',
+        inputs=ipts,
+        outputs={'Output': out},
+        attrs=None if len(attrs) == 0 else attrs,
+    )
     return out
 
 
-def grid_sample(x,
-                grid,
-                mode='bilinear',
-                padding_mode='zeros',
-                align_corners=True,
-                name=None):
+def grid_sample(
+    x,
+    grid,
+    mode='bilinear',
+    padding_mode='zeros',
+    align_corners=True,
+    name=None,
+):
     """
     Sample input X by using bilinear interpolation or
     nearest interpolation based on flow field grid, which is usually
@@ -255,22 +273,33 @@ def grid_sample(x,
     _padding_modes = ['zeros', 'reflection', 'border']
     if mode not in _modes:
         raise ValueError(
-            "The mode of grid sample function should be in {}, but got: {}".
-            format(_modes, mode))
+            "The mode of grid sample function should be in {}, but got: {}".format(
+                _modes, mode
+            )
+        )
     if padding_mode not in _padding_modes:
         raise ValueError(
-            "The padding mode of grid sample function should be in {}, but got: {}"
-            .format(_padding_modes, padding_mode))
+            "The padding mode of grid sample function should be in {}, but got: {}".format(
+                _padding_modes, padding_mode
+            )
+        )
 
     if not isinstance(align_corners, bool):
-        raise ValueError("The align corners should be bool, but got: {}".format(
-            align_corners))
+        raise ValueError(
+            "The align corners should be bool, but got: {}".format(
+                align_corners
+            )
+        )
 
     cudnn_version = get_cudnn_version()
     use_cudnn = False
-    if not is_compiled_with_rocm() and (
-            cudnn_version is not None
-    ) and align_corners and mode == 'bilinear' and padding_mode == 'zeros':
+    if (
+        not is_compiled_with_rocm()
+        and (cudnn_version is not None)
+        and align_corners
+        and mode == 'bilinear'
+        and padding_mode == 'zeros'
+    ):
         use_cudnn = True
         # CUDNN always computes gradients for all inputs
         x.stop_gradient = False
@@ -282,26 +311,37 @@ def grid_sample(x,
     if in_dygraph_mode():
         return _C_ops.grid_sample(x, grid, mode, padding_mode, align_corners)
     elif in_dynamic_mode():
-        attrs = ('mode', mode, 'padding_mode', padding_mode, 'align_corners',
-                 align_corners, 'use_cudnn', use_cudnn)
+        attrs = (
+            'mode',
+            mode,
+            'padding_mode',
+            padding_mode,
+            'align_corners',
+            align_corners,
+            'use_cudnn',
+            use_cudnn,
+        )
         out = getattr(_legacy_C_ops, 'grid_sampler')(x, grid, *attrs)
     else:
         helper = LayerHelper("grid_sample", **locals())
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sample')
-        check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
-                                 'grid_sample')
+        check_variable_and_dtype(
+            grid, 'grid', ['float32', 'float64'], 'grid_sample'
+        )
         ipts = {'X': x, 'Grid': grid}
         attrs = {
             'mode': mode,
             'padding_mode': padding_mode,
             'align_corners': align_corners,
-            'use_cudnn': use_cudnn
+            'use_cudnn': use_cudnn,
         }
         out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(type='grid_sampler',
-                         inputs=ipts,
-                         attrs=attrs,
-                         outputs={'Output': out})
+        helper.append_op(
+            type='grid_sampler',
+            inputs=ipts,
+            attrs=attrs,
+            outputs={'Output': out},
+        )
     return out
 
 
@@ -338,24 +378,25 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            "But recevie Attr(data_format): {} ".format(data_format))
+            "But recevie Attr(data_format): {} ".format(data_format)
+        )
     if in_dygraph_mode():
         return _C_ops.pixel_shuffle(x, upscale_factor, data_format)
 
     if _in_legacy_dygraph():
-        return _legacy_C_ops.pixel_shuffle(x, "upscale_factor", upscale_factor,
-                                           "data_format", data_format)
+        return _legacy_C_ops.pixel_shuffle(
+            x, "upscale_factor", upscale_factor, "data_format", data_format
+        )
 
     helper = LayerHelper("pixel_shuffle", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_shuffle')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="pixel_shuffle",
-                     inputs={"X": x},
-                     outputs={"Out": out},
-                     attrs={
-                         "upscale_factor": upscale_factor,
-                         "data_format": data_format
-                     })
+    helper.append_op(
+        type="pixel_shuffle",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"upscale_factor": upscale_factor, "data_format": data_format},
+    )
     return out
 
 
@@ -385,8 +426,10 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     """
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".
-            format(x.shape))
+            "Input x should be 4D tensor, but received x with the shape of {}".format(
+                x.shape
+            )
+        )
 
     if not isinstance(downscale_factor, int):
         raise TypeError("Downscale factor must be int type")
@@ -397,23 +440,26 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            "But recevie Attr(data_format): {} ".format(data_format))
+            "But recevie Attr(data_format): {} ".format(data_format)
+        )
 
     if _non_static_mode():
-        return _legacy_C_ops.pixel_unshuffle(x, "downscale_factor",
-                                             downscale_factor, "data_format",
-                                             data_format)
+        return _legacy_C_ops.pixel_unshuffle(
+            x, "downscale_factor", downscale_factor, "data_format", data_format
+        )
 
     helper = LayerHelper("pixel_unshuffle", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_unshuffle')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="pixel_unshuffle",
-                     inputs={"X": x},
-                     outputs={"Out": out},
-                     attrs={
-                         "downscale_factor": downscale_factor,
-                         "data_format": data_format
-                     })
+    helper.append_op(
+        type="pixel_unshuffle",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={
+            "downscale_factor": downscale_factor,
+            "data_format": data_format,
+        },
+    )
     return out
 
 
@@ -454,8 +500,10 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
     """
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".
-            format(x.shape))
+            "Input x should be 4D tensor, but received x with the shape of {}".format(
+                x.shape
+            )
+        )
 
     if not isinstance(groups, int):
         raise TypeError("groups must be int type")
@@ -466,20 +514,21 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            "But recevie Attr(data_format): {} ".format(data_format))
+            "But recevie Attr(data_format): {} ".format(data_format)
+        )
 
     if _non_static_mode():
-        return _legacy_C_ops.channel_shuffle(x, "groups", groups, "data_format",
-                                             data_format)
+        return _legacy_C_ops.channel_shuffle(
+            x, "groups", groups, "data_format", data_format
+        )
 
     helper = LayerHelper("channel_shuffle", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'channel_shuffle')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="channel_shuffle",
-                     inputs={"X": x},
-                     outputs={"Out": out},
-                     attrs={
-                         "groups": groups,
-                         "data_format": data_format
-                     })
+    helper.append_op(
+        type="channel_shuffle",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"groups": groups, "data_format": data_format},
+    )
     return out

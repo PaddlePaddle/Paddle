@@ -16,15 +16,17 @@ import unittest
 import numpy as np
 import paddle
 
-API_list = [(paddle.quantile, np.quantile),
-            (paddle.nanquantile, np.nanquantile)]
+API_list = [
+    (paddle.quantile, np.quantile),
+    (paddle.nanquantile, np.nanquantile),
+]
 
 
 class TestQuantileAndNanquantile(unittest.TestCase):
     """
-        This class is used for numerical precision testing. If there is
-        a corresponding numpy API, the precision comparison can be performed directly.
-        Otherwise, it needs to be verified by numpy implementated function.
+    This class is used for numerical precision testing. If there is
+    a corresponding numpy API, the precision comparison can be performed directly.
+    Otherwise, it needs to be verified by numpy implementated function.
     """
 
     def setUp(self):
@@ -99,10 +101,9 @@ class TestQuantileAndNanquantile(unittest.TestCase):
         x = paddle.to_tensor(input_data)
         paddle_res = paddle.quantile(x, q=0.35, axis=0)
         np_res = np.quantile(input_data, q=0.35, axis=0)
-        np.testing.assert_allclose(paddle_res.numpy(),
-                                   np_res,
-                                   rtol=1e-05,
-                                   equal_nan=True)
+        np.testing.assert_allclose(
+            paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
+        )
 
     # Test correctness when input filled with NaN.
     def test_nanquantile_all_NaN(self):
@@ -111,15 +112,14 @@ class TestQuantileAndNanquantile(unittest.TestCase):
         x = paddle.to_tensor(input_data)
         paddle_res = paddle.nanquantile(x, q=0.35, axis=0)
         np_res = np.nanquantile(input_data, q=0.35, axis=0)
-        np.testing.assert_allclose(paddle_res.numpy(),
-                                   np_res,
-                                   rtol=1e-05,
-                                   equal_nan=True)
+        np.testing.assert_allclose(
+            paddle_res.numpy(), np_res, rtol=1e-05, equal_nan=True
+        )
 
 
 class TestMuitlpleQ(unittest.TestCase):
     """
-        This class is used to test multiple input of q.
+    This class is used to test multiple input of q.
     """
 
     def setUp(self):
@@ -139,21 +139,19 @@ class TestMuitlpleQ(unittest.TestCase):
 
     def test_quantile_multiple_axis_keepdim(self):
         x = paddle.to_tensor(self.input_data)
-        paddle_res = paddle.quantile(x,
-                                     q=[0.1, 0.2, 0.3],
-                                     axis=[1, 2],
-                                     keepdim=True)
-        np_res = np.quantile(self.input_data,
-                             q=[0.1, 0.2, 0.3],
-                             axis=[1, 2],
-                             keepdims=True)
+        paddle_res = paddle.quantile(
+            x, q=[0.1, 0.2, 0.3], axis=[1, 2], keepdim=True
+        )
+        np_res = np.quantile(
+            self.input_data, q=[0.1, 0.2, 0.3], axis=[1, 2], keepdims=True
+        )
         np.testing.assert_allclose(paddle_res.numpy(), np_res, rtol=1e-05)
 
 
 class TestError(unittest.TestCase):
     """
-        This class is used to test that exceptions are thrown correctly.
-        Validity of all parameter values and types should be considered.
+    This class is used to test that exceptions are thrown correctly.
+    Validity of all parameter values and types should be considered.
     """
 
     def setUp(self):
@@ -218,8 +216,8 @@ class TestError(unittest.TestCase):
 
 class TestQuantileRuntime(unittest.TestCase):
     """
-        This class is used to test the API could run correctly with
-        different devices, different data types, and dygraph/static mode.
+    This class is used to test the API could run correctly with
+    different devices, different data types, and dygraph/static mode.
     """
 
     def setUp(self):
@@ -241,20 +239,22 @@ class TestQuantileRuntime(unittest.TestCase):
                     x = paddle.to_tensor(np_input_data, dtype=dtype)
                     paddle_res = func(x, q=0.5, axis=1)
                     np_res = res_func(np_input_data, q=0.5, axis=1)
-                    np.testing.assert_allclose(paddle_res.numpy(),
-                                               np_res,
-                                               rtol=1e-05)
+                    np.testing.assert_allclose(
+                        paddle_res.numpy(), np_res, rtol=1e-05
+                    )
 
     def test_static(self):
         paddle.enable_static()
         for (func, res_func) in API_list:
             for device in self.devices:
-                x = paddle.static.data(name="x",
-                                       shape=self.input_data.shape,
-                                       dtype=paddle.float32)
-                x_fp64 = paddle.static.data(name="x_fp64",
-                                            shape=self.input_data.shape,
-                                            dtype=paddle.float64)
+                x = paddle.static.data(
+                    name="x", shape=self.input_data.shape, dtype=paddle.float32
+                )
+                x_fp64 = paddle.static.data(
+                    name="x_fp64",
+                    shape=self.input_data.shape,
+                    dtype=paddle.float64,
+                )
 
                 results = func(x, q=0.5, axis=1)
                 np_input_data = self.input_data.astype('float32')
@@ -264,16 +264,15 @@ class TestQuantileRuntime(unittest.TestCase):
                 exe = paddle.static.Executor(device)
                 paddle_res, paddle_res_fp64 = exe.run(
                     paddle.static.default_main_program(),
-                    feed={
-                        "x": np_input_data,
-                        "x_fp64": np_input_data_fp64
-                    },
-                    fetch_list=[results, results_fp64])
+                    feed={"x": np_input_data, "x_fp64": np_input_data_fp64},
+                    fetch_list=[results, results_fp64],
+                )
                 np_res = res_func(np_input_data, q=0.5, axis=1)
                 np_res_fp64 = res_func(np_input_data_fp64, q=0.5, axis=1)
                 self.assertTrue(
                     np.allclose(paddle_res, np_res)
-                    and np.allclose(paddle_res_fp64, np_res_fp64))
+                    and np.allclose(paddle_res_fp64, np_res_fp64)
+                )
 
 
 if __name__ == '__main__':

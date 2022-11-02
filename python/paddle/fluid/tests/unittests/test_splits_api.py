@@ -15,7 +15,6 @@
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
@@ -36,7 +35,6 @@ test_list = [
 
 
 class TestSplitsAPI(unittest.TestCase):
-
     def setUp(self):
         self.rtol = 1e-5
         self.atol = 1e-8
@@ -46,8 +44,11 @@ class TestSplitsAPI(unittest.TestCase):
         self.shape = [4, 5, 2]
         self.num_or_sections = 2
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float64')
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
     def test_static_api(self):
         paddle.enable_static()
@@ -68,68 +69,79 @@ class TestSplitsAPI(unittest.TestCase):
             out = func(x, self.num_or_sections)
             out_ref = func_ref(func_type, self.x_np, self.num_or_sections)
             for n, p in zip(out_ref, out):
-                np.testing.assert_allclose(n,
-                                           p.numpy(),
-                                           rtol=self.rtol,
-                                           atol=self.atol)
+                np.testing.assert_allclose(
+                    n, p.numpy(), rtol=self.rtol, atol=self.atol
+                )
         paddle.enable_static()
 
 
 class TestSplitsSections(TestSplitsAPI):
     """
-        Test num_or_sections which is a list and date type is float64.
+    Test num_or_sections which is a list and date type is float64.
     """
 
     def set_input(self):
         self.shape = [6, 2, 4]
         self.num_or_sections = [2, 1, 3]
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float64')
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
 
 class TestSplitsFloat32(TestSplitsAPI):
     """
-        Test num_or_sections which is an integer and data type is float32.
+    Test num_or_sections which is an integer and data type is float32.
     """
 
     def set_input(self):
         self.shape = [2, 3, 4]
         self.num_or_sections = 2
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('float32')
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
 
 class TestSplitsInt32(TestSplitsAPI):
     """
-        Test data type int32.
+    Test data type int32.
     """
 
     def set_input(self):
         self.shape = [5, 1, 2]
         self.num_or_sections = 5
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('int32')
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
 
 class TestSplitsInt64(TestSplitsAPI):
     """
-        Test data type int64.
+    Test data type int64.
     """
 
     def set_input(self):
         self.shape = [4, 3, 2]
         self.num_or_sections = 2
         self.x_np = np.random.uniform(-1, 1, self.shape).astype('int64')
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
 
 class TestSplitsCPU(TestSplitsAPI):
     """
-        Test cpu place and num_or_sections which is a tuple.
+    Test cpu place and num_or_sections which is a tuple.
     """
 
     def set_input(self):
@@ -141,13 +153,16 @@ class TestSplitsCPU(TestSplitsAPI):
 
 class TestSplitsError(unittest.TestCase):
     """
-        Test the situation that input shape less than 2.
+    Test the situation that input shape less than 2.
     """
 
     def setUp(self):
         self.num_or_sections = 1
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
     def test_static_error(self):
         paddle.enable_static()

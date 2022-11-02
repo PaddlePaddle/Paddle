@@ -41,14 +41,14 @@ void XPUElementwise(const framework::ExecutionContext& ctx,
       nullptr,
       platform::errors::InvalidArgument("Cannot get input Variable X"));
   PADDLE_ENFORCE_EQ(
-      x_var->IsType<framework::LoDTensor>(),
+      x_var->IsType<phi::DenseTensor>(),
       true,
       platform::errors::InvalidArgument(
           "XPU only support LoDTensor, Input(X) is not LoDTensor"));
 
-  auto x = x_var->Get<framework::LoDTensor>();
-  auto* y = ctx.Input<framework::LoDTensor>("Y");
-  auto* z = ctx.Output<framework::LoDTensor>("Out");
+  auto x = x_var->Get<phi::DenseTensor>();
+  auto* y = ctx.Input<phi::DenseTensor>("Y");
+  auto* z = ctx.Output<phi::DenseTensor>("Out");
   int axis = ctx.Attr<int>("axis");
 
   auto& dev_ctx =

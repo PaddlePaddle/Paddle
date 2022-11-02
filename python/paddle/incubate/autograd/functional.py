@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import typing
 
 import paddle
@@ -254,8 +253,7 @@ class Jacobian(object):
 
     @property
     def shape(self):
-        """The shape of flattened Jacobian matrix.
-        """
+        """The shape of flattened Jacobian matrix."""
         return self._jacobian.shape
 
 
@@ -309,11 +307,11 @@ class Hessian(object):
     """
 
     def __init__(self, func, xs, is_batched=False):
-
         def _jac_func(*xs):
             jac = Jacobian(func, xs, is_batched=is_batched)
-            if (is_batched and jac.shape[1] != 1) or (not is_batched
-                                                      and jac.shape[0] != 1):
+            if (is_batched and jac.shape[1] != 1) or (
+                not is_batched and jac.shape[0] != 1
+            ):
                 raise RuntimeError(
                     "The function given to Hessian shoud return as single element Tensor or batched single element Tensor."
                 )
@@ -326,8 +324,7 @@ class Hessian(object):
 
     @property
     def shape(self):
-        """The shape of flattened Hessian matrix.
-        """
+        """The shape of flattened Hessian matrix."""
         return self.symbolic.shape
 
 
@@ -370,32 +367,41 @@ class _Jacobian(object):
 
     @property
     def _lazy_axis(self):
-        """"The axis of lazily evaluated."""
+        """ "The axis of lazily evaluated."""
         raise NotImplementedError
 
     def _lazy_indexes(self, indexes):
         idx = indexes[self._lazy_axis]
-        return (idx, ) if isinstance(idx, int) else tuple(
-            range(idx.start, idx.stop, idx.step))
+        return (
+            (idx,)
+            if isinstance(idx, int)
+            else tuple(range(idx.start, idx.stop, idx.step))
+        )
 
     def _flatten(self, xs):
         raise NotImplementedError
 
     def _shifted_indexes(self, indexes, lazy_axis_size=0):
         idx = indexes[self._lazy_axis]
-        shifted_lazy_axis_idx = 0 if isinstance(idx, int) else slice(
-            0, lazy_axis_size, 1)
-        return indexes[:self._lazy_axis] + (
-            shifted_lazy_axis_idx, ) + indexes[self._lazy_axis + 1:]
+        shifted_lazy_axis_idx = (
+            0 if isinstance(idx, int) else slice(0, lazy_axis_size, 1)
+        )
+        return (
+            indexes[: self._lazy_axis]
+            + (shifted_lazy_axis_idx,)
+            + indexes[self._lazy_axis + 1 :]
+        )
 
     def __getitem__(self, indexes):
         indexes = _multi_index(indexes, self.shape)
 
         if isinstance(indexes[self._lazy_axis], int):
-            other_indexes = indexes[:self._lazy_axis] + \
-                indexes[self._lazy_axis+1:]
-            return self._cached_evaluate(
-                indexes[self._lazy_axis])[other_indexes]
+            other_indexes = (
+                indexes[: self._lazy_axis] + indexes[self._lazy_axis + 1 :]
+            )
+            return self._cached_evaluate(indexes[self._lazy_axis])[
+                other_indexes
+            ]
         lazy_indexes = self._lazy_indexes(indexes)
         # Using concat and reshape to replace stack operator temporarily, as
         # it is not a primitive operator.
@@ -403,7 +409,8 @@ class _Jacobian(object):
         shape[self._lazy_axis] = len(lazy_indexes)
         part_jac = paddle.concat(
             [self._cached_evaluate(i) for i in lazy_indexes],
-            axis=self._lazy_axis).reshape(shape)
+            axis=self._lazy_axis,
+        ).reshape(shape)
         return part_jac[self._shifted_indexes(indexes, len(lazy_indexes))]
 
     def _cached_evaluate(self, k):
@@ -436,13 +443,15 @@ class _JacobianNoBatch(_Jacobian):
         return 0
 
     def _flatten(self, xs):
-        return paddle.concat(tuple(x.reshape((-1, )) for x in xs))
+        return paddle.concat(tuple(x.reshape((-1,)) for x in xs))
 
     def _evaluate(self, row_index):
-        return self._flatten(_grad(
-            self._flatten_ys[row_index],
-            self._xs,
-        ))
+        return self._flatten(
+            _grad(
+                self._flatten_ys[row_index],
+                self._xs,
+            )
+        )
 
 
 class _JacobianBatchFirst(_Jacobian):
@@ -456,8 +465,11 @@ class _JacobianBatchFirst(_Jacobian):
 
     @property
     def shape(self):
-        return (self._flatten_xs.shape[0], self._flatten_ys.shape[1],
-                self._flatten_xs.shape[1])
+        return (
+            self._flatten_xs.shape[0],
+            self._flatten_ys.shape[1],
+            self._flatten_xs.shape[1],
+        )
 
     @property
     def _lazy_axis(self):
@@ -465,7 +477,8 @@ class _JacobianBatchFirst(_Jacobian):
 
     def _flatten(self, xs):
         return paddle.concat(
-            tuple(x.reshape((x.shape[0], -1)) for x in utils.as_tensors(xs)), 1)
+            tuple(x.reshape((x.shape[0], -1)) for x in utils.as_tensors(xs)), 1
+        )
 
     def _evaluate(self, row_index):
         return self._flatten(_grad(self._flatten_ys[:, row_index], self._xs))
@@ -491,24 +504,27 @@ def _multi_index(indexes, shape):
     Returns:
         tuple: The standard format index as the above description.
     """
-    indexes = indexes if isinstance(indexes, typing.Sequence) else (indexes, )
+    indexes = indexes if isinstance(indexes, typing.Sequence) else (indexes,)
     if any(isinstance(i, type(Ellipsis)) for i in indexes):
         raise IndexError('Ellipsis index currently is not supported.')
     # Fill the right-most elements.
-    indexes = indexes + (slice(0, None, None), ) * (len(shape) - len(indexes))
+    indexes = indexes + (slice(0, None, None),) * (len(shape) - len(indexes))
     # Convert to positive index.
     positive_indexes = []
     for i, index in enumerate(indexes):
         if isinstance(index, slice):
-            index = slice(index.start or 0, index.stop or shape[i], index.step
-                          or 1)
+            index = slice(
+                index.start or 0, index.stop or shape[i], index.step or 1
+            )
             positive_indexes.append(
                 slice(
                     index.start + shape[i] if index.start < 0 else index.start,
                     index.stop + shape[i] if index.stop < 0 else index.stop,
                     # Negative step means index backward, no need to convert to
                     # positive interger.
-                    index.step))
+                    index.step,
+                )
+            )
         elif isinstance(index, int):
             positive_indexes.append(index + shape[i] if index < 0 else index)
         else:
@@ -523,8 +539,8 @@ def _replace_none_with_zero_tensor(xs, refs):
         return xs
     elif isinstance(xs, typing.Sequence):
         return tuple(
-            _replace_none_with_zero_tensor(x, refs[i])
-            for i, x in enumerate(xs))
+            _replace_none_with_zero_tensor(x, refs[i]) for i, x in enumerate(xs)
+        )
     else:
         return xs
 
@@ -569,8 +585,11 @@ def _grad(ys, xs, v=None):
         # follow code snippet fixes the problem by return the first element of
         # xs_grad when the xs is a signle Tensor.
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
-        if isinstance(xs, paddle.fluid.framework.Variable) and isinstance(
-                xs_grad, typing.Sequence) and len(xs_grad) > 0:
+        if (
+            isinstance(xs, paddle.fluid.framework.Variable)
+            and isinstance(xs_grad, typing.Sequence)
+            and len(xs_grad) > 0
+        ):
             xs_grad = xs_grad[0]
     else:
         xs_grad = paddle.incubate.autograd.grad(ys, xs, v)
@@ -646,18 +665,23 @@ def _check_inputs(func, xs, v=None):
         raise TypeError(f"Expected 'fun' is Callable, but got {type(func)}.")
 
     if not isinstance(xs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f"Expected 'xs' is a Tensor|Sequence[Tensor],"
-                        f"but got {type(xs)}.")
+        raise TypeError(
+            f"Expected 'xs' is a Tensor|Sequence[Tensor],"
+            f"but got {type(xs)}."
+        )
     if isinstance(xs, typing.Sequence) and not all(
-            isinstance(x, framework.Variable) for x in xs):
+        isinstance(x, framework.Variable) for x in xs
+    ):
         raise TypeError("All elements of 'xs' shoule be Tensor.")
 
     if not isinstance(v, (framework.Variable, typing.Sequence, type(None))):
         raise TypeError(
-            f"Expected 'v' is Tensor|Sequence[Tensor]|None, but got {type(v)}.")
+            f"Expected 'v' is Tensor|Sequence[Tensor]|None, but got {type(v)}."
+        )
 
     if isinstance(v, typing.Sequence) and not all(
-            isinstance(e, framework.Variable) for e in v):
+        isinstance(e, framework.Variable) for e in v
+    ):
         raise TypeError("All elements of 'xs' shoule be Tensor.")
 
 
@@ -667,11 +691,14 @@ def _check_v_shape(v, refs):
 
     v, refs = utils.as_tensors(v), utils.as_tensors(refs)
     if len(refs) != len(v):
-        raise RuntimeError(f"The argument v is a tuple of invalid length:"
-                           f"should be {len(refs)} but got {len(v)}.")
+        raise RuntimeError(
+            f"The argument v is a tuple of invalid length:"
+            f"should be {len(refs)} but got {len(v)}."
+        )
 
     for index, (element_v, element_ref) in enumerate(zip(v, refs)):
         if element_v.shape != element_ref.shape:
             raise RuntimeError(
                 f"The v[{index}] has invalid shape: should "
-                f"be {element_ref.shape} but got {element_v.shape}.")
+                f"be {element_ref.shape} but got {element_v.shape}."
+            )

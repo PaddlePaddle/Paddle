@@ -85,7 +85,7 @@ class CinnLaunchContext {
   // Check the equiality in type and dimension between the tensor
   // in Paddle and the compiled tensor returned by CINN of a same variable
   void CheckTensorEquivalent(const std::string& var_name,
-                             const framework::LoDTensor& paddle_tensor);
+                             const phi::DenseTensor& paddle_tensor);
 
   // Return the name list of variables skipped eager deletion
   const std::vector<std::string>& GetSkipEagerVars() const {

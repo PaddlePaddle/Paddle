@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-import numpy as np
 
 
 def convert_params_for_cell(np_cell, paddle_cell):
@@ -42,22 +41,28 @@ def convert_params_for_net(np_net, paddle_net):
 def convert_params_for_net_static(np_net, paddle_net, place):
     for np_layer, paddle_layer in zip(np_net, paddle_net):
         if hasattr(np_layer, "cell"):
-            convert_params_for_cell_static(np_layer.cell, paddle_layer.cell,
-                                           place)
+            convert_params_for_cell_static(
+                np_layer.cell, paddle_layer.cell, place
+            )
         else:
-            convert_params_for_cell_static(np_layer.cell_fw,
-                                           paddle_layer.cell_fw, place)
-            convert_params_for_cell_static(np_layer.cell_bw,
-                                           paddle_layer.cell_bw, place)
+            convert_params_for_cell_static(
+                np_layer.cell_fw, paddle_layer.cell_fw, place
+            )
+            convert_params_for_cell_static(
+                np_layer.cell_bw, paddle_layer.cell_bw, place
+            )
 
 
 def get_params_for_cell(np_cell, num_layers, idx):
     state = np_cell.parameters
-    weight_list = [('{}.weight_{}'.format(num_layers, idx), state['weight_ih']),
-                   ('{}.weight_{}'.format(num_layers,
-                                          idx + 1), state['weight_hh'])]
-    bias_list = [('{}.bias_{}'.format(num_layers, idx), state['bias_ih']),
-                 ('{}.bias_{}'.format(num_layers, idx + 1), state['bias_hh'])]
+    weight_list = [
+        ('{}.weight_{}'.format(num_layers, idx), state['weight_ih']),
+        ('{}.weight_{}'.format(num_layers, idx + 1), state['weight_hh']),
+    ]
+    bias_list = [
+        ('{}.bias_{}'.format(num_layers, idx), state['bias_ih']),
+        ('{}.bias_{}'.format(num_layers, idx + 1), state['bias_hh']),
+    ]
     return weight_list, bias_list
 
 

@@ -15,6 +15,7 @@
 import unittest
 
 import os
+
 if os.getenv("CUDA_VISIBLE_DEVICES", None) is None:
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
@@ -24,11 +25,10 @@ import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
 from paddle.distributed.fleet import auto
-from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
+from paddle.distributed.auto_parallel.dist_context import (
+    get_default_distributed_context,
+)
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.process_group import new_process_group
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -36,26 +36,26 @@ _global_process_mesh = None
 
 
 class MLPLayer(nn.Layer):
-
-    def __init__(self,
-                 hidden_size=1024,
-                 intermediate_size=4 * 1024,
-                 initializer_range=0.02):
+    def __init__(
+        self,
+        hidden_size=1024,
+        intermediate_size=4 * 1024,
+        initializer_range=0.02,
+    ):
         super(MLPLayer, self).__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(
-            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range)
+        )
         bias_attr = None
 
-        self.linear0 = nn.Linear(d_model,
-                                 dim_feedforward,
-                                 weight_attr,
-                                 bias_attr=bias_attr)
-        self.linear1 = nn.Linear(dim_feedforward,
-                                 d_model,
-                                 weight_attr,
-                                 bias_attr=bias_attr)
+        self.linear0 = nn.Linear(
+            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr
+        )
+        self.linear1 = nn.Linear(
+            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr
+        )
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
@@ -63,10 +63,12 @@ class MLPLayer(nn.Layer):
             auto.shard_tensor(self.linear0.weight, PP_MESH_0, [None, None])
             auto.shard_tensor(self.linear1.weight, PP_MESH_1, [None, None])
         else:
-            auto.shard_tensor(self.linear0.weight, _global_process_mesh,
-                              [None, None])
-            auto.shard_tensor(self.linear1.weight, _global_process_mesh,
-                              [None, None])
+            auto.shard_tensor(
+                self.linear0.weight, _global_process_mesh, [None, None]
+            )
+            auto.shard_tensor(
+                self.linear1.weight, _global_process_mesh, [None, None]
+            )
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -77,17 +79,18 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_forward(train_program, start_program):
-    with static.program_guard(train_program,
-                              start_program), utils.unique_name.guard():
+    with static.program_guard(
+        train_program, start_program
+    ), utils.unique_name.guard():
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512
-        input = static.data(name="input",
-                            shape=[batch_size, hidden_size],
-                            dtype='float32')
-        label = static.data(name="label",
-                            shape=[batch_size, 1],
-                            dtype='float32')
+        input = static.data(
+            name="input", shape=[batch_size, hidden_size], dtype='float32'
+        )
+        label = static.data(
+            name="label", shape=[batch_size, 1], dtype='float32'
+        )
 
         if _global_parallel_strategy == "pp":
             auto.shard_tensor(input, PP_MESH_0, [None, None])
@@ -97,9 +100,11 @@ def mlp_forward(train_program, start_program):
         else:
             auto.shard_tensor(input, _global_process_mesh, [None, None])
 
-        mlp = MLPLayer(hidden_size=hidden_size,
-                       intermediate_size=4 * hidden_size,
-                       initializer_range=0.02)
+        mlp = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            initializer_range=0.02,
+        )
 
         predict = mlp(input)
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
@@ -108,8 +113,9 @@ def mlp_forward(train_program, start_program):
     return loss, train_program, start_program
 
 
-def get_dist_prog_with_parallelizer(train_program, startup_program,
-                                    dist_context):
+def get_dist_prog_with_parallelizer(
+    train_program, startup_program, dist_context
+):
     global _global_process_mesh
 
     dist_strategy = fleet.DistributedStrategy()
@@ -121,18 +127,25 @@ def get_dist_prog_with_parallelizer(train_program, startup_program,
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 
-    loss, train_program, startup_program = mlp_forward(train_program,
-                                                       startup_program)
+    loss, train_program, startup_program = mlp_forward(
+        train_program, startup_program
+    )
 
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
-                                                     beta1=0.9,
-                                                     beta2=0.999,
-                                                     epsilon=1e-08,
-                                                     grad_clip=None)
+    optimizer = paddle.fluid.optimizer.AdamOptimizer(
+        learning_rate=0.00001,
+        beta1=0.9,
+        beta2=0.999,
+        epsilon=1e-08,
+        grad_clip=None,
+    )
     optimizer = fleet.distributed_optimizer(optimizer)
 
-    _, _, distributed_startup_program, distributed_main_program = optimizer.minimize(
-        loss, startup_program)
+    (
+        _,
+        _,
+        distributed_startup_program,
+        distributed_main_program,
+    ) = optimizer.minimize(loss, startup_program)
 
     return distributed_main_program, distributed_startup_program
 
@@ -145,21 +158,28 @@ def check_send_recv_result(dist_main_prog, rank_id):
         for idx, op in enumerate(ops):
             if op.type == "send_v2" and "gelu_0.tmp_0" in op.input_arg_names:
                 send_result = True
-            if op.type == "recv_v2" and "gelu_0.tmp_0@GRAD" in op.output_arg_names[
-                    0]:
+            if (
+                op.type == "recv_v2"
+                and "gelu_0.tmp_0@GRAD" in op.output_arg_names[0]
+            ):
                 recv_result = True
     else:
         for idx, op in enumerate(ops):
-            if op.type == "send_v2" and "gelu_0.tmp_0@GRAD" in op.input_arg_names:
+            if (
+                op.type == "send_v2"
+                and "gelu_0.tmp_0@GRAD" in op.input_arg_names
+            ):
                 send_result = True
-            if op.type == "recv_v2" and "gelu_0.tmp_0" in op.output_arg_names[0]:
+            if (
+                op.type == "recv_v2"
+                and "gelu_0.tmp_0" in op.output_arg_names[0]
+            ):
                 recv_result = True
 
     return send_result and recv_result
 
 
 class TestMLPReshard(unittest.TestCase):
-
     def test_mlp_serial(self):
         global _global_parallel_strategy
         _global_parallel_strategy = None
@@ -171,7 +191,8 @@ class TestMLPReshard(unittest.TestCase):
         dist_context = get_default_distributed_context()
         rank_id = 0
         dist_main_prog, dist_startup_prog = get_dist_prog_with_parallelizer(
-            train_program, startup_program, dist_context)
+            train_program, startup_program, dist_context
+        )
         # send and recv should not exist in serial scene.
         self.assertFalse(check_send_recv_result(dist_main_prog, rank_id))
 

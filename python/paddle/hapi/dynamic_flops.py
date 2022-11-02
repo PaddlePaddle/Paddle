@@ -17,7 +17,9 @@ import warnings
 import paddle.nn as nn
 import numpy as np
 from .static_flops import static_flops, Table
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+    unwrap_decorators,
+)
 
 __all__ = []
 
@@ -106,10 +108,9 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
         _, net.forward = unwrap_decorators(net.forward)
 
         inputs = paddle.randn(input_size)
-        return dynamic_flops(net,
-                             inputs=inputs,
-                             custom_ops=custom_ops,
-                             print_detail=print_detail)
+        return dynamic_flops(
+            net, inputs=inputs, custom_ops=custom_ops, print_detail=print_detail
+        )
     elif isinstance(net, paddle.static.Program):
         return static_flops(net, print_detail=print_detail)
     else:
@@ -123,8 +124,9 @@ def count_convNd(m, x, y):
     x = x[0]
     kernel_ops = np.product(m.weight.shape[2:])
     bias_ops = 1 if m.bias is not None else 0
-    total_ops = int(
-        y.numel()) * (x.shape[1] / m._groups * kernel_ops + bias_ops)
+    total_ops = int(y.numel()) * (
+        x.shape[1] / m._groups * kernel_ops + bias_ops
+    )
     m.total_ops += abs(int(total_ops))
 
 
@@ -205,7 +207,7 @@ register_hooks = {
     nn.AvgPool3D: count_avgpool,
     nn.AdaptiveAvgPool1D: count_adap_avgpool,
     nn.AdaptiveAvgPool2D: count_adap_avgpool,
-    nn.AdaptiveAvgPool3D: count_adap_avgpool
+    nn.AdaptiveAvgPool3D: count_adap_avgpool,
 }
 
 
@@ -227,7 +229,8 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
             flops_fn = custom_ops[m_type]
             if m_type not in types_collection:
                 print(
-                    "Customize Function has been applied to {}".format(m_type))
+                    "Customize Function has been applied to {}".format(m_type)
+                )
         elif m_type in register_hooks:
             flops_fn = register_hooks[m_type]
             if m_type not in types_collection:
@@ -235,8 +238,10 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         else:
             if m_type not in types_collection:
                 print(
-                    "Cannot find suitable count function for {}. Treat it as zero FLOPs."
-                    .format(m_type))
+                    "Cannot find suitable count function for {}. Treat it as zero FLOPs.".format(
+                        m_type
+                    )
+                )
 
         if flops_fn is not None:
             flops_handler = m.register_forward_post_hook(flops_fn)
@@ -260,8 +265,12 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     for m in model.sublayers():
         if len(list(m.children())) > 0:
             continue
-        if {'total_ops', 'total_params', 'input_shape',
-                'output_shape'}.issubset(set(list(m._buffers.keys()))):
+        if {
+            'total_ops',
+            'total_params',
+            'input_shape',
+            'output_shape',
+        }.issubset(set(list(m._buffers.keys()))):
             total_ops += m.total_ops
             total_params += m.total_params
 
@@ -271,26 +280,36 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         handler.remove()
 
     table = Table(
-        ["Layer Name", "Input Shape", "Output Shape", "Params", "Flops"])
+        ["Layer Name", "Input Shape", "Output Shape", "Params", "Flops"]
+    )
 
     for n, m in model.named_sublayers():
         if len(list(m.children())) > 0:
             continue
-        if {'total_ops', 'total_params', 'input_shape',
-                'output_shape'}.issubset(set(list(m._buffers.keys()))):
-            table.add_row([
-                m.full_name(),
-                list(m.input_shape.numpy()),
-                list(m.output_shape.numpy()),
-                int(m.total_params),
-                int(m.total_ops)
-            ])
+        if {
+            'total_ops',
+            'total_params',
+            'input_shape',
+            'output_shape',
+        }.issubset(set(list(m._buffers.keys()))):
+            table.add_row(
+                [
+                    m.full_name(),
+                    list(m.input_shape.numpy()),
+                    list(m.output_shape.numpy()),
+                    int(m.total_params),
+                    int(m.total_ops),
+                ]
+            )
             m._buffers.pop("total_ops")
             m._buffers.pop("total_params")
             m._buffers.pop('input_shape')
             m._buffers.pop('output_shape')
     if print_detail:
         table.print_table()
-    print('Total Flops: {}     Total Params: {}'.format(int(total_ops),
-                                                        int(total_params)))
+    print(
+        'Total Flops: {}     Total Params: {}'.format(
+            int(total_ops), int(total_params)
+        )
+    )
     return int(total_ops)

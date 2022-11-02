@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 # import yaml
 import unittest
 from paddle.distributed.fleet import auto
 
 
 class TestStrategy(unittest.TestCase):
-
     def test_default_config(self):
         strategy = auto.Strategy()
 

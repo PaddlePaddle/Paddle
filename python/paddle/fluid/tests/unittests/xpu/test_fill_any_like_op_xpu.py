@@ -17,27 +17,24 @@ import sys
 sys.path.append("..")
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-import paddle.compat as cpt
 import unittest
 import numpy as np
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestFillAnyLikeOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'fill_any_like'
         self.use_dynamic_create_class = False
 
     class TestFillAnyLikeOp(XPUOpTest):
-
         def setUp(self):
             self.init_dtype()
             self.set_xpu()
@@ -65,22 +62,18 @@ class XPUTestFillAnyLikeOp(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
     class TestFillAnyLikeOp2(TestFillAnyLikeOp):
-
         def set_value(self):
             self.value = -0.0
 
     class TestFillAnyLikeOp3(TestFillAnyLikeOp):
-
         def set_value(self):
             self.value = 1.0
 
     class TestFillAnyLikeOp4(TestFillAnyLikeOp):
-
         def init(self):
             self.value = 1e-9
 
     class TestFillAnyLikeOp5(TestFillAnyLikeOp):
-
         def set_value(self):
             if self.dtype == "float16":
                 self.value = 0.05

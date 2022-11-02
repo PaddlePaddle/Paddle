@@ -92,20 +92,19 @@ class Beta(exponential_family.ExponentialFamily):
         self.alpha, self.beta = paddle.broadcast_tensors([alpha, beta])
 
         self._dirichlet = dirichlet.Dirichlet(
-            paddle.stack([self.alpha, self.beta], -1))
+            paddle.stack([self.alpha, self.beta], -1)
+        )
 
         super(Beta, self).__init__(self._dirichlet._batch_shape)
 
     @property
     def mean(self):
-        """Mean of beta distribution.
-        """
+        """Mean of beta distribution."""
         return self.alpha / (self.alpha + self.beta)
 
     @property
     def variance(self):
-        """Variance of beat distribution
-        """
+        """Variance of beat distribution"""
         sum = self.alpha + self.beta
         return self.alpha * self.beta / (sum.pow(2) * (sum + 1))
 

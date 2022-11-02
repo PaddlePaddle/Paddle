@@ -14,15 +14,17 @@
 
 import unittest
 from paddle.fluid.framework import default_main_program
-from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import _get_optimizer_input_shape
+from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import (
+    _get_optimizer_input_shape,
+)
 
 main_program = default_main_program()
 
 
 class TestFleetPS(unittest.TestCase):
-
     def test_version(self):
         from paddle.fluid.incubate.fleet.parameter_server import version
+
         transpiler = version.is_transpiler()
         self.assertEqual(transpiler, True)
 
@@ -43,8 +45,9 @@ class TestFleetPS(unittest.TestCase):
 
         for attrs in optimizers:
             op_type, varkey, orig_shape, param_shape = attrs
-            new_shape = _get_optimizer_input_shape(op_type, varkey, orig_shape,
-                                                   param_shape)
+            new_shape = _get_optimizer_input_shape(
+                op_type, varkey, orig_shape, param_shape
+            )
             self.assertListEqual(new_shape, param_shape)
 
         optimizers = []
@@ -52,8 +55,9 @@ class TestFleetPS(unittest.TestCase):
 
         for attrs in optimizers:
             op_type, varkey, orig_shape, param_shape = attrs
-            new_shape = _get_optimizer_input_shape(op_type, varkey, orig_shape,
-                                                   param_shape)
+            new_shape = _get_optimizer_input_shape(
+                op_type, varkey, orig_shape, param_shape
+            )
             self.assertListEqual(new_shape, orig_shape)
 
         with self.assertRaises(ValueError):
@@ -62,8 +66,9 @@ class TestFleetPS(unittest.TestCase):
 
             for attrs in optimizers:
                 op_type, varkey, orig_shape, param_shape = attrs
-                _get_optimizer_input_shape(op_type, varkey, orig_shape,
-                                           param_shape)
+                _get_optimizer_input_shape(
+                    op_type, varkey, orig_shape, param_shape
+                )
 
 
 if __name__ == '__main__':

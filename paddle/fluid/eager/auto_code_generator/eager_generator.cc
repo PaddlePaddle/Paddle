@@ -55,7 +55,9 @@ static std::unordered_set<std::string> black_ops_list = {"run_program",
                                                          "fused_gate_attention",
                                                          "fused_feedforward",
                                                          "fused_attention",
-                                                         "fused_gemm_epilogue"};
+                                                         "fused_gemm_epilogue",
+                                                         "sparse_divide_scalar",
+                                                         "sparse_scale"};
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
@@ -826,7 +828,7 @@ static bool CollectGradInformationFromOpInfo(
           new paddle::imperative::VarBase("auto_" + in_name + "_" +
                                           std::to_string(i))));
       ins[in_name][i]->SetOverridedStopGradient(false);
-      ins[in_name][i]->MutableVar()->GetMutable<framework::LoDTensor>();
+      ins[in_name][i]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
   } else {
     for (const proto::OpProto::Var& input : op_proto.inputs()) {
@@ -850,7 +852,7 @@ static bool CollectGradInformationFromOpInfo(
       ins[in_name] = {std::shared_ptr<paddle::imperative::VarBase>(
           new paddle::imperative::VarBase("auto_" + in_name))};
       ins[in_name][0]->SetOverridedStopGradient(false);
-      ins[in_name][0]->MutableVar()->GetMutable<framework::LoDTensor>();
+      ins[in_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
   }
   VLOG(6) << "Prepared Forward Ins Map, size = " << ins.size();
@@ -868,7 +870,7 @@ static bool CollectGradInformationFromOpInfo(
     outs[out_name] = {std::shared_ptr<paddle::imperative::VarBase>(
         new paddle::imperative::VarBase("auto_" + out_name))};
     outs[out_name][0]->SetOverridedStopGradient(false);
-    outs[out_name][0]->MutableVar()->GetMutable<framework::LoDTensor>();
+    outs[out_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
   }
   VLOG(6) << "Prepared Forward Outs Map, size = " << outs.size();
 
@@ -3158,6 +3160,12 @@ static void DygraphCodeGeneration(const std::string& output_dir,
     if (!CheckOpProto(op_proto)) continue;
     const std::string& op_type = op_proto->type();
     if (black_ops_list.count(op_type)) {
+      continue;
+    }
+
+    // Skip the sparse op
+    if (op_type.compare(0, 7, "sparse_") == 0 && op_type != "sparse_momentum" &&
+        op_type != "sparse_attention") {
       continue;
     }
 

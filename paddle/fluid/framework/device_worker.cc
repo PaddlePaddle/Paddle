@@ -205,7 +205,8 @@ void PrintLodTensor(phi::DenseTensor* tensor,
   }
 }
 
-std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
+std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor,
+                                           int index) {
   auto& dims = tensor->dims();
   if (tensor->lod().size() != 0) {
     auto& lod = tensor->lod()[0];
@@ -215,7 +216,7 @@ std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
   }
 }
 
-bool CheckValidOutput(LoDTensor* tensor, size_t batch_size) {
+bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size) {
   auto& dims = tensor->dims();
   if (dims.size() != 2) return false;
   if (tensor->lod().size() != 0) {
@@ -239,8 +240,8 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    framework::LoDTensor cpu_tensor;
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor cpu_tensor;
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
       tensor = &cpu_tensor;
@@ -292,7 +293,7 @@ void DeviceWorker::DumpField(const Scope& scope,
                 << "] cannot be find in scope, so it was skipped.";
         continue;
       }
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (!tensor->IsInitialized()) {
         VLOG(0) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
@@ -315,8 +316,9 @@ void DeviceWorker::DumpField(const Scope& scope,
     if (dump_fields_ == NULL || (*dump_fields_).size() == 0) {
       return;
     }
-    auto set_output_str = [&, this](
-                              size_t begin, size_t end, LoDTensor* tensor) {
+    auto set_output_str = [&, this](size_t begin,
+                                    size_t end,
+                                    phi::DenseTensor* tensor) {
       std::pair<int64_t, int64_t> bound;
       auto& dims = tensor->dims();
       for (size_t i = begin; i < end; ++i) {
@@ -339,13 +341,13 @@ void DeviceWorker::DumpField(const Scope& scope,
                 << "] cannot be find in scope, so it was skipped.";
         continue;
       }
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (!tensor->IsInitialized()) {
         VLOG(0) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
         continue;
       }
-      framework::LoDTensor cpu_tensor;
+      phi::DenseTensor cpu_tensor;
       if (platform::is_gpu_place(tensor->place())) {
         TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
         cpu_tensor.set_lod(tensor->lod());
@@ -422,13 +424,13 @@ void DeviceWorker::DumpField(const Scope& scope,
               << "] cannot be find in scope, so it was skipped.";
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     if (!tensor->IsInitialized()) {
       VLOG(0) << "Note: field[" << field
               << "] is not initialized, so it was skipped.";
       continue;
     }
-    framework::LoDTensor cpu_tensor;
+    phi::DenseTensor cpu_tensor;
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
       cpu_tensor.set_lod(tensor->lod());

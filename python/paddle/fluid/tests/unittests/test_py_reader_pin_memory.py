@@ -17,11 +17,9 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
-from threading import Thread
 
 
 def user_reader(inputs):
-
     def _reader():
         for d in inputs:
             yield d
@@ -30,7 +28,6 @@ def user_reader(inputs):
 
 
 def batch_feeder(batch_reader, pin_memory=False, img_dtype="float32"):
-
     def _feeder():
         for batch_data in batch_reader():
             sample_batch = []
@@ -49,7 +46,6 @@ def batch_feeder(batch_reader, pin_memory=False, img_dtype="float32"):
 
 
 class TestPyReader(unittest.TestCase):
-
     def setUp(self):
         self.capacity = 10
         self.shapes = [(-1, 3, 2, 1), (-1, 1)]
@@ -58,29 +54,37 @@ class TestPyReader(unittest.TestCase):
 
     def test_pin_memory_pyreader(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            place = fluid.CUDAPlace(
-                0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+            place = (
+                fluid.CUDAPlace(0)
+                if fluid.core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
             executor = fluid.Executor(place)
 
-            data_file = fluid.layers.py_reader(capacity=self.capacity,
-                                               dtypes=self.dtypes,
-                                               lod_levels=self.lod_levels,
-                                               shapes=self.shapes)
+            data_file = fluid.layers.py_reader(
+                capacity=self.capacity,
+                dtypes=self.dtypes,
+                lod_levels=self.lod_levels,
+                shapes=self.shapes,
+            )
             # feed_queue = data_file.queue
             read_out_data = fluid.layers.read_file(data_file)
 
             self.inputs = []
             for _ in range(10):
-                sample = np.random.uniform(low=0, high=1,
-                                           size=[3, 2, 1]).astype("float32")
+                sample = np.random.uniform(
+                    low=0, high=1, size=[3, 2, 1]
+                ).astype("float32")
                 label = np.random.randint(low=0, high=10, dtype="int64")
                 self.inputs.append((sample, label))
 
             self.input_tensors = []
             for d, l in batch_feeder(
-                    paddle.batch(user_reader(self.inputs), batch_size=2),
-                    pin_memory=True
-                    if fluid.core.is_compiled_with_cuda() else False)():
+                paddle.batch(user_reader(self.inputs), batch_size=2),
+                pin_memory=True
+                if fluid.core.is_compiled_with_cuda()
+                else False,
+            )():
                 ta = fluid.LoDTensorArray()
                 ta.append(d)
                 ta.append(l)
@@ -96,10 +100,13 @@ class TestPyReader(unittest.TestCase):
                 self.batched_inputs.append([feed_d, feed_l])
 
             data_file.decorate_tensor_provider(
-                batch_feeder(paddle.batch(user_reader(self.inputs),
-                                          batch_size=2),
-                             pin_memory=True
-                             if fluid.core.is_compiled_with_cuda() else False))
+                batch_feeder(
+                    paddle.batch(user_reader(self.inputs), batch_size=2),
+                    pin_memory=True
+                    if fluid.core.is_compiled_with_cuda()
+                    else False,
+                )
+            )
 
             executor.run(fluid.default_startup_program())
             self.outputs = []
@@ -107,14 +114,16 @@ class TestPyReader(unittest.TestCase):
             data_file.start()
             for _ in self.input_tensors:
                 self.outputs.append(
-                    executor.run(fetch_list=list(read_out_data)))
+                    executor.run(fetch_list=list(read_out_data))
+                )
             data_file.reset()
             self.validate()
 
     def validate(self):
         self.assertEqual(len(self.batched_inputs), len(self.outputs))
-        for in_data_list, out_data_list in zip(self.batched_inputs,
-                                               self.outputs):
+        for in_data_list, out_data_list in zip(
+            self.batched_inputs, self.outputs
+        ):
             self.assertEqual(len(in_data_list), len(out_data_list))
             in_data_list_np = [
                 np.array(in_lod_tensor) for in_lod_tensor in in_data_list

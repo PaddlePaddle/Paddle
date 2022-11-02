@@ -24,7 +24,6 @@ paddle.enable_static()
 
 
 class TestFunctionSpec(unittest.TestCase):
-
     def test_constructor(self):
         foo_spec = FunctionSpec(foo_func)
         args_name = foo_spec.args_name
@@ -51,11 +50,9 @@ class TestFunctionSpec(unittest.TestCase):
         self.assertTrue(len(kwargs) == 0)
 
         # case 2: foo(a=10, b=20, d=4)
-        args, kwargs = foo_spec.unified_args_and_kwargs([], {
-            'a': 10,
-            'b': 20,
-            'd': 4
-        })
+        args, kwargs = foo_spec.unified_args_and_kwargs(
+            [], {'a': 10, 'b': 20, 'd': 4}
+        )
         self.assertTupleEqual(args, (10, 20, 1, 4))
         self.assertTrue(len(kwargs) == 0)
 
@@ -83,7 +80,8 @@ class TestFunctionSpec(unittest.TestCase):
         # case 1
         foo_spec = FunctionSpec(foo_func, input_spec=[a_spec, b_spec])
         input_with_spec, _ = foo_spec.args_to_input_spec(
-            (a_tensor, b_tensor, 1, 2), {})
+            (a_tensor, b_tensor, 1, 2), {}
+        )
 
         self.assertTrue(len(input_with_spec) == 4)
         self.assertTrue(input_with_spec[0] == a_spec)  # a
@@ -93,8 +91,9 @@ class TestFunctionSpec(unittest.TestCase):
 
         # case 2
         foo_spec = FunctionSpec(foo_func, input_spec=[a_spec])
-        input_with_spec, _ = foo_spec.args_to_input_spec((a_tensor, b_tensor),
-                                                         {})
+        input_with_spec, _ = foo_spec.args_to_input_spec(
+            (a_tensor, b_tensor), {}
+        )
         self.assertTrue(len(input_with_spec) == 2)
         self.assertTrue(input_with_spec[0] == a_spec)  # a
         self.assertTupleEqual(input_with_spec[1].shape, (4, 10))  # b.shape
@@ -104,14 +103,15 @@ class TestFunctionSpec(unittest.TestCase):
         # assert kwargs is None if set `input_spec`
         foo_spec = FunctionSpec(foo_func, input_spec=[a_spec])
         with self.assertRaises(ValueError):
-            input_with_spec = foo_spec.args_to_input_spec((a_tensor, b_tensor),
-                                                          {'c': 4})
+            input_with_spec = foo_spec.args_to_input_spec(
+                (a_tensor, b_tensor), {'c': 4}
+            )
 
         # case 4
         # assert len(args) >= len(self._input_spec)
         foo_spec = FunctionSpec(foo_func, input_spec=[a_spec, b_spec])
         with self.assertRaises(ValueError):
-            input_with_spec = foo_spec.args_to_input_spec((a_tensor, ), {})
+            input_with_spec = foo_spec.args_to_input_spec((a_tensor,), {})
 
 
 if __name__ == '__main__':

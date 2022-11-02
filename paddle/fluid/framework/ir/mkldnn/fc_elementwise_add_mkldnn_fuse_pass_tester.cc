@@ -139,6 +139,28 @@ TEST(FCElementwiseAddMKLDNNFusePass, NoFusion_NotResidualConnection) {
   EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 2}, {"elementwise_add", 1}}));
 }
 
+TEST(FCElementwiseAddMKLDNNFusePass, NoFusion_HasActivationFused) {
+  auto prog =
+      test::BuildProgramDesc({"a", "b", "c", "d", "e"}, {"bias", "weights"});
+
+  test::CreateOp(&prog, "sigmoid", {{"X", "a"}}, {{"Out", "b"}});
+  OpDesc* fc =
+      Create_Op_FC(&prog,
+                   {{"Input", "b"}, {"Bias", "bias"}, {"W", "weights"}},
+                   {{"Out", "c"}});
+  std::string activation{"relu"};
+  fc->SetAttr("activation_type", activation);
+
+  Create_Op_elementwise_add(&prog, {{"X", "c"}, {"Y", "a"}}, {{"Out", "d"}});
+  test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
+
+  Graph graph(prog);
+
+  EXPECT_TRUE(test::RunPassAndAssert(
+      &graph, "fc_elementwise_add_mkldnn_fuse_pass", "a", "e", 0, 0));
+  EXPECT_TRUE(test::AssertOpsCount(graph, {{"fc", 1}, {"elementwise_add", 1}}));
+}
+
 TEST(FCElementwiseAddMKLDNNFusePass, FC_Residual_VITOCR) {
   auto prog = test::BuildProgramDesc(
       {"a", "b", "c", "d", "e", "f", "g", "h", "i"},

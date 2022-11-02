@@ -220,7 +220,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Bias input should be of float type"));
     framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
     return framework::OpKernelType(
         input_data_type, ctx.GetPlace(), layout, library);
   }
@@ -402,7 +402,7 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
             "Can not find Y@GRAD in the execution context."));
 
     framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),

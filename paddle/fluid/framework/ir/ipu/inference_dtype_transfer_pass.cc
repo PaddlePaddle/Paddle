@@ -72,7 +72,7 @@ void InferenceDtypeTransferPass::ApplyImpl(ir::Graph* graph) const {
             // Transfer the dtypes of weight tensors
             std::vector<float16> fp16_data;
             auto* tensor = scope->FindVar(var_desc->Name())
-                               ->GetMutable<framework::LoDTensor>();
+                               ->GetMutable<phi::DenseTensor>();
             auto* data_ptr = tensor->data<float>();
             auto num_elem = tensor->numel();
 

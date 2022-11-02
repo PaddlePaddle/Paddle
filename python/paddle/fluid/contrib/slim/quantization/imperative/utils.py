@@ -18,7 +18,12 @@ import numpy as np
 import paddle
 import paddle.nn.quant.quant_layers as quant_layers
 
-from ..utils import _get_op_input_var_names, _get_op_output_var_names, _get_output_name_index, _get_input_name_index
+from ..utils import (
+    _get_op_input_var_names,
+    _get_op_output_var_names,
+    _get_output_name_index,
+    _get_input_name_index,
+)
 
 layer_name_map = {
     'Conv2DTranspose': paddle.nn.Conv2DTranspose,
@@ -54,8 +59,10 @@ fake_quant_input_layers = [
 # TODO(jc): fix the problem of adding duplicate fake_quant ops
 # paddle.nn.AdaptiveAvgPool2D, paddle.nn.AvgPool2D, paddle.nn.ReLU,paddle.nn.LeakyReLU
 fake_quant_output_layers = [
-    paddle.nn.quant.add, paddle.nn.quant.subtract, paddle.nn.quant.multiply,
-    paddle.nn.quant.divide
+    paddle.nn.quant.add,
+    paddle.nn.quant.subtract,
+    paddle.nn.quant.multiply,
+    paddle.nn.quant.divide,
 ]
 
 fake_quant_leaf_layers = [
@@ -66,24 +73,28 @@ fake_quant_leaf_layers = [
 ]
 
 fake_quant_wrap_layers = [
-    quant_layers.QuantizedConv2D, quant_layers.QuantizedLinear,
+    quant_layers.QuantizedConv2D,
+    quant_layers.QuantizedLinear,
     quant_layers.QuantizedConv2DTranspose,
     quant_layers.QuantizedColumnParallelLinear,
-    quant_layers.QuantizedRowParallelLinear
+    quant_layers.QuantizedRowParallelLinear,
 ]
 
 # The weight format of these layers is Cin * Cout * H * W
 spec_channel_axis_layers = [paddle.nn.Conv2DTranspose, paddle.nn.Linear]
 
 weight_op_types = [
-    "conv2d", "depthwise_conv2d", "matmul", "conv2d_transpose",
-    "depthwise_conv2d_transpose"
+    "conv2d",
+    "depthwise_conv2d",
+    "matmul",
+    "conv2d_transpose",
+    "depthwise_conv2d_transpose",
 ]
 
 fake_quantize_dequantize_op_types = [
     "fake_quantize_dequantize_abs_max",
     "fake_channel_wise_quantize_dequantize_abs_max",
-    "fake_quantize_dequantize_moving_average_abs_max"
+    "fake_quantize_dequantize_moving_average_abs_max",
 ]
 
 
@@ -92,8 +103,7 @@ def load_variable_data(scope, var_name):
     Load variable value from scope
     """
     var_node = scope.find_var(var_name)
-    assert var_node is not None, \
-        "Can not find " + var_name + " in the scope."
+    assert var_node is not None, "Can not find " + var_name + " in the scope."
     return np.array(var_node.get_tensor())
 
 
@@ -131,8 +141,9 @@ def find_parent_layer_and_sub_name(model, name):
     Returns:
         parent_layer, subname
     """
-    assert isinstance(model, paddle.nn.Layer), \
-            "The model must be the instance of paddle.nn.Layer."
+    assert isinstance(
+        model, paddle.nn.Layer
+    ), "The model must be the instance of paddle.nn.Layer."
     assert len(name) > 0, "The input (name) should not be empty."
 
     last_idx = 0
@@ -164,8 +175,7 @@ def is_leaf_layer(layer):
     """
     Whether the layer is leaf layer.
     """
-    return isinstance(layer, paddle.nn.Layer) \
-        and len(layer.sublayers()) == 0
+    return isinstance(layer, paddle.nn.Layer) and len(layer.sublayers()) == 0
 
 
 def fp_numpy_to_naive(x_np):

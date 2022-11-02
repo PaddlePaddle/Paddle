@@ -16,62 +16,104 @@ import unittest
 import os
 import json
 
-import paddle
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cost.comp_op_cost import AssignOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import AssignValueOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import BeamSearchOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import BeamSearchDecodeOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    BeamSearchDecodeOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import CastOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import ConcatOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseAddOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseAddGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseDivOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseDivGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseMulOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseMulGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ElementwiseSubOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    ElementwiseAddOpCost,
+)
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    ElementwiseAddGradOpCost,
+)
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    ElementwiseDivOpCost,
+)
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    ElementwiseDivGradOpCost,
+)
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    ElementwiseMulOpCost,
+)
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    ElementwiseMulGradOpCost,
+)
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    ElementwiseSubOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import EmbeddingOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import EmbeddingGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantBatchSizeLikeOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    EmbeddingGradOpCost,
+)
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    FillConstantOpCost,
+)
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    FillConstantBatchSizeLikeOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import GatherOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import GeluOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import GeluGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import GreaterEqualOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    GreaterEqualOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import IncrementOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import IsEmptyOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import LayerNormOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import LayerNormGradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    LayerNormGradOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import LessThanOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import LogicalNotOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import LogicalAndOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import LodResetOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import LogOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import LookupTableV2OpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import LookupTableV2GradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    LookupTableV2OpCost,
+)
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    LookupTableV2GradOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulGradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulV2OpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulV2GradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    MatmulV2GradOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MemcpyOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MulOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MulGradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import OneHotOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ReadFromArrayOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    ReadFromArrayOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import ReduceSumOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ReduceSumGradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    ReduceSumGradOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import Reshape2OpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import Reshape2GradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    Reshape2GradOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import ReduceMeanOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import ReduceMeanGradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    ReduceMeanGradOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import SamplingIdOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import ScaleOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import SliceOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import SoftmaxOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import SoftmaxGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import SoftmaxWithCrossEntropyOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import SoftmaxWithCrossEntropyGradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    SoftmaxWithCrossEntropyOpCost,
+)
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    SoftmaxWithCrossEntropyGradOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import SplitOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import Squeeze2OpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import SquareOpCost
@@ -79,18 +121,25 @@ from paddle.distributed.auto_parallel.cost.comp_op_cost import SquareGradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import SumOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import TopKOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import Transpose2OpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import Transpose2GradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    Transpose2GradOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import Unsqueeze2OpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import WriteToArrayOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    WriteToArrayOpCost,
+)
 from paddle.distributed.auto_parallel.cost.comp_op_cost import DropoutGradOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import FusedSoftmaxMaskUpperTriangleOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import FusedSoftmaxMaskUpperTriangleGradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    FusedSoftmaxMaskUpperTriangleOpCost,
+)
+from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+    FusedSoftmaxMaskUpperTriangleGradOpCost,
+)
 
 from test_cluster import cluster_json
 
 
 class TestCompOpCost(unittest.TestCase):
-
     def test_comp_cost(self):
         # Build cluster
         file_dir = os.path.dirname(os.path.abspath(__file__))

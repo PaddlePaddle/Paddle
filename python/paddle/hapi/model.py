@@ -16,7 +16,6 @@ import inspect
 import os
 import pickle
 import numpy as np
-import six
 import warnings
 import time
 import socket
@@ -25,7 +24,7 @@ import contextlib
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
@@ -46,6 +45,7 @@ from paddle.static import InputSpec as Input
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
 from paddle.distributed.fleet.base import role_maker
+from paddle.autograd import no_grad
 
 from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
@@ -64,8 +64,9 @@ def to_list(value):
 
 
 def to_numpy(var):
-    assert isinstance(var, (Variable, fluid.core.VarBase,
-                            fluid.core.eager.Tensor)), "not a variable"
+    assert isinstance(
+        var, (Variable, fluid.core.VarBase, fluid.core.eager.Tensor)
+    ), "not a variable"
     if isinstance(var, (fluid.core.VarBase, fluid.core.eager.Tensor)):
         return var.numpy()
     t = global_scope().find_var(var.name).get_tensor()
@@ -100,21 +101,21 @@ def extract_args(func):
 
 
 def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
-    return collective._c_allgather(x,
-                                   nranks,
-                                   ring_id=ring_id,
-                                   use_calc_stream=use_calc_stream)
+    return collective._c_allgather(
+        x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream
+    )
 
 
 def wait_server_ready(endpoints):
-    assert not isinstance(endpoints, six.string_types)
+    assert not isinstance(endpoints, str)
     while True:
         all_ok = True
         not_ready_endpoints = []
         for ep in endpoints:
             ip_port = ep.split(":")
             with contextlib.closing(
-                    socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            ) as sock:
                 sock.settimeout(2)
                 result = sock.connect_ex((ip_port[0], int(ip_port[1])))
                 if result != 0:
@@ -126,8 +127,9 @@ def wait_server_ready(endpoints):
             break
 
 
-def init_communicator(program, rank, nranks, wait_port, current_endpoint,
-                      endpoints):
+def init_communicator(
+    program, rank, nranks, wait_port, current_endpoint, endpoints
+):
     if nranks < 2:
         return
     other_endpoints = endpoints[:]
@@ -139,53 +141,66 @@ def init_communicator(program, rank, nranks, wait_port, current_endpoint,
         nccl_id_var = block.create_var(
             name=fluid.unique_name.generate('nccl_id'),
             persistable=True,
-            type=fluid.core.VarDesc.VarType.RAW)
+            type=fluid.core.VarDesc.VarType.RAW,
+        )
 
-        block.append_op(type='c_gen_nccl_id',
-                        inputs={},
-                        outputs={'Out': nccl_id_var},
-                        attrs={
-                            'rank': rank,
-                            'endpoint': current_endpoint,
-                            'other_endpoints': other_endpoints
-                        })
+        block.append_op(
+            type='c_gen_nccl_id',
+            inputs={},
+            outputs={'Out': nccl_id_var},
+            attrs={
+                'rank': rank,
+                'endpoint': current_endpoint,
+                'other_endpoints': other_endpoints,
+            },
+        )
 
-        block.append_op(type='c_comm_init',
-                        inputs={'X': nccl_id_var},
-                        outputs={},
-                        attrs={
-                            'nranks': nranks,
-                            'rank': rank,
-                            'ring_id': 0,
-                        })
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': nccl_id_var},
+            outputs={},
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': 0,
+            },
+        )
     elif core.is_compiled_with_npu():
         hccl_id_var = block.create_var(
             name=fluid.unique_name.generate('hccl_id'),
             persistable=True,
-            type=core.VarDesc.VarType.RAW)
-        block.append_op(type='c_gen_hccl_id',
-                        inputs={},
-                        outputs={'Out': hccl_id_var},
-                        attrs={
-                            'rank': rank,
-                            'endpoint': current_endpoint,
-                            'other_endpoints': other_endpoints
-                        })
-        block.append_op(type='c_comm_init_hccl',
-                        inputs={'X': hccl_id_var},
-                        outputs={},
-                        attrs={
-                            'rank': rank,
-                            'ring_id': 0,
-                            'device_id': int(os.getenv("FLAGS_selected_npus")),
-                            'rank_ids': nranks
-                        })
+            type=core.VarDesc.VarType.RAW,
+        )
+        block.append_op(
+            type='c_gen_hccl_id',
+            inputs={},
+            outputs={'Out': hccl_id_var},
+            attrs={
+                'rank': rank,
+                'endpoint': current_endpoint,
+                'other_endpoints': other_endpoints,
+            },
+        )
+        block.append_op(
+            type='c_comm_init_hccl',
+            inputs={'X': hccl_id_var},
+            outputs={},
+            attrs={
+                'rank': rank,
+                'ring_id': 0,
+                'device_id': int(os.getenv("FLAGS_selected_npus")),
+                'rank_ids': nranks,
+            },
+        )
 
 
 def prepare_distributed_context(place=None):
     if place is None:
-        place = fluid.CUDAPlace(ParallelEnv().dev_id) if ParallelEnv().nranks > 1 \
+        place = (
+            fluid.CUDAPlace(ParallelEnv().dev_id)
+            if ParallelEnv().nranks > 1
             else fluid.CUDAPlace(0)
+        )
 
     place = _get_paddle_place(place)
     strategy = fluid.dygraph.parallel.ParallelStrategy()
@@ -203,9 +218,14 @@ def prepare_distributed_context(place=None):
 
         def _init_context():
             communicator_prog = fluid.Program()
-            init_communicator(communicator_prog, strategy.local_rank,
-                              strategy.nranks, True, strategy.current_endpoint,
-                              strategy.trainer_endpoints)
+            init_communicator(
+                communicator_prog,
+                strategy.local_rank,
+                strategy.nranks,
+                True,
+                strategy.current_endpoint,
+                strategy.trainer_endpoints,
+            )
             exe = fluid.Executor(place)
             exe.run(communicator_prog)
 
@@ -215,7 +235,7 @@ def prepare_distributed_context(place=None):
             fluid.enable_dygraph(place)
 
     else:
-        assert ("Only support CUDAPlace for now.")
+        assert "Only support CUDAPlace for now."
 
     _parallel_context_initialized = True
     return strategy
@@ -264,7 +284,7 @@ class StaticGraphAdapter(object):
             'eval_total': 0,
             'test_total': 0,
             'eval_batch': 0,
-            'test_batch': 0
+            'test_batch': 0,
         }
 
         self._nranks = ParallelEnv().nranks
@@ -284,10 +304,13 @@ class StaticGraphAdapter(object):
         self.model.mode = value
 
     def train_batch(self, inputs, labels=None, update=True):
-        assert self.model._optimizer, \
-            "model not ready, please call `model.prepare()` first"
+        assert (
+            self.model._optimizer
+        ), "model not ready, please call `model.prepare()` first"
         self.mode = 'train'
-        assert update is True, "Does not support `update == False` in static mode by now."
+        assert (
+            update is True
+        ), "Does not support `update == False` in static mode by now."
         return self._run(inputs, labels)
 
     def eval_batch(self, inputs, labels=None):
@@ -302,7 +325,6 @@ class StaticGraphAdapter(object):
         return self.model.network.parameters(*args, **kwargs)
 
     def save(self, path):
-
         def _save(state, path):
             if not state:
                 return
@@ -326,8 +348,7 @@ class StaticGraphAdapter(object):
         # XXX `optimizer.state_dict()` only work in dygraph mode
         optim_path = path + ".pdopt"
         optim = {
-            p.name: p
-            for p in filter(is_belong_to_optimizer, prog.list_vars())
+            p.name: p for p in filter(is_belong_to_optimizer, prog.list_vars())
         }
         if not optim:
             return
@@ -343,8 +364,10 @@ class StaticGraphAdapter(object):
 
         # restore parameter states
         fluid.core._create_loaded_parameter(
-            [param for param, state in param_state_pairs], global_scope(),
-            executor)
+            [param for param, state in param_state_pairs],
+            global_scope(),
+            executor,
+        )
         for param, state in param_state_pairs:
             self._set_var(param, state)
 
@@ -372,9 +395,10 @@ class StaticGraphAdapter(object):
                 # static-graph, since the time of global_step to increase is
                 # different.
                 state_val = (
-                    np.array(converted_state.pop("global_step")) - 1
-                ) if "global_step" in converted_state else converted_state.pop(
-                    "@LR_DECAY_COUNTER@", None)
+                    (np.array(converted_state.pop("global_step")) - 1)
+                    if "global_step" in converted_state
+                    else converted_state.pop("@LR_DECAY_COUNTER@", None)
+                )
                 if state_val is not None:
                     converted_state[var.name] = state_val
             elif var.name.startswith("learning_rate_"):
@@ -391,36 +415,61 @@ class StaticGraphAdapter(object):
                     opt_cls_name = self.model._optimizer.__class__.__name__
                     opt_unq_name = None
                     for name in self.model._optimizer._accumulators.keys():
-                        accum_name = name if opt_name is None else name[
-                            len(opt_name) + 1:]
-                        for param_name, state_var in self.model._optimizer._accumulators[
-                                name].items():
+                        accum_name = (
+                            name
+                            if opt_name is None
+                            else name[len(opt_name) + 1 :]
+                        )
+                        for (
+                            param_name,
+                            state_var,
+                        ) in self.model._optimizer._accumulators[name].items():
                             if opt_unq_name is None:
                                 # can not infer out the exact unique(opt_name),
                                 # thus try to extract rather than generate
-                                for state_key in sorted(state.keys(),
-                                                        key=lambda x: len(x),
-                                                        reverse=True):
-                                    prefix = param_name + "_" + (
-                                        opt_cls_name
-                                        if opt_name is None else opt_name) + "_"
+                                for state_key in sorted(
+                                    state.keys(),
+                                    key=lambda x: len(x),
+                                    reverse=True,
+                                ):
+                                    prefix = (
+                                        param_name
+                                        + "_"
+                                        + (
+                                            opt_cls_name
+                                            if opt_name is None
+                                            else opt_name
+                                        )
+                                        + "_"
+                                    )
                                     if state_key.startswith(prefix):
-                                        prefix_offset = state_key[len(
-                                            prefix):].find("_") + len(prefix)
+                                        prefix_offset = state_key[
+                                            len(prefix) :
+                                        ].find("_") + len(prefix)
                                         opt_unq_name = state_key[
-                                            len(param_name + "_"):prefix_offset]
+                                            len(
+                                                param_name + "_"
+                                            ) : prefix_offset
+                                        ]
                                         # TODO: assert
                                         # assert opt_unq_name is None
                                     # gen(param.name + "_" + gen(opt_name) + "_" + accum_name)
                                     # always end with "_0" since the unique optimizer._name
-                            dy_state_name = (param_name + "_" + opt_unq_name +
-                                             "_" + accum_name + "_0")
+                            dy_state_name = (
+                                param_name
+                                + "_"
+                                + opt_unq_name
+                                + "_"
+                                + accum_name
+                                + "_0"
+                            )
                             converted_state[
-                                state_var.name] = converted_state.pop(
-                                    dy_state_name)
+                                state_var.name
+                            ] = converted_state.pop(dy_state_name)
 
-            assert var.name in converted_state, \
-                "variable [{}] is not in optimizer state file".format(var.name)
+            assert (
+                var.name in converted_state
+            ), "variable [{}] is not in optimizer state file".format(var.name)
             self._set_var(var, converted_state[var.name])
 
     def _set_var(self, var, ndarray):
@@ -439,15 +488,17 @@ class StaticGraphAdapter(object):
 
     def _run(self, inputs, labels=None):
         compiled_prog = self._compiled_progs.get(self.mode, None)
-        assert compiled_prog, \
-            "Model is not ready, please call `model.prepare()` first"
+        assert (
+            compiled_prog
+        ), "Model is not ready, please call `model.prepare()` first"
 
         inputs = to_list(inputs)
         if labels is not None:
             labels = to_list(labels)
-        assert len(inputs) == len(self._input_vars[self.mode]), \
-            "number of inputs" \
+        assert len(inputs) == len(self._input_vars[self.mode]), (
+            "number of inputs"
             + " does not match number of arguments of `forward` method"
+        )
 
         feed = {}
         input_names = [v.name for v in self._input_vars[self.mode]]
@@ -457,8 +508,10 @@ class StaticGraphAdapter(object):
             # train and test may take different arguments
             if inputs[idx] is not None:
                 feed[n] = inputs[idx]
-            if self._amp_level == 'O2' and input_dtypes[
-                    idx] == core.VarDesc.VarType.FP16:
+            if (
+                self._amp_level == 'O2'
+                and input_dtypes[idx] == core.VarDesc.VarType.FP16
+            ):
                 if isinstance(feed[n], core.LoDTensor):
                     feed[n] = feed[n]._as_type(core.VarDesc.VarType.FP16)
                 elif isinstance(feed[n], np.array):
@@ -486,10 +539,12 @@ class StaticGraphAdapter(object):
             else:
                 pruned_fetch_list.append(fetch_var)
 
-        rets = self._executor.run(compiled_prog,
-                                  feed=feed,
-                                  fetch_list=pruned_fetch_list,
-                                  return_numpy=False)
+        rets = self._executor.run(
+            compiled_prog,
+            feed=feed,
+            fetch_list=pruned_fetch_list,
+            return_numpy=False,
+        )
 
         # restore pruned fetch_list Variable from feeds
         for i, name in enumerate(pruned_fetch_idx_name_map):
@@ -505,20 +560,24 @@ class StaticGraphAdapter(object):
         metrics = []
         for metric, state in zip(self.model._metrics, metric_states):
             # cut off padding size
-            if self.mode != 'train' and self.model._test_dataloader is not None \
-                    and isinstance(self.model._test_dataloader, DataLoader) \
-                    and self._nranks > 1:
+            if (
+                self.mode != 'train'
+                and self.model._test_dataloader is not None
+                and isinstance(self.model._test_dataloader, DataLoader)
+                and self._nranks > 1
+            ):
                 total_size = len(self.model._test_dataloader.dataset)
                 # TODO: fixme if have better way to get batch size
                 samples = state[0].shape[0]
                 current_count = self._merge_count.get(self.mode + '_total', 0)
                 if current_count + samples >= total_size:
                     state = [
-                        s[:int(total_size - current_count), ...] for s in state
+                        s[: int(total_size - current_count), ...] for s in state
                     ]
                     self._merge_count[self.mode + '_total'] = 0
-                    self._merge_count[self.mode + '_batch'] = int(total_size -
-                                                                  current_count)
+                    self._merge_count[self.mode + '_batch'] = int(
+                        total_size - current_count
+                    )
                 else:
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
@@ -550,8 +609,11 @@ class StaticGraphAdapter(object):
         if mode != 'train':
             for op in list(prog.global_block().ops):
                 prog.global_block()._remove_op(0)
-        if mode == 'train' and self.model._optimizer \
-                and self.model._optimizer._learning_rate_map:
+        if (
+            mode == 'train'
+            and self.model._optimizer
+            and self.model._optimizer._learning_rate_map
+        ):
             # HACK workaround learning rate map issue
             lr_var = self.model._optimizer._learning_rate_map[self._orig_prog]
             new_lr_var = prog.global_block().vars[lr_var.name]
@@ -589,20 +651,27 @@ class StaticGraphAdapter(object):
                         dist_strategy.amp = True
                         dist_strategy.amp_configs = self._amp_configs.copy()
                         dist_strategy.amp_configs.update(self._amp_custom_lists)
-                        dist_strategy.amp_configs[
-                            'use_pure_fp16'] = self._amp_level == 'O2'
+                        dist_strategy.amp_configs['use_pure_fp16'] = (
+                            self._amp_level == 'O2'
+                        )
                     self.model._optimizer = fleet.distributed_optimizer(
-                        self.model._optimizer, strategy=dist_strategy)
+                        self.model._optimizer, strategy=dist_strategy
+                    )
                 elif self._amp_level != "O0" and core.is_compiled_with_cuda:
-                    amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
-                        **self._amp_custom_lists
-                    ) if self._amp_custom_lists else None
+                    amp_lists = (
+                        paddle.static.amp.AutoMixedPrecisionLists(
+                            **self._amp_custom_lists
+                        )
+                        if self._amp_custom_lists
+                        else None
+                    )
                     self.model._optimizer = paddle.static.amp.decorate(
                         self.model._optimizer,
                         amp_lists=amp_lists,
                         use_pure_fp16=self._amp_level == "O2",
                         use_fp16_guard=self._use_fp16_guard,
-                        **self._amp_configs)
+                        **self._amp_configs
+                    )
 
                 self.model._optimizer.minimize(self._loss_endpoint)
 
@@ -615,7 +684,7 @@ class StaticGraphAdapter(object):
         self._endpoints[mode] = {
             "output": outputs,
             "loss": to_list(losses),
-            "metric": metrics
+            "metric": metrics,
         }
 
     def _compile_and_initialize(self, prog, mode):
@@ -623,8 +692,9 @@ class StaticGraphAdapter(object):
         if compiled_prog is not None:
             return compiled_prog
 
-        assert self.model._place is not None, \
-            "device is not set, please call `model.prepare()` first"
+        assert (
+            self.model._place is not None
+        ), "device is not set, please call `model.prepare()` first"
 
         place = self.model._place
 
@@ -637,8 +707,11 @@ class StaticGraphAdapter(object):
             uninitialized = []
             for var_py in self._startup_prog.list_vars():
                 var = fluid.global_scope().find_var(var_py.name)
-                if not var_py.name.startswith('nccl_id') and var and \
-                        var.get_tensor()._is_initialized():
+                if (
+                    not var_py.name.startswith('nccl_id')
+                    and var
+                    and var.get_tensor()._is_initialized()
+                ):
                     continue
 
                 uninitialized.append(var_py)
@@ -646,7 +719,10 @@ class StaticGraphAdapter(object):
                 startup_prog = self._startup_prog._prune(uninitialized)
                 self._executor.run(startup_prog)
 
-        if self._amp_level == "O2" and mode == 'train' and core.is_compiled_with_cuda(
+        if (
+            self._amp_level == "O2"
+            and mode == 'train'
+            and core.is_compiled_with_cuda()
         ):
             self.model._optimizer.amp_init(place)
 
@@ -659,7 +735,6 @@ class StaticGraphAdapter(object):
 
 
 class DynamicGraphAdapter(object):
-
     def __init__(self, model):
         super(DynamicGraphAdapter, self).__init__()
         self.model = model
@@ -669,7 +744,7 @@ class DynamicGraphAdapter(object):
             'eval_total': 0,
             'test_total': 0,
             'eval_batch': 0,
-            'test_batch': 0
+            'test_batch': 0,
         }
 
         self._input_info = None
@@ -686,7 +761,8 @@ class DynamicGraphAdapter(object):
             stradegy.trainer_endpoints = ParallelEnv().trainer_endpoints
             stradegy.current_endpoint = ParallelEnv().current_endpoint
             self.ddp_model = fluid.dygraph.parallel.DataParallel(
-                self.model.network, stradegy)
+                self.model.network, stradegy
+            )
 
     @property
     def mode(self):
@@ -698,8 +774,9 @@ class DynamicGraphAdapter(object):
 
     # TODO multi device in dygraph mode not implemented at present time
     def train_batch(self, inputs, labels=None, update=True):
-        assert self.model._optimizer, \
-            "model not ready, please call `model.prepare()` first"
+        assert (
+            self.model._optimizer
+        ), "model not ready, please call `model.prepare()` first"
         self.model.network.train()
         self.mode = 'train'
         inputs = to_list(inputs)
@@ -711,15 +788,15 @@ class DynamicGraphAdapter(object):
         if self._amp_level != "O0" and self.model._scaler is None:
             self.model._scaler = paddle.amp.GradScaler(**self._amp_configs)
 
-        with paddle.amp.auto_cast(enable=self._amp_level != 'O0',
-                                  **self._amp_custom_lists,
-                                  level=self._amp_level):
+        with paddle.amp.auto_cast(
+            enable=self._amp_level != 'O0',
+            **self._amp_custom_lists,
+            level=self._amp_level
+        ):
             if self._nranks > 1:
-                outputs = self.ddp_model.forward(
-                    *[to_variable(x) for x in inputs])
+                outputs = self.ddp_model(*[to_variable(x) for x in inputs])
             else:
-                outputs = self.model.network.forward(
-                    *[to_variable(x) for x in inputs])
+                outputs = self.model.network(*[to_variable(x) for x in inputs])
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
@@ -743,8 +820,11 @@ class DynamicGraphAdapter(object):
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
-        return ([to_numpy(l) for l in losses], metrics) \
-            if len(metrics) > 0 else [to_numpy(l) for l in losses]
+        return (
+            ([to_numpy(l) for l in losses], metrics)
+            if len(metrics) > 0
+            else [to_numpy(l) for l in losses]
+        )
 
     def eval_batch(self, inputs, labels=None):
         self.model.network.eval()
@@ -754,7 +834,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.network(*[to_variable(x) for x in inputs])
 
         # Transfrom data to expected device
         expected_device = paddle.device.get_device()
@@ -774,21 +854,25 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             # cut off padding value.
-            if self.model._test_dataloader is not None and self._nranks > 1 \
-                    and isinstance(self.model._test_dataloader, DataLoader):
+            if (
+                self.model._test_dataloader is not None
+                and self._nranks > 1
+                and isinstance(self.model._test_dataloader, DataLoader)
+            ):
                 total_size = len(self.model._test_dataloader.dataset)
                 samples = outputs[0].shape[0]
                 current_count = self._merge_count.get(self.mode + '_total', 0)
                 if current_count + samples >= total_size:
                     outputs = [
-                        o[:int(total_size - current_count)] for o in outputs
+                        o[: int(total_size - current_count)] for o in outputs
                     ]
                     labels = [
-                        l[:int(total_size - current_count)] for l in labels
+                        l[: int(total_size - current_count)] for l in labels
                     ]
                     self._merge_count[self.mode + '_total'] = 0
-                    self._merge_count[self.mode + '_batch'] = int(total_size -
-                                                                  current_count)
+                    self._merge_count[self.mode + '_batch'] = int(
+                        total_size - current_count
+                    )
                 else:
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
@@ -809,7 +893,7 @@ class DynamicGraphAdapter(object):
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
         self._input_info = _update_input_info(inputs)
-        outputs = self.model.network.forward(*inputs)
+        outputs = self.model.network(*inputs)
         if self._nranks > 1 and isinstance(self.model._place, fluid.CUDAPlace):
             outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
 
@@ -855,38 +939,48 @@ class DynamicGraphAdapter(object):
             opt_unq_name = ''
 
         opt_cls_name = self.model._optimizer.__class__.__name__
-        opt_name = opt_unq_name[:opt_unq_name.rfind("_")]  # remove suffix idx
+        opt_name = opt_unq_name[: opt_unq_name.rfind("_")]  # remove suffix idx
         param_names = [param.name for param in self.model.network.parameters()]
-        for var_name, state_var in sorted(optim_state.items(),
-                                          key=lambda x: len(x[0]),
-                                          reverse=True):
+        for var_name, state_var in sorted(
+            optim_state.items(), key=lambda x: len(x[0]), reverse=True
+        ):
             if var_name in ["@LR_DECAY_COUNTER@", "global_step"]:
                 # NOTE: dygraph saved global_step is 1 larger than that in
                 # static-graph, since the time of global_step to increase is
                 # different.
                 if var_name == "@LR_DECAY_COUNTER@":
-                    converted_state["global_step"] = np.array(
-                        converted_state.pop("@LR_DECAY_COUNTER@")) + 1
+                    converted_state["global_step"] = (
+                        np.array(converted_state.pop("@LR_DECAY_COUNTER@")) + 1
+                    )
             else:
                 # moment and other accumulators
                 # extend state dict to include promising dygraph names
                 for param_name in param_names:
                     if var_name.startswith(param_name + "_" + opt_name):
                         # when init optimizer with name
-                        accum_name = var_name[len(param_name + "_" + opt_name +
-                                                  "_"):]
-                    elif var_name.startswith(param_name +
-                                             "_") and opt_name == opt_cls_name:
+                        accum_name = var_name[
+                            len(param_name + "_" + opt_name + "_") :
+                        ]
+                    elif (
+                        var_name.startswith(param_name + "_")
+                        and opt_name == opt_cls_name
+                    ):
                         # when init optimizer without name
-                        accum_name = var_name[len(param_name + "_"):]
+                        accum_name = var_name[len(param_name + "_") :]
                     else:
                         continue
                     # remove suffix idx
-                    accum_name = accum_name[:accum_name.rfind("_")]
+                    accum_name = accum_name[: accum_name.rfind("_")]
                     # state names always end with "_0" in dygraph because of the
                     # unique optimizer._name
-                    dy_state_name = (param_name + "_" + opt_unq_name + "_" +
-                                     accum_name + "_0")
+                    dy_state_name = (
+                        param_name
+                        + "_"
+                        + opt_unq_name
+                        + "_"
+                        + accum_name
+                        + "_0"
+                    )
                     converted_state[dy_state_name] = state_var
 
         if not hasattr(self.model._optimizer, 'set_state_dict'):
@@ -898,12 +992,16 @@ class DynamicGraphAdapter(object):
             self.model._optimizer.set_state_dict(converted_state)
 
     def prepare(self):
-        if self._amp_level == "O2" and self.model.mode == 'train' and core.is_compiled_with_cuda(
+        if (
+            self._amp_level == "O2"
+            and self.model.mode == 'train'
+            and core.is_compiled_with_cuda()
         ):
             self.model.network, self.model._optimizer = paddle.amp.decorate(
                 models=self.model.network,
                 optimizers=self.model._optimizer,
-                level='O2')
+                level='O2',
+            )
         if self._amp_level != "O0":
             self.model._scaler = None
 
@@ -1101,7 +1199,7 @@ class Model(object):
             self._update_inputs()
         return loss
 
-    @paddle.no_grad()
+    @no_grad()
     def eval_batch(self, inputs, labels=None):
         """
         Run one evaluating step on a batch of data.
@@ -1153,7 +1251,7 @@ class Model(object):
             self._update_inputs()
         return loss
 
-    @paddle.no_grad()
+    @no_grad()
     def predict_batch(self, inputs):
         """
         Run one predicting step on a batch of data.
@@ -1338,17 +1436,24 @@ class Model(object):
             state = param_state.get(key, None)
             if state is None:
                 raise ValueError(
-                    "{} is not found in the providing file.".format(key))
+                    "{} is not found in the providing file.".format(key)
+                )
             if list(state.shape) != list(param.shape):
                 raise ValueError(
-                    "{} receives a shape {}, but the expected shape is {}.".
-                    format(key, list(state.shape), list(param.shape)))
+                    "{} receives a shape {}, but the expected shape is {}.".format(
+                        key, list(state.shape), list(param.shape)
+                    )
+                )
             return param, state
 
         def _strip_postfix(path):
             path, ext = os.path.splitext(path)
-            assert ext in ['', '.pdparams', '.pdopt', '.pdmodel'], \
-                    "Unknown postfix {} from weights".format(ext)
+            assert ext in [
+                '',
+                '.pdparams',
+                '.pdopt',
+                '.pdmodel',
+            ], "Unknown postfix {} from weights".format(ext)
             return path
 
         path = _strip_postfix(path)
@@ -1362,15 +1467,17 @@ class Model(object):
             except ValueError as err:
                 if skip_mismatch:
                     warnings.warn(
-                        ("Skip loading for {}. ".format(key) + str(err)))
+                        ("Skip loading for {}. ".format(key) + str(err))
+                    )
                     # reset optimizer when mismatch happens
                     reset_optimizer = True
                 else:
                     raise err
             matched_param_state.append(match_res)
 
-        optim_state = None if reset_optimizer else _load_state_from_path(
-            path + ".pdopt")
+        optim_state = (
+            None if reset_optimizer else _load_state_from_path(path + ".pdopt")
+        )
 
         # TODO: support save/load scaler state in static graph
         if _non_static_mode():
@@ -1379,8 +1486,9 @@ class Model(object):
                 if os.path.exists(path + '.pdscaler'):
                     scaler_state = paddle.load(path + '.pdscaler')
 
-            return self._adapter.load(matched_param_state, optim_state,
-                                      scaler_state)
+            return self._adapter.load(
+                matched_param_state, optim_state, scaler_state
+            )
         else:
             return self._adapter.load(matched_param_state, optim_state)
 
@@ -1412,13 +1520,14 @@ class Model(object):
         return self._adapter.parameters()
 
     def _prepare_amp(self, amp_configs):
-
         def _check_pure_fp16_configs():
             # pure float16 training has some restricts now
             if self._adapter._amp_level == "O2" and self._optimizer._grad_clip:
                 # clip by value is not supported
-                assert isinstance(self._optimizer._grad_clip, (paddle.nn.ClipGradByGlobalNorm, paddle.nn.ClipGradByNorm)), \
-                     "Only GradientClipByNorm and GradientClipByGlobalNorm are supported in amp training with level=O2 currently."
+                assert isinstance(
+                    self._optimizer._grad_clip,
+                    (paddle.nn.ClipGradByGlobalNorm, paddle.nn.ClipGradByNorm),
+                ), "Only GradientClipByNorm and GradientClipByGlobalNorm are supported in amp training with level=O2 currently."
 
         self._adapter._amp_custom_lists = {}
         self._adapter._amp_configs = {}
@@ -1430,7 +1539,8 @@ class Model(object):
         elif isinstance(amp_configs, str):
             if amp_configs not in ('O0', 'O1', 'O2'):
                 raise ValueError(
-                    "The level of amp_configs should be 'O0', 'O1' or 'O2'.")
+                    "The level of amp_configs should be 'O0', 'O1' or 'O2'."
+                )
             self._adapter._amp_level = amp_configs
             _check_pure_fp16_configs()
             return
@@ -1439,7 +1549,8 @@ class Model(object):
                 self._adapter._amp_level = 'O1'
             elif amp_configs['level'] not in ('O0', 'O1', 'O2'):
                 raise ValueError(
-                    "amp_configs['level'] should be 'O0', 'O1' or 'O2'.")
+                    "amp_configs['level'] should be 'O0', 'O1' or 'O2'."
+                )
             else:
                 self._adapter._amp_level = amp_configs['level']
         amp_config_key_set = set(amp_configs.keys()) - {'level'}
@@ -1456,12 +1567,14 @@ class Model(object):
         # construct amp_custom_lists
         if self._adapter._amp_level != 'O0' and amp_config_key_set:
             for param_name in [
-                    'custom_white_list', 'custom_black_list',
-                    'custom_black_varnames'
+                'custom_white_list',
+                'custom_black_list',
+                'custom_black_varnames',
             ]:
                 if param_name in amp_config_key_set:
                     self._adapter._amp_custom_lists[param_name] = amp_configs[
-                        param_name]
+                        param_name
+                    ]
                     amp_config_key_set -= {param_name}
 
         def _check_amp_configs(amp_config_key_set):
@@ -1476,13 +1589,16 @@ class Model(object):
             }
             if amp_config_key_set - accepted_param_set:
                 raise ValueError(
-                    "Except for 'level', the keys of 'amp_configs' must be accepted by mixed precision APIs, but {} could not be recognized."
-                    .format(tuple(amp_config_key_set - accepted_param_set)))
+                    "Except for 'level', the keys of 'amp_configs' must be accepted by mixed precision APIs, but {} could not be recognized.".format(
+                        tuple(amp_config_key_set - accepted_param_set)
+                    )
+                )
 
             if 'use_fp16_guard' in amp_config_key_set:
                 if _non_static_mode():
                     raise ValueError(
-                        "'use_fp16_guard' is supported in static mode only.")
+                        "'use_fp16_guard' is supported in static mode only."
+                    )
                 self._adapter._use_fp16_guard = amp_configs['use_fp16_guard']
                 amp_config_key_set.remove('use_fp16_guard')
 
@@ -1492,11 +1608,9 @@ class Model(object):
         for key in amp_configs_set:
             self._adapter._amp_configs[key] = amp_configs[key]
 
-    def prepare(self,
-                optimizer=None,
-                loss=None,
-                metrics=None,
-                amp_configs=None):
+    def prepare(
+        self, optimizer=None, loss=None, metrics=None, amp_configs=None
+    ):
         """
         Configures the model before runing.
 
@@ -1536,15 +1650,17 @@ class Model(object):
             if ParallelEnv().nranks > 1 and not _parallel_context_initialized:
                 if fluid._non_static_mode():
                     main_prog_seed = fluid.default_main_program().random_seed
-                    startup_prog_seed = fluid.default_startup_program(
-                    ).random_seed
+                    startup_prog_seed = (
+                        fluid.default_startup_program().random_seed
+                    )
                     fluid.disable_dygraph()
                     paddle.disable_static(self._place)
                     # enable_dygraph would create and switch to a new program,
                     # thus also copy seed to the new program
                     fluid.default_main_program().random_seed = main_prog_seed
-                    fluid.default_startup_program(
-                    ).random_seed = startup_prog_seed
+                    fluid.default_startup_program().random_seed = (
+                        startup_prog_seed
+                    )
                 else:
                     prepare_distributed_context(self._place)
                 _parallel_context_initialized = True
@@ -1559,30 +1675,32 @@ class Model(object):
 
         metrics = metrics or []
         for metric in to_list(metrics):
-            assert isinstance(metric, Metric), \
-                "{} is not sub class of Metric".format(
-                    metric.__class__.__name__)
+            assert isinstance(
+                metric, Metric
+            ), "{} is not sub class of Metric".format(metric.__class__.__name__)
         self._metrics = to_list(metrics)
         self._prepare_amp(amp_configs)
 
         self._adapter.prepare()
 
-    def fit(self,
-            train_data=None,
-            eval_data=None,
-            batch_size=1,
-            epochs=1,
-            eval_freq=1,
-            log_freq=10,
-            save_dir=None,
-            save_freq=1,
-            verbose=2,
-            drop_last=False,
-            shuffle=True,
-            num_workers=0,
-            callbacks=None,
-            accumulate_grad_batches=1,
-            num_iters=None):
+    def fit(
+        self,
+        train_data=None,
+        eval_data=None,
+        batch_size=1,
+        epochs=1,
+        eval_freq=1,
+        log_freq=10,
+        save_dir=None,
+        save_freq=1,
+        verbose=2,
+        drop_last=False,
+        shuffle=True,
+        num_workers=0,
+        callbacks=None,
+        accumulate_grad_batches=1,
+        num_iters=None,
+    ):
         """
         Trains the model for a fixed number of epochs. If `eval_data` is set,
         evaluation will be done at the end of each epoch.
@@ -1716,30 +1834,36 @@ class Model(object):
                             epochs=2,
                             save_dir='mnist_checkpoint')
         """
-        assert train_data is not None, \
-                "train_data must be given!"
+        assert train_data is not None, "train_data must be given!"
 
         if isinstance(train_data, Dataset):
-            train_sampler = DistributedBatchSampler(train_data,
-                                                    batch_size=batch_size,
-                                                    shuffle=shuffle,
-                                                    drop_last=drop_last)
-            train_loader = DataLoader(train_data,
-                                      batch_sampler=train_sampler,
-                                      places=self._place,
-                                      num_workers=num_workers,
-                                      return_list=True)
+            train_sampler = DistributedBatchSampler(
+                train_data,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last,
+            )
+            train_loader = DataLoader(
+                train_data,
+                batch_sampler=train_sampler,
+                places=self._place,
+                num_workers=num_workers,
+                return_list=True,
+            )
         else:
             train_loader = train_data
 
         if eval_data is not None and isinstance(eval_data, Dataset):
-            eval_sampler = DistributedBatchSampler(eval_data,
-                                                   batch_size=batch_size)
-            eval_loader = DataLoader(eval_data,
-                                     batch_sampler=eval_sampler,
-                                     places=self._place,
-                                     num_workers=num_workers,
-                                     return_list=True)
+            eval_sampler = DistributedBatchSampler(
+                eval_data, batch_size=batch_size
+            )
+            eval_loader = DataLoader(
+                eval_data,
+                batch_sampler=eval_sampler,
+                places=self._place,
+                num_workers=num_workers,
+                return_list=True,
+            )
         elif eval_data is not None:
             eval_loader = eval_data
         else:
@@ -1752,8 +1876,11 @@ class Model(object):
 
         steps = self._len_data_loader(train_loader)
         self.num_iters = num_iters
-        if num_iters is not None and isinstance(num_iters, int) and isinstance(
-                steps, int):
+        if (
+            num_iters is not None
+            and isinstance(num_iters, int)
+            and isinstance(steps, int)
+        ):
             assert num_iters > 0, "num_iters must be greater than 0!"
             epochs = (num_iters // steps) + 1
             steps = min(num_iters, steps)
@@ -1781,10 +1908,10 @@ class Model(object):
             if do_eval and epoch % eval_freq == 0:
 
                 eval_steps = self._len_data_loader(eval_loader)
-                cbks.on_begin('eval', {
-                    'steps': eval_steps,
-                    'metrics': self._metrics_name()
-                })
+                cbks.on_begin(
+                    'eval',
+                    {'steps': eval_steps, 'metrics': self._metrics_name()},
+                )
 
                 eval_logs = self._run_one_epoch(eval_loader, cbks, 'eval')
 
@@ -1795,14 +1922,16 @@ class Model(object):
         cbks.on_end('train', logs)
         self._test_dataloader = None
 
-    def evaluate(self,
-                 eval_data,
-                 batch_size=1,
-                 log_freq=10,
-                 verbose=2,
-                 num_workers=0,
-                 callbacks=None,
-                 num_iters=None):
+    def evaluate(
+        self,
+        eval_data,
+        batch_size=1,
+        log_freq=10,
+        verbose=2,
+        num_workers=0,
+        callbacks=None,
+        num_iters=None,
+    ):
         """
         Evaluate the loss and metrics of the model on input dataset.
 
@@ -1856,13 +1985,16 @@ class Model(object):
         """
 
         if eval_data is not None and isinstance(eval_data, Dataset):
-            eval_sampler = DistributedBatchSampler(eval_data,
-                                                   batch_size=batch_size)
-            eval_loader = DataLoader(eval_data,
-                                     batch_sampler=eval_sampler,
-                                     places=self._place,
-                                     num_workers=num_workers,
-                                     return_list=True)
+            eval_sampler = DistributedBatchSampler(
+                eval_data, batch_size=batch_size
+            )
+            eval_loader = DataLoader(
+                eval_data,
+                batch_sampler=eval_sampler,
+                places=self._place,
+                num_workers=num_workers,
+                return_list=True,
+            )
         else:
             eval_loader = eval_data
 
@@ -1878,15 +2010,17 @@ class Model(object):
 
         eval_steps = self._len_data_loader(eval_loader)
         self.num_iters = num_iters
-        if num_iters is not None and isinstance(num_iters, int) and isinstance(
-                eval_steps, int):
+        if (
+            num_iters is not None
+            and isinstance(num_iters, int)
+            and isinstance(eval_steps, int)
+        ):
             assert num_iters > 0, "num_iters must be greater than 0!"
             eval_steps = min(num_iters, eval_steps)
             self.num_iters = eval_steps
-        cbks.on_begin('eval', {
-            'steps': eval_steps,
-            'metrics': self._metrics_name()
-        })
+        cbks.on_begin(
+            'eval', {'steps': eval_steps, 'metrics': self._metrics_name()}
+        )
 
         logs = self._run_one_epoch(eval_loader, cbks, 'eval')
 
@@ -1900,13 +2034,15 @@ class Model(object):
 
         return eval_result
 
-    def predict(self,
-                test_data,
-                batch_size=1,
-                num_workers=0,
-                stack_outputs=False,
-                verbose=1,
-                callbacks=None):
+    def predict(
+        self,
+        test_data,
+        batch_size=1,
+        num_workers=0,
+        stack_outputs=False,
+        verbose=1,
+        callbacks=None,
+    ):
         """
         Compute the output predictions on testing data.
 
@@ -1977,13 +2113,16 @@ class Model(object):
         """
 
         if test_data is not None and isinstance(test_data, Dataset):
-            test_sampler = DistributedBatchSampler(test_data,
-                                                   batch_size=batch_size)
-            test_loader = DataLoader(test_data,
-                                     batch_sampler=test_sampler,
-                                     places=self._place,
-                                     num_workers=num_workers,
-                                     return_list=True)
+            test_sampler = DistributedBatchSampler(
+                test_data, batch_size=batch_size
+            )
+            test_loader = DataLoader(
+                test_data,
+                batch_sampler=test_sampler,
+                places=self._place,
+                num_workers=num_workers,
+                return_list=True,
+            )
         else:
             test_loader = test_data
 
@@ -2033,7 +2172,8 @@ class Model(object):
                 if self._is_shape_inferred:
                     warnings.warn(
                         "'inputs' was not specified when Model initialization, so the input shape to be saved will be the shape derived from the user's actual inputs. The input shape to be saved is %s. For saving correct input shapes, please provide 'inputs' for Model initialization."
-                        % self._input_info[0])
+                        % self._input_info[0]
+                    )
 
                 paddle.jit.save(layer, path, input_spec=self._inputs)
 
@@ -2044,7 +2184,8 @@ class Model(object):
                 raise ValueError(
                     "The input path MUST be format of dirname/file_prefix "
                     "[dirname\\file_prefix in Windows system], but received "
-                    "file_prefix is empty string.")
+                    "file_prefix is empty string."
+                )
 
             dirname = os.path.dirname(path)
             if dirname and not os.path.exists(dirname):
@@ -2055,21 +2196,24 @@ class Model(object):
             params_filename = file_prefix + INFER_PARAMS_SUFFIX
 
             prog = self._adapter._progs.get('test', None)
-            assert prog, \
-                "Model is not ready, please call `model.prepare()` first"
+            assert (
+                prog
+            ), "Model is not ready, please call `model.prepare()` first"
 
             infer_prog = prog.clone(for_test=True)
 
             input_names = [v.name for v in self._adapter._input_vars['test']]
             endpoints = self._adapter._endpoints['test']['output']
 
-            fluid.io.save_inference_model(model_path,
-                                          input_names,
-                                          endpoints,
-                                          self._adapter._executor,
-                                          main_program=infer_prog,
-                                          model_filename=model_filename,
-                                          params_filename=params_filename)
+            fluid.io.save_inference_model(
+                model_path,
+                input_names,
+                endpoints,
+                self._adapter._executor,
+                main_program=infer_prog,
+                model_filename=model_filename,
+                params_filename=params_filename,
+            )
 
     def _run_one_epoch(
         self,
@@ -2095,16 +2239,21 @@ class Model(object):
             # LoDTensor.shape is callable, where LoDTensor comes from
             # DataLoader in static graph
 
-            batch_size = data[0].shape()[0] if callable(
-                data[0].shape) else data[0].shape[0]
+            batch_size = (
+                data[0].shape()[0]
+                if callable(data[0].shape)
+                else data[0].shape[0]
+            )
 
             callbacks.on_batch_begin(mode, step, logs)
 
             if mode != 'predict':
-                _inputs = [data[:len(self._inputs)], data[len(self._inputs):]]
+                _inputs = [data[: len(self._inputs)], data[len(self._inputs) :]]
                 if mode == 'train':
-                    _inputs.append((step + 1) % self._accumulate == 0
-                                   or step + 1 == len(data_loader))
+                    _inputs.append(
+                        (step + 1) % self._accumulate == 0
+                        or step + 1 == len(data_loader)
+                    )
 
                 outs = getattr(self, mode + '_batch')(*_inputs)
 
@@ -2125,15 +2274,17 @@ class Model(object):
                     logs[k] = v
             else:
                 if self._inputs is not None:
-                    outs = self.predict_batch(data[:len(self._inputs)])
+                    outs = self.predict_batch(data[: len(self._inputs)])
                 else:
                     outs = self.predict_batch(data)
 
                 outputs.append(outs)
 
             logs['step'] = step
-            if mode == 'train' or self._adapter._merge_count.get(
-                    mode + '_batch', 0) <= 0:
+            if (
+                mode == 'train'
+                or self._adapter._merge_count.get(mode + '_batch', 0) <= 0
+            ):
                 logs['batch_size'] = batch_size * ParallelEnv().nranks
             else:
                 logs['batch_size'] = self._adapter._merge_count[mode + '_batch']
@@ -2187,8 +2338,9 @@ class Model(object):
                 # {'total_params': 61610, 'trainable_params': 61610}
 
         """
-        assert (input_size is not None or self._inputs
-                is not None), "'input_size' or 'self._input' must be set"
+        assert (
+            input_size is not None or self._inputs is not None
+        ), "'input_size' or 'self._input' must be set"
         if input_size is not None:
             _input_size = input_size
         else:
@@ -2205,7 +2357,10 @@ class Model(object):
             if is_input:
                 arg_names = extract_args(self.network.forward)[1:]
                 # While Saving inference model in dygraph, and providing inputs only in running.
-                if shapes is not None and dtypes is not None and fluid._non_static_mode(
+                if (
+                    shapes is not None
+                    and dtypes is not None
+                    and fluid._non_static_mode()
                 ):
                     out_specs = [
                         Input(name=n, dtype=dtypes[i], shape=shapes[i])
@@ -2218,7 +2373,8 @@ class Model(object):
         elif isinstance(specs, dict):
             assert is_input is False
             out_specs = [
-                specs[n] for n in extract_args(self.network.forward)
+                specs[n]
+                for n in extract_args(self.network.forward)
                 if n != 'self'
             ]
         else:
@@ -2229,8 +2385,10 @@ class Model(object):
                 assert isinstance(spec, Input)
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}."
-                        .format(i, spec))
+                        "Requires Input[{}].name != None, but receive `None` with {}.".format(
+                            i, spec
+                        )
+                    )
 
         return out_specs
 
@@ -2255,6 +2413,7 @@ class Model(object):
         "Update self._inputs according to given inputs."
         self._input_info = self._adapter._input_info
         if self._input_info is not None and len(self._input_info) == 2:
-            self._inputs = self._verify_spec(None, self._input_info[0],
-                                             self._input_info[1], True)
+            self._inputs = self._verify_spec(
+                None, self._input_info[0], self._input_info[1], True
+            )
             self._is_shape_inferred = True

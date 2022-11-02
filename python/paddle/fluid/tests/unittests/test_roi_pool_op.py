@@ -17,13 +17,22 @@ import unittest
 import numpy as np
 import math
 import sys
-import paddle.compat as cpt
 from op_test import OpTest
 import paddle.fluid as fluid
 
+from decimal import Decimal, ROUND_HALF_UP
+
+
+def _round(x):
+    """In Python3 round function rounds to the nearest even number,
+    we use this function to make the result always round up when the
+    remainder is 0.5. See more at:
+    https://stackoverflow.com/questions/33019698/how-to-properly-round-up-half-float-numbers
+    """
+    return Decimal(x).to_integral_value(rounding=ROUND_HALF_UP)
+
 
 class TestROIPoolOp(OpTest):
-
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -32,13 +41,13 @@ class TestROIPoolOp(OpTest):
         self.inputs = {
             'X': self.x,
             'ROIs': (self.rois[:, 1:5], self.rois_lod),
-            'RoisNum': self.boxes_num
+            'RoisNum': self.boxes_num,
         }
 
         self.attrs = {
             'spatial_scale': self.spatial_scale,
             'pooled_height': self.pooled_height,
-            'pooled_width': self.pooled_width
+            'pooled_width': self.pooled_width,
         }
 
         self.outputs = {'Out': self.outs, 'Argmax': self.argmaxes}
@@ -59,18 +68,30 @@ class TestROIPoolOp(OpTest):
         self.x = np.random.random(self.x_dim).astype('float64')
 
     def calc_roi_pool(self):
-        out_data = np.zeros((self.rois_num, self.channels, self.pooled_height,
-                             self.pooled_width))
-        argmax_data = np.zeros((self.rois_num, self.channels,
-                                self.pooled_height, self.pooled_width))
+        out_data = np.zeros(
+            (
+                self.rois_num,
+                self.channels,
+                self.pooled_height,
+                self.pooled_width,
+            )
+        )
+        argmax_data = np.zeros(
+            (
+                self.rois_num,
+                self.channels,
+                self.pooled_height,
+                self.pooled_width,
+            )
+        )
 
         for i in range(self.rois_num):
             roi = self.rois[i]
             roi_batch_id = int(roi[0])
-            roi_start_w = int(cpt.round(roi[1] * self.spatial_scale))
-            roi_start_h = int(cpt.round(roi[2] * self.spatial_scale))
-            roi_end_w = int(cpt.round(roi[3] * self.spatial_scale))
-            roi_end_h = int(cpt.round(roi[4] * self.spatial_scale))
+            roi_start_w = int(_round(roi[1] * self.spatial_scale))
+            roi_start_h = int(_round(roi[2] * self.spatial_scale))
+            roi_end_w = int(_round(roi[3] * self.spatial_scale))
+            roi_end_h = int(_round(roi[4] * self.spatial_scale))
 
             roi_height = int(max(roi_end_h - roi_start_h + 1, 1))
             roi_width = int(max(roi_end_w - roi_start_w + 1, 1))
@@ -105,8 +126,9 @@ class TestROIPoolOp(OpTest):
                             for w in range(wstart, wend):
                                 if x_i[c, h, w] > out_data[i, c, ph, pw]:
                                     out_data[i, c, ph, pw] = x_i[c, h, w]
-                                    argmax_data[i, c, ph,
-                                                pw] = h * self.width + w
+                                    argmax_data[i, c, ph, pw] = (
+                                        h * self.width + w
+                                    )
 
         self.outs = out_data.astype('float64')
         self.argmaxes = argmax_data.astype('int64')
@@ -118,26 +140,32 @@ class TestROIPoolOp(OpTest):
             self.rois_lod[0].append(bno + 1)
             for i in range(bno + 1):
                 x1 = np.random.randint(
-                    0, self.width // self.spatial_scale - self.pooled_width)
+                    0, self.width // self.spatial_scale - self.pooled_width
+                )
                 y1 = np.random.randint(
-                    0, self.height // self.spatial_scale - self.pooled_height)
+                    0, self.height // self.spatial_scale - self.pooled_height
+                )
 
-                x2 = np.random.randint(x1 + self.pooled_width,
-                                       self.width // self.spatial_scale)
-                y2 = np.random.randint(y1 + self.pooled_height,
-                                       self.height // self.spatial_scale)
+                x2 = np.random.randint(
+                    x1 + self.pooled_width, self.width // self.spatial_scale
+                )
+                y2 = np.random.randint(
+                    y1 + self.pooled_height, self.height // self.spatial_scale
+                )
 
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
         self.rois = np.array(rois).astype("float64")
-        self.boxes_num = np.array([bno + 1 for bno in range(self.batch_size)
-                                   ]).astype('int32')
+        self.boxes_num = np.array(
+            [bno + 1 for bno in range(self.batch_size)]
+        ).astype('int32')
 
     def setUp(self):
         self.op_type = "roi_pool"
         self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, spatial_scale: paddle.vision.ops.roi_pool(
-            x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale)
+            x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale
+        )
         self.python_out_sig = ["Out"]
         self.set_data()
 
@@ -149,27 +177,27 @@ class TestROIPoolOp(OpTest):
 
 
 class BadInputTestRoiPool(unittest.TestCase):
-
     def test_error(self):
         with fluid.program_guard(fluid.Program()):
 
             def test_bad_x():
-                x = fluid.layers.data(name='data1',
-                                      shape=[2, 1, 4, 4],
-                                      dtype='int64')
-                label = fluid.layers.data(name='label',
-                                          shape=[2, 4],
-                                          dtype='float32',
-                                          lod_level=1)
+                x = fluid.layers.data(
+                    name='data1', shape=[2, 1, 4, 4], dtype='int64'
+                )
+                label = fluid.layers.data(
+                    name='label', shape=[2, 4], dtype='float32', lod_level=1
+                )
                 output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
 
             self.assertRaises(TypeError, test_bad_x)
 
             def test_bad_y():
-                x = fluid.layers.data(name='data2',
-                                      shape=[2, 1, 4, 4],
-                                      dtype='float32',
-                                      append_batch_size=False)
+                x = fluid.layers.data(
+                    name='data2',
+                    shape=[2, 1, 4, 4],
+                    dtype='float32',
+                    append_batch_size=False,
+                )
                 label = [[1, 2, 3, 4], [2, 3, 4, 5]]
                 output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
 
@@ -177,7 +205,6 @@ class BadInputTestRoiPool(unittest.TestCase):
 
 
 class TestROIPoolInLodOp(TestROIPoolOp):
-
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -188,13 +215,13 @@ class TestROIPoolInLodOp(TestROIPoolOp):
         self.inputs = {
             'X': self.x,
             'ROIs': (self.rois[:, 1:5], self.rois_lod),
-            'RoisNum': np.asarray(seq_len).astype('int32')
+            'RoisNum': np.asarray(seq_len).astype('int32'),
         }
 
         self.attrs = {
             'spatial_scale': self.spatial_scale,
             'pooled_height': self.pooled_height,
-            'pooled_width': self.pooled_width
+            'pooled_width': self.pooled_width,
         }
 
         self.outputs = {'Out': self.outs, 'Argmax': self.argmaxes}

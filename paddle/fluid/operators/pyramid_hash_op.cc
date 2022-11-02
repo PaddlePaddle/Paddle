@@ -29,7 +29,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 class PyramidHashOpMaker : public framework::OpProtoAndCheckerMaker {

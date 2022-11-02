@@ -21,15 +21,14 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(name="data1",
-                               shape=[8, 32, 128],
-                               dtype="float32")
-            data2 = fluid.data(name="data2",
-                               shape=[8, 32, 128],
-                               dtype="float32")
+            data1 = fluid.data(
+                name="data1", shape=[8, 32, 128], dtype="float32"
+            )
+            data2 = fluid.data(
+                name="data2", shape=[8, 32, 128], dtype="float32"
+            )
             trans1 = fluid.layers.transpose(data1, perm=[0, 2, 1])
             trans2 = fluid.layers.transpose(data2, perm=[0, 2, 1])
             flatt1 = fluid.layers.flatten(trans1)
@@ -42,11 +41,14 @@ class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
 
         self.feeds = {
             "data1": np.random.random([8, 32, 128]).astype("float32"),
-            "data2": np.random.random([8, 32, 128]).astype("float32")
+            "data2": np.random.random([8, 32, 128]).astype("float32"),
         }
         self.enable_trt = True
-        self.trt_parameters = TransposeFlattenConcatFusePassTRTTest.TensorRTParam(
-            1 << 20, 8, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.trt_parameters = (
+            TransposeFlattenConcatFusePassTRTTest.TensorRTParam(
+                1 << 20, 8, 0, AnalysisConfig.Precision.Float32, False, False
+            )
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):

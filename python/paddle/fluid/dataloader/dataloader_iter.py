@@ -24,7 +24,11 @@ import threading
 import numpy as np
 import multiprocessing
 from collections import namedtuple
-from paddle.fluid.framework import _set_expected_place, _current_expected_place, set_flags
+from paddle.fluid.framework import (
+    _set_expected_place,
+    _current_expected_place,
+    set_flags,
+)
 
 # NOTE: queue has a different name in python2 and python3
 import queue
@@ -34,13 +38,23 @@ import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
 from .. import core, layers
 from ..framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
-from ..multiprocess_utils import _set_SIGCHLD_handler, MP_STATUS_CHECK_INTERVAL, CleanupFuncRegistrar
+from ..multiprocess_utils import (
+    _set_SIGCHLD_handler,
+    MP_STATUS_CHECK_INTERVAL,
+    CleanupFuncRegistrar,
+)
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .batch_sampler import _InfiniteIterableSampler
 from .collate import default_collate_fn, default_convert_fn
-from .worker import ParentWatchDog, get_worker_info, _worker_loop, \
-        _DatasetKind, _IterableDatasetStopIteration, _WorkerException, \
-        _ResumeIteration
+from .worker import (
+    ParentWatchDog,
+    get_worker_info,
+    _worker_loop,
+    _DatasetKind,
+    _IterableDatasetStopIteration,
+    _WorkerException,
+    _ResumeIteration,
+)
 from .flat import _flatten_batch, _restore_batch
 from paddle.profiler.timer import benchmark
 
@@ -98,7 +112,9 @@ class _DataLoaderIterBase(object):
         self._use_buffer_reader = loader.use_buffer_reader
         self._prefetch_factor = loader.prefetch_factor
         self._use_shared_memory = loader.use_shared_memory
-        self._timeout = loader.timeout if loader.timeout > 0 else MP_STATUS_CHECK_INTERVAL
+        self._timeout = (
+            loader.timeout if loader.timeout > 0 else MP_STATUS_CHECK_INTERVAL
+        )
         self._worker_init_fn = loader.worker_init_fn
         self._dataset_kind = loader.dataset_kind
         self._pin_memory = loader.pin_memory
@@ -155,8 +171,12 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         super(_DataLoaderIterSingleProcess, self).__init__(loader)
 
         self._dataset_fetcher = _DatasetKind.create_fetcher(
-            self._dataset_kind, self._dataset, self._auto_collate_batch,
-            self._collate_fn, self._drop_last)
+            self._dataset_kind,
+            self._dataset,
+            self._auto_collate_batch,
+            self._collate_fn,
+            self._drop_last,
+        )
 
         # NOTE: _structrue_infos used to record the data structure of
         # batch to restore batch structure after reading Tensor
@@ -170,7 +190,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         # iteration, set blocking_queue can cache "self._prefetch_factor" iteration datas
         # at most here
         self._blocking_queue_capacity = self._prefetch_factor * len(
-            self._places)
+            self._places
+        )
 
         self._init_thread()
         self._shutdown = False
@@ -187,24 +208,35 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         ]
         # if only 1 place, do not need to keep order
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
-            core.Variable(), self._blocking_queue_capacity,
-            len(self._places) > 1)
+            core.Variable(),
+            self._blocking_queue_capacity,
+            len(self._places) > 1,
+        )
         self._reader = core.create_py_reader(
-            self._blocking_queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_buffer_reader, True,
-            self._pin_memory)
+            self._blocking_queue,
+            self._var_names,
+            self._shapes,
+            self._dtypes,
+            self._need_check_feed,
+            self._places,
+            self._use_buffer_reader,
+            True,
+            self._pin_memory,
+        )
 
-        self._thread = threading.Thread(target=self._thread_loop,
-                                        args=(_current_expected_place(), ))
+        self._thread = threading.Thread(
+            target=self._thread_loop, args=(_current_expected_place(),)
+        )
         self._thread.daemon = True
         self._thread.start()
 
     def _thread_loop(self, legacy_expected_place):
-        #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
+        # NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
         # and it will call platform::SetDeviceId() in c++ internally.
         # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
         # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda
         # APIs in this thread.
+        core.set_current_thread_name("Dataloader_" + str(id(self)))
         _set_expected_place(legacy_expected_place)
 
         while not self._thread_done_event.is_set():
@@ -214,19 +246,22 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 # read data from dataset in mini-batch
                 # with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
                 # read data from dataset in mini-batch
-                batch = self._dataset_fetcher.fetch(indices,
-                                                    self._thread_done_event)
+                batch = self._dataset_fetcher.fetch(
+                    indices, self._thread_done_event
+                )
             except StopIteration:
                 self._exit_thread_expectedly()
                 return
 
-            if batch is None or self._thread_done_event.is_set(): break
+            if batch is None or self._thread_done_event.is_set():
+                break
 
             # flat batch and record structure infos
             batch, structure = _flatten_batch(batch)
             self._structure_infos.append(structure)
 
-            if self._thread_done_event.is_set(): break
+            if self._thread_done_event.is_set():
+                break
 
             try:
                 # pack as LoDTensorArray
@@ -241,7 +276,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
                     array.append(slot)
 
-                if self._thread_done_event.is_set(): break
+                if self._thread_done_event.is_set():
+                    break
 
                 try:
                     self._blocking_queue.push(array)
@@ -258,14 +294,16 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         if in_profiler_mode():
             trace_event = profiler.RecordEvent(
                 name="_DataLoaderIterSingleProcess",
-                event_type=profiler.TracerEventType.Dataloader)
+                event_type=profiler.TracerEventType.Dataloader,
+            )
             trace_event.begin()
         try:
             benchmark().check_if_need_record(self)
             benchmark().before_reader()
             if in_dygraph_mode():
                 data = core.eager.read_next_tensor_list(
-                    self._reader.read_next_list()[0])
+                    self._reader.read_next_list()[0]
+                )
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if _in_legacy_dygraph():
@@ -280,8 +318,9 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                             self._structure_infos.pop(0)
                             for _ in range(len(self._places))
                         ]
-                        data = [_restore_batch(d, s) \
-                                for d, s in zip(data, structs)]
+                        data = [
+                            _restore_batch(d, s) for d, s in zip(data, structs)
+                        ]
                         # static graph organized data on multi-device with list, if
                         # place number is 1, there is only 1 device, extra the data
                         # from list for devices to be compatible with dygraph mode
@@ -340,15 +379,17 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
 
 class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
-
     def __init__(self, loader):
         super(_DataLoaderIterMultiProcess, self).__init__(loader)
 
         self._persistent_workers = loader._persistent_workers
         self._resume_worker_cnt = 0
 
-        assert self._num_workers > 0,  "Multi-process DataLoader " \
-                    "invalid num_workers({})".format(self._num_workers)
+        assert (
+            self._num_workers > 0
+        ), "Multi-process DataLoader " "invalid num_workers({})".format(
+            self._num_workers
+        )
 
         # subprocess wrokers' result queue
         self._data_queue = None
@@ -369,7 +410,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # output data for at least "_prefetch_factor" iterations(Note that len(_places)
         # batches will be composed as an iteration output)
         self._outstanding_capacity = self._prefetch_factor * max(
-            self._num_workers, len(self._places))
+            self._num_workers, len(self._places)
+        )
 
         # see _try_put_indices
         self._thread_lock = threading.Lock()
@@ -404,12 +446,22 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._indices_queues.append(indices_queue)
             worker = multiprocessing.Process(
                 target=_worker_loop,
-                args=(self._dataset, self._dataset_kind, indices_queue,
-                      self._data_queue, self._workers_done_event,
-                      self._auto_collate_batch, self._collate_fn,
-                      self._drop_last, self._worker_init_fn, i,
-                      self._num_workers, self._use_shared_memory,
-                      self._base_seed))
+                args=(
+                    self._dataset,
+                    self._dataset_kind,
+                    indices_queue,
+                    self._data_queue,
+                    self._workers_done_event,
+                    self._auto_collate_batch,
+                    self._collate_fn,
+                    self._drop_last,
+                    self._worker_init_fn,
+                    i,
+                    self._num_workers,
+                    self._use_shared_memory,
+                    self._base_seed,
+                ),
+            )
             worker.daemon = True
             worker.start()
             self._workers.append(worker)
@@ -437,17 +489,25 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         ]
         # if only 1 place, do not need to keep order
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
-            core.Variable(), self._outstanding_capacity,
-            len(self._places) > 1)
+            core.Variable(), self._outstanding_capacity, len(self._places) > 1
+        )
         self._reader = core.create_py_reader(
-            self._blocking_queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_buffer_reader, True,
-            self._pin_memory)
+            self._blocking_queue,
+            self._var_names,
+            self._shapes,
+            self._dtypes,
+            self._need_check_feed,
+            self._places,
+            self._use_buffer_reader,
+            True,
+            self._pin_memory,
+        )
 
         self._thread_done_event = threading.Event()
         # thread event is only need in multi-processing mode
-        self._thread = threading.Thread(target=self._thread_loop,
-                                        args=(_current_expected_place(), ))
+        self._thread = threading.Thread(
+            target=self._thread_loop, args=(_current_expected_place(),)
+        )
         self._thread.daemon = True
         self._thread.start()
 
@@ -470,7 +530,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         while self._blocking_queue.size() >= len(self._places):
             if in_dygraph_mode():
                 data = core.eager.read_next_tensor_list(
-                    self._reader.read_next_list()[0])
+                    self._reader.read_next_list()[0]
+                )
             else:
                 if _in_legacy_dygraph():
                     self._reader.read_next_var_list()
@@ -496,8 +557,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._try_put_indices()
 
     def _shutdown_worker(self, worker_id, shutdown=False):
-        if self._worker_status[worker_id] or (self._persistent_workers
-                                              and shutdown):
+        if self._worker_status[worker_id] or (
+            self._persistent_workers and shutdown
+        ):
             self._indices_queues[worker_id].put(None)
             self._worker_status[worker_id] = False
 
@@ -525,11 +587,12 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 self._shutdown = True
 
     def _thread_loop(self, legacy_expected_place):
-        #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
+        # NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
         # and it will call platform::SetDeviceId() in c++ internally.
         # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
         # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda
         # APIs in this thread.
+        core.set_current_thread_name("Dataloader_" + str(id(self)))
         _set_expected_place(legacy_expected_place)
 
         while not self._thread_done_event.is_set():
@@ -553,8 +616,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                             # serializable, cannot be create in workers
                             for slot in batch:
                                 if isinstance(
-                                        slot,
-                                    (paddle.Tensor, core.eager.Tensor)):
+                                    slot, (paddle.Tensor, core.eager.Tensor)
+                                ):
                                     slot = slot.value().get_tensor()
                                 elif not isinstance(slot, core.LoDTensor):
                                     tmp = core.LoDTensor()
@@ -605,8 +668,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         if self._batches_outstanding < len(self._places):
                             return None
 
-            if self._rcvd_idx in self._task_infos and \
-                    len(self._task_infos[self._rcvd_idx]) == 3:
+            if (
+                self._rcvd_idx in self._task_infos
+                and len(self._task_infos[self._rcvd_idx]) == 3
+            ):
                 info = self._task_infos.pop(self._rcvd_idx)
                 self._structure_infos.append(info[2])
                 return info[1]
@@ -635,8 +700,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 if len(failed_workers) > 0:
                     self._exit_thread_unexpectedly()
                     pids = ', '.join(str(w.pid) for w in failed_workers)
-                    raise RuntimeError("DataLoader {} workers exit unexpectedly, " \
-                                "pids: {}".format(len(failed_workers), pids))
+                    raise RuntimeError(
+                        "DataLoader {} workers exit unexpectedly, "
+                        "pids: {}".format(len(failed_workers), pids)
+                    )
 
                 # get(timeout) will call _poll(timeout) and may raise IOError
                 if isinstance(e, queue.Empty) or isinstance(e, IOError):
@@ -644,12 +711,15 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     continue
 
                 self._exit_thread_unexpectedly()
-                logging.error("DataLoader reader thread failed({}) to read data from " \
-                              "workers' result queue.".format(e))
+                logging.error(
+                    "DataLoader reader thread failed({}) to read data from "
+                    "workers' result queue.".format(e)
+                )
                 six.reraise(*sys.exc_info())
             else:
                 if self._dataset_kind == _DatasetKind.ITER and isinstance(
-                        data, _IterableDatasetStopIteration):
+                    data, _IterableDatasetStopIteration
+                ):
                     # if a worker get StopIteraion, we shutdown this worker,
                     # note that this batch indices to trigger StopIteration
                     # is discard, outstanding batch number should be decrease
@@ -665,8 +735,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
                 idx, batch, structure = data
 
-                if isinstance(idx, _ResumeIteration) and batch is None \
-                        and structure is None:
+                if (
+                    isinstance(idx, _ResumeIteration)
+                    and batch is None
+                    and structure is None
+                ):
                     return idx
 
                 if isinstance(batch, _WorkerException):
@@ -682,8 +755,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     continue
 
     def _try_put_indices(self):
-        assert self._batches_outstanding <= self._outstanding_capacity, \
-                    "too many indices have been put to queue"
+        assert (
+            self._batches_outstanding <= self._outstanding_capacity
+        ), "too many indices have been put to queue"
         # In multi-process mode for IterableDataset, _try_put_indices will
         # be called both in main process(for our implement has blocking queue,
         # and blocking queue read is in main process) and thread, which may
@@ -707,7 +781,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 return
 
             self._indices_queues[worker_idx].put((self._send_idx, indices))
-            self._task_infos[self._send_idx] = (worker_idx, )
+            self._task_infos[self._send_idx] = (worker_idx,)
             self._batches_outstanding += 1
             self._send_idx += 1
 
@@ -721,7 +795,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         if in_profiler_mode():
             trace_event = profiler.RecordEvent(
                 name="_DataLoaderIterMultiProcess",
-                event_type=profiler.TracerEventType.Dataloader)
+                event_type=profiler.TracerEventType.Dataloader,
+            )
             trace_event.begin()
         try:
             benchmark().check_if_need_record(self)
@@ -742,7 +817,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
             if in_dygraph_mode():
                 data = core.eager.read_next_tensor_list(
-                    self._reader.read_next_list()[0])
+                    self._reader.read_next_list()[0]
+                )
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
                 if _in_legacy_dygraph():
@@ -757,8 +833,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                             self._structure_infos.pop(0)
                             for _ in range(len(self._places))
                         ]
-                        data = [_restore_batch(d, s) \
-                                for d, s in zip(data, structs)]
+                        data = [
+                            _restore_batch(d, s) for d, s in zip(data, structs)
+                        ]
                         # static graph organized data on multi-device with list, if
                         # place number is 1, there is only 1 device, extra the data
                         # from list for devices to be compatible with dygraph mode

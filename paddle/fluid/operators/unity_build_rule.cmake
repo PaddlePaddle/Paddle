@@ -108,7 +108,6 @@ register_unity_group(
 register_unity_group(
   cc
   flatten_op.cc
-  flip_op.cc
   fsp_op.cc
   gather_nd_op.cc
   gather_op.cc
@@ -423,7 +422,6 @@ register_unity_group(cu expand_v2_op.cu fake_dequantize_op.cu
                      fill_any_like_op.cu)
 register_unity_group(
   cu
-  flip_op.cu
   fsp_op.cu
   gather_nd_op.cu
   gather_op.cu

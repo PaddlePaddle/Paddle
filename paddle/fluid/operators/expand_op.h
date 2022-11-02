@@ -28,7 +28,7 @@ namespace operators {
 inline std::vector<int> get_expand_times(
     const framework::ExecutionContext& ctx) {
   if (ctx.HasInput("ExpandTimes")) {
-    auto* expand_tensor = ctx.Input<framework::LoDTensor>("ExpandTimes");
+    auto* expand_tensor = ctx.Input<phi::DenseTensor>("ExpandTimes");
     auto* expand_data = expand_tensor->data<int>();
     phi::DenseTensor cpu_expand_tensor;
     if (platform::is_gpu_place(expand_tensor->place())) {

@@ -422,8 +422,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       for (const auto &x : Inputs("Xs")) {
         if (param_names_.count(x)) continue;
         // convert input and copy to Dlnne engine's buffer
-        auto &t =
-            inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+        auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
 
         auto t_shape = phi::vectorize<int64_t>(t.dims());
         std::vector<int64_t> runtime_input_shape(t_shape.begin(),
@@ -452,8 +451,7 @@ class DlnneEngineOp : public framework::OperatorBase {
     for (const auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
       // convert input and copy to Dlnne engine's buffer
-      auto &t =
-          inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+      auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
 
       const int bind_index = index;
       index++;
@@ -561,7 +559,7 @@ class DlnneEngineOp : public framework::OperatorBase {
           platform::errors::NotFound(
               "Output variable %s is not found in DLNNE subgraph.", y));
 
-      auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
+      auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
 
       VLOG(4) << bind_index << ": out_shapes[bind_index] dim:"
               << out_shapes[bind_index].size();
@@ -676,8 +674,7 @@ class DlnneEngineOp : public framework::OperatorBase {
 
     for (auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
-      auto &t =
-          inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+      auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
       calib_data_map.emplace(x, t.data());
 
       // TODO(pei.jiang): refine this code, because when run dlnne create

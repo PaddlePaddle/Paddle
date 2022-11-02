@@ -21,20 +21,22 @@ from op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from paddle.fluid import Program, program_guard
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestElementwiseAddOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'elementwise_add'
         self.use_dynamic_create_class = False
 
     class TestElementwiseAddOp(XPUOpTest):
-
         def setUp(self):
             self.op_type = "elementwise_add"
             self.init_dtype()
@@ -43,7 +45,7 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.init_max_relative_error()
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+                'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
             }
             self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
             self.outputs = {'Out': self.out}
@@ -57,27 +59,33 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(
-                    place, ['X', 'Y'],
+                    place,
+                    ['X', 'Y'],
                     'Out',
-                    max_relative_error=self.max_relative_error)
+                    max_relative_error=self.max_relative_error,
+                )
 
         def test_check_grad_ingore_x(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(
-                    place, ['Y'],
+                    place,
+                    ['Y'],
                     'Out',
                     no_grad_set=set("X"),
-                    max_relative_error=self.max_relative_error)
+                    max_relative_error=self.max_relative_error,
+                )
 
         def test_check_grad_ingore_y(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(
-                    place, ['X'],
+                    place,
+                    ['X'],
                     'Out',
                     no_grad_set=set("Y"),
-                    max_relative_error=self.max_relative_error)
+                    max_relative_error=self.max_relative_error,
+                )
 
         def init_input_output(self):
             self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -94,32 +102,30 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.max_relative_error = 0.006
 
     @skip_check_grad_ci(
-        reason="[skip shape check] Use y_shape(1) to test broadcast.")
+        reason="[skip shape check] Use y_shape(1) to test broadcast."
+    )
     class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(1).astype(self.dtype)
             self.out = self.x + self.y
 
     @skip_check_grad_ci(
-        reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
+        reason="[skip shape check] Use y_shape(1,1) to test broadcast."
+    )
     class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(1, 1).astype(self.dtype)
             self.out = self.x + self.y
 
     class TestElementwiseAddOp_Vector(TestElementwiseAddOp):
-
         def init_input_output(self):
-            self.x = np.random.random((100, )).astype(self.dtype)
-            self.y = np.random.random((100, )).astype(self.dtype)
+            self.x = np.random.random((100,)).astype(self.dtype)
+            self.y = np.random.random((100,)).astype(self.dtype)
             self.out = np.add(self.x, self.y)
 
     class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(100, 2, 3).astype(self.dtype)
             self.y = np.random.rand(100).astype(self.dtype)
@@ -129,7 +135,6 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.axis = 0
 
     class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(2, 100, 3).astype(self.dtype)
             self.y = np.random.rand(100).astype(self.dtype)
@@ -139,14 +144,12 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.axis = 1
 
     class TestElementwiseAddOp_broadcast_2(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(2, 3, 100).astype(self.dtype)
             self.y = np.random.rand(100).astype(self.dtype)
             self.out = self.x + self.y.reshape(1, 1, 100)
 
     class TestElementwiseAddOp_broadcast_3(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
             self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -156,7 +159,6 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.axis = 1
 
     class TestElementwiseAddOp_broadcast_4(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(100, 2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(100, 1).astype(self.dtype)
@@ -166,28 +168,24 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.axis = 0
 
     class TestElementwiseAddOp_broadcast_5(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(10, 3, 12).astype(self.dtype)
             self.y = np.random.rand(10, 1, 12).astype(self.dtype)
             self.out = self.x + self.y
 
     class TestElementwiseAddOp_broadcast_6(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(2, 12, 3, 5).astype(self.dtype)
             self.y = np.random.rand(2, 12, 1, 5).astype(self.dtype)
             self.out = self.x + self.y
 
     class TestElementwiseAddOp_broadcast_7(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(1, 1, 20, 5).astype(self.dtype)
             self.y = np.random.rand(20, 5, 1, 1).astype(self.dtype)
             self.out = self.x + self.y
 
     class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(2, 10, 12).astype(self.dtype)
             self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -197,9 +195,9 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.axis = 1
 
     @skip_check_grad_ci(
-        reason="[skip shape check] Use y_shape(1) to test broadcast.")
+        reason="[skip shape check] Use y_shape(1) to test broadcast."
+    )
     class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(100, 1).astype(self.dtype)
             self.y = np.random.rand(1).astype(self.dtype)
@@ -209,7 +207,6 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.axis = 1
 
     class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(100, 2, 3).astype(self.dtype)
             self.y = np.random.rand(100, 1, 1).astype(self.dtype)
@@ -219,7 +216,6 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.axis = -1
 
     class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(2, 3, 100).astype(self.dtype)
             self.y = np.random.rand(1, 1, 100).astype(self.dtype)
@@ -229,7 +225,6 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.axis = -1
 
     class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(10, 3, 1, 4).astype(self.dtype)
             self.y = np.random.rand(10, 1, 12, 1).astype(self.dtype)
@@ -239,7 +234,6 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.axis = -1
 
     class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
-
         def init_input_output(self):
             self.x = np.random.rand(10, 12).astype(self.dtype)
             self.y = np.random.rand(2, 3, 10, 12).astype(self.dtype)
@@ -249,30 +243,32 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
             self.axis = 2
 
     class TestElementwiseAddOpError(unittest.TestCase):
-
         def test_errors(self):
             with program_guard(Program(), Program()):
                 # the input of elementwise_add must be Variable.
-                x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
-                                             [[1, 1, 1, 1]], fluid.XPUPlace(0))
-                y1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
-                                             [[1, 1, 1, 1]], fluid.XPUPlace(0))
-                self.assertRaises(TypeError, fluid.layers.elementwise_add, x1,
-                                  y1)
+                x1 = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0)
+                )
+                y1 = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0)
+                )
+                self.assertRaises(
+                    TypeError, fluid.layers.elementwise_add, x1, y1
+                )
 
                 # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
                 # float16 only can be set on GPU place
-                x2 = fluid.layers.data(name='x2',
-                                       shape=[3, 4, 5, 6],
-                                       dtype="uint8")
-                y2 = fluid.layers.data(name='y2',
-                                       shape=[3, 4, 5, 6],
-                                       dtype="uint8")
-                self.assertRaises(TypeError, fluid.layers.elementwise_add, x2,
-                                  y2)
+                x2 = fluid.layers.data(
+                    name='x2', shape=[3, 4, 5, 6], dtype="uint8"
+                )
+                y2 = fluid.layers.data(
+                    name='y2', shape=[3, 4, 5, 6], dtype="uint8"
+                )
+                self.assertRaises(
+                    TypeError, fluid.layers.elementwise_add, x2, y2
+                )
 
     class TestAddOp(unittest.TestCase):
-
         def test_name(self):
             with fluid.program_guard(fluid.Program()):
                 x = fluid.data(name="x", shape=[2, 3], dtype="float32")
@@ -287,7 +283,7 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
                 def gen_data():
                     return {
                         "x": np.array([2, 3, 4]).astype('float32'),
-                        "y": np.array([1, 5, 2]).astype('float32')
+                        "y": np.array([1, 5, 2]).astype('float32'),
                     }
 
                 x = fluid.data(name="x", shape=[3], dtype='float32')
@@ -297,7 +293,7 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
                 place = fluid.XPUPlace(0)
                 exe = fluid.Executor(place)
                 z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
-                z_expected = np.array([3., 8., 6.])
+                z_expected = np.array([3.0, 8.0, 6.0])
                 self.assertEqual((z_value == z_expected).all(), True)
 
         def test_dygraph(self):
@@ -308,7 +304,7 @@ class XPUTestElementwiseAddOp(XPUOpTestWrapper):
                 y = fluid.dygraph.to_variable(np_y)
                 z = paddle.add(x, y)
                 np_z = z.numpy()
-                z_expected = np.array([3., 8., 6.])
+                z_expected = np.array([3.0, 8.0, 6.0])
                 self.assertEqual((np_z == z_expected).all(), True)
 
 

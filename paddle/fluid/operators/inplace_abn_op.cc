@@ -62,7 +62,7 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
                           "Variance input should be of float type"));
 
     framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
     return framework::OpKernelType(
         input_data_type, ctx.GetPlace(), layout, library);
@@ -73,7 +73,7 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
  public:
   using paddle::operators::BatchNormGradOp::BatchNormGradOp;
 
-  void InferShape(framework::InferShapeContext* ctx) const {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     // check input
     OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "InplaceABNGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),
@@ -118,8 +118,8 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
 
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "InplaceABNGrad");
     const auto y_dims = ctx->GetInputDim("Y");
-    const DataLayout data_layout = framework::StringToDataLayout(
-        ctx->Attrs().Get<std::string>("data_layout"));
+    const DataLayout data_layout =
+        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
     const int C = ((ctx->IsRunMKLDNNKernel() == true) ||
                            (data_layout == DataLayout::kNCHW)
@@ -155,7 +155,7 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
           platform::errors::InvalidArgument("gradient variable of Y is empty"));
     }
     framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
     return framework::OpKernelType(
         input_data_type, ctx.GetPlace(), layout, library);

@@ -16,10 +16,9 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from op_test import OpTest, check_out_dtype
+from op_test import check_out_dtype
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 import paddle.nn.functional as F
 
 
@@ -31,16 +30,18 @@ def adaptive_end_index(index, input_size, output_size):
     return int(np.ceil((index + 1) * input_size / output_size))
 
 
-def adaptive_pool2d_forward(x,
-                            output_size,
-                            data_format='NCHW',
-                            pool_type="max"):
+def adaptive_pool2d_forward(
+    x, output_size, data_format='NCHW', pool_type="max"
+):
 
     N = x.shape[0]
-    C, H, W = [x.shape[1], x.shape[2], x.shape[3]] if data_format == 'NCHW' \
+    C, H, W = (
+        [x.shape[1], x.shape[2], x.shape[3]]
+        if data_format == 'NCHW'
         else [x.shape[3], x.shape[1], x.shape[2]]
+    )
 
-    if (isinstance(output_size, int) or output_size == None):
+    if isinstance(output_size, int) or output_size == None:
         H_out = output_size
         W_out = output_size
         output_size = [H_out, W_out]
@@ -54,8 +55,11 @@ def adaptive_pool2d_forward(x,
         output_size[1] = W
         W_out = W
 
-    out = np.zeros((N, C, H_out, W_out)) if data_format=='NCHW' \
+    out = (
+        np.zeros((N, C, H_out, W_out))
+        if data_format == 'NCHW'
         else np.zeros((N, H_out, W_out, C))
+    )
 
     for i in range(H_out):
         in_h_start = adaptive_start_index(i, H, output_size[0])
@@ -68,16 +72,18 @@ def adaptive_pool2d_forward(x,
             if data_format == 'NCHW':
                 x_masked = x[:, :, in_h_start:in_h_end, in_w_start:in_w_end]
                 if pool_type == 'avg':
-                    field_size = ((in_h_end - in_h_start) *
-                                  (in_w_end - in_w_start))
+                    field_size = (in_h_end - in_h_start) * (
+                        in_w_end - in_w_start
+                    )
                     out[:, :, i, j] = np.sum(x_masked, axis=(2, 3)) / field_size
                 elif pool_type == 'max':
                     out[:, :, i, j] = np.max(x_masked, axis=(2, 3))
             elif data_format == 'NHWC':
                 x_masked = x[:, in_h_start:in_h_end, in_w_start:in_w_end, :]
                 if pool_type == 'avg':
-                    field_size = ((in_h_end - in_h_start) *
-                                  (in_w_end - in_w_start))
+                    field_size = (in_h_end - in_h_start) * (
+                        in_w_end - in_w_start
+                    )
                     out[:, i, j, :] = np.sum(x_masked, axis=(1, 2)) / field_size
                 elif pool_type == 'max':
                     out[:, i, j, :] = np.max(x_masked, axis=(1, 2))
@@ -85,20 +91,19 @@ def adaptive_pool2d_forward(x,
 
 
 class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
-
     def setUp(self):
         self.x_np = np.random.random([2, 3, 7, 7]).astype("float32")
-        self.res_1_np = adaptive_pool2d_forward(x=self.x_np,
-                                                output_size=[3, 3],
-                                                pool_type="max")
+        self.res_1_np = adaptive_pool2d_forward(
+            x=self.x_np, output_size=[3, 3], pool_type="max"
+        )
 
-        self.res_2_np = adaptive_pool2d_forward(x=self.x_np,
-                                                output_size=5,
-                                                pool_type="max")
+        self.res_2_np = adaptive_pool2d_forward(
+            x=self.x_np, output_size=5, pool_type="max"
+        )
 
-        self.res_3_np = adaptive_pool2d_forward(x=self.x_np,
-                                                output_size=[2, 5],
-                                                pool_type="max")
+        self.res_3_np = adaptive_pool2d_forward(
+            x=self.x_np, output_size=[2, 5], pool_type="max"
+        )
         """
         self.res_4_np = adaptive_pool2d_forward(
             x=self.x_np,
@@ -106,36 +111,41 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
             pool_type="max",
             data_format="NHWC")
         """
-        self.res_5_np = adaptive_pool2d_forward(x=self.x_np,
-                                                output_size=[None, 3],
-                                                pool_type="max")
+        self.res_5_np = adaptive_pool2d_forward(
+            x=self.x_np, output_size=[None, 3], pool_type="max"
+        )
 
     def test_static_graph(self):
-        for use_cuda in ([False, True]
-                         if core.is_compiled_with_cuda() else [False]):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
             x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
 
-            out_1 = paddle.nn.functional.adaptive_max_pool2d(x=x,
-                                                             output_size=[3, 3])
+            out_1 = paddle.nn.functional.adaptive_max_pool2d(
+                x=x, output_size=[3, 3]
+            )
 
             out_2 = paddle.nn.functional.adaptive_max_pool2d(x=x, output_size=5)
 
-            out_3 = paddle.nn.functional.adaptive_max_pool2d(x=x,
-                                                             output_size=[2, 5])
+            out_3 = paddle.nn.functional.adaptive_max_pool2d(
+                x=x, output_size=[2, 5]
+            )
 
-            #out_4 = paddle.nn.functional.adaptive_max_pool2d(
+            # out_4 = paddle.nn.functional.adaptive_max_pool2d(
             #    x=x, output_size=[3, 3], data_format="NHWC")
 
             out_5 = paddle.nn.functional.adaptive_max_pool2d(
-                x=x, output_size=[None, 3])
+                x=x, output_size=[None, 3]
+            )
 
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3,
-             res_5] = exe.run(fluid.default_main_program(),
-                              feed={"x": self.x_np},
-                              fetch_list=[out_1, out_2, out_3, out_5])
+            [res_1, res_2, res_3, res_5] = exe.run(
+                fluid.default_main_program(),
+                feed={"x": self.x_np},
+                fetch_list=[out_1, out_2, out_3, out_5],
+            )
 
             assert np.allclose(res_1, self.res_1_np)
 
@@ -143,31 +153,34 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
 
             assert np.allclose(res_3, self.res_3_np)
 
-            #assert np.allclose(res_4, self.res_4_np)
+            # assert np.allclose(res_4, self.res_4_np)
 
             assert np.allclose(res_5, self.res_5_np)
 
     def test_dynamic_graph(self):
-        for use_cuda in ([False, True]
-                         if core.is_compiled_with_cuda() else [False]):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
-            out_1 = paddle.nn.functional.adaptive_max_pool2d(x=x,
-                                                             return_mask=False,
-                                                             output_size=[3, 3])
+            out_1 = paddle.nn.functional.adaptive_max_pool2d(
+                x=x, return_mask=False, output_size=[3, 3]
+            )
 
             out_2 = paddle.nn.functional.adaptive_max_pool2d(x=x, output_size=5)
 
-            out_3 = paddle.nn.functional.adaptive_max_pool2d(x=x,
-                                                             output_size=[2, 5])
+            out_3 = paddle.nn.functional.adaptive_max_pool2d(
+                x=x, output_size=[2, 5]
+            )
 
-            #out_4 = paddle.nn.functional.adaptive_max_pool2d(
+            # out_4 = paddle.nn.functional.adaptive_max_pool2d(
             #    x=x, output_size=[3, 3], data_format="NHWC")
 
             out_5 = paddle.nn.functional.adaptive_max_pool2d(
-                x=x, output_size=[None, 3])
+                x=x, output_size=[None, 3]
+            )
 
             assert np.allclose(out_1.numpy(), self.res_1_np)
 
@@ -175,40 +188,40 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
 
             assert np.allclose(out_3.numpy(), self.res_3_np)
 
-            #assert np.allclose(out_4.numpy(), self.res_4_np)
+            # assert np.allclose(out_4.numpy(), self.res_4_np)
 
             assert np.allclose(out_5.numpy(), self.res_5_np)
 
 
 class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
-
     def setUp(self):
         self.x_np = np.random.random([2, 3, 7, 7]).astype("float32")
-        self.res_1_np = adaptive_pool2d_forward(x=self.x_np,
-                                                output_size=[3, 3],
-                                                pool_type="max")
+        self.res_1_np = adaptive_pool2d_forward(
+            x=self.x_np, output_size=[3, 3], pool_type="max"
+        )
 
-        self.res_2_np = adaptive_pool2d_forward(x=self.x_np,
-                                                output_size=5,
-                                                pool_type="max")
+        self.res_2_np = adaptive_pool2d_forward(
+            x=self.x_np, output_size=5, pool_type="max"
+        )
 
-        self.res_3_np = adaptive_pool2d_forward(x=self.x_np,
-                                                output_size=[2, 5],
-                                                pool_type="max")
+        self.res_3_np = adaptive_pool2d_forward(
+            x=self.x_np, output_size=[2, 5], pool_type="max"
+        )
 
-        #self.res_4_np = adaptive_pool2d_forward(
+        # self.res_4_np = adaptive_pool2d_forward(
         #    x=self.x_np,
         #    output_size=[3, 3],
         #    pool_type="max",
         #    data_format="NHWC")
 
-        self.res_5_np = adaptive_pool2d_forward(x=self.x_np,
-                                                output_size=[None, 3],
-                                                pool_type="max")
+        self.res_5_np = adaptive_pool2d_forward(
+            x=self.x_np, output_size=[None, 3], pool_type="max"
+        )
 
     def test_static_graph(self):
-        for use_cuda in ([False, True]
-                         if core.is_compiled_with_cuda() else [False]):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
             x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
@@ -227,14 +240,16 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
             #    out_4 = adaptive_max_pool(x=x)
 
             adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
-                output_size=[None, 3])
+                output_size=[None, 3]
+            )
             out_5 = adaptive_max_pool(x=x)
 
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3,
-             res_5] = exe.run(fluid.default_main_program(),
-                              feed={"x": self.x_np},
-                              fetch_list=[out_1, out_2, out_3, out_5])
+            [res_1, res_2, res_3, res_5] = exe.run(
+                fluid.default_main_program(),
+                feed={"x": self.x_np},
+                fetch_list=[out_1, out_2, out_3, out_5],
+            )
 
             assert np.allclose(res_1, self.res_1_np)
 
@@ -242,13 +257,14 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
 
             assert np.allclose(res_3, self.res_3_np)
 
-            #assert np.allclose(res_4, self.res_4_np)
+            # assert np.allclose(res_4, self.res_4_np)
 
             assert np.allclose(res_5, self.res_5_np)
 
     def test_dynamic_graph(self):
-        for use_cuda in ([False, True]
-                         if core.is_compiled_with_cuda() else [False]):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
@@ -262,12 +278,13 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
             adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=[2, 5])
             out_3 = adaptive_max_pool(x=x)
 
-            #adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
+            # adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
             #    output_size=[3, 3], data_format="NHWC")
-            #out_4 = adaptive_max_pool(x=x)
+            # out_4 = adaptive_max_pool(x=x)
 
             adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(
-                output_size=[None, 3])
+                output_size=[None, 3]
+            )
             out_5 = adaptive_max_pool(x=x)
 
             assert np.allclose(out_1.numpy(), self.res_1_np)
@@ -276,20 +293,21 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
 
             assert np.allclose(out_3.numpy(), self.res_3_np)
 
-            #assert np.allclose(out_4.numpy(), self.res_4_np)
+            # assert np.allclose(out_4.numpy(), self.res_4_np)
 
             assert np.allclose(out_5.numpy(), self.res_5_np)
 
 
 class TestOutDtype(unittest.TestCase):
-
     def test_max_pool(self):
         api_fn = F.adaptive_max_pool2d
         shape = [1, 3, 32, 32]
-        check_out_dtype(api_fn,
-                        in_specs=[(shape, )],
-                        expect_dtypes=['float32', 'float64'],
-                        output_size=16)
+        check_out_dtype(
+            api_fn,
+            in_specs=[(shape,)],
+            expect_dtypes=['float32', 'float64'],
+            output_size=16,
+        )
 
 
 if __name__ == '__main__':

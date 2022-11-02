@@ -46,7 +46,7 @@ using framework::ir::Graph;
 
 #ifdef PADDLE_WITH_MKLDNN
 using VarQuantScale =
-    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
+    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
 #endif
 
 /*
@@ -149,6 +149,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
   DECL_ARGUMENT_FIELD(enable_analysis_optim, EnableAnalysisOptim, bool);
+
+  // For JITLayer
+  DECL_ARGUMENT_FIELD(skip_load_params, SkipLoadParams, bool);
 
   // The overall graph to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);

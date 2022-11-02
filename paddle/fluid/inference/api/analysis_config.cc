@@ -484,6 +484,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(custom_device_type_);
   CP_MEMBER(custom_device_id_);
 
+  // JITLayer relate
+  CP_MEMBER(apply_optim_);
+  CP_MEMBER(skip_load_params_);
+
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
                       false,
@@ -655,7 +659,7 @@ void AnalysisConfig::EnableTensorRtEngine(
   }
 
   use_tensorrt_ = true;
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
   // https://forums.developer.nvidia.com/t/nvinfer1-createexecutioncontextwithoutdevicememory-returns-nullptr/111878/2
   // when trt version less than 7.2,
   // createExecutionContextWithoutDeviceMemory() has bug.

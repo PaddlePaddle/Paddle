@@ -17,20 +17,20 @@ from operator import __add__, __sub__, __mul__, __truediv__
 
 import numpy as np
 import paddle
-import paddle.incubate.sparse as sparse
+import paddle.sparse as sparse
 
 op_list = [__add__, __sub__, __mul__, __truediv__]
 
 
 def get_actual_res(x, y, op):
     if op == __add__:
-        res = paddle.incubate.sparse.add(x, y)
+        res = paddle.sparse.add(x, y)
     elif op == __sub__:
-        res = paddle.incubate.sparse.subtract(x, y)
+        res = paddle.sparse.subtract(x, y)
     elif op == __mul__:
-        res = paddle.incubate.sparse.multiply(x, y)
+        res = paddle.sparse.multiply(x, y)
     elif op == __truediv__:
-        res = paddle.incubate.sparse.divide(x, y)
+        res = paddle.sparse.divide(x, y)
     else:
         raise ValueError("unsupported op")
     return res
@@ -68,37 +68,45 @@ class TestSparseElementWiseAPI(unittest.TestCase):
             expect_res = op(dense_x, dense_y)
             expect_res.backward(expect_res)
 
-            np.testing.assert_allclose(expect_res.numpy(),
-                                       actual_res.to_dense().numpy(),
-                                       rtol=1e-05,
-                                       equal_nan=True)
+            np.testing.assert_allclose(
+                expect_res.numpy(),
+                actual_res.to_dense().numpy(),
+                rtol=1e-05,
+                equal_nan=True,
+            )
             if not (op == __truediv__ and dtype in ['int32', 'int64']):
-                np.testing.assert_allclose(dense_x.grad.numpy(),
-                                           csr_x.grad.to_dense().numpy(),
-                                           rtol=1e-05,
-                                           equal_nan=True)
-                np.testing.assert_allclose(dense_y.grad.numpy(),
-                                           csr_y.grad.to_dense().numpy(),
-                                           rtol=1e-05,
-                                           equal_nan=True)
+                np.testing.assert_allclose(
+                    dense_x.grad.numpy(),
+                    csr_x.grad.to_dense().numpy(),
+                    rtol=1e-05,
+                    equal_nan=True,
+                )
+                np.testing.assert_allclose(
+                    dense_y.grad.numpy(),
+                    csr_y.grad.to_dense().numpy(),
+                    rtol=1e-05,
+                    equal_nan=True,
+                )
 
     def func_test_coo(self, op):
         for sparse_dim in range(len(self.coo_shape) - 1, len(self.coo_shape)):
             for dtype in self.support_dtypes:
-                x = np.random.randint(-255, 255,
-                                      size=self.coo_shape).astype(dtype)
-                y = np.random.randint(-255, 255,
-                                      size=self.coo_shape).astype(dtype)
+                x = np.random.randint(-255, 255, size=self.coo_shape).astype(
+                    dtype
+                )
+                y = np.random.randint(-255, 255, size=self.coo_shape).astype(
+                    dtype
+                )
 
                 dense_x = paddle.to_tensor(x, dtype=dtype, stop_gradient=False)
                 dense_y = paddle.to_tensor(y, dtype=dtype, stop_gradient=False)
 
-                s_dense_x = paddle.to_tensor(x,
-                                             dtype=dtype,
-                                             stop_gradient=False)
-                s_dense_y = paddle.to_tensor(y,
-                                             dtype=dtype,
-                                             stop_gradient=False)
+                s_dense_x = paddle.to_tensor(
+                    x, dtype=dtype, stop_gradient=False
+                )
+                s_dense_y = paddle.to_tensor(
+                    y, dtype=dtype, stop_gradient=False
+                )
                 coo_x = s_dense_x.to_sparse_coo(sparse_dim)
                 coo_y = s_dense_y.to_sparse_coo(sparse_dim)
 
@@ -108,18 +116,24 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                 expect_res = op(dense_x, dense_y)
                 expect_res.backward(expect_res)
 
-                np.testing.assert_allclose(expect_res.numpy(),
-                                           actual_res.to_dense().numpy(),
-                                           rtol=1e-05,
-                                           equal_nan=True)
-                np.testing.assert_allclose(dense_x.grad.numpy(),
-                                           coo_x.grad.to_dense().numpy(),
-                                           rtol=1e-05,
-                                           equal_nan=True)
-                np.testing.assert_allclose(dense_y.grad.numpy(),
-                                           coo_y.grad.to_dense().numpy(),
-                                           rtol=1e-05,
-                                           equal_nan=True)
+                np.testing.assert_allclose(
+                    expect_res.numpy(),
+                    actual_res.to_dense().numpy(),
+                    rtol=1e-05,
+                    equal_nan=True,
+                )
+                np.testing.assert_allclose(
+                    dense_x.grad.numpy(),
+                    coo_x.grad.to_dense().numpy(),
+                    rtol=1e-05,
+                    equal_nan=True,
+                )
+                np.testing.assert_allclose(
+                    dense_y.grad.numpy(),
+                    coo_y.grad.to_dense().numpy(),
+                    rtol=1e-05,
+                    equal_nan=True,
+                )
 
     def test_support_dtypes_csr(self):
         paddle.device.set_device('cpu')
@@ -139,38 +153,37 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         values2_data = [[1.0], [2.0]]
         shape = [2, 4, 2]
 
-        sp_a = sparse.sparse_coo_tensor(indices_data,
-                                        values1_data,
-                                        shape,
-                                        stop_gradient=False)
-        sp_b = sparse.sparse_coo_tensor(indices_data,
-                                        values2_data,
-                                        shape,
-                                        stop_gradient=False)
+        sp_a = sparse.sparse_coo_tensor(
+            indices_data, values1_data, shape, stop_gradient=False
+        )
+        sp_b = sparse.sparse_coo_tensor(
+            indices_data, values2_data, shape, stop_gradient=False
+        )
 
         values1 = paddle.to_tensor(values1_data, stop_gradient=False)
         values2 = paddle.to_tensor(values2_data, stop_gradient=False)
 
-        #c.values() = a.values() + b.values()
+        # c.values() = a.values() + b.values()
         sp_c = sparse.add(sp_a, sp_b)
         sp_c.backward()
         ref_c = values1 + values2
         ref_c.backward()
         np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
-        np.testing.assert_allclose(sp_a.grad.values().numpy(),
-                                   values1.grad.numpy())
-        np.testing.assert_allclose(sp_b.grad.values().numpy(),
-                                   values2.grad.numpy())
+        np.testing.assert_allclose(
+            sp_a.grad.values().numpy(), values1.grad.numpy()
+        )
+        np.testing.assert_allclose(
+            sp_b.grad.values().numpy(), values2.grad.numpy()
+        )
 
     def test_add_bias(self):
         indices_data = [[0, 1], [0, 3]]
         values_data = [[1.0, 1.0], [2.0, 2.0]]
         shape = [2, 4, 2]
 
-        sp_a = sparse.sparse_coo_tensor(indices_data,
-                                        values_data,
-                                        shape,
-                                        stop_gradient=False)
+        sp_a = sparse.sparse_coo_tensor(
+            indices_data, values_data, shape, stop_gradient=False
+        )
 
         bias_values = [1.0, 2.0]
 
@@ -178,14 +191,15 @@ class TestSparseElementWiseAPI(unittest.TestCase):
         values2 = paddle.to_tensor(bias_values, stop_gradient=False)
         values3 = paddle.to_tensor(bias_values, stop_gradient=False)
 
-        #c.values() = a.values() + b
+        # c.values() = a.values() + b
         sp_c = sparse.add(sp_a, values2)
         sp_c.backward()
         ref_c = values1 + values3
         ref_c.backward()
         np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
-        np.testing.assert_allclose(sp_a.grad.values().numpy(),
-                                   values1.grad.numpy())
+        np.testing.assert_allclose(
+            sp_a.grad.values().numpy(), values1.grad.numpy()
+        )
         np.testing.assert_allclose(values2.grad.numpy(), values3.grad.numpy())
 
 

@@ -29,7 +29,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 using NPUAttribute = framework::NPUAttribute;
 using NPUAttributeMap = framework::NPUAttributeMap;
 using DeviceContextPool = platform::DeviceContextPool;

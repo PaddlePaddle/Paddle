@@ -148,19 +148,21 @@ class AdamW(Optimizer):
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
 
-    def __init__(self,
-                 learning_rate=0.001,
-                 beta1=0.9,
-                 beta2=0.999,
-                 epsilon=1e-8,
-                 parameters=None,
-                 weight_decay=0.01,
-                 lr_ratio=None,
-                 apply_decay_param_fun=None,
-                 grad_clip=None,
-                 lazy_mode=False,
-                 multi_precision=False,
-                 name=None):
+    def __init__(
+        self,
+        learning_rate=0.001,
+        beta1=0.9,
+        beta2=0.999,
+        epsilon=1e-8,
+        parameters=None,
+        weight_decay=0.01,
+        lr_ratio=None,
+        apply_decay_param_fun=None,
+        grad_clip=None,
+        lazy_mode=False,
+        multi_precision=False,
+        name=None,
+    ):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
@@ -171,14 +173,16 @@ class AdamW(Optimizer):
             raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
         if not 0 <= epsilon:
             raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
-        if not isinstance(weight_decay, float) and \
-                not isinstance(weight_decay, framework.Variable):
+        if not isinstance(weight_decay, float) and not isinstance(
+            weight_decay, framework.Variable
+        ):
             raise TypeError("weight_decay should be float or Tensor.")
         if lr_ratio is not None:
             assert isinstance(lr_ratio, Callable)
             if not core.is_compiled_with_cuda():
                 raise NotImplementedError(
-                    "'lr_ratio' is unimplemented in CPU, XPU and NPU")
+                    "'lr_ratio' is unimplemented in CPU, XPU and NPU"
+                )
 
         if parameters is not None:
             # paddle.Tensor is also iterable, so here we don't check whether
@@ -187,13 +191,16 @@ class AdamW(Optimizer):
             if isinstance(parameters, (paddle.Tensor, core.eager.Tensor)):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
-                    "an iterable of paddle Tensors, but got argument type is `{}`."
-                    .format(type(parameters)))
+                    "an iterable of paddle Tensors, but got argument type is `{}`.".format(
+                        type(parameters)
+                    )
+                )
             if isinstance(parameters, dict):
                 raise TypeError(
                     "`parameters` argument should not get dict type, "
                     "if parameter groups is needed, please set `parameters`"
-                    " as list of dict")
+                    " as list of dict"
+                )
             self._parameter_list = list(parameters)
         else:
             self._parameter_list = None
@@ -207,8 +214,9 @@ class AdamW(Optimizer):
 
         if not isinstance(learning_rate, (float, LRScheduler)):
             raise TypeError(
-                "learning rate should be float or LRScheduler, got %s here" %
-                type(learning_rate))
+                "learning rate should be float or LRScheduler, got %s here"
+                % type(learning_rate)
+            )
         if grad_clip is not None:
             if not isinstance(grad_clip, GradientClipBase):
                 raise TypeError(
@@ -220,8 +228,9 @@ class AdamW(Optimizer):
         if self._parameter_list:
             if isinstance(self._parameter_list[0], dict):
                 for param_group in self._parameter_list:
-                    assert 'params' in param_group, \
-                        'params should be set in parameters if parameter groups are optimized in different options'
+                    assert (
+                        'params' in param_group
+                    ), 'params should be set in parameters if parameter groups are optimized in different options'
                 self._dtype = self._parameter_list[0]['params'][0].dtype
             else:
                 self._dtype = self._parameter_list[0].dtype
@@ -260,7 +269,7 @@ class AdamW(Optimizer):
             'beta2': beta2,
             'epsilon': epsilon,
             'lazy_mode': lazy_mode,
-            'grad_clip': grad_clip
+            'grad_clip': grad_clip,
         }
 
         self._param_groups = []
@@ -297,7 +306,8 @@ class AdamW(Optimizer):
         elif isinstance(params, set):
             raise TypeError(
                 "optimizer parameters should be in ordered collections,"
-                "but received set, please use list instead.")
+                "but received set, please use list instead."
+            )
         else:
             param_group['params'] = list(params)
 
@@ -311,11 +321,13 @@ class AdamW(Optimizer):
 
         if not param_set.isdisjoint(set(param_group['params'])):
             raise ValueError(
-                "some parameters appear in more than one parameter group")
+                "some parameters appear in more than one parameter group"
+            )
 
         for param in param_group['params']:
             param.optimize_attr['learning_rate'] = param_group.get(
-                'learning_rate', 1.)
+                'learning_rate', 1.0
+            )
 
         self._param_groups.append(param_group)
 
@@ -327,19 +339,23 @@ class AdamW(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(name=var_name,
-                                           shape=param.shape,
-                                           value=0,
-                                           dtype='float32',
-                                           persistable=True)
+            var = layers.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True,
+            )
             block = self.helper.startup_program.global_block()
-            block.append_op(type="cast",
-                            inputs={"X": [param]},
-                            outputs={"Out": [var]},
-                            attrs={
-                                "in_dtype": param.dtype,
-                                "out_dtype": core.VarDesc.VarType.FP32
-                            })
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
             self._master_weights[param.name] = var
         return var
 
@@ -353,15 +369,22 @@ class AdamW(Optimizer):
         """
         if self._name is not None:
             name = self._name + "_" + name
-        find_master = self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
-        target_param = self._master_weights[
-            param.name] if find_master else param
+        find_master = (
+            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
         target_name = target_param.name
-        if (name not in self._accumulators
-                or target_name not in self._accumulators[name]):
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
             raise Exception(
                 "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name))
+                    name, target_name
+                )
+            )
         return self._accumulators[name][target_name]
 
     def _add_moments_pows(self, p):
@@ -374,18 +397,24 @@ class AdamW(Optimizer):
             name=self._beta1_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=0.9 if isinstance(self._beta1, Variable) \
-                    else self._beta1,
+            fill_value=0.9
+            if isinstance(self._beta1, Variable)
+            else self._beta1,
             shape=[1],
-            type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            device='cpu',
+        )
         self._add_accumulator(
             name=self._beta2_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=0.999 if isinstance(self._beta2, Variable) \
-                    else self._beta2,
+            fill_value=0.999
+            if isinstance(self._beta2, Variable)
+            else self._beta2,
             shape=[1],
-            type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            device='cpu',
+        )
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -398,7 +427,10 @@ class AdamW(Optimizer):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
                 continue
-            if p.dtype == core.VarDesc.VarType.FP16 and not self._multi_precision:
+            if (
+                p.dtype == core.VarDesc.VarType.FP16
+                and not self._multi_precision
+            ):
                 warnings.warn(
                     "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Adam optimizer."
@@ -413,53 +445,112 @@ class AdamW(Optimizer):
 
         # Whether we should do weight decay for the parameter.
         with_decay = True
-        if self._apply_decay_param_fun is not None \
-                and not self._apply_decay_param_fun(param.name):
+        if (
+            self._apply_decay_param_fun is not None
+            and not self._apply_decay_param_fun(param.name)
+        ):
             with_decay = False
 
-        moment1 = self._get_accumulator(self._moment1_acc_str,
-                                        param_and_grad[0])
-        moment2 = self._get_accumulator(self._moment2_acc_str,
-                                        param_and_grad[0])
-        beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                              param_and_grad[0])
-        beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
-                                              param_and_grad[0])
-        find_master = self._multi_precision and param_and_grad[
-            0].dtype == core.VarDesc.VarType.FP16
-        master_weight = (self._master_weights[param_and_grad[0].name]
-                         if find_master else None)
+        moment1 = self._get_accumulator(
+            self._moment1_acc_str, param_and_grad[0]
+        )
+        moment2 = self._get_accumulator(
+            self._moment2_acc_str, param_and_grad[0]
+        )
+        beta1_pow_acc = self._get_accumulator(
+            self._beta1_pow_acc_str, param_and_grad[0]
+        )
+        beta2_pow_acc = self._get_accumulator(
+            self._beta2_pow_acc_str, param_and_grad[0]
+        )
+        find_master = (
+            self._multi_precision
+            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        )
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
+        )
         lr = self._create_param_lr(param_and_grad)
 
         # create the adamw optimize op
         if framework._non_static_mode():
-            lr_ratio_ = 1. if self._lr_ratio is None else self._lr_ratio(
-                param_and_grad[0])
+            lr_ratio_ = (
+                1.0
+                if self._lr_ratio is None
+                else self._lr_ratio(param_and_grad[0])
+            )
 
-            _beta1 = self._beta1 if not isinstance(
-                self._beta1, Variable) else self._beta1.numpy().item(0)
-            _beta2 = self._beta2 if not isinstance(
-                self._beta2, Variable) else self._beta2.numpy().item(0)
+            _beta1 = (
+                self._beta1
+                if not isinstance(self._beta1, Variable)
+                else self._beta1.numpy().item(0)
+            )
+            _beta2 = (
+                self._beta2
+                if not isinstance(self._beta2, Variable)
+                else self._beta2.numpy().item(0)
+            )
 
             if framework.in_dygraph_mode():
                 found_inf = self._get_auxiliary_var('found_inf')
                 _, _, _, _, _, _ = _C_ops.adamw_(
-                    param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
-                    beta1_pow_acc, beta2_pow_acc, master_weight, found_inf,
-                    _beta1, _beta2, self._epsilon, lr_ratio_,
-                    self._weight_decay, with_decay, self._lazy_mode, 1000,
-                    find_master, False)
+                    param_and_grad[0],
+                    param_and_grad[1],
+                    lr,
+                    moment1,
+                    moment2,
+                    beta1_pow_acc,
+                    beta2_pow_acc,
+                    master_weight,
+                    found_inf,
+                    _beta1,
+                    _beta2,
+                    self._epsilon,
+                    lr_ratio_,
+                    self._weight_decay,
+                    with_decay,
+                    self._lazy_mode,
+                    1000,
+                    find_master,
+                    False,
+                )
             else:
                 _, _, _, _, _, _ = _legacy_C_ops.adamw(
-                    param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
-                    beta1_pow_acc, beta2_pow_acc, master_weight,
-                    param_and_grad[0], moment1, moment2, beta1_pow_acc,
-                    beta2_pow_acc, master_weight, 'epsilon', self._epsilon,
-                    'lazy_mode', self._lazy_mode,
-                    'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
-                    'beta2', _beta2, "with_decay", with_decay, 'coeff',
-                    self._weight_decay, 'multi_precision', find_master,
-                    'lr_ratio', lr_ratio_)
+                    param_and_grad[0],
+                    param_and_grad[1],
+                    lr,
+                    moment1,
+                    moment2,
+                    beta1_pow_acc,
+                    beta2_pow_acc,
+                    master_weight,
+                    param_and_grad[0],
+                    moment1,
+                    moment2,
+                    beta1_pow_acc,
+                    beta2_pow_acc,
+                    master_weight,
+                    'epsilon',
+                    self._epsilon,
+                    'lazy_mode',
+                    self._lazy_mode,
+                    'min_row_size_to_use_multithread',
+                    1000,
+                    'beta1',
+                    _beta1,
+                    'beta2',
+                    _beta2,
+                    "with_decay",
+                    with_decay,
+                    'coeff',
+                    self._weight_decay,
+                    'multi_precision',
+                    find_master,
+                    'lr_ratio',
+                    lr_ratio_,
+                )
             return None
 
         inputs = {
@@ -486,18 +577,14 @@ class AdamW(Optimizer):
             "Beta2PowOut": [beta2_pow_acc],
         }
         attrs = {
-            "lazy_mode":
-            self._lazy_mode,
-            "min_row_size_to_use_multithread":
-            1000,
-            "multi_precision":
-            find_master,
-            "with_decay":
-            with_decay,
-            "coeff":
-            self._weight_decay,
-            "lr_ratio":
-            1. if self._lr_ratio is None else self._lr_ratio(param_and_grad[0])
+            "lazy_mode": self._lazy_mode,
+            "min_row_size_to_use_multithread": 1000,
+            "multi_precision": find_master,
+            "with_decay": with_decay,
+            "coeff": self._weight_decay,
+            "lr_ratio": 1.0
+            if self._lr_ratio is None
+            else self._lr_ratio(param_and_grad[0]),
         }
 
         if isinstance(self._beta1, Variable):
@@ -517,11 +604,13 @@ class AdamW(Optimizer):
             inputs["MasterParam"] = master_weight
             outputs["MasterParamOut"] = master_weight
 
-        adamw_op = block.append_op(type=self.type,
-                                   inputs=inputs,
-                                   outputs=outputs,
-                                   attrs=attrs,
-                                   stop_gradient=True)
+        adamw_op = block.append_op(
+            type=self.type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
+            stop_gradient=True,
+        )
 
         return adamw_op
 
@@ -560,24 +649,28 @@ class AdamW(Optimizer):
                 if param._grad_ivar() is not None:
                     grad_var = param._grad_ivar()
                     if framework.in_dygraph_mode():
-                        if hasattr(grad_var, "is_selected_rows"
-                                   ) and grad_var.is_selected_rows(
-                                   ) and self.regularization is not None:
+                        if (
+                            hasattr(grad_var, "is_selected_rows")
+                            and grad_var.is_selected_rows()
+                            and self.regularization is not None
+                        ):
                             raise RuntimeError(
                                 "AdamW don't support weight_decay with sparse parameters, please set it to None."
                             )
                     else:
-                        if hasattr(
-                                grad_var, "_is_sparse") and grad_var._is_sparse(
-                                ) and self.regularization is not None:
+                        if (
+                            hasattr(grad_var, "_is_sparse")
+                            and grad_var._is_sparse()
+                            and self.regularization is not None
+                        ):
                             raise RuntimeError(
                                 "AdamW don't support weight_decay with sparse parameters, please set it to None."
                             )
                     params_grads.append((param, grad_var))
 
-            optimize_ops = self._apply_optimize(loss=None,
-                                                startup_program=None,
-                                                params_grads=params_grads)
+            optimize_ops = self._apply_optimize(
+                loss=None, startup_program=None, params_grads=params_grads
+            )
         else:
             # optimize parameters in groups
             for param_group in self._param_groups:
@@ -588,35 +681,41 @@ class AdamW(Optimizer):
                     if param._grad_ivar() is not None:
                         grad_var = param._grad_ivar()
                         if framework.in_dygraph_mode():
-                            if hasattr(grad_var, "is_selected_rows"
-                                       ) and grad_var.is_selected_rows(
-                                       ) and self.regularization is not None:
+                            if (
+                                hasattr(grad_var, "is_selected_rows")
+                                and grad_var.is_selected_rows()
+                                and self.regularization is not None
+                            ):
                                 raise RuntimeError(
                                     "AdamW don't support weight_decay with sparse parameters, please set it to None."
                                 )
                         else:
-                            if hasattr(grad_var,
-                                       "_is_sparse") and grad_var._is_sparse(
-                                       ) and self.regularization is not None:
+                            if (
+                                hasattr(grad_var, "_is_sparse")
+                                and grad_var._is_sparse()
+                                and self.regularization is not None
+                            ):
                                 raise RuntimeError(
                                     "AdamW don't support weight_decay with sparse parameters, please set it to None."
                                 )
                         params_grads['params'].append((param, grad_var))
                 params_grads.update(
-                    {k: v
-                     for k, v in param_group.items() if k != 'params'})
-                self._apply_optimize(loss=None,
-                                     startup_program=None,
-                                     params_grads=params_grads)
+                    {k: v for k, v in param_group.items() if k != 'params'}
+                )
+                self._apply_optimize(
+                    loss=None, startup_program=None, params_grads=params_grads
+                )
 
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])
         self._beta2 = parameters.get('beta2', self._default_dict['beta2'])
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
-        self._lazy_mode = parameters.get('lazy_mode',
-                                         self._default_dict['lazy_mode'])
-        self._weight_decay = parameters.get('weight_decay',
-                                            self._default_dict['weight_decay'])
+        self._lazy_mode = parameters.get(
+            'lazy_mode', self._default_dict['lazy_mode']
+        )
+        self._weight_decay = parameters.get(
+            'weight_decay', self._default_dict['weight_decay']
+        )
         parameters = parameters.get('params')
 
         return parameters

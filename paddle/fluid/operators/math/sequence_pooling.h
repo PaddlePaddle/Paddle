@@ -30,8 +30,8 @@ class SequencePoolFunctor {
   void operator()(const DeviceContext& context,
                   const std::string pooltype,
                   T pad_value,
-                  const framework::LoDTensor& input,
-                  framework::LoDTensor* output,
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* output,
                   bool is_test = false,
                   phi::DenseTensor* index = nullptr);
 };
@@ -41,8 +41,8 @@ class SequencePoolGradFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const std::string pooltype,
-                  const framework::LoDTensor& out_grad,
-                  framework::LoDTensor* in_grad,
+                  const phi::DenseTensor& out_grad,
+                  phi::DenseTensor* in_grad,
                   /* max pool has index */
                   const phi::DenseTensor* index = nullptr);
 };
