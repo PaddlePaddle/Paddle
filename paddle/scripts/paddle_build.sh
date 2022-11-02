@@ -197,11 +197,6 @@ function cmake_base() {
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
 
-    if [ ${WITH_GPU:-OFF} == "OFF" ] && [ ${WITH_CUDNN_DSO:-OFF} == "ON" ];then
-        WITH_CUDNN_DSO="OFF"
-        echo "Can't compile with cuDNN libraries when WITH_GPU is OFF. Set WITH_CUDNN_DSO=OFF."
-    fi
-
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
 
@@ -3455,7 +3450,6 @@ function main() {
     init
     case $CMD in
       build_only)
-        WITH_CUDNN_DSO="ON"
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_pr_dev)
@@ -3556,7 +3550,6 @@ function main() {
         test_fluid_lib
         ;;
       build_inference_lib)
-        WITH_CUDNN_DSO="ON"
         if [ "${WITH_PYTHON}" == "OFF" ] ; then
             python ${PADDLE_ROOT}/tools/remove_grad_op_and_kernel.py
         fi
