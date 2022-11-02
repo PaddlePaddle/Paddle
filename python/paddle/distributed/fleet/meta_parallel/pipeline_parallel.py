@@ -537,7 +537,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         return input_tensor_grad
 
-    def interleave_pipeline(
+    def forward_backward_pipeline(
         self, data, scaler, forward_only=False, compute_loss=True
     ):
         # use interleave scheduling strategy.
@@ -766,7 +766,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
     def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         data = self._prepare_training(data, optimizer, lr_scheduler)
         # interleave scheduler for pipeline parallel
-        train_loss = self.interleave_pipeline(data, scaler)
+        train_loss = self.forward_backward_pipeline(data, scaler)
 
         # optimizer
         with paddle.amp.auto_cast(enable=False):
@@ -781,4 +781,4 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._layers.eval()
         self._compute_loss = compute_loss
 
-        return self.interleave_pipeline(data, None, forward_only=True)
+        return self.forward_backward_pipeline(data, None, forward_only=True)
