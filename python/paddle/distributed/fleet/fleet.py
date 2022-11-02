@@ -1285,7 +1285,7 @@ class Fleet(object):
         context["origin_main_program"] = self.origin_main_program
         context["origin_main_programs"] = [self.origin_main_program]
         context["loss"] = loss
-        if startup_program == None:
+        if startup_program is None:
             self.origin_startup_program = (
                 paddle.static.default_startup_program().clone(for_test=False)
             )

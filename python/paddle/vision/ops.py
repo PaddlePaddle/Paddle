@@ -583,7 +583,7 @@ def prior_box(
 
     if in_dygraph_mode():
         step_w, step_h = steps
-        if max_sizes == None:
+        if max_sizes is None:
             max_sizes = []
         box, var = _C_ops.prior_box(
             input,

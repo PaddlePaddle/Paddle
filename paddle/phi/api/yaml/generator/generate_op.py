@@ -86,11 +86,29 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
         if api_name != op_name:
             forward_api_item['op_name'] = op_name
         if 'backward' in api_args and has_backward:
-            bw_api_name, bw_op_name = get_api_and_op_name(
-                api_args['backward'].split(',')[0]
-            )
+            backward_op_list = api_args['backward'].split(',')
+            bw_api_name, bw_op_name = get_api_and_op_name(backward_op_list[0])
             forward_api_item['backward'] = bw_op_name
             backward_api_item['op_name'] = bw_op_name
+
+            # for double grad
+            if len(backward_op_list) > 1:
+                double_grad_api_name, double_grad_op_name = get_api_and_op_name(
+                    backward_op_list[1]
+                )
+                double_grad_item = backward_api_dict[double_grad_api_name]
+                backward_api_item['backward'] = double_grad_op_name
+                double_grad_item['op_name'] = double_grad_op_name
+
+                # for triple grad
+                if len(backward_op_list) > 2:
+                    (
+                        triple_grad_api_name,
+                        triple_grad_op_name,
+                    ) = get_api_and_op_name(backward_op_list[2])
+                    triple_grad_item = backward_api_dict[triple_grad_api_name]
+                    double_grad_item['backward'] = triple_grad_op_name
+                    triple_grad_item['op_name'] = triple_grad_op_name
 
         key_set = ['inputs', 'attrs', 'outputs']
         args_map = {}

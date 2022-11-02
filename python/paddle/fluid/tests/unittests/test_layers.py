@@ -4183,8 +4183,8 @@ class TestBook(LayerTest):
             crf_decode = layers.crf_decoding(
                 input=emission, param_attr=ParamAttr(name="crfw")
             )
-            self.assertFalse(crf is None)
-            self.assertFalse(crf_decode is None)
+            self.assertIsNotNone(crf)
+            self.assertIsNotNone(crf_decode)
             return layers.chunk_eval(
                 input=crf_decode,
                 label=label,
@@ -4210,8 +4210,8 @@ class TestBook(LayerTest):
             crf_decode = layers.crf_decoding(
                 input=emission, length=length, param_attr=ParamAttr(name="crfw")
             )
-            self.assertFalse(crf is None)
-            self.assertFalse(crf_decode is None)
+            self.assertIsNotNone(crf)
+            self.assertIsNotNone(crf_decode)
             return layers.chunk_eval(
                 input=crf_decode,
                 label=label,

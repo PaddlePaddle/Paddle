@@ -64,6 +64,13 @@ class TestHybridPipeParallel(TestMultipleGpus):
         self.run_mnist_2gpu('hybrid_parallel_pp_clip_grad.py')
         self.run_mnist_2gpu('hybrid_parallel_pp_clip_grad.py', eager_mode=False)
 
+    def test_hybrid_parallel_transformer_unbalanced_data(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_transformer_unbalanced_data.py')
+        self.run_mnist_2gpu(
+            'hybrid_parallel_pp_transformer_unbalanced_data.py',
+            eager_mode=False,
+        )
+
 
 if __name__ == "__main__":
     os.environ["FLAGS_enable_eager_mode"] = "1"

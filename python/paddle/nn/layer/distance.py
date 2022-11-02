@@ -78,6 +78,6 @@ class PairwiseDistance(Layer):
             main_str += ', epsilon={epsilon}'
         if self.keepdim is not False:
             main_str += ', keepdim={keepdim}'
-        if self.name != None:
+        if self.name is not None:
             main_str += ', name={name}'
         return main_str.format(**self.__dict__)

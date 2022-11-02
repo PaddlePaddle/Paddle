@@ -41,7 +41,7 @@ class SimpleConv(fluid.dygraph.Layer):
         act=None,
     ):
         super(SimpleConv, self).__init__()
-        self._conv = padle.nn.Conv2D(
+        self._conv = paddle.nn.Conv2D(
             in_channels=num_channels,
             out_channels=num_filters,
             kernel_size=filter_size,
