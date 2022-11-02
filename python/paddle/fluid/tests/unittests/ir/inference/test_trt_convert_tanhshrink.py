@@ -17,11 +17,11 @@ from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Any, Dict, List
+from typing import List, Dict, Any
 import unittest
 
 
-class TrtConvertSiluTest(TrtLayerAutoScanTest):
+class TrtConvertTanhshrinkTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -41,7 +41,7 @@ class TrtConvertSiluTest(TrtLayerAutoScanTest):
 
             ops_config = [
                 {
-                    "op_type": "silu",
+                    "op_type": "tanh_shrink",
                     "op_inputs": {
                         "X": ["input_data"],
                     },

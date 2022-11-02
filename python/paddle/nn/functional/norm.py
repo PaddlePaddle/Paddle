@@ -202,17 +202,16 @@ def batch_norm(
     if in_dygraph_mode():
         batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
             x,
-            weight,
-            bias,
             running_mean,
             running_var,
+            weight,
+            bias,
+            not training,
             momentum,
             epsilon,
             data_format,
-            not training,
             use_global_stats,
             trainable_statistics,
-            False,
         )
 
         return dygraph_utils._append_activation_in_dygraph(

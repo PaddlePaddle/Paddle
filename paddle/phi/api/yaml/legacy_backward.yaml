@@ -129,8 +129,8 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : batch_norm_double_grad
-  forward : batch_norm_grad (Tensor x, Tensor scale, Tensor bias, Tensor out_mean, Tensor out_variance, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor grad_out, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
-  args : (Tensor x, Tensor scale, Tensor out_mean, Tensor out_variance, Tensor saved_mean, Tensor saved_variance, Tensor grad_out,  Tensor grad_x_grad, Tensor grad_scale_grad, Tensor grad_bias_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  forward : batch_norm_grad (Tensor x, Tensor scale, Tensor bias, Tensor out_mean, Tensor out_variance, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor grad_out, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
+  args : (Tensor x, Tensor scale, Tensor out_mean, Tensor out_variance, Tensor saved_mean, Tensor saved_variance, Tensor grad_out,  Tensor grad_x_grad, Tensor grad_scale_grad, Tensor grad_bias_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta
@@ -142,8 +142,8 @@
   inplace : (grad_out -> grad_out_grad)
 
 - backward_op : batch_norm_grad
-  forward : batch_norm (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
-  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean_out, Tensor variance_out, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  forward : batch_norm (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean_out, Tensor variance_out, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta
@@ -345,9 +345,21 @@
     use_gpudnn : true
   backward : conv2d_transpose_double_grad
 
+- backward_op : conv3d_double_grad
+  forward : conv3d_grad (Tensor input, Tensor filter, Tensor grad_out,  int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(grad_input), Tensor(grad_filter)
+  args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(input_grad), Tensor(filter_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param: [input, filter, grad_out]
+  kernel :
+    func : conv3d_double_grad
+    use_gpudnn : true
+  optional : grad_input_grad, grad_filter_grad
+
 - backward_op : conv3d_grad
-  forward : conv3d (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(out)
-  args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  forward : conv3d (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
+  args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(input_grad), Tensor(filter_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
@@ -355,19 +367,7 @@
   kernel :
     func : conv3d_grad
     use_gpudnn : true
-  backward : conv3d_grad_grad
-
-- backward_op : conv3d_grad_grad
-  forward : conv3d_grad (Tensor input, Tensor filter, Tensor grad_out,  int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(grad_input), Tensor(grad_filter)
-  args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
-  output : Tensor(input_grad), Tensor(filter_grad), Tensor(grad_out_grad)
-  infer_meta :
-    func : GeneralTernaryGradInferMeta
-    param: [input, filter, grad_out]
-  kernel :
-    func : conv3d_grad_grad
-    use_gpudnn : true
-  optional : grad_input_grad, grad_filter_grad
+  backward : conv3d_double_grad
 
 - backward_op : conv3d_transpose_grad
   forward : conv3d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
@@ -427,29 +427,29 @@
     data_type : x
   optional : mask
 
+- backward_op : depthwise_conv2d_double_grad
+  forward : depthwise_conv2d_grad (Tensor input, Tensor filter, Tensor grad_out, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_gpudnn) -> Tensor(grad_input), Tensor(grad_filter)
+  args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(input_grad), Tensor(filter_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param: [input, filter, grad_out]
+  kernel :
+    func : depthwise_conv2d_double_grad
+  optional : grad_input_grad, grad_filter_grad
+
 - backward_op : depthwise_conv2d_grad
-  forward : depthwise_conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu, bool use_gpudnn) -> Tensor(out)
-  args : (Tensor input, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu, bool use_gpudnn)
+  forward : depthwise_conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_gpudnn) -> Tensor(out)
+  args : (Tensor input, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_gpudnn)
   output : Tensor(input_grad), Tensor(filter_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [input, filter]
   kernel :
     func : depthwise_conv2d_grad
-    param : [input, filter, out_grad, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search, fuse_relu]
+    param : [input, filter, out_grad, strides, paddings, padding_algorithm, groups, dilations, data_format]
     use_gpudnn : use_gpudnn
-  backward : depthwise_conv2d_grad_grad
-
-- backward_op : depthwise_conv2d_grad_grad
-  forward : depthwise_conv2d_grad (Tensor input, Tensor filter, Tensor grad_out, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu, bool use_gpudnn) -> Tensor(grad_input), Tensor(grad_filter)
-  args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu)
-  output : Tensor(input_grad), Tensor(filter_grad), Tensor(grad_out_grad)
-  infer_meta :
-    func : GeneralTernaryGradInferMeta
-    param: [input, filter, grad_out]
-  kernel :
-    func : depthwise_conv2d_grad_grad
-  optional : grad_input_grad, grad_filter_grad
+  backward : depthwise_conv2d_double_grad
 
 - backward_op : depthwise_conv2d_transpose_grad
   forward : depthwise_conv2d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
@@ -2091,8 +2091,8 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : sync_batch_norm_grad
-  forward : sync_batch_norm_ (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
-  args : (Tensor x, Tensor scale, Tensor bias, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  forward : sync_batch_norm_ (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta

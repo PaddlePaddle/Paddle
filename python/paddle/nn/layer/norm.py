@@ -377,8 +377,9 @@ class GroupNorm(Layer):
         self._epsilon = epsilon
         self._num_channels = num_channels
         self._num_groups = num_groups
-        if data_format != 'NCHW':
+        if data_format not in ['NCHW', 'NHWC']:
             raise ValueError("unsupported data layout:" + data_format)
+        self._data_format = data_format
 
         param_shape = [self._num_channels]
 
@@ -430,7 +431,7 @@ class GroupNorm(Layer):
                 self.bias,
                 self._epsilon,
                 self._num_groups,
-                "NCHW",
+                self._data_format,
             )
 
             return dygraph_utils._append_activation_in_dygraph(
@@ -1180,15 +1181,14 @@ class SyncBatchNorm(_BatchNormBase):
         if in_dygraph_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,
-                self.weight,
-                self.bias,
                 self._mean,
                 self._variance,
+                self.weight,
+                self.bias,
+                not self.training,
                 self._momentum,
                 self._epsilon,
                 self._data_format,
-                not self.training,
-                False,
                 False,
                 False,
             )
