@@ -145,37 +145,43 @@ class Linear(Layer):
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
 
-    def __init__(self,
-                 in_features,
-                 out_features,
-                 weight_attr=None,
-                 bias_attr=None,
-                 name=None):
+    def __init__(
+        self,
+        in_features,
+        out_features,
+        weight_attr=None,
+        bias_attr=None,
+        name=None,
+    ):
         super(Linear, self).__init__()
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
-        self.weight = self.create_parameter(shape=[in_features, out_features],
-                                            attr=self._weight_attr,
-                                            dtype=self._dtype,
-                                            is_bias=False)
-        self.bias = self.create_parameter(shape=[out_features],
-                                          attr=self._bias_attr,
-                                          dtype=self._dtype,
-                                          is_bias=True)
+        self.weight = self.create_parameter(
+            shape=[in_features, out_features],
+            attr=self._weight_attr,
+            dtype=self._dtype,
+            is_bias=False,
+        )
+        self.bias = self.create_parameter(
+            shape=[out_features],
+            attr=self._bias_attr,
+            dtype=self._dtype,
+            is_bias=True,
+        )
         self.name = name
 
     def forward(self, input):
-        out = F.linear(x=input,
-                       weight=self.weight,
-                       bias=self.bias,
-                       name=self.name)
+        out = F.linear(
+            x=input, weight=self.weight, bias=self.bias, name=self.name
+        )
         return out
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
         return 'in_features={}, out_features={}, dtype={}{}'.format(
-            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str)
+            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str
+        )
 
 
 class Upsample(Layer):
@@ -325,8 +331,8 @@ class Upsample(Layer):
         x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
-             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
-             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
              Default: None. If a list/tuple, each element can be an integer or a Tensor of shape: [1].
              If a Tensor , its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
@@ -373,7 +379,7 @@ class Upsample(Layer):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -388,14 +394,16 @@ class Upsample(Layer):
 
     """
 
-    def __init__(self,
-                 size=None,
-                 scale_factor=None,
-                 mode='nearest',
-                 align_corners=False,
-                 align_mode=0,
-                 data_format='NCHW',
-                 name=None):
+    def __init__(
+        self,
+        size=None,
+        scale_factor=None,
+        mode='nearest',
+        align_corners=False,
+        align_mode=0,
+        data_format='NCHW',
+        name=None,
+    ):
         super(Upsample, self).__init__()
         self.size = size
         self.scale_factor = scale_factor
@@ -406,14 +414,16 @@ class Upsample(Layer):
         self.name = name
 
     def forward(self, x):
-        out = F.interpolate(x,
-                            size=self.size,
-                            scale_factor=self.scale_factor,
-                            mode=self.mode,
-                            align_corners=self.align_corners,
-                            align_mode=self.align_mode,
-                            data_format=self.data_format,
-                            name=self.name)
+        out = F.interpolate(
+            x,
+            size=self.size,
+            scale_factor=self.scale_factor,
+            mode=self.mode,
+            align_corners=self.align_corners,
+            align_mode=self.align_mode,
+            data_format=self.data_format,
+            name=self.name,
+        )
 
         return out
 
@@ -424,8 +434,13 @@ class Upsample(Layer):
             main_str = 'size={}'.format(self.size)
         name_str = ', name={}'.format(self.name) if self.name else ''
         return '{}, mode={}, align_corners={}, align_mode={}, data_format={}{}'.format(
-            main_str, self.mode, self.align_corners, self.align_mode,
-            self.data_format, name_str)
+            main_str,
+            self.mode,
+            self.align_corners,
+            self.align_mode,
+            self.data_format,
+            name_str,
+        )
 
 
 class UpsamplingNearest2D(Layer):
@@ -479,11 +494,9 @@ class UpsamplingNearest2D(Layer):
             # [2L, 3L, 12L, 12L]
     """
 
-    def __init__(self,
-                 size=None,
-                 scale_factor=None,
-                 data_format='NCHW',
-                 name=None):
+    def __init__(
+        self, size=None, scale_factor=None, data_format='NCHW', name=None
+    ):
         super(UpsamplingNearest2D, self).__init__()
         self.size = size
         self.scale_factor = scale_factor
@@ -491,14 +504,16 @@ class UpsamplingNearest2D(Layer):
         self.name = name
 
     def forward(self, x):
-        out = F.interpolate(x,
-                            size=self.size,
-                            scale_factor=self.scale_factor,
-                            mode='nearest',
-                            align_corners=False,
-                            align_mode=0,
-                            data_format=self.data_format,
-                            name=self.name)
+        out = F.interpolate(
+            x,
+            size=self.size,
+            scale_factor=self.scale_factor,
+            mode='nearest',
+            align_corners=False,
+            align_mode=0,
+            data_format=self.data_format,
+            name=self.name,
+        )
 
         return out
 
@@ -508,8 +523,9 @@ class UpsamplingNearest2D(Layer):
         else:
             main_str = 'size={}'.format(self.size)
         name_str = ', name={}'.format(self.name) if self.name else ''
-        return '{}, data_format={}{}'.format(main_str, self.data_format,
-                                             name_str)
+        return '{}, data_format={}{}'.format(
+            main_str, self.data_format, name_str
+        )
 
 
 class UpsamplingBilinear2D(Layer):
@@ -564,11 +580,9 @@ class UpsamplingBilinear2D(Layer):
             # [2L, 3L, 12L, 12L]
     """
 
-    def __init__(self,
-                 size=None,
-                 scale_factor=None,
-                 data_format='NCHW',
-                 name=None):
+    def __init__(
+        self, size=None, scale_factor=None, data_format='NCHW', name=None
+    ):
         super(UpsamplingBilinear2D, self).__init__()
         self.size = size
         self.scale_factor = scale_factor
@@ -576,14 +590,16 @@ class UpsamplingBilinear2D(Layer):
         self.name = name
 
     def forward(self, x):
-        out = F.interpolate(x,
-                            size=self.size,
-                            scale_factor=self.scale_factor,
-                            mode='bilinear',
-                            align_corners=True,
-                            align_mode=0,
-                            data_format=self.data_format,
-                            name=self.name)
+        out = F.interpolate(
+            x,
+            size=self.size,
+            scale_factor=self.scale_factor,
+            mode='bilinear',
+            align_corners=True,
+            align_mode=0,
+            data_format=self.data_format,
+            name=self.name,
+        )
 
         return out
 
@@ -593,8 +609,9 @@ class UpsamplingBilinear2D(Layer):
         else:
             main_str = 'size={}'.format(self.size)
         name_str = ', name={}'.format(self.name) if self.name else ''
-        return '{}, data_format={}{}'.format(main_str, self.data_format,
-                                             name_str)
+        return '{}, data_format={}{}'.format(
+            main_str, self.data_format, name_str
+        )
 
 
 class Bilinear(Layer):
@@ -651,13 +668,15 @@ class Bilinear(Layer):
 
     """
 
-    def __init__(self,
-                 in1_features,
-                 in2_features,
-                 out_features,
-                 weight_attr=None,
-                 bias_attr=None,
-                 name=None):
+    def __init__(
+        self,
+        in1_features,
+        in2_features,
+        out_features,
+        weight_attr=None,
+        bias_attr=None,
+        name=None,
+    ):
         super(Bilinear, self).__init__()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
@@ -668,17 +687,23 @@ class Bilinear(Layer):
         self._dtype = self._helper.get_default_dtype()
 
         weight_shape = [
-            self._out_features, self._in1_features, self._in2_features
+            self._out_features,
+            self._in1_features,
+            self._in2_features,
         ]
-        self.weight = self.create_parameter(attr=self._weight_attr,
-                                            shape=weight_shape,
-                                            dtype=self._dtype,
-                                            is_bias=False)
+        self.weight = self.create_parameter(
+            attr=self._weight_attr,
+            shape=weight_shape,
+            dtype=self._dtype,
+            is_bias=False,
+        )
         bias_shape = [1, self._out_features]
-        self.bias = self.create_parameter(attr=self._bias_attr,
-                                          shape=bias_shape,
-                                          dtype=self._dtype,
-                                          is_bias=True)
+        self.bias = self.create_parameter(
+            attr=self._bias_attr,
+            shape=bias_shape,
+            dtype=self._dtype,
+            is_bias=True,
+        )
 
     def forward(self, x1, x2):
         return F.bilinear(x1, x2, self.weight, self.bias, self._name)
@@ -686,8 +711,12 @@ class Bilinear(Layer):
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
         return 'in1_features={}, in2_features={}, out_features={}, dtype={}{}'.format(
-            self._in1_features, self._in2_features, self._out_features,
-            self._dtype, name_str)
+            self._in1_features,
+            self._in2_features,
+            self._out_features,
+            self._dtype,
+            name_str,
+        )
 
 
 class Dropout(Layer):
@@ -738,7 +767,7 @@ class Dropout(Layer):
             print(x)
             print(y_train)
             print(y_test)
-   """
+    """
 
     def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
         super(Dropout, self).__init__()
@@ -749,18 +778,21 @@ class Dropout(Layer):
         self.name = name
 
     def forward(self, input):
-        out = F.dropout(input,
-                        p=self.p,
-                        axis=self.axis,
-                        training=self.training,
-                        mode=self.mode,
-                        name=self.name)
+        out = F.dropout(
+            input,
+            p=self.p,
+            axis=self.axis,
+            training=self.training,
+            mode=self.mode,
+            name=self.name,
+        )
         return out
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
-        return 'p={}, axis={}, mode={}{}'.format(self.p, self.axis, self.mode,
-                                                 name_str)
+        return 'p={}, axis={}, mode={}{}'.format(
+            self.p, self.axis, self.mode, name_str
+        )
 
 
 class Dropout2D(Layer):
@@ -800,7 +832,7 @@ class Dropout2D(Layer):
             print(x)
             print(y_train)
             print(y_test)
-   """
+    """
 
     def __init__(self, p=0.5, data_format='NCHW', name=None):
         super(Dropout2D, self).__init__()
@@ -810,17 +842,20 @@ class Dropout2D(Layer):
         self.name = name
 
     def forward(self, input):
-        out = F.dropout2d(input,
-                          p=self.p,
-                          training=self.training,
-                          data_format=self.data_format,
-                          name=self.name)
+        out = F.dropout2d(
+            input,
+            p=self.p,
+            training=self.training,
+            data_format=self.data_format,
+            name=self.name,
+        )
         return out
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
-        return 'p={}, data_format={}{}'.format(self.p, self.data_format,
-                                               name_str)
+        return 'p={}, data_format={}{}'.format(
+            self.p, self.data_format, name_str
+        )
 
 
 class Dropout3D(Layer):
@@ -860,7 +895,7 @@ class Dropout3D(Layer):
             print(x)
             print(y_train)
             print(y_test)
-   """
+    """
 
     def __init__(self, p=0.5, data_format='NCDHW', name=None):
         super(Dropout3D, self).__init__()
@@ -870,17 +905,20 @@ class Dropout3D(Layer):
         self.name = name
 
     def forward(self, input):
-        out = F.dropout3d(input,
-                          p=self.p,
-                          training=self.training,
-                          data_format=self.data_format,
-                          name=self.name)
+        out = F.dropout3d(
+            input,
+            p=self.p,
+            training=self.training,
+            data_format=self.data_format,
+            name=self.name,
+        )
         return out
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
-        return 'p={}, data_format={}{}'.format(self.p, self.data_format,
-                                               name_str)
+        return 'p={}, data_format={}{}'.format(
+            self.p, self.data_format, name_str
+        )
 
 
 class AlphaDropout(Layer):
@@ -919,7 +957,7 @@ class AlphaDropout(Layer):
             print(y_train)
             # [[-0.10721093, 1.6655989 ], [-0.7791938, -0.7791938]] (randomly)
             print(y_test)
-   """
+    """
 
     def __init__(self, p=0.5, name=None):
         super(AlphaDropout, self).__init__()
@@ -927,10 +965,9 @@ class AlphaDropout(Layer):
         self.name = name
 
     def forward(self, input):
-        out = F.alpha_dropout(input,
-                              p=self.p,
-                              training=self.training,
-                              name=self.name)
+        out = F.alpha_dropout(
+            input, p=self.p, training=self.training, name=self.name
+        )
         return out
 
     def extra_repr(self):
@@ -980,12 +1017,9 @@ class Pad1D(Layer):
             #   [0. 4. 5. 6. 0. 0.]]]
     """
 
-    def __init__(self,
-                 padding,
-                 mode='constant',
-                 value=0.0,
-                 data_format="NCL",
-                 name=None):
+    def __init__(
+        self, padding, mode='constant', value=0.0, data_format="NCL", name=None
+    ):
         super(Pad1D, self).__init__()
         self._pad = _npairs(padding, 1)
         self._mode = mode
@@ -994,17 +1028,20 @@ class Pad1D(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.pad(x,
-                     pad=self._pad,
-                     mode=self._mode,
-                     value=self._value,
-                     data_format=self._data_format,
-                     name=self._name)
+        return F.pad(
+            x,
+            pad=self._pad,
+            mode=self._mode,
+            value=self._value,
+            data_format=self._data_format,
+            name=self._name,
+        )
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
         return 'padding={}, mode={}, value={}, data_format={}{}'.format(
-            self._pad, self._mode, self._value, self._data_format, name_str)
+            self._pad, self._mode, self._value, self._data_format, name_str
+        )
 
 
 class Pad2D(Layer):
@@ -1016,8 +1053,8 @@ class Pad2D(Layer):
 
     Parameters:
         padding (Tensor|list[int]|int): The padding size with data type int. If is int, use the
-            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded. 
-            The pad has the form (pad_left, pad_right, pad_top, pad_bottom). 
+            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
+            The pad has the form (pad_left, pad_right, pad_top, pad_bottom).
         mode (str, optional): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'. Default is 'constant'.
 
            - 'constant' mode, uses a constant value to pad the input tensor.
@@ -1053,12 +1090,9 @@ class Pad2D(Layer):
             #    [0. 0. 0. 0.]]]]
     """
 
-    def __init__(self,
-                 padding,
-                 mode='constant',
-                 value=0.0,
-                 data_format="NCHW",
-                 name=None):
+    def __init__(
+        self, padding, mode='constant', value=0.0, data_format="NCHW", name=None
+    ):
         super(Pad2D, self).__init__()
         self._pad = _npairs(padding, 2)
         self._mode = mode
@@ -1067,17 +1101,20 @@ class Pad2D(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.pad(x,
-                     pad=self._pad,
-                     mode=self._mode,
-                     value=self._value,
-                     data_format=self._data_format,
-                     name=self._name)
+        return F.pad(
+            x,
+            pad=self._pad,
+            mode=self._mode,
+            value=self._value,
+            data_format=self._data_format,
+            name=self._name,
+        )
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
         return 'padding={}, mode={}, value={}, data_format={}{}'.format(
-            self._pad, self._mode, self._value, self._data_format, name_str)
+            self._pad, self._mode, self._value, self._data_format, name_str
+        )
 
 
 class ZeroPad2D(Layer):
@@ -1128,23 +1165,25 @@ class ZeroPad2D(Layer):
         super(ZeroPad2D, self).__init__()
         self._pad = _npairs(padding, 2)
         self._mode = 'constant'
-        self._value = 0.
+        self._value = 0.0
         self._data_format = data_format
         self._name = name
 
     def forward(self, x):
-        return F.pad(x,
-                     pad=self._pad,
-                     mode=self._mode,
-                     value=self._value,
-                     data_format=self._data_format,
-                     name=self._name)
+        return F.pad(
+            x,
+            pad=self._pad,
+            mode=self._mode,
+            value=self._value,
+            data_format=self._data_format,
+            name=self._name,
+        )
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'padding={}, data_format={}{}'.format(self._pad,
-                                                     self._data_format,
-                                                     name_str)
+        return 'padding={}, data_format={}{}'.format(
+            self._pad, self._data_format, name_str
+        )
 
 
 class Pad3D(Layer):
@@ -1193,12 +1232,14 @@ class Pad3D(Layer):
             #     [0. 0. 0. 0.]]]]]
     """
 
-    def __init__(self,
-                 padding,
-                 mode='constant',
-                 value=0.0,
-                 data_format="NCDHW",
-                 name=None):
+    def __init__(
+        self,
+        padding,
+        mode='constant',
+        value=0.0,
+        data_format="NCDHW",
+        name=None,
+    ):
         super(Pad3D, self).__init__()
         self._pad = _npairs(padding, 3)
         self._mode = mode
@@ -1207,17 +1248,20 @@ class Pad3D(Layer):
         self._name = name
 
     def forward(self, x):
-        return F.pad(x,
-                     pad=self._pad,
-                     mode=self._mode,
-                     value=self._value,
-                     data_format=self._data_format,
-                     name=self._name)
+        return F.pad(
+            x,
+            pad=self._pad,
+            mode=self._mode,
+            value=self._value,
+            data_format=self._data_format,
+            name=self._name,
+        )
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
         return 'padding={}, mode={}, value={}, data_format={}{}'.format(
-            self._pad, self._mode, self._value, self._data_format, name_str)
+            self._pad, self._mode, self._value, self._data_format, name_str
+        )
 
 
 class CosineSimilarity(Layer):
@@ -1279,7 +1323,7 @@ class CosineSimilarity(Layer):
 
 class Embedding(Layer):
     r"""
-    
+
     Embedding Layer, used to construct a callable object of the ``Embedding`` class.
     For specific usage, refer to code examples. It implements the function of the Embedding Layer.
     This layer is used to lookup embeddings vector of ids provided by :attr:`x` .
@@ -1378,13 +1422,15 @@ class Embedding(Layer):
 
     """
 
-    def __init__(self,
-                 num_embeddings,
-                 embedding_dim,
-                 padding_idx=None,
-                 sparse=False,
-                 weight_attr=None,
-                 name=None):
+    def __init__(
+        self,
+        num_embeddings,
+        embedding_dim,
+        padding_idx=None,
+        sparse=False,
+        weight_attr=None,
+        name=None,
+    ):
         super(Embedding, self).__init__()
         self._num_embeddings = num_embeddings
         self._embedding_dim = embedding_dim
@@ -1398,12 +1444,20 @@ class Embedding(Layer):
         if self._embedding_dim <= 0:
             raise ValueError("embedding_dim must be gather than 0")
 
-        padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-            num_embeddings + padding_idx)
+        padding_idx = (
+            -1
+            if padding_idx is None
+            else padding_idx
+            if padding_idx >= 0
+            else (num_embeddings + padding_idx)
+        )
 
         if padding_idx >= num_embeddings or padding_idx < -num_embeddings:
-            raise ValueError("padding_idx must be within [-{}, {})".format(
-                num_embeddings, num_embeddings))
+            raise ValueError(
+                "padding_idx must be within [-{}, {})".format(
+                    num_embeddings, num_embeddings
+                )
+            )
 
         self._dtype = self._helper.get_default_dtype()
         self._size = [self._num_embeddings, self._embedding_dim]
@@ -1411,21 +1465,25 @@ class Embedding(Layer):
         self._weight_attr = weight_attr
         self._remote_prefetch = False
         self._name = name
-        self.weight = self.create_parameter(attr=self._weight_attr,
-                                            shape=self._size,
-                                            dtype=self._dtype,
-                                            is_bias=False)
+        self.weight = self.create_parameter(
+            attr=self._weight_attr,
+            shape=self._size,
+            dtype=self._dtype,
+            is_bias=False,
+        )
 
         if in_dynamic_mode() and padding_idx != -1:
             with paddle.no_grad():
                 self.weight[padding_idx] = 0.0
 
     def forward(self, x):
-        return F.embedding(x,
-                           weight=self.weight,
-                           padding_idx=self._padding_idx,
-                           sparse=self._sparse,
-                           name=self._name)
+        return F.embedding(
+            x,
+            weight=self.weight,
+            padding_idx=self._padding_idx,
+            sparse=self._sparse,
+            name=self._name,
+        )
 
     def extra_repr(self):
         main_str = '{_num_embeddings}, {_embedding_dim}'
@@ -1449,7 +1507,7 @@ class Unfold(Layer):
 
     See ``paddle.nn.functional.unfold`` for more details.
 
-    
+
     Parameters:
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
@@ -1483,12 +1541,9 @@ class Unfold(Layer):
             print(result)
     """
 
-    def __init__(self,
-                 kernel_sizes,
-                 dilations=1,
-                 paddings=0,
-                 strides=1,
-                 name=None):
+    def __init__(
+        self, kernel_sizes, dilations=1, paddings=0, strides=1, name=None
+    ):
         super(Unfold, self).__init__()
 
         self.kernel_sizes = kernel_sizes
@@ -1498,17 +1553,24 @@ class Unfold(Layer):
         self.name = name
 
     def forward(self, input):
-        return F.unfold(input,
-                        kernel_sizes=self.kernel_sizes,
-                        strides=self.strides,
-                        paddings=self.paddings,
-                        dilations=self.dilations,
-                        name=self.name)
+        return F.unfold(
+            input,
+            kernel_sizes=self.kernel_sizes,
+            strides=self.strides,
+            paddings=self.paddings,
+            dilations=self.dilations,
+            name=self.name,
+        )
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
-        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.\
-                format(self.kernel_sizes, self.dilations, self.paddings, self.strides, name_str)
+        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.format(
+            self.kernel_sizes,
+            self.dilations,
+            self.paddings,
+            self.strides,
+            name_str,
+        )
 
 
 class Fold(Layer):
@@ -1568,13 +1630,15 @@ class Fold(Layer):
             # y.shape = [2,3,4,5]
    """
 
-    def __init__(self,
-                 output_sizes,
-                 kernel_sizes,
-                 dilations=1,
-                 paddings=0,
-                 strides=1,
-                 name=None):
+    def __init__(
+        self,
+        output_sizes,
+        kernel_sizes,
+        dilations=1,
+        paddings=0,
+        strides=1,
+        name=None,
+    ):
         super(Fold, self).__init__()
 
         self.output_sizes = output_sizes
@@ -1585,15 +1649,22 @@ class Fold(Layer):
         self.name = name
 
     def forward(self, input):
-        return F.fold(input,
-                      output_sizes=self.output_sizes,
-                      kernel_sizes=self.kernel_sizes,
-                      strides=self.strides,
-                      paddings=self.paddings,
-                      dilations=self.dilations,
-                      name=self.name)
+        return F.fold(
+            input,
+            output_sizes=self.output_sizes,
+            kernel_sizes=self.kernel_sizes,
+            strides=self.strides,
+            paddings=self.paddings,
+            dilations=self.dilations,
+            name=self.name,
+        )
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
-        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.\
-                format(self.kernel_sizes, self.dilations, self.paddings, self.strides, name_str)
+        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.format(
+            self.kernel_sizes,
+            self.dilations,
+            self.paddings,
+            self.strides,
+            name_str,
+        )

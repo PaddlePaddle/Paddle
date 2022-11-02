@@ -19,13 +19,15 @@ __all__ = []
 
 
 @static_only
-def fc(x,
-       size,
-       num_flatten_dims=1,
-       weight_attr=None,
-       bias_attr=None,
-       activation=None,
-       name=None):
+def fc(
+    x,
+    size,
+    num_flatten_dims=1,
+    weight_attr=None,
+    bias_attr=None,
+    activation=None,
+    name=None,
+):
     r"""
 
     Fully-Connected layer can take a tensor or a list of tensor as its inputs.
@@ -107,12 +109,12 @@ def fc(x,
             The default value is None, and the weight will be initialized to zero.
             For detailed information, please refer to :attr:`paddle.ParamAttr`.
             Warning, if x is a list of tensor, weight_attr should also be a list of same length.
-        bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias. 
+        bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias.
             If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
             be created according to ParamAttr. For detailed information, please refer
             to :attr:`paddle.ParamAttr`. The default value is None and the bias will be
-            initialized to zero. 
+            initialized to zero.
         activation (str, optional): Activation to be applied to the output of
             this layer, such as tanh, softmax, sigmoid, relu. For more information,
             please refer to :ref:`api_guide_activations_en` . Default: None.
@@ -157,30 +159,34 @@ def fc(x,
               bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
           # out: [[1.8 1.8]]
     """
-    return paddle.fluid.layers.fc(input=x,
-                                  size=size,
-                                  num_flatten_dims=num_flatten_dims,
-                                  param_attr=weight_attr,
-                                  bias_attr=bias_attr,
-                                  act=activation,
-                                  name=name)
+    return paddle.fluid.layers.fc(
+        input=x,
+        size=size,
+        num_flatten_dims=num_flatten_dims,
+        param_attr=weight_attr,
+        bias_attr=bias_attr,
+        act=activation,
+        name=name,
+    )
 
 
 @static_only
-def deform_conv2d(x,
-                  offset,
-                  mask,
-                  num_filters,
-                  filter_size,
-                  stride=1,
-                  padding=0,
-                  dilation=1,
-                  groups=1,
-                  deformable_groups=1,
-                  im2col_step=1,
-                  weight_attr=None,
-                  bias_attr=None,
-                  name=None):
+def deform_conv2d(
+    x,
+    offset,
+    mask,
+    num_filters,
+    filter_size,
+    stride=1,
+    padding=0,
+    dilation=1,
+    groups=1,
+    deformable_groups=1,
+    im2col_step=1,
+    weight_attr=None,
+    bias_attr=None,
+    name=None,
+):
     r"""
 
     Compute 2-D deformable convolution on 4-D input.
@@ -323,7 +329,8 @@ def deform_conv2d(x,
             param_attr=weight_attr,
             bias_attr=bias_attr,
             modulated=False,
-            name=name)
+            name=name,
+        )
     else:
         return paddle.fluid.layers.deformable_conv(
             input=x,
@@ -340,4 +347,5 @@ def deform_conv2d(x,
             param_attr=weight_attr,
             bias_attr=bias_attr,
             modulated=True,
-            name=name)
+            name=name,
+        )

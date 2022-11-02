@@ -36,7 +36,7 @@ MODE_FLAG_MAP = {
     'train10': 'data_batch',
     'test10': 'test_batch',
     'train100': 'train',
-    'test100': 'test'
+    'test100': 'test',
 }
 
 
@@ -105,14 +105,22 @@ class Cifar10(Dataset):
                 # <class 'paddle.Tensor'> [3, 64, 64] 3
     """
 
-    def __init__(self,
-                 data_file=None,
-                 mode='train',
-                 transform=None,
-                 download=True,
-                 backend=None):
-        assert mode.lower() in ['train', 'test', 'train', 'test'], \
-            "mode should be 'train10', 'test10', 'train100' or 'test100', but got {}".format(mode)
+    def __init__(
+        self,
+        data_file=None,
+        mode='train',
+        transform=None,
+        download=True,
+        backend=None,
+    ):
+        assert mode.lower() in [
+            'train',
+            'test',
+            'train',
+            'test',
+        ], "mode should be 'train10', 'test10', 'train100' or 'test100', but got {}".format(
+            mode
+        )
         self.mode = mode.lower()
 
         if backend is None:
@@ -120,18 +128,21 @@ class Cifar10(Dataset):
         if backend not in ['pil', 'cv2']:
             raise ValueError(
                 "Expected backend are one of ['pil', 'cv2'], but got {}".format(
-                    backend))
+                    backend
+                )
+            )
         self.backend = backend
 
         self._init_url_md5_flag()
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(data_file,
-                                                        self.data_url,
-                                                        self.data_md5, 'cifar',
-                                                        download)
+            assert (
+                download
+            ), "data_file is not set and downloading automatically is disabled"
+            self.data_file = _check_exists_and_download(
+                data_file, self.data_url, self.data_md5, 'cifar', download
+            )
 
         self.transform = transform
 
@@ -148,8 +159,9 @@ class Cifar10(Dataset):
     def _load_data(self):
         self.data = []
         with tarfile.open(self.data_file, mode='r') as f:
-            names = (each_item.name for each_item in f
-                     if self.flag in each_item.name)
+            names = (
+                each_item.name for each_item in f if self.flag in each_item.name
+            )
 
             names = sorted(list(names))
 
@@ -157,8 +169,9 @@ class Cifar10(Dataset):
                 batch = pickle.load(f.extractfile(name), encoding='bytes')
 
                 data = batch[six.b('data')]
-                labels = batch.get(six.b('labels'),
-                                   batch.get(six.b('fine_labels'), None))
+                labels = batch.get(
+                    six.b('labels'), batch.get(six.b('fine_labels'), None)
+                )
                 assert labels is not None
                 for sample, label in six.moves.zip(data, labels):
                     self.data.append((sample, label))
@@ -247,14 +260,17 @@ class Cifar100(Cifar10):
                 # <class 'paddle.Tensor'> [3, 64, 64] 49
     """
 
-    def __init__(self,
-                 data_file=None,
-                 mode='train',
-                 transform=None,
-                 download=True,
-                 backend=None):
-        super(Cifar100, self).__init__(data_file, mode, transform, download,
-                                       backend)
+    def __init__(
+        self,
+        data_file=None,
+        mode='train',
+        transform=None,
+        download=True,
+        backend=None,
+    ):
+        super(Cifar100, self).__init__(
+            data_file, mode, transform, download, backend
+        )
 
     def _init_url_md5_flag(self):
         self.data_url = CIFAR100_URL
