@@ -44,7 +44,9 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
   patterns::MatmulElementwiseAdd matmul_pattern(
       pattern, name_scope, matmul_type, matmul_as_x);
   matmul_pattern(matmul_type, matmul_as_x);
-
+  auto* scope = param_scope();
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
   int found_matmul_elementwise_add_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -64,6 +66,11 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
           << "op compat for matmul_elementwise_add_mkldnn_fuse_pass failed.";
       return;
     }
+
+    auto* elementwise_addend_tensor =
+        scope->FindVar(elementwise_addend->Name());
+    if (elementwise_addend_tensor == nullptr) return;
+
     if (matmul->Op()->HasAttr("ResidualData")) {
       LOG(WARNING) << "matmul_elementwise_add can be fused once";
       return;
