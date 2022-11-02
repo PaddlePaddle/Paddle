@@ -209,15 +209,6 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
             paddle::framework::DataTypeToString(filter_data_type)));
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx, input_data_type)) {
-    return framework::OpKernelType(input_data_type,
-                                   ctx.GetPlace(),
-                                   phi::DataLayout::kAnyLayout,
-                                   framework::LibraryType::kCUDNN);
-  }
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
-
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 
@@ -467,16 +458,6 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx, data_type)) {
-    return framework::OpKernelType(data_type,
-                                   ctx.GetPlace(),
-                                   phi::DataLayout::kAnyLayout,
-                                   framework::LibraryType::kCUDNN);
-  }
-#endif
-
   return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
@@ -648,14 +629,6 @@ void ConvOpDoubleGrad::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx, data_type)) {
-    return framework::OpKernelType(data_type,
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout,
-                                   framework::LibraryType::kCUDNN);
-  }
-#endif
   return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
