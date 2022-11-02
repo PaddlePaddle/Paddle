@@ -94,7 +94,7 @@ def builtin_modules():
     """
     Return builtin modules.
     """
-    moduels = [
+    modules = [
         collections,
         pdb,
         copy,
@@ -106,11 +106,11 @@ def builtin_modules():
     try:
         import six
 
-        moduels.append(six)
+        modules.append(six)
     except ImportError:
         pass  # do nothing
 
-    return moduels
+    return modules
 
 
 BUILTIN_LIKELY_MODULES = builtin_modules()
