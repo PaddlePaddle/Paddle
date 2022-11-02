@@ -3706,7 +3706,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             dim = [0]
 
     if in_dygraph_mode():
-        return _C_ops.reduce_prod(x, dim, keepdim, reduce_all)
+        return _C_ops.prod(x, dim, keepdim, reduce_all)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_prod(
             x, 'dim', dim, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -3921,13 +3921,13 @@ def all(x, axis=None, keepdim=False, name=None):
         return _C_ops.all(x, axis, keepdim)
 
     if _in_legacy_dygraph():
-        axis = axis if axis != None and axis != [] else [0]
+        axis = axis if axis is not None and axis != [] else [0]
         return _legacy_C_ops.reduce_all(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all_flag
         )
 
     attrs = {
-        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'dim': axis if axis is not None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag,
     }
@@ -4010,13 +4010,13 @@ def any(x, axis=None, keepdim=False, name=None):
         return _C_ops.any(x, axis, keepdim)
 
     if _in_legacy_dygraph():
-        axis = axis if axis != None and axis != [] else [0]
+        axis = axis if axis is not None and axis != [] else [0]
         return _legacy_C_ops.reduce_any(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all_flag
         )
 
     attrs = {
-        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'dim': axis if axis is not None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag,
     }
@@ -4322,7 +4322,7 @@ def logit(x, eps=None, name=None):
 
     """
 
-    if eps == None:
+    if eps is None:
         eps = 0.0
     if _in_legacy_dygraph():
         return _legacy_C_ops.logit(x, 'eps', eps)

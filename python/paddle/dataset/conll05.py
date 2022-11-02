@@ -109,9 +109,9 @@ def corpus_reader(data_path, words_name, props_name):
                             lbl_seq = []
                             verb_word = ''
                             for l in lbl:
-                                if l == '*' and is_in_bracket == False:
+                                if l == '*' and not is_in_bracket:
                                     lbl_seq.append('O')
-                                elif l == '*' and is_in_bracket == True:
+                                elif l == '*' and is_in_bracket:
                                     lbl_seq.append('I-' + cur_tag)
                                 elif l == '*)':
                                     lbl_seq.append('I-' + cur_tag)

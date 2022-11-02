@@ -137,7 +137,8 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size,
                                bool autotune,
                                const std::string &autotune_file,
                                const std::string &precision,
-                               bool adaptive_seqlen) {
+                               bool adaptive_seqlen,
+                               bool enable_multi_stream) {
   use_xpu_ = true;
   xpu_l3_workspace_size_ = l3_workspace_size;
   xpu_locked_ = locked;
@@ -145,6 +146,7 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size,
   xpu_autotune_file_ = autotune_file;
   xpu_precision_ = precision;
   xpu_adaptive_seqlen_ = adaptive_seqlen;
+  xpu_enable_multi_stream_ = enable_multi_stream;
   Update();
 }
 
@@ -439,6 +441,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_autotune_file_);
   CP_MEMBER(xpu_precision_);
   CP_MEMBER(xpu_adaptive_seqlen_);
+  CP_MEMBER(xpu_enable_multi_stream_);
 
   // NPU related.
   CP_MEMBER(use_npu_);
@@ -1020,6 +1023,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_autotune_file_;
   ss << xpu_precision_;
   ss << xpu_adaptive_seqlen_;
+  ss << xpu_enable_multi_stream_;
 
   ss << use_npu_;
   ss << npu_device_id_;

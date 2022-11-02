@@ -3855,7 +3855,7 @@ def data_norm(
         bias_default = param_attr.get("bias", 0.0)
 
     # create scale and shift(bias) when enable_scale_and_shift is True
-    if name == None:
+    if name is None:
         name = "dn"
     if enable_scale_and_shift:
         scale_w = helper.create_parameter(
@@ -5233,17 +5233,17 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        return _C_ops.max(input, dim if dim != None else [], keep_dim)
+        return _C_ops.max(input, dim if dim is not None else [], keep_dim)
 
     helper.append_op(
         type='reduce_max',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None and dim != [] else [0],
+            'dim': dim if dim is not None and dim != [] else [0],
             'keep_dim': keep_dim,
             'reduce_all': True
-            if dim == None or dim == [] or len(dim) == len(input.shape)
+            if dim is None or dim == [] or len(dim) == len(input.shape)
             else False,
         },
     )
@@ -5305,17 +5305,17 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        return _C_ops.min(input, dim if dim != None else [], keep_dim)
+        return _C_ops.min(input, dim if dim is not None else [], keep_dim)
 
     helper.append_op(
         type='reduce_min',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None and dim != [] else [0],
+            'dim': dim if dim is not None and dim != [] else [0],
             'keep_dim': keep_dim,
             'reduce_all': True
-            if dim == None or dim == [] or len(dim) == len(input.shape)
+            if dim is None or dim == [] or len(dim) == len(input.shape)
             else False,
         },
     )
@@ -5370,7 +5370,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        return _C_ops.all(input, dim if dim != None else [], keep_dim)
+        return _C_ops.all(input, dim if dim is not None else [], keep_dim)
 
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
@@ -5380,10 +5380,10 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None and dim != [] else [0],
+            'dim': dim if dim is not None and dim != [] else [0],
             'keep_dim': keep_dim,
             'reduce_all': True
-            if dim == None or dim == [] or len(dim) == len(input.shape)
+            if dim is None or dim == [] or len(dim) == len(input.shape)
             else False,
         },
     )
@@ -5443,10 +5443,10 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None and dim != [] else [0],
+            'dim': dim if dim is not None and dim != [] else [0],
             'keep_dim': keep_dim,
             'reduce_all': True
-            if dim == None or dim == [] or len(dim) == len(input.shape)
+            if dim is None or dim == [] or len(dim) == len(input.shape)
             else False,
         },
     )
@@ -11294,7 +11294,7 @@ def unstack(x, axis=0, num=None):
     """
 
     if _non_static_mode():
-        if num == None:
+        if num is None:
             num = x.shape[axis]
         if num == 0:
             return []
@@ -14906,7 +14906,6 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
             # example 1:
             import paddle
-            import six
             import numpy as np
 
             paddle.enable_static()
@@ -14932,7 +14931,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
             def simple_net(img, label):
                 hidden = img
-                for idx in six.moves.range(4):
+                for idx in range(4):
                     hidden = paddle.static.nn.fc(hidden, size=200)
                     new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
                         dtype=hidden.dtype, shape=hidden.shape)
@@ -14950,13 +14949,13 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 return ce_loss(prediction, label)
 
             x = paddle.static.data(name='x', shape=[1,4], dtype='float32')
-            y = paddle.static.data(name='y', shape=[1,10], dtype='int64')
+            y = paddle.static.data(name='y', shape=[1], dtype='int64')
             res = simple_net(x, y)
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             exe.run(paddle.static.default_startup_program())
             input1 = np.random.random(size=[1,4]).astype('float32')
-            input2 = np.random.randint(1, 10, size=[1,10], dtype='int64')
+            input2 = np.random.randint(1, 10, size=[1], dtype='int64')
             out = exe.run(paddle.static.default_main_program(),
                           feed={'x':input1, 'y':input2},
                           fetch_list=[res.name])
@@ -15457,7 +15456,7 @@ def where(condition):
     """
 
     if in_dygraph_mode():
-        return _C_ops.where_index(condition)
+        return _C_ops.nonzero(condition)
     if _in_legacy_dygraph():
         return _legacy_C_ops.where_index(condition)
 
@@ -16476,7 +16475,7 @@ def uniform_random(
 
     if in_dygraph_mode():
         shape = utils.convert_shape_to_list(shape)
-        return _C_ops.uniform_random(
+        return _C_ops.uniform(
             shape,
             dtype,
             float(min),

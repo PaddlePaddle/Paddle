@@ -46,12 +46,12 @@ class TestElementwiseAddOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def check_eager(self):
-        return self.use_mkldnn == False and self.axis == -1
+        return not self.use_mkldnn and self.axis == -1
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output(
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
             check_eager=self.check_eager(),
         )
 
@@ -62,7 +62,7 @@ class TestElementwiseAddOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
             check_eager=self.check_eager(),
         )
 
@@ -74,7 +74,7 @@ class TestElementwiseAddOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
             check_eager=self.check_eager(),
         )
 
@@ -86,7 +86,7 @@ class TestElementwiseAddOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
             check_eager=self.check_eager(),
         )
 
@@ -115,7 +115,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(
-                    place, atol=1e-3, check_dygraph=(self.use_mkldnn == False)
+                    place, atol=1e-3, check_dygraph=(not self.use_mkldnn)
                 )
 
 

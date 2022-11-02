@@ -1021,3 +1021,15 @@ PADDLE_DEFINE_EXPORTED_bool(
 PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "Predictor",
                               "Choose default funciton type in JitLayer.");
+
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+/**
+ * CUDNNv8 related FLAG
+ * Name: enable_cudnn_frontend
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Enable CUDNNv8 Frontend API for CUDNN kernels.
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
+#endif  // PADDLE_WITH_CUDNN_FRONTEND

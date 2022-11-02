@@ -338,6 +338,10 @@ class PRChecker(object):
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
+                elif (
+                    '/xpu/' or '/npu/' or '/mlu/' or '/ipu/' in filename.lower()
+                ):
+                    filterFiles.append(filename)
                 else:
                     file_list.append(filename)
             else:
@@ -345,7 +349,7 @@ class PRChecker(object):
                     file_list.append(filename)
                 else:
                     isWhiteFile = self.get_is_white_file(filename)
-                    if isWhiteFile == False:
+                    if not isWhiteFile:
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
@@ -413,7 +417,7 @@ class PRChecker(object):
                                         == tempfilename.split(".")[0]
                                     ):
                                         f_judge_in_added_ut = True
-                            if f_judge_in_added_ut == True:
+                            if f_judge_in_added_ut:
                                 print(
                                     "Adding new unit tests not hit mapFiles: %s"
                                     % f_judge

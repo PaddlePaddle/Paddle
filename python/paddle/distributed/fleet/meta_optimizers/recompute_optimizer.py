@@ -55,7 +55,7 @@ class RecomputeOptimizer(MetaOptimizerBase):
         if not self.role_maker._is_collective:
             return False
 
-        if self.user_defined_strategy.recompute == True:
+        if self.user_defined_strategy.recompute:
             if (
                 len(self.user_defined_strategy.recompute_configs["checkpoints"])
                 == 0
