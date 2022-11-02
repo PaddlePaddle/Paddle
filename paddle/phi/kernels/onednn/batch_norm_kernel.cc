@@ -20,25 +20,84 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BatchNormKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& scale,
-                     const DenseTensor& bias,
-                     const DenseTensor& mean,
-                     const DenseTensor& variance,
+void BatchNormKernel(const Context &dev_ctx,
+                     const DenseTensor &x,
+                     const DenseTensor &scale,
+                     const DenseTensor &bias,
+                     const DenseTensor &mean,
+                     const DenseTensor &variance,
                      float momentum,
                      float epsilon,
-                     const std::string& data_layout,
+                     const std::string &data_layout,
                      bool is_test,
                      bool use_global_stats,
                      bool trainable_statistics,
                      bool fuse_with_relu,
-                     DenseTensor* y,
-                     DenseTensor* mean_out,
-                     DenseTensor* variance_out,
-                     DenseTensor* saved_mean,
-                     DenseTensor* saved_variance,
-                     DenseTensor* reserve_space) {}
+                     DenseTensor *y,
+                     DenseTensor *mean_out,
+                     DenseTensor *variance_out,
+                     DenseTensor *saved_mean,
+                     DenseTensor *saved_variance,
+                     DenseTensor *reserve_space) {
+  const bool test_mode = is_test && (!trainable_statistics);
+  const bool global_stats = test_mode || use_global_stats;
+
+  funcs::BatchNormOneDNNHandler<T> handler(dev_ctx.GetEngine(),
+                                           dev_ctx.GetPlace(),
+                                           &x,
+                                           epsilon,
+                                           global_stats,
+                                           fuse_with_relu,
+                                           test_mode);
+
+  auto src_memory = handler.AcquireSrcMemory(&x);
+  auto scaleshift_memory = handler.AcquireScaleShiftMemory(&scale, &bias);
+  auto dst_memory = handler.AcquireDstMemory(y);
+  auto batch_norm_p = handler.AcquireForwardPrimitive();
+
+  std::shared_ptr<dnnl::memory> mean_memory;
+  std::shared_ptr<dnnl::memory> variance_memory;
+
+  // mean and variance can be taken either from input or output Tensor
+  if (global_stats) {
+    mean_memory = handler.AcquireMeanMemory(&mean);
+    variance_memory = handler.AcquireVarianceMemory(&variance);
+  } else {
+    mean_memory = handler.AcquireMeanMemory(saved_mean);
+    variance_memory = handler.AcquireVarianceMemory(saved_variance);
+  }
+
+  y->set_mem_desc(dst_memory->get_desc());
+
+  auto &astream = OneDNNContext::tls().get_stream();
+  batch_norm_p->execute(astream,
+                        {{DNNL_ARG_SRC, *src_memory},
+                         {DNNL_ARG_SCALE_SHIFT, *scaleshift_memory},
+                         {DNNL_ARG_MEAN, *mean_memory},
+                         {DNNL_ARG_VARIANCE, *variance_memory},
+                         {DNNL_ARG_DST, *dst_memory}});
+  astream.wait();
+
+  if (!global_stats) {
+    const unsigned int C = phi::vectorize(scale.dims())[0];
+
+    // mkldnn only compute stats for current batch
+    // so we need compute momentum stats via Eigen lib
+    EigenVectorArrayMap<T> batch_mean_e(dev_ctx.template Alloc<T>(scale_mean),
+                                        C);
+    EigenVectorArrayMap<T> batch_variance_e(
+        dev_ctx.template Alloc<T>(saved_variance), C);
+
+    EigenVectorArrayMap<T> running_mean_e(dev_ctx.template Alloc<T>(mean_out),
+                                          C);
+    EigenVectorArrayMap<T> running_variance_e(
+        dev_ctx.template Alloc<T>(variance_out), C);
+
+    running_mean_e = running_mean_e * momentum + batch_mean_e * (1. - momentum);
+    running_variance_e =
+        running_variance_e * momentum + batch_variance_e * (1. - momentum);
+  }
+}
 
 }  // namespace phi
 

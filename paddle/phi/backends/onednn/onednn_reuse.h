@@ -1147,5 +1147,95 @@ class ClipOneDNNHandler
   }
 };
 
+template <typename T>
+class BatchNormOneDNNHandler
+    : public OneDNNHandlerNoCachingT<T,
+                                     dnnl::batch_normalization_forward,
+                                     dnnl::batch_normalization_backward> {
+ public:
+  BatchNormOneDNNHandler(const dnnl::engine engine,
+                         Place cpu_place,
+                         const DenseTensor* x,
+                         const float epsilon,
+                         const float fuse_with_relu,
+                         const bool global_stats,
+                         const bool test_mode)
+      : OneDNNHandlerNoCachingT<T,
+                                dnnl::batch_normalization_forward,
+                                dnnl::batch_normalization_backward>(engine,
+                                                                    cpu_place) {
+    // Flags are added by bitwise OR operation
+    auto flags = dnnl::normalization_flags::use_scale_shift;  // 001
+    if (global_stats)
+      flags |= dnnl::normalization_flags::use_global_stats;  // 010
+    if (fuse_with_relu && test_mode)
+      flags |= dnnl::normalization_flags::fuse_norm_relu;  // 100
+
+    this->AcquireForwardPrimitiveDescriptor(
+        global_stats ? dnnl::prop_kind::forward_scoring
+                     : dnnl::prop_kind::forward_training,
+        x->mem_desc(),
+        epsilon,
+        flags);
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(
+      const DenseTensor* scale, const DenseTensor* shift) {
+    auto scale_tz = phi::vectorize(scale->dims());
+    const unsigned int C = scale_tz[0];
+    PADDLE_ENFORCE_EQ(
+        scale_tz.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "Dims of scale tensor must be 1, but received scale's size is %d",
+            scale_tz.size()));
+
+    auto scaleshift_memory =
+        this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc());
+
+    // MKLDNN requires a single piece of memory for scale and shift/bias data
+    auto mem_data_handle =
+        reinterpret_cast<T*>(scaleshift_memory->get_data_handle());
+    std::copy(scale->data<T>(), scale->data<T>() + C, mem_data_handle);
+    std::copy(shift->data<T>(), shift->data<T>() + C, mem_data_handle + C);
+    return scaleshift_memory;
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDiffScaleShiftMemory(
+      T* diff_scaleshift_data) {
+    return this->AcquireMemoryFromPrimitive(this->bwd_pd_->diff_weights_desc(),
+                                            diff_scaleshift_data);
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireMeanMemory(
+      const phi::DenseTensor* mean) {
+    const T* mean_data = mean->data<T>();
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
+                                            to_void_cast<T>(mean_data));
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor* mean) {
+    T* mean_data = mean->mutable_data<T>(this->place_,
+                                         this->fwd_pd_->mean_desc().get_size());
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
+                                            mean_data);
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
+      const phi::DenseTensor* variance) {
+    const T* variance_data = variance->data<T>();
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
+                                            to_void_cast<T>(variance_data));
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
+      phi::DenseTensor* variance) {
+    T* variance_data = variance->mutable_data<T>(
+        this->place_, this->fwd_pd_->variance_desc().get_size());
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
+                                            variance_data);
+  }
+};
+
 }  // namespace funcs
 }  // namespace phi
