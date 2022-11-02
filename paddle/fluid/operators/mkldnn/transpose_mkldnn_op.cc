@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using framework::DataLayout;
+using phi::DataLayout;
 
 template <typename T>
 class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {

@@ -68,9 +68,8 @@ TEST(LiteEngineOp, GetNativePrecisionType) {
 
 TEST(LiteEngineOp, GetNativeLayoutType) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  framework::DataLayout GetNativeLayoutType(const DataLayoutType& type);
-  ASSERT_EQ(GetNativeLayoutType(DataLayoutType::kNCHW),
-            framework::DataLayout::kNCHW);
+  phi::DataLayout GetNativeLayoutType(const DataLayoutType& type);
+  ASSERT_EQ(GetNativeLayoutType(DataLayoutType::kNCHW), phi::DataLayout::kNCHW);
   EXPECT_ANY_THROW(GetNativeLayoutType(DataLayoutType::kNHWC));
 }
 

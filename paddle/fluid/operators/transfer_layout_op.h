@@ -33,7 +33,7 @@ class Variable;
 
 namespace paddle {
 namespace operators {
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 class TransferLayoutFunctor {
  public:

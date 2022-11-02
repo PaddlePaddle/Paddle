@@ -19,7 +19,6 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestParallelClassCenterSample(TestMultipleGpus):
-
     def test_parallel_class_center_sample(self):
         self.run_mnist_2gpu('parallel_class_center_sample.py')
         self.run_mnist_2gpu('parallel_class_center_sample.py', eager_mode=False)

@@ -26,7 +26,7 @@ namespace operators {
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::stream;
-using framework::DataLayout;
+using phi::DataLayout;
 
 using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;

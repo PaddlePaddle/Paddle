@@ -19,15 +19,15 @@ import paddle.fluid as fluid
 
 
 class TestRandomCropOp(OpTest):
-
     def setUp(self):
-        to_crop = np.array([[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]] *
-                           5).astype(np.int32)
+        to_crop = np.array(
+            [[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]] * 5
+        ).astype(np.int32)
         self.possible_res = [
             np.array([[1, 2, 3], [5, 6, 7]]).astype(np.int32),
             np.array([[2, 3, 4], [6, 7, 8]]).astype(np.int32),
             np.array([[5, 6, 7], [9, 10, 11]]).astype(np.int32),
-            np.array([[6, 7, 8], [10, 11, 12]]).astype(np.int32)
+            np.array([[6, 7, 8], [10, 11, 12]]).astype(np.int32),
         ]
         self.op_type = "random_crop"
         self.inputs = {'X': to_crop, 'Seed': np.array([10]).astype('int64')}
@@ -45,7 +45,6 @@ class TestRandomCropOp(OpTest):
 
 
 class TestRandomCropOpError(unittest.TestCase):
-
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
 
@@ -56,17 +55,17 @@ class TestRandomCropOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_x_type)
 
             def test_x_dtype():
-                x2 = fluid.layers.data(name='x2',
-                                       shape=[None, 3, 256, 256],
-                                       dtype='float16')
+                x2 = fluid.layers.data(
+                    name='x2', shape=[None, 3, 256, 256], dtype='float16'
+                )
                 fluid.layers.random_crop(x2)
 
             self.assertRaises(TypeError, test_x_dtype)
 
             def test_shape_type():
-                x3 = fluid.layers.data(name='x3',
-                                       shape=[None, 3, 256, 256],
-                                       dtype='float32')
+                x3 = fluid.layers.data(
+                    name='x3', shape=[None, 3, 256, 256], dtype='float32'
+                )
                 fluid.layers.random_crop(x3, shape=1)
 
             self.assertRaises(TypeError, test_shape_type)

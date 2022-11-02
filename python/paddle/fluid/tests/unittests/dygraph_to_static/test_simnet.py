@@ -36,22 +36,24 @@ def create_conf_dict():
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--batch_size",
-                        type=int,
-                        default=32,
-                        help="Total examples' number in batch for training.")
-    parser.add_argument("--seq_len",
-                        type=int,
-                        default=32,
-                        help="The length of each sentence.")
-    parser.add_argument("--epoch",
-                        type=int,
-                        default=1,
-                        help="The number of training epoch.")
-    parser.add_argument("--fake_sample_size",
-                        type=int,
-                        default=128,
-                        help="The number of samples of fake data.")
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=32,
+        help="Total examples' number in batch for training.",
+    )
+    parser.add_argument(
+        "--seq_len", type=int, default=32, help="The length of each sentence."
+    )
+    parser.add_argument(
+        "--epoch", type=int, default=1, help="The number of training epoch."
+    )
+    parser.add_argument(
+        "--fake_sample_size",
+        type=int,
+        default=128,
+        help="The number of samples of fake data.",
+    )
     args = parser.parse_args([])
     return args
 
@@ -72,7 +74,6 @@ vocab = fake_vocabulary()
 
 
 class FakeReaderProcessor(object):
-
     def __init__(self, args, vocab):
         self.vocab = vocab
         self.seq_len = args.seq_len
@@ -83,10 +84,10 @@ class FakeReaderProcessor(object):
             pos_title = query[:]
             neg_title = [26 - q for q in query]
             self.data_samples.append(
-                np.array([query, pos_title, neg_title]).astype(np.int64))
+                np.array([query, pos_title, neg_title]).astype(np.int64)
+            )
 
     def get_reader(self, mode, epoch=0):
-
         def reader_with_pairwise():
             if mode == "train":
                 for i in range(self.sample_size):
@@ -125,7 +126,8 @@ def train(conf_dict, to_static):
             beta1=0.9,
             beta2=0.999,
             epsilon=1e-08,
-            parameter_list=net.parameters())
+            parameter_list=net.parameters(),
+        )
 
         metric = fluid.metrics.Auc(name="auc")
 
@@ -133,14 +135,14 @@ def train(conf_dict, to_static):
         losses = []
 
         train_loader = fluid.io.DataLoader.from_generator(
-            capacity=16,
-            return_list=True,
-            iterable=True,
-            use_double_buffer=True)
-        get_train_examples = simnet_process.get_reader("train",
-                                                       epoch=args.epoch)
+            capacity=16, return_list=True, iterable=True, use_double_buffer=True
+        )
+        get_train_examples = simnet_process.get_reader(
+            "train", epoch=args.epoch
+        )
         train_loader.set_sample_list_generator(
-            paddle.batch(get_train_examples, batch_size=args.batch_size), place)
+            paddle.batch(get_train_examples, batch_size=args.batch_size), place
+        )
 
         for left, pos_right, neg_right in train_loader():
             left = fluid.layers.reshape(left, shape=[-1, 1])
@@ -160,7 +162,6 @@ def train(conf_dict, to_static):
 
 
 class TestSimnet(unittest.TestCase):
-
     def test_dygraph_static_same_loss(self):
         if fluid.is_compiled_with_cuda():
             fluid.set_flags({"FLAGS_cudnn_deterministic": True})

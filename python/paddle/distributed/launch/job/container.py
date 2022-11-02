@@ -89,7 +89,8 @@ class Container(object):
     def _valide_env(self):
         for k, v in self._env.items():
             assert isinstance(k, str) and isinstance(
-                v, str), 'env {}:{} must be str'.format(k, v)
+                v, str
+            ), 'env {}:{} must be str'.format(k, v)
 
     def _get_fd(self, pth):
         if not pth:
@@ -120,11 +121,13 @@ class Container(object):
             self._log_handler.seek(0, 2)
             self._log_start_offset = self._log_handler.tell()
 
-        self._proc = ProcessContext(self._entrypoint,
-                                    env=self._env,
-                                    out=self._stdout,
-                                    err=self._stderr,
-                                    shell=self._shell)
+        self._proc = ProcessContext(
+            self._entrypoint,
+            env=self._env,
+            out=self._stdout,
+            err=self._stderr,
+            shell=self._shell,
+        )
 
         self._proc.start()
 
@@ -159,13 +162,15 @@ class Container(object):
             return Status.FAILED
 
     def __str__(self):
-        return 'Container rank {} status {} cmd {} code {} log {} \nenv {}'.format(
-            self._rank,
-            self.status,
-            self._entrypoint,
-            self.exit_code,
-            self.errfile,
-            self._env,
+        return (
+            'Container rank {} status {} cmd {} code {} log {} \nenv {}'.format(
+                self._rank,
+                self.status,
+                self._entrypoint,
+                self.exit_code,
+                self.errfile,
+                self._env,
+            )
         )
 
     def logs(self, fn=None, offset=0, whence=1, limit=1000):

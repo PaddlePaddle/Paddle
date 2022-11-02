@@ -19,7 +19,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestSparseCopy(unittest.TestCase):
-
     def test_copy_sparse_coo(self):
         with _test_eager_guard():
             np_x = [[0, 1.0, 0], [2.0, 0, 0], [0, 3.0, 0]]

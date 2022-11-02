@@ -26,7 +26,9 @@ from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
+from paddle.distributed.fleet.base.private_helper_function import (
+    wait_server_ready,
+)  # noqa: F401
 from paddle.distributed.collective import _set_group_map
 from paddle.distributed.collective import _set_group_map_by_name
 from paddle.distributed.collective import _get_group_map_by_name
@@ -57,6 +59,7 @@ def _get_global_parallel_env():
 
 def _start_kv_server(port, http_server_d, size):
     from paddle.distributed.fleet.utils.http_server import KVServer
+
     http_server = KVServer(int(port), size=size)
     http_server.start()
     wait_seconds = 3
@@ -67,10 +70,15 @@ def _start_kv_server(port, http_server_d, size):
 
 def _is_cpuonly(backend):
     check_backend(backend)
-    if (backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl'] and
-        (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
-         or core.is_compiled_with_npu()
-         or core.is_compiled_with_mlu())) or backend == 'xccl':
+    if (
+        backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl']
+        and (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_xpu()
+            or core.is_compiled_with_npu()
+            or core.is_compiled_with_mlu()
+        )
+    ) or backend == 'xccl':
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
@@ -81,9 +89,10 @@ def _is_cpuonly(backend):
 def _check_var_exists(var_name):
     var = os.environ.get(var_name, None)
     if var is None:
-        raise ValueError("paddle.distributed initialize error, "
-                         "environment variable %s is needed, but not set." %
-                         var_name)
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "environment variable %s is needed, but not set." % var_name
+        )
 
 
 def init_parallel_env():
@@ -161,15 +170,21 @@ def init_parallel_env():
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu,
-    if not (is_cpu_only or core.is_compiled_with_cuda()
-            or core.is_compiled_with_xpu() or core.is_compiled_with_npu()
-            or core.is_compiled_with_mlu()):
+    if not (
+        is_cpu_only
+        or core.is_compiled_with_cuda()
+        or core.is_compiled_with_xpu()
+        or core.is_compiled_with_npu()
+        or core.is_compiled_with_mlu()
+    ):
         raise NotImplementedError(
-            "If you want to use CPU-only version, please use 'gloo' as backend")
+            "If you want to use CPU-only version, please use 'gloo' as backend"
+        )
 
     if backend == "xccl":
         FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
-            parallel_env.device_type)
+            parallel_env.device_type
+        )
         _check_var_exists(FLAGS_selected_custom_devices)
     else:
         if not is_cpu_only and core.is_compiled_with_cuda():
@@ -197,8 +212,9 @@ def init_parallel_env():
     # they need to call a function to change default place,
     # here just set correctly place to users
     if backend == "xccl":
-        place = core.CustomPlace(parallel_env.device_type,
-                                 parallel_env.device_id)
+        place = core.CustomPlace(
+            parallel_env.device_type, parallel_env.device_id
+        )
     elif is_cpu_only:
         place = core.CPUPlace()
     elif core.is_compiled_with_cuda():
@@ -222,11 +238,15 @@ def init_parallel_env():
         assert rank >= 0 and world_size > rank and world_size > 1, (
             "rank must be non-negative and world_size must be the "
             "maximum rank plus one. Moreover, at least two processes are "
-            "required to create a process group.")
+            "required to create a process group."
+        )
         master_addr = os.getenv("MASTER_ADDR", None)
         master_port = os.getenv("MASTER_PORT", None)
-        endpoints = ":".join([master_addr, master_port
-                              ]) if master_addr and master_port else None
+        endpoints = (
+            ":".join([master_addr, master_port])
+            if master_addr and master_port
+            else None
+        )
         if endpoints is None:
             endpoints = os.getenv("PADDLE_MASTER", None)
         if endpoints is None:
@@ -235,23 +255,28 @@ def init_parallel_env():
             "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
             "must be specified, for example 'export MASTER_ADDR=127.0.0.1' "
             "and 'export MASTER_ADDR=54612'. Or you can start your training"
-            "with paddle.distributed.run module.")
+            "with paddle.distributed.run module."
+        )
         master_addr, master_port = endpoints.split(":")
         master_port = int(master_port)
         is_master = rank == 0
         stop_check_timeout = int(os.getenv("FLAGS_stop_check_timeout", "900"))
-        default_store = core.TCPStore(master_addr,
-                                      master_port,
-                                      is_master,
-                                      world_size,
-                                      timeout=stop_check_timeout)
+        default_store = core.TCPStore(
+            master_addr,
+            master_port,
+            is_master,
+            world_size,
+            timeout=stop_check_timeout,
+        )
         _set_default_store(default_store)
-        pg = _new_process_group_impl(backend,
-                                     default_store,
-                                     rank,
-                                     world_size,
-                                     _default_group_name,
-                                     pg_options=None)
+        pg = _new_process_group_impl(
+            backend,
+            default_store,
+            rank,
+            world_size,
+            _default_group_name,
+            pg_options=None,
+        )
         ranks = list(range(world_size))
         group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)
         _set_group_map_by_name(_default_group_name, group)
@@ -277,8 +302,10 @@ def init_parallel_env():
             size = {'_worker': parallel_env.world_size}
             if backend == "heter":
                 size = {'_worker': len(node_num)}
-            http_server = Process(target=_start_kv_server,
-                                  args=(int(ep_rank_0[1]), http_server_d, size))
+            http_server = Process(
+                target=_start_kv_server,
+                args=(int(ep_rank_0[1]), http_server_d, size),
+            )
             http_server.daemon = True
             http_server_d["running"] = True
             http_server.start()
@@ -296,22 +323,28 @@ def init_parallel_env():
     # init nccl or hccl or bkcl or heter context
     if is_cpu_only:
         parallel_helper._set_parallel_ctx(
-            core.GLOOParallelContext(strategy, place))
-    elif (backend == "heter"):
+            core.GLOOParallelContext(strategy, place)
+        )
+    elif backend == "heter":
         parallel_helper._set_parallel_ctx(
-            core.HeterParallelContext(strategy, parallel_env.device_id))
+            core.HeterParallelContext(strategy, parallel_env.device_id)
+        )
     elif core.is_compiled_with_cuda():
         parallel_helper._set_parallel_ctx(
-            core.NCCLParallelContext(strategy, place))
+            core.NCCLParallelContext(strategy, place)
+        )
     elif core.is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
-            core.BKCLParallelContext(strategy, place))
+            core.BKCLParallelContext(strategy, place)
+        )
     elif core.is_compiled_with_npu():
         parallel_helper._set_parallel_ctx(
-            core.HCCLParallelContext(strategy, place))
+            core.HCCLParallelContext(strategy, place)
+        )
     elif core.is_compiled_with_mlu():
         parallel_helper._set_parallel_ctx(
-            core.CNCLParallelContext(strategy, place))
+            core.CNCLParallelContext(strategy, place)
+        )
 
     if backend != "heter":
         other_endpoints = strategy.trainer_endpoints[:]

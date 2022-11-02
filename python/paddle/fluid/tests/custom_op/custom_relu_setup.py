@@ -30,4 +30,6 @@ setup(
         sources=sources,  # test for multi ops
         include_dirs=paddle_includes,
         extra_compile_args=extra_compile_args,
-        verbose=True))
+        verbose=True,
+    ),
+)

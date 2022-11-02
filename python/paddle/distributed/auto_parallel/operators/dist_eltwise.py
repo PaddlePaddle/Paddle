@@ -27,18 +27,17 @@ from ..cost import build_comp_costs_from_descs
 
 
 class DistributedElementwise(DistributedOperatorImplContainer):
-
     def __init__(self, op_type):
         super(DistributedElementwise, self).__init__(op_type)
 
 
 register_distributed_operator_impl_container(
-    DistributedElementwise("elementwise"))
+    DistributedElementwise("elementwise")
+)
 
 
 # Replicated Elementwise
 class DistributedElementwiseImpl0(DistributedOperatorImpl):
-
     def __init__(self, name):
         super(DistributedElementwiseImpl0, self).__init__(name)
         self._forward_implemented = False
@@ -56,13 +55,14 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
 
     def calc_fwd_cost(self, dist_op, ctx, cluster):
         # calc comp op cost
-        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
-                                                    dist_context=ctx)
+        desc_mapping = build_comp_desc_from_dist_op(
+            dist_op=dist_op, dist_context=ctx
+        )
         processes = dist_op.dist_attr.process_mesh.processes
         op_type = dist_op.serial_op.type
-        cost_mapping = build_comp_costs_from_descs(_g_op_cost_factory[op_type],
-                                                   ctx, processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_descs(
+            _g_op_cost_factory[op_type], ctx, processes, desc_mapping, cluster
+        )
         res_cost = [cost_mapping]
 
         return res_cost
@@ -70,16 +70,17 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
     def calc_bwd_cost(self, dist_op, ctx, cluster):
         # calc comp op cost
         res = []
-        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
-                                                    dist_context=ctx)
+        desc_mapping = build_comp_desc_from_dist_op(
+            dist_op=dist_op, dist_context=ctx
+        )
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
         processes = process_mesh.processes
         backward_op = dist_op.serial_op
         op_type = backward_op.type
-        cost_mapping = build_comp_costs_from_descs(_g_op_cost_factory[op_type],
-                                                   ctx, processes, desc_mapping,
-                                                   cluster)
+        cost_mapping = build_comp_costs_from_descs(
+            _g_op_cost_factory[op_type], ctx, processes, desc_mapping, cluster
+        )
         res.append(cost_mapping)
 
         main_block = backward_op.block
@@ -88,7 +89,8 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and not is_parameter_related(
-                        varname, main_block):
+                    varname, main_block
+                ):
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
                     mesh_shape = process_mesh.topology
                     batch_size_axis = var_dim_mapping[0]
@@ -100,16 +102,25 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
             for input_name in backward_op.desc.input_names():
                 for varname in backward_op.desc.input(input_name):
                     if "@GRAD" not in varname and is_parameter_related(
-                            varname, main_block):
+                        varname, main_block
+                    ):
                         var_dim_mapping = dist_attr.get_input_dims_mapping(
-                            varname)
+                            varname
+                        )
                         mesh_shape = process_mesh.topology
                         batch_size_axis = var_dim_mapping[0]
                         parallel_axis = batch_size_axis
                         attrs = {"use_calc_stream": True}
                         var_names = [varname + "@GRAD"]
-                        build_dp_costs(res, dist_op, ctx, var_names, attrs,
-                                       parallel_axis, cluster)
+                        build_dp_costs(
+                            res,
+                            dist_op,
+                            ctx,
+                            var_names,
+                            attrs,
+                            parallel_axis,
+                            cluster,
+                        )
         return res
 
     def is_input_compatible(self, dist_op):
@@ -189,8 +200,9 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
             for dims_mapping in dims_mapping_list:
                 if idx < len(dims_mapping):
                     dim_mappings.append(dims_mapping[-(idx + 1)])
-            if not all(dim_mappings[0] == dim_mapping
-                       for dim_mapping in dim_mappings):
+            if not all(
+                dim_mappings[0] == dim_mapping for dim_mapping in dim_mappings
+            ):
                 return False
         return True
 
@@ -216,10 +228,13 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
                     -1 for _ in range(input_max_dims_mapping_len)
                 ]
                 for i in range(input_dims_mapping_lens[arg_name]):
-                    new_idx = (input_max_dims_mapping_len -
-                               input_dims_mapping_lens[arg_name]) + i
+                    new_idx = (
+                        input_max_dims_mapping_len
+                        - input_dims_mapping_lens[arg_name]
+                    ) + i
                     new_dims_mapping[new_idx] = input_dims_mapping_dict[
-                        arg_name][i]
+                        arg_name
+                    ][i]
                 dims_mapping_list.append(new_dims_mapping)
             else:
                 dims_mapping_list.append(input_dims_mapping_dict[arg_name])
@@ -240,10 +255,13 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
                     -1 for _ in range(output_max_dims_mapping_len)
                 ]
                 for i in range(output_dims_mapping_lens[arg_name]):
-                    new_idx = (output_max_dims_mapping_len -
-                               output_dims_mapping_lens[arg_name]) + i
+                    new_idx = (
+                        output_max_dims_mapping_len
+                        - output_dims_mapping_lens[arg_name]
+                    ) + i
                     new_dims_mapping[new_idx] = output_dims_mapping_dict[
-                        arg_name][i]
+                        arg_name
+                    ][i]
                 dims_mapping_list.append(new_dims_mapping)
             else:
                 dims_mapping_list.append(output_dims_mapping_dict[arg_name])
@@ -251,7 +269,8 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
         assert input_max_dims_mapping_len == output_max_dims_mapping_len
         max_dims_mapping_len = input_max_dims_mapping_len
         compatible_dims_mapping = compute_compatible_dims_mapping(
-            dims_mapping_list)
+            dims_mapping_list
+        )
         if compatible_dims_mapping is None:
             return False
 
@@ -261,17 +280,20 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
                     -1 for _ in range(input_dims_mapping_lens[arg_name])
                 ]
                 for i in range(input_dims_mapping_lens[arg_name]):
-                    new_idx = (max_dims_mapping_len -
-                               input_dims_mapping_lens[arg_name]) + i
+                    new_idx = (
+                        max_dims_mapping_len - input_dims_mapping_lens[arg_name]
+                    ) + i
                     new_dims_mapping[i] = compatible_dims_mapping[new_idx]
                 if new_dims_mapping != input_dims_mapping_dict[arg_name]:
-                    op_dist_attr.set_input_dims_mapping(arg_name,
-                                                        new_dims_mapping)
+                    op_dist_attr.set_input_dims_mapping(
+                        arg_name, new_dims_mapping
+                    )
                     changed = True
             else:
                 if compatible_dims_mapping != input_dims_mapping_dict[arg_name]:
                     op_dist_attr.set_input_dims_mapping(
-                        arg_name, compatible_dims_mapping)
+                        arg_name, compatible_dims_mapping
+                    )
                     changed = True
 
         for arg_name in output_arg_names:
@@ -280,17 +302,24 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
                     -1 for _ in range(output_dims_mapping_lens[arg_name])
                 ]
                 for i in range(output_dims_mapping_lens[arg_name]):
-                    new_idx = (max_dims_mapping_len -
-                               output_dims_mapping_lens[arg_name]) + i
+                    new_idx = (
+                        max_dims_mapping_len
+                        - output_dims_mapping_lens[arg_name]
+                    ) + i
                     new_dims_mapping[i] = compatible_dims_mapping[new_idx]
                 if new_dims_mapping != output_dims_mapping_dict[arg_name]:
                     op_dist_attr.set_output_dims_mapping(
-                        arg_name, new_dims_mapping)
+                        arg_name, new_dims_mapping
+                    )
                     changed = True
             else:
-                if compatible_dims_mapping != output_dims_mapping_dict[arg_name]:
+                if (
+                    compatible_dims_mapping
+                    != output_dims_mapping_dict[arg_name]
+                ):
                     op_dist_attr.set_output_dims_mapping(
-                        arg_name, compatible_dims_mapping)
+                        arg_name, compatible_dims_mapping
+                    )
                     changed = True
 
         return changed
@@ -305,4 +334,5 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
 
 
 register_distributed_operator_impl(
-    "elementwise", DistributedElementwiseImpl0("replicate_parallel"))
+    "elementwise", DistributedElementwiseImpl0("replicate_parallel")
+)

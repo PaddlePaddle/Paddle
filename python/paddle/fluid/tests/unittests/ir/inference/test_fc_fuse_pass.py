@@ -22,7 +22,7 @@ import hypothesis.strategies as st
 
 
 class TestFcFusePass(PassAutoScanTest):
-    """
+    r"""
     x_var   y_var(persistable)
       \       /
          mul     bias_var(persistable)
@@ -50,7 +50,8 @@ class TestFcFusePass(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
-            use_calib_mode=False)
+            use_calib_mode=False,
+        )
         yield config, ['fc'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
@@ -74,8 +75,10 @@ class TestFcFusePass(PassAutoScanTest):
         def teller2(program_config, predictor_config):
             # TODO fuse has bug while axis != -1
             axis = program_config.ops[1].attrs["axis"]
-            if axis != -1 and axis != program_config.ops[0].attrs[
-                    "x_num_col_dims"]:
+            if (
+                axis != -1
+                and axis != program_config.ops[0].attrs["x_num_col_dims"]
+            ):
                 return True
             return False
 
@@ -102,18 +105,21 @@ class TestFcFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X of mul
         x_shape = draw(
-            st.lists(st.integers(min_value=1, max_value=4),
-                     min_size=2,
-                     max_size=4))
+            st.lists(
+                st.integers(min_value=1, max_value=4), min_size=2, max_size=4
+            )
+        )
         # 2. Generate attr:x_num_col_dims/y_num_col_dims of mul
         x_num_col_dims = draw(
-            st.integers(min_value=1, max_value=len(x_shape) - 1))
+            st.integers(min_value=1, max_value=len(x_shape) - 1)
+        )
         y_num_col_dims = 1
         # 3. Generate legal shape of input:Y of mul
         y_shape = draw(
-            st.lists(st.integers(min_value=1, max_value=8),
-                     min_size=2,
-                     max_size=2))
+            st.lists(
+                st.integers(min_value=1, max_value=8), min_size=2, max_size=2
+            )
+        )
         y_shape[0] = int(np.prod(x_shape[x_num_col_dims:]))
         # 4. Generate legal attr:axis of elementwise_add
         mul_out_shape = x_shape[:x_num_col_dims] + y_shape[1:]
@@ -122,12 +128,13 @@ class TestFcFusePass(PassAutoScanTest):
         if axis >= 0:
             max_bias_rank = x_num_col_dims + 1 - axis
             bias_rank = draw(st.integers(min_value=1, max_value=max_bias_rank))
-            bias_shape = mul_out_shape[axis:axis + bias_rank]
+            bias_shape = mul_out_shape[axis : axis + bias_rank]
         else:
             max_bias_rank = 1
             bias_rank = draw(
-                st.integers(min_value=1, max_value=len(mul_out_shape)))
-            bias_shape = mul_out_shape[-1 * bias_rank:]
+                st.integers(min_value=1, max_value=len(mul_out_shape))
+            )
+            bias_shape = mul_out_shape[-1 * bias_rank :]
         # 6. Random choose if use broadcast for elementwise_add, e.g [3, 4] -> [1, 4]
         if draw(st.booleans()):
             broadcast_dims = draw(st.integers(min_value=1, max_value=bias_rank))
@@ -147,28 +154,22 @@ class TestFcFusePass(PassAutoScanTest):
         # Use function `add_skip_pass_case` to ignore the programs even if they cause bug while runing
         mul_op = OpConfig(
             "mul",
-            inputs={
-                "X": ["mul_x"],
-                "Y": ["mul_y"]
-            },
+            inputs={"X": ["mul_x"], "Y": ["mul_y"]},
             outputs={"Out": ["mul_out"]},
             x_num_col_dims=x_num_col_dims,
             y_num_col_dims=y_num_col_dims,
         )
         add_op = OpConfig(
             "elementwise_add",
-            inputs={
-                "X": ["mul_out"],
-                "Y": ["bias"]
-            },
+            inputs={"X": ["mul_out"], "Y": ["bias"]},
             outputs={"Out": ["add_out"]},
             axis=axis,
         )
         ops = [mul_op, add_op]
         if has_relu:
-            relu_op = OpConfig("relu",
-                               inputs={"X": ["add_out"]},
-                               outputs={"Out": ["relu_out"]})
+            relu_op = OpConfig(
+                "relu", inputs={"X": ["add_out"]}, outputs={"Out": ["relu_out"]}
+            )
             ops.append(relu_op)
         program_config = ProgramConfig(
             ops=ops,
@@ -184,9 +185,9 @@ class TestFcFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            max_examples=500,
-                            passes=["fc_fuse_pass"])
+        self.run_and_statis(
+            quant=False, max_examples=500, passes=["fc_fuse_pass"]
+        )
 
 
 if __name__ == "__main__":

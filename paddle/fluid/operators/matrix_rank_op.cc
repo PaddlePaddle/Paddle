@@ -87,7 +87,7 @@ class MatrixRankOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }

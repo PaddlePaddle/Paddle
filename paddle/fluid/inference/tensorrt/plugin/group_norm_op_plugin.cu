@@ -23,7 +23,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 int GroupNormPlugin::initialize() TRT_NOEXCEPT { return 0; }
 

@@ -36,7 +36,7 @@ class MLUBatchNormOpKernel : public framework::OpKernel<T> {
     bool global_stats = test_mode || use_global_stats;
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+    DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     const auto *x = ctx.Input<phi::DenseTensor>("X");
     const auto &x_dims = x->dims();
@@ -173,7 +173,7 @@ class MLUBatchNormGradOpKernel : public framework::OpKernel<T> {
     bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool is_test = ctx.Attr<bool>("is_test");
     const float epsilon = ctx.Attr<float>("epsilon");
-    DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+    DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto *d_scale =

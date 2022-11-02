@@ -25,7 +25,8 @@ from paddle.fluid.framework import _test_eager_guard
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\context_pool_jit\\context_pool_jit.pyd'.format(
-    get_build_directory())
+    get_build_directory()
+)
 if os.name == 'nt' and os.path.isfile(file):
     cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
@@ -37,11 +38,11 @@ custom_ops = load(
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cflags
     extra_cuda_cflags=extra_nvcc_args,  # test for cflags
-    verbose=True)
+    verbose=True,
+)
 
 
 class TestContextPool(unittest.TestCase):
-
     def setUp(self):
         self.devices = ['cpu']
         if paddle.is_compiled_with_cuda():

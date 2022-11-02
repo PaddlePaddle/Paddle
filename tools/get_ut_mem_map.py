@@ -39,20 +39,30 @@ def get_ut_mem(rootPath):
                     mem_reserved = round(
                         float(
                             line.split(' : Reserved = ')[1].split(
-                                ', Allocated = ')[0]), 2)
+                                ', Allocated = '
+                            )[0]
+                        ),
+                        2,
+                    )
                     if mem_reserved > mem_reserved1:
                         mem_reserved1 = mem_reserved
                 if 'MAX_GPU_MEMORY_USE=' in line:
                     mem_nvidia = round(
                         float(
-                            line.split('MAX_GPU_MEMORY_USE=')[1].split('\\n')
-                            [0].strip()), 2)
+                            line.split('MAX_GPU_MEMORY_USE=')[1]
+                            .split('\\n')[0]
+                            .strip()
+                        ),
+                        2,
+                    )
                     if mem_nvidia > mem_nvidia1:
                         mem_nvidia1 = mem_nvidia
                 if 'Total Test time (real)' in line:
                     caseTime = float(
-                        line.split('Total Test time (real) =')[1].split('sec')
-                        [0].strip())
+                        line.split('Total Test time (real) =')[1]
+                        .split('sec')[0]
+                        .strip()
+                    )
             if mem_reserved1 != -1:
                 case_dic[ut]['mem_reserved'] = mem_reserved1
             if mem_nvidia1 != -1:

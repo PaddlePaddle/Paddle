@@ -1055,7 +1055,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
            })
       .def("device_count", &ParallelExecutor::DeviceCount);
   using VarQuantScale =
-      std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
+      std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)

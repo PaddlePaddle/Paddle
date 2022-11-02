@@ -51,7 +51,7 @@ class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
+      const framework::OpKernelType& expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(

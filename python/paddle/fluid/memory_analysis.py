@@ -19,8 +19,9 @@ import numpy as np
 def get_var_and_memory_size(block, var_name, batch_size=None):
     var = block._find_var_recursive(var_name)
     assert var is not None, "Variable {} cannot be found".format(var_name)
-    assert var.type == core.VarDesc.VarType.LOD_TENSOR, "Variable {} is not Tensor".format(
-        var_name)
+    assert (
+        var.type == core.VarDesc.VarType.LOD_TENSOR
+    ), "Variable {} is not Tensor".format(var_name)
     shape = list(var.shape)
     if not shape:
         return var, 0
@@ -31,8 +32,9 @@ def get_var_and_memory_size(block, var_name, batch_size=None):
             assert not has_none
             shape[i] = batch_size
             has_none = True
-    assert all([s >= 0
-                for s in shape]), "shape {} is not deterministic".format(shape)
+    assert all([s >= 0 for s in shape]), "shape {} is not deterministic".format(
+        shape
+    )
     mem_size = int(np.prod(shape)) * core.size_of_dtype(var.dtype)
     return var, mem_size
 
@@ -46,7 +48,9 @@ def pre_allocate_memory(size, place):
 
 # NOTE: does not consider inplace yet.
 def get_max_memory_info(program, batch_size=None):
-    assert program.num_blocks == 1, "only support to analysis program with only one block"
+    assert (
+        program.num_blocks == 1
+    ), "only support to analysis program with only one block"
     cur_tmp_mem = 0
     max_tmp_mem = 0
     max_persistable_mem = 0
