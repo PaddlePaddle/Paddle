@@ -17,10 +17,20 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
 
 namespace phi {
+
+template <typename T, typename AccT = T>
+struct GroupNormFunctor {
+  inline HOSTDEVICE T operator()(const T& x,
+                                 const AccT& scale,
+                                 const AccT& bias) const {
+    return static_cast<T>(scale * static_cast<AccT>(x) + bias);
+  }
+};
 
 template <typename T>
 __global__ void GroupNormForwardGetMeanAndVar(const T* x,
@@ -111,6 +121,37 @@ __global__ void GroupNormForward(const T* x,
   }
 }
 
+template <typename T>
+__global__ void UpdateParams(const T* mean,
+                             const T* var,
+                             const T* scale,
+                             const T* bias,
+                             const int N,
+                             const int C,
+                             const int G,
+                             const int group_size,
+                             float eps,
+                             T* real_var,
+                             T* eq_scale,
+                             T* eq_bias) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid < N * C) {
+    const int ng = tid / group_size;
+    const int c = tid % C;
+    T x_mean = mean[ng];
+    T x_var = var[ng];
+    x_var = x_var - x_mean * x_mean;
+    T var_inv = rsqrt(x_var + eps);
+    T scale_val = (scale == nullptr) ? var_inv : scale[c] * var_inv;
+    T bias_val = -scale_val * x_mean + ((bias == nullptr) ? 0 : bias[c]);
+    eq_scale[tid] = scale_val;
+    eq_bias[tid] = bias_val;
+    if (tid - ng * group_size == 0) {
+      real_var[ng] = x_var;
+    }
+  }
+}
+
 template <typename T, typename Context>
 void GroupNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
@@ -127,6 +168,7 @@ void GroupNormKernel(const Context& dev_ctx,
   const auto bias_ptr = bias.get_ptr();
 
   const auto x_dims = x.dims();
+  const int N = x_dims[0];
   const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
                                                   : x_dims[x_dims.size() - 1]);
   const int group_size = C / groups;
@@ -139,13 +181,24 @@ void GroupNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(var);
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   DenseTensor temp_var;
+  DenseTensor eq_scale;
+  DenseTensor eq_bias;
   temp_var.Resize(var->dims());
+  DDim param_dims = (data_layout == DataLayout::kNCHW)
+                        ? make_ddim({N, C, 1, 1})
+                        : make_ddim({N, 1, 1, C});
+  eq_scale.Resize(param_dims);
+  eq_bias.Resize(param_dims);
   dev_ctx.template Alloc<T>(&temp_var);
+  dev_ctx.template Alloc<T>(&eq_scale);
+  dev_ctx.template Alloc<T>(&eq_bias);
   auto* x_data = x.data<T>();
   auto* y_data = y->data<T>();
   auto* mean_data = mean->data<T>();
   auto* var_data = var->data<T>();
   auto* temp_var_data = temp_var.data<T>();
+  auto* eq_scale_data = eq_scale.data<T>();
+  auto* eq_bias_data = eq_bias.data<T>();
 
   const T* scale_data = nullptr;
   if (scale_ptr) scale_data = scale_ptr->data<T>();
@@ -169,7 +222,7 @@ void GroupNormKernel(const Context& dev_ctx,
   int block_size = std::min(1024, imsize);
 #endif
 
-  dim3 grid(group_size, groups, x_dims[0]);
+  dim3 grid(group_size, groups, N);
   dim3 threads(block_size, 1, 1);
   if (data_layout == DataLayout::kNCHW) {
     using AccT = typename kps::details::MPTypeTrait<T>::Type;
@@ -182,7 +235,7 @@ void GroupNormKernel(const Context& dev_ctx,
       block_size_nchw *= 2;
     }
     block_size_nchw = std::max(block_size_nchw, kps::details::kWarpSize);
-    dim3 grids(x_dims[0] * groups);
+    dim3 grids(N * groups);
     dim3 blocks(block_size_nchw);
     if (size < vec_size * block_size_nchw) {
       ScalarGetMeanAndVarNCHW<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
@@ -195,36 +248,27 @@ void GroupNormKernel(const Context& dev_ctx,
   } else {
     set_zero(dev_ctx, mean, static_cast<T>(0));
     set_zero(dev_ctx, &temp_var, static_cast<T>(0));
-    GroupNormForwardGetMeanAndVar<T>
-        <<<grid, threads, 0, dev_ctx.stream()>>>(x_data,
-                                                 x_dims[0],
-                                                 C,
-                                                 W,
-                                                 imsize,
-                                                 groups,
-                                                 group_size,
-                                                 mean_data,
-                                                 temp_var_data);
+    GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
+        x_data, N, C, W, imsize, groups, group_size, mean_data, temp_var_data);
   }
-  int flags =
-      (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
-  UNROLL_ALL_CASES(flags,
-                   GroupNormForward,
-                   x_data,
-                   mean_data,
-                   temp_var_data,
-                   scale_data,
-                   bias_data,
-                   x_dims[0],
-                   C,
-                   W,
-                   imsize,
-                   groups,
-                   group_size,
-                   epsilon,
-                   y_data,
-                   var_data,
-                   data_layout);
+
+  const int64_t block_num = (N * C + 256 - 1) / 256;
+  UpdateParams<T><<<block_num, 256, 0, dev_ctx.stream()>>>(mean_data,
+                                                           temp_var_data,
+                                                           scale_data,
+                                                           bias_data,
+                                                           N,
+                                                           C,
+                                                           groups,
+                                                           group_size,
+                                                           epsilon,
+                                                           var_data,
+                                                           eq_scale_data,
+                                                           eq_bias_data);
+  std::vector<const DenseTensor*> ins{&x, &eq_scale, &eq_bias};
+  std::vector<DenseTensor*> outs{y};
+  funcs::BroadcastKernel<ElementwiseType::kTernary, T, T>(
+      dev_ctx, ins, &outs, -1, GroupNormFunctor<T>());
 }
 
 template <typename T>
