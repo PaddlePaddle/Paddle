@@ -1180,15 +1180,14 @@ class SyncBatchNorm(_BatchNormBase):
         if in_dygraph_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,
-                self.weight,
-                self.bias,
                 self._mean,
                 self._variance,
+                self.weight,
+                self.bias,
+                not self.training,
                 self._momentum,
                 self._epsilon,
                 self._data_format,
-                not self.training,
-                False,
                 False,
                 False,
             )

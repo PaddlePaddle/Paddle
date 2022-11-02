@@ -603,9 +603,6 @@ void Conv3DCudnnGradKernel(const Context& dev_ctx,
                            int groups,
                            const std::vector<int>& dilations,
                            const std::string& data_format,
-                           bool use_addto,
-                           int workspace_size_MB,
-                           bool exhaustive_search,
                            DenseTensor* input_grad,
                            DenseTensor* filter_grad) {
   ConvCudnnGradKernel<T>(dev_ctx,
@@ -1295,10 +1292,6 @@ void DepthwiseConvDoubleGradGPUDNNKernel(
     int groups,
     const std::vector<int>& dilations_t,
     const std::string& data_format,
-    bool use_addto,
-    int workspace_size_MB,
-    bool exhaustive_search_t,
-    bool fuse_relu,
     DenseTensor* input_grad,
     DenseTensor* filter_grad,
     DenseTensor* out_grad_grad) {
@@ -1320,7 +1313,7 @@ void DepthwiseConvDoubleGradGPUDNNKernel(
 }
 
 template <typename T, typename Context>
-void Conv3DCudnnGradGradKernel(
+void Conv3DCudnnDoubleGradKernel(
     const Context& ctx,
     const DenseTensor& input,
     const DenseTensor& filter,
@@ -1333,9 +1326,6 @@ void Conv3DCudnnGradGradKernel(
     int groups,
     const std::vector<int>& dilations_t,
     const std::string& data_format,
-    bool use_addto,
-    int workspace_size_MB,
-    bool exhaustive_search_t,
     DenseTensor* input_grad,
     DenseTensor* filter_grad,
     DenseTensor* out_grad_grad) {
@@ -1386,14 +1376,14 @@ PD_REGISTER_KERNEL(conv2d_grad_grad,
                    float,
                    phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(conv3d_grad_grad,
+PD_REGISTER_KERNEL(conv3d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
-                   phi::Conv3DCudnnGradGradKernel,
+                   phi::Conv3DCudnnDoubleGradKernel,
                    float,
                    phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
+PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DepthwiseConvDoubleGradGPUDNNKernel,
@@ -1427,16 +1417,16 @@ PD_REGISTER_KERNEL(conv2d_grad_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(conv3d_grad_grad,
+PD_REGISTER_KERNEL(conv3d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
-                   phi::Conv3DCudnnGradGradKernel,
+                   phi::Conv3DCudnnDoubleGradKernel,
                    float,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
+PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DepthwiseConvDoubleGradGPUDNNKernel,
@@ -1469,15 +1459,15 @@ PD_REGISTER_KERNEL(conv2d_grad_grad,
                    double,
                    phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(conv3d_grad_grad,
+PD_REGISTER_KERNEL(conv3d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
-                   phi::Conv3DCudnnGradGradKernel,
+                   phi::Conv3DCudnnDoubleGradKernel,
                    float,
                    double,
                    phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(depthwise_conv2d_grad_grad,
+PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DepthwiseConvDoubleGradGPUDNNKernel,
