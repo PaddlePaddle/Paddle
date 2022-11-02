@@ -218,7 +218,7 @@ EagerLayoutAutotune<paddle::experimental::Scalar>(
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
     paddle::experimental::Scalar* axis) {
-  if (DesiredLayout() == phi::DataLayout::UNDEFINED) {
+  if (DesiredLayout() == paddle::experimental::DataLayout::UNDEFINED) {
     VLOG(4) << "Optimze Layout was not started" << op_name;
     return std::make_shared<EagerLayoutTransformer>(
         op_name, tensors_vector, tensors_vector[0][0].layout());
@@ -229,7 +229,7 @@ EagerLayoutAutotune<paddle::experimental::Scalar>(
     VLOG(4) << op_name << "'s has different layout";
     return std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(op_name);
   }
-  if (op_name == "Concat") {
+  if (op_name == "concat") {
     if (desired_layout == tensors_vector[0][0].layout() &&
         tensors_vector[0][0].shape().size() == 4) {
       auto trans = std::make_shared<EagerConcatOpTransformer>(op_name);

@@ -127,10 +127,16 @@ class EagerLayoutTransformer {
       const std::string& in_name, const paddle::experimental::Tensor& in) {
     // update in shape size
     dim_size_ = in.shape().size();
-    bool need_trans =
-        !(final_layout_ == Layout::UNDEFINED || final_layout_ == in.layout());
     // This is for Agnostic op when layout is differnet
-    if (need_trans) {
+    bool trans_flag = false;
+    for (int i = 0; i < dim_size_; i++) {
+      if (in.shape()[i] != 1) trans_flag = true;
+    }
+
+    bool need_trans =
+        trans_flag &&
+        (!(final_layout_ == Layout::UNDEFINED || final_layout_ == in.layout()));
+    if (need_trans && (!equal_bool)) {
       auto out_tensor = EagerTraceTransposeOp(final_layout_, in);
       phi::DenseTensorUtils::GetMutableMeta(
           static_cast<phi::DenseTensor*>(out_tensor.impl().get()))

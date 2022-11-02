@@ -1155,9 +1155,20 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         layout_autotune_attr_type_list.append(atype)
                         heavily_flag = True
         if len(layout_autotune_attr) == 0:
-            layout_autotune_attr_code_list.append(
-                "auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);\n"
-            )
+            if forward_api_name == "reshape":
+                reshape_atype = []
+                reshape_name = []
+                for name, atype, _, _ in forward_attrs_list:
+                    reshape_atype.append(atype)
+                    reshape_name.append(name)
+                    break
+                layout_autotune_attr_code_list.append(
+                    f"auto transformer = egr::EagerLayoutAutotune<{reshape_atype[0]}>(op_name, tensors_vector, &{reshape_name[0]});\n"
+                )
+            else:
+                layout_autotune_attr_code_list.append(
+                    "auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);\n"
+                )
         elif len(layout_autotune_attr) == 1:
             layout_autotune_attr_code_list.append(
                 f"auto transformer = egr::EagerLayoutAutotune<{layout_autotune_attr_type_list[0]}>(op_name, tensors_vector, &{layout_autotune_attr[0]});\n"
