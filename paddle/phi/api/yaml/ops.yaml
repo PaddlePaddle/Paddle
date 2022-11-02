@@ -461,6 +461,16 @@
     func : tan
   backward : tan_grad
 
+- op : tanh
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : tanh
+  inplace : (x -> out)
+  backward : tanh_grad
+
 - op : trace
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
   output : Tensor

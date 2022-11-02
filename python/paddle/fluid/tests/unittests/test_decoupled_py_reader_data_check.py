@@ -106,9 +106,9 @@ class TestClass(unittest.TestCase):
                                 break
 
                         if break_beforehand:
-                            self.assertTrue(next(gen, None) is not None)
+                            self.assertIsNotNone(next(gen, None))
                         else:
-                            self.assertTrue(next(gen, None) is None)
+                            self.assertIsNone(next(gen, None))
 
 
 class TestClass2(TestClass):

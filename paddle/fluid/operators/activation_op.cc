@@ -93,6 +93,14 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
   //     library = framework::LibraryType::kCUDNN;
   //   }
   // #endif
+
+  // NOTE(jiahongyu): Activation ops have attribute use_cudnn, but cudnn kernels
+  // are temporarily disabled. Therefore, cudnn kernel also needs to fallback to
+  // plain GPU kernel temporarily. When above codes are uncommented, below
+  // fallback codes can be deleted safely.
+  if (paddle::platform::is_gpu_place(ctx.GetPlace())) {
+    oper.SetDnnFallback(true);
+  }
   return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
@@ -150,13 +158,6 @@ UNUSED constexpr char ReluDoc[] = R"DOC(
 Relu Activation Operator.
 
 $$out = \max(x, 0)$$
-
-)DOC";
-
-UNUSED constexpr char TanhDoc[] = R"DOC(
-Tanh Activation Operator.
-
-$$out = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC";
 
@@ -521,7 +522,6 @@ It is recommended to use the defaults for this activation.
 
 REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
-REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
 REGISTER_ACTIVATION_OP_MAKER(Rsqrt, RsqrtDoc);
@@ -691,54 +691,6 @@ class SigmoidTripleGradMaker
   }
 };
 
-template <typename T>
-class TanhDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("tanh_grad_grad");
-    // input1: Out
-    op->SetInput("Out", this->Input("Out"));
-    // input2: ddx
-    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
-    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
-    op->SetAttrMap(this->Attrs());
-    // output: ddy
-    op->SetOutput("DOutNew", this->InputGrad("Out"));
-    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-  }
-};
-
-template <typename T>
-class TanhTripleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("tanh_triple_grad");
-    // Out, DDX, DOut, D_DDOut, D_DOut_New   // input
-    // D_OutNew, D_DOut, D_DDx               // output
-    // input1: Out
-    op->SetInput("Out", this->Input("Out"));
-    // input2: ddx
-    op->SetInput("DDX", this->Input("DDX"));
-    // input3: dout
-    op->SetInput("DOut", this->Input("DOut"));
-    // input4: d_ddout
-    op->SetInput("D_DDOut", this->OutputGrad("DDOut"));
-    // input5: d_dout_new
-    op->SetInput("D_DOut_New", this->OutputGrad("DOutNew"));
-    op->SetAttrMap(this->Attrs());
-
-    // output: d_dOut, d_OutNew, d_ddx
-    op->SetOutput("D_OutNew", this->InputGrad("Out"));
-    op->SetOutput("D_DOut", this->InputGrad("DOut"));
-    op->SetOutput("D_DDx", this->InputGrad("DDX"));
-  }
-};
 // ReluGrad: dx = dy if y >= 0 else 0
 // ReluGradGrad: ddy = ddx if y >= 0 else 0
 template <typename T>
@@ -1092,38 +1044,6 @@ REGISTER_OPERATOR(sigmoid_triple_grad,
                   ops::ActivationOpTripleGrad<
                       ops::SigmoidTripleGradFunctor<float>::FwdDeps()>,
                   ops::ActivationTripleGradOpInplaceInferer);
-
-/* ========================================================================== */
-
-/* ==========================    tanh register  ============================= */
-REGISTER_OPERATOR(
-    tanh,
-    ops::ActivationOp,
-    ops::TanhOpMaker,
-    ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::TanhGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::TanhGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    std::conditional<ops::CanInplaceAct<ops::TanhGradFunctor<float>>(),
-                     ops::ActFwdInplaceInferer,
-                     void>::type);
-REGISTER_OPERATOR(tanh_grad,
-                  ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::TanhDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::TanhDoubleGradMaker<paddle::imperative::OpBase>)
-REGISTER_OPERATOR(
-    tanh_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::TanhGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer,
-    ops::TanhTripleGradMaker<paddle::framework::OpDesc>,
-    ops::TanhTripleGradMaker<paddle::imperative::OpBase>);
-
-REGISTER_OPERATOR(
-    tanh_triple_grad,
-    ops::ActivationOpTripleGrad<ops::TanhTripleGradFunctor<float>::FwdDeps()>,
-    ops::ActivationTripleGradOpInplaceInferer);
 
 /* ========================================================================== */
 

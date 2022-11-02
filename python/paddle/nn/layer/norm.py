@@ -394,7 +394,7 @@ class GroupNorm(Layer):
                 default_initializer=Constant(1.0),
             )
             self.weight.stop_gradient = (
-                self._weight_attr != None
+                self._weight_attr is not None
                 and self._weight_attr.learning_rate == 0.0
             )
 
@@ -411,7 +411,8 @@ class GroupNorm(Layer):
                 attr=self._bias_attr, shape=param_shape, is_bias=True
             )
             self.bias.stop_gradient = (
-                self._bias_attr != None and self._bias_attr.learning_rate == 0.0
+                self._bias_attr is not None
+                and self._bias_attr.learning_rate == 0.0
             )
 
     def forward(self, input):
@@ -635,7 +636,7 @@ class _BatchNormBase(Layer):
                 default_initializer=Constant(1.0),
             )
             self.weight.stop_gradient = (
-                self._weight_attr != None
+                self._weight_attr is not None
                 and self._weight_attr.learning_rate == 0.0
             )
 
@@ -656,7 +657,8 @@ class _BatchNormBase(Layer):
                 is_bias=True,
             )
             self.bias.stop_gradient = (
-                self._bias_attr != None and self._bias_attr.learning_rate == 0.0
+                self._bias_attr is not None
+                and self._bias_attr.learning_rate == 0.0
             )
 
         moving_mean_name = None
@@ -1178,15 +1180,14 @@ class SyncBatchNorm(_BatchNormBase):
         if in_dygraph_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,
-                self.weight,
-                self.bias,
                 self._mean,
                 self._variance,
+                self.weight,
+                self.bias,
+                not self.training,
                 self._momentum,
                 self._epsilon,
                 self._data_format,
-                not self.training,
-                False,
                 False,
                 False,
             )
@@ -1293,15 +1294,15 @@ class SyncBatchNorm(_BatchNormBase):
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
             if (
-                layer._weight_attr != None
+                layer._weight_attr is not None
                 and not isinstance(layer._weight_attr, bool)
-                and layer._weight_attr.name != None
+                and layer._weight_attr.name is not None
             ):
                 layer._weight_attr.name = layer._weight_attr.name + '_sync'
             if (
-                layer._bias_attr != None
+                layer._bias_attr is not None
                 and not isinstance(layer._bias_attr, bool)
-                and layer._bias_attr.name != None
+                and layer._bias_attr.name is not None
             ):
                 layer._bias_attr.name = layer._bias_attr.name + '_sync'
 

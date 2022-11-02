@@ -171,7 +171,7 @@ package:
 def meta_build_linux(
     var, python_str, paddle_version, build_var, build_name_str, cuda_str=None
 ):
-    if cuda_str == None:
+    if cuda_str is None:
         package_str = (
             """
 package:
@@ -192,7 +192,7 @@ package:
     )
     meta_build = var.build + build_name_str
     meta_str = package_str + meta_build + requirement
-    if not (cuda_str == None):
+    if not (cuda_str is None):
         meta_str = meta_str + cuda_str
     meta_str = meta_str + var.test + var.about
 
@@ -209,7 +209,7 @@ package:
 def meta_build_windows(
     var, python_str, paddle_version, blt_var, build_name_str, cuda_str=None
 ):
-    if cuda_str == None:
+    if cuda_str is None:
         package_str = (
             """
 package:
@@ -235,7 +235,7 @@ package:
     meta_build = var.build + build_name_str
     meta_str = package_str + meta_build + requirement
 
-    if not (cuda_str == None):
+    if not (cuda_str is None):
         meta_str = meta_str + cuda_str
 
     blt_str = var.blt_const + blt_var

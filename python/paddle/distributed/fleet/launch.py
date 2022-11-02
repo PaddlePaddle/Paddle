@@ -796,7 +796,7 @@ def launch():
         )  # which_distributed_mode must modify args.backend
     else:
         assert (
-            args.run_mode == 'collective' or args.run_mode == None
+            args.run_mode == 'collective' or args.run_mode is None
         ), "When backend is not 'auto', run mode must be collective"
         check_backend(args.backend)
         distribute_mode = DistributeMode.COLLECTIVE
