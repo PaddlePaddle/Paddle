@@ -93,10 +93,15 @@ void GraphPatternDetector::operator()(Graph *graph,
   }
 
   auto subgraphs = DetectPatterns();
+  VLOG(4) << "subgraphs: " << subgraphs.size();
   UniquePatterns(&subgraphs);
+  VLOG(4) << "subgraphs: " << subgraphs.size();
   SortSubgraphs(&subgraphs);
+  VLOG(4) << "subgraphs: " << subgraphs.size();
   RemoveOverlappedMatch(&subgraphs);
+  VLOG(4) << "subgraphs: " << subgraphs.size();
   ValidateByNodeRole(&subgraphs);
+  VLOG(4) << "subgraphs: " << subgraphs.size();
 
   if (subgraphs.empty()) return;
 
@@ -154,11 +159,13 @@ void GraphPatternDetector::ValidateByNodeRole(
               if (item.first->IsIntermediate()) {
                 for (auto *x : item.second->inputs) {
                   if (!ios.count(x)) {
+                    VLOG(4) << x->Name();
                     return true;
                   }
                 }
                 for (auto *x : item.second->outputs) {
                   if (!ios.count(x)) {
+                     VLOG(4) << x->Name();
                     return true;
                   }
                 }
@@ -971,13 +978,13 @@ PDNode *patterns::Squeeze2Transpose2::operator()(
   auto *squeeze2_op =
       pattern->NewNode(squeeze2_op_repr())->assert_is_op("squeeze2");
   auto *squeeze2_op_out = pattern->NewNode(squeeze2_op_out_repr())
-                             ->AsOutput()
+                             ->AsIntermediate()
                              ->assert_is_op_output("squeeze2", "Out")
                               ->assert_is_op_input("transpose2", "X");
   auto *transpose2_op = pattern->NewNode(transpose2_op_repr())
                            ->assert_is_op("transpose2");
   auto *transpose2_op_out = pattern->NewNode(transpose2_op_out_repr())
-                               ->AsIntermediate()
+                               ->AsOutput()
                                ->assert_is_op_output("transpose2", "Out");
 
   preceding_op->LinksTo({preceding_op_out});

@@ -2021,10 +2021,9 @@ struct AddSupportInt8 : public PatternBase {
 
 // Set the in_var as the input of the op
 #define IR_VAR_OP_LINK(in_var, op) \
-  in_var->outputs.clear();          \
-  in_var->outputs.push_back(op);    \
+  in_var->outputs.clear();         \
+  in_var->outputs.push_back(op);   \
   op->inputs.push_back(in_var);
-
 
 }  // namespace ir
 }  // namespace framework

@@ -48,7 +48,8 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
-    platform::SetInMemDescWithLogicalLayoutFusesSupport(ctx, const_cast<phi::DenseTensor*>(x), x->mem_desc());
+    platform::SetInMemDescWithLogicalLayoutFusesSupport(
+        ctx, const_cast<phi::DenseTensor*>(x), x->mem_desc());
     auto x_vec_dims = phi::vectorize(x->dims());
 
     framework::proto::VarType::Type x_paddle_type =
