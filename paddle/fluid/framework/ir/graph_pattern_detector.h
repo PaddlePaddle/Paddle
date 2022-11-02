@@ -539,6 +539,21 @@ struct OperatorActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
+struct Squeeze2Transpose2 : public PatternBase {
+  Squeeze2Transpose2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "squeeze2_transpose2") {}
+
+  PDNode* operator()(const std::string& operator_type,
+                     const int num_of_outputs);
+
+  PATTERN_DECL_NODE(preceding_op);
+  PATTERN_DECL_NODE(preceding_op_out);
+  PATTERN_DECL_NODE(squeeze2_op);
+  PATTERN_DECL_NODE(squeeze2_op_out);
+  PATTERN_DECL_NODE(transpose2_op);
+  PATTERN_DECL_NODE(transpose2_op_out);
+};
+
 // SEQCONV with Elementwise_Add ReLU
 // op: seqconv + elementwise_add + relu
 // named nodes:
@@ -2003,6 +2018,13 @@ struct AddSupportInt8 : public PatternBase {
   op->outputs.push_back(out_var);   \
   out_var->inputs.clear();          \
   out_var->inputs.push_back(op);
+
+// Set the in_var as the input of the op
+#define IR_VAR_OP_LINK(in_var, op) \
+  in_var->outputs.clear();          \
+  in_var->outputs.push_back(op);    \
+  op->inputs.push_back(in_var);
+
 
 }  // namespace ir
 }  // namespace framework

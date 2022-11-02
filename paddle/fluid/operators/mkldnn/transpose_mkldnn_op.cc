@@ -37,7 +37,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto& dnnl_engine = dev_ctx.GetEngine();
     std::vector<int> transpose_axis = ctx.Attr<std::vector<int>>("axis");
     int ndims = transpose_axis.size();
-    auto* x = ctx.Input<Tensor>("X");
+    const phi::DenseTensor* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
@@ -48,6 +48,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       return;
     }
 
+    platform::SetInMemDescWithLogicalLayoutFusesSupport(ctx, const_cast<phi::DenseTensor*>(x), x->mem_desc());
     auto x_vec_dims = phi::vectorize(x->dims());
 
     framework::proto::VarType::Type x_paddle_type =
