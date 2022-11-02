@@ -52,7 +52,7 @@ class OpBase {
   const framework::AttributeMap& Attrs() const { return attrs_; }
 
   const framework::AttributeMap& DefaultAttrsMap() const {
-    return *default_attrs_;
+    return default_attrs_;
   }
 
   const framework::OpInfo& Info() const {
@@ -109,7 +109,7 @@ class OpBase {
   void SetAttrMap(const framework::AttributeMap& attrs) { attrs_ = attrs; }
 
   void SetDefaultAttrsMap(const framework::AttributeMap& default_attrs) {
-    default_attrs_ = &default_attrs;
+    default_attrs_ = default_attrs;
   }
 
   void SetAttr(const std::string& name, const framework::Attribute& v) {
@@ -123,12 +123,12 @@ class OpBase {
 
   const framework::AttributeMap& Attrs() { return attrs_; }
 
-  const framework::AttributeMap& DefaultAttrsMap() { return *default_attrs_; }
+  const framework::AttributeMap& DefaultAttrsMap() { return default_attrs_; }
 
   bool HasAttr(const std::string& name) const {
-    VLOG(6) << "Default attrs: " << default_attrs_;
+    VLOG(6) << "Default attrs: " << &default_attrs_;
     VLOG(6) << "attrs: " << &attrs_;
-    return attrs_.count(name) > 0 || default_attrs_->count(name) > 0;
+    return attrs_.count(name) > 0 || default_attrs_.count(name) > 0;
   }
 
   const framework::Attribute& GetAttr(const std::string& name) const {
@@ -136,10 +136,10 @@ class OpBase {
     if (it != attrs_.end()) {
       return it->second;
     } else {
-      auto it_default = default_attrs_->find(name);
+      auto it_default = default_attrs_.find(name);
       PADDLE_ENFORCE_NE(
           it_default,
-          default_attrs_->end(),
+          default_attrs_.end(),
           platform::errors::NotFound("can not find attribute [%s]", name));
       return it_default->second;
     }
@@ -221,7 +221,7 @@ class OpBase {
   NameVarMap<VariableWrapper> ins_;
   NameVarMap<VariableWrapper> outs_;
   framework::AttributeMap attrs_;
-  const framework::AttributeMap* default_attrs_;
+  framework::AttributeMap default_attrs_;
   std::unique_ptr<framework::OperatorBase> op_;
   platform::Place place_;
   size_t id_{-1UL};
