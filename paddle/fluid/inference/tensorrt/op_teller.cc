@@ -803,8 +803,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
       if (resize_inputs.find("OutSize") != resize_inputs.end()) {
-        if (desc.Input("OutSize").size() >= 1) {
-          VLOG(3) << "The Paddle-TRT doesn't support the OutSize for op_type "
+        if (!with_dynamic_shape) {
+          VLOG(3) << "Static shape don't support the OutSize for op_type "
                   << op_type;
           return false;
         }
