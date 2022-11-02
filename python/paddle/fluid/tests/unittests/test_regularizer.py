@@ -37,7 +37,7 @@ class TestL2DecayRegularizer(unittest.TestCase):
             name="mul.x",
             regularizer=regularizer.L2DecayRegularizer(0.5),
         )
-        self.assertTrue(mul_x.regularizer is not None)
+        self.assertIsNotNone(mul_x.regularizer)
         self.assertTrue(
             isinstance(mul_x.regularizer, regularizer.L2DecayRegularizer)
         )
@@ -82,7 +82,7 @@ class TestL1DecayRegularizer(unittest.TestCase):
             name="mul.x",
             regularizer=regularizer.L1DecayRegularizer(0.5),
         )
-        self.assertTrue(mul_x.regularizer is not None)
+        self.assertIsNotNone(mul_x.regularizer)
         self.assertTrue(
             isinstance(mul_x.regularizer, regularizer.L1DecayRegularizer)
         )

@@ -106,7 +106,7 @@ class Orthogonal(Initializer):
         if framework.in_dygraph_mode():
             with no_grad():
                 place = framework._current_expected_place()
-                normal_var = _C_ops.gaussian_random(
+                normal_var = _C_ops.gaussian(
                     flatten_shape, 0.0, 1.0, self._seed, var.dtype, place
                 )
                 q, r = _C_ops.qr(normal_var, 'reduced')

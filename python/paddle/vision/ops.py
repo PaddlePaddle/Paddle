@@ -197,7 +197,7 @@ def yolo_loss(
     """
 
     if in_dygraph_mode():
-        loss, _, _ = _C_ops.yolov3_loss(
+        loss, _, _ = _C_ops.yolo_loss(
             x,
             gt_box,
             gt_label,
@@ -347,7 +347,7 @@ def yolo_box(
     .. math::
 
         score_{conf} = \begin{case}
-                         obj, \text{if } iou_aware == flase \\
+                         obj, \text{if } iou_aware == false \\
                          obj^{1 - iou_aware_factor} * iou^{iou_aware_factor}, \text{otherwise}
                        \end{case}
 
@@ -583,7 +583,7 @@ def prior_box(
 
     if in_dygraph_mode():
         step_w, step_h = steps
-        if max_sizes == None:
+        if max_sizes is None:
             max_sizes = []
         box, var = _C_ops.prior_box(
             input,

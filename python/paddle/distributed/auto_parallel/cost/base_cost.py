@@ -587,7 +587,7 @@ class CommContext:
                         if forward_order_beta > backward_order_beta
                         else backward_order_beta
                     )
-                    if max_beta == None:
+                    if max_beta is None:
                         max_beta = beta
                     else:
                         if beta > max_beta:

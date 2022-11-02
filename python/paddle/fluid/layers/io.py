@@ -14,7 +14,6 @@
 
 import multiprocessing
 import os
-import six
 import sys
 import threading
 
@@ -523,10 +522,10 @@ def _py_reader(
                     if reader.exited:
                         break
                 feed_queue.close()
-            except Exception as ex:
+            except Exception as e:
                 feed_queue.kill()
                 logging.warn('Your decorated reader has raised an exception!')
-                six.reraise(*sys.exc_info())
+                raise e
 
         reader.thread = threading.Thread(
             target=__provider_thread__, args=(_current_expected_place(),)
