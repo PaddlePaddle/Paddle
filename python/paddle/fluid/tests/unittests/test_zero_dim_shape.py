@@ -165,6 +165,14 @@ reduce_api_list = [
     paddle.mean,
     paddle.nansum,
     paddle.nanmean,
+    paddle.min,
+    paddle.max,
+    paddle.amin,
+    paddle.amax,
+    paddle.prod,
+    paddle.logsumexp,
+    paddle.all,
+    paddle.any,
 ]
 
 
@@ -173,15 +181,21 @@ class TestReduceAPI(unittest.TestCase):
         paddle.disable_static()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         for api in reduce_api_list:
-            x = paddle.rand([])
-            x.stop_gradient = False
-            out = api(x, None)
-            out.backward()
+            if api in [paddle.all, paddle.any]:
+                x = paddle.randint(0, 2, []).astype('bool')
+                out = api(x, None)
+                self.assertEqual(x.shape, [])
+                self.assertEqual(out.shape, [])
+            else:
+                x = paddle.rand([])
+                x.stop_gradient = False
+                out = api(x, None)
+                out.backward()
 
-            self.assertEqual(x.shape, [])
-            self.assertEqual(x.grad.shape, [])
-            self.assertEqual(out.shape, [])
-            self.assertEqual(out.grad.shape, [])
+                self.assertEqual(x.shape, [])
+                self.assertEqual(x.grad.shape, [])
+                self.assertEqual(out.shape, [])
+                self.assertEqual(out.grad.shape, [])
 
         paddle.enable_static()
 
@@ -190,11 +204,13 @@ class TestReduceAPI(unittest.TestCase):
         for api in reduce_api_list:
             main_prog = fluid.Program()
             with fluid.program_guard(main_prog, fluid.Program()):
-                x = paddle.rand([])
+                if api in [paddle.all, paddle.any]:
+                    x = paddle.randint(0, 2, []).astype('bool')
+                else:
+                    x = paddle.rand([])
 
                 x.stop_gradient = False
                 out = api(x, None)
-                fluid.backward.append_backward(out)
 
                 # Test compile shape, grad is always [1]
                 self.assertEqual(x.shape, ())
