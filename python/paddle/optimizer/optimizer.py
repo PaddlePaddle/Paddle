@@ -704,7 +704,7 @@ class Optimizer(object):
                     name, param.name
                 )
             )
-        if shape == None:
+        if shape is None:
             shape = param.shape
         assert isinstance(self.helper, LayerHelper)
 

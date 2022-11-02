@@ -354,7 +354,7 @@ def convert_op_proto_into_mlir(op_descs):
                     attr in skipped_attr_list
                 ):
                     continue
-                if op_proto[ATTRS][attr][DEFAULT_VALUE] != None:
+                if op_proto[ATTRS][attr][DEFAULT_VALUE] is not None:
                     if op_proto[ATTRS][attr][TYPE] in attr_mlir_converter:
                         default_value = str(
                             op_proto[ATTRS][attr][DEFAULT_VALUE]

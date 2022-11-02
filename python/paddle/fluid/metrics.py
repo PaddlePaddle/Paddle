@@ -99,7 +99,7 @@ class MetricBase(object):
             The MetricBase or its succeed classes
 
         """
-        self._name = str(name) if name != None else self.__class__.__name__
+        self._name = str(name) if name is not None else self.__class__.__name__
 
     def __str__(self):
         return self._name

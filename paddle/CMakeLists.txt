@@ -49,20 +49,17 @@ endif()
 
 list(LENGTH test_names len)
 if(${len} GREATER_EQUAL 1)
-  message("Total tests: ${len}")
+  message("Total cpp tests using dynamic link: ${len}")
   math(EXPR stop "${len} - 1")
   foreach(idx RANGE ${stop})
     if(WITH_TESTING)
       list(GET test_srcs ${idx} test_src)
       list(GET test_names ${idx} test_name)
       get_property(test_arg GLOBAL PROPERTY "${test_name}_ARGS")
-      message("add test ${test_name}")
+      # message("add test ${test_name}")
       add_executable(${test_name} ${test_src})
-      # target_link_libraries(
-      #   ${test_name}
-      #   ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/libpaddle${POSTFIX})
-      target_link_libraries(${test_name} $<TARGET_LINKER_FILE:${paddle_lib}>)
       target_link_libraries(${test_name} paddle_gtest_main_new)
+      target_link_libraries(${test_name} $<TARGET_LINKER_FILE:${paddle_lib}>)
       add_dependencies(${test_name} ${paddle_lib} paddle_gtest_main_new)
       if(WITH_GPU)
         target_link_libraries(${test_name} ${CUDA_CUDART_LIBRARY}
@@ -74,6 +71,9 @@ if(${len} GREATER_EQUAL 1)
       if(APPLE)
         target_link_libraries(${test_name}
                               "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}>")
+      endif()
+      if(WITH_XPU)
+        target_link_libraries(${test_name} xpulib)
       endif()
       if(NOT
          ("${test_name}" STREQUAL "c_broadcast_op_npu_test"

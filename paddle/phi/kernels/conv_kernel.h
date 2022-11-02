@@ -40,9 +40,6 @@ void Conv3DKernel(const Context& dev_ctx,
                   int groups,
                   const std::vector<int>& dilations,
                   const std::string& data_format,
-                  bool use_addto,
-                  int workspace_size_MB,
-                  bool exhaustive_search,
                   DenseTensor* out);
 
 template <typename T, typename Context>
@@ -55,10 +52,6 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          int groups,
                          const std::vector<int>& dilations,
                          const std::string& data_format,
-                         bool use_addto,
-                         int workspace_size_MB,
-                         bool exhaustive_search,
-                         bool fuse_relu,
                          DenseTensor* out);
 
 }  // namespace phi

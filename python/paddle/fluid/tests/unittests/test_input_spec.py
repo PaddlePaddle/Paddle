@@ -32,7 +32,7 @@ class TestInputSpec(unittest.TestCase):
         self.assertEqual(
             tensor_spec.dtype, convert_np_dtype_to_dtype_('float32')
         )
-        self.assertEqual(tensor_spec.name, None)
+        self.assertIsNone(tensor_spec.name)
 
     def test_from_tensor(self):
         x_bool = fluid.layers.fill_constant(shape=[1], dtype='bool', value=True)
@@ -51,7 +51,7 @@ class TestInputSpec(unittest.TestCase):
             x_np_spec.dtype, convert_np_dtype_to_dtype_(x_numpy.dtype)
         )
         self.assertEqual(x_np_spec.shape, x_numpy.shape)
-        self.assertEqual(x_np_spec.name, None)
+        self.assertIsNone(x_np_spec.name)
 
         x_numpy2 = np.array([1, 2, 3, 4]).astype('int64')
         x_np_spec2 = InputSpec.from_numpy(x_numpy2, name='x_np_int64')

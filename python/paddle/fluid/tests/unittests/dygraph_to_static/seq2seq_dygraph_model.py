@@ -246,7 +246,7 @@ class BaseModel(fluid.dygraph.Layer):
                 enc_new_hidden, enc_new_cell = self.enc_units[i](
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     enc_step_input = fluid.layers.dropout(
                         enc_new_hidden,
                         dropout_prob=self.dropout,
@@ -278,7 +278,7 @@ class BaseModel(fluid.dygraph.Layer):
                 )
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     step_input = fluid.layers.dropout(
                         new_hidden,
                         dropout_prob=self.dropout,
@@ -346,7 +346,7 @@ class BaseModel(fluid.dygraph.Layer):
                 enc_new_hidden, enc_new_cell = self.enc_units[i](
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     enc_step_input = fluid.layers.dropout(
                         enc_new_hidden,
                         dropout_prob=self.dropout,
@@ -418,7 +418,7 @@ class BaseModel(fluid.dygraph.Layer):
                 )
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     step_input = fluid.layers.dropout(
                         new_hidden,
                         dropout_prob=self.dropout,
@@ -760,7 +760,7 @@ class AttentionModel(fluid.dygraph.Layer):
                 enc_new_hidden, enc_new_cell = self.enc_units[i](
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     enc_step_input = fluid.layers.dropout(
                         enc_new_hidden,
                         dropout_prob=self.dropout,
@@ -803,7 +803,7 @@ class AttentionModel(fluid.dygraph.Layer):
                 )
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     step_input = fluid.layers.dropout(
                         new_hidden,
                         dropout_prob=self.dropout,

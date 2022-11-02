@@ -170,7 +170,7 @@ class Collective(Fleet):
         """
         This function save persistables and current epoch num to path.
         """
-        if main_program == None:
+        if main_program is None:
             main_program = self._transpiled_program
 
         m = PaddleModel(executor, main_program)
@@ -203,7 +203,7 @@ class Collective(Fleet):
         This function load persistables and current epoch num from path.
         """
 
-        if main_program == None:
+        if main_program is None:
             main_program = self._transpiled_program
 
         m = PaddleModel(executor, main_program)

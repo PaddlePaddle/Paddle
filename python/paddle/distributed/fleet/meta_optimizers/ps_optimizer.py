@@ -133,7 +133,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
         )
-        if startup_program == None:
+        if startup_program is None:
             startup_program = paddle.static.default_startup_program()
 
         #        print("program after inner optimizer minimize:",

@@ -204,13 +204,13 @@ class StrategyCompiler(StrategyCompilerBase):
             )
 
             return_meta = (
-                None if meta_optimizers == None else meta_optimizers[0]
+                None if meta_optimizers is None else meta_optimizers[0]
             )
             return_graph = (
-                None if graph_optimizers == None else graph_optimizers[0]
+                None if graph_optimizers is None else graph_optimizers[0]
             )
 
-            if meta_optimizers == None or graph_optimizers == None:
+            if meta_optimizers is None or graph_optimizers is None:
                 return return_meta, return_graph
 
             # do heuristic filter here, if any meta optimizer in graph optimizers is in

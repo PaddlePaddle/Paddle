@@ -70,7 +70,6 @@ class Adagrad(Optimizer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             inp = paddle.rand(shape=[10, 10])
             linear = paddle.nn.Linear(10, 10)

@@ -139,9 +139,9 @@ class TestASPDynamicOptimize(unittest.TestCase):
                 name, None
             )
             if ASPHelper._is_supported_layer(program, name):
-                self.assertTrue(mask_var is not None)
+                self.assertIsNotNone(mask_var)
             else:
-                self.assertTrue(mask_var is None)
+                self.assertIsNone(mask_var)
 
     def test_asp_training(self):
         self.optimizer = paddle.incubate.asp.decorate(self.optimizer)

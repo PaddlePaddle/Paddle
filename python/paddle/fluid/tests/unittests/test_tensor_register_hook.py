@@ -494,7 +494,7 @@ class TestTensorRegisterHook(unittest.TestCase):
         )[0]
 
         z = y + dx
-        self.assertTrue(x.grad is None)
+        self.assertIsNone(x.grad)
 
         # If create_graph = True, the gradient of dx
         # would be backpropagated. Therefore,

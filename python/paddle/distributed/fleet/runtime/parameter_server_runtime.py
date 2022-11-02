@@ -82,7 +82,7 @@ class ParameterServerRuntime(RuntimeBase):
     def _load_sparse_params(
         self, executor, dirname, varnames, main_program=None
     ):
-        assert vars != None
+        assert vars is not None
         check_vars = []
         load_prog = Program()
         load_block = load_prog.global_block()

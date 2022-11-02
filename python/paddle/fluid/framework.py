@@ -2880,7 +2880,8 @@ class Operator(object):
                     )
                 if 'force_cpu' in op_attrs:
                     if (
-                        type == 'less_than' and op_attrs['force_cpu'] != None
+                        type == 'less_than'
+                        and op_attrs['force_cpu'] is not None
                     ) or op_attrs['force_cpu'] != False:
                         warnings.warn(
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "

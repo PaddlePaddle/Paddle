@@ -395,7 +395,7 @@ class TestMLP(unittest.TestCase):
 
         # test fill_constant_batch_size_like
 
-        self.assertTrue(fill_op is not None)
+        self.assertIsNotNone(fill_op)
         ref_shape = [-1, 8, 0, 48]
         shape = fill_op.attr("shape")
         self.assertTrue(ref_shape == shape)

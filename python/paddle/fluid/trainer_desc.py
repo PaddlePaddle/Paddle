@@ -354,7 +354,7 @@ class DistMultiTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super()._gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
-        if self._program == None:
+        if self._program is None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
@@ -378,7 +378,7 @@ class HeterXpuTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super()._gen_trainer_desc()
         self.proto_desc.class_name = "HeterXpuTrainer"
-        if self._program == None:
+        if self._program is None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
@@ -402,7 +402,7 @@ class PSGPUTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super()._gen_trainer_desc()
         self.proto_desc.class_name = "PSGPUTrainer"
-        if self._program == None:
+        if self._program is None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
@@ -426,7 +426,7 @@ class HeterPipelineTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super()._gen_trainer_desc()
         self.proto_desc.class_name = "HeterPipelineTrainer"
-        if self._program == None:
+        if self._program is None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
@@ -450,7 +450,7 @@ class PipelineTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super()._gen_trainer_desc()
         self.proto_desc.class_name = "PipelineTrainer"
-        if self._program == None:
+        if self._program is None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)

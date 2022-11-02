@@ -602,7 +602,7 @@ class TestAutoParallelMapper(unittest.TestCase):
                 outputs={'Out': output},
             )
             self.assertEqual(get_comm_volume(broadcast_op, 0, 1), 400)
-            self.assertEqual(get_comm_volume(broadcast_op, 1, 0), None)
+            self.assertIsNone(get_comm_volume(broadcast_op, 1, 0))
             allgather_op = train_program.global_block().append_op(
                 type="c_allgather",
                 inputs={'X': input},
@@ -610,14 +610,14 @@ class TestAutoParallelMapper(unittest.TestCase):
                 outputs={'Out': output},
             )
             self.assertEqual(get_comm_volume(allgather_op, 0, 1), 400)
-            self.assertEqual(get_comm_volume(allgather_op, 0, 0), None)
+            self.assertIsNone(get_comm_volume(allgather_op, 0, 0))
             reduce_op = train_program.global_block().append_op(
                 type="c_reduce_sum",
                 inputs={'X': input},
                 attrs={'ring_id': ring_id, 'root_id': root_id},
                 outputs={'Out': output},
             )
-            self.assertEqual(get_comm_volume(reduce_op, 0, 1), None)
+            self.assertIsNone(get_comm_volume(reduce_op, 0, 1))
             self.assertEqual(get_comm_volume(reduce_op, 1, 0), 400)
             cast_op = train_program.global_block().append_op(
                 type="cast",
