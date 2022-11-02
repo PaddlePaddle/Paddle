@@ -221,9 +221,12 @@ class ExtraInfoUtils {
 
   // TODO(chenweihang): move these extra inputs into op_compat.yaml
   std::unordered_map<std::string, std::vector<std::string>>
-      g_extra_input_names_map_ = {{"conv2d", {"Bias", "ResidualData"}},
-                                  {"conv2d_grad", {"Bias"}},
-                                  {"conv2d_fusion", {"Bias", "ResidualData"}}};
+      g_extra_input_names_map_ = {
+          {"conv2d", {"Bias", "ResidualData"}},
+          {"conv2d_grad", {"Bias"}},
+          {"depthwise_conv2d", {"Bias", "ResidualData"}},
+          {"depthwise_conv2d_grad", {"Bias"}},
+          {"conv3d", {"ResidualData"}}};
   std::vector<std::string> empty_extra_input_names_;
 };
 
