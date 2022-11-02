@@ -519,4 +519,3 @@ void DependencyBuilder::ShrinkDownstreamMap() {
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
-

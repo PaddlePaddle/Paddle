@@ -898,7 +898,8 @@ void InterpreterCore::RunNextInstructions(
     for (auto next_id : direct_run_ops) {
       if (IsReady(next_id)) {
         // only keep one sync op running in current thread
-        if (first_op == -1 && vec_instruction_[next_id].KernelType() == OpFuncType::kQueueSync) {
+        if (first_op == -1 &&
+            vec_instruction_[next_id].KernelType() == OpFuncType::kQueueSync) {
           first_op = next_id;
           continue;
         }
@@ -934,13 +935,13 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
 
     try {
       interpreter::WaitEvent(instr_node, place_);
-      
-      if(!instr_node.IsArtificial()) {
+
+      if (!instr_node.IsArtificial()) {
         RunInstruction(instr_node);
         CheckGC(instr_node);
         interpreter::LogDeviceMemoryStats(place_);
       }
-      
+
       interpreter::RecordEvent(instr_node, place_);
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
@@ -1179,5 +1180,3 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCore(
 
 }  // namespace framework
 }  // namespace paddle
-
-

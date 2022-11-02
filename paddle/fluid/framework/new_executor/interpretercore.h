@@ -166,5 +166,3 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCore(
 
 }  // namespace framework
 }  // namespace paddle
-
-

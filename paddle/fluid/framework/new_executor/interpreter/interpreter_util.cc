@@ -303,16 +303,24 @@ void BuildVariableScope(const framework::BlockDesc& block,
   }
 }
 
-OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node, const platform::Place& place) {
-  if(platform::is_cpu_place(place)) {
+OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
+                             const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
     return OpFuncType::kQueueSync;
   }
 
-  PADDLE_ENFORCE_EQ(IsSupportedHeterPlace(place), true, phi::errors::Fatal("Unsupported current place %s", place));
+  PADDLE_ENFORCE_EQ(IsSupportedHeterPlace(place),
+                    true,
+                    phi::errors::Fatal("Unsupported current place %s", place));
 
-  // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU computing. They execute serially in device thread and block CUDA kernel launching in other GPU OPs. To improve performance, set them as kQueueSync and so that they would be dispatched to host thread.
+  // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU
+  // computing. They execute serially in device thread and block CUDA kernel
+  // launching in other GPU OPs. To improve performance, set them as kQueueSync
+  // and so that they would be dispatched to host thread.
   std::shared_ptr<OperatorBase> op = op_func_node.operator_base_;
-  if(op->Type() == kCoalesceTensor && op->Attr<bool>("set_constant") == false && op->Attr<bool>("copy_data") == false) {
+  if (op->Type() == kCoalesceTensor &&
+      op->Attr<bool>("set_constant") == false &&
+      op->Attr<bool>("copy_data") == false) {
     return OpFuncType::kQueueSync;
   }
 
@@ -681,7 +689,8 @@ void BuildOpFuncList(const platform::Place& place,
           dev_ctx = pool.Get(kernel_type.place_);
         }
         op_func_node.dev_ctx_ = dev_ctx;
-        op_func_node.type_ = AnalyseOpFuncType(op_func_node,kernel_type.place_);
+        op_func_node.type_ =
+            AnalyseOpFuncType(op_func_node, kernel_type.place_);
 
         VLOG(3) << op_with_kernel->Type()
                 << " : finally selected kernel_key: " << kernel_type;
@@ -830,5 +839,3 @@ void LogDeviceMemoryStats(const platform::Place& place) {
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
-
-

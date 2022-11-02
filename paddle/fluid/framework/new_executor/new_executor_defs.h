@@ -307,7 +307,7 @@ class Instruction {
               const platform::DeviceContext& dev_ctx,
               const Priority priority);
 
-  bool IsArtificial() const {return is_artificial_;}
+  bool IsArtificial() const { return is_artificial_; }
 
   size_t Id() const;
 
@@ -372,7 +372,8 @@ class Instruction {
   Priority GetPriority() const { return priority_; }
 
  private:
-  bool is_artificial_; // Instruction is artificial means that it is only used to assist scheduling and no need to be executed. 
+  bool is_artificial_;  // Instruction is artificial means that it is only used
+                        // to assist scheduling and no need to be executed.
 
   size_t id_;
   OpFuncNode op_func_node_;

@@ -239,7 +239,8 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
  */
 bool StreamAnalyzer::IsDirectRun(Instruction& cur_instr,
                                  const Instruction& next_instr) {
-  if (cur_instr.KernelType() == next_instr.KernelType() && (&cur_instr.DeviceContext() == &next_instr.DeviceContext())){
+  if (cur_instr.KernelType() == next_instr.KernelType() &&
+      (&cur_instr.DeviceContext() == &next_instr.DeviceContext())) {
     return true;
   }
 
@@ -247,7 +248,7 @@ bool StreamAnalyzer::IsDirectRun(Instruction& cur_instr,
   if (platform::is_ipu_place(place_) || platform::is_xpu_place(place_)) {
     return true;
   }
-    
+
   // npu d2h kernel is asynchronous.
   if (platform::is_npu_place(place_) || platform::is_custom_place(place_)) {
     return interpreter::IsCpuOp(cur_instr) ||
@@ -276,5 +277,3 @@ platform::DeviceType StreamAnalyzer::GetWaiterType(const Instruction& instr) {
 
 }  // namespace framework
 }  // namespace paddle
-
-
