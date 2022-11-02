@@ -77,7 +77,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     bool input_persis = true;
     // map is used to record how many time a name string occures in the whole
     // graph's nodes
-    std::map<std::string, int> map;
+    std::unordered_map<std::string, int> map;
     for (auto in_node : op_node->inputs) {
       map[in_node->Name()] = 0;
       if (!in_node->Var()->Persistable()) {
