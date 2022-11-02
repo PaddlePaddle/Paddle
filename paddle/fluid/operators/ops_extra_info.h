@@ -98,8 +98,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fuse_activation_scale", ExtraAttrProperty::ONEDNN},
         {"fuse_alpha", ExtraAttrProperty::ONEDNN},
         {"fuse_beta", ExtraAttrProperty::ONEDNN},
-        {"fuse_brelu", ExtraAttrProperty::ONEDNN},
-        {"fuse_brelu_threshold", ExtraAttrProperty::ONEDNN},
         {"fuse_relu", ExtraAttrProperty::ONEDNN},
         {"fuse_residual_connection", ExtraAttrProperty::ONEDNN},
         {"fuse_with_relu", ExtraAttrProperty::ONEDNN},

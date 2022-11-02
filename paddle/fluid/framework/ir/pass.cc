@@ -39,6 +39,7 @@ namespace ir {
 static const char kParamScopeAttr[] = "__param_scope__";
 
 static const std::vector<std::string> support_subgraph_passes = {
+    "simplify_with_basic_ops_pass",
     "fused_multi_transformer_encoder_pass",
     "fused_multi_transformer_decoder_pass",
     "fused_multi_transformer_encoder_fuse_qkv_pass",

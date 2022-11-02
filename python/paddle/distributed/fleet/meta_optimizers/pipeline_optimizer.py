@@ -66,7 +66,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         if self.use_sharding:
             return False
 
-        if self.user_defined_strategy.pipeline == True:
+        if self.user_defined_strategy.pipeline:
             return True
         return False
 

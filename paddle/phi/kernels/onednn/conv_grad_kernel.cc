@@ -55,8 +55,7 @@ void ConvGradKernel(const Context& dev_ctx,
                     AllocationType::CPU,
                     phi::errors::PreconditionNotMet(
                         "Operator DNNL ConvGrad must use CPUPlace"));
-  const auto& mkldnn_engine = dev_ctx.GetEngine();
-  VLOG(1) << "ConvGrad Has is_test " << dev_ctx.HasDnnAttr("is_test");
+  const auto& onednn_engine = dev_ctx.GetEngine();
 
   const auto* bias =
       dev_ctx.HasDnnInput("Bias") ? dev_ctx.GetDnnInput("Bias") : nullptr;
@@ -133,7 +132,7 @@ void ConvGradKernel(const Context& dev_ctx,
                 weights_tz.size() == 6 ? dnnl::memory::format_tag::goidhw
                                        : dnnl::memory::format_tag::goihw;
             funcs::ReorderOneDNNHandler handler(
-                weights_tz, filter.dtype(), in_type, mkldnn_engine);
+                weights_tz, filter.dtype(), in_type, onednn_engine);
             auto reorder_dst_memory_p = handler.AcquireDstMemory(
                 filter_grad, out_format, dev_ctx.GetPlace());
 

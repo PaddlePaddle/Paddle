@@ -140,7 +140,7 @@ class AddLrDecayTablePass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
-        if hasattr(attrs['origin_main_program'], 'lr_sheduler') == False:
+        if not hasattr(attrs['origin_main_program'], 'lr_sheduler'):
             return
 
         assert isinstance(

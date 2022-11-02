@@ -452,7 +452,6 @@ class CMakeGenerator:
         archs = _proccess_archs(archs)
         os_ = _process_os(os_)
         run_serial = _process_run_serial(run_serial)
-        run_type = _process_run_type(run_type)
 
         cmd = ""
 
@@ -460,6 +459,7 @@ class CMakeGenerator:
             cmd += f"if ({c})\n"
 
         if launcher[-3:] == ".sh":
+            run_type = _process_run_type(run_type)
             dist_ut_port = self.port_manager.process_dist_port_num(num_port)
             dist_ut_port = self.port_manager.gset_port(name, dist_ut_port)
             cmd += f'''if({archs} AND {os_})
@@ -475,6 +475,12 @@ class CMakeGenerator:
     '''
             run_type_str = ""
         else:
+            try:
+                run_type = _process_run_type(run_type)
+            except Exception as e:
+                assert (
+                    run_type.strip() == ""
+                ), f"{e}\nIf use test_runner.py, the run_type can be ''"
             cmd += f'''if({archs} AND {os_})
         py_test_modules(
         {name}
@@ -493,7 +499,11 @@ class CMakeGenerator:
         run_serial_str = (
             f' RUN_SERIAL {run_serial}' if len(run_serial) > 0 else ''
         )
-        if len(time_out_str) > 0 or len(run_serial_str) > 0:
+        if (
+            len(time_out_str) > 0
+            or len(run_serial_str) > 0
+            or len(run_type_str) > 0
+        ):
             set_properties = f'''
         set_tests_properties({name} PROPERTIES{time_out_str}{run_serial_str}{run_type_str})'''
         else:
