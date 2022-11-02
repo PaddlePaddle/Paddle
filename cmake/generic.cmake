@@ -385,11 +385,11 @@ function(cc_library TARGET_NAME)
         if(WIN32)
           target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
         else()
-          target_link_libraries(${TARGET_NAME} "-Wl,-undefined,dynamic_lookup")
+          target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES}
+                                "-Wl,-undefined,dynamic_lookup")
         endif()
       endif()
-      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS}
-                            ${PYTHON_LIBRARIES})
+      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       common_link(${TARGET_NAME})
     endif()
 
