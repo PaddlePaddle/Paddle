@@ -358,7 +358,7 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        for shape in [[4], [4, 32], [2, 64, 32], [1, 8, 16, 32]]:
+        for shape in [[4], [4, 32], [2, 32, 16], [1, 8, 16, 32]]:
             for op_type in [
                     "elementwise_add", "elementwise_mul", "elementwise_sub",
                     "elementwise_div", "elementwise_pow", "elementwise_min",
@@ -435,8 +435,8 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
                     "input_data2": [128, 128, 256]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [2, 64, 64],
-                    "input_data2": [2, 64, 64]
+                    "input_data1": [2, 32, 16],
+                    "input_data2": [2, 32, 16]
                 }
             elif self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
