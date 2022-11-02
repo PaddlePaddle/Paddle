@@ -1533,17 +1533,16 @@ class BatchNorm(layers.Layer):
             if in_dygraph_mode():
                 batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                     input,
-                    self.weight,
-                    self.bias,
                     self._mean,
                     self._variance,
+                    self.weight,
+                    self.bias,
+                    not self.training,
                     self._momentum,
                     self._epsilon,
                     self._data_layout,
-                    not self.training,
                     self._use_global_stats,
                     self._trainable_statistics,
-                    False,
                 )
                 return dygraph_utils._append_activation_in_dygraph(
                     batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
