@@ -153,7 +153,7 @@ if(NOT WIN32)
       -Wno-error=terminate # Warning in PADDLE_ENFORCE
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
-      -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
+      -Wno-error=maybe-uninitialized # Warning in Paddle-Lite
       ${fsanitize})
 
   if(WITH_IPU)
