@@ -107,7 +107,7 @@ def builtin_modules():
         import six
 
         moduels.append(six)
-    except:
+    except ImportError:
         pass  # do nothing
 
     return moduels
