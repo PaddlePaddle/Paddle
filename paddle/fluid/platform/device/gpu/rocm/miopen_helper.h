@@ -558,8 +558,8 @@ class ScopedActivationDescriptor {
 // cudnn_helper.h, add useless input parameter data_type here.
 inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                            const framework::proto::VarType::Type data_type) {
-  bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
+  bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
+                   paddle::platform::is_gpu_place(ctx.GetPlace());
 #ifdef PADDLE_WITH_HIP
   if (use_cudnn) {
     auto& dev_ctx = ctx.device_context<phi::GPUContext>();

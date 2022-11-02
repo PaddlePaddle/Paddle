@@ -1265,22 +1265,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
             out9 = paddle.sum(x, axis=1)  # [4, 0]
     """
-    if isinstance(axis, Variable):
-        reduce_all_flag = True if axis.shape[0] == len(x.shape) else False
-    else:
-        if axis is not None and not isinstance(axis, (list, tuple)):
-            axis = [axis]
-
-        if not axis:
-            axis = []
-
-        if len(axis) == 0:
-            reduce_all_flag = True
-        else:
-            if len(axis) == len(x.shape):
-                reduce_all_flag = True
-            else:
-                reduce_all_flag = False
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
 
     dtype_flag = False
     if dtype is not None:
@@ -1289,11 +1274,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     if in_dygraph_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
-
-    if not isinstance(axis, Variable):
-        axis = axis if axis != None and axis != [] and axis != () else [0]
-        if utils._contain_var(axis):
-            axis = utils._convert_to_tensor_list(axis)
 
     if _in_legacy_dygraph():
         if dtype_flag:
@@ -1304,7 +1284,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                 'keep_dim',
                 keepdim,
                 'reduce_all',
-                reduce_all_flag,
+                reduce_all,
                 'in_dtype',
                 x.dtype,
                 'out_dtype',
@@ -1318,10 +1298,10 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
                 'keep_dim',
                 keepdim,
                 'reduce_all',
-                reduce_all_flag,
+                reduce_all,
             )
 
-    attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all_flag}
+    attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
 
     if dtype_flag:
         attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
@@ -1362,6 +1342,54 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         type='reduce_sum', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
     )
     return out
+
+
+def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
+    """
+    Replaces NaN, positive infinity, and negative infinity values in input tensor.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        nan (float, optional): the value to replace NaNs with. Default is 0.
+        posinf (float, optional): if a Number, the value to replace positive infinity values with. If None, positive infinity values are replaced with the greatest finite value representable by input’s dtype. Default is None.
+        neginf (float, optional): if a Number, the value to replace negative infinity values with. If None, negative infinity values are replaced with the lowest finite value representable by input’s dtype. Default is None.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Results of nan_to_num operation input Tensor ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([float('nan'), 0.3, float('+inf'), float('-inf')], dtype='float32')
+            out1 = paddle.nan_to_num(x)  # [0, 0.3, 3.4028235e+38, -3.4028235e+38]
+            out2 = paddle.nan_to_num(x, nan=1)  # [1, 0.3, 3.4028235e+38, -3.4028235e+38]
+            out3 = paddle.nan_to_num(x, posinf=5)  # [0, 0.3, 5, -3.4028235e+38]
+            out4 = paddle.nan_to_num(x, nan=10, neginf=-99)  # [10, 0.3, 3.4028235e+38, -99]
+    """
+    # NOTE(tiancaishaonvjituizi): it seems that paddle handles the dtype of python float number
+    # incorrectly, so we have to explicitly contruct tensors here
+    posinf_value = paddle.full_like(x, float("+inf"))
+    neginf_value = paddle.full_like(x, float("-inf"))
+    nan = paddle.full_like(x, nan)
+    assert x.dtype in [paddle.float32, paddle.float64]
+    is_float32 = x.dtype == paddle.float32
+    if posinf is None:
+        posinf = (
+            np.finfo(np.float32).max if is_float32 else np.finfo(np.float64).max
+        )
+    posinf = paddle.full_like(x, posinf)
+    if neginf is None:
+        neginf = (
+            np.finfo(np.float32).min if is_float32 else np.finfo(np.float64).min
+        )
+    neginf = paddle.full_like(x, neginf)
+    x = paddle.where(paddle.isnan(x), nan, x)
+    x = paddle.where(x == posinf_value, posinf, x)
+    x = paddle.where(x == neginf_value, neginf, x)
+    return x
 
 
 def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
@@ -1913,7 +1941,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
         )
 
     if in_dygraph_mode():
-        return _C_ops.addmm(input, x, y, alpha, beta)
+        return _C_ops.addmm(input, x, y, beta, alpha)
     else:
         if _in_legacy_dygraph():
             out = _legacy_C_ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
@@ -2256,13 +2284,13 @@ def inverse(x, name=None):
     return out
 
 
-def _get_reduce_axis(axis):
+def _get_reduce_axis(axis, x):
     """
     Internal function for max, min, amax and amin.
     It computes the attribute reduce_all value based on axis.
     """
     if axis is not None and not isinstance(axis, list):
-        if isinstance(axis, tuple):
+        if isinstance(axis, (tuple, range)):
             axis = list(axis)
         elif isinstance(axis, int):
             axis = [axis]
@@ -2272,37 +2300,25 @@ def _get_reduce_axis(axis):
                     type(axis)
                 )
             )
-    reduce_all = True if axis == None or axis == [] else False
-    if axis == None:
+    if axis is None:
         axis = []
+    if axis == [] or len(axis) == len(x.shape):
+        reduce_all = True
+    else:
+        reduce_all = False
     return reduce_all, axis
 
 
-def _get_reduce_axis_with_tensor(axis):
+def _get_reduce_axis_with_tensor(axis, x):
     if isinstance(axis, Variable):
-        return False, axis
-    return _get_reduce_axis(axis)
-
-
-def _get_reduce_all_value(axis):
-    """
-    Internal function for max, min, amax and amin.
-    It computes the attribute reduce_all value based on axis.
-    """
-    if axis is not None and not isinstance(axis, list):
-        if isinstance(axis, tuple):
-            axis = list(axis)
-        elif isinstance(axis, int):
-            axis = [axis]
+        if axis.shape[0] == len(x.shape):
+            reduce_all = True
         else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".format(
-                    type(axis)
-                )
-            )
-
-    reduce_all = True if axis == None or axis == [] else False
-    axis = axis if axis != None and axis != [] else [0]
+            reduce_all = False
+    else:
+        reduce_all, axis = _get_reduce_axis(axis, x)
+        if utils._contain_var(axis):
+            axis = utils._convert_to_tensor_list(axis)
     return reduce_all, axis
 
 
@@ -2384,7 +2400,7 @@ def max(x, axis=None, keepdim=False, name=None):
             #[7., 8.], [[[0., 0.], [0., 0.]], [[0., 0.], [1., 1.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis)
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
         return _C_ops.max(x, axis, keepdim)
     if _in_legacy_dygraph():
@@ -2486,7 +2502,7 @@ def min(x, axis=None, keepdim=False, name=None):
             #[1., 2.], [[[1., 1.], [0., 0.]], [[0., 0.], [0., 0.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis)
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dygraph_mode():
         return _C_ops.min(x, axis, keepdim)
 
@@ -2602,7 +2618,7 @@ def amax(x, axis=None, keepdim=False, name=None):
             #[0.9., 0.9], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis(axis)
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if in_dygraph_mode():
         return _C_ops.amax(x, axis, keepdim)
     if _in_legacy_dygraph():
@@ -2716,7 +2732,7 @@ def amin(x, axis=None, keepdim=False, name=None):
             #[0.1., 0.1], [[[0., 0.3333], [0.5, 0.3333]], [[0.5, 0.3333], [1., 1.]]]
     """
 
-    reduce_all, axis = _get_reduce_axis(axis)
+    reduce_all, axis = _get_reduce_axis(axis, x)
     if in_dygraph_mode():
         return _C_ops.amin(x, axis, keepdim)
     elif _in_legacy_dygraph():
@@ -3690,7 +3706,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             dim = [0]
 
     if in_dygraph_mode():
-        return _C_ops.reduce_prod(x, dim, keepdim, reduce_all)
+        return _C_ops.prod(x, dim, keepdim, reduce_all)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_prod(
             x, 'dim', dim, 'keep_dim', keepdim, 'reduce_all', reduce_all
@@ -3905,13 +3921,13 @@ def all(x, axis=None, keepdim=False, name=None):
         return _C_ops.all(x, axis, keepdim)
 
     if _in_legacy_dygraph():
-        axis = axis if axis != None and axis != [] else [0]
+        axis = axis if axis is not None and axis != [] else [0]
         return _legacy_C_ops.reduce_all(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all_flag
         )
 
     attrs = {
-        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'dim': axis if axis is not None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag,
     }
@@ -3994,13 +4010,13 @@ def any(x, axis=None, keepdim=False, name=None):
         return _C_ops.any(x, axis, keepdim)
 
     if _in_legacy_dygraph():
-        axis = axis if axis != None and axis != [] else [0]
+        axis = axis if axis is not None and axis != [] else [0]
         return _legacy_C_ops.reduce_any(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all_flag
         )
 
     attrs = {
-        'dim': axis if axis != None and axis != [] and axis != () else [0],
+        'dim': axis if axis is not None and axis != [] and axis != () else [0],
         'keep_dim': keepdim,
         'reduce_all': reduce_all_flag,
     }
@@ -4306,7 +4322,7 @@ def logit(x, eps=None, name=None):
 
     """
 
-    if eps == None:
+    if eps is None:
         eps = 0.0
     if _in_legacy_dygraph():
         return _legacy_C_ops.logit(x, 'eps', eps)

@@ -450,7 +450,7 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
                 total_output += np.sum(np.prod(output_shape, axis=-1))
 
         if "trainable" in summary[layer]:
-            if summary[layer]["trainable"] == True:
+            if summary[layer]["trainable"]:
                 trainable_params += summary[layer]["trainable_params"]
         summary_str += line_new + "\n"
 

@@ -443,7 +443,7 @@ class CommonAccessor(Accessor):
         self.table_num = size
         self.table_dim = single_dim
 
-        if oop.type != 'adam' and adam_d2sum == True:
+        if oop.type != 'adam' and adam_d2sum:
             print('optimization algorithm is not adam, set adam_d2sum False')
             adam_d2sum = False
         print("adam_d2sum:", adam_d2sum)
@@ -703,7 +703,7 @@ class SparseTable(Table):
         if (
             ctx.is_tensor_table()
             or len(ctx.origin_varnames()) < 1
-            or (ctx.is_sparse() == False)
+            or (not ctx.is_sparse())
         ):
             return
         table_proto.table_id = ctx.table_id()
@@ -810,7 +810,7 @@ class GeoSparseTable(SparseTable):
         if (
             ctx.is_tensor_table()
             or len(ctx.origin_varnames()) < 1
-            or (ctx.is_sparse() == False)
+            or (not ctx.is_sparse())
         ):
             return
         table_proto.table_id = ctx.table_id()
@@ -845,7 +845,7 @@ class DenseTable(Table):
         if (
             ctx.is_tensor_table()
             or len(ctx.origin_varnames()) < 1
-            or (ctx.is_sparse() == True)
+            or (ctx.is_sparse())
         ):
             return
 
@@ -1281,7 +1281,7 @@ class TheOnePSRuntime(RuntimeBase):
         if not is_test:
             if (
                 self.context['ps_mode'] == DistributedMode.GEO
-                or self.is_heter_ps_mode == True
+                or self.is_heter_ps_mode
             ):
                 self._communicator.init_params(dense_map)
             else:
@@ -1298,7 +1298,7 @@ class TheOnePSRuntime(RuntimeBase):
 
         if (
             self.context['ps_mode'] == DistributedMode.GEO
-            or self.is_heter_ps_mode == True
+            or self.is_heter_ps_mode
         ):
             if not self._communicator.is_running():
                 self._communicator.start()
@@ -1326,7 +1326,7 @@ class TheOnePSRuntime(RuntimeBase):
                 )  # --> HeterClient::GetInstance
 
     def _init_coordinator(self, scopes=None):
-        if self._coordinator == None:
+        if self._coordinator is None:
             self._coordinator = Coordinator(self.string_hosts)
 
         print(">>> curr node ip: {}".format(self.coordinator_hosts[0]))
@@ -1336,7 +1336,7 @@ class TheOnePSRuntime(RuntimeBase):
         )
 
     def _make_fl_strategy(self):
-        if self._coordinator == None:
+        if self._coordinator is None:
             assert "Coordinator py object is null!"
         else:
             self._coordinator.make_fl_strategy()
@@ -1401,7 +1401,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._worker.stop_worker()
         if self.is_heter_ps_mode:
             assert (
-                self._heter_client != None
+                self._heter_client is not None
             ), "heter client should not be None in heterps mode"
             self._heter_client.stop()
 

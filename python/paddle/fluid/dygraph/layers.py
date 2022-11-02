@@ -1046,7 +1046,7 @@ class Layer(object):
                 for prefix, layer in model.named_sublayers():
                     print(prefix, layer)
         """
-        assert isinstance(sublayer, Layer) or sublayer == None
+        assert isinstance(sublayer, Layer) or sublayer is None
 
         self._sub_layers[name] = sublayer
         return sublayer

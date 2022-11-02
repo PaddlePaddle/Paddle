@@ -22,8 +22,6 @@ import hypothesis.strategies as st
 
 class TestFCActivationOneDNNFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
-        fc_in = draw(st.sampled_from([32, 64]))
-        fc_wei = draw(st.sampled_from([64]))
         activation_type = draw(
             st.sampled_from(
                 [
@@ -40,6 +38,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                     'tanh',
                     'hard_sigmoid',
                     'leaky_relu',
+                    'scale',
                 ]
             )
         )
@@ -91,6 +90,13 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                 outputs={"Out": ["activation_output"]},
                 threshold=6,
             )
+        elif activation_type == "scale":
+            activation_op = OpConfig(
+                activation_type,
+                inputs={"X": ["fc_output"]},
+                outputs={"Out": ["activation_output"]},
+                scale=draw(st.sampled_from([0.125, 0.4, 0.875, 2])),
+            )
         elif activation_type == "swish":
             activation_op = OpConfig(
                 activation_type,
@@ -111,15 +117,13 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
             ops=model_net,
             weights={
                 "fc_weight": TensorConfig(
-                    data_gen=partial(generate_input, [fc_wei, fc_wei])
+                    data_gen=partial(generate_input, [64, 64])
                 ),
-                "fc_bias": TensorConfig(
-                    data_gen=partial(generate_input, [fc_wei])
-                ),
+                "fc_bias": TensorConfig(data_gen=partial(generate_input, [64])),
             },
             inputs={
                 "fc_input": TensorConfig(
-                    data_gen=partial(generate_input, [fc_in, fc_wei])
+                    data_gen=partial(generate_input, [32, 64])
                 )
             },
             outputs=["activation_output"],
@@ -129,12 +133,22 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True, passes=["fc_act_mkldnn_fuse_pass"]
+            use_mkldnn=True,
+            passes=[
+                "fc_act_mkldnn_fuse_pass",
+                "operator_scale_onednn_fuse_pass",
+            ],
         )
         yield config, ["fc"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False, passes=["fc_act_mkldnn_fuse_pass"])
+        self.run_and_statis(
+            quant=False,
+            passes=[
+                "fc_act_mkldnn_fuse_pass",
+                "operator_scale_onednn_fuse_pass",
+            ],
+        )
 
 
 if __name__ == "__main__":

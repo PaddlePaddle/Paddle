@@ -391,7 +391,7 @@ class TestBatchNormUseGlobalStats(unittest.TestCase):
                 )
                 net2.weight = net1.weight
                 net2.bias = net1.bias
-                if self.trainable_statistics == True:
+                if self.trainable_statistics:
                     net1.training = False
                     net2.training = False
                 y1 = net1(x)

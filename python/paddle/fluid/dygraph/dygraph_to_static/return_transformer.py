@@ -85,7 +85,7 @@ class ReplaceReturnNoneTransformer(BaseTransformer):
         if isinstance(node.value, gast.Name) and node.value.id == 'None':
             node.value = None
             return node
-        if isinstance(node.value, gast.Constant) and node.value.value == None:
+        if isinstance(node.value, gast.Constant) and node.value.value is None:
             node.value = None
             return node
         return node

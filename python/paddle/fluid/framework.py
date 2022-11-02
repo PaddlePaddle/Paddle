@@ -28,7 +28,6 @@ import subprocess
 import multiprocessing
 import sys
 import logging
-from .. import compat as cpt
 from .proto import framework_pb2
 
 from . import core
@@ -2613,7 +2612,7 @@ class Variable(metaclass=VariableMetaClass):
         """Get the names of all attributes defined."""
         return self.desc.attr_names()
 
-    def _get_attr(self, name):
+    def attr(self, name):
         """
         Get the attribute by name.
 
@@ -2881,7 +2880,8 @@ class Operator(object):
                     )
                 if 'force_cpu' in op_attrs:
                     if (
-                        type == 'less_than' and op_attrs['force_cpu'] != None
+                        type == 'less_than'
+                        and op_attrs['force_cpu'] is not None
                     ) or op_attrs['force_cpu'] != False:
                         warnings.warn(
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
@@ -5778,10 +5778,10 @@ class Program(object):
 
             .. code-block:: python
 
-                import six
+                import paddle
 
                 def print_prog(prog):
-                    for name, value in sorted(six.iteritems(prog.block(0).vars)):
+                    for name, value in sorted(prog.block(0).vars.items()):
                         print(value)
                     for op in prog.block(0).ops:
                         print("op type is {}".format(op.type))
@@ -6101,7 +6101,7 @@ class Program(object):
             for j in range(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
-                    op._set_attr('is_test', True)
+                    op._set_bool_attr('is_test', True)
                 if op.type() == "batch_norm":
                     # Remove the output ReserveSpace of batch_norm if exists.
                     op.remove_output("ReserveSpace")
