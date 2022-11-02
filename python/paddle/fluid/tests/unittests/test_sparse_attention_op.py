@@ -405,7 +405,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
                 )
 
             np.testing.assert_allclose(
-                fetches_result, expected_result, rtol=1e-05, atol=1e-05
+                fetches_result[0], expected_result, rtol=1e-05, atol=1e-05
             )
 
     def test_dygraph(self):
