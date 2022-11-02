@@ -503,14 +503,14 @@ def unstack(x, axis=0, num=None):
 
     """
     if in_dygraph_mode():
-        if num == None:
+        if num is None:
             num = x.shape[axis]
         if num == 0:
             return []
         return _C_ops.unstack(x, axis, num)
 
     if _non_static_mode():
-        if num == None:
+        if num is None:
             num = x.shape[axis]
         if num == 0:
             return []
@@ -3206,7 +3206,7 @@ def tile(x, repeat_times, name=None):
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile'
     )
-    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+    if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
         raise ValueError(
             "When the date type is bool for the input 'x' of tile op, you "
             "must set its stop_gradient to be True by "
@@ -3288,7 +3288,7 @@ def expand_as(x, y, name=None):
     )
     check_type(y, 'y', Variable, 'expand_as')
 
-    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+    if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
         raise ValueError(
             "When the data type of input 'x' for expand_as is bool, "
             "you must set its stop_gradient to be False by "
@@ -3359,7 +3359,7 @@ def broadcast_to(x, shape, name=None):
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'broadcast_to'
     )
     check_type(shape, 'shape', (list, tuple, Variable), 'broadcast_to')
-    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+    if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
         raise ValueError(
             "When the data type of input 'x' for broadcast_to is bool, "
             "you must set its stop_gradient to be False by "
@@ -3457,7 +3457,7 @@ def expand(x, shape, name=None):
         'expand',
     )
     check_type(shape, 'shape', (list, tuple, Variable), 'expand')
-    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
+    if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
         raise ValueError(
             "When the data type of input 'x' for expand is bool, "
             "you must set its stop_gradient to be False by "

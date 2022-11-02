@@ -309,7 +309,7 @@ class UniformInitializer(Initializer):
 
         if framework._non_static_mode():
             if in_dygraph_mode():
-                out_var = _C_ops.uniform_random(
+                out_var = _C_ops.uniform(
                     var.shape,
                     out_dtype,
                     self._low,
@@ -711,7 +711,7 @@ class XavierInitializer(Initializer):
             if self._uniform:
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 if in_dygraph_mode():
-                    out_var = _C_ops.uniform_random(
+                    out_var = _C_ops.uniform(
                         out_var.shape,
                         out_dtype,
                         -limit,
@@ -923,7 +923,7 @@ class MSRAInitializer(Initializer):
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
                 limit = gain * math.sqrt(3.0 / float(fan_in))
                 if in_dygraph_mode():
-                    out_var = _C_ops.uniform_random(
+                    out_var = _C_ops.uniform(
                         var.shape,
                         out_dtype,
                         -limit,

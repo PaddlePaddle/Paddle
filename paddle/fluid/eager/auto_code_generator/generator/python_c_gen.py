@@ -532,7 +532,7 @@ class PythonCGenerator(GeneratorBase):
             )
             status = f_generator.run()
 
-            if status == True:
+            if status:
                 self.python_c_functions_str += (
                     f_generator.python_c_function_str + "\n"
                 )

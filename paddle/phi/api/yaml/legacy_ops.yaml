@@ -254,7 +254,7 @@
   inplace : (in_sum_1 -> out_sum_1), (in_sum_2 -> out_sum_2), (in_sum_3 -> out_sum_3), (in_num_accumulates -> out_num_accumulates), (in_old_num_accumulates -> out_old_num_accumulates), (in_num_updates -> out_num_updates)
 
 - op : batch_norm
-  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta:
     func : BatchNormInferMeta
@@ -464,7 +464,7 @@
   backward : conv2d_transpose_grad
 
 - op : conv3d
-  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor
   infer_meta :
     func : Conv3DInferMeta
@@ -551,14 +551,14 @@
   backward : deformable_conv_grad
 
 - op : depthwise_conv2d
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search, bool fuse_relu, bool use_gpudnn)
+  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_gpudnn)
   output : Tensor(out)
   infer_meta :
     func : DepthwiseConvInferMeta
-    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search]
+    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
   kernel :
     func : depthwise_conv2d
-    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format, use_addto, workspace_size_MB, exhaustive_search, fuse_relu]
+    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
     use_gpudnn : use_gpudnn
   backward : depthwise_conv2d_grad
 
@@ -1036,17 +1036,6 @@
     func : hard_tanh
   backward : hardtanh_grad
 
-- op : hierarchical_sigmoid
-  args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, int num_classes, bool remote_prefetch, int trainer_id, int64_t[] height_sections, str[] epmap, str[] table_names, bool is_sparse)
-  output : Tensor(out), Tensor(pre_out), Tensor(w_out)
-  infer_meta :
-    func : HierarchicalSigmoidInferMeta
-  optional: path, code, bias
-  kernel :
-    func : hierarchical_sigmoid
-    data_type : x
-  backward : hierarchical_sigmoid_grad
-
 - op : histogram
   args : (Tensor input, int64_t bins, int min, int max)
   output : Tensor(out)
@@ -1054,6 +1043,17 @@
     func : HistogramInferMeta
   kernel :
     func : histogram
+
+- op : hsigmoid_loss
+  args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, int num_classes, bool remote_prefetch, int trainer_id, int64_t[] height_sections, str[] epmap, str[] table_names, bool is_sparse)
+  output : Tensor(out), Tensor(pre_out), Tensor(w_out)
+  infer_meta :
+    func : HSigmoidLossInferMeta
+  optional: path, code, bias
+  kernel :
+    func : hsigmoid_loss
+    data_type : x
+  backward : hsigmoid_loss_grad
 
 - op : huber_loss
   args : (Tensor input, Tensor label, float delta)
@@ -1696,6 +1696,14 @@
     func : nms
     data_type : x
 
+- op : nonzero
+  args : (Tensor condition)
+  output : Tensor(out)
+  infer_meta :
+    func : NonZeroInferMeta
+  kernel :
+    func : nonzero
+
 - op : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)
   output : Tensor(out), Tensor(norm)
@@ -1828,6 +1836,15 @@
   kernel :
     func : prior_box
 
+- op : prod
+  args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
+  output : Tensor
+  infer_meta :
+    func : ReduceIntArrayAxisInferMetaBase
+  kernel :
+    func : prod_raw
+  backward : prod_grad
+
 - op : psroi_pool
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, int output_channels, float spatial_scale)
   output : Tensor
@@ -1892,15 +1909,6 @@
   kernel :
     func : real
   backward : real_grad
-
-- op : reduce_prod
-  args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
-  output : Tensor
-  infer_meta :
-    func : ReduceIntArrayAxisInferMetaBase
-  kernel :
-    func : prod_raw
-  backward : reduce_prod_grad
 
 - op : relu
   args : (Tensor x)
@@ -2365,7 +2373,7 @@
   backward : swish_grad
 
 - op : sync_batch_norm_
-  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta :
     func : BatchNormInferMeta
@@ -2385,16 +2393,6 @@
     func : take_along_axis
     data_type : arr
   backward : take_along_axis_grad
-
-- op : tanh
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : tanh
-  inplace : (x -> out)
-  backward : tanh_grad
 
 - op : tanh_shrink
   args : (Tensor x)
@@ -2460,6 +2458,15 @@
     func : triangular_solve
   backward : triangular_solve_grad
 
+- op : tril
+  args : (Tensor x,  int diagonal,  bool lower)
+  output : Tensor(out)
+  infer_meta :
+    func : TrilInferMeta
+  kernel :
+    func : tril
+  backward : tril_grad
+
 - op : tril_indices
   args : (int rows, int cols, int offset, DataType dtype, Place place={})
   output : Tensor(out)
@@ -2471,15 +2478,6 @@
     param : [rows, cols, offset, dtype]
     data_type : dtype
     backend : place
-
-- op : tril_triu
-  args : (Tensor x,  int diagonal,  bool lower)
-  output : Tensor(out)
-  infer_meta :
-    func : TrilTriuInferMeta
-  kernel :
-    func : tril_triu
-  backward : tril_triu_grad
 
 - op : trilinear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
@@ -2535,14 +2533,14 @@
     func : unfold
   backward : unfold_grad
 
-- op : uniform_random
+- op : uniform
   args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
   output : Tensor(out)
   infer_meta :
     func : UniformRandomInferMeta
     param: [shape, dtype]
   kernel :
-    func : uniform_random
+    func : uniform
     param: [shape, dtype, min, max, seed]
     data_type : dtype
     backend : place
@@ -2628,14 +2626,6 @@
     func : where
   backward : where_grad
 
-- op : where_index
-  args : (Tensor condition)
-  output : Tensor(out)
-  infer_meta :
-    func : WhereIndexInferMeta
-  kernel :
-    func : where_index
-
 - op : yolo_box
   args : (Tensor x, Tensor img_size, int[] anchors, int class_num, float conf_thresh, int downsample_ratio, bool clip_bbox, float scale_x_y=1.0, bool iou_aware=false, float iou_aware_factor=0.5)
   output : Tensor(boxes), Tensor(scores)
@@ -2645,16 +2635,16 @@
     func : yolo_box
     data_type : x
 
-- op : yolov3_loss
+- op : yolo_loss
   args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0)
   output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
   infer_meta :
-    func : Yolov3LossInferMeta
+    func : YoloLossInferMeta
   kernel :
-    func : yolov3_loss
+    func : yolo_loss
     data_type : x
   optional : gt_score
-  backward : yolov3_loss_grad
+  backward : yolo_loss_grad
 
 - op : zeros
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -2734,16 +2724,16 @@
   intermediate : reserve
   view : (dropout_state_in -> dropout_state_out)
 
-- op: uniform_random_inplace
+- op: uniform_inplace
   args: (Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
   output: Tensor(out)
   infer_meta:
     func: UniformRandomInplaceInferMeta
   kernel:
-    func: uniform_random_inplace
+    func: uniform_inplace
     data_type: x
   inplace: (x -> out)
-  backward: uniform_random_inplace_grad
+  backward: uniform_inplace_grad
 
 - op: unpool
   args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, IntArray output_size, str data_format)

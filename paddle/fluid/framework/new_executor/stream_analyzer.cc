@@ -276,3 +276,5 @@ platform::DeviceType StreamAnalyzer::GetWaiterType(const Instruction& instr) {
 
 }  // namespace framework
 }  // namespace paddle
+
+

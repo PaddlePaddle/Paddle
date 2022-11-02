@@ -205,8 +205,8 @@ class TestProfiler(unittest.TestCase):
 class TestProfilerAPIError(unittest.TestCase):
     def test_errors(self):
         options = utils.ProfilerOptions()
-        self.assertTrue(options['profile_path'] is None)
-        self.assertTrue(options['timeline_path'] is None)
+        self.assertIsNone(options['profile_path'])
+        self.assertIsNone(options['timeline_path'])
 
         options = options.with_state('All')
         self.assertTrue(options['state'] == 'All')

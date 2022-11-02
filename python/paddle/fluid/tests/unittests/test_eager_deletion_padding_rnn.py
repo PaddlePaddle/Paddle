@@ -204,7 +204,7 @@ def lm_model(
 
                 input = m
 
-                if dropout != None and dropout > 0.0:
+                if dropout is not None and dropout > 0.0:
                     input = layers.dropout(
                         input,
                         dropout_prob=dropout,
@@ -308,7 +308,7 @@ def lm_model(
                 cell_array[k] = c
                 input = m
 
-                if dropout != None and dropout > 0.0:
+                if dropout is not None and dropout > 0.0:
                     input = layers.dropout(
                         input,
                         dropout_prob=dropout,
@@ -390,7 +390,7 @@ def lm_model(
     x_emb = layers.reshape(
         x_emb, shape=[-1, num_steps, hidden_size], inplace=True
     )
-    if dropout != None and dropout > 0.0:
+    if dropout is not None and dropout > 0.0:
         x_emb = layers.dropout(
             x_emb,
             dropout_prob=dropout,

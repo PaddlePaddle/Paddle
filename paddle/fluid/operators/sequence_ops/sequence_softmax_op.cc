@@ -43,14 +43,6 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
     if (ctx.HasAttr("data_format")) {
       layout_ = phi::StringToDataLayout(ctx.Attr<std::string>("data_format"));
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::CanCUDNNBeUsed(ctx)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     layout_,
-                                     framework::LibraryType::kCUDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
   }
 };
@@ -135,14 +127,6 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
     if (ctx.HasAttr("data_format")) {
       layout_ = phi::StringToDataLayout(ctx.Attr<std::string>("data_format"));
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::CanCUDNNBeUsed(ctx)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     layout_,
-                                     framework::LibraryType::kCUDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
   }
 };

@@ -98,5 +98,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::DependOpProtoMaker,
     ops::DependNoNeedBufferVarsInferer);
-
-

@@ -219,7 +219,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
 
         mapping_table = load_dict(mapping_table_path)
         test_graph.out_node_mapping_table = mapping_table
-        if act_quantize_func == None and weight_quantize_func == None:
+        if act_quantize_func is None and weight_quantize_func is None:
             freeze_pass.apply(test_graph)
         tempdir.cleanup()
 

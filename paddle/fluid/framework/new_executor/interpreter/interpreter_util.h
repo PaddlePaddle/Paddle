@@ -99,3 +99,5 @@ void LogDeviceMemoryStats(const platform::Place& place);
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
+
+

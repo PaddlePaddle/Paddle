@@ -43,11 +43,11 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         # is_sparse is only support False
-        if program_config.ops[0].attrs['is_sparse'] == True:
+        if program_config.ops[0].attrs['is_sparse']:
             return False
 
         # is_distributed only support False
-        if program_config.ops[0].attrs['is_distributed'] == True:
+        if program_config.ops[0].attrs['is_distributed']:
             return False
 
         # axis only support -1 and the last dim.

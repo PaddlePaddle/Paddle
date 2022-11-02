@@ -32,13 +32,13 @@ namespace framework {
 
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
+constexpr const char* kCoalesceTensor = "coalesce_tensor";
+
 // stream types
 constexpr const char* kCustomStream = "CustromStream";
 constexpr const char* kDefaultStream = "DefaultStream";
 constexpr const char* kD2HStream = "D2HStream";
 constexpr const char* kH2DStream = "H2DStream";
-
-constexpr const char* kCoalesceTensor = "coalesce_tensor";
 
 constexpr int kEmptyVarIndex = 0;
 
