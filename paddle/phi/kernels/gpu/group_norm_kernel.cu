@@ -184,9 +184,13 @@ void GroupNormKernel(const Context& dev_ctx,
   DenseTensor eq_scale;
   DenseTensor eq_bias;
   temp_var.Resize(var->dims());
-  DDim param_dims = (data_layout == DataLayout::kNCHW)
-                        ? make_ddim({N, C, 1, 1})
-                        : make_ddim({N, 1, 1, C});
+  auto param_dims = make_ddim(std::vector<int>(x_dims.size(), 1));
+  param_dims[0] = N;
+  if (data_layout == DataLayout::kNCHW) {
+    param_dims[1] = C;
+  } else {
+    param_dims[param_dims.size() - 1] = C;
+  }
   eq_scale.Resize(param_dims);
   eq_bias.Resize(param_dims);
   dev_ctx.template Alloc<T>(&temp_var);
