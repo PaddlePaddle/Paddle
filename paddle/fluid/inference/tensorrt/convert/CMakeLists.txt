@@ -80,6 +80,7 @@ list(
   merge_layernorm_op.cc
   generic_and_custom_plugin_creater.cc
   fused_lookup_tables_op.cc
+  where_op.cc
   expand_v2_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
