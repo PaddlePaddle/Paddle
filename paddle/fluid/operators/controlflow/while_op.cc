@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
@@ -45,6 +46,42 @@ static std::string GetSkipEagerDeletionVarsDebugString(
   }
   return str;
 }
+
+static void BuildScopeForWhileOp(
+    const paddle::framework::InterpreterCore &interpreter_core,
+    const paddle::framework::BlockDesc &block,
+    paddle::framework::Scope *scope) {
+  for (auto &var_desc : block.AllVars()) {
+    auto var_name = var_desc->Name();
+    if (var_name == framework::kEmptyVarName) {
+      continue;
+    }
+    VLOG(5) << "[BuildScopeForWhileOp]"
+            << "start:" << var_name;
+    if (var_desc->Persistable()) {
+      VLOG(5) << "[BuildScopeForWhileOp]"
+              << "Don't process persistent: " << var_name;
+    } else {
+      auto *ptr = scope->Var(var_name);
+      InitializeVariable(ptr, var_desc->GetType());
+      VLOG(5) << "[BuildScopeForWhileOp]"
+              << "Not Found locally and created: " << var_name;
+    }
+  }
+
+  auto &data_transfer_added_vars =
+      interpreter_core.GetVariableScope()->DataTransferAddedVars();
+  for (size_t i = 0; i < data_transfer_added_vars.size(); i++) {
+    auto *ptr = scope->Var(data_transfer_added_vars[i].first);
+    InitializeVariable(ptr,
+                       static_cast<paddle::framework::proto::VarType::Type>(
+                           data_transfer_added_vars[i].second));
+    VLOG(5) << "[BuildScopeForWhileOp]"
+            << "Initialize Transfer Added Variable "
+            << data_transfer_added_vars[i].first;
+  }
+}
+
 }  // namespace
 
 class WhileOp : public framework::OperatorBase {
@@ -78,7 +115,6 @@ class WhileOp : public framework::OperatorBase {
     // Executors (executors declared inside control ops)
     platform::DontClearMKLDNNCache(dev_place);
 #endif
-    framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
     auto *program = block->Program();
@@ -135,7 +171,26 @@ class WhileOp : public framework::OperatorBase {
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
 
-    auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
+    framework::Executor *executor{nullptr};
+    std::unique_ptr<framework::ExecutorPrepareContext> ctx{nullptr};
+
+    framework::InterpreterCore *core{nullptr};
+
+    if (FLAGS_control_flow_use_new_executor) {
+      std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
+      framework::Scope placeholder;  // Don't care if it's valid, just for
+                                     // initialize InterpreterCore
+      core =
+          new framework::InterpreterCore(dev_place,
+                                         *block,
+                                         skip_gc_vars,
+                                         &placeholder,
+                                         /* used_for_jit */ false,
+                                         /* used_for_control_flow_op */ true);
+    } else {
+      executor = new framework::Executor(dev_place);
+      ctx = std::move(executor->Prepare(*program, block->ID(), skip_vars));
+    }
     if (!is_test) {
       while (cond_data) {
         auto &current_scope = scope.NewScope();
@@ -158,8 +213,14 @@ class WhileOp : public framework::OperatorBase {
             }
           }
         }
-        executor.RunPreparedContext(
-            ctx.get(), &current_scope, false, true, true);
+        if (FLAGS_control_flow_use_new_executor) {
+          BuildScopeForWhileOp(*core, *block, &current_scope);
+          core->reset_scope(&current_scope);
+          core->Run({}, false);
+        } else {
+          executor->RunPreparedContext(
+              ctx.get(), &current_scope, false, true, true);
+        }
 
         for (auto &var_rename : rename_vars) {
           std::string input_var_name =
@@ -171,7 +232,14 @@ class WhileOp : public framework::OperatorBase {
       }
     } else {
       auto &current_scope = scope.NewScope();
-      executor.CreateVariables(*program, &current_scope, block->ID());
+
+      if (FLAGS_control_flow_use_new_executor) {
+        BuildScopeForWhileOp(*core, *block, &current_scope);
+        core->reset_scope(&current_scope);
+      } else {
+        executor->CreateVariables(*program, &current_scope, block->ID());
+      }
+
       while (cond_data) {
         for (auto &name : current_scope.LocalVarNames()) {
           auto *var = current_scope.Var(name);
@@ -186,8 +254,13 @@ class WhileOp : public framework::OperatorBase {
             t->clear();
           }
         }
-        executor.RunPreparedContext(
-            ctx.get(), &current_scope, false, false, false);
+        if (FLAGS_control_flow_use_new_executor) {
+          core->Run({}, false);
+        } else {
+          executor->RunPreparedContext(
+              ctx.get(), &current_scope, false, false, false);
+        }
+
         cond_data =
             GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
       }
@@ -245,13 +318,32 @@ class WhileGradOp : public framework::OperatorBase {
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
-    framework::Executor executor(dev_place);
+
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
 
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
-    auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
+
+    framework::Executor *executor{nullptr};
+    std::unique_ptr<framework::ExecutorPrepareContext> ctx{nullptr};
+    framework::InterpreterCore *core{nullptr};
+
+    if (FLAGS_control_flow_use_new_executor) {
+      std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
+      framework::Scope placeholder;  // Don't care if it's valid, just for
+                                     // initialize InterpreterCore
+      core =
+          new framework::InterpreterCore(dev_place,
+                                         *block,
+                                         skip_gc_vars,
+                                         &placeholder,
+                                         /* used_for_jit */ false,
+                                         /* used_for_control_flow_op */ true);
+    } else {
+      executor = new framework::Executor(dev_place);
+      ctx = executor->Prepare(*program, block->ID(), skip_vars);
+    }
 
     auto *step_scopes =
         scope.FindVar(Input(kStepScopes))->GetMutable<StepScopeVar>();
@@ -329,8 +421,15 @@ class WhileGradOp : public framework::OperatorBase {
               "WhileGradOp."));
         }
       }
-      executor.RunPreparedContext(
-          ctx.get(), *cur_scope_iter, false, true, true);
+
+      if (FLAGS_control_flow_use_new_executor) {
+        BuildScopeForWhileOp(*core, *block, *cur_scope_iter);
+        core->reset_scope(*cur_scope_iter);
+        core->Run({}, false);
+      } else {
+        executor->RunPreparedContext(
+            ctx.get(), *cur_scope_iter, false, true, true);
+      }
 
       // The Outputs(kXGRAD) contains the names of the gradient of parameters
       // and inputs.

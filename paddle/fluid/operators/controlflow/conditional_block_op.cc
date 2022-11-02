@@ -69,9 +69,9 @@ static void BuildScopeForConditionalBlockOp(
     InitializeVariable(ptr,
                        static_cast<paddle::framework::proto::VarType::Type>(
                            data_transfer_added_vars[i].second));
-    VLOG(10) << "[BuildScopeForConditionalBlockOp]"
-             << "Initialize Transfer Added Variable "
-             << data_transfer_added_vars[i].first;
+    VLOG(5) << "[BuildScopeForConditionalBlockOp]"
+            << "Initialize Transfer Added Variable "
+            << data_transfer_added_vars[i].first;
   }
 }
 }  // namespace details

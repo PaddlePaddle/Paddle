@@ -3,7 +3,8 @@ if(WITH_UNITY_BUILD)
   # Load Unity Build rules for operators in paddle/fluid/operators/controlflow.
   include(unity_build_rule.cmake)
 endif()
-register_operators(EXCLUDES conditional_block_op DEPS naive_executor)
+register_operators(EXCLUDES conditional_block_op DEPS naive_executor
+                   standalone_executor)
 
 cc_library(
   conditional_block_op
