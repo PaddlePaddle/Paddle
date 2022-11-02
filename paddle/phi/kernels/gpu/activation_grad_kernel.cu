@@ -40,6 +40,7 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
       d_out, errors::NotFound("The input DenseTensor dOut can not be nullptr"));
   PADDLE_ENFORCE_NOT_NULL(
       d_x, errors::NotFound("The output DenseTensor dX can not be nullptr"));
+
   if (!out) {
     out = d_out;  // fake out
   }

@@ -377,8 +377,9 @@ class GroupNorm(Layer):
         self._epsilon = epsilon
         self._num_channels = num_channels
         self._num_groups = num_groups
-        if data_format != 'NCHW':
+        if data_format not in ['NCHW', 'NHWC']:
             raise ValueError("unsupported data layout:" + data_format)
+        self._data_format = data_format
 
         param_shape = [self._num_channels]
 
@@ -430,7 +431,7 @@ class GroupNorm(Layer):
                 self.bias,
                 self._epsilon,
                 self._num_groups,
-                "NCHW",
+                self._data_format,
             )
 
             return dygraph_utils._append_activation_in_dygraph(
