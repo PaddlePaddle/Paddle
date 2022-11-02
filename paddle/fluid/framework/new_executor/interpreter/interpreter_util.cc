@@ -300,6 +300,22 @@ void BuildVariableScope(const framework::BlockDesc& block,
   }
 }
 
+OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node, const platform::Place& place) {
+  if(platform::is_cpu_place(place)) {
+    return OpFuncType::kQueueSync;
+  }
+
+  PADDLE_ENFORCE_EQ(IsSupportedHeterPlace(place), true, phi::errors::Fatal("Unsupported current place %s", place));
+
+  // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU computing. They execute serially in device thread and block CUDA kernel launching in other GPU OPs. To improve performance, set them as kQueueSync and so that they would be dispatched to host thread.
+  std::shared_ptr<OperatorBase> op = op_func_node.operator_base_;
+  if(op->Type() == kCoalesceTensor && op->Attr<bool>("set_constant") == false && op->Attr<bool>("copy_data") == false) {
+    return OpFuncType::kQueueSync;
+  }
+
+  return OpFuncType::kQueueAsync;
+}
+
 void CreateAllOps(const framework::BlockDesc& block,
                   std::vector<std::unique_ptr<OperatorBase>>* ops) {
   for (auto& op : block.AllOps()) {
@@ -448,14 +464,7 @@ void HandleOperatorBase(const platform::Place& place,
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
   op_func_node->operator_base_ = op_base;
-  if (IsSupportedHeterPlace(place)) {
-    op_func_node->type_ = OpFuncType::kQueueAsync;
-  } else if (platform::is_cpu_place(place)) {
-    op_func_node->type_ = OpFuncType::kQueueSync;
-  } else {
-    PADDLE_THROW(
-        platform::errors::Fatal("Unsupported current place %s", place));
-  }
+  op_func_node->type_ = AnalyseOpFuncType(*op_func_node, place);
   op_func_node->kernel_func_ = nullptr;
   op_base->Run(*local_scope, place);  // Run without data transformer.
   std::unordered_set<int> no_data_transform_index;
@@ -663,14 +672,8 @@ void BuildOpFuncList(const platform::Place& place,
           dev_ctx = pool.Get(kernel_type.place_);
         }
         op_func_node.dev_ctx_ = dev_ctx;
-        if (IsSupportedHeterPlace(kernel_type.place_)) {
-          op_func_node.type_ = OpFuncType::kQueueAsync;
-        } else if (platform::is_cpu_place(kernel_type.place_)) {
-          op_func_node.type_ = OpFuncType::kQueueSync;
-        } else {
-          PADDLE_THROW(platform::errors::Fatal("Unsupported current place %s",
-                                               kernel_type.place_));
-        }
+        op_func_node.type_ = AnalyseOpFuncType(op_func_node,kernel_type.place_);
+
         VLOG(3) << op_with_kernel->Type()
                 << " : finally selected kernel_key: " << kernel_type;
 
