@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -2097,16 +2097,11 @@ def unique_consecutive(x,
             import paddle 
 
             x = paddle.to_tensor([1, 1, 2, 2, 3, 1, 1, 2])
-<<<<<<< HEAD
-            output = paddle.unique_consecutive(x) # 
-            np_output = output.numpy() # [1 2 3 1 2]
-=======
             output = paddle.unique_consecutive(x) #
             print(output)
             # Tensor(shape=[5], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             #        [1, 2, 3, 1, 2])
 
->>>>>>> a65746580b (fix numpy issue in codeblock examples (#47042))
             _, inverse, counts = paddle.unique_consecutive(x, return_inverse=True, return_counts=True)
             print(inverse)
             # Tensor(shape=[8], dtype=int64, place=Place(gpu:0), stop_gradient=True,
@@ -2116,17 +2111,7 @@ def unique_consecutive(x,
             #        [2, 2, 1, 2, 1])
 
             x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
-<<<<<<< HEAD
-            output = paddle.unique_consecutive(x, axis=0) # 
-            np_output = output.numpy() # [2 1 3 0 1 2 1 3 2 1 3]
 
-            x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
-            output = paddle.unique_consecutive(x, axis=0) # 
-            np_output = output.numpy()
-            # [[2 1 3]
-            #  [3 0 1]
-            #  [2 1 3]]
-=======
             output = paddle.unique_consecutive(x, axis=0) #
             print(output)
             # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
@@ -2141,7 +2126,6 @@ def unique_consecutive(x,
             #        [[2, 1, 3],
             #         [3, 0, 1],
             #         [2, 1, 3]])
->>>>>>> a65746580b (fix numpy issue in codeblock examples (#47042))
     """
 
     if axis is None:
@@ -2263,16 +2247,10 @@ def unique(x,
             #        [0, 1, 2, 3])
 
             unique = paddle.unique(x, axis=0)
-<<<<<<< HEAD
-            np_unique = unique.numpy() 
-            # [[2 1 3]
-            #  [3 0 1]]
-=======
             print(unique)
             # Tensor(shape=[2, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             #        [[2, 1, 3],
             #         [3, 0, 1]])
->>>>>>> a65746580b (fix numpy issue in codeblock examples (#47042))
     """
     if axis is None:
         axis = []
@@ -2888,18 +2866,6 @@ def chunk(x, chunks, axis=0, name=None):
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
         list(Tensor): The list of segmented Tensors.
-<<<<<<< HEAD
-    
-    Example:
-        .. code-block:: python
-            
-            import numpy as np
-            import paddle
-            
-            # x is a Tensor which shape is [3, 9, 5]
-            x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.to_tensor(x_np)
-=======
 
     Examples:
         .. code-block:: python
@@ -2907,14 +2873,11 @@ def chunk(x, chunks, axis=0, name=None):
             import paddle
 
             x = paddle.rand([3, 9, 5])
->>>>>>> 912be4f897 (fix numpy issue in codeblock examples for operators under python/paddle/tensor folder (#46765))
-
             out0, out1, out2 = paddle.chunk(x, chunks=3, axis=1)
             # out0.shape [3, 3, 5]
             # out1.shape [3, 3, 5]
             # out2.shape [3, 3, 5]
 
-            
             # axis is negative, the real axis is (rank(x) + axis) which real
             # value is 1.
             out0, out1, out2 = paddle.chunk(x, chunks=3, axis=-2)
