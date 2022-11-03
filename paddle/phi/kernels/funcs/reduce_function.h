@@ -1026,9 +1026,7 @@ CubTensorReduceImpl(const Tx* x_data,
                             reducer.initial(),
                             stream);
 }
-#endif  // PADDLE_WITH_XPU_KP
 
-#if !defined(PADDLE_WITH_XPU_KP) && !defined(__HIPCC__)
 template <typename Tx,
           typename Ty,
           template <typename>
@@ -1042,6 +1040,11 @@ CubTensorReduceImpl(const Tx* x_data,
                     int reduce_num,
                     const KPDevice& dev_ctx,
                     KPStream stream) {
+#ifdef __HIPCC__
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
+}
+#else
   const half* in = reinterpret_cast<const half*>(x_data);
   half* out = reinterpret_cast<half*>(y_data);
   auto reducer = ReduceOp<half>();
@@ -1073,7 +1076,8 @@ CubTensorReduceImpl(const Tx* x_data,
                             reducer.initial(),
                             stream);
 }
-#endif  // PADDLE_WITH_XPU_KP __NVCC__
+#endif  // __HIPCC__
+#endif  // PADDLE_WITH_XPU_KP
 
 template <typename Tx,
           typename Ty,
@@ -1118,11 +1122,11 @@ void ReduceKernel(const KPDevice& dev_ctx,
   config.SetOutputData(y_data, dev_ctx, &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
 
-#if !defined(PADDLE_WITH_XPU_KP) && !defined(__HIPCC__)
-  bool use_cub_reduce = config.reduce_num == numel;
-#else
+#ifndef defined(__HIPCC__) || defined(__xpu__)
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
-#endif  // PADDLE_WITH_XPU_KP __NVCC__
+#else
+  bool use_cub_reduce = config.reduce_num == numel;
+#endif
 
 #ifndef PADDLE_WITH_XPU_KP
   if (use_cub_reduce) {
