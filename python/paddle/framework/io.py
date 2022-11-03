@@ -694,6 +694,7 @@ def save(obj, path, protocol=4, **configs):
         .. code-block:: python
             :name: code-example-2
             # example 2: Save multiple state_dict at the same time
+            import paddle
             from paddle import nn
             from paddle.optimizer import Adam
 
@@ -958,6 +959,7 @@ def load(path, **configs):
             :name: code-example-2
 
             # example 2: Load multiple state_dict at the same time
+            import paddle
             from paddle import nn
             from paddle.optimizer import Adam
 
