@@ -280,7 +280,7 @@
   backward : softmax_grad
 
 - op : sparse_coo_tensor
-  args : (Tensor values, Tensor indices, IntArray dense_shape)
+  args : (Tensor values, Tensor indices, int64_t[] shape={})
   output : Tensor(out)
   infer_meta :
     func : sparse::SparseCooTensorInferMeta
