@@ -23,7 +23,7 @@ class Index(object):
 
 class TreeIndex(Index):
     def __init__(self, name, path):
-        super(TreeIndex, self).__init__(name)
+        super().__init__(name)
         self._wrapper = core.IndexWrapper()
         self._wrapper.insert_tree_index(name, path)
         self._tree = self._wrapper.get_tree_index(name)

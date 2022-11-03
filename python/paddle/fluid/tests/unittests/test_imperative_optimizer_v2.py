@@ -48,7 +48,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class MLP(fluid.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
-        super(MLP, self).__init__()
+        super().__init__()
 
         self._fc1 = Linear(784, 10)
         self._fc2 = Linear(10, 10)

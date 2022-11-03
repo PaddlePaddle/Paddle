@@ -23,7 +23,7 @@ from ..dygraph_utils import _append_activation_in_dygraph
 
 class LayerObjectHelper(LayerHelperBase):
     def __init__(self, name):
-        super(LayerObjectHelper, self).__init__(name, layer_type=name)
+        super().__init__(name, layer_type=name)
 
     def append_op(
         self,

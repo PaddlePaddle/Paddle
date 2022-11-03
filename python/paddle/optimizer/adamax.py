@@ -84,9 +84,8 @@ class Adamax(Optimizer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+            inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.to_tensor(inp)
             out = linear(inp)
@@ -153,7 +152,7 @@ class Adamax(Optimizer):
             raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
         if not 0 <= epsilon:
             raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
-        super(Adamax, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,

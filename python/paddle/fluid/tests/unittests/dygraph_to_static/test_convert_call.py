@@ -124,7 +124,7 @@ lambda_fun = lambda x: x
 
 class MyConvLayer(fluid.dygraph.Layer):
     def __init__(self):
-        super(MyConvLayer, self).__init__()
+        super().__init__()
         self._conv = fluid.dygraph.Conv2D(
             num_channels=3,
             num_filters=2,
@@ -152,7 +152,7 @@ class MyConvLayer(fluid.dygraph.Layer):
 
 class MyLayer(fluid.dygraph.Layer):
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
 
         self.conv = MyConvLayer()
         self.fc = fluid.dygraph.Linear(

@@ -42,7 +42,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
         param_attr=None,
         bias_attr=None,
     ):
-        super(SimpleImgConvPool, self).__init__()
+        super().__init__()
 
         self._conv2d = Conv2D(
             num_channels=num_channels,
@@ -76,7 +76,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
 class MNIST(fluid.dygraph.Layer):
     def __init__(self, dtype="float32"):
-        super(MNIST, self).__init__()
+        super().__init__()
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
             num_channels=3,

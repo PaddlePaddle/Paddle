@@ -39,7 +39,7 @@ _logger = get_logger(
 
 class PACT(nn.Layer):
     def __init__(self, init_value=20):
-        super(PACT, self).__init__()
+        super().__init__()
         alpha_attr = paddle.ParamAttr(
             name=self.full_name() + ".pact",
             initializer=paddle.nn.initializer.Constant(value=init_value),
@@ -57,7 +57,7 @@ class PACT(nn.Layer):
 
 class CustomQAT(nn.Layer):
     def __init__(self):
-        super(CustomQAT, self).__init__()
+        super().__init__()
         attr = paddle.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=1.0)
         )
@@ -111,7 +111,7 @@ class CustomQAT(nn.Layer):
 
 class ModelForConv2dT(nn.Layer):
     def __init__(self, num_classes=10):
-        super(ModelForConv2dT, self).__init__()
+        super().__init__()
         self.features = nn.Conv2DTranspose(4, 6, (3, 3))
         self.fc = Linear(input_dim=600, output_dim=num_classes)
 
@@ -124,7 +124,7 @@ class ModelForConv2dT(nn.Layer):
 
 class ImperativeLenet(paddle.nn.Layer):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
-        super(ImperativeLenet, self).__init__()
+        super().__init__()
         self.features = Sequential(
             Conv2D(
                 num_channels=1,

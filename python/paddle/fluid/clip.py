@@ -179,7 +179,7 @@ def error_clip_callback(block, context):
 
 class ClipGradBase(object):
     def __init__(self):
-        super(ClipGradBase, self).__init__()
+        super().__init__()
 
     def __str__(self):
         raise NotImplementedError()
@@ -254,7 +254,7 @@ class ClipGradByValue(ClipGradBase):
     """
 
     def __init__(self, max, min=None):
-        super(ClipGradByValue, self).__init__()
+        super().__init__()
         if min is None:
             assert max > 0.0
             min = -max
@@ -360,7 +360,7 @@ class ClipGradByNorm(ClipGradBase):
     """
 
     def __init__(self, clip_norm):
-        super(ClipGradByNorm, self).__init__()
+        super().__init__()
         self.clip_norm = float(clip_norm)
 
     def __str__(self):
@@ -475,7 +475,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
     def __init__(
         self, clip_norm, group_name="default_group", auto_skip_clip=False
     ):
-        super(ClipGradByGlobalNorm, self).__init__()
+        super().__init__()
         self.clip_norm = float(clip_norm)
         self.group_name = group_name
         assert isinstance(auto_skip_clip, bool)

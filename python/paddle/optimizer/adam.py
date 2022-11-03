@@ -194,7 +194,7 @@ class Adam(Optimizer):
                 raise ValueError(
                     "Invaild value of epsilon, expect epsilon >= 0."
                 )
-        super(Adam, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,

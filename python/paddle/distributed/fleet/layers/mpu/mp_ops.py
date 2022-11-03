@@ -371,7 +371,7 @@ class _Linear(layers.Layer):
         bias_attr=None,
         name=None,
     ):
-        super(_Linear, self).__init__()
+        super().__init__()
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr

@@ -42,7 +42,7 @@ class ConvLayer(nn.Layer):
     def __init__(
         self, num_channels, num_filters, filter_size, stride=1, groups=1
     ):
-        super(ConvLayer, self).__init__()
+        super().__init__()
 
         self._conv = Conv2D(
             in_channels=num_channels,
@@ -71,7 +71,7 @@ class Inception(nn.Layer):
         filter5,
         proj,
     ):
-        super(Inception, self).__init__()
+        super().__init__()
 
         self._conv1 = ConvLayer(input_channels, filter1, 1)
         self._conv3r = ConvLayer(input_channels, filter3R, 1)
@@ -128,7 +128,7 @@ class GoogLeNet(nn.Layer):
     """
 
     def __init__(self, num_classes=1000, with_pool=True):
-        super(GoogLeNet, self).__init__()
+        super().__init__()
         self.num_classes = num_classes
         self.with_pool = with_pool
 

@@ -20,7 +20,7 @@ import os
 
 class SimpleFCLayer(fluid.dygraph.Layer):
     def __init__(self, feature_size, batch_size, fc_size):
-        super(SimpleFCLayer, self).__init__()
+        super().__init__()
         self._linear = fluid.dygraph.Linear(feature_size, fc_size)
         self._offset = fluid.dygraph.to_variable(
             np.random.random((batch_size, fc_size)).astype('float32')

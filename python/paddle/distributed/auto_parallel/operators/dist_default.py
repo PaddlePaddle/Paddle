@@ -86,7 +86,7 @@ def prim_operator_data_parallel_functor(ctx, src_op):
 
 class DistributedDefault(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedDefault, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedDefault("default"))
@@ -95,7 +95,7 @@ register_distributed_operator_impl_container(DistributedDefault("default"))
 # Replicated Default
 class DistributedDefaultImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedDefaultImpl0, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 
