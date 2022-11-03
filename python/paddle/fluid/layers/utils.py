@@ -14,7 +14,6 @@
 
 import collections
 import copy
-import six
 import numpy as np
 from ..framework import Block, Variable, _non_static_mode
 from ..data_feeder import (

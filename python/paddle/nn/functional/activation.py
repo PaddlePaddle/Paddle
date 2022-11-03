@@ -288,7 +288,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.brelu(x, min, max)
+        return _C_ops.hardtanh(x, min, max)
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.brelu(x, 't_min', min, 't_max', max)

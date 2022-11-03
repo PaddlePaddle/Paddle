@@ -20,7 +20,6 @@ from . import core
 import collections
 import copy
 import logging
-from .. import compat as cpt
 from . import unique_name
 from . import log_helper
 import paddle.fluid
@@ -1943,7 +1942,7 @@ def append_backward(
         #  sub-block (control flow)
         is_recompute = False
         if (
-            checkpoints != None
+            checkpoints is not None
             and isinstance(checkpoints, list)
             and len(checkpoints) > 0
         ):

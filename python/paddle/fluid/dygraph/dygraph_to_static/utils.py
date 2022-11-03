@@ -570,7 +570,7 @@ def get_temp_dir():
     """
     Return @to_static temp directory.
     """
-    dir_name = "paddle/to_static_tmp"
+    dir_name = "paddle/to_static_tmp/{pid}".format(pid=os.getpid())
     temp_dir = os.path.join(os.path.expanduser('~/.cache'), dir_name)
     is_windows = sys.platform.startswith('win')
     if is_windows:

@@ -34,6 +34,14 @@ using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
 constexpr int kEmptyVarIndex = 0;
 
+// stream types
+constexpr const char* kCustomStream = "CustromStream";
+constexpr const char* kDefaultStream = "DefaultStream";
+constexpr const char* kD2HStream = "D2HStream";
+constexpr const char* kH2DStream = "H2DStream";
+
+enum class Priority { kLowest, kNormal };
+
 class InterpretercoreInferShapeContext : public InferShapeContext {
  public:
   InterpretercoreInferShapeContext(const OperatorBase& op,
@@ -274,6 +282,7 @@ class RuntimeInferShapeContext;
 struct OpFuncNode {
   // TODO(zhiqiu): Better make it unique_ptr
   std::shared_ptr<OperatorBase> operator_base_;
+  std::string execution_stream_{kDefaultStream};
   std::map<std::string, std::vector<int>> input_index;
   std::map<std::string, std::vector<int>> output_index;
   std::unordered_set<int> no_data_transform_index;
@@ -293,7 +302,8 @@ class Instruction {
  public:
   Instruction(size_t id,
               OpFuncNode&& op_func_node,
-              const platform::DeviceContext& dev_ctx);
+              const platform::DeviceContext& dev_ctx,
+              const Priority priority);
 
   size_t Id() const;
 
@@ -355,10 +365,13 @@ class Instruction {
                       std::shared_ptr<platform::DeviceEvent> event,
                       platform::DeviceType waiter_type);
 
+  Priority GetPriority() const { return priority_; }
+
  private:
   size_t id_;
   OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned
+  const Priority priority_;
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<InterpretercoreInferShapeContext> infershape_ctx_;
@@ -378,25 +391,6 @@ namespace interpreter {
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
 static constexpr char kFetchVarName[] = "fetch";
-
-static bool IsMemcpyH2D(const Instruction& instr) {
-  return instr.OpBase()->Type() == kMemcpyH2D;
-}
-
-static bool IsMemcpyD2H(const Instruction& instr) {
-  return instr.OpBase()->Type() == kMemcpyD2H;
-}
-
-static bool IsCpuOp(const Instruction& instr) {
-  return platform::is_cpu_place(instr.DeviceContext().GetPlace());
-}
-
-// is supported heterogeneous place
-static bool IsSupportedHeterPlace(const phi::Place& place) {
-  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
-         platform::is_xpu_place(place) || platform::is_ipu_place(place) ||
-         platform::is_custom_place(place);
-}
 
 // static_ref_ is the numer of last live ops calculated to statically after
 // `build` the Instructions. dynamic_ref_  is the runtime version ref which will
@@ -418,6 +412,7 @@ class VarRefInfo {
       dynamic_ref_ = static_ref_;
     }
   }
+  void ResetVariable(Variable* new_var) { var_ = new_var; }
   bool CheckAndDecrease() {
     return static_ref_ == 1 || (dynamic_ref_.fetch_sub(1) == 1);
   }

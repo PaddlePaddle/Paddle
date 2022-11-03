@@ -289,12 +289,9 @@ class Conv2D(layers.Layer):
                 self._stride,
                 self._padding,
                 "EXPLICIT",
-                self._groups if self._groups else 1,
                 self._dilation,
+                self._groups if self._groups else 1,
                 "NCHW",
-                False,
-                -1,
-                False,
             )
             if self.bias is not None:
                 pre_act = F.elementwise_add(pre_bias, self.bias, axis=1)
@@ -1268,7 +1265,7 @@ class InstanceNorm(layers.Layer):
         if param_attr == False or bias_attr == False:
             assert (
                 bias_attr == param_attr
-            ), "param_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
+            ), "param_attr and bias_attr must be set to False at the same time in InstanceNorm"
         self._epsilon = epsilon
         self._param_attr = param_attr
         self._bias_attr = bias_attr
@@ -1536,17 +1533,16 @@ class BatchNorm(layers.Layer):
             if in_dygraph_mode():
                 batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                     input,
-                    self.weight,
-                    self.bias,
                     self._mean,
                     self._variance,
+                    self.weight,
+                    self.bias,
+                    not self.training,
                     self._momentum,
                     self._epsilon,
                     self._data_layout,
-                    not self.training,
                     self._use_global_stats,
                     self._trainable_statistics,
-                    False,
                 )
                 return dygraph_utils._append_activation_in_dygraph(
                     batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn

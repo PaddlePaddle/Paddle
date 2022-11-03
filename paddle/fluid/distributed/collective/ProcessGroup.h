@@ -66,6 +66,7 @@ class ProcessGroup {
     virtual bool IsCompleted();
     virtual bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
     virtual void Synchronize();
+    virtual void UpdateWaitChain(const phi::DeviceContext& ctx);
     bool IsSync() const { return sync_op_; }
 
    protected:
@@ -92,7 +93,7 @@ class ProcessGroup {
   int GetSize() const { return size_; }
 
   virtual const std::string GetBackendName() const = 0;
-  virtual phi::DeviceContext* GetDeviceContext(const Place& place) const {
+  virtual const phi::DeviceContext& GetDeviceContext(const Place& place) const {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Does not support to get device_context from ProcessGroup%s.",
         GetBackendName()));

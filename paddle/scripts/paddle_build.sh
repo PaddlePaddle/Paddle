@@ -197,6 +197,8 @@ function cmake_base() {
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
 
+    WITH_CUDNN_DSO=${WITH_GPU:-OFF}
+
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     gloo_flag=${distibuted_flag}
 
@@ -214,6 +216,7 @@ function cmake_base() {
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
         ${PYTHON_FLAGS}
         -DWITH_GPU=${WITH_GPU:-OFF}
+        -DWITH_CUDNN_DSO=${WITH_CUDNN_DSO:-OFF}
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
         -DWITH_ROCM=${WITH_ROCM:-OFF}
         -DWITH_CINN=${WITH_CINN:-OFF}
@@ -269,6 +272,7 @@ EOF
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
         -DWITH_GPU=${WITH_GPU:-OFF} \
+        -DWITH_CUDNN_DSO=${WITH_CUDNN_DSO:-OFF} \
         -DWITH_TENSORRT=${WITH_TENSORRT:-ON} \
         -DWITH_ROCM=${WITH_ROCM:-OFF} \
         -DWITH_CINN=${WITH_CINN:-OFF} \
@@ -1825,16 +1829,30 @@ function precise_card_test_single {
     set +x
     testcases=$1
     num=$2
-    for case in $(echo $testcases | tr "$|^" "\n")
+    for case in $(echo $testcases | tr "$|^" "\n" | awk '!/^$/')
     do
         cd ${PADDLE_ROOT}/build
         precise_card_test "^${case}$" $num
-        # c++
+
+        #if test failed,continue,if test succeed ,go on 
+        if_test_failed=$(cat $tmp_dir/^${case}$.log| grep "The following tests FAILED:")
+        if [[ "$if_test_failed" == "The following tests FAILED:" ]];then 
+            echo "$testcases has failed,put it into prec_delta"
+            continue
+        else
+            echo "$testcases succeed"
+        fi
+
+        # c++ 
         if [ ! -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
             mkdir ${PADDLE_ROOT}/build/ut_map/$case
         fi
         set -x
         find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/phi -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/utils -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/phi -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/utils -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
 
@@ -1847,7 +1865,9 @@ function precise_card_test_single {
             fi
             mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
         fi
-        find paddle/fluid -name *.gcda | xargs rm -f #delete gcda
+        find paddle/fluid -name *.gcda | xargs rm -f 
+        find paddle/phi -name *.gcda | xargs rm -f 
+        find paddle/utils -name *.gcda | xargs rm -f 
     done
 }
 
@@ -2009,12 +2029,12 @@ set -x
     #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
 
-    #analyze the mapping between unit tests and .cu files
-    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
-
-    wait;
     #rerun the notSuccessut and get the mapping between notSuccessut and .cu files
     get_failedUts_precise_map_file
+    
+    #analyze the mapping between unit tests and .cu files
+    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
+    wait;
 
     #generate python coverage and generate python file to tests_map_file
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
@@ -2117,12 +2137,6 @@ function get_failedUts_precise_map_file {
     if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
         rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
         #remove pile to full h/cu file
-        python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'remove_pile_from_h_file' ${PADDLE_ROOT}
-        cd ${PADDLE_ROOT}/build
-        cmake_base ${PYTHON_ABI:-""}
-        build ${parallel_number}
-        pip uninstall -y paddlepaddle-gpu
-        pip install ${PADDLE_ROOT}/build/python/dist/*whl
         precise_card_test_single "$rerun_tests"
         wait;
 
@@ -2847,7 +2861,6 @@ function parallel_test() {
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/op_test.py ${PADDLE_ROOT}/build/python
     cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`

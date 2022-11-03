@@ -606,7 +606,7 @@ class TestLayerTo(unittest.TestCase):
         buffer = None
         model.register_buffer("buf_name", buffer, persistable=True)
         model.to(dtype='float64')
-        self.assertEqual(model._buffers['buf_name'], None)
+        self.assertIsNone(model._buffers['buf_name'])
 
     def test_main(self):
         with _test_eager_guard():

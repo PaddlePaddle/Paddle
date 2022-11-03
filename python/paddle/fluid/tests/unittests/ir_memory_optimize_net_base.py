@@ -89,7 +89,7 @@ class BuildIrMemOptBase(unittest.TestCase):
         first_loss, last_loss = None, None
         step_id = 0
         custom_iter = getattr(self, "iter", None)
-        if not custom_iter == None:
+        if custom_iter is not None:
             iter = custom_iter
         for data in reader():
             ret = exe.run(train_cp, feed=data, fetch_list=fetch_list)
