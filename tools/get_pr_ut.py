@@ -321,6 +321,7 @@ class PRChecker(object):
             file_ut_map = json.load(jsonfile)
 
         current_system = platform.system()
+        print("current_system:", current_system)
         notHitMapFiles = []
         hitMapFiles = {}
         onlyCommentsFilesOrXpu = []
@@ -393,7 +394,7 @@ class PRChecker(object):
             for f in file_list:
                 if (
                     current_system == "Darwin"
-                    or current_system == "Windows"
+                    or current_system == "Windows_NT"
                     or self.suffix == ".py3"
                 ):
                     f_judge = f.replace(PADDLE_ROOT, '/paddle/', 1)
