@@ -418,7 +418,7 @@ void Executor::RunPopef(const std::vector<const Tensor *> &inputs,
         PADDLE_THROW(errors::Unimplemented(
             "Auto batch doesn't support the tensor with no batch info. "
             "Expected Output tensor shape[0]: %d should equal to "
-            "micro_batch_size: %d. Please make sure batch size is set "
+            "micro batch size: %d. Please make sure batch size is set "
             "correctly in both IPU program compiling and IpuStrategy.",
             output_shape[0],
             ipu_strategy_->micro_batch_size));
