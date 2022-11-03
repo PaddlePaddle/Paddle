@@ -22,92 +22,10 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 
-DECLARE_int64(cudnn_exhaustive_search_times);
-
 namespace phi {
-
-class CudnnFrontendPlanCache {
- public:
-  explicit CudnnFrontendPlanCache(std::string name) : name_(name) {
-    map_.clear();
-    tracker_.clear();
-    search_times_ = FLAGS_cudnn_exhaustive_search_times;
-    saturation_count_ = search_times_ <= 1 ? 1 : search_times_;
-  }
-
-  CudnnFrontendPlanCache(CudnnFrontendPlanCache const&) = delete;
-  void operator=(CudnnFrontendPlanCache const&) = delete;
-
-  inline cudnn_frontend::feature_vector_t MakeKey(
-      const cudnn_frontend::OperationGraph& op_graph, bool use_addto) {
-    auto key = op_graph.getFeatureVector();
-    key.push_back(static_cast<uint64_t>(use_addto));
-    return key;
-  }
-
-  bool FindPlan(const cudnn_frontend::OperationGraph& op_graph,
-                bool use_addto = false) {
-    std::lock_guard<std::mutex> lock(cache_mutex_);
-    auto key = op_graph.getFeatureVector();
-    return map_.count(MakeKey(op_graph, use_addto)) > 0;
-  }
-
-  cudnn_frontend::ExecutionPlan GetPlan(
-      const cudnn_frontend::OperationGraph& op_graph,
-      cudnnHandle_t handle,
-      bool use_addto = false) {
-    std::lock_guard<std::mutex> lock(cache_mutex_);
-    auto engine_config = map_[MakeKey(op_graph, use_addto)];
-    auto plan = cudnn_frontend::ExecutionPlanBuilder()
-                    .setHandle(handle)
-                    .setEngineConfig(engine_config, op_graph.getTag())
-                    .build();
-    return std::move(plan);
-  }
-
-  void InsertPlan(const cudnn_frontend::OperationGraph& op_graph,
-                  const cudnn_frontend::ExecutionPlan& plan,
-                  bool use_addto = false) {
-    VLOG(4) << "[cudnn_frontend] cache name: " << name_
-            << "; Insert graph tag: " << op_graph.getTag();
-    std::lock_guard<std::mutex> lock(cache_mutex_);
-    map_.insert(
-        std::make_pair(MakeKey(op_graph, use_addto), plan.GetEngineConfig()));
-  }
-
-  bool IsStable(const cudnn_frontend::OperationGraph& op_graph,
-                const std::string& tag,
-                bool use_addto = false) {
-    if (saturation_count_ == 1) {
-      return true;
-    }
-    std::lock_guard<std::mutex> lock(cache_mutex_);
-    if (map_.count(MakeKey(op_graph, use_addto))) {
-      return false;
-    }
-    int cnt = tracker_[std::make_pair(MakeKey(op_graph, use_addto), tag)] += 1;
-    VLOG(4) << "[cudnn_frontend] SaturationTracker " << name_ << " "
-            << op_graph.getTag() << " " << tag << " " << cnt;
-    return cnt >= saturation_count_;
-  }
-
-  std::string GetName() { return name_; }
-
- private:
-  std::map<cudnn_frontend::feature_vector_t,
-           cudnn_frontend::ManagedOpaqueDescriptor>
-      map_;
-  int search_times_;
-  std::mutex cache_mutex_;
-  int saturation_count_;
-  std::string name_;
-
-  using SaturationTracker =
-      std::map<std::pair<cudnn_frontend::feature_vector_t, std::string>, int>;
-  SaturationTracker tracker_;
-};  // class CudnnFrontendPlanCache
 
 class CudnnFrontendConvHelper {
  public:
@@ -294,7 +212,9 @@ class CudnnFrontendConvHelper {
     auto plans =
         generator.cudnnGetPlan(handle, *op_graph_pointer, predicate_function);
 
-    if (exhaustive_search) {
+    bool use_autotune = phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+
+    if (!deterministic && (exhaustive_search || use_autotune)) {
       size_t workspace_size_max = 0;
       std::for_each(
           plans.begin(), plans.end(), [&](cudnn_frontend::ExecutionPlan& opt) {

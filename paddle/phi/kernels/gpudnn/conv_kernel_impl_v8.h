@@ -29,6 +29,7 @@
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
+#include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
 namespace phi {
@@ -46,7 +47,9 @@ void CudnnConvFwdV8(const DenseTensor* input_tensor,
                     bool deterministic,
                     int groups,
                     DenseTensor* output_tensor) {
-  static CudnnFrontendPlanCache plan_cache("conv");
+  auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
+      phi::autotune::AlgorithmType::kConvForwardV8);
+
   PADDLE_ENFORCE_EQ(
       groups,
       1,

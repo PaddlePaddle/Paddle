@@ -31,6 +31,7 @@
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
+#include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
 namespace phi {
@@ -50,7 +51,9 @@ void CudnnConvBwdDataV8(DenseTensor* dy_tensor,
                         bool exhaustive_search,
                         bool deterministic,
                         DenseTensor* dx_tensor) {
-  static CudnnFrontendPlanCache plan_cache_bwd_data("conv_backward_data");
+  auto& plan_cache_bwd_data =
+      phi::autotune::AutoTuneCache::Instance().GetConvV8(
+          phi::autotune::AlgorithmType::kConvBackwardDataV8);
   T* dy_tensor_data = dy_tensor->data<T>();
   T* w_tensor_data = w_tensor->data<T>();
   T* dx_tensor_data = dx_tensor->data<T>();
@@ -151,7 +154,9 @@ void CudnnConvBwdFilterV8(DenseTensor* x_tensor,
                           bool exhaustive_search,
                           bool deterministic,
                           DenseTensor* dw_tensor) {
-  static CudnnFrontendPlanCache plan_cache_bwd_filter("conv_backward_filter");
+  auto& plan_cache_bwd_filter =
+      phi::autotune::AutoTuneCache::Instance().GetConvV8(
+          phi::autotune::AlgorithmType::kConvBackwardFilterV8);
   T* x_tensor_data = x_tensor->data<T>();
   T* dy_tensor_data = dy_tensor->data<T>();
   T* dw_tensor_data = dw_tensor->data<T>();
