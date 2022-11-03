@@ -319,6 +319,10 @@ if(WITH_PYTHON)
     target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
   endif()
 
+  if(WITH_XPU)
+    target_link_libraries(op_function_generator xpulib)
+  endif()
+
   set(op_function_output_path ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/)
   set(impl_file1 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function1.cc)
   set(tmp_impl_file1 ${impl_file1}.tmp)
