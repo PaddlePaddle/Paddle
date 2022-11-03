@@ -23,32 +23,20 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseSqueeze2Transpoe2OneDNNPass::ApplyImpl(Graph *graph) const {
-  std::vector<std::pair<std::string, int>> ops_and_outputs = {
-      {"elementwise_add", 1}};
-
-  for (const auto &op_and_outputs : ops_and_outputs)
-    FuseSqueeze2(graph, op_and_outputs.first, op_and_outputs.second);
-}
-
-void FuseSqueeze2Transpoe2OneDNNPass::FuseSqueeze2(Graph *graph,
-                                                   const std::string &op_type,
-                                                   int num_of_outputs) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
 
-  FusePassBase::Init(op_type + "_squeeze2_transpose2_onednn_fuse_pass", graph);
+  FusePassBase::Init("squeeze2_transpose2_onednn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
   patterns::Squeeze2Transpose2 squeeze2_transpose2_pattern(
-      gpd.mutable_pattern(), op_type + "_squeeze2_transpose2_onednn_fuse_pass");
-  squeeze2_transpose2_pattern(op_type, num_of_outputs);
+      gpd.mutable_pattern(), "squeeze2_transpose2_onednn_fuse_pass");
+  squeeze2_transpose2_pattern();
 
   int found_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    GET_IR_NODE_FROM_SUBGRAPH(
-        preceding_op, preceding_op, squeeze2_transpose2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         preceding_op_out, preceding_op_out, squeeze2_transpose2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
@@ -57,8 +45,6 @@ void FuseSqueeze2Transpoe2OneDNNPass::FuseSqueeze2(Graph *graph,
         squeeze2_op_out, squeeze2_op_out, squeeze2_transpose2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         transpose2_op, transpose2_op, squeeze2_transpose2_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(
-        transpose2_op_out, transpose2_op_out, squeeze2_transpose2_pattern);
 
     if (!transpose2_op->Op()->HasAttr("use_mkldnn") ||
         (transpose2_op->Op()->HasAttr("use_mkldnn") &&

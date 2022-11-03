@@ -543,15 +543,12 @@ struct Squeeze2Transpose2 : public PatternBase {
   Squeeze2Transpose2(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "squeeze2_transpose2") {}
 
-  PDNode* operator()(const std::string& operator_type,
-                     const int num_of_outputs);
+  PDNode* operator()();
 
-  PATTERN_DECL_NODE(preceding_op);
   PATTERN_DECL_NODE(preceding_op_out);
   PATTERN_DECL_NODE(squeeze2_op);
   PATTERN_DECL_NODE(squeeze2_op_out);
   PATTERN_DECL_NODE(transpose2_op);
-  PATTERN_DECL_NODE(transpose2_op_out);
 };
 
 // SEQCONV with Elementwise_Add ReLU
