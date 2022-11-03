@@ -349,16 +349,12 @@ class GroupNorm(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            paddle.disable_static()
-            np.random.seed(123)
-            x_data = np.random.random(size=(2, 6, 2, 2)).astype('float32')
-            x = paddle.to_tensor(x_data)
+            x = paddle.arange(48, dtype="float32").reshape((2, 6, 2, 2))
             group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
             group_norm_out = group_norm(x)
 
-            print(group_norm_out.numpy())
+            print(group_norm_out)
     """
 
     def __init__(
@@ -1123,18 +1119,23 @@ class SyncBatchNorm(_BatchNormBase):
     Examples:
         .. code-block:: python
 
+          # required: gpu
+
           import paddle
           import paddle.nn as nn
-          import numpy as np
 
-          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-          x = paddle.to_tensor(x)
+          x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
 
           if paddle.is_compiled_with_cuda():
               sync_batch_norm = nn.SyncBatchNorm(2)
               hidden1 = sync_batch_norm(x)
               print(hidden1)
-              # [[[[0.26824948, 1.0936325],[0.26824948, -1.6301316]],[[ 0.8095662, -0.665287],[-1.2744656, 1.1301866 ]]]]
+              # Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+              #        [[[[ 0.26824948,  1.09363246],
+              #           [ 0.26824948, -1.63013160]],
+
+              #          [[ 0.80956620, -0.66528702],
+              #           [-1.27446556,  1.13018656]]]])
     """
 
     def __init__(
