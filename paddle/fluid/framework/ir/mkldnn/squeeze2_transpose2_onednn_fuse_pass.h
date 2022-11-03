@@ -23,7 +23,7 @@ namespace ir {
 
 class FuseSqueeze2Transpoe2OneDNNPass : public FusePassBase {
  public:
-  virtual ~FuseSqueeze2Transpoe2OneDNNPass(){};
+  virtual ~FuseSqueeze2Transpoe2OneDNNPass() {}
 
  protected:
   void ApplyImpl(Graph *graph) const override;
