@@ -165,7 +165,7 @@ void GraphPatternDetector::ValidateByNodeRole(
                 }
                 for (auto *x : item.second->outputs) {
                   if (!ios.count(x)) {
-                     VLOG(4) << x->Name();
+                    VLOG(4) << x->Name();
                     return true;
                   }
                 }
@@ -966,8 +966,7 @@ PDNode *patterns::OperatorActivation::operator()(
 }
 
 PDNode *patterns::Squeeze2Transpose2::operator()(
-  const std::string &operator_type, const int num_of_operator_outs
-) {
+    const std::string &operator_type, const int num_of_operator_outs) {
   auto *preceding_op = pattern->NewNode(preceding_op_repr())
                            ->assert_is_op(operator_type)
                            ->assert_has_n_outputs(num_of_operator_outs);
@@ -978,14 +977,14 @@ PDNode *patterns::Squeeze2Transpose2::operator()(
   auto *squeeze2_op =
       pattern->NewNode(squeeze2_op_repr())->assert_is_op("squeeze2");
   auto *squeeze2_op_out = pattern->NewNode(squeeze2_op_out_repr())
-                             ->AsIntermediate()
-                             ->assert_is_op_output("squeeze2", "Out")
+                              ->AsIntermediate()
+                              ->assert_is_op_output("squeeze2", "Out")
                               ->assert_is_op_input("transpose2", "X");
-  auto *transpose2_op = pattern->NewNode(transpose2_op_repr())
-                           ->assert_is_op("transpose2");
+  auto *transpose2_op =
+      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
   auto *transpose2_op_out = pattern->NewNode(transpose2_op_out_repr())
-                               ->AsOutput()
-                               ->assert_is_op_output("transpose2", "Out");
+                                ->AsOutput()
+                                ->assert_is_op_output("transpose2", "Out");
 
   preceding_op->LinksTo({preceding_op_out});
   squeeze2_op->LinksFrom({preceding_op_out}).LinksTo({squeeze2_op_out});
