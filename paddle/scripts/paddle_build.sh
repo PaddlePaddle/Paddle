@@ -918,6 +918,11 @@ set +x
         fi
 set -ex
     fi
+    sleep 24h
+    sleep 24h
+    sleep 24h
+    sleep 24h
+    sleep 24h
 }
 function get_precision_ut_mac() {
     on_precision=0
