@@ -114,7 +114,6 @@ class ConvertToMixedPrecisionPass {
     black_list_.insert("assign");
     black_list_.insert("fill_constant");
     black_list_.insert("assign_value");
-    black_list_.insert("set_value");
     black_list_.insert("eye");
     black_list_.insert("fill_any_like");
     black_list_.insert("fill_constant_batch_size_like");
