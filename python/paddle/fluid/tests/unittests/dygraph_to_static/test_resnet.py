@@ -67,7 +67,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         groups=1,
         act=None,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
         self._conv = paddle.nn.Conv2D(
             in_channels=num_channels,
@@ -90,7 +90,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
 class BottleneckBlock(fluid.dygraph.Layer):
     def __init__(self, num_channels, num_filters, stride, shortcut=True):
-        super(BottleneckBlock, self).__init__()
+        super().__init__()
 
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
@@ -144,7 +144,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
 class ResNet(fluid.dygraph.Layer):
     def __init__(self, layers=50, class_dim=102):
-        super(ResNet, self).__init__()
+        super().__init__()
 
         self.layers = layers
         supported_layers = [50, 101, 152]

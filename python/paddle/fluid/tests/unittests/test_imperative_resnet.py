@@ -87,7 +87,7 @@ class ConvBNLayer(fluid.Layer):
         act=None,
         use_cudnn=False,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
         self._conv = paddle.nn.Conv2D(
             in_channels=num_channels,
@@ -112,7 +112,7 @@ class BottleneckBlock(fluid.Layer):
     def __init__(
         self, num_channels, num_filters, stride, shortcut=True, use_cudnn=False
     ):
-        super(BottleneckBlock, self).__init__()
+        super().__init__()
 
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
@@ -166,7 +166,7 @@ class BottleneckBlock(fluid.Layer):
 
 class ResNet(fluid.Layer):
     def __init__(self, layers=50, class_dim=102, use_cudnn=True):
-        super(ResNet, self).__init__()
+        super().__init__()
 
         self.layers = layers
         supported_layers = [50, 101, 152]

@@ -41,7 +41,7 @@ class SimpleConvPool(fluid.dygraph.Layer):
         use_cudnn=True,
         batch_size=None,
     ):
-        super(SimpleConvPool, self).__init__()
+        super().__init__()
         self.batch_size = batch_size
         self._conv2d = paddle.nn.Conv2D(
             in_channels=num_channels,
@@ -59,7 +59,7 @@ class SimpleConvPool(fluid.dygraph.Layer):
 
 class CNN(fluid.dygraph.Layer):
     def __init__(self, dict_dim, batch_size, seq_len):
-        super(CNN, self).__init__()
+        super().__init__()
         self.dict_dim = dict_dim
         self.emb_dim = 128
         self.hid_dim = 128
@@ -112,7 +112,7 @@ class CNN(fluid.dygraph.Layer):
 
 class BOW(fluid.dygraph.Layer):
     def __init__(self, dict_dim, batch_size, seq_len):
-        super(BOW, self).__init__()
+        super().__init__()
         self.dict_dim = dict_dim
         self.emb_dim = 128
         self.hid_dim = 128
@@ -158,7 +158,7 @@ class BOW(fluid.dygraph.Layer):
 
 class GRU(fluid.dygraph.Layer):
     def __init__(self, dict_dim, batch_size, seq_len):
-        super(GRU, self).__init__()
+        super().__init__()
         self.dict_dim = dict_dim
         self.emb_dim = 128
         self.hid_dim = 128
@@ -209,7 +209,7 @@ class GRU(fluid.dygraph.Layer):
 
 class BiGRU(fluid.dygraph.Layer):
     def __init__(self, dict_dim, batch_size, seq_len):
-        super(BiGRU, self).__init__()
+        super().__init__()
         self.dict_dim = dict_dim
         self.emb_dim = 128
         self.hid_dim = 128

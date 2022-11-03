@@ -41,7 +41,7 @@ class SimpleConv(fluid.dygraph.Layer):
         groups=1,
         act=None,
     ):
-        super(SimpleConv, self).__init__()
+        super().__init__()
         self._conv = paddle.nn.Conv2D(
             in_channels=num_channels,
             out_channels=num_filters,
@@ -962,7 +962,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
 
         class LinearNet(nn.Layer):
             def __init__(self):
-                super(LinearNet, self).__init__()
+                super().__init__()
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
             def forward(self, x):

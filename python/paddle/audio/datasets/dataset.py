@@ -49,7 +49,7 @@ class AudioClassificationDataset(paddle.io.Dataset):
             feat_type (:obj:`str`, `optional`, defaults to `raw`):
                 It identifies the feature type that user wants to extrace of an audio file.
         """
-        super(AudioClassificationDataset, self).__init__()
+        super().__init__()
 
         if feat_type not in feat_funcs.keys():
             raise RuntimeError(

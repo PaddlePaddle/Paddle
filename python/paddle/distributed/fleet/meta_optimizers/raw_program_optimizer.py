@@ -27,7 +27,7 @@ from .common import (
 
 class RawProgramOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(RawProgramOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = [
             "RecomputeOptimizer",
@@ -46,7 +46,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
-        super(RawProgramOptimizer, self)._set_basic_info(
+        super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
         self.without_graph_optimization = (

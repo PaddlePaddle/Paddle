@@ -342,7 +342,6 @@ int32_t MemoryDenseTable::Save(const std::string &path,
   std::vector<std::string> result_buffer_param;
   result_buffer_param.reserve(param_dim_);
   auto common = _config.common();
-  int size = static_cast<int>(common.params().size());
   if (_config.common().name() == "summary") {
     for (int x = 0; x < param_dim_; ++x) {
       result_buffer_param.emplace_back(std::to_string(values_[param_idx_][x]));

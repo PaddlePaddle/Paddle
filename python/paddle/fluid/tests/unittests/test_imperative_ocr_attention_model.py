@@ -75,7 +75,7 @@ class ConvBNPool(fluid.dygraph.Layer):
         pool=True,
         use_cudnn=True,
     ):
-        super(ConvBNPool, self).__init__()
+        super().__init__()
         self.group = group
         self.pool = pool
 
@@ -131,7 +131,7 @@ class ConvBNPool(fluid.dygraph.Layer):
 
 class OCRConv(fluid.dygraph.Layer):
     def __init__(self, is_test=False, use_cudnn=True):
-        super(OCRConv, self).__init__()
+        super().__init__()
         self.conv_bn_pool_1 = ConvBNPool(
             2, [8, 8], [1, 8], is_test=is_test, use_cudnn=use_cudnn
         )
@@ -171,7 +171,7 @@ class DynamicGRU(fluid.dygraph.Layer):
         h_0=None,
         origin_mode=False,
     ):
-        super(DynamicGRU, self).__init__()
+        super().__init__()
 
         self.gru_unit = GRUUnit(
             size * 3,
@@ -214,7 +214,7 @@ class EncoderNet(fluid.dygraph.Layer):
     def __init__(
         self, rnn_hidden_size=Config.encoder_size, is_test=False, use_cudnn=True
     ):
-        super(EncoderNet, self).__init__()
+        super().__init__()
         self.rnn_hidden_size = rnn_hidden_size
         para_attr = fluid.ParamAttr(
             initializer=fluid.initializer.Normal(0.0, 0.02)
@@ -298,7 +298,7 @@ class EncoderNet(fluid.dygraph.Layer):
 
 class SimpleAttention(fluid.dygraph.Layer):
     def __init__(self, decoder_size):
-        super(SimpleAttention, self).__init__()
+        super().__init__()
 
         self.fc_1 = Linear(
             decoder_size, decoder_size, act=None, bias_attr=False
@@ -337,7 +337,7 @@ class SimpleAttention(fluid.dygraph.Layer):
 
 class GRUDecoderWithAttention(fluid.dygraph.Layer):
     def __init__(self, decoder_size, num_classes):
-        super(GRUDecoderWithAttention, self).__init__()
+        super().__init__()
         self.simple_attention = SimpleAttention(decoder_size)
 
         self.fc_1_layer = Linear(
@@ -387,7 +387,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
 
 class OCRAttention(fluid.dygraph.Layer):
     def __init__(self):
-        super(OCRAttention, self).__init__()
+        super().__init__()
         self.encoder_net = EncoderNet()
         self.fc = Linear(
             Config.encoder_size,

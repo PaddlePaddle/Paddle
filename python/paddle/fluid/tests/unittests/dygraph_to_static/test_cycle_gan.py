@@ -63,7 +63,7 @@ program_translator = ProgramTranslator()
 
 class Cycle_Gan(fluid.dygraph.Layer):
     def __init__(self, input_channel, istrain=True):
-        super(Cycle_Gan, self).__init__()
+        super().__init__()
 
         self.build_generator_resnet_9blocks_a = build_generator_resnet_9blocks(
             input_channel
@@ -165,7 +165,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
 
 class build_resnet_block(fluid.dygraph.Layer):
     def __init__(self, dim, use_bias=False):
-        super(build_resnet_block, self).__init__()
+        super().__init__()
 
         self.conv0 = conv2d(
             num_channels=dim,
@@ -197,7 +197,7 @@ class build_resnet_block(fluid.dygraph.Layer):
 
 class build_generator_resnet_9blocks(fluid.dygraph.Layer):
     def __init__(self, input_channel):
-        super(build_generator_resnet_9blocks, self).__init__()
+        super().__init__()
 
         self.conv0 = conv2d(
             num_channels=input_channel,
@@ -277,7 +277,7 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
 
 class build_gen_discriminator(fluid.dygraph.Layer):
     def __init__(self, input_channel):
-        super(build_gen_discriminator, self).__init__()
+        super().__init__()
 
         self.conv0 = conv2d(
             num_channels=input_channel,
@@ -354,7 +354,7 @@ class conv2d(fluid.dygraph.Layer):
         relufactor=0.0,
         use_bias=False,
     ):
-        super(conv2d, self).__init__()
+        super().__init__()
 
         if not use_bias:
             con_bias_attr = False
@@ -423,7 +423,7 @@ class DeConv2D(fluid.dygraph.Layer):
         relufactor=0.0,
         use_bias=False,
     ):
-        super(DeConv2D, self).__init__()
+        super().__init__()
 
         if not use_bias:
             de_bias_attr = False

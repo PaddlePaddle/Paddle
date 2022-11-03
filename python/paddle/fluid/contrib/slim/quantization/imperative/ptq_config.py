@@ -37,7 +37,7 @@ class PTQConfig(object):
             weight_quantizer(BaseQuantizer): The weight quantizer.
                 It should be the instance of BaseQuantizer.
         """
-        super(PTQConfig, self).__init__()
+        super().__init__()
         assert isinstance(activation_quantizer, tuple(SUPPORT_ACT_QUANTIZERS))
         assert isinstance(weight_quantizer, tuple(SUPPORT_WT_QUANTIZERS))
 

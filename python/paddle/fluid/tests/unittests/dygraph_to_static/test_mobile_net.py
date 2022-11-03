@@ -52,7 +52,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         use_cudnn=True,
         name=None,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
         self._conv = paddle.nn.Conv2D(
             in_channels=num_channels,
@@ -95,7 +95,7 @@ class DepthwiseSeparable(fluid.dygraph.Layer):
         scale,
         name=None,
     ):
-        super(DepthwiseSeparable, self).__init__()
+        super().__init__()
 
         self._depthwise_conv = ConvBNLayer(
             num_channels=num_channels,
@@ -123,7 +123,7 @@ class DepthwiseSeparable(fluid.dygraph.Layer):
 
 class MobileNetV1(fluid.dygraph.Layer):
     def __init__(self, scale=1.0, class_dim=1000):
-        super(MobileNetV1, self).__init__()
+        super().__init__()
         self.scale = scale
         self.dwsl = []
 
@@ -287,7 +287,7 @@ class InvertedResidualUnit(fluid.dygraph.Layer):
         padding,
         expansion_factor,
     ):
-        super(InvertedResidualUnit, self).__init__()
+        super().__init__()
         num_expfilter = int(round(num_in_filter * expansion_factor))
         self._expand_conv = ConvBNLayer(
             num_channels=num_channels,
@@ -331,7 +331,7 @@ class InvertedResidualUnit(fluid.dygraph.Layer):
 
 class InvresiBlocks(fluid.dygraph.Layer):
     def __init__(self, in_c, t, c, n, s):
-        super(InvresiBlocks, self).__init__()
+        super().__init__()
 
         self._first_block = InvertedResidualUnit(
             num_channels=in_c,
@@ -368,7 +368,7 @@ class InvresiBlocks(fluid.dygraph.Layer):
 
 class MobileNetV2(fluid.dygraph.Layer):
     def __init__(self, class_dim=1000, scale=1.0):
-        super(MobileNetV2, self).__init__()
+        super().__init__()
         self.scale = scale
         self.class_dim = class_dim
 

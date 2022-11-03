@@ -86,7 +86,7 @@ class GraphWrapper(object):
 
     def __init__(self, program=None, in_nodes=[], out_nodes=[]):
         """ """
-        super(GraphWrapper, self).__init__()
+        super().__init__()
         self.program = Program() if program is None else program
         self.persistables = {}
         self.teacher_persistables = {}

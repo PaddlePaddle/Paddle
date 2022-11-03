@@ -120,7 +120,7 @@ class Transform(object):
     _type = Type.INJECTION
 
     def __init__(self):
-        super(Transform, self).__init__()
+        super().__init__()
 
     @classmethod
     def _is_injective(cls):
@@ -451,7 +451,7 @@ class AffineTransform(Transform):
             )
         self._loc = loc
         self._scale = scale
-        super(AffineTransform, self).__init__()
+        super().__init__()
 
     @property
     def loc(self):
@@ -540,7 +540,7 @@ class ChainTransform(Transform):
             )
 
         self.transforms = transforms
-        super(ChainTransform, self).__init__()
+        super().__init__()
 
     def _is_injective(self):
         return all(t._is_injective() for t in self.transforms)
@@ -649,7 +649,7 @@ class ExpTransform(Transform):
     _type = Type.BIJECTION
 
     def __init__(self):
-        super(ExpTransform, self).__init__()
+        super().__init__()
 
     @property
     def _domain(self):
@@ -725,7 +725,7 @@ class IndependentTransform(Transform):
 
         self._base = base
         self._reinterpreted_batch_rank = reinterpreted_batch_rank
-        super(IndependentTransform, self).__init__()
+        super().__init__()
 
     def _is_injective(self):
         return self._base._is_injective()
@@ -798,7 +798,7 @@ class PowerTransform(Transform):
                 f"Expected 'power' is a tensor, but got {type(power)}"
             )
         self._power = power
-        super(PowerTransform, self).__init__()
+        super().__init__()
 
     @property
     def power(self):
@@ -882,7 +882,7 @@ class ReshapeTransform(Transform):
 
         self._in_event_shape = tuple(in_event_shape)
         self._out_event_shape = tuple(out_event_shape)
-        super(ReshapeTransform, self).__init__()
+        super().__init__()
 
     @property
     def in_event_shape(self):

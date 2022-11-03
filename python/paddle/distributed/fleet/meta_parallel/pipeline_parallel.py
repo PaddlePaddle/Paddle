@@ -34,7 +34,7 @@ class PipelineParallel(MetaParallelBase):
             raise TypeError(
                 "The Layer should be a derived class of PipelineLayer."
             )
-        super(PipelineParallel, self).__init__(layers, hcg, strategy)
+        super().__init__(layers, hcg, strategy)
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
         self.use_sharding_parallel = (
@@ -462,9 +462,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
     # pipeline parallel with interleave scheduler
 
     def __init__(self, layers, hcg, strategy):
-        super(PipelineParallelWithInterleave, self).__init__(
-            layers=layers, hcg=hcg, strategy=strategy
-        )
+        super().__init__(layers=layers, hcg=hcg, strategy=strategy)
         assert layers.get_num_virtual_stages() > 1
         assert (
             framework.in_dygraph_mode()
@@ -534,7 +532,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         return input_tensor_grad
 
-    def interleave_pipeline(
+    def forward_backward_pipeline(
         self, data, scaler, forward_only=False, compute_loss=True
     ):
         # use interleave scheduling strategy.
@@ -763,7 +761,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
     def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         data = self._prepare_training(data, optimizer, lr_scheduler)
         # interleave scheduler for pipeline parallel
-        train_loss = self.interleave_pipeline(data, scaler)
+        train_loss = self.forward_backward_pipeline(data, scaler)
 
         # optimizer
         with paddle.amp.auto_cast(enable=False):
@@ -778,4 +776,4 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._layers.eval()
         self._compute_loss = compute_loss
 
-        return self.interleave_pipeline(data, None, forward_only=True)
+        return self.forward_backward_pipeline(data, None, forward_only=True)

@@ -32,7 +32,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         act="leaky",
         is_test=True,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
         self.conv = paddle.nn.Conv2D(
             in_channels=ch_in,
@@ -74,7 +74,7 @@ class DownSample(fluid.dygraph.Layer):
         self, ch_in, ch_out, filter_size=3, stride=2, padding=1, is_test=True
     ):
 
-        super(DownSample, self).__init__()
+        super().__init__()
 
         self.conv_bn_layer = ConvBNLayer(
             ch_in=ch_in,
@@ -93,7 +93,7 @@ class DownSample(fluid.dygraph.Layer):
 
 class BasicBlock(fluid.dygraph.Layer):
     def __init__(self, ch_in, ch_out, is_test=True):
-        super(BasicBlock, self).__init__()
+        super().__init__()
 
         self.conv1 = ConvBNLayer(
             ch_in=ch_in,
@@ -121,7 +121,7 @@ class BasicBlock(fluid.dygraph.Layer):
 
 class LayerWarp(fluid.dygraph.Layer):
     def __init__(self, ch_in, ch_out, count, is_test=True):
-        super(LayerWarp, self).__init__()
+        super().__init__()
 
         self.basicblock0 = BasicBlock(ch_in, ch_out, is_test=is_test)
         self.res_out_list = []
@@ -145,7 +145,7 @@ DarkNet_cfg = {53: ([1, 2, 8, 8, 4])}
 
 class DarkNet53_conv_body(fluid.dygraph.Layer):
     def __init__(self, ch_in=3, is_test=True):
-        super(DarkNet53_conv_body, self).__init__()
+        super().__init__()
         self.stages = DarkNet_cfg[53]
         self.stages = self.stages[0:5]
 

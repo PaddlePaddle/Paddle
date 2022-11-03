@@ -67,7 +67,7 @@ def func_decorated_by_other_2():
 
 class LayerErrorInCompiletime(fluid.dygraph.Layer):
     def __init__(self, fc_size=20):
-        super(LayerErrorInCompiletime, self).__init__()
+        super().__init__()
         self._linear = fluid.dygraph.Linear(fc_size, fc_size)
 
     @paddle.jit.to_static(
@@ -82,7 +82,7 @@ class LayerErrorInCompiletime(fluid.dygraph.Layer):
 
 class LayerErrorInCompiletime2(fluid.dygraph.Layer):
     def __init__(self):
-        super(LayerErrorInCompiletime2, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static
     def forward(self):
@@ -108,7 +108,7 @@ def func_error_in_runtime_with_empty_line(x):
 
 class SuggestionErrorTestNet(paddle.nn.Layer):
     def __init__(self):
-        super(SuggestionErrorTestNet, self).__init__()
+        super().__init__()
         self.inner_net = SuggestionErrorTestNet2()
 
     @paddle.jit.to_static
@@ -118,7 +118,7 @@ class SuggestionErrorTestNet(paddle.nn.Layer):
 
 class SuggestionErrorTestNet2:
     def __init__(self):
-        super(SuggestionErrorTestNet2, self).__init__()
+        super().__init__()
         self.w = paddle.to_tensor([2.0])
 
     def forward(self, x):
@@ -496,7 +496,7 @@ class TestNumpyApiErr(unittest.TestCase):
 
 class test_set_state_dict_err_layer(paddle.nn.Layer):
     def __init__(self):
-        super(test_set_state_dict_err_layer, self).__init__()
+        super().__init__()
         self.linear = paddle.nn.Linear(5, 2)
 
     @paddle.jit.to_static
