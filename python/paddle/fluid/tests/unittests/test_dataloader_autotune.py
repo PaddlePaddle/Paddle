@@ -39,7 +39,7 @@ class RandomDataset(Dataset):
 
 class SimpleNet(nn.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.fc = nn.Linear(10, 10)
 
     def forward(self, image):

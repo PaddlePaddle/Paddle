@@ -25,7 +25,7 @@ paddle.seed(SEED)
 
 class Generator(fluid.dygraph.Layer):
     def __init__(self):
-        super(Generator, self).__init__()
+        super().__init__()
         self.conv1 = paddle.nn.Conv2D(3, 3, 3, padding=1)
 
     def forward(self, x):
@@ -36,7 +36,7 @@ class Generator(fluid.dygraph.Layer):
 
 class Discriminator(fluid.dygraph.Layer):
     def __init__(self):
-        super(Discriminator, self).__init__()
+        super().__init__()
         self.convd = paddle.nn.Conv2D(6, 3, 1)
 
     def forward(self, x):

@@ -84,12 +84,17 @@ y = opB(x)
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(DependNoNeedBufferVarsInferer, "X", "Dep");
+
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
+
 REGISTER_OPERATOR(
     depend,
-    paddle::operators::DependOp,
+    ops::DependOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    paddle::operators::DependOpProtoMaker);
+    ops::DependOpProtoMaker,
+    ops::DependNoNeedBufferVarsInferer);
