@@ -53,8 +53,8 @@ void BatchNormKernel(const Context &dev_ctx,
                                            dev_ctx.GetPlace(),
                                            &x,
                                            epsilon,
-                                           global_stats,
                                            fuse_with_relu,
+                                           global_stats,
                                            test_mode);
 
   auto src_memory = handler.AcquireSrcMemory(&x);

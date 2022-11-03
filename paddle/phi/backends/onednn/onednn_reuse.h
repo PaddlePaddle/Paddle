@@ -1164,7 +1164,7 @@ class BatchNormOneDNNHandler
                          Place cpu_place,
                          const DenseTensor* x,
                          const float epsilon,
-                         const float fuse_with_relu,
+                         const bool fuse_with_relu,
                          const bool global_stats,
                          const bool test_mode)
       : OneDNNHandlerNoCachingT<T,
