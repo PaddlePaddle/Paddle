@@ -87,7 +87,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         moe_group=None,
         group_name="default_moe_group",
     ):
-        super(ClipGradForMOEByGlobalNorm, self).__init__()
+        super().__init__()
         self.clip_norm = float(clip_norm)
         self.group_name = group_name
         self.moe_group = moe_group

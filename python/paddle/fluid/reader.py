@@ -455,7 +455,7 @@ class DataLoader(object):
 
             class SimpleNet(nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
                     self.fc = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                 def forward(self, image, label=None):
@@ -868,7 +868,7 @@ class DataLoader(object):
 
                 class LinearNet(nn.Layer):
                     def __init__(self):
-                        super(LinearNet, self).__init__()
+                        super().__init__()
                         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                     @paddle.jit.to_static

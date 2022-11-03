@@ -1963,18 +1963,16 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            x_data = np.array([[[0, 1, 0],
-                                [ 1,  0, 1]]]).astype("float32")
-            print(x_data.shape)
             paddle.disable_static()
-            x = paddle.to_tensor(x_data, stop_gradient=False)
+
+            x = paddle.to_tensor([[[0, 1, 0],
+                                [ 1,  0, 1]]], dtype="float32", stop_gradient=False)
+
             output = paddle.nn.functional.label_smooth(x)
             print(output)
-
-            #[[[0.03333334 0.93333334 0.03333334]
-            #  [0.93333334 0.03333334 0.93333334]]]
+            # Tensor(shape=[1, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [[[0.03333334, 0.93333334, 0.03333334],
+            #          [0.93333334, 0.03333334, 0.93333334]]])
     """
     if epsilon > 1.0 or epsilon < 0.0:
         raise ValueError("The value of epsilon must be between 0 and 1.")

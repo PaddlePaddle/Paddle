@@ -160,7 +160,7 @@ class WorkerInfo(object):
                     self.__class__.__name__
                 )
             )
-        return super(WorkerInfo, self).__setattr__(key, val)
+        return super().__setattr__(key, val)
 
 
 class _WorkerException(object):

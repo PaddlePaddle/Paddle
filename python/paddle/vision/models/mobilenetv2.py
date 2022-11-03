@@ -33,7 +33,7 @@ class InvertedResidual(nn.Layer):
     def __init__(
         self, inp, oup, stride, expand_ratio, norm_layer=nn.BatchNorm2D
     ):
-        super(InvertedResidual, self).__init__()
+        super().__init__()
         self.stride = stride
         assert stride in [1, 2]
 
@@ -103,7 +103,7 @@ class MobileNetV2(nn.Layer):
     """
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
-        super(MobileNetV2, self).__init__()
+        super().__init__()
         self.num_classes = num_classes
         self.with_pool = with_pool
         input_channel = 32

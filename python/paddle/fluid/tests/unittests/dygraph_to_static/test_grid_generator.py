@@ -24,7 +24,7 @@ paddle.seed(2020)
 
 class GridGenerator(nn.Layer):
     def __init__(self, in_channels, num_fiducial):
-        super(GridGenerator, self).__init__()
+        super().__init__()
         self.eps = 1e-6
         self.F = num_fiducial
 

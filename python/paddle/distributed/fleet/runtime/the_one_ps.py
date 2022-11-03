@@ -677,7 +677,7 @@ class fsClient:
 
 class TheOnePSRuntime(RuntimeBase):
     def __init__(self):
-        super(TheOnePSRuntime, self).__init__()
+        super().__init__()
         self._communicator = None
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()

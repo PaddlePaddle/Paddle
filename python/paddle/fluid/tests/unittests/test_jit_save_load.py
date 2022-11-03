@@ -52,7 +52,7 @@ def random_batch_reader(input_size, label_size):
 
 class LinearNet(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self._linear = Linear(in_size, out_size)
 
     @declarative
@@ -62,7 +62,7 @@ class LinearNet(fluid.dygraph.Layer):
 
 class LinearNetWithInputSpec(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
-        super(LinearNetWithInputSpec, self).__init__()
+        super().__init__()
         self._linear = Linear(in_size, out_size)
 
     @declarative(input_spec=[InputSpec(shape=[None, 784], dtype='float32')])
@@ -72,7 +72,7 @@ class LinearNetWithInputSpec(fluid.dygraph.Layer):
 
 class LinearNetNotDeclarative(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
-        super(LinearNetNotDeclarative, self).__init__()
+        super().__init__()
         self._linear = Linear(in_size, out_size)
 
     def forward(self, x):
@@ -81,7 +81,7 @@ class LinearNetNotDeclarative(fluid.dygraph.Layer):
 
 class LinerNetWithLabel(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
-        super(LinerNetWithLabel, self).__init__()
+        super().__init__()
         self._linear = Linear(in_size, out_size)
 
     @declarative(
@@ -99,7 +99,7 @@ class LinerNetWithLabel(paddle.nn.Layer):
 
 class LinerNetWithPruneInput(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
-        super(LinerNetWithPruneInput, self).__init__()
+        super().__init__()
         self._linear = Linear(in_size, out_size)
 
     @declarative(
@@ -117,7 +117,7 @@ class LinerNetWithPruneInput(paddle.nn.Layer):
 
 class LinerNetWithUselessInput(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
-        super(LinerNetWithUselessInput, self).__init__()
+        super().__init__()
         self._linear = Linear(in_size, out_size)
 
     @declarative(
@@ -133,7 +133,7 @@ class LinerNetWithUselessInput(paddle.nn.Layer):
 
 class LinearNetReturnLoss(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
-        super(LinearNetReturnLoss, self).__init__()
+        super().__init__()
         self._linear = Linear(in_size, out_size)
 
     @declarative
@@ -146,7 +146,7 @@ class LinearNetReturnLoss(fluid.dygraph.Layer):
 
 class LinearNetMultiInput(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
-        super(LinearNetMultiInput, self).__init__()
+        super().__init__()
         self._linear1 = Linear(in_size, out_size)
         self._linear2 = Linear(in_size, out_size)
 
@@ -165,7 +165,7 @@ class LinearNetMultiInput(fluid.dygraph.Layer):
 
 class LinearNetMultiInput1(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
-        super(LinearNetMultiInput1, self).__init__()
+        super().__init__()
         self._linear1 = Linear(in_size, out_size)
         self._linear2 = Linear(in_size, out_size)
 
@@ -184,7 +184,7 @@ class LinearNetMultiInput1(fluid.dygraph.Layer):
 
 class MultiLoadingLinearNet(fluid.dygraph.Layer):
     def __init__(self, size, model_path):
-        super(MultiLoadingLinearNet, self).__init__()
+        super().__init__()
         self._linear = Linear(size, size)
         self._load_linear1 = paddle.jit.load(model_path)
         self._load_linear2 = paddle.jit.load(model_path)
@@ -200,7 +200,7 @@ class MultiLoadingLinearNet(fluid.dygraph.Layer):
 
 class LinearNetReturnHidden(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
-        super(LinearNetReturnHidden, self).__init__()
+        super().__init__()
         self._linear_1 = Linear(in_size, out_size)
         self._linear_2 = Linear(in_size, out_size)
 
@@ -214,7 +214,7 @@ class LinearNetReturnHidden(fluid.dygraph.Layer):
 
 class LinearNetWithNestOut(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
-        super(LinearNetWithNestOut, self).__init__()
+        super().__init__()
         self._linear_1 = Linear(in_size, out_size)
         self._linear_2 = Linear(in_size, out_size)
 
@@ -229,7 +229,7 @@ class LinearNetWithNestOut(fluid.dygraph.Layer):
 
 class LinearNetWithDictInput(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
-        super(LinearNetWithDictInput, self).__init__()
+        super().__init__()
         self._linear = Linear(in_size, out_size)
 
     @paddle.jit.to_static(
@@ -247,7 +247,7 @@ class LinearNetWithDictInput(paddle.nn.Layer):
 
 class LinearNetWithDictInputNoPrune(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
-        super(LinearNetWithDictInputNoPrune, self).__init__()
+        super().__init__()
         self._linear = Linear(in_size, out_size)
 
     def forward(self, img):
@@ -257,7 +257,7 @@ class LinearNetWithDictInputNoPrune(paddle.nn.Layer):
 
 class EmptyLayer(paddle.nn.Layer):
     def __init__(self):
-        super(EmptyLayer, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static
     def forward(self, x):
@@ -266,7 +266,7 @@ class EmptyLayer(paddle.nn.Layer):
 
 class NoParamLayer(paddle.nn.Layer):
     def __init__(self):
-        super(NoParamLayer, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static
     def forward(self, x, y):
@@ -275,7 +275,7 @@ class NoParamLayer(paddle.nn.Layer):
 
 class LinearNetWithMultiStaticFunc(fluid.dygraph.Layer):
     def __init__(self, in_size, out_size):
-        super(LinearNetWithMultiStaticFunc, self).__init__()
+        super().__init__()
         self._linear_0 = Linear(in_size, out_size)
         self._linear_1 = Linear(in_size, out_size)
         self._scale = paddle.to_tensor(9.9)
@@ -1183,7 +1183,7 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
 
 class LayerSaved(paddle.nn.Layer):
     def __init__(self, in_size, out_size):
-        super(LayerSaved, self).__init__()
+        super().__init__()
         self.hidden = 100
         self._linear_0 = Linear(in_size, self.hidden)
         self._linear_1_0 = Linear(self.hidden, self.hidden)
@@ -1306,7 +1306,7 @@ class TestJitSaveCombineProperty(unittest.TestCase):
 
 class LayerLoadFinetune(paddle.nn.Layer):
     def __init__(self, in_size, out_size, load_path):
-        super(LayerLoadFinetune, self).__init__()
+        super().__init__()
         # Test duplicate name
         self._linear_0 = Linear(in_size, in_size)
         self._linear_1_0 = Linear(out_size, in_size)
@@ -1531,7 +1531,7 @@ class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
     def test_jit_save_load_function(self):
         class LinearNet(paddle.nn.Layer):
             def __init__(self):
-                super(LinearNet, self).__init__()
+                super().__init__()
                 self._linear = paddle.nn.Linear(5, 6)
 
             def forward(self, x):
@@ -1570,7 +1570,7 @@ class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
     def test_jit_save_load_function(self):
         class LinearNet(paddle.nn.Layer):
             def __init__(self):
-                super(LinearNet, self).__init__()
+                super().__init__()
                 self._linear = paddle.nn.Linear(5, 6)
 
             def forward(self, x):
@@ -1610,7 +1610,7 @@ class TestJitSaveLoadFunctionWithParamCase3(unittest.TestCase):
     def test_jit_save_load_function(self):
         class LinearNet(paddle.nn.Layer):
             def __init__(self):
-                super(LinearNet, self).__init__()
+                super().__init__()
                 self._linear = paddle.nn.Linear(5, 6)
 
             def forward(self, x):
@@ -1798,7 +1798,7 @@ class TestInputSpecCompatibility(unittest.TestCase):
 
 class NotJitForward(paddle.nn.Layer):
     def __init__(self):
-        super(NotJitForward, self).__init__()
+        super().__init__()
 
     def forward(self, x, y):
         return x + y
