@@ -280,10 +280,15 @@ class PRChecker(object):
 
     def file_is_unnit_test(self, unittest_path):
         # get all testcases by ctest-N
-        all_ut_file = '%s/build/all_ut_file' % PADDLE_ROOT
+        all_ut_file = PADDLE_ROOT + 'build/all_ut_file'
+        # all_ut_file = '%s/build/all_ut_file' % PADDLE_ROOT
+        print("PADDLE_ROOT:", PADDLE_ROOT)
+        print("all_ut_file path:", all_ut_file)
+        build_path = PADDLE_ROOT + 'build/'
+        print("build_path:", build_path)
         os.system(
-            "cd %s/build && ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > %s"
-            % (PADDLE_ROOT, all_ut_file)
+            "cd %s && ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > %s"
+            % (build_path, all_ut_file)
         )
         (unittest_directory, unittest_name) = os.path.split(unittest_path)
         # determine whether filename is in all_ut_case
@@ -410,17 +415,17 @@ class PRChecker(object):
                         # determine whether the new added file is a member of added_ut
                         if file_dict[f] in ['added']:
                             f_judge_in_added_ut = False
-                            with open(
-                                '{}/added_ut'.format(PADDLE_ROOT)
-                            ) as utfile:
-                                (filepath, tempfilename) = os.path.split(
-                                    f_judge
-                                )
-                                for f_file in utfile:
-                                    if (
-                                        f_file.strip('\n')
-                                        == tempfilename.split(".")[0]
-                                    ):
+                            path = PADDLE_ROOT + 'added_ut'
+                            print("PADDLE_ROOT:", PADDLE_ROOT)
+                            print("adde_ut path:", path)
+                            (unittest_directory, unittest_name) = os.path.split(
+                                f_judge
+                            )
+                            with open(path, 'r') as f:
+                                added_unittests = f.readlines()
+                                for test in added_unittests:
+                                    test = test.replace('\n', '').strip()
+                                    if test == unittest_name.split(".")[0]:
                                         f_judge_in_added_ut = True
                             if f_judge_in_added_ut:
                                 print(
