@@ -918,11 +918,6 @@ set +x
         fi
 set -ex
     fi
-    sleep 24h
-    sleep 24h
-    sleep 24h
-    sleep 24h
-    sleep 24h
 }
 function get_precision_ut_mac() {
     on_precision=0
@@ -1797,12 +1792,6 @@ function show_ut_retry_result() {
             echo "========================================"
             echo "The following tests FAILED: "
             echo "${retry_unittests_record}" | sort -u | grep -E "$failed_ut_re"
-            sleep 24h
-            sleep 24h
-            sleep 24h
-            sleep 24h
-            sleep 24h
-            sleep 24h    
             exit 8;
         fi
     fi
@@ -3664,19 +3653,9 @@ function main() {
       cicheck_py37)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        sleep 24h
-        sleep 24h
-        sleep 24h
-        sleep 24h
-        sleep 24h
         ;;
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        sleep 24h
-        sleep 24h
-        sleep 24h
-        sleep 24h
-        sleep 24h
         ;;
       cpu_cicheck_py35)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
