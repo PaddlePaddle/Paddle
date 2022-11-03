@@ -74,7 +74,9 @@ def avx_supported():
     has_avx = False
     if sysstr == 'linux':
         try:
-            has_avx = os.popen('cat /proc/cpuinfo | grep -i avx').read() != ''
+            pipe = os.popen('cat /proc/cpuinfo | grep -i avx')
+            has_avx = pipe.read() != ''
+            pipe.close()
         except Exception as e:
             sys.stderr.write('Can not get the AVX flag from /proc/cpuinfo.\n'
                              'The original error is: %s\n' %
@@ -82,8 +84,9 @@ def avx_supported():
         return has_avx
     elif sysstr == 'darwin':
         try:
-            has_avx = os.popen(
-                'sysctl machdep.cpu.features | grep -i avx').read() != ''
+            pipe = os.popen('sysctl machdep.cpu.features | grep -i avx')
+            has_avx = pipe.read() != ''
+            pipe.close()
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from machdep.cpu.features.\n'
