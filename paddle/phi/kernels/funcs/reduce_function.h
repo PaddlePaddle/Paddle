@@ -1122,7 +1122,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
   config.SetOutputData(y_data, dev_ctx, &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
 
-#ifndef defined(__HIPCC__) || defined(__xpu__)
+#ifdef defined(__HIPCC__) || defined(__xpu__)
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
 #else
   bool use_cub_reduce = config.reduce_num == numel;
