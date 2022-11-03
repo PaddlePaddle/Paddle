@@ -26,7 +26,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class Policy(fluid.dygraph.Layer):
     def __init__(self, input_size):
-        super(Policy, self).__init__()
+        super().__init__()
 
         self.affine1 = nn.Linear(input_size, 128)
         self.affine2 = nn.Linear(128, 2)

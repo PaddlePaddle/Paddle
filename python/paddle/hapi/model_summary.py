@@ -50,7 +50,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
             class LeNet(nn.Layer):
                 def __init__(self, num_classes=10):
-                    super(LeNet, self).__init__()
+                    super().__init__()
                     self.num_classes = num_classes
                     self.features = nn.Sequential(
                         nn.Conv2D(

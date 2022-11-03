@@ -24,6 +24,8 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
+from paddle.utils.flops import flops
+
 
 class TestProfiler(unittest.TestCase):
     @classmethod
@@ -219,6 +221,12 @@ class TestProfilerAPIError(unittest.TestCase):
         with utils.Profiler(enabled=True) as prof:
             self.assertTrue(utils.get_profiler() == prof)
             self.assertTrue(global_profiler != prof)
+
+
+class TestFLOPSAPI(unittest.TestCase):
+    def test_flops(self):
+        self.assertTrue(flops('relu', ([12, 12],), output=4) == 144)
+        self.assertTrue(flops('dropout', ([12, 12],), **{'output': 4}) == 0)
 
 
 if __name__ == '__main__':

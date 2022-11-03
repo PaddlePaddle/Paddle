@@ -22,7 +22,6 @@ set(PYBIND_DEPS
     analysis_predictor
     imperative_profiler
     imperative_flag
-    save_load_util
     dlpack_tensor
     device_context
     gloo_wrapper

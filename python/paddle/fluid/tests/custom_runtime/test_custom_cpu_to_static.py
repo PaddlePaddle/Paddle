@@ -133,7 +133,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
         class LeNet5(paddle.nn.Layer):
             def __init__(self):
-                super(LeNet5, self).__init__()
+                super().__init__()
                 self.fc = paddle.nn.Linear(in_features=1024, out_features=10)
                 self.relu = paddle.nn.ReLU()
                 self.fc1 = paddle.nn.Linear(in_features=10, out_features=10)
@@ -202,7 +202,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
         class LeNet5(paddle.nn.Layer):
             def __init__(self):
-                super(LeNet5, self).__init__()
+                super().__init__()
                 self.fc = paddle.nn.Linear(in_features=1024, out_features=10)
                 self.relu = paddle.nn.ReLU()
                 self.fc1 = paddle.nn.Linear(in_features=10, out_features=10)

@@ -111,7 +111,7 @@ class Conv1D(fluid.dygraph.Layer):
         groups=1,
         act="relu",
     ):
-        super(Conv1D, self).__init__()
+        super().__init__()
         fan_in = num_channels * size_k * 1
         k = 1.0 / math.sqrt(fan_in)
         param_attr = ParamAttr(
@@ -144,7 +144,7 @@ class Conv1D(fluid.dygraph.Layer):
 
 class BMN(fluid.dygraph.Layer):
     def __init__(self, cfg):
-        super(BMN, self).__init__()
+        super().__init__()
 
         self.tscale = cfg.tscale
         self.dscale = cfg.dscale

@@ -56,7 +56,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         groups=1,
         act=None,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
         self._conv = Conv2D(
             num_channels=num_channels,
@@ -88,7 +88,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
     def __init__(
         self, num_channels, num_filters, stride, shortcut=True, seg_num=8
     ):
-        super(BottleneckBlock, self).__init__()
+        super().__init__()
 
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
@@ -136,7 +136,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
 class TSM_ResNet(fluid.dygraph.Layer):
     def __init__(self, name_scope, config, mode):
-        super(TSM_ResNet, self).__init__(name_scope)
+        super().__init__(name_scope)
 
         self.layers = config.MODEL.num_layers
         self.seg_num = config.MODEL.seg_num

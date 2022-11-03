@@ -21,7 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class LinearNet(paddle.nn.Layer):
     def __init__(self):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self._linear = paddle.nn.Linear(128, 10)
 
     def forward(self, x):
@@ -30,7 +30,7 @@ class LinearNet(paddle.nn.Layer):
 
 class Logic(paddle.nn.Layer):
     def __init__(self):
-        super(Logic, self).__init__()
+        super().__init__()
 
     def forward(self, x, y, z):
         if z:

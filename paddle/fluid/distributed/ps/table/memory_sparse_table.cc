@@ -534,7 +534,6 @@ int64_t MemorySparseTable::CacheShuffle(
   int shuffle_node_num = _config.sparse_table_cache_file_num();
   LOG(INFO) << "Table>> shuffle node num is: " << shuffle_node_num;
   // TODO(zhaocaibei123): check shuffle_node_num <= server_node_num
-  size_t file_start_idx = _avg_local_shard_num * _shard_idx;
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
 
   std::vector<
@@ -638,7 +637,6 @@ int32_t MemorySparseTable::SaveCache(
     return 0;
   }
   int save_param = atoi(param.c_str());  // batch_model:0  xbox:1
-  size_t file_start_idx = _avg_local_shard_num * _shard_idx;
   std::string table_path = paddle::string::format_string(
       "%s/%03d_cache/", path.c_str(), _config.table_id());
   _afs_client.remove(paddle::string::format_string(
