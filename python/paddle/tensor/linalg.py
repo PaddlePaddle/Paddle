@@ -183,9 +183,9 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     Args:
         x (Tensor): The input tensor which is a Tensor.
         y (Tensor): The input tensor which is a Tensor.
-        transpose_x (bool): Whether to transpose :math:`x` before multiplication.
-        transpose_y (bool): Whether to transpose :math:`y` before multiplication.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication.
+        transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication.
+        name(str, optional): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
     Returns:
@@ -639,7 +639,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 def dist(x, y, p=2, name=None):
     r"""
 
-    This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
+    Returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
     of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
     details, please refer to the `numpy's broadcasting <https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`_:
 
