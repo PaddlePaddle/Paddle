@@ -84,7 +84,7 @@ __global__ void GPUPSROIPoolBackward(const int nthreads,
     int hend = ceil(bin_size_h * static_cast<T>(ph + 1) + roi_start_h);
     int wend = ceil(bin_size_w * static_cast<T>(pw + 1) + roi_start_w);
 
-    // Add roi offsets and clip to input boundaries
+    // Add roi offsets and clip to input boundaries test ci
     hstart = min(max(hstart, 0), height);
     hend = min(max(hend, 0), height);
     wstart = min(max(wstart, 0), width);
