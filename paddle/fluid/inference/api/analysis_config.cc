@@ -656,15 +656,31 @@ void AnalysisConfig::EnableTensorRtEngine(
     int min_subgraph_size,
     AnalysisConfig::Precision precision_mode,
     bool use_static,
-    bool use_calib_mode) {
+    bool use_calib_mode,
+    int engine_memory_sharing) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!use_gpu()) {
-    LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
+    LOG(ERROR) << "To use TensorRT engine, please call EnableUseGpu() first";
     return;
   }
 
   use_tensorrt_ = true;
-  trt_engine_memory_sharing_ = true;
+#ifdef PADDLE_WITH_TENSORRT
+  // https://forums.developer.nvidia.com/t/nvinfer1-createexecutioncontextwithoutdevicememory-returns-nullptr/111878/2
+  // when trt version less than 7.2,
+  // createExecutionContextWithoutDeviceMemory() has bug.
+  // so, we cannot enable engine context memory sharing.
+#if IS_TRT_VERSION_GE(7200)
+  // now only support engine_memory_sharing = 0, 1, 2
+  CHECK_GE(engine_memory_sharing, 0);
+  CHECK_LE(engine_memory_sharing, 2);
+  trt_engine_memory_sharing_ = engine_memory_sharing;
+#else
+  LOG(WARNING)
+      << "TensorRT engine context memory sharing needs version 7.2 and after.";
+  trt_engine_memory_sharing_ = 0;
+#endif
+#endif
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
   tensorrt_min_subgraph_size_ = min_subgraph_size;
@@ -1077,7 +1093,7 @@ bool AnalysisConfig::enable_memory_optim() const {
 }
 
 bool AnalysisConfig::trt_engine_memory_sharing() const {
-  return trt_engine_memory_sharing_;
+  return trt_engine_memory_sharing_ > 0;
 }
 
 void AnalysisConfig::SetModelBuffer(const char *prog_buffer,
@@ -1238,7 +1254,7 @@ std::string AnalysisConfig::Summary() {
         os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});
       }
       os.InsertRow({"trt_engine_memory_sharing",
-                    trt_engine_memory_sharing_ ? "true" : "false"});
+                    trt_engine_memory_sharing_ > 0 ? "true" : "false"});
 #endif
     }
   }
