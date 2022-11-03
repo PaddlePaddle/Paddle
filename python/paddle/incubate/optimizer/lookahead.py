@@ -76,7 +76,7 @@ class LookAhead(Optimizer):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
                     self.bias = self._linear.bias
 
@@ -129,7 +129,7 @@ class LookAhead(Optimizer):
         else:
             parameters = self.inner_optimizer._parameter_list
 
-        super(LookAhead, self).__init__(
+        super().__init__(
             learning_rate=alpha,
             parameters=parameters,
             weight_decay=None,

@@ -69,7 +69,7 @@ class _InstanceNormBase(Layer):
         data_format="NCHW",
         name=None,
     ):
-        super(_InstanceNormBase, self).__init__()
+        super().__init__()
 
         if weight_attr is False or bias_attr is False:
             assert (
@@ -367,7 +367,7 @@ class GroupNorm(Layer):
         data_format='NCHW',
         name=None,
     ):
-        super(GroupNorm, self).__init__()
+        super().__init__()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         self._epsilon = epsilon
@@ -546,7 +546,7 @@ class LayerNorm(Layer):
         bias_attr=None,
         name=None,
     ):
-        super(LayerNorm, self).__init__()
+        super().__init__()
         if isinstance(normalized_shape, numbers.Integral):
             normalized_shape = [normalized_shape]
 
@@ -603,7 +603,7 @@ class _BatchNormBase(Layer):
         use_global_stats=None,
         name=None,
     ):
-        super(_BatchNormBase, self).__init__()
+        super().__init__()
         self._num_features = num_features
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
@@ -820,7 +820,7 @@ class BatchNorm1D(_BatchNormBase):
         use_global_stats=None,
         name=None,
     ):
-        super(BatchNorm1D, self).__init__(
+        super().__init__(
             num_features,
             momentum,
             epsilon,
@@ -1018,7 +1018,7 @@ class BatchNorm3D(_BatchNormBase):
         use_global_stats=None,
         name=None,
     ):
-        super(BatchNorm3D, self).__init__(
+        super().__init__(
             num_features,
             momentum,
             epsilon,
@@ -1148,7 +1148,7 @@ class SyncBatchNorm(_BatchNormBase):
         data_format='NCHW',
         name=None,
     ):
-        super(SyncBatchNorm, self).__init__(
+        super().__init__(
             num_features,
             momentum,
             epsilon,
@@ -1384,7 +1384,7 @@ class LocalResponseNorm(Layer):
         data_format="NCHW",
         name=None,
     ):
-        super(LocalResponseNorm, self).__init__()
+        super().__init__()
         self.size = size
         self.alpha = alpha
         self.beta = beta

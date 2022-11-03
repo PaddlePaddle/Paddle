@@ -155,7 +155,7 @@ class PartialProgramLayer:
     def __init__(
         self, main_program, inputs, outputs, parameters=None, **kwargs
     ):
-        super(PartialProgramLayer, self).__init__()
+        super().__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []

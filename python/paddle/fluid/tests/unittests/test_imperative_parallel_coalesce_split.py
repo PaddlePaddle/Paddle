@@ -29,7 +29,7 @@ from paddle.fluid.dygraph.parallel import (
 
 class MyLayer(fluid.Layer):
     def __init__(self, name_scope):
-        super(MyLayer, self).__init__(name_scope)
+        super().__init__(name_scope)
 
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)

@@ -92,7 +92,7 @@ class Dirac(Initializer):
         assert groups > 0 and isinstance(
             groups, int
         ), " 'groups' must be a positive integer. "
-        super(Dirac, self).__init__()
+        super().__init__()
         self._groups = groups
 
     def __call__(self, var, block=None):

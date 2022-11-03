@@ -65,7 +65,7 @@ class LayerDict(Layer):
     """
 
     def __init__(self, sublayers=None):
-        super(LayerDict, self).__init__()
+        super().__init__()
         if sublayers is not None:
             self.update(sublayers)
 

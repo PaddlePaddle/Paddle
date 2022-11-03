@@ -71,7 +71,7 @@ def _is_reshard_op(op):
 @register_pass("auto_parallel_sharding")
 class ShardingPass(PassBase):
     def __init__(self):
-        super(ShardingPass, self).__init__()
+        super().__init__()
         self.set_attr("dist_context", None)
         self.set_attr("stage", None)
         self.set_attr("sharding_degree", None)  # for parallelizer

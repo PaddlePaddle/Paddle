@@ -98,7 +98,7 @@ class ModelAverage(Optimizer):
 
         class LinearNet(nn.Layer):
             def __init__(self):
-                super(LinearNet, self).__init__()
+                super().__init__()
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
                 self.bias = self._linear.bias
 
@@ -170,7 +170,7 @@ class ModelAverage(Optimizer):
         max_average_window=10000,
         name=None,
     ):
-        super(ModelAverage, self).__init__(
+        super().__init__(
             learning_rate=0.0,
             parameters=parameters,
             weight_decay=None,

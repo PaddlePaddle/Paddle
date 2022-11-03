@@ -121,7 +121,7 @@ class TestInputSpec(unittest.TestCase):
 
 class NetWithNonTensorSpec(paddle.nn.Layer):
     def __init__(self, in_num, out_num):
-        super(NetWithNonTensorSpec, self).__init__()
+        super().__init__()
         self.linear_1 = paddle.nn.Linear(in_num, out_num)
         self.bn_1 = paddle.nn.BatchNorm1D(out_num)
 
@@ -246,7 +246,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
 
 class NetWithNonTensorSpecPrune(paddle.nn.Layer):
     def __init__(self, in_num, out_num):
-        super(NetWithNonTensorSpecPrune, self).__init__()
+        super().__init__()
         self.linear_1 = paddle.nn.Linear(in_num, out_num)
         self.bn_1 = paddle.nn.BatchNorm1D(out_num)
 

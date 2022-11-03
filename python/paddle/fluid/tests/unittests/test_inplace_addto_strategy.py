@@ -29,7 +29,7 @@ class ConvBNLayer(fluid.Layer):
         groups=1,
         data_format="NCHW",
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
         self._conv = paddle.nn.Conv2D(
             in_channels=num_channels,

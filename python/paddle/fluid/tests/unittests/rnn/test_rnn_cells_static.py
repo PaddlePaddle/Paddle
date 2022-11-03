@@ -26,7 +26,7 @@ from rnn_numpy import SimpleRNNCell, LSTMCell, GRUCell
 
 class TestSimpleRNNCell(unittest.TestCase):
     def __init__(self, bias=True, place="cpu"):
-        super(TestSimpleRNNCell, self).__init__(methodName="runTest")
+        super().__init__(methodName="runTest")
         self.bias = bias
         self.place = (
             paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
@@ -128,7 +128,7 @@ class TestSimpleRNNCell(unittest.TestCase):
 
 class TestGRUCell(unittest.TestCase):
     def __init__(self, bias=True, place="cpu"):
-        super(TestGRUCell, self).__init__(methodName="runTest")
+        super().__init__(methodName="runTest")
         self.bias = bias
         self.place = (
             paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
@@ -231,7 +231,7 @@ class TestGRUCell(unittest.TestCase):
 
 class TestLSTMCell(unittest.TestCase):
     def __init__(self, bias=True, place="cpu"):
-        super(TestLSTMCell, self).__init__(methodName="runTest")
+        super().__init__(methodName="runTest")
         self.bias = bias
         self.place = (
             paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)

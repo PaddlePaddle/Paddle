@@ -197,7 +197,7 @@ class FLClientBase(abc.ABC):
 
 class FLClient(FLClientBase):
     def __init__(self):
-        super(FLClient, self).__init__()
+        super().__init__()
 
     def __build_fl_client_info_desc(self, state_info):
         # ......... to implement ...... #
