@@ -25,7 +25,7 @@
     out : Out
   backward : acosh_grad
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
@@ -72,7 +72,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : atan
   inputs :
@@ -93,7 +93,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : batch_norm
   backward : batch_norm_grad
@@ -205,7 +205,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : cosh
   backward : cosh_grad
@@ -804,7 +804,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : sinh
   backward : sinh_grad
@@ -890,7 +890,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : tanh
   backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
@@ -899,12 +899,12 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : tanh_shrink
   backward : tanh_shrink_grad
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : trace
   inputs :
