@@ -512,7 +512,7 @@ class DataParallel(layers.Layer):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
 
@@ -582,7 +582,7 @@ class DataParallel(layers.Layer):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
                     self.linear = paddle.nn.Linear(2, 2)
 
                 def forward(self, inputs):
@@ -624,9 +624,7 @@ class DataParallel(layers.Layer):
         find_unused_parameters=False,
         group=None,
     ):
-        super(DataParallel, self).__init__(
-            layers.full_name() + "_data_parallel"
-        )
+        super().__init__(layers.full_name() + "_data_parallel")
 
         assert (
             _non_static_mode()
@@ -706,7 +704,12 @@ class DataParallel(layers.Layer):
                 if param.trainable:
                     layers_param.append((sublayer, param))
 
-        trainable_parameters = [param for _, param in layers_param]
+        trainable_parameters = list(
+            filter(
+                lambda x: not getattr(x, "no_sync", False),
+                [param for _, param in layers_param],
+            )
+        )
 
         assert len(trainable_parameters) > 0, (
             "This model does not have any parameters to train, and "
@@ -788,7 +791,7 @@ class DataParallel(layers.Layer):
 
                 class SimpleNet(nn.Layer):
                     def __init__(self):
-                        super(SimpleNet, self).__init__()
+                        super().__init__()
                         self._linear = nn.Linear(10, 1)
 
                     def forward(self, x):
@@ -818,9 +821,13 @@ class DataParallel(layers.Layer):
 
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
-        if self._strategy.nranks > 1 and framework._dygraph_tracer()._has_grad:
+        if (
+            self._strategy.nranks > 1
+            and framework._dygraph_tracer()._has_grad
+            and self.grad_need_sync
+        ):
             self._reducer.prepare_for_backward(
-                list(self._find_varbase(outputs)), self.grad_need_sync
+                list(self._find_varbase(outputs))
             )
         return outputs
 

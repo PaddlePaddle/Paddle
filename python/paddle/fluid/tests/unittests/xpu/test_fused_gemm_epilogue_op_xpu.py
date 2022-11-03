@@ -106,14 +106,14 @@ class XPUTestFuseGemmOp(XPUOpTestWrapper):
                 - 0.5,
             }
 
-            if self.trans_x == True:
+            if self.trans_x:
                 numpy_input_x = (
                     self.inputs['X'].reshape((self.x_shape[0], -1)).T
                 )
             else:
                 numpy_input_x = self.inputs['X'].reshape((-1, self.x_shape[-1]))
 
-            if self.trans_y == True:
+            if self.trans_y:
                 numpy_input_y = self.inputs['Y'].T
             else:
                 numpy_input_y = self.inputs['Y']

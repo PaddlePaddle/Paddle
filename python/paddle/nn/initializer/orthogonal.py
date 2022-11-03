@@ -67,7 +67,7 @@ class Orthogonal(Initializer):
 
     def __init__(self, gain=1.0, name=None):
         assert gain is not None, 'gain should not be None'
-        super(Orthogonal, self).__init__()
+        super().__init__()
         self._gain = gain
 
     def __call__(self, var, block=None):
@@ -106,7 +106,7 @@ class Orthogonal(Initializer):
         if framework.in_dygraph_mode():
             with no_grad():
                 place = framework._current_expected_place()
-                normal_var = _C_ops.gaussian_random(
+                normal_var = _C_ops.gaussian(
                     flatten_shape, 0.0, 1.0, self._seed, var.dtype, place
                 )
                 q, r = _C_ops.qr(normal_var, 'reduced')

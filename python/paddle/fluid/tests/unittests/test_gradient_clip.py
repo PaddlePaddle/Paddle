@@ -527,7 +527,7 @@ class TestDygraphGradientClipByValue(TestDygraphGradientClip):
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.linear = paddle.nn.Linear(5, 5)
         self.batch_norm = paddle.nn.BatchNorm(5)
 

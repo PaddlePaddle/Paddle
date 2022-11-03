@@ -37,7 +37,7 @@ from test_multiprocess_dataloader_static import (
 
 class SimpleFCNet(fluid.dygraph.Layer):
     def __init__(self):
-        super(SimpleFCNet, self).__init__()
+        super().__init__()
 
         param_attr = fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.8)

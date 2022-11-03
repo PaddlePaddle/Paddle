@@ -28,7 +28,7 @@ from ..cost import build_comp_costs_from_descs
 
 class DistributedElementwise(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedElementwise, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(
@@ -39,7 +39,7 @@ register_distributed_operator_impl_container(
 # Replicated Elementwise
 class DistributedElementwiseImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedElementwiseImpl0, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = False
         self._backward_implemented = False
 

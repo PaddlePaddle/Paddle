@@ -86,7 +86,7 @@ class TestLayer(LayerTest):
     def test_custom_layer_with_kwargs(self):
         class CustomLayer(fluid.Layer):
             def __init__(self, input_size, linear1_size=4):
-                super(CustomLayer, self).__init__()
+                super().__init__()
                 self.linear1 = nn.Linear(
                     input_size, linear1_size, bias_attr=False
                 )
@@ -502,7 +502,7 @@ class TestLayer(LayerTest):
                     bias_attr=False,
                 )
                 dy_ret = conv2d(base.to_variable(images))
-                self.assertTrue(conv2d.bias is None)
+                self.assertIsNone(conv2d.bias)
 
             images = np.ones([2, 3, 5, 5], dtype='float32')
             conv2d = nn.Conv2D(
@@ -512,7 +512,7 @@ class TestLayer(LayerTest):
                 bias_attr=False,
             )
             dy_ret = conv2d(base.to_variable(images))
-            self.assertTrue(conv2d.bias is None)
+            self.assertIsNone(conv2d.bias)
 
         with self.static_graph():
             # the input of Conv2D must be Variable.
@@ -4359,8 +4359,8 @@ class TestBook(LayerTest):
             crf_decode = layers.crf_decoding(
                 input=emission, param_attr=ParamAttr(name="crfw")
             )
-            self.assertFalse(crf is None)
-            self.assertFalse(crf_decode is None)
+            self.assertIsNotNone(crf)
+            self.assertIsNotNone(crf_decode)
             return layers.chunk_eval(
                 input=crf_decode,
                 label=label,
@@ -4386,8 +4386,8 @@ class TestBook(LayerTest):
             crf_decode = layers.crf_decoding(
                 input=emission, length=length, param_attr=ParamAttr(name="crfw")
             )
-            self.assertFalse(crf is None)
-            self.assertFalse(crf_decode is None)
+            self.assertIsNotNone(crf)
+            self.assertIsNotNone(crf_decode)
             return layers.chunk_eval(
                 input=crf_decode,
                 label=label,
@@ -5169,7 +5169,7 @@ class TestMetricsDetectionMap(unittest.TestCase):
 
 class ExampleNet(paddle.nn.Layer):
     def __init__(self):
-        super(ExampleNet, self).__init__()
+        super().__init__()
         self.weight = self.create_parameter(
             shape=[1, 1], attr=paddle.ParamAttr(trainable=False)
         )
@@ -5205,7 +5205,7 @@ class TestLayerTrainingAttribute(unittest.TestCase):
 
 class MyLayer(paddle.nn.Layer):
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
         self._linear = paddle.nn.Linear(1, 1)
         self._dropout = paddle.nn.Dropout(p=0.5)
 
@@ -5217,7 +5217,7 @@ class MyLayer(paddle.nn.Layer):
 
 class MySuperLayer(paddle.nn.Layer):
     def __init__(self):
-        super(MySuperLayer, self).__init__()
+        super().__init__()
         self._mylayer = MyLayer()
 
     def forward(self, input):

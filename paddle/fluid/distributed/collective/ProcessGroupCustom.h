@@ -96,6 +96,8 @@ class ProcessGroupCustom : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
 
+  phi::ccl::CCLComm CustomCCLComm(const Place& place) const;
+
  protected:
   virtual std::shared_ptr<ProcessGroupCustom::CustomTask> CreateTask(
       std::vector<Place> places,

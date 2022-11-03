@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import six
 import sys
 import paddle
 import numpy as np
@@ -161,7 +160,7 @@ class WorkerInfo(object):
                     self.__class__.__name__
                 )
             )
-        return super(WorkerInfo, self).__setattr__(key, val)
+        return super().__setattr__(key, val)
 
 
 class _WorkerException(object):
@@ -395,7 +394,7 @@ def _worker_loop(
         # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
         pass
     except:
-        six.reraise(*sys.exc_info())
+        raise
     finally:
         if use_shared_memory:
             _cleanup_mmap()

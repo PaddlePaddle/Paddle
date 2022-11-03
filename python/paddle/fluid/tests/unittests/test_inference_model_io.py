@@ -449,7 +449,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertTrue(isinstance(res2, bytes))
         # test if variables in program is empty
         res = paddle.static.io._serialize_persistables(Program(), None)
-        self.assertEqual(res, None)
+        self.assertIsNone(res)
         self.assertRaises(
             TypeError,
             paddle.static.io.deserialize_persistables,
