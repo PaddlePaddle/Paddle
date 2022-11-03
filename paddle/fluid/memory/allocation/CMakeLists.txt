@@ -45,7 +45,9 @@ if(NOT WIN32)
   if(WITH_GPU)
     list(APPEND ALLOCATOR_SRCS cuda_ipc_allocator.cc)
   endif()
+endif()
 
+if(UNIX AND NOT APPLE)
   list(APPEND ALLOCATOR_DEPS rt)
 endif()
 
