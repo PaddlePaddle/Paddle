@@ -2691,6 +2691,18 @@ proto::VarType::Type OperatorWithKernel::IndicateOrPromoteVarDataTypes(
 
 OpKernelType OperatorWithKernel::GetExpectedKernelType(
     const ExecutionContext& ctx) const {
+  /**
+   * Note(jiahongyu): Why set flag `dnn_fallback = true`?
+   * If an op calls this base-class function instead of derived-class function,
+   * it means this op uses plain kernel instead of dnn kernel. Thus we set
+   * `dnn_fallback = true`.
+   * Actually, we have already set `dnn_fallback = false` in the construct
+   * function of OperatorWithKernel, add below code means:
+   * 1. If an op calls this base-class function, then this op uses plain kernel.
+   * 2. If an op calls corresponding derived-class function, then this op uses
+   * dnn kernel, unless derived-class function changes `dnn_fallback` flag.
+   */
+  this->SetDnnFallback(true);
   return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
 }
 
