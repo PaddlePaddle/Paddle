@@ -210,7 +210,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             # [1.49071205]
             out3 = paddle.std(x, axis=1)
             # [1.       2.081666]
-            
+
     """
     if not paddle.in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')
