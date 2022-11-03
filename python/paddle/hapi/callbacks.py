@@ -69,7 +69,7 @@ def config_callbacks(
     return cbk_list
 
 
-class CallbackList(object):
+class CallbackList:
     def __init__(self, callbacks=None):
         # copy
         self.callbacks = [c for c in callbacks]
@@ -129,7 +129,7 @@ class CallbackList(object):
         self._call(name, step, logs)
 
 
-class Callback(object):
+class Callback:
     """
     Base class used to build new callbacks. And new callbacks could also
     terminate training by setting `model.stop_training=True`.

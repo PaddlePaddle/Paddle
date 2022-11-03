@@ -1146,7 +1146,7 @@ class DistributedOperatorContext:
         return kinputs, koutputs
 
 
-class BlockState(object):
+class BlockState:
     def __init__(self):
         self.nblock = 0
         self.forward_indices = []

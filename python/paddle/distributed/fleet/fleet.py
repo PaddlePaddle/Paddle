@@ -95,7 +95,7 @@ inited_runtime_handler = wrap_decorator(_inited_runtime_handler_)
 is_non_distributed_check = wrap_decorator(_is_non_distributed_check_)
 
 
-class Fleet(object):
+class Fleet:
     """
     Unified API for distributed training of PaddlePaddle
     Please reference the https://github.com/PaddlePaddle/PaddleFleetX for details

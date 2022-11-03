@@ -60,7 +60,7 @@ class DeviceMode:
     MLU = 4
 
 
-class Cluster(object):
+class Cluster:
     def __init__(self, hdfs):
         self.job_server = None
         self.pods = []
@@ -133,7 +133,7 @@ class Cluster(object):
         return None
 
 
-class JobServer(object):
+class JobServer:
     def __init__(self):
         self.endpoint = None
 
@@ -147,7 +147,7 @@ class JobServer(object):
         return not self == j
 
 
-class Trainer(object):
+class Trainer:
     def __init__(self):
         self.accelerators = []
         self.endpoint = None
@@ -179,7 +179,7 @@ class Trainer(object):
         return self.rank
 
 
-class Pod(object):
+class Pod:
     def __init__(self):
         self.rank = None
         self.id = None
@@ -483,7 +483,7 @@ def pretty_print_envs(envs, header=None):
     return _str
 
 
-class TrainerProc(object):
+class TrainerProc:
     def __init__(self):
         self.proc = None
         self.log_fn = None
@@ -1278,7 +1278,7 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
     )
 
 
-class ParameterServerLauncher(object):
+class ParameterServerLauncher:
     def __init__(self, args, distribute_mode):
         self.args = args
         self.distribute_mode = distribute_mode

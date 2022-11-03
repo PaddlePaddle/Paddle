@@ -31,7 +31,7 @@ import warnings
 __all__ = ["decorate_bf16"]
 
 
-class OptimizerWithMixedPrecision(object):
+class OptimizerWithMixedPrecision:
     """
     Optimizer with mixed-precision (MP) training. This is a wrapper of a common
     optimizer, plus the support of mixed-precision pre-training. The object

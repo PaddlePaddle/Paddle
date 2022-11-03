@@ -35,7 +35,7 @@ class Role:
     XPU = 3
 
 
-class MockBarrier(object):
+class MockBarrier:
     """
     MockBarrier is a empty impletation for barrier
     mock as a real barrier for never-barrier in a specific scenario
@@ -70,7 +70,7 @@ class MockBarrier(object):
         return [obj]
 
 
-class RoleMakerBase(object):
+class RoleMakerBase:
     """
     RoleMakerBase is a base class for assigning a role to current process
     in distributed training.

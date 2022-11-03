@@ -39,7 +39,7 @@ _logger = get_logger(
 fleet = None
 
 
-class FleetUtil(object):
+class FleetUtil:
     """
     FleetUtil provides some common functions for users' convenience.
 

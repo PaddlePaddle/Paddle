@@ -46,7 +46,7 @@ def is_distributed_env():
         return True
 
 
-class YamlHelper(object):
+class YamlHelper:
     def load_yaml(self, yaml_file, other_part=None):
         part_list = ["runner", "hyper_parameters"]
         if other_part:
@@ -317,7 +317,7 @@ def bf16_to_fp32(val):
     return np.float32(struct.unpack('<f', struct.pack('<I', val << 16))[0])
 
 
-class DnnTrainer(object):
+class DnnTrainer:
     def __init__(self, config):
         self.metrics = {}
         self.config = config

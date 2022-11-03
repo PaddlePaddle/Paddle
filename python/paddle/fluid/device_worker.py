@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-class DeviceWorker(object):
+class DeviceWorker:
     """
     DeviceWorker is an abstract class, which generates worker desc.
     This class is an inner class that we do computation logics within
@@ -695,7 +695,7 @@ class HeterSection(DeviceWorker):
         )
 
 
-class DeviceWorkerFactory(object):
+class DeviceWorkerFactory:
     def _create_device_worker(self, worker_type):
         classname = worker_type.capitalize()
         return globals()[classname]()

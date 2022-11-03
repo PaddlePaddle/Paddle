@@ -18,7 +18,7 @@
 import numpy as np
 
 
-class TunableVariable(object):
+class TunableVariable:
     """
     Tunablevariable base class.
     """

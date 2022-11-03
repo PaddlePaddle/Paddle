@@ -22,7 +22,7 @@ __all__ = ['Quant2Int8MkldnnPass']
 OpRole = core.op_proto_and_checker_maker.OpRole
 
 
-class Quant2Int8MkldnnPass(object):
+class Quant2Int8MkldnnPass:
     """
     Transform a quant model IrGraph into MKL-DNN supported INT8 IrGraph.
     The pass consists of the following transformations:

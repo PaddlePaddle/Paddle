@@ -19,7 +19,7 @@ import paddle
 from paddle import Tensor
 
 
-class WindowFunctionRegister(object):
+class WindowFunctionRegister:
     def __init__(self):
         self._functions_dict = dict()
 

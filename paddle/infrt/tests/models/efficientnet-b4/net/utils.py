@@ -239,7 +239,7 @@ def efficientnet_params(model_name):
     return params_dict[model_name]
 
 
-class BlockDecoder(object):
+class BlockDecoder:
     """Block Decoder for readability, straight from the official TensorFlow repository"""
 
     @staticmethod

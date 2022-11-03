@@ -41,7 +41,7 @@ _logger = log_helper.get_logger(
 )
 
 
-class ProgramStats(object):
+class ProgramStats:
     def __init__(self, block, ops):
         self.block = block
         self.ops = ops
@@ -789,7 +789,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
         (set[core.OpDesc]): A set of OpDescs which should be pruned.
     """
 
-    class Var(object):
+    class Var:
         def __init__(self, var_name):
             self.var_name = var_name
             self.gen_op = None
@@ -804,7 +804,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
             assert isinstance(op, Op)
             self.pendding_ops.append(op)
 
-    class Op(object):
+    class Op:
         def __init__(self, op_desc):
             self.op_desc = op_desc
             self.inputs = []

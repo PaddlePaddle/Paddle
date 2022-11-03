@@ -408,7 +408,7 @@ def insert_allreduce_ops(
     return
 
 
-class FuseHelper(object):
+class FuseHelper:
     @staticmethod
     def sort_vars_by_dtype(block, vars_name):
         fp32_vars = []

@@ -33,7 +33,7 @@ from paddle.fluid.framework import (
 from paddle.fluid.layers import tensor
 
 
-class Distribution(object):
+class Distribution:
     """
     The abstract base class for probability distributions. Functions are
     implemented in specific distributions.

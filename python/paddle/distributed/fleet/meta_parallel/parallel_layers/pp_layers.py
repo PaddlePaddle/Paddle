@@ -53,7 +53,7 @@ from paddle.incubate.distributed.fleet import recompute_hybrid
 __all__ = []
 
 
-class LayerDesc(object):
+class LayerDesc:
     def __init__(self, layer_func, *inputs, **kwargs):
         self.layer_func = layer_func
         self.inputs = inputs
@@ -89,7 +89,7 @@ class SharedLayerDesc(LayerDesc):
         self.shared_weight_attr = shared_weight_attr
 
 
-class SegmentLayers(object):
+class SegmentLayers:
     def __init__(
         self,
         layers_desc,

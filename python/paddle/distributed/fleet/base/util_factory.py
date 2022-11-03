@@ -31,7 +31,7 @@ import numpy as np
 __all__ = []
 
 
-class UtilFactory(object):
+class UtilFactory:
     def _create_util(self, context=None):
         util = UtilBase()
         if context is not None and "valid_strategy" in context:
@@ -41,7 +41,7 @@ class UtilFactory(object):
         return util
 
 
-class UtilBase(object):
+class UtilBase:
     def __init__(self):
         self.role_maker = None
         self.dist_strategy = None
