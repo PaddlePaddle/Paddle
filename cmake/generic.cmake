@@ -486,14 +486,17 @@ endfunction()
 
 function(cc_test_run TARGET_NAME)
   if(WITH_TESTING)
-    set(oneValueArgs "")
+    set(oneValueArgs DIR)
     set(multiValueArgs COMMAND ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
+    if(cc_test_DIR STREQUAL "")
+      set(cc_test_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
     add_test(
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+      WORKING_DIRECTORY ${cc_test_DIR})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
@@ -513,7 +516,57 @@ function(cc_test_run TARGET_NAME)
   endif()
 endfunction()
 
+set_property(GLOBAL PROPERTY TEST_SRCS "")
+set_property(GLOBAL PROPERTY TEST_NAMES "")
 function(cc_test TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS ARGS)
+    cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+    if(WIN32)
+      # NOTE(zhiqiu): on windows platform, the symbols should be exported
+      # explicitly by __declspec(dllexport), however, there are serveral
+      # symbols not exported, and link error occurs.
+      # so, the tests are not built against dynamic libraries now.
+      cc_test_old(
+        ${TARGET_NAME}
+        SRCS
+        ${cc_test_SRCS}
+        DEPS
+        ${cc_test_DEPS}
+        ARGS
+        ${cc_test_ARGS})
+    else()
+      list(LENGTH cc_test_SRCS len)
+      # message("cc_test_SRCS ${cc_test_SRCS}")
+      # message("cc_test_ARGS ${cc_test_ARGS}")
+
+      if(${len} GREATER 1)
+        message(
+          SEND_ERROR
+            "The number source file of cc_test should be 1, but got ${len}, the source files are: ${cc_test_SRCS}"
+        )
+      endif()
+
+      list(LENGTH cc_test_ARGS len_arg)
+      if(len_arg GREATER_EQUAL 1)
+        set_property(GLOBAL PROPERTY "${TARGET_NAME}_ARGS" "${cc_test_ARGS}")
+        #message("${TARGET_NAME}_ARGS arg ${arg}")
+      endif()
+
+      get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
+      set(test_srcs ${test_srcs} "${CMAKE_CURRENT_SOURCE_DIR}/${cc_test_SRCS}")
+      set_property(GLOBAL PROPERTY TEST_SRCS "${test_srcs}")
+
+      get_property(test_names GLOBAL PROPERTY TEST_NAMES)
+      set(test_names ${test_names} ${TARGET_NAME})
+      set_property(GLOBAL PROPERTY TEST_NAMES "${test_names}")
+    endif()
+  endif()
+endfunction()
+
+function(cc_test_old TARGET_NAME)
   if(WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
@@ -626,25 +679,9 @@ function(nv_test TARGET_NAME)
     # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(
-      ${TARGET_NAME}
-      ${nv_test_DEPS}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog
-      ${os_dependency_modules})
-    add_dependencies(
-      ${TARGET_NAME}
-      ${nv_test_DEPS}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
+    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
+                          ${os_dependency_modules} paddle_gtest_main)
+    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT

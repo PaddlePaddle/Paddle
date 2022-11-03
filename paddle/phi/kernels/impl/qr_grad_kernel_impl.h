@@ -29,7 +29,7 @@
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
-#include "paddle/phi/kernels/tril_triu_kernel.h"
+#include "paddle/phi/kernels/tril_kernel.h"
 
 namespace phi {
 
@@ -116,8 +116,8 @@ void QrGradKernel(const Context& ctx,
     DenseTensor M_tmp1 = Subtract<T, Context>(ctx, R_term, Q_term);
 
     // Compute M = (tril(M) + tril(M).mH()) * 0.5 Identity
-    DenseTensor M_tril_0 = TrilTriu<T, Context>(ctx, M_tmp1, 0, true);
-    DenseTensor M_tril_1 = TrilTriu<T, Context>(ctx, M_tmp1, -1, true);
+    DenseTensor M_tril_0 = Tril<T, Context>(ctx, M_tmp1, 0, true);
+    DenseTensor M_tril_1 = Tril<T, Context>(ctx, M_tmp1, -1, true);
     DenseTensor M = Add<T, Context>(
         ctx, M_tril_0, TransposeLast2Dim<T, Context>(ctx, M_tril_1));
 

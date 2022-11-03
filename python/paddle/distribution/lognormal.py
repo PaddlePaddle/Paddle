@@ -15,8 +15,7 @@
 import paddle
 from paddle.distribution.normal import Normal
 from paddle.distribution.transform import ExpTransform
-from paddle.distribution.transformed_distribution import \
-    TransformedDistribution
+from paddle.distribution.transformed_distribution import TransformedDistribution
 
 
 class LogNormal(TransformedDistribution):
@@ -104,8 +103,9 @@ class LogNormal(TransformedDistribution):
         Returns:
             Tensor: variance value.
         """
-        return (paddle.expm1(self._base.variance) *
-                paddle.exp(2 * self._base.mean + self._base.variance))
+        return paddle.expm1(self._base.variance) * paddle.exp(
+            2 * self._base.mean + self._base.variance
+        )
 
     def entropy(self):
         r"""Shannon entropy in nats.

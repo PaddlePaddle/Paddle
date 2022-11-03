@@ -27,33 +27,39 @@ def _check_tensor_shape(tensor, shape, nranks=1):
 def _check_tensor_list_shape(tensor_list, shape, nranks=1):
     if len(tensor_list) != nranks:
         raise RuntimeError(
-            'The tensor_list for all_gather is not correctly-sized.')
+            'The tensor_list for all_gather is not correctly-sized.'
+        )
     for tensor in tensor_list:
         if tensor.shape != shape:
             raise RuntimeError(
-                'The tensor_list for all_gather is not correctly-sized.')
+                'The tensor_list for all_gather is not correctly-sized.'
+            )
 
 
-def _all_gather_into_tensor_in_dygraph(out_tensor, in_tensor, group, sync_op,
-                                       use_calc_stream):
+def _all_gather_into_tensor_in_dygraph(
+    out_tensor, in_tensor, group, sync_op, use_calc_stream
+):
     group = collective._get_default_group() if group is None else group
 
     _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
 
     if use_calc_stream:
         return group.process_group.allgather_into_tensor_on_calc_stream(
-            in_tensor, out_tensor)
+            in_tensor, out_tensor
+        )
 
-    task = group.process_group.allgather_into_tensor(in_tensor, out_tensor,
-                                                     sync_op)
+    task = group.process_group.allgather_into_tensor(
+        in_tensor, out_tensor, sync_op
+    )
     if sync_op:
         task.wait()
 
     return task
 
 
-def _all_gather_in_dygraph(tensor_list, tensor, group, sync_op,
-                           use_calc_stream):
+def _all_gather_in_dygraph(
+    tensor_list, tensor, group, sync_op, use_calc_stream
+):
     group = collective._get_default_group() if group is None else group
 
     if len(tensor_list) == 0:
@@ -71,11 +77,13 @@ def _all_gather_in_dygraph(tensor_list, tensor, group, sync_op,
     return task
 
 
-def all_gather(tensor_or_tensor_list,
-               tensor,
-               group=None,
-               sync_op=True,
-               use_calc_stream=False):
+def all_gather(
+    tensor_or_tensor_list,
+    tensor,
+    group=None,
+    sync_op=True,
+    use_calc_stream=False,
+):
     """
 
     Gather tensors across devices to a correctly-sized tensor or a tensor list.
@@ -122,16 +130,18 @@ def all_gather(tensor_or_tensor_list,
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be true in sync op behavior.")
+            "use_calc_stream can only be true in sync op behavior."
+        )
 
     if framework.in_dygraph_mode():
         if paddle.is_tensor(tensor_or_tensor_list):
-            return _all_gather_into_tensor_in_dygraph(tensor_or_tensor_list,
-                                                      tensor, group, sync_op,
-                                                      use_calc_stream)
+            return _all_gather_into_tensor_in_dygraph(
+                tensor_or_tensor_list, tensor, group, sync_op, use_calc_stream
+            )
         else:
-            return _all_gather_in_dygraph(tensor_or_tensor_list, tensor, group,
-                                          sync_op, use_calc_stream)
+            return _all_gather_in_dygraph(
+                tensor_or_tensor_list, tensor, group, sync_op, use_calc_stream
+            )
 
     raise RuntimeError(
         "paddle.distributed.stream.all_gather is only supported in dygraph mode now."

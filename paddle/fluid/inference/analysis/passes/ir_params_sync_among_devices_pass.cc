@@ -21,12 +21,9 @@
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
@@ -116,27 +113,6 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
     reserve_cpu_weights = true;
   }
 
-  int64_t params_total_bytes{0};
-  for (auto *node : paddle::framework::ir::TopologySortOperations(graph)) {
-    if (!node->IsOp()) continue;
-    if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch") continue;
-    for (auto *var_node : node->inputs) {
-      if (!var_node->Var()->Persistable()) continue;
-      auto var_name = var_node->Var()->Name();
-      auto *var = scope->FindLocalVar(var_name);
-      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::DenseTensor>()) {
-        auto *t = var->GetMutable<phi::DenseTensor>();
-        params_total_bytes += t->numel() * experimental::SizeOf(t->dtype());
-      }
-    }
-  }
-
-  {
-    // Alloc memory in pool to store all parameters.
-    phi::DenseTensor ts;
-    ts.mutable_data(place, params_total_bytes);
-  }
-
   std::unordered_set<std::string> visited;
   for (auto *node : paddle::framework::ir::TopologySortOperations(graph)) {
     if (!node->IsOp()) continue;
@@ -163,7 +139,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
         VLOG(5) << "var_name is " << var_name << ", data type is "
                 << var_data_type;
         platform::CPUPlace cpu_place;
-        framework::LoDTensor temp_tensor;
+        phi::DenseTensor temp_tensor;
         temp_tensor.Resize(t->dims());
         paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
         t->clear();

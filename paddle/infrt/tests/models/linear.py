@@ -28,13 +28,12 @@ CLASS_NUM = 10
 
 # define a random dataset
 class RandomDataset(paddle.io.Dataset):
-
     def __init__(self, num_samples):
         self.num_samples = num_samples
 
     def __getitem__(self, idx):
         image = np.random.random([IMAGE_SIZE]).astype('float32')
-        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+        label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype('int64')
         return image, label
 
     def __len__(self):
@@ -42,7 +41,6 @@ class RandomDataset(paddle.io.Dataset):
 
 
 class LinearNet(nn.Layer):
-
     def __init__(self):
         super(LinearNet, self).__init__()
         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
@@ -71,11 +69,9 @@ adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
 
 # create data loader
 dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-loader = paddle.io.DataLoader(dataset,
-                              batch_size=BATCH_SIZE,
-                              shuffle=True,
-                              drop_last=True,
-                              num_workers=2)
+loader = paddle.io.DataLoader(
+    dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True, num_workers=2
+)
 
 # train
 train(layer, loader, loss_fn, adam)

@@ -42,7 +42,7 @@ def func_example_2(func=functools.partial(func_example, 1)):
     pass
 
 
-class ClassExample():
+class ClassExample:
     """
     example Class
     """
@@ -55,7 +55,6 @@ class ClassExample():
 
 
 class Test_all_in_print_signatures(unittest.TestCase):
-
     def test_md5(self):
         algo = hashlib.md5()
         algo.update(func_example.__doc__.encode('utf-8'))
@@ -64,13 +63,13 @@ class Test_all_in_print_signatures(unittest.TestCase):
 
 
 class Test_is_primitive(unittest.TestCase):
-
     def test_single(self):
         self.assertTrue(is_primitive(2))
         self.assertTrue(is_primitive(2.1))
         self.assertTrue(is_primitive("2.1.1"))
-        self.assertFalse(is_primitive(
-            "hello paddle".encode('UTF-8')))  # True for python2
+        self.assertFalse(
+            is_primitive("hello paddle".encode('UTF-8'))
+        )  # True for python2
         self.assertFalse(is_primitive(1j))
         self.assertTrue(is_primitive(True))
 

@@ -16,12 +16,13 @@
 
 import unittest
 import shlex  # noqa: F401
-from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import remove_path_if_exists  # noqa: F401
+from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import (
+    remove_path_if_exists,
+)  # noqa: F401
 import os
 
 
 class FlPsTest(unittest.TestCase):
-
     def test_launch_fl_ps(self):
         '''
         cmd = [

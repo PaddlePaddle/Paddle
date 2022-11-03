@@ -22,7 +22,6 @@ eps = 1e-6
 
 
 class TestDiceLossValue(unittest.TestCase):
-
     def test_dice_loss(self):
         input_ = paddle.rand([2, 3, num_classes])
         label_ = paddle.randint(0, num_classes, [2, 3, 1], dtype=paddle.int64)
@@ -40,23 +39,21 @@ class TestDiceLossValue(unittest.TestCase):
 
 
 class TestDiceLossInvalidInput(unittest.TestCase):
-
     def test_error(self):
-
         def test_invalid_dtype():
             input_ = paddle.rand([2, 3, num_classes], dtype=paddle.float32)
-            label_ = paddle.randint(0,
-                                    num_classes, [2, 3, 1],
-                                    dtype=paddle.int64)
+            label_ = paddle.randint(
+                0, num_classes, [2, 3, 1], dtype=paddle.int64
+            )
             nn.dice_loss(input_, label_.astype(paddle.float32))
 
         self.assertRaises(AssertionError, test_invalid_dtype)
 
         def test_zero_shape_input():
             input_ = paddle.rand([0, 3, num_classes], dtype=paddle.float32)
-            label_ = paddle.randint(0,
-                                    num_classes, [0, 3, 1],
-                                    dtype=paddle.int64)
+            label_ = paddle.randint(
+                0, num_classes, [0, 3, 1], dtype=paddle.int64
+            )
             nn.dice_loss(input_, label_)
 
         self.assertRaises(AssertionError, test_zero_shape_input)

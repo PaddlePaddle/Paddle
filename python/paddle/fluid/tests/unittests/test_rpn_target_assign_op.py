@@ -22,33 +22,37 @@ from test_generate_proposal_labels_op import _generate_groundtruth
 from test_generate_proposal_labels_op import _bbox_overlaps, _box_to_delta
 
 
-def rpn_target_assign(anchor_by_gt_overlap,
-                      rpn_batch_size_per_im,
-                      rpn_positive_overlap,
-                      rpn_negative_overlap,
-                      rpn_fg_fraction,
-                      use_random=True):
+def rpn_target_assign(
+    anchor_by_gt_overlap,
+    rpn_batch_size_per_im,
+    rpn_positive_overlap,
+    rpn_negative_overlap,
+    rpn_fg_fraction,
+    use_random=True,
+):
     anchor_to_gt_argmax = anchor_by_gt_overlap.argmax(axis=1)
     anchor_to_gt_max = anchor_by_gt_overlap[
-        np.arange(anchor_by_gt_overlap.shape[0]), anchor_to_gt_argmax]
+        np.arange(anchor_by_gt_overlap.shape[0]), anchor_to_gt_argmax
+    ]
 
     gt_to_anchor_argmax = anchor_by_gt_overlap.argmax(axis=0)
     gt_to_anchor_max = anchor_by_gt_overlap[
-        gt_to_anchor_argmax,
-        np.arange(anchor_by_gt_overlap.shape[1])]
+        gt_to_anchor_argmax, np.arange(anchor_by_gt_overlap.shape[1])
+    ]
     anchors_with_max_overlap = np.where(
-        anchor_by_gt_overlap == gt_to_anchor_max)[0]
+        anchor_by_gt_overlap == gt_to_anchor_max
+    )[0]
 
-    labels = np.ones((anchor_by_gt_overlap.shape[0], ), dtype=np.int32) * -1
+    labels = np.ones((anchor_by_gt_overlap.shape[0],), dtype=np.int32) * -1
     labels[anchors_with_max_overlap] = 1
     labels[anchor_to_gt_max >= rpn_positive_overlap] = 1
 
     num_fg = int(rpn_fg_fraction * rpn_batch_size_per_im)
     fg_inds = np.where(labels == 1)[0]
     if len(fg_inds) > num_fg and use_random:
-        disable_inds = np.random.choice(fg_inds,
-                                        size=(len(fg_inds) - num_fg),
-                                        replace=False)
+        disable_inds = np.random.choice(
+            fg_inds, size=(len(fg_inds) - num_fg), replace=False
+        )
     else:
         disable_inds = fg_inds[num_fg:]
 
@@ -87,26 +91,30 @@ def rpn_target_assign(anchor_by_gt_overlap,
 
 def get_anchor(n, c, h, w):
     input_feat = np.random.random((n, c, h, w)).astype('float32')
-    anchors, _ = anchor_generator_in_python(input_feat=input_feat,
-                                            anchor_sizes=[32., 64.],
-                                            aspect_ratios=[0.5, 1.0],
-                                            variances=[1.0, 1.0, 1.0, 1.0],
-                                            stride=[16.0, 16.0],
-                                            offset=0.5)
+    anchors, _ = anchor_generator_in_python(
+        input_feat=input_feat,
+        anchor_sizes=[32.0, 64.0],
+        aspect_ratios=[0.5, 1.0],
+        variances=[1.0, 1.0, 1.0, 1.0],
+        stride=[16.0, 16.0],
+        offset=0.5,
+    )
     return anchors
 
 
-def rpn_target_assign_in_python(all_anchors,
-                                gt_boxes,
-                                is_crowd,
-                                im_info,
-                                lod,
-                                rpn_straddle_thresh,
-                                rpn_batch_size_per_im,
-                                rpn_positive_overlap,
-                                rpn_negative_overlap,
-                                rpn_fg_fraction,
-                                use_random=True):
+def rpn_target_assign_in_python(
+    all_anchors,
+    gt_boxes,
+    is_crowd,
+    im_info,
+    lod,
+    rpn_straddle_thresh,
+    rpn_batch_size_per_im,
+    rpn_positive_overlap,
+    rpn_negative_overlap,
+    rpn_fg_fraction,
+    use_random=True,
+):
     anchor_num = all_anchors.shape[0]
     batch_size = len(lod) - 1
     for i in range(batch_size):
@@ -119,7 +127,8 @@ def rpn_target_assign_in_python(all_anchors,
                 (all_anchors[:, 0] >= -rpn_straddle_thresh)
                 & (all_anchors[:, 1] >= -rpn_straddle_thresh)
                 & (all_anchors[:, 2] < im_width + rpn_straddle_thresh)
-                & (all_anchors[:, 3] < im_height + rpn_straddle_thresh))[0]
+                & (all_anchors[:, 3] < im_height + rpn_straddle_thresh)
+            )[0]
             # keep only inside anchors
             inside_anchors = all_anchors[inds_inside, :]
         else:
@@ -134,19 +143,29 @@ def rpn_target_assign_in_python(all_anchors,
         gt_boxes_slice = gt_boxes_slice[not_crowd_inds]
         iou = _bbox_overlaps(inside_anchors, gt_boxes_slice)
 
-        loc_inds, score_inds, labels, gt_inds, bbox_inside_weight = \
-                         rpn_target_assign(iou, rpn_batch_size_per_im,
-                                           rpn_positive_overlap,
-                                           rpn_negative_overlap,
-                                           rpn_fg_fraction,
-                                           use_random)
+        (
+            loc_inds,
+            score_inds,
+            labels,
+            gt_inds,
+            bbox_inside_weight,
+        ) = rpn_target_assign(
+            iou,
+            rpn_batch_size_per_im,
+            rpn_positive_overlap,
+            rpn_negative_overlap,
+            rpn_fg_fraction,
+            use_random,
+        )
         # unmap to all anchor
         loc_inds = inds_inside[loc_inds]
         score_inds = inds_inside[score_inds]
 
         sampled_gt = gt_boxes_slice[gt_inds]
         sampled_anchor = all_anchors[loc_inds]
-        box_deltas = _box_to_delta(sampled_anchor, sampled_gt, [1., 1., 1., 1.])
+        box_deltas = _box_to_delta(
+            sampled_anchor, sampled_gt, [1.0, 1.0, 1.0, 1.0]
+        )
 
         if i == 0:
             loc_indexes = loc_inds
@@ -156,31 +175,43 @@ def rpn_target_assign_in_python(all_anchors,
             bbox_inside_weights = bbox_inside_weight
         else:
             loc_indexes = np.concatenate(
-                [loc_indexes, loc_inds + i * anchor_num])
+                [loc_indexes, loc_inds + i * anchor_num]
+            )
             score_indexes = np.concatenate(
-                [score_indexes, score_inds + i * anchor_num])
+                [score_indexes, score_inds + i * anchor_num]
+            )
             tgt_labels = np.concatenate([tgt_labels, labels])
             tgt_bboxes = np.vstack([tgt_bboxes, box_deltas])
-            bbox_inside_weights = np.vstack([bbox_inside_weights, \
-                                             bbox_inside_weight])
+            bbox_inside_weights = np.vstack(
+                [bbox_inside_weights, bbox_inside_weight]
+            )
 
-    return loc_indexes, score_indexes, tgt_bboxes, tgt_labels, bbox_inside_weights
+    return (
+        loc_indexes,
+        score_indexes,
+        tgt_bboxes,
+        tgt_labels,
+        bbox_inside_weights,
+    )
 
 
-def retinanet_target_assign(anchor_by_gt_overlap, gt_labels, positive_overlap,
-                            negative_overlap):
+def retinanet_target_assign(
+    anchor_by_gt_overlap, gt_labels, positive_overlap, negative_overlap
+):
     anchor_to_gt_argmax = anchor_by_gt_overlap.argmax(axis=1)
     anchor_to_gt_max = anchor_by_gt_overlap[
-        np.arange(anchor_by_gt_overlap.shape[0]), anchor_to_gt_argmax]
+        np.arange(anchor_by_gt_overlap.shape[0]), anchor_to_gt_argmax
+    ]
 
     gt_to_anchor_argmax = anchor_by_gt_overlap.argmax(axis=0)
     gt_to_anchor_max = anchor_by_gt_overlap[
-        gt_to_anchor_argmax,
-        np.arange(anchor_by_gt_overlap.shape[1])]
+        gt_to_anchor_argmax, np.arange(anchor_by_gt_overlap.shape[1])
+    ]
     anchors_with_max_overlap = np.where(
-        anchor_by_gt_overlap == gt_to_anchor_max)[0]
+        anchor_by_gt_overlap == gt_to_anchor_max
+    )[0]
 
-    labels = np.ones((anchor_by_gt_overlap.shape[0], ), dtype=np.int32) * -1
+    labels = np.ones((anchor_by_gt_overlap.shape[0],), dtype=np.int32) * -1
     labels[anchors_with_max_overlap] = 1
     labels[anchor_to_gt_max >= positive_overlap] = 1
 
@@ -209,15 +240,22 @@ def retinanet_target_assign(anchor_by_gt_overlap, gt_labels, positive_overlap,
 
     gt_inds = anchor_to_gt_argmax[loc_index]
     label_inds = anchor_to_gt_argmax[score_index_tmp]
-    labels[0:len(fg_inds)] = np.squeeze(gt_labels[label_inds])
+    labels[0 : len(fg_inds)] = np.squeeze(gt_labels[label_inds])
     fg_num = len(fg_fake_inds) + len(fg_inds) + 1
     assert not np.any(labels == -1), "Wrong labels with -1"
     return loc_index, score_index, labels, gt_inds, bbox_inside_weight, fg_num
 
 
-def retinanet_target_assign_in_python(all_anchors, gt_boxes, gt_labels,
-                                      is_crowd, im_info, lod, positive_overlap,
-                                      negative_overlap):
+def retinanet_target_assign_in_python(
+    all_anchors,
+    gt_boxes,
+    gt_labels,
+    is_crowd,
+    im_info,
+    lod,
+    positive_overlap,
+    negative_overlap,
+):
     anchor_num = all_anchors.shape[0]
     batch_size = len(lod) - 1
     for i in range(batch_size):
@@ -235,16 +273,25 @@ def retinanet_target_assign_in_python(all_anchors, gt_boxes, gt_labels,
         gt_labels_slice = gt_labels_slice[not_crowd_inds]
         iou = _bbox_overlaps(inside_anchors, gt_boxes_slice)
 
-        loc_inds, score_inds, labels, gt_inds, bbox_inside_weight, fg_num = \
-                         retinanet_target_assign(iou, gt_labels_slice,
-                                                positive_overlap, negative_overlap)
+        (
+            loc_inds,
+            score_inds,
+            labels,
+            gt_inds,
+            bbox_inside_weight,
+            fg_num,
+        ) = retinanet_target_assign(
+            iou, gt_labels_slice, positive_overlap, negative_overlap
+        )
         # unmap to all anchor
         loc_inds = inds_inside[loc_inds]
         score_inds = inds_inside[score_inds]
 
         sampled_gt = gt_boxes_slice[gt_inds]
         sampled_anchor = all_anchors[loc_inds]
-        box_deltas = _box_to_delta(sampled_anchor, sampled_gt, [1., 1., 1., 1.])
+        box_deltas = _box_to_delta(
+            sampled_anchor, sampled_gt, [1.0, 1.0, 1.0, 1.0]
+        )
 
         if i == 0:
             loc_indexes = loc_inds
@@ -255,20 +302,29 @@ def retinanet_target_assign_in_python(all_anchors, gt_boxes, gt_labels,
             fg_nums = [[fg_num]]
         else:
             loc_indexes = np.concatenate(
-                [loc_indexes, loc_inds + i * anchor_num])
+                [loc_indexes, loc_inds + i * anchor_num]
+            )
             score_indexes = np.concatenate(
-                [score_indexes, score_inds + i * anchor_num])
+                [score_indexes, score_inds + i * anchor_num]
+            )
             tgt_labels = np.concatenate([tgt_labels, labels])
             tgt_bboxes = np.vstack([tgt_bboxes, box_deltas])
-            bbox_inside_weights = np.vstack([bbox_inside_weights, \
-                                             bbox_inside_weight])
+            bbox_inside_weights = np.vstack(
+                [bbox_inside_weights, bbox_inside_weight]
+            )
             fg_nums = np.concatenate([fg_nums, [[fg_num]]])
 
-    return loc_indexes, score_indexes, tgt_bboxes, tgt_labels, bbox_inside_weights, fg_nums
+    return (
+        loc_indexes,
+        score_indexes,
+        tgt_bboxes,
+        tgt_labels,
+        bbox_inside_weights,
+        fg_nums,
+    )
 
 
 class TestRpnTargetAssignOp(OpTest):
-
     def setUp(self):
         n, c, h, w = 2, 4, 14, 14
         all_anchors = get_anchor(n, c, h, w)
@@ -277,16 +333,16 @@ class TestRpnTargetAssignOp(OpTest):
         anchor_num = all_anchors.shape[0]
 
         images_shape = [[64, 64], [64, 64]]
-        #images_shape = [[64, 64]]
+        # images_shape = [[64, 64]]
         groundtruth, lod = _generate_groundtruth(images_shape, 3, 4)
         lod = [0, 4, 8]
-        #lod = [0, 4]
+        # lod = [0, 4]
 
         im_info = np.ones((len(images_shape), 3)).astype(np.float32)
         for i in range(len(images_shape)):
             im_info[i, 0] = images_shape[i][0]
             im_info[i, 1] = images_shape[i][1]
-            im_info[i, 2] = 0.8  #scale
+            im_info[i, 2] = 0.8  # scale
         gt_boxes = np.vstack([v['boxes'] for v in groundtruth])
         is_crowd = np.hstack([v['is_crowd'] for v in groundtruth])
 
@@ -300,12 +356,25 @@ class TestRpnTargetAssignOp(OpTest):
         rpn_fg_fraction = 0.5
         use_random = False
 
-        loc_index, score_index, tgt_bbox, labels, bbox_inside_weights = \
-            rpn_target_assign_in_python(all_anchors, gt_boxes, is_crowd,
-                                   im_info, lod, rpn_straddle_thresh,
-                                   rpn_batch_size_per_im, rpn_positive_overlap,
-                                   rpn_negative_overlap,
-                                   rpn_fg_fraction, use_random)
+        (
+            loc_index,
+            score_index,
+            tgt_bbox,
+            labels,
+            bbox_inside_weights,
+        ) = rpn_target_assign_in_python(
+            all_anchors,
+            gt_boxes,
+            is_crowd,
+            im_info,
+            lod,
+            rpn_straddle_thresh,
+            rpn_batch_size_per_im,
+            rpn_positive_overlap,
+            rpn_negative_overlap,
+            rpn_fg_fraction,
+            use_random,
+        )
         labels = labels[:, np.newaxis]
 
         self.op_type = "rpn_target_assign"
@@ -313,7 +382,7 @@ class TestRpnTargetAssignOp(OpTest):
             'Anchor': all_anchors,
             'GtBoxes': (gt_boxes, [[4, 4]]),
             'IsCrowd': (is_crowd, [[4, 4]]),
-            'ImInfo': (im_info, [[1, 1]])
+            'ImInfo': (im_info, [[1, 1]]),
         }
         self.attrs = {
             'rpn_batch_size_per_im': rpn_batch_size_per_im,
@@ -321,14 +390,14 @@ class TestRpnTargetAssignOp(OpTest):
             'rpn_positive_overlap': rpn_positive_overlap,
             'rpn_negative_overlap': rpn_negative_overlap,
             'rpn_fg_fraction': rpn_fg_fraction,
-            'use_random': use_random
+            'use_random': use_random,
         }
         self.outputs = {
             'LocationIndex': loc_index.astype('int32'),
             'ScoreIndex': score_index.astype('int32'),
             'TargetBBox': tgt_bbox.astype('float32'),
             'TargetLabel': labels.astype('int32'),
-            'BBoxInsideWeight': bbox_inside_weights.astype('float32')
+            'BBoxInsideWeight': bbox_inside_weights.astype('float32'),
         }
 
     def test_check_output(self):
@@ -336,7 +405,6 @@ class TestRpnTargetAssignOp(OpTest):
 
 
 class TestRetinanetTargetAssignOp(OpTest):
-
     def setUp(self):
         n, c, h, w = 2, 4, 14, 14
         all_anchors = get_anchor(n, c, h, w)
@@ -352,13 +420,15 @@ class TestRetinanetTargetAssignOp(OpTest):
         for i in range(len(images_shape)):
             im_info[i, 0] = images_shape[i][0]
             im_info[i, 1] = images_shape[i][1]
-            im_info[i, 2] = 0.8  #scale
+            im_info[i, 2] = 0.8  # scale
         gt_boxes = np.vstack([v['boxes'] for v in groundtruth])
         is_crowd = np.hstack([v['is_crowd'] for v in groundtruth])
-        gt_labels = np.vstack([
-            v['gt_classes'].reshape(len(v['gt_classes']), 1)
-            for v in groundtruth
-        ])
+        gt_labels = np.vstack(
+            [
+                v['gt_classes'].reshape(len(v['gt_classes']), 1)
+                for v in groundtruth
+            ]
+        )
         gt_labels = gt_labels.reshape(len(gt_labels), 1)
         all_anchors = all_anchors.astype('float32')
         gt_boxes = gt_boxes.astype('float32')
@@ -367,9 +437,23 @@ class TestRetinanetTargetAssignOp(OpTest):
         positive_overlap = 0.5
         negative_overlap = 0.4
 
-        loc_index, score_index, tgt_bbox, labels, bbox_inside_weights, fg_num = \
-            retinanet_target_assign_in_python(all_anchors, gt_boxes, gt_labels, is_crowd,
-                                   im_info, lod, positive_overlap, negative_overlap)
+        (
+            loc_index,
+            score_index,
+            tgt_bbox,
+            labels,
+            bbox_inside_weights,
+            fg_num,
+        ) = retinanet_target_assign_in_python(
+            all_anchors,
+            gt_boxes,
+            gt_labels,
+            is_crowd,
+            im_info,
+            lod,
+            positive_overlap,
+            negative_overlap,
+        )
         labels = labels[:, np.newaxis]
         self.op_type = "retinanet_target_assign"
         self.inputs = {
@@ -377,11 +461,11 @@ class TestRetinanetTargetAssignOp(OpTest):
             'GtBoxes': (gt_boxes, [[4, 4]]),
             'GtLabels': (gt_labels, [[4, 4]]),
             'IsCrowd': (is_crowd, [[4, 4]]),
-            'ImInfo': (im_info, [[1, 1]])
+            'ImInfo': (im_info, [[1, 1]]),
         }
         self.attrs = {
             'positive_overlap': positive_overlap,
-            'negative_overlap': negative_overlap
+            'negative_overlap': negative_overlap,
         }
         self.outputs = {
             'LocationIndex': loc_index.astype('int32'),
@@ -389,7 +473,7 @@ class TestRetinanetTargetAssignOp(OpTest):
             'TargetBBox': tgt_bbox.astype('float32'),
             'TargetLabel': labels.astype('int32'),
             'BBoxInsideWeight': bbox_inside_weights.astype('float32'),
-            'ForegroundNumber': fg_num.astype('int32')
+            'ForegroundNumber': fg_num.astype('int32'),
         }
 
     def test_check_output(self):
@@ -397,181 +481,420 @@ class TestRetinanetTargetAssignOp(OpTest):
 
 
 class TestRetinanetTargetAssignOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
-            bbox_pred1 = fluid.data(name='bbox_pred1',
-                                    shape=[1, 100, 4],
-                                    dtype='float32')
-            cls_logits1 = fluid.data(name='cls_logits1',
-                                     shape=[1, 100, 10],
-                                     dtype='float32')
-            anchor_box1 = fluid.data(name='anchor_box1',
-                                     shape=[100, 4],
-                                     dtype='float32')
-            anchor_var1 = fluid.data(name='anchor_var1',
-                                     shape=[100, 4],
-                                     dtype='float32')
-            gt_boxes1 = fluid.data(name='gt_boxes1',
-                                   shape=[10, 4],
-                                   dtype='float32')
-            gt_labels1 = fluid.data(name='gt_labels1',
-                                    shape=[10, 1],
-                                    dtype='int32')
+            bbox_pred1 = fluid.data(
+                name='bbox_pred1', shape=[1, 100, 4], dtype='float32'
+            )
+            cls_logits1 = fluid.data(
+                name='cls_logits1', shape=[1, 100, 10], dtype='float32'
+            )
+            anchor_box1 = fluid.data(
+                name='anchor_box1', shape=[100, 4], dtype='float32'
+            )
+            anchor_var1 = fluid.data(
+                name='anchor_var1', shape=[100, 4], dtype='float32'
+            )
+            gt_boxes1 = fluid.data(
+                name='gt_boxes1', shape=[10, 4], dtype='float32'
+            )
+            gt_labels1 = fluid.data(
+                name='gt_labels1', shape=[10, 1], dtype='int32'
+            )
             is_crowd1 = fluid.data(name='is_crowd1', shape=[1], dtype='float32')
-            im_info1 = fluid.data(name='im_info1',
-                                  shape=[1, 3],
-                                  dtype='float32')
+            im_info1 = fluid.data(
+                name='im_info1', shape=[1, 3], dtype='float32'
+            )
 
             # The `bbox_pred` must be Variable and the data type of `bbox_pred` Tensor
             # one of float32 and float64.
             def test_bbox_pred_type():
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign([1], cls_logits1, anchor_box1,
-                    anchor_var1, gt_boxes1, gt_labels1, is_crowd1, im_info1, 10)
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    [1],
+                    cls_logits1,
+                    anchor_box1,
+                    anchor_var1,
+                    gt_boxes1,
+                    gt_labels1,
+                    is_crowd1,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_bbox_pred_type)
 
             def test_bbox_pred_tensor_dtype():
-                bbox_pred2 = fluid.data(name='bbox_pred2',
-                                        shape=[1, 100, 4],
-                                        dtype='intt32')
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred2, cls_logits1, anchor_box1,
-                    anchor_var1, gt_boxes1, gt_labels1, is_crowd1, im_info1, 10)
+                bbox_pred2 = fluid.data(
+                    name='bbox_pred2', shape=[1, 100, 4], dtype='intt32'
+                )
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred2,
+                    cls_logits1,
+                    anchor_box1,
+                    anchor_var1,
+                    gt_boxes1,
+                    gt_labels1,
+                    is_crowd1,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_bbox_pred_tensor_dtype)
 
             # The `cls_logits` must be Variable and the data type of `cls_logits` Tensor
             # one of float32 and float64.
             def test_cls_logits_type():
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, 2, anchor_box1,
-                    anchor_var1, gt_boxes1, gt_labels1, is_crowd1, im_info1, 10)
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    2,
+                    anchor_box1,
+                    anchor_var1,
+                    gt_boxes1,
+                    gt_labels1,
+                    is_crowd1,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_cls_logits_type)
 
             def test_cls_logits_tensor_dtype():
-                cls_logits2 = fluid.data(name='cls_logits2',
-                                         shape=[1, 100, 10],
-                                         dtype='int32')
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits2, anchor_box1,
-                    anchor_var1, gt_boxes1, gt_labels1, is_crowd1, im_info1, 10)
+                cls_logits2 = fluid.data(
+                    name='cls_logits2', shape=[1, 100, 10], dtype='int32'
+                )
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits2,
+                    anchor_box1,
+                    anchor_var1,
+                    gt_boxes1,
+                    gt_labels1,
+                    is_crowd1,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_cls_logits_tensor_dtype)
 
             # The `anchor_box` must be Variable and the data type of `anchor_box` Tensor
             # one of float32 and float64.
             def test_anchor_box_type():
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits1, [5],
-                    anchor_var1, gt_boxes1, gt_labels1, is_crowd1, im_info1, 10)
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits1,
+                    [5],
+                    anchor_var1,
+                    gt_boxes1,
+                    gt_labels1,
+                    is_crowd1,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_anchor_box_type)
 
             def test_anchor_box_tensor_dtype():
-                anchor_box2 = fluid.data(name='anchor_box2',
-                                         shape=[100, 4],
-                                         dtype='int32')
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits1, anchor_box2,
-                    anchor_var1, gt_boxes1, gt_labels1, is_crowd1, im_info1, 10)
+                anchor_box2 = fluid.data(
+                    name='anchor_box2', shape=[100, 4], dtype='int32'
+                )
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits1,
+                    anchor_box2,
+                    anchor_var1,
+                    gt_boxes1,
+                    gt_labels1,
+                    is_crowd1,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_anchor_box_tensor_dtype)
 
             # The `anchor_var` must be Variable and the data type of `anchor_var` Tensor
             # one of float32 and float64.
             def test_anchor_var_type():
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits1, anchor_box1,
-                    5, gt_boxes1, gt_labels1, is_crowd1, im_info1, 10)
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits1,
+                    anchor_box1,
+                    5,
+                    gt_boxes1,
+                    gt_labels1,
+                    is_crowd1,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_anchor_var_type)
 
             def test_anchor_var_tensor_dtype():
-                anchor_var2 = fluid.data(name='anchor_var2',
-                                         shape=[100, 4],
-                                         dtype='int32')
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits1, anchor_box1,
-                    anchor_var2, gt_boxes1, gt_labels1, is_crowd1, im_info1, 10)
+                anchor_var2 = fluid.data(
+                    name='anchor_var2', shape=[100, 4], dtype='int32'
+                )
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits1,
+                    anchor_box1,
+                    anchor_var2,
+                    gt_boxes1,
+                    gt_labels1,
+                    is_crowd1,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_anchor_var_tensor_dtype)
 
             # The `gt_boxes` must be Variable and the data type of `gt_boxes` Tensor
             # one of float32 and float64.
             def test_gt_boxes_type():
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits1, anchor_box1,
-                    anchor_var1, [4], gt_labels1, is_crowd1, im_info1, 10)
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits1,
+                    anchor_box1,
+                    anchor_var1,
+                    [4],
+                    gt_labels1,
+                    is_crowd1,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_gt_boxes_type)
 
             def test_gt_boxes_tensor_dtype():
-                gt_boxes2 = fluid.data(name='gt_boxes2',
-                                       shape=[10, 4],
-                                       dtype='int32')
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits1, anchor_box1,
-                    anchor_var1, gt_boxes2, gt_labels1, is_crowd1, im_info1, 10)
+                gt_boxes2 = fluid.data(
+                    name='gt_boxes2', shape=[10, 4], dtype='int32'
+                )
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits1,
+                    anchor_box1,
+                    anchor_var1,
+                    gt_boxes2,
+                    gt_labels1,
+                    is_crowd1,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_gt_boxes_tensor_dtype)
 
             # The `gt_label` must be Variable and the data type of `gt_label` Tensor
             # int32.
             def test_gt_label_type():
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits1, anchor_box1,
-                    anchor_var1, gt_boxes1, 9, is_crowd1, im_info1, 10)
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits1,
+                    anchor_box1,
+                    anchor_var1,
+                    gt_boxes1,
+                    9,
+                    is_crowd1,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_gt_label_type)
 
             def test_gt_label_tensor_dtype():
-                gt_labels2 = fluid.data(name='label2',
-                                        shape=[10, 1],
-                                        dtype='float32')
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits1, anchor_box1,
-                    anchor_var1, gt_boxes1, gt_labels2, is_crowd1, im_info1, 10)
+                gt_labels2 = fluid.data(
+                    name='label2', shape=[10, 1], dtype='float32'
+                )
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits1,
+                    anchor_box1,
+                    anchor_var1,
+                    gt_boxes1,
+                    gt_labels2,
+                    is_crowd1,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_gt_label_tensor_dtype)
 
             # The `is_crowd` must be Variable and the data type of `is_crowd` Tensor
             # int32.
             def test_is_crowd_type():
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits1, anchor_box1,
-                    anchor_var1, gt_boxes1, gt_labels1, [10], im_info1, 10)
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits1,
+                    anchor_box1,
+                    anchor_var1,
+                    gt_boxes1,
+                    gt_labels1,
+                    [10],
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_is_crowd_type)
 
             def test_is_crowd_tensor_dtype():
-                is_crowd2 = fluid.data(name='is_crowd2',
-                                       shape=[10, 1],
-                                       dtype='float32')
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits1, anchor_box1,
-                    anchor_var1, gt_boxes1, gt_labels1, is_crowd2, im_info1, 10)
+                is_crowd2 = fluid.data(
+                    name='is_crowd2', shape=[10, 1], dtype='float32'
+                )
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits1,
+                    anchor_box1,
+                    anchor_var1,
+                    gt_boxes1,
+                    gt_labels1,
+                    is_crowd2,
+                    im_info1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_is_crowd_tensor_dtype)
 
             # The `im_info` must be Variable and the data type of `im_info` Tensor
             # must be one of float32 and float64.
             def test_im_info_type():
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits1, anchor_box1,
-                    anchor_var1, gt_boxes1, gt_labels1, is_crowd1, 1, 10)
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits1,
+                    anchor_box1,
+                    anchor_var1,
+                    gt_boxes1,
+                    gt_labels1,
+                    is_crowd1,
+                    1,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_im_info_type)
 
             def test_im_info_tensor_dtype():
-                im_info2 = fluid.data(name='im_info2',
-                                      shape=[1, 3],
-                                      dtype='int32')
-                score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \
-                    fluid.layers.retinanet_target_assign(bbox_pred1, cls_logits1, anchor_box1,
-                    anchor_var1, gt_boxes1, gt_labels1, is_crowd1, im_info2, 10)
+                im_info2 = fluid.data(
+                    name='im_info2', shape=[1, 3], dtype='int32'
+                )
+                (
+                    score_pred,
+                    loc_pred,
+                    score_target,
+                    loc_target,
+                    bbox_inside_weight,
+                    fg_num,
+                ) = fluid.layers.retinanet_target_assign(
+                    bbox_pred1,
+                    cls_logits1,
+                    anchor_box1,
+                    anchor_var1,
+                    gt_boxes1,
+                    gt_labels1,
+                    is_crowd1,
+                    im_info2,
+                    10,
+                )
 
             self.assertRaises(TypeError, test_im_info_tensor_dtype)
 

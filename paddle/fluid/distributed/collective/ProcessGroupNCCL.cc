@@ -110,6 +110,11 @@ bool ProcessGroupNCCL::NCCLTask::IsCompleted() {
   return true;
 }
 
+void ProcessGroupNCCL::NCCLTask::UpdateWaitChain(
+    const phi::DeviceContext& ctx) {
+  control_events_[0].Record(*static_cast<const phi::GPUContext*>(&ctx));
+}
+
 void ProcessGroupNCCL::CheckSplitSizes(std::vector<int64_t>* split_sizes,
                                        std::vector<int64_t> tensor_shape) {
   int64_t len_size = (*split_sizes).size();
@@ -448,22 +453,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
 
   platform::CUDADeviceGuard cuda_guard;
 
-  if (FLAGS_use_stream_safe_cuda_allocator) {
-    for (size_t i = 0; i < tensors.size(); ++i) {
-      cuda_guard.SetDevice(places[i]);
-      gpuStream_t nccl_stream;
-      if (use_calc_stream) {
-        nccl_stream =
-            static_cast<phi::GPUContext*>(
-                platform::DeviceContextPool::Instance().Get(places[i]))
-                ->stream();
-      } else {
-        nccl_stream = places_to_ctx_[key][i]->stream();
-      }
-      memory::RecordStream(tensors[i].Holder(), nccl_stream);
-    }
-  }
-
   {
     platform::NCCLGroupGuard nccl_guard;
     for (size_t i = 0; i < tensors.size(); ++i) {
@@ -478,6 +467,22 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
         nccl_stream = places_to_ctx_[key][i]->stream();
       }
       fn(tensors[i], nccl_comms[i]->GetNcclComm(), nccl_stream, dst_rank);
+    }
+  }
+
+  if (FLAGS_use_stream_safe_cuda_allocator) {
+    for (size_t i = 0; i < tensors.size(); ++i) {
+      cuda_guard.SetDevice(places[i]);
+      gpuStream_t nccl_stream;
+      if (use_calc_stream) {
+        nccl_stream =
+            static_cast<phi::GPUContext*>(
+                platform::DeviceContextPool::Instance().Get(places[i]))
+                ->stream();
+      } else {
+        nccl_stream = places_to_ctx_[key][i]->stream();
+      }
+      memory::RecordStream(tensors[i].Holder(), nccl_stream);
     }
   }
 
@@ -516,20 +521,20 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
   // construct uninitialize guard for device
   platform::CUDADeviceGuard cuda_guard;
 
-  if (FLAGS_use_stream_safe_cuda_allocator) {
-    for (size_t i = 0; i < tensors.size(); ++i) {
-      cuda_guard.SetDevice(places[i]);
-      memory::RecordStream(tensors[i].Holder(),
-                           places_to_ctx_[key][i]->stream());
-    }
-  }
-
   {
     platform::NCCLGroupGuard nccl_guard;
     for (size_t i = 0; i < tensors.size(); ++i) {
       cuda_guard.SetDevice(places[i]);
       const auto& nccl_stream = places_to_ctx_[key][i]->stream();
       fn(tensors[i], nccl_comms[i]->GetNcclComm(), nccl_stream, dst_rank);
+    }
+  }
+
+  if (FLAGS_use_stream_safe_cuda_allocator) {
+    for (size_t i = 0; i < tensors.size(); ++i) {
+      cuda_guard.SetDevice(places[i]);
+      memory::RecordStream(tensors[i].Holder(),
+                           places_to_ctx_[key][i]->stream());
     }
   }
 
@@ -1591,15 +1596,15 @@ ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
   return iter->second[0]->GetNcclComm();
 }
 
-phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
+const phi::DeviceContext& ProcessGroupNCCL::GetDeviceContext(
     const Place& place) const {
   return GetDeviceContext(place, /*use_calc_stream*/ false);
 }
 
-phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
+const phi::DeviceContext& ProcessGroupNCCL::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
   if (use_calc_stream) {
-    return platform::DeviceContextPool::Instance().Get(place);
+    return *platform::DeviceContextPool::Instance().Get(place);
   } else {
     std::vector<Place> places = {place};
     const auto& iter = places_to_ctx_.find(GetKeyFromPlaces(places));
@@ -1607,7 +1612,7 @@ phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
                       places_to_ctx_.end(),
                       platform::errors::InvalidArgument(
                           "Cannot find device context in process group."));
-    return iter->second[0].get();
+    return *iter->second[0];
   }
 }
 

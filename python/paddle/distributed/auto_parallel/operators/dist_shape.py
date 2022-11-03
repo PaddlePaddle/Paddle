@@ -21,7 +21,6 @@ from ..utils import is_dim_shard
 
 
 class DistributedShape(DistributedOperatorImplContainer):
-
     def __init__(self, op_type):
         super(DistributedShape, self).__init__(op_type)
 
@@ -30,7 +29,6 @@ register_distributed_operator_impl_container(DistributedShape("shape"))
 
 
 class DistributedShapeImpl(DistributedOperatorImpl):
-
     def __init__(self, name):
         super(DistributedShapeImpl, self).__init__(name)
         self._forward_implemented = True
@@ -52,8 +50,9 @@ class DistributedShapeImpl(DistributedOperatorImpl):
         return True
 
     def is_auto_compatible(self, dist_op):
-        if (not self.is_input_compatible(dist_op)) or \
-            (not self.is_output_compatible(dist_op)):
+        if (not self.is_input_compatible(dist_op)) or (
+            not self.is_output_compatible(dist_op)
+        ):
             return False
 
         return True
