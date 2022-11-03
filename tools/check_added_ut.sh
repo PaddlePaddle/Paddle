@@ -65,8 +65,15 @@ grep -F -x -v -f br-ut pr-ut > $PADDLE_ROOT/added_ut
 if [[ "$SYSTEM" == 'Linux' ]];then
     sort pr-ut |uniq -d > $PADDLE_ROOT/duplicate_ut
 fi
+
+echo "pr test count:"
+$PADDLE_ROOT/pr-ut | wc -l
+echo "develop test count:"
+$PADDLE_ROOT/br-ut | wc -l
 echo "New-UT:"
 cat $PADDLE_ROOT/added_ut
+echo "added_ut test count:"
+cat $PADDLE_ROOT/added_ut | wc -l
 rm -rf prec_build
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
     rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/paddle/scripts/paddle_build_pre.sh

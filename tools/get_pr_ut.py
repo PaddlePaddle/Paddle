@@ -395,6 +395,8 @@ class PRChecker(object):
                     f_judge = f_judge.replace('//', '/')
                 else:
                     f_judge = f
+                print("path of f:", f)
+                print("path of f_judge:", f_judge)
                 if f_judge not in file_ut_map:
                     if f_judge.endswith('.md'):
                         ut_list.append('md_placeholder')
@@ -409,6 +411,7 @@ class PRChecker(object):
                     elif f_judge.endswith(('.h', '.cu', '.cc', '.py')):
                         # determine whether the new added file is a member of added_ut
                         if file_dict[f] in ['added']:
+                            print("file state:", file_dict[f])
                             f_judge_in_added_ut = False
                             path = PADDLE_ROOT + 'added_ut'
                             print("PADDLE_ROOT:", PADDLE_ROOT)
@@ -416,11 +419,14 @@ class PRChecker(object):
                             (unittest_directory, unittest_name) = os.path.split(
                                 f_judge
                             )
+                            print("unittest_directory:", unittest_directory)
+                            print("unittest_unnittest_name", unittest_name)
                             with open(path, 'r') as f:
                                 added_unittests = f.readlines()
                                 for test in added_unittests:
                                     test = test.replace('\n', '').strip()
                                     if test == unittest_name.split(".")[0]:
+                                        print("added a new test")
                                         f_judge_in_added_ut = True
                             if f_judge_in_added_ut:
                                 print(
