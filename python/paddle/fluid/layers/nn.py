@@ -86,7 +86,6 @@ __all__ = [
     'reduce_mean',
     'reduce_max',
     'reduce_min',
-    'reduce_prod',
     'reduce_all',
     'reduce_any',
     'dropout',
@@ -5310,97 +5309,6 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
 
     helper.append_op(
         type='reduce_min',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs={
-            'dim': dim if dim is not None and dim != [] else [0],
-            'keep_dim': keep_dim,
-            'reduce_all': True
-            if dim is None or dim == [] or len(dim) == len(input.shape)
-            else False,
-        },
-    )
-    return out
-
-
-def reduce_prod(input, dim=None, keep_dim=False, name=None):
-    """
-
-    Computes the product of tensor elements over the given dimension.
-
-    Args:
-        input (Variable): The input variable which is a Tensor, the data type is float32,
-            float64, int32, int64.
-        dim (int|list|tuple, optional): The dimensions along which the product is performed. If
-            :attr:`None`, multiply all elements of :attr:`input` and return a
-            Tensor variable with a single element, otherwise must be in the
-            range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
-            the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true, default
-            value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: Tensor, result of product on the specified dim of input tensor,
-        it's data type is the same as input's Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            # x is a Tensor variable with following elements:
-            #    [[0.2, 0.3, 0.5, 0.9]
-            #     [0.1, 0.2, 0.6, 0.7]]
-            # Each example is followed by the corresponding output tensor.
-            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            fluid.layers.reduce_prod(x)  # [0.0002268]
-            fluid.layers.reduce_prod(x, dim=0)  # [0.02, 0.06, 0.3, 0.63]
-            fluid.layers.reduce_prod(x, dim=-1)  # [0.027, 0.0084]
-            fluid.layers.reduce_prod(x, dim=1,
-                                     keep_dim=True)  # [[0.027], [0.0084]]
-
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
-            #      [[[1.0, 2.0], [3.0, 4.0]],
-            #      [[5.0, 6.0], [7.0, 8.0]]]
-            # Each example is followed by the corresponding output tensor.
-            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_prod(y, dim=[1, 2]) # [24.0, 1680.0]
-            fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
-    """
-
-    if dim is not None and not isinstance(dim, list):
-        if isinstance(dim, tuple):
-            dim = list(dim)
-        elif isinstance(dim, int):
-            dim = [dim]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".format(
-                    type(dim)
-                )
-            )
-    if in_dygraph_mode():
-        return _C_ops.prod(
-            input,
-            dim if dim is not None and dim != [] else [0],
-            keep_dim,
-            True
-            if dim is None or dim == [] or len(dim) == len(input.shape)
-            else False,
-        )
-
-    helper = LayerHelper('reduce_prod', **locals())
-    check_variable_and_dtype(
-        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_prod'
-    )
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='reduce_prod',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
