@@ -74,7 +74,7 @@ void Pool2dKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(pool2d,
                    OneDNN,
-                   ALL_LAYOUT,
+                   ONEDNN,
                    phi::Pool2dKernel,
                    float,
                    int8_t,
