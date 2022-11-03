@@ -534,7 +534,8 @@ if(WITH_PYTHON)
     add_custom_command(
       OUTPUT op_function
       COMMAND
-        ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
+        ${CMAKE_COMMAND} -E env
+        "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:.:${PADDLE_BINARY_DIR}/third_party/install/xpu/lib"
         "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
         "${op_function_output_path}" "${CODE_GEN_SPLIT_FILE_COUNT}"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file1}
