@@ -93,10 +93,10 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
       src_memory = std::make_shared<dnnl::memory>(
           input->mem_desc(), engine, to_void_cast<T>(input_data));
 
-      std::vector<dnnl_dim_t> vstrides(
-          input->mem_desc().data.format_desc.blocking.strides,
-          input->mem_desc().data.format_desc.blocking.strides +
-              input->mem_desc().data.ndims);
+      auto xstrides = input->mem_desc().data.format_desc.blocking.strides;
+
+      std::vector<dnnl_dim_t> vstrides(xstrides,
+                                       xstrides + input->mem_desc().data.ndims);
 
       auto dst_md = dnnl::memory::desc({src_tz}, dst_dt, vstrides);
 
