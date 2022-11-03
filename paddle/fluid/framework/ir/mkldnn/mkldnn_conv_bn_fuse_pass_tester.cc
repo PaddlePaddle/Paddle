@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+make// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ USE_OP_DEVICE_KERNEL(batch_norm, MKLDNN);
 USE_OP_ITSELF(conv2d_transpose);
 USE_OP_DEVICE_KERNEL(conv2d_transpose, MKLDNN);
 USE_OP_ITSELF(elementwise_add);
-USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
+PD_DECLARE_KERNEL(elementwise_add, OneDNN, ONEDNN);
 USE_OP_ITSELF(gelu);
 PD_DECLARE_KERNEL(gelu, OneDNN, ONEDNN);
 PD_DECLARE_ARG_MAPPING_FN(gelu);
