@@ -17,6 +17,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #include <memory>
+
 #include <unordered_set>
 
 #include "paddle/phi/core/compat/op_utils.h"
