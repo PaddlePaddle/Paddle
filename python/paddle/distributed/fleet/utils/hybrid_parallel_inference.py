@@ -231,7 +231,7 @@ class HybridParallelInferenceHelper(object):
             )
         else:
             if isinstance(role_maker, fleet.base.role_maker.RoleMakerBase):
-                assert role_maker._is_collective == True
+                assert role_maker._is_collective
                 self.role_maker = role_maker
 
         # communication_group info
@@ -466,7 +466,7 @@ class HybridParallelInferenceHelper(object):
         variable named var_name.
         """
         prev_ops = self._output_var_to_op[var_name]
-        if prev_ops == None:
+        if prev_ops is None:
             return None
         result_op = None
         for prev_op, prev_idx in reversed(prev_ops):

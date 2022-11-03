@@ -375,7 +375,7 @@ def basic_gru(
                 rnn.step_output(new_hidden)
 
                 step_input = new_hidden
-                if dropout_prob != None and dropout_prob > 0.0:
+                if dropout_prob is not None and dropout_prob > 0.0:
                     step_input = layers.dropout(
                         step_input,
                         dropout_prob=dropout_prob,
@@ -677,7 +677,7 @@ def basic_lstm(
                 rnn.step_output(new_cell)
 
                 step_input = new_hidden
-                if dropout_prob != None and dropout_prob > 0.0:
+                if dropout_prob is not None and dropout_prob > 0.0:
                     step_input = layers.dropout(
                         step_input,
                         dropout_prob=dropout_prob,

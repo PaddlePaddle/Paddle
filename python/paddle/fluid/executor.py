@@ -19,7 +19,6 @@ import sys
 import warnings
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
-import six
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator
 from .framework import convert_np_dtype_to_dtype_, _apply_pass
@@ -623,7 +622,7 @@ def _as_lodtensor(data, place, dtype=None):
 
 class FetchHandler(object):
     def __init__(self, var_dict=None, period_secs=60):
-        assert var_dict != None
+        assert var_dict is not None
         self.var_dict = var_dict
         self.period_secs = period_secs
 
@@ -1574,23 +1573,20 @@ class Executor(object):
             ]
             self._log_force_set_program_cache(use_program_cache)
 
-        try:
-            res = self._run_impl(
-                program=program,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name,
-                scope=scope,
-                return_numpy=return_numpy,
-                use_program_cache=use_program_cache,
-                use_prune=use_prune,
-                return_merged=return_merged,
-            )
-            core.update_autotune_status()
-            return res
-        except Exception as e:
-            six.reraise(*sys.exc_info())
+        res = self._run_impl(
+            program=program,
+            feed=feed,
+            fetch_list=fetch_list,
+            feed_var_name=feed_var_name,
+            fetch_var_name=fetch_var_name,
+            scope=scope,
+            return_numpy=return_numpy,
+            use_program_cache=use_program_cache,
+            use_prune=use_prune,
+            return_merged=return_merged,
+        )
+        core.update_autotune_status()
+        return res
 
     def _run_impl(
         self,
@@ -2313,7 +2309,7 @@ class Executor(object):
             )
         else:
             # cache trainer instance for heterps pipeline training
-            if fetch_list == None:
+            if fetch_list is None:
                 fetch_list = []
             cache_key = _get_strong_program_cache_key(program, None, fetch_list)
             trainer_instance = self._get_trainer_cache(cache_key)

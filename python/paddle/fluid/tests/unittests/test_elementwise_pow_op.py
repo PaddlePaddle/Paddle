@@ -48,6 +48,39 @@ class TestElementwisePowOp(OpTest):
             self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
+class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.inputs = {
+            'X': np.random.uniform(1, 2, []).astype("float64"),
+            'Y': np.random.uniform(1, 2, []).astype("float64"),
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwisePowOp_ZeroDim2(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.inputs = {
+            'X': np.random.uniform(1, 2, [20, 5]).astype("float64"),
+            'Y': np.random.uniform(1, 2, []).astype("float64"),
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwisePowOp_ZeroDim3(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.inputs = {
+            'X': np.random.uniform(1, 2, []).astype("float64"),
+            'Y': np.random.uniform(1, 2, [20, 5]).astype("float64"),
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
 class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"

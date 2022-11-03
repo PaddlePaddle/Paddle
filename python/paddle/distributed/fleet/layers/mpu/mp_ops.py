@@ -582,7 +582,7 @@ def _parallel_linear(
     # set is_distributed for splited bias
     # if a linear layer is splited by row, each rank would hold a complete bias and they should be the same in each rank.
     # if a linear layer is splited by col, the bias would also be split into each rank as its weight
-    if axis == 1 and linear._bias_attr != False:
+    if axis == 1 and linear._bias_attr is not False:
         _set_var_distributed(linear.bias)
 
     if not gather_out:

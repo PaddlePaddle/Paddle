@@ -720,7 +720,7 @@ class PipelineLayer(Layer):
 
     def _need_recompute(self, funcs, inputs):
         if not any(
-            input_.stop_gradient == False
+            not input_.stop_gradient
             for input_ in inputs
             if isinstance(input_, paddle.Tensor)
         ):
