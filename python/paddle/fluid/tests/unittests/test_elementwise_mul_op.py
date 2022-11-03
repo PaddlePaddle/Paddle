@@ -49,13 +49,11 @@ class ElementwiseMulOp(OpTest):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=(self.use_mkldnn == False))
+        self.check_output(check_dygraph=(not self.use_mkldnn))
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X', 'Y'], 'Out', check_dygraph=(self.use_mkldnn == False)
-        )
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=(not self.use_mkldnn))
 
     def test_check_grad_ingore_x(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -63,7 +61,7 @@ class ElementwiseMulOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
         )
 
     def test_check_grad_ingore_y(self):
@@ -72,7 +70,7 @@ class ElementwiseMulOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
         )
 
     def init_input_output(self):
@@ -85,6 +83,27 @@ class ElementwiseMulOp(OpTest):
 
     def init_axis(self):
         pass
+
+
+class TestElementwiseMulOp_ZeroDim1(ElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+
+class TestElementwiseMulOp_ZeroDim2(ElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+
+class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
 
 
 class TestBF16ElementwiseMulOp(OpTest):

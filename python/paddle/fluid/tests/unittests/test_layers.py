@@ -502,7 +502,7 @@ class TestLayer(LayerTest):
                     bias_attr=False,
                 )
                 dy_ret = conv2d(base.to_variable(images))
-                self.assertTrue(conv2d.bias is None)
+                self.assertIsNone(conv2d.bias)
 
             images = np.ones([2, 3, 5, 5], dtype='float32')
             conv2d = nn.Conv2D(
@@ -512,7 +512,7 @@ class TestLayer(LayerTest):
                 bias_attr=False,
             )
             dy_ret = conv2d(base.to_variable(images))
-            self.assertTrue(conv2d.bias is None)
+            self.assertIsNone(conv2d.bias)
 
         with self.static_graph():
             # the input of Conv2D must be Variable.
@@ -4359,8 +4359,8 @@ class TestBook(LayerTest):
             crf_decode = layers.crf_decoding(
                 input=emission, param_attr=ParamAttr(name="crfw")
             )
-            self.assertFalse(crf is None)
-            self.assertFalse(crf_decode is None)
+            self.assertIsNotNone(crf)
+            self.assertIsNotNone(crf_decode)
             return layers.chunk_eval(
                 input=crf_decode,
                 label=label,
@@ -4386,8 +4386,8 @@ class TestBook(LayerTest):
             crf_decode = layers.crf_decoding(
                 input=emission, length=length, param_attr=ParamAttr(name="crfw")
             )
-            self.assertFalse(crf is None)
-            self.assertFalse(crf_decode is None)
+            self.assertIsNotNone(crf)
+            self.assertIsNotNone(crf_decode)
             return layers.chunk_eval(
                 input=crf_decode,
                 label=label,

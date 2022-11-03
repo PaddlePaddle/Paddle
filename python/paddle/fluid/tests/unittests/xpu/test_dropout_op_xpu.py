@@ -52,7 +52,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
             }
 
             out = self.inputs['X'] * (1.0 - self.dropout_prob)
-            if self.is_test == False:
+            if not self.is_test:
                 mask = None
                 if self.dropout_prob == 0.0:
                     mask = np.ones(self.shape).astype(self.dtype)
@@ -78,7 +78,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
         def test_check_grad_normal(self):
             if (
                 hasattr(self.__class__, "no_need_check_grad")
-                and self.__class__.no_need_check_grad == True
+                and self.__class__.no_need_check_grad
             ):
                 return
 

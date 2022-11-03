@@ -41,17 +41,17 @@ def adaptive_pool2d_forward(
         else [x.shape[3], x.shape[1], x.shape[2]]
     )
 
-    if isinstance(output_size, int) or output_size == None:
+    if isinstance(output_size, int) or output_size is None:
         H_out = output_size
         W_out = output_size
         output_size = [H_out, W_out]
     else:
         H_out, W_out = output_size
 
-    if output_size[0] == None:
+    if output_size[0] is None:
         output_size[0] = H
         H_out = H
-    if output_size[1] == None:
+    if output_size[1] is None:
         output_size[1] = W
         W_out = W
 

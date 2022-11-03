@@ -298,7 +298,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
         reduce_type=None,
     ):
         assert (
-            quant_on_weight == True
+            quant_on_weight
         ), "Channel_wise only can be used on weight quantization."
         super(FakeQuantChannelWiseAbsMax, self).__init__()
         self._quant_bits = quant_bits

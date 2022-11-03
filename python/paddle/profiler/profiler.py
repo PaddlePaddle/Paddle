@@ -522,7 +522,7 @@ class Profiler:
         else:
             self.scheduler = _default_state_scheduler
 
-        if on_trace_ready == None:
+        if on_trace_ready is None:
             self.on_trace_ready = export_chrome_tracing('./profiler_log/')
         else:
             self.on_trace_ready = on_trace_ready
