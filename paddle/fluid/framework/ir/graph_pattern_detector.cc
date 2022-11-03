@@ -93,15 +93,10 @@ void GraphPatternDetector::operator()(Graph *graph,
   }
 
   auto subgraphs = DetectPatterns();
-  VLOG(4) << "subgraphs: " << subgraphs.size();
   UniquePatterns(&subgraphs);
-  VLOG(4) << "subgraphs: " << subgraphs.size();
   SortSubgraphs(&subgraphs);
-  VLOG(4) << "subgraphs: " << subgraphs.size();
   RemoveOverlappedMatch(&subgraphs);
-  VLOG(4) << "subgraphs: " << subgraphs.size();
   ValidateByNodeRole(&subgraphs);
-  VLOG(4) << "subgraphs: " << subgraphs.size();
 
   if (subgraphs.empty()) return;
 
@@ -159,13 +154,11 @@ void GraphPatternDetector::ValidateByNodeRole(
               if (item.first->IsIntermediate()) {
                 for (auto *x : item.second->inputs) {
                   if (!ios.count(x)) {
-                    VLOG(4) << x->Name();
                     return true;
                   }
                 }
                 for (auto *x : item.second->outputs) {
                   if (!ios.count(x)) {
-                    VLOG(4) << x->Name();
                     return true;
                   }
                 }
