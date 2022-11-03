@@ -14,6 +14,7 @@
 
 #pragma once
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>

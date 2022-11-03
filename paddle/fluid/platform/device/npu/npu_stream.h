@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <memory>
-
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"

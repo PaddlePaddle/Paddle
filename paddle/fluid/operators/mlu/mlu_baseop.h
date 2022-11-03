@@ -17,7 +17,7 @@ limitations under the License. */
 #include <cnnl.h>
 #include <concurrentqueue.h>
 #include <mlu_op.h>
-
+#include <map>
 #include <string>
 #include <vector>
 

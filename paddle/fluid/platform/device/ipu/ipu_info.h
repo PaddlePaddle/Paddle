@@ -11,9 +11,9 @@ limitations under the License. */
 #pragma once
 
 #ifdef PADDLE_WITH_IPU
+#include <map>
 #include <memory>
 #include <vector>
-
 #include "glog/logging.h"
 
 namespace paddle {

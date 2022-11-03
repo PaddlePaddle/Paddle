@@ -195,8 +195,12 @@ class PRChecker(object):
     def get_comment_of_file(self, f):
         # content = self.repo.get_contents(f.replace(PADDLE_ROOT, ''), 'pull/').decoded_content
         # todo: get file from github
-        with open(f, encoding="utf-8") as fd:
-            lines = fd.readlines()
+        try:
+            with open(f, encoding="utf-8") as fd:
+                lines = fd.readlines()
+        except IOError:
+            print("open failed")
+
         lineno = 1
         inputs = ''
         for line in lines:
@@ -286,13 +290,16 @@ class PRChecker(object):
         print("all_case_file path:", all_ut_file)
         (unittest_directory, unittest_name) = os.path.split(unittest_path)
         # determine whether filename is in all_ut_case
-        with open(all_ut_file, 'r') as f:
-            all_unittests = f.readlines()
-            for test in all_unittests:
-                test = test.replace('\n', '').strip()
-                if test == unittest_name.split(".")[0]:
-                    return True
-        return False
+        try:
+            with open(all_ut_file, 'r') as f:
+                all_unittests = f.readlines()
+                for test in all_unittests:
+                    test = test.replace('\n', '').strip()
+                    if test == unittest_name.split(".")[0]:
+                        return True
+        except IOError:
+            print("open all_ut_file error,run all cases")
+            return ''
 
     def get_pr_ut(self):
         """Get unit tests in pull request."""
@@ -309,9 +316,12 @@ class PRChecker(object):
         if not ret:
             print('PREC download file_ut.json failed')
             return ''
-
-        with open('ut_file_map.json') as jsonfile:
-            file_ut_map = json.load(jsonfile)
+        try:
+            with open('ut_file_map.json') as jsonfile:
+                file_ut_map = json.load(jsonfile)
+        except IOError:
+            print("open file_ut_map fail,return and run all cases")
+            return ''
 
         current_system = platform.system()
         print("current_system:", current_system)
@@ -364,9 +374,13 @@ class PRChecker(object):
                 'prec_delta',
             )
             if ret:
-                with open('prec_delta') as delta:
-                    for ut in delta:
-                        ut_list.append(ut.rstrip('\r\n'))
+                try:
+                    with open('prec_delta') as delta:
+                        for ut in delta:
+                            ut_list.append(ut.rstrip('\r\n'))
+                except IOError:
+                    print("open prec_delta failed,return and run all cases")
+                    return ''
             else:
                 print('PREC download prec_delta failed')
                 exit(1)
@@ -420,13 +434,19 @@ class PRChecker(object):
                             )
                             print("unittest_directory:", unittest_directory)
                             print("unittest_unnittest_name", unittest_name)
-                            with open(path, 'r') as f:
-                                added_unittests = f.readlines()
-                                for test in added_unittests:
-                                    test = test.replace('\n', '').strip()
-                                    if test == unittest_name.split(".")[0]:
-                                        print("added a new test")
-                                        f_judge_in_added_ut = True
+                            try:
+                                with open(path, 'r') as f:
+                                    added_unittests = f.readlines()
+                                    for test in added_unittests:
+                                        test = test.replace('\n', '').strip()
+                                        if test == unittest_name.split(".")[0]:
+                                            print("added a new test")
+                                            f_judge_in_added_ut = True
+                            except IOError:
+                                print(
+                                    "open added_ut failed,return and run all cases"
+                                )
+                                return ''
                             if f_judge_in_added_ut:
                                 print(
                                     "Adding new unit tests not hit mapFiles: %s"
@@ -476,10 +496,16 @@ class PRChecker(object):
                         'prec_delta',
                     )
                     if ret:
-                        with open('prec_delta') as delta:
-                            for ut in delta:
-                                if ut not in ut_list:
-                                    ut_list.append(ut.rstrip('\r\n'))
+                        try:
+                            with open('prec_delta') as delta:
+                                for ut in delta:
+                                    if ut not in ut_list:
+                                        ut_list.append(ut.rstrip('\r\n'))
+                        except IOError:
+                            print(
+                                "open prec_delta failed,return and run all cases"
+                            )
+                            return ''
                     else:
                         print('PREC download prec_delta failed')
                         exit(1)

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# 改动一个python目录下的文件，注释类型
 import sys
 import warnings
 from . import wave_backend

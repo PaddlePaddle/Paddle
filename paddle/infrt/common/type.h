@@ -15,9 +15,9 @@
 #pragma once
 #include <glog/logging.h>
 
+#include <map>
 #include <memory>
 #include <string>
-
 #include "paddle/infrt/common/macros.h"
 
 //! Much of the concepts are borrowed from Halide project.
