@@ -1797,10 +1797,8 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
             #
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(2, 3, 32, 32)
-            x = paddle.to_tensor(input_data)
+            x = paddle.rand([2, 3, 32, 32])
             # x.shape is [2, 3, 32, 32]
             out = paddle.nn.functional.adaptive_avg_pool2d(
                             x = x,
