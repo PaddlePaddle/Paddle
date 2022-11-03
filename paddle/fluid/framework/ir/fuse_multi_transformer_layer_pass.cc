@@ -37,15 +37,12 @@ MultiTransformerLayerPattern::operator()(bool enable_int8,
                                          bool is_decoder) {
   std::string fused_multi_transformer_name =
       enable_int8 ? "fused_multi_transformer_int8" : "fused_multi_transformer";
-  // This map is used to store node_reprs, 3 * i names will be inserted
-  // cache_kv0_{i}, cache_kv1_{i}, fill_constant_batch_size_like_{i}
+  // This map is used to store node_reprs
   std::unordered_map<std::string, std::string> node_reprs;
 
-  VLOG(0) << "num in pattern = " << num_fused_op;
   // x0 and src_mask is unqiue input of subgraph
   auto* x0 = pattern->NewNode(x0_repr());
   x0->assert_is_op_input(fused_multi_transformer_name, "X")->AsInput();
-
   auto* src_mask = pattern->NewNode(src_mask_repr());
   src_mask->assert_is_op_input(fused_multi_transformer_name, "SrcMask")
       ->AsInput();
@@ -154,7 +151,6 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
                                                Scope* scope) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
-  VLOG(0) << "In build fusion";
 
   // TODO(wufeisheng): Get enable_int8 attr from graph after
   // fused_multi_transformer pass with int8 merged
@@ -164,11 +160,9 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
   bool is_decoder = false;
 
   if (graph->Has(kFusedMultiTransformerEncoderFusionCount)) {
-    VLOG(0) << "encoder fusion count";
     num_fuse_op = graph->Get<int>(kFusedMultiTransformerEncoderFusionCount);
     is_decoder = false;
   } else if (graph->Has(kFusedMultiTransformerDecoderFusionCount)) {
-    VLOG(0) << "decoder fusion count";
     num_fuse_op = graph->Get<int>(kFusedMultiTransformerDecoderFusionCount);
     is_decoder = true;
   }
@@ -186,26 +180,16 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
   patterns::MultiTransformerLayerPattern multi_layer_pattern(pattern,
                                                              name_scope);
   auto node_reprs = multi_layer_pattern(enable_int8, num_fuse_op, is_decoder);
-  for (auto p : node_reprs) {
-    VLOG(0) << "key: " << p.first << " value: " << p.second;
-  }
 
-  VLOG(0) << "Finish build pattern";
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(0) << "handle FuseMultiTransformerLayerPass";
-    VLOG(0) << "subgraph.size()" << subgraph.size();
-
     ///////////////////
     //// Get nodes ////
     ///////////////////
 
     GET_IR_NODE_FROM_SUBGRAPH(src_mask, src_mask, multi_layer_pattern);
-
     GET_IR_NODE_FROM_SUBGRAPH(x0, x0, multi_layer_pattern);
-
-    VLOG(0) << "Get input node";
 
     std::vector<Node*> fuse_op_nodes;
     std::vector<Node*> out_nodes;
@@ -278,7 +262,6 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
     for (const auto& input_name : inputs_names) {
       MergeInput(fuse_op_descs[0], fuse_op_input_var_name_maps, input_name);
     }
-    VLOG(0) << "Finsh Merge input";
 
     // Merge outputs
     fuse_op_descs[0]->SetOutput(
@@ -291,9 +274,6 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
                                        out_var_names.begin(),
                                        out_var_names.end());
     }
-    // for (auto out_name : output_names0["CacheKVOut"]) {
-    //     VLOG(0) << "out_name " << out_name;
-    // }
     fuse_op_descs[0]->SetOutput("CacheKVOut", merged_cache_kv_out_names);
 
     ////////////////
@@ -315,7 +295,6 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
     // Relink fuse op -> out
     IR_NODE_UNLINK(fuse_op_nodes[num_fuse_op - 1], out_nodes[num_fuse_op - 1]);
     IR_NODE_LINK_TO(fuse_op_nodes[0], out_nodes[num_fuse_op - 1]);
-    VLOG(0) << "Finsh relinks";
 
     /////////////////////////////
     //// Delete unused nodes ////
@@ -330,7 +309,6 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
     }
 
     GraphSafeRemoveNodes(graph, marked_fuse_op_nodes);
-    VLOG(0) << "Finsh remove";
     ++fusion_count;
   };
 
@@ -346,9 +324,6 @@ void FuseMultiTransformerLayerPass::ApplyImpl(Graph* graph) const {
       platform::errors::Fatal("During the fuse_multi_transformer_layer pass, "
                               "The scope should not be null."));
   int fusion_count = BuildFusion(graph, name_scope_, scope);
-  VLOG(0) << "fusion_count is " << fusion_count;
-
-  //   PD_THROW("IMULTILAYER");
 
   AddStatis(fusion_count);
 }

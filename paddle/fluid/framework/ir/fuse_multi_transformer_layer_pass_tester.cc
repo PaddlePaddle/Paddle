@@ -64,30 +64,10 @@ Scope* CreateParamScope() {
   return param_scope;
 }
 TEST(FuseMultiTransformerLayerPass, encoder_fp) {
-  // Layers layers;
-  // int num_layers = 3;
-  // // Vars
-  // auto* x = layers.data("x", {1, 128, 1024});
-  // auto* src_mask = layers.data("src_mask", {1, 16, 128, 128});
-
-  // auto* ln_scale = layers.data("ln_scale", {1024}, true);
-  // auto* ln_bias = layers.data("ln_bias", {1024}, true);
-  // auto* ffn_ln_scale = layers.data("ffn_ln_scale", {1024}, true);
-  // auto* ffn_ln_bias = layers.data("ffn_ln_bias", {1024}, true);
-  // auto* qkv_w = layers.data("qkv_w", {3, 16, 64, 1024}, true);
-  // auto* out_linear_w = layers.data("out_linear_w", {1024, 1024}, true);
-  // auto* ffn1_w = layers.data("ffn1_w", {1024, 4096}, true);
-  // auto* ffn2_w = layers.data("ffn2_w", {4096, 1024}, true);
-  // auto* qkv_bias = layers.data("qkv_bias", {3072}, true);
-  // auto* out_linear_bias = layers.data("out_linear_bias", {1024}, true);
-  // auto* ffn1_bias = layers.data("ffn1_bias", {4096}, true);
-  // auto* ffn2_bias = layers.data("ffn2_bias", {1024}, true);
-
   DEF_INPUT_DATA
 
   // Layers
   for (int i = 0; i < num_layers; ++i) {
-    std::cout << "begin to add fill const layer " << i << std::endl;
     auto* cache_kv = layers.fill_constant_batch_size_like(
         x,
         static_cast<int>(proto::VarType::FP32),
@@ -95,8 +75,6 @@ TEST(FuseMultiTransformerLayerPass, encoder_fp) {
         1,
         {2, -1, 16, 1024, 64},
         0);
-    std::cout << "begin to add fused_multi_transformer layer " << i
-              << std::endl;
     auto* out = layers.fused_multi_transformer(x,
                                                cache_kv,
                                                src_mask,
@@ -147,8 +125,6 @@ TEST(FuseMultiTransformerLayerPass, decoder_fp) {
   for (int i = 0; i < num_layers; ++i) {
     auto* shape_out = layers.shape(src_mask);
     auto* time_stamp = layers.slice(shape_out, {0}, {3}, {4});
-    std::cout << "begin to add fused_multi_transformer layer " << i
-              << std::endl;
     auto* out = layers.fused_multi_transformer(x,
                                                cache_kv,
                                                src_mask,
