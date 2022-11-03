@@ -280,16 +280,10 @@ class PRChecker(object):
 
     def file_is_unnit_test(self, unittest_path):
         # get all testcases by ctest-N
-        all_ut_file = PADDLE_ROOT + 'build/all_ut_file'
+        all_ut_file = PADDLE_ROOT + 'build/all_ut_list'
         # all_ut_file = '%s/build/all_ut_file' % PADDLE_ROOT
         print("PADDLE_ROOT:", PADDLE_ROOT)
-        print("all_ut_file path:", all_ut_file)
-        build_path = PADDLE_ROOT + 'build/'
-        print("build_path:", build_path)
-        os.system(
-            "cd %s && ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > %s"
-            % (build_path, all_ut_file)
-        )
+        print("all_case_file path:", all_ut_file)
         (unittest_directory, unittest_name) = os.path.split(unittest_path)
         # determine whether filename is in all_ut_case
         with open(all_ut_file, 'r') as f:
@@ -394,7 +388,7 @@ class PRChecker(object):
             for f in file_list:
                 if (
                     current_system == "Darwin"
-                    or current_system == "Windows_NT"
+                    or current_system == "Windows"
                     or self.suffix == ".py3"
                 ):
                     f_judge = f.replace(PADDLE_ROOT, '/paddle/', 1)
