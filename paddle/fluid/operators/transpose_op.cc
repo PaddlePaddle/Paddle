@@ -34,10 +34,13 @@ class TransposeOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Transpose");
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
+
     size_t x_rank = x_dims.size();
     size_t axis_size = axis.size();
 
-    PADDLE_ENFORCE_EQ(x_rank,
+    // Note: x_rank > axis_size when fuse squeeze2 + transpose2, else x_rank ==
+    // axis_size
+    PADDLE_ENFORCE_GE(x_rank,
                       axis_size,
                       platform::errors::InvalidArgument(
                           "The input tensor's dimension "

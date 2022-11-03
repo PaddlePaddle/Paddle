@@ -109,6 +109,70 @@ static void AppendActivation(const framework::ExecutionContext& ctx,
   }
 }
 
+static void SetOutMemDescWithUnsqueeze2FuseSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  const std::vector<int>& fused_unsqueeze2_axes =
+      ctx.Attr<std::vector<int>>("fused_unsqueeze2_axes");
+  const std::vector<int64_t>& op_tz = out_md.dims();
+  std::vector<int64_t> unsqueezed_op_tz(
+      op_tz.size() + fused_unsqueeze2_axes.size(), 0);
+
+  for (const auto& axis : fused_unsqueeze2_axes) {
+    int positive_axis = axis < 0 ? unsqueezed_op_tz.size() + axis : axis;
+    unsqueezed_op_tz[positive_axis] = 1;
+  }
+
+  int j = 0;
+  for (size_t i = 0; i < unsqueezed_op_tz.size(); ++i) {
+    if (unsqueezed_op_tz[i] == 0) {
+      unsqueezed_op_tz[i] = op_tz[j++];
+    }
+  }
+  out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
+  out->Resize(phi::make_ddim(unsqueezed_op_tz));
+}
+
+static void SetOutMemDescWithReshape2FuseSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  std::vector<int64_t> fused_reshape2_shape(
+      ctx.Attr<std::vector<int>>("fused_reshape2_shape").begin(),
+      ctx.Attr<std::vector<int>>("fused_reshape2_shape").end());
+
+  const int out_shape_numel = out->numel();
+  const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
+                                              fused_reshape2_shape.end(),
+                                              1,
+                                              std::multiplies<int64_t>());
+
+  for (size_t i = 0; i < fused_reshape2_shape.size(); ++i) {
+    if (fused_reshape2_shape[i] == -1) {
+      fused_reshape2_shape[i] = -out_shape_numel / new_shape_numel;
+      break;
+    }
+  }
+
+  out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
+  out->Resize(phi::make_ddim(fused_reshape2_shape));
+}
+
+static void SetOutMemDescWithLogicalLayoutFusesSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  if (ctx.HasAttr("fused_unsqueeze2_axes")) {
+    SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
+  } else if (ctx.HasAttr("fused_reshape2_shape")) {
+    SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
+  } else {
+    out->set_mem_desc(out_md);
+    out->Resize(phi::make_ddim(out_md.dims()));
+  }
+}
+
 static void SetInMemDescWithSqueeze2FuseSupport(
     const framework::ExecutionContext& ctx,
     phi::DenseTensor* in,

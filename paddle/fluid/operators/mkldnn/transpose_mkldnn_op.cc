@@ -83,8 +83,11 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
-    out->set_mem_desc(reorder_dst_memory_p->get_desc().permute_axes(
-        TransposeToPermuteAxis(transpose_axis)));
+    platform::SetOutMemDescWithLogicalLayoutFusesSupport(
+        ctx,
+        out,
+        reorder_dst_memory_p->get_desc().permute_axes(
+            TransposeToPermuteAxis(transpose_axis)));
   }
 
  private:
