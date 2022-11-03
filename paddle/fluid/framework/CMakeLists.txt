@@ -1167,19 +1167,6 @@ cc_test_old(
   glog)
 
 cc_library(
-  save_load_util
-  SRCS save_load_util.cc
-  DEPS tensor scope layer)
-cc_test_old(
-  save_load_util_test
-  SRCS
-  save_load_util_test.cc
-  DEPS
-  save_load_util
-  tensor
-  scope
-  layer)
-cc_library(
   generator
   SRCS generator.cc
   DEPS enforce place)
