@@ -100,9 +100,10 @@ cc_library(
   place
   SRCS place.cc
   DEPS enforce phi_place)
+
 cc_test(
-  place_test
-  SRCS place_test.cc
+  place_tmp_test
+  SRCS place_tmp_test.cc
   DEPS place glog gflags)
 
 if(WITH_MKLDNN)

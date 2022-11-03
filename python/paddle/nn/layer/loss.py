@@ -57,6 +57,8 @@ class BCEWithLogitsLoss(Layer):
     weight on every items in the batch. The ``pos_weight`` will attach different
     weight on the positive label of each class.
 
+    test_ci
+
     Finally, this operator applies reduce operation on the loss.
     If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.

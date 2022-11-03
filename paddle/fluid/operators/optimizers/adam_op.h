@@ -54,6 +54,7 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("LearningRate", "(Tensor) Learning rate");
     AddInput("Moment1", "(Tensor) Input first moment");
     AddInput("Moment2", "(Tensor) Input second moment");
+
     AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator");
     AddInput("Beta2Pow", "(Tensor) Input beta2 power accumulator");
 
