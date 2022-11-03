@@ -292,8 +292,7 @@ class PRChecker(object):
                 test = test.replace('\n', '').strip()
                 if test == unittest_name.split(".")[0]:
                     return True
-            else:
-                return False
+        return False
 
     def get_pr_ut(self):
         """Get unit tests in pull request."""
@@ -309,7 +308,7 @@ class PRChecker(object):
         )
         if not ret:
             print('PREC download file_ut.json failed')
-            exit(1)
+            return ''
 
         with open('ut_file_map.json') as jsonfile:
             file_ut_map = json.load(jsonfile)
