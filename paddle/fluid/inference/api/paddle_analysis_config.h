@@ -558,7 +558,8 @@ struct PD_INFER_DECL AnalysisConfig {
                             int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
                             bool use_static = false,
-                            bool use_calib_mode = true);
+                            bool use_calib_mode = true,
+                            int engine_memory_sharing = 1);
   ///
   /// \brief A boolean state telling whether the TensorRT engine is used.
   ///
@@ -1065,7 +1066,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
-  bool trt_engine_memory_sharing_{false};
+  int trt_engine_memory_sharing_{1};
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
