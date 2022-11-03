@@ -266,8 +266,13 @@ using BReluFunctor = phi::funcs::HardTanhFunctor<T>;
 template <typename T>
 using BReluGradFunctor = phi::funcs::HardTanhGradFunctor<T>;
 
+USE_PHI_FUNCTOR(Tanh)
 USE_PHI_FUNCTOR(Relu6)
+USE_PHI_FUNCTOR(LeakyRelu)
+USE_PHI_DOUBLE_GRAD_FUNCTOR(LeakyRelu)
 USE_PHI_FUNCTOR(HardShrink)
+USE_PHI_FUNCTOR(ELU)
+USE_PHI_FUNCTOR(Sigmoid)
 USE_PHI_FUNCTOR(HardSigmoid)
 USE_PHI_FUNCTOR(Swish)
 USE_PHI_FUNCTOR(HardSwish)
@@ -340,40 +345,6 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
     return ActBwdOpFwdDeps::kDepOut;
-  }
-};
-
-template <typename DeviceContext, typename T>
-class ELUGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<phi::DenseTensor>("X");
-    auto* Out = context.Input<phi::DenseTensor>("Out");
-    auto* dOut = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto* dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    const float alpha = context.Attr<float>("alpha");
-    dX->mutable_data<T>(context.GetPlace());
-
-    auto x = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(X, "Input", "X", "elu_grad"));
-    auto out = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(Out, "Input", "Out", "elu_grad"));
-    auto dout = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(dOut, "Input", "dOut", "elu_grad"));
-    auto dx = framework::EigenVector<T>::Flatten(
-        GET_DATA_SAFELY(dX, "Output", "dX", "elu_grad"));
-    auto* place =
-        context.template device_context<DeviceContext>().eigen_device();
-
-    if (alpha > 0) {
-      ELUGradFunctor<T> functor;
-      functor.alpha = alpha;
-      functor(*place, x, out, dout, dx);
-    } else {
-      ELUGradNegativeAlphaFunctor<T> functor;
-      functor.alpha = alpha;
-      functor(*place, x, out, dout, dx);
-    }
   }
 };
 
