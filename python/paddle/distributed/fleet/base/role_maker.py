@@ -545,7 +545,7 @@ class RoleMakerBase(object):
 
 class PaddleCloudRoleMaker(RoleMakerBase):
     def __init__(self, is_collective=False, **kwargs):
-        super(PaddleCloudRoleMaker, self).__init__()
+        super().__init__()
         self._is_collective = is_collective
         self._non_distributed = False
 
@@ -1181,7 +1181,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
 class UserDefinedRoleMaker(PaddleCloudRoleMaker):
     def __init__(self, is_collective=False, init_gloo=False, **kwargs):
-        super(UserDefinedRoleMaker, self).__init__(
+        super().__init__(
             is_collective=is_collective, init_gloo=init_gloo, **kwargs
         )
         self._init_gloo = init_gloo

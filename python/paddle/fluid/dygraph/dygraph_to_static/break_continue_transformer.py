@@ -120,7 +120,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
     """
 
     def __init__(self, wrapper_root):
-        super(BreakContinueTransformer, self).__init__()
+        super().__init__()
 
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
@@ -345,7 +345,7 @@ class BreakTransformOptimizer(BaseNodeVisitor):
     """
 
     def __init__(self, wrapper_root):
-        super(BreakTransformOptimizer, self).__init__()
+        super().__init__()
 
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node

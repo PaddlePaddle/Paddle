@@ -87,7 +87,7 @@ class Multinomial(distribution.Distribution):
             logits=self._probs_to_logits(probs)
         )
 
-        super(Multinomial, self).__init__(probs.shape[:-1], probs.shape[-1:])
+        super().__init__(probs.shape[:-1], probs.shape[-1:])
 
     @property
     def mean(self):

@@ -133,7 +133,7 @@ class KVHTTPServer(HTTPServer, object):
 
     def __init__(self, port, handler):
         """Init."""
-        super(KVHTTPServer, self).__init__(('', port), handler)
+        super().__init__(('', port), handler)
         self.delete_kv_lock = threading.Lock()
         self.delete_kv = {}
         self.kv_lock = threading.Lock()
