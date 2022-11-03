@@ -997,7 +997,7 @@ class TheOnePSRuntime(RuntimeBase):
             tensor_table_dict = self.compiled_strategy.get_tensor_table_dict()
             program_idx = 0
             for table_name in tensor_table_dict:
-                if tensor_table_dict[table_name]["startup_program"] != None:
+                if tensor_table_dict[table_name]["startup_program"] is not None:
                     tensor_table_dict[table_name][
                         "startup_program_id"
                     ] = program_idx
@@ -1005,7 +1005,7 @@ class TheOnePSRuntime(RuntimeBase):
                         tensor_table_dict[table_name]["startup_program"].desc
                     )
                     program_idx += 1
-                if tensor_table_dict[table_name]["main_program"] != None:
+                if tensor_table_dict[table_name]["main_program"] is not None:
                     tensor_table_dict[table_name][
                         "main_program_id"
                     ] = program_idx
@@ -1241,7 +1241,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._communicator.stop()
         if self.role_maker._is_heter_parameter_server_mode:
             assert (
-                self._heter_client != None
+                self._heter_client is not None
             ), "heter client should not be None in heterps mode"
             self._heter_client.stop()
         # executor = self._get_executor()

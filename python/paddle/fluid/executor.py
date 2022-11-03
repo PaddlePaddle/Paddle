@@ -622,7 +622,7 @@ def _as_lodtensor(data, place, dtype=None):
 
 class FetchHandler(object):
     def __init__(self, var_dict=None, period_secs=60):
-        assert var_dict != None
+        assert var_dict is not None
         self.var_dict = var_dict
         self.period_secs = period_secs
 
@@ -2309,7 +2309,7 @@ class Executor(object):
             )
         else:
             # cache trainer instance for heterps pipeline training
-            if fetch_list == None:
+            if fetch_list is None:
                 fetch_list = []
             cache_key = _get_strong_program_cache_key(program, None, fetch_list)
             trainer_instance = self._get_trainer_cache(cache_key)

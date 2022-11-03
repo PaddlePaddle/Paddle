@@ -126,20 +126,23 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   }
 }
 
-bool IsCommunicationOp(const Instruction& instr) {
+bool IsCommunicationOp(const std::string& op_name) {
   const std::set<std::string> special_comm_op_set = {
       "send",
       "recv",
       "send_v2",
       "recv_v2",
   };
-  const std::string& op_name = instr.OpBase()->Type();
   const std::string communication_op_prefix = "c_";
   if (op_name.find(communication_op_prefix) != std::string::npos ||
       special_comm_op_set.count(op_name)) {
     return true;
   }
   return false;
+}
+
+bool IsCommunicationOp(const Instruction& instr) {
+  return IsCommunicationOp(instr.OpBase()->Type());
 }
 
 bool IsCpuOp(const Instruction& instr) {

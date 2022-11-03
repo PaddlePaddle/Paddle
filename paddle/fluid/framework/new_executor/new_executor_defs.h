@@ -40,6 +40,8 @@ constexpr const char* kDefaultStream = "DefaultStream";
 constexpr const char* kD2HStream = "D2HStream";
 constexpr const char* kH2DStream = "H2DStream";
 
+enum class Priority { kLowest, kNormal };
+
 class InterpretercoreInferShapeContext : public InferShapeContext {
  public:
   InterpretercoreInferShapeContext(const OperatorBase& op,
@@ -300,7 +302,8 @@ class Instruction {
  public:
   Instruction(size_t id,
               OpFuncNode&& op_func_node,
-              const platform::DeviceContext& dev_ctx);
+              const platform::DeviceContext& dev_ctx,
+              const Priority priority);
 
   size_t Id() const;
 
@@ -362,10 +365,13 @@ class Instruction {
                       std::shared_ptr<platform::DeviceEvent> event,
                       platform::DeviceType waiter_type);
 
+  Priority GetPriority() const { return priority_; }
+
  private:
   size_t id_;
   OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned
+  const Priority priority_;
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<InterpretercoreInferShapeContext> infershape_ctx_;

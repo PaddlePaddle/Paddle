@@ -1013,7 +1013,7 @@ def load_vars(
             if not isinstance(each_var, Parameter):
                 continue
             var_temp = paddle.fluid.global_scope().find_var(each_var.name)
-            assert var_temp != None, "can't not find var: " + each_var.name
+            assert var_temp is not None, "can't not find var: " + each_var.name
             new_shape = (np.array(var_temp.get_tensor())).shape
             assert each_var.name in orig_para_shape, (
                 each_var.name + "MUST in var list"
@@ -2146,7 +2146,7 @@ def load(program, model_path, executor=None, var_list=None):
 
             return
         elif os.path.isfile(model_path):
-            if var_list == None:
+            if var_list is None:
                 raise ValueError(
                     "var_list is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
                 )
@@ -2479,7 +2479,7 @@ def set_program_state(program, state_dict):
     for para in parameter_list:
         var_temp = paddle.fluid.global_scope().find_var(para.name)
         assert (
-            var_temp != None
+            var_temp is not None
         ), "Variable [ {} ] Not found, Please make sure run startup program".format(
             para.name
         )
