@@ -121,20 +121,19 @@ struct SinDoubleGradFunctor : public BaseActivationFunctor<T> {
         GET_DATA_SAFELY(ddX, "Input", "DDX", "SinDoubleGrad"));
     auto x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "X", "SinDoubleGrad"));
-    // sin GradGrad: ddy=cos(x)*ddx, dx=-sin(x)*dy*ddx
+    // sin DoubleGrad: ddy=cos(x)*ddx, dx=-sin(x)*dy*ddx
+
     // calculate dx first, so ddy can inplace ddx
-    if (dX) {
-      auto dx = EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(dX, "Output", "DX", "SinDoubleGrad"));
-      auto dout = EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(dOut, "Output", "DOut", "SinDoubleGrad"));
-      dx.device(*d) = -ddx * x.unaryExpr(Sine<T>()) * dout;
-    }
-    if (ddOut) {
-      auto ddout = EigenVector<T>::Flatten(
-          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SinDoubleGrad"));
-      ddout.device(*d) = ddx * x.unaryExpr(Cosine<T>());
-    }
+    auto dx = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dX, "Output", "DX", "SinDoubleGrad"));
+    auto dout = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dOut, "Output", "DOut", "SinDoubleGrad"));
+    dx.device(*d) = -ddx * x.unaryExpr(Sine<T>()) * dout;
+
+    // calculate ddout
+    auto ddout = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SinDoubleGrad"));
+    ddout.device(*d) = ddx * x.unaryExpr(Cosine<T>());
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };

@@ -412,6 +412,7 @@ void SquareDoubleGradKernel(const Context& dev_ctx,
   if (ddout) {
     dev_ctx.template Alloc<T>(ddout);
   }
+
   phi::funcs::SquareGradGradFunctor<T> functor;
   functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
 }
