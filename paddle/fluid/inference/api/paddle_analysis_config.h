@@ -549,6 +549,10 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param use_static Serialize optimization information to disk for reusing.
   /// \param use_calib_mode Use TRT int8 calibration(post training
   /// quantization).
+  /// \param engine_memory_sharing The level to control TensorRT engine memory
+  /// sharing in predictors. 0 is disable, 1 is enable, 2 is enable for multi
+  /// predictors. NOTE: when value is equal to 2, the multi predictors should be
+  /// executed serially.
   ///
   ///
   void EnableTensorRtEngine(int64_t workspace_size = 1 << 30,
