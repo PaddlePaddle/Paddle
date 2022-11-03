@@ -75,7 +75,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(pool2d_grad,
                    OneDNN,
-                   ALL_LAYOUT,
+                   ONEDNN,
                    phi::Pool2dGradKernel,
                    float,
                    phi::dtype::bfloat16) {}
