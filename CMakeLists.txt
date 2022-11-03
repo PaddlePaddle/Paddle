@@ -301,6 +301,8 @@ option(WITH_RECORD_BUILDTIME
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
 option(WITH_ARM_BRPC "Supprot Brpc in Arm" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
+option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
+       ${WITH_GPU})
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -382,6 +384,16 @@ if(NOT WITH_GPU AND WITH_NCCL)
   set(WITH_NCCL
       OFF
       CACHE STRING "Disable NCCL when compiling without GPU" FORCE)
+endif()
+
+if(NOT WITH_GPU AND WITH_CUDNN_DSO)
+  message(
+    WARNING
+      "Can't compile with cuDNN libraries when compiling without GPU. Force WITH_CUDNN_DSO=OFF."
+  )
+  set(WITH_CUDNN_DSO
+      OFF
+      CACHE STRING "Disable cuDNN libraries when compiling without GPU" FORCE)
 endif()
 
 # force WITH_XPU on when WITH_XPU_KP
