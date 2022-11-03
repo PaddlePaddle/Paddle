@@ -146,6 +146,38 @@ class TestIndexSampleDynamic(unittest.TestCase):
             assert out_z1.numpy().all() == except_output.all()
 
 
+class TestIndexSampleFP16(unittest.TestCase):
+    def check_main(self, x_np, index_np, dtype):
+        paddle.disable_static()
+
+        x = paddle.to_tensor(x_np, dtype=dtype)
+        index = paddle.to_tensor(index_np, dtype='int32')
+        x.stop_gradient = False
+        y = paddle.index_sample(x, index)
+        x_g = paddle.grad(y, [x])
+        y_np = y.numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_main(self):
+        x_np = np.random.random([10, 20]).astype('float16')
+        index_np = np.random.randint(low=0, high=20, size=[10, 10]).astype(
+            'int32'
+        )
+        y_np, x_g_np = self.check_main(x_np, index_np, 'float16')
+
+        y_np_1, x_g_np_1 = self.check_main(x_np, index_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, index_np, 'float32')
+
+        def assert_equal(x, y):
+            np.testing.assert_array_equal(x, y)
+
+        assert_equal(y_np_1, y_np_2)
+        assert_equal(x_g_np_1, x_g_np_2)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

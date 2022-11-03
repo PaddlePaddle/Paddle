@@ -14,18 +14,10 @@
 
 #include "paddle/phi/kernels/index_sample_kernel.h"
 
-#include <cmath>
-#include <fstream>
-#include <set>
-#include <string>
-#include <utility>
-#include <vector>
-
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 namespace phi {
 template <typename T, typename Context, typename IndexT = int>
 void IndexSampleInner(const Context &context,
@@ -40,44 +32,41 @@ void IndexSampleInner(const Context &context,
   auto index_length = index_dims[1];
   int index_ids_num = index.numel();
 
-  std::vector<T> input_vec;
-  std::vector<IndexT> index_vec;
-  paddle::framework::TensorToVector(input, context, &input_vec);
-  paddle::framework::TensorToVector<IndexT>(index, context, &index_vec);
+  output->Resize({batch_size, index_length});
+  context.template Alloc<T>(output);
+  auto input_tensor = EigenVector<T>::Flatten(input);
+  auto index_tensor = EigenVector<IndexT>::Flatten(index);
+  auto output_tensor = EigenVector<T>::Flatten(*output);
 
-  std::vector<T> res(index_ids_num);
   for (int i = 0; i < index_ids_num; i++) {
     int b = floor(i / index_length);
     PADDLE_ENFORCE_GE(
-        index_vec[i],
+        index_tensor(i),
         0,
         errors::InvalidArgument(
             "Variable value (index) of OP(index_sample) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             value_length,
-            index_vec[i]));
+            index_tensor(i)));
     PADDLE_ENFORCE_LT(
-        index_vec[i],
+        index_tensor(i),
         value_length,
         errors::InvalidArgument(
             "Variable value (index) of OP(index_sample) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             value_length,
-            index_vec[i]));
+            index_tensor(i)));
 
-    int v_i = b * value_length + static_cast<int>(index_vec[i]);
-    T v = input_vec[v_i];
+    int v_i = b * value_length + static_cast<int>(index_tensor(i));
+    T v = input_tensor(v_i);
     VLOG(4) << "Index Sample: batch = " << b << " index = " << v_i
             << " value = " << v;
-    res[i] = v;
+    output_tensor(i) = v;
   }
-
-  auto ddim = phi::make_ddim({batch_size, index_length});
-  context.template Alloc<T>(output);
-  paddle::framework::TensorFromVector(res, context, output);
-  output->Resize(ddim);
+  auto output_dims = output->dims();
+  output->Resize(output_dims);
 }
 
 template <typename T, typename Context>
@@ -116,5 +105,6 @@ PD_REGISTER_KERNEL(index_sample,
                    phi::IndexSampleKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    int,
                    int64_t) {}

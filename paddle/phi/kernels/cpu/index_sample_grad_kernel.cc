@@ -14,22 +14,20 @@
 
 #include "paddle/phi/kernels/index_sample_grad_kernel.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 namespace phi {
 template <typename T, typename Context, typename IndexT = int>
 void IndexSampleGradInner(const Context& context,
                           const DenseTensor& out_grad,
                           const DenseTensor& index,
                           DenseTensor* x_grad) {
-  std::vector<T> out_grad_vec;
-  std::vector<IndexT> index_vec;
-  paddle::framework::TensorToVector(out_grad, context, &out_grad_vec);
-  paddle::framework::TensorToVector(index, context, &index_vec);
-
+  auto out_grad_tensor = EigenVector<T>::Flatten(out_grad);
+  auto index_tensor = EigenVector<IndexT>::Flatten(index);
+  context.template Alloc<T>(x_grad);
   auto index_dims = index.dims();
   auto x_grad_dims = x_grad->dims();
 
@@ -37,33 +35,32 @@ void IndexSampleGradInner(const Context& context,
   auto index_length = index_dims[1];
   int index_ids_num = index.numel();
 
-  std::vector<T> x_grad_vec(x_grad->numel(), 0);
+  auto x_grad_tensor = EigenVector<T>::Flatten(*x_grad);
+  x_grad_tensor.setZero();
 
   for (int i = 0; i < index_ids_num; i++) {
     int b = floor(i / index_length);
     PADDLE_ENFORCE_GE(
-        index_vec[i],
+        index_tensor(i),
         0,
         errors::InvalidArgument(
             "Variable value (index) of OP(index_sample_grad) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             value_length,
-            index_vec[i]));
+            index_tensor(i)));
     PADDLE_ENFORCE_LT(
-        index_vec[i],
+        index_tensor(i),
         value_length,
         errors::InvalidArgument(
             "Variable value (index) of OP(index_sample_grad) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             value_length,
-            index_vec[i]));
-    int v_i = b * value_length + static_cast<int>(index_vec[i]);
-    x_grad_vec[v_i] += out_grad_vec[i];
+            index_tensor(i)));
+    int v_i = b * value_length + static_cast<int>(index_tensor(i));
+    x_grad_tensor(v_i) += out_grad_tensor(i);
   }
-  context.template Alloc<T>(x_grad);
-  paddle::framework::TensorFromVector(x_grad_vec, context, x_grad);
   x_grad->Resize(x_grad_dims);
 }
 
@@ -103,5 +100,6 @@ PD_REGISTER_KERNEL(index_sample_grad,
                    phi::IndexSampleGradKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    int,
                    int64_t) {}

@@ -109,5 +109,6 @@ PD_REGISTER_KERNEL(index_sample,
                    phi::IndexSampleKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    int,
                    int64_t) {}
