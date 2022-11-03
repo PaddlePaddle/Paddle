@@ -692,7 +692,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         ps_dispatcher = self.config.split_method(self.pserver_endpoints)
         self.table_name = find_distributed_lookup_table(self.origin_program)
-        self.has_distributed_lookup_table = self.table_name != None
+        self.has_distributed_lookup_table = self.table_name is not None
         self.param_name_to_grad_name = dict()
         self.grad_name_to_param_name = dict()
         for param_var, grad_var in self.params_grads:

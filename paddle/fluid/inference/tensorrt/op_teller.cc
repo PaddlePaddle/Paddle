@@ -77,16 +77,17 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
-        "relu",     "relu6", "sigmoid",
-        "elu",      "selu",  "softsign",
-        "softplus", "stanh", "thresholded_relu",
-        "exp",      "log",   "sqrt",
-        "abs",      "sin",   "cos",
-        "tan",      "tanh",  "sinh",
-        "cosh",     "asin",  "acos",
-        "atan",     "asinh", "atanh",
-        "ceil",     "floor", "erf",
-        "silu"};
+        "relu",      "relu6", "sigmoid",
+        "elu",       "selu",  "softsign",
+        "softplus",  "stanh", "thresholded_relu",
+        "exp",       "log",   "sqrt",
+        "abs",       "sin",   "cos",
+        "tan",       "tanh",  "sinh",
+        "cosh",      "asin",  "acos",
+        "atan",      "asinh", "atanh",
+        "ceil",      "floor", "erf",
+        "silu",      "celu",  "tanh_shrink",
+        "logsigmoid"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -802,8 +803,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
       if (resize_inputs.find("OutSize") != resize_inputs.end()) {
-        if (desc.Input("OutSize").size() >= 1) {
-          VLOG(3) << "The Paddle-TRT doesn't support the OutSize for op_type "
+        if (!with_dynamic_shape) {
+          VLOG(3) << "Static shape don't support the OutSize for op_type "
                   << op_type;
           return false;
         }
@@ -2212,6 +2213,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shuffle_channel",
       "swish",
       "silu",
+      "celu",
       "split",
       "instance_norm",
       "gelu",
@@ -2268,6 +2270,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "layernorm_shift_partition",
+      "tanh_shrink",
+      "logsigmoid",
       "preln_layernorm_shift_partition",
       "lookup_table",
       "lookup_table_v2",
@@ -2330,6 +2334,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shuffle_channel",
       "swish",
       "silu",
+      "celu",
       "split",
       "instance_norm",
       "gelu",
@@ -2387,6 +2392,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
+      "tanh_shrink",
+      "logsigmoid",
       "preln_layernorm_shift_partition",
       "merge_layernorm",
       "lookup_table",

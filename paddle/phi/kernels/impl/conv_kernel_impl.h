@@ -25,19 +25,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ConvKernel(const Context& dev_ctx,
-                const DenseTensor& input,
-                const DenseTensor& filter_t,
-                const std::vector<int>& strides,
-                const std::vector<int>& paddings_t,
-                const std::string& padding_algorithm,
-                int groups,
-                const std::vector<int>& dilations_t,
-                const std::string& data_format,
-                bool use_addto,
-                int workspace_size_MB,
-                bool exhaustive_search,
-                DenseTensor* output) {
+void ConvKernelImpl(const Context& dev_ctx,
+                    const DenseTensor& input,
+                    const DenseTensor& filter_t,
+                    const std::vector<int>& strides,
+                    const std::vector<int>& paddings_t,
+                    const std::string& padding_algorithm,
+                    int groups,
+                    const std::vector<int>& dilations_t,
+                    const std::string& data_format,
+                    DenseTensor* output) {
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
   DenseTensor filter = filter_t;

@@ -53,26 +53,26 @@ def is_valid_completed_program(dist_context, program):
     vars_ = program.list_vars()
     for op in ops:
         op_dist_attrs = dist_context.get_op_dist_attr_for_program(op)
-        if op_dist_attrs == None:
+        if op_dist_attrs is None:
             return False
 
-        if op_dist_attrs.process_mesh == None:
+        if op_dist_attrs.process_mesh is None:
             return False
 
         for tensor_dist_attr in op_dist_attrs.inputs_dist_attrs.values():
-            if None == tensor_dist_attr.dims_mapping:
+            if tensor_dist_attr.dims_mapping is None:
                 return False
         for tensor_dist_attr in op_dist_attrs.outputs_dist_attrs.values():
-            if None == tensor_dist_attr.dims_mapping:
+            if tensor_dist_attr.dims_mapping is None:
                 return False
 
     for var in vars_:
         var_dist_attrs = dist_context.get_tensor_dist_attr_for_program(var)
-        if var_dist_attrs == None:
+        if var_dist_attrs is None:
             return False
-        elif var_dist_attrs.process_mesh == None:
+        elif var_dist_attrs.process_mesh is None:
             return False
-        elif var_dist_attrs.dims_mapping == None:
+        elif var_dist_attrs.dims_mapping is None:
             return False
 
     return True

@@ -167,7 +167,7 @@ def get_user_defined_strategy(config):
         strategy.is_fl_ps_mode = (
             True if config.get("runner.is_fl_ps_mode") == 1 else False
         )
-        if strategy.is_fl_ps_mode == True:
+        if strategy.is_fl_ps_mode:
             strategy.pipeline = False
             micro_num = 1
             strategy.pipeline_configs = {

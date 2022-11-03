@@ -18,41 +18,20 @@
 #include "paddle/phi/kernels/gpu/sync_batch_norm_utils.h"
 
 namespace phi {
-namespace detail {
-
-ccl::CCLComm GetCCLComm(const Place &place, int global_gid) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  ncclComm_t comm = nullptr;
-
-  if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
-          global_gid)) {
-    auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
-        paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
-            global_gid));
-    comm = nccl_pg->NCCLComm(place);
-  }
-  return comm;
-#else
-  return nullptr;
-#endif
-}
-
-}  // namespace detail
 
 template <typename T, typename Context>
 void SyncBatchNormKernel(const Context &ctx,
                          const DenseTensor &x,
-                         const DenseTensor &scale,
-                         const DenseTensor &bias,
                          const DenseTensor &mean,
                          const DenseTensor &variance,
+                         const DenseTensor &scale,
+                         const DenseTensor &bias,
+                         bool is_test,
                          float momentum,
                          float epsilon_f,
                          const std::string &data_layout_str,
-                         bool is_test,
                          bool use_global_stats,
                          bool trainable_statistics,
-                         bool fuse_with_relu,
                          DenseTensor *y,
                          DenseTensor *mean_out,
                          DenseTensor *variance_out,

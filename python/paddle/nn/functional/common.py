@@ -1115,7 +1115,7 @@ def dropout(
     if axis and not isinstance(axis, (int, list, tuple)):
         raise TypeError("datatype of axis argument should be int or list")
 
-    if axis == None:  # commonly used dropout
+    if axis is None:  # commonly used dropout
         seed = None
         mode = (
             'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
@@ -1963,18 +1963,16 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            x_data = np.array([[[0, 1, 0],
-                                [ 1,  0, 1]]]).astype("float32")
-            print(x_data.shape)
             paddle.disable_static()
-            x = paddle.to_tensor(x_data, stop_gradient=False)
+
+            x = paddle.to_tensor([[[0, 1, 0],
+                                [ 1,  0, 1]]], dtype="float32", stop_gradient=False)
+
             output = paddle.nn.functional.label_smooth(x)
             print(output)
-
-            #[[[0.03333334 0.93333334 0.03333334]
-            #  [0.93333334 0.03333334 0.93333334]]]
+            # Tensor(shape=[1, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [[[0.03333334, 0.93333334, 0.03333334],
+            #          [0.93333334, 0.03333334, 0.93333334]]])
     """
     if epsilon > 1.0 or epsilon < 0.0:
         raise ValueError("The value of epsilon must be between 0 and 1.")
@@ -2109,7 +2107,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         #Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
         #       [0, 1, 2, 3, 5, 7, 8])
     """
-    if not (group == False or group is None or hasattr(group, 'is_member')):
+    if not (group is False or group is None or hasattr(group, 'is_member')):
         raise ValueError(
             'Expected group is False, None or instance of paddle.distributed.collective.Group \
              (got group: {})'.format(
@@ -2124,7 +2122,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     ring_id = 0
     rank = 0
     nranks = 1
-    if group != False:
+    if group is not False:
         if core.is_compiled_with_dist():
             parallel_env = paddle.distributed.ParallelEnv()
             global_rank = parallel_env.rank

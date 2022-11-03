@@ -593,7 +593,7 @@ class TestHessianNoBatch(unittest.TestCase):
         numerical_hessian = utils._np_concat_matrix_sequence(numerical_hessian)
         self.x.stop_gradient = False
         hessian = paddle.incubate.autograd.Hessian(func, self.x)
-        assert hessian[:].stop_gradient == False
+        assert not hessian[:].stop_gradient
         np.testing.assert_allclose(
             hessian[:].numpy(), numerical_hessian, self.rtol, self.atol
         )

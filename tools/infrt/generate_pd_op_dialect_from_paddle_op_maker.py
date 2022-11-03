@@ -122,14 +122,14 @@ def generate_all_ops_inputs_outputs_map(op_descs):
         outpus = list()
         for input_ in op_proto[INPUTS]:
             if (
-                op_proto[INPUTS][input_][EXTRA] != True
-                and op_proto[INPUTS][input_][INTERMEDIATE] != True
+                not op_proto[INPUTS][input_][EXTRA]
+                and not op_proto[INPUTS][input_][INTERMEDIATE]
             ):
                 inputs.append(input_)
         for output_ in op_proto[OUTPUTS]:
             if (
-                op_proto[OUTPUTS][output_][EXTRA] != True
-                and op_proto[OUTPUTS][output_][INTERMEDIATE] != True
+                not op_proto[OUTPUTS][output_][EXTRA]
+                and not op_proto[OUTPUTS][output_][INTERMEDIATE]
             ):
                 outpus.append(output_)
         ops_inputs_map[op_type] = inputs
@@ -214,9 +214,9 @@ def get_constraint(op_type, op_proto):
     optional_input_num_ = 0
     for input_ in op_proto[INPUTS]:
         if (
-            op_proto[INPUTS][input_][EXTRA] != True
-            and op_proto[INPUTS][input_][INTERMEDIATE] != True
-            and op_proto[INPUTS][input_][DISPENSABLE] == True
+            not op_proto[INPUTS][input_][EXTRA]
+            and not op_proto[INPUTS][input_][INTERMEDIATE]
+            and op_proto[INPUTS][input_][DISPENSABLE]
         ):
             optional_input_num_ += 1
     if optional_input_num_ > 1:
@@ -306,11 +306,11 @@ def convert_op_proto_into_mlir(op_descs):
             # 2.3.1 inputs
             for input_ in op_proto[INPUTS]:
                 if (
-                    op_proto[INPUTS][input_][EXTRA] != True
-                    and op_proto[INPUTS][input_][INTERMEDIATE] != True
+                    not op_proto[INPUTS][input_][EXTRA]
+                    and not op_proto[INPUTS][input_][INTERMEDIATE]
                 ):
-                    if op_proto[INPUTS][input_][DISPENSABLE] != True:
-                        if op_proto[INPUTS][input_][DUPLICABLE] != True:
+                    if not op_proto[INPUTS][input_][DISPENSABLE]:
+                        if not op_proto[INPUTS][input_][DUPLICABLE]:
                             ARGUMENTS = (
                                 ARGUMENTS + " PD_Tensor:$" + input_ + ","
                             )
@@ -319,7 +319,7 @@ def convert_op_proto_into_mlir(op_descs):
                                 ARGUMENTS + " PD_Tensor_Array:$" + input_ + ","
                             )
                     else:
-                        if op_proto[INPUTS][input_][DUPLICABLE] != True:
+                        if not op_proto[INPUTS][input_][DUPLICABLE]:
                             ARGUMENTS = (
                                 ARGUMENTS
                                 + " Optional<PD_Tensor>:$"
@@ -350,11 +350,11 @@ def convert_op_proto_into_mlir(op_descs):
 
             # 2.3.2 attributes
             for attr in op_proto[ATTRS]:
-                if (op_proto[ATTRS][attr][EXTRA] == True) or (
+                if (op_proto[ATTRS][attr][EXTRA]) or (
                     attr in skipped_attr_list
                 ):
                     continue
-                if op_proto[ATTRS][attr][DEFAULT_VALUE] != None:
+                if op_proto[ATTRS][attr][DEFAULT_VALUE] is not None:
                     if op_proto[ATTRS][attr][TYPE] in attr_mlir_converter:
                         default_value = str(
                             op_proto[ATTRS][attr][DEFAULT_VALUE]
@@ -434,10 +434,10 @@ def convert_op_proto_into_mlir(op_descs):
             outputs = ""
             for output_ in op_proto[OUTPUTS]:
                 if (
-                    op_proto[OUTPUTS][output_][EXTRA] != True
-                    and op_proto[OUTPUTS][output_][INTERMEDIATE] != True
+                    not op_proto[OUTPUTS][output_][EXTRA]
+                    and not op_proto[OUTPUTS][output_][INTERMEDIATE]
                 ):
-                    if op_proto[OUTPUTS][output_][DUPLICABLE] != True:
+                    if not op_proto[OUTPUTS][output_][DUPLICABLE]:
                         outputs = outputs + "PD_Tensor:${},".format(output_)
                     else:
                         outputs = outputs + "PD_Tensor_Array:${},".format(

@@ -706,7 +706,12 @@ class DataParallel(layers.Layer):
                 if param.trainable:
                     layers_param.append((sublayer, param))
 
-        trainable_parameters = [param for _, param in layers_param]
+        trainable_parameters = list(
+            filter(
+                lambda x: not getattr(x, "no_sync", False),
+                [param for _, param in layers_param],
+            )
+        )
 
         assert len(trainable_parameters) > 0, (
             "This model does not have any parameters to train, and "
