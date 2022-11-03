@@ -321,6 +321,8 @@ if(WITH_PYTHON)
 
   if(WITH_XPU)
     target_link_libraries(op_function_generator xpulib)
+    target_link_libraries(eager_legacy_op_function_generator xpulib)
+    target_link_libraries(kernel_signature_generator xpulib)
   endif()
 
   set(op_function_output_path ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/)
