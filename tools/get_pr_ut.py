@@ -294,8 +294,7 @@ class PRChecker(object):
                 test = test.replace('\n', '').strip()
                 if test == unittest_name.split(".")[0]:
                     return True
-            else:
-                return False
+            return False
 
     def get_pr_ut(self):
         """Get unit tests in pull request."""
