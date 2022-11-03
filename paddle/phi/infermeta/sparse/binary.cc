@@ -136,9 +136,9 @@ void Pool3dInferMeta(const MetaTensor& x,
 
 void SparseCooTensorInferMeta(const MetaTensor& values,
                               const MetaTensor& indices,
-                              const IntArray& dense_shape,
+                              const std::vector<int64_t>& shape,
                               MetaTensor* out) {
-  out->set_dims(phi::make_ddim(dense_shape.GetData()));
+  out->set_dims(phi::make_ddim(shape));
   out->set_dtype(values.dtype());
   out->set_layout(values.layout());
 }

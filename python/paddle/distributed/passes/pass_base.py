@@ -139,7 +139,7 @@ def new_pass(name, pass_attrs={}):
 
 class CPPPassWrapper(PassBase):
     def __init__(self):
-        super(CPPPassWrapper, self).__init__()
+        super().__init__()
 
     @property
     def cpp_name(self):

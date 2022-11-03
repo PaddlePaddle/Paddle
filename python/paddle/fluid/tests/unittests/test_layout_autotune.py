@@ -24,7 +24,7 @@ import paddle.nn.functional as F
 
 class SimpleNet(paddle.nn.Layer):
     def __init__(self, data_format="NCHW", class_num=2):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.conv = paddle.nn.Conv2D(3, 8, (3, 3))
         self.bn = paddle.nn.BatchNorm(num_channels=8)
         self.relu = paddle.nn.ReLU()

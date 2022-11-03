@@ -658,7 +658,7 @@ def _register_save_pre_hook(hook):
 
             class LinearNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear = paddle.nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                 def forward(self, x):
@@ -824,7 +824,7 @@ def save(layer, path, input_spec=None, **configs):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                 @paddle.jit.to_static
@@ -1295,7 +1295,7 @@ def load(path, **configs):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                 @paddle.jit.to_static
