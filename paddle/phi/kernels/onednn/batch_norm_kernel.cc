@@ -16,23 +16,26 @@
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
+
+template <typename T>
+using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 template <typename T, typename Context>
 void BatchNormKernel(const Context &dev_ctx,
                      const DenseTensor &x,
-                     const DenseTensor &scale,
-                     const DenseTensor &bias,
                      const DenseTensor &mean,
                      const DenseTensor &variance,
+                     const DenseTensor &scale,
+                     const DenseTensor &bias,
+                     bool is_test,
                      float momentum,
                      float epsilon,
                      const std::string &data_layout,
-                     bool is_test,
                      bool use_global_stats,
                      bool trainable_statistics,
-                     bool fuse_with_relu,
                      DenseTensor *y,
                      DenseTensor *mean_out,
                      DenseTensor *variance_out,
@@ -41,6 +44,10 @@ void BatchNormKernel(const Context &dev_ctx,
                      DenseTensor *reserve_space) {
   const bool test_mode = is_test && (!trainable_statistics);
   const bool global_stats = test_mode || use_global_stats;
+  const bool fuse_with_relu =
+      dev_ctx.HasDnnAttr("fuse_with_relu")
+          ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("fuse_with_relu"))
+          : false;
 
   funcs::BatchNormOneDNNHandler<T> handler(dev_ctx.GetEngine(),
                                            dev_ctx.GetPlace(),
@@ -83,7 +90,7 @@ void BatchNormKernel(const Context &dev_ctx,
 
     // mkldnn only compute stats for current batch
     // so we need compute momentum stats via Eigen lib
-    EigenVectorArrayMap<T> batch_mean_e(dev_ctx.template Alloc<T>(scale_mean),
+    EigenVectorArrayMap<T> batch_mean_e(dev_ctx.template Alloc<T>(saved_mean),
                                         C);
     EigenVectorArrayMap<T> batch_variance_e(
         dev_ctx.template Alloc<T>(saved_variance), C);
