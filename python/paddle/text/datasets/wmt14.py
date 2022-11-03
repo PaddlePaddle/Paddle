@@ -65,7 +65,7 @@ class WMT14(Dataset):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
 
                 def forward(self, src_ids, trg_ids, trg_ids_next):
                     return paddle.sum(src_ids), paddle.sum(trg_ids), paddle.sum(trg_ids_next)

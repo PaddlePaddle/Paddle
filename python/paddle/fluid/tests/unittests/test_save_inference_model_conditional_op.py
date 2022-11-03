@@ -36,7 +36,7 @@ def getModelOp(model_path):
 
 class WhileNet(paddle.nn.Layer):
     def __init__(self):
-        super(WhileNet, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         y = paddle.rand(shape=[1, 3, 4, 4])
@@ -53,7 +53,7 @@ class WhileNet(paddle.nn.Layer):
 
 class ForNet(paddle.nn.Layer):
     def __init__(self):
-        super(ForNet, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         y = paddle.randint(low=0, high=5, shape=[1], dtype='int32')
@@ -66,7 +66,7 @@ class ForNet(paddle.nn.Layer):
 
 class IfElseNet(paddle.nn.Layer):
     def __init__(self):
-        super(IfElseNet, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         y = paddle.to_tensor([5])

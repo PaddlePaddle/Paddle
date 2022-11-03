@@ -293,7 +293,7 @@ class WeightNormParamAttr(ParamAttr):
         do_model_average=False,
         need_clip=True,
     ):
-        super(WeightNormParamAttr, self).__init__(
+        super().__init__(
             name=name,
             initializer=initializer,
             learning_rate=learning_rate,

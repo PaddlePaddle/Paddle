@@ -101,7 +101,7 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
                                     gpu_type);
   });
   if (batch_size > 1) {
-#if CUDA_VERSION >= 11070
+#if CUDA_VERSION >= 11080
     dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
       phi::dynload::cusparseCsrSetStridedBatch(
           *descriptor, batch_size, M + 1, batch_nnz);
@@ -109,7 +109,7 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
 #else
     PADDLE_THROW(phi::errors::Unimplemented(
         "Batch Sparse matmul use 'cusparseCsrSetStridedBatch', which is "
-        "supported from CUDA 11.7"));
+        "supported from CUDA 11.8"));
 #endif
   }
 }
@@ -155,7 +155,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
   });
 
   if (batch_size > 1) {
-#if CUDA_VERSION >= 11070
+#if CUDA_VERSION >= 11080
     dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
       phi::dynload::cusparseCooSetStridedBatch(
           *descriptor, batch_size, batch_nnz);
@@ -163,7 +163,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
 #else
     PADDLE_THROW(phi::errors::Unimplemented(
         "Batch Sparse matmul use 'cusparseCooSetStridedBatch', which is "
-        "supported from CUDA 11.7"));
+        "supported from CUDA 11.8"));
 #endif
   }
 }
@@ -241,7 +241,7 @@ class CuSparseDnMatDescriptor {
 
     PADDLE_ENFORCE_EQ(x.numel(), batch_size * M * N);
     if (batch_size > 1) {
-#if CUDA_VERSION >= 11070
+#if CUDA_VERSION >= 11080
       dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
         phi::dynload::cusparseDnMatSetStridedBatch(
             descriptor_, batch_size, M * N);
@@ -249,7 +249,7 @@ class CuSparseDnMatDescriptor {
 #else
       PADDLE_THROW(phi::errors::Unimplemented(
           "Batch Sparse matmul use 'cusparseDnMatSetStridedBatch', which is "
-          "supported from CUDA 11.7"));
+          "supported from CUDA 11.8"));
 #endif
     }
     VLOG(6) << "Create cusparseDnMatDescr_t " << &descriptor_;

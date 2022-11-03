@@ -44,13 +44,21 @@ bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
 
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
+  }
+#endif
 
   // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
   this->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
   // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-  return framework::OpKernelType(data_type, ctx.GetPlace());
+  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
 }
 
 framework::OpKernelType PoolOp::GetKernelTypeForVar(
@@ -78,13 +86,22 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
 
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kCUDNN;
+  }
+#endif
 
   // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
   this->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
   // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-  return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  return framework::OpKernelType(
+      input_data_type, ctx.GetPlace(), layout_, library_);
 }
 
 framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
