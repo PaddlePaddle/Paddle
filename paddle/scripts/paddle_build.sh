@@ -2528,7 +2528,7 @@ set -x
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         #check change of pr_unnitests and dev_unnitests
         check_approvals_of_unittest 2
-        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/all_ut_list
+        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         fi
