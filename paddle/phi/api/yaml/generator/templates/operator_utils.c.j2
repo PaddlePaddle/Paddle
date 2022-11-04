@@ -459,7 +459,7 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
 Input({{name_in_forward_orig | to_opmaker_name}})
   {%- elif name in output_names %}
     {% set name_in_forward_orig = output_orig_names[output_names.index(name)]%}
-Output({{name | to_opmaker_name}})
+Output({{name_in_forward_orig | to_opmaker_name}})
   {%- elif name.endswith("_grad") %}{# output grad#}
     {% set name_in_forward = name[:-5] %}
     {% if name_in_forward in output_names %}
