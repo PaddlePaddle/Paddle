@@ -57,10 +57,6 @@ __amp_skip_ops__ = [
 ]
 
 
-def is_assign_where(op):
-    return op.type == "assign" and "where" in op.output_arg_names[0]
-
-
 def set_op_dtype_to_fp16(op):
     if (
         op.has_attr('in_dtype')
@@ -160,6 +156,7 @@ class FP16State(object):
             list
         )  # {forward_op_id: [(output_name, input_name, out_dtype, in_dtype, slot_name), ]}
         self.is_train = False
+        self.out_var_op_deps = {}
 
     def _is_fp16_op(self, op_id):
         return self._op_fp16_dict.get(op_id, None)
@@ -173,6 +170,14 @@ class FP16State(object):
         # assume all backward block are behind forward blocks
         for block in self.program.blocks:
             for op in block.ops:
+                for name in op.output_arg_names:
+                    if name not in self.out_var_op_deps:
+                        self.out_var_op_deps[name] = [op.desc.original_id()]
+                    else:
+                        self.out_var_op_deps[name].extend(
+                            [op.desc.original_id()]
+                        )
+
                 self._mark_op(op)
 
         # set forward tensor dtype
@@ -196,6 +201,18 @@ class FP16State(object):
             if op.type == "assign" and "array_" in op.input_arg_names[0]:
                 self._op_fp16_dict[op.desc.original_id()] = False
                 return
+            # If assign op is inplace-operation, assign op exec mode should be same with the created op of output_var.
+            if op.type == "assign":
+                out_name = op.output_arg_names[0]
+                if len(self.out_var_op_deps[out_name]) > 1:
+                    if not self._op_fp16_dict[
+                        self.out_var_op_deps[out_name][0]
+                    ]:
+                        self._op_fp16_dict[op.desc.original_id()] = False
+                    else:
+                        self._op_fp16_dict[op.desc.original_id()] = True
+                    return
+
             if _need_keep_fp32(
                 op, self.amp_list.unsupported_list, self.use_fp16_guard
             ):
@@ -240,9 +257,6 @@ class FP16State(object):
             if is_forward_op(op):
                 # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
                 if self._is_fp16_op(op.desc.original_id()) or op.type == "cast":
-                    if is_assign_where(op):
-                        continue
-
                     for in_name in op.input_names:
                         if _keep_fp32_input(op, in_name):
                             continue
@@ -303,9 +317,7 @@ class FP16State(object):
                         core.VarDesc.VarType.FP32,
                         self.dist_context,
                     )
-                elif self._is_fp16_op(
-                    op.desc.original_id()
-                ) and not is_assign_where(op):
+                elif self._is_fp16_op(op.desc.original_id()):
                     num_cast_ops = self._insert_forward_cast_ops(
                         op,
                         idx,
