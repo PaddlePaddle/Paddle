@@ -3273,18 +3273,6 @@ def multi_label_soft_margin_loss(
         name (str, optional): Name for the operation (optional, default is None).
                 For more information, please refer to :ref:`api_guide_Name`.
 
-	Shape:
-            input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
-            label: N-D Tensor, same shape as the input.
-            weight:N-D Tensor, the shape is [N,1]
-            output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
-
-	Returns:
-            Tensor, The tensor variable storing the multi_label_soft_margin_loss of input and label.
-
-	Examples:
-            .. code-block:: python
-
     Shape:
         input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means number of classes, available dtype is float32, float64. The sum operationoperates over all the elements.
         label: N-D Tensor, same shape as the input.
