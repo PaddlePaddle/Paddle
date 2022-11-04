@@ -2440,16 +2440,10 @@ def unique(
             #        [0, 1, 2, 3])
 
             unique = paddle.unique(x, axis=0)
-<<<<<<< HEAD
-            np_unique = unique.numpy() 
-            # [[2 1 3]
-            #  [3 0 1]]
-=======
             print(unique)
             # Tensor(shape=[2, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             #        [[2, 1, 3],
             #         [3, 0, 1]])
->>>>>>> a65746580b (fix numpy issue in codeblock examples (#47042))
     """
     if axis is None:
         axis = []
