@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/collective/BKCLTools.h"
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -38,9 +38,9 @@ namespace distributed {
 using Place = paddle::platform::Place;
 
 // BKCL funcs use separate communication stream by default
-class ProcessGroupBKCL : public ProcessGroup {
+class ProcessGroupBKCL : public ProcessGroupStream {
  public:
-  class BKCLTask : public ProcessGroup::Task,
+  class BKCLTask : public ProcessGroupStream::TaskStream,
                    public std::enable_shared_from_this<BKCLTask> {
    public:
     BKCLTask(const std::vector<Place>& places,
@@ -49,15 +49,13 @@ class ProcessGroupBKCL : public ProcessGroup {
              const std::vector<phi::DenseTensor>& inputs);
 
     // TODO(zhangxiaoci): XPU do not support event query for now
-    // bool IsCompleted();
+    bool IsCompleted();
 
     void SynchronizeStreams();
 
     bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
 
     void Synchronize();
-
-    void SetOutputs(std::vector<phi::DenseTensor>& outputs);  // NOLINT
 
     virtual ~BKCLTask();
 
@@ -66,7 +64,6 @@ class ProcessGroupBKCL : public ProcessGroup {
 
    protected:
     std::vector<Place> places_;
-    std::shared_ptr<std::vector<phi::DenseTensor>> outputs_;
   };
 
   ProcessGroupBKCL(const std::shared_ptr<Store>& store,
@@ -123,7 +120,6 @@ class ProcessGroupBKCL : public ProcessGroup {
       const std::vector<phi::DenseTensor>& inputs);
 
   std::shared_ptr<Store> store_;
-  std::shared_ptr<BKCLCommManager> BKCL_comm_;
   std::mutex mutex_;
   std::unordered_map<std::string, std::vector<std::shared_ptr<BKCLCommManager>>>
       places_to_bkclcomm_;
@@ -134,17 +130,11 @@ class ProcessGroupBKCL : public ProcessGroup {
   std::unordered_map<std::string, std::vector<std::unique_ptr<XPUContext>>>
       places_to_ctx_;
 
-  std::set<int> used_place_ids_;
-
  private:
-  void BcastBKCLId(std::vector<BKCLUniqueId>& BKCL_ids,  // NOLINT
-                   int root,                             // NOLINT
-                   int server_fd);
-
   void BroadcastUniqueBKCLID(std::vector<BKCLUniqueId>& BKCL_ids);  // NOLINT
 
   template <typename Fn>
-  std::shared_ptr<ProcessGroup::Task> Collective(
+  std::shared_ptr<ProcessGroupStream::Task> Collective(
       std::vector<phi::DenseTensor>& inputs,   // NOLINT
       std::vector<phi::DenseTensor>& outputs,  // NOLINT
       Fn fn,

@@ -52,24 +52,24 @@ ProcessGroupBKCL::BKCLTask::BKCLTask(
     int rank,
     CommType CommType,
     const std::vector<phi::DenseTensor>& inputs)
-    : Task(rank, inputs, CommType), places_(places) {
+    : TaskStream(rank, inputs, CommType), places_(places) {
   control_events_.resize(places.size());
 }
 
 ProcessGroupBKCL::BKCLTask::~BKCLTask() {}
-
-void ProcessGroupBKCL::BKCLTask::SetOutputs(
-    std::vector<phi::DenseTensor>& outputs) {  // NOLINT
-  outputs_ = std::make_shared<std::vector<phi::DenseTensor>>(outputs);
-}
 
 void ProcessGroupBKCL::BKCLTask::SynchronizeStreams() {
   for (size_t i = 0; i < places_.size(); ++i) {
     auto* default_ctx = static_cast<XPUContext*>(
         platform::DeviceContextPool::Instance().Get(places_[i]));
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_wait_event(
-        default_ctx->stream(), control_events_[i].GetRawXPUEvent()));
+        default_ctx->stream(), control_events_[i].GetRawXpuEvent()));
   }
+}
+
+bool ProcessGroupBKCL::BKCLTask::IsCompleted() {
+  LOG_FIRST_N(WARNING, 1) << "XPU do not support event query now.";
+  return true;
 }
 
 // TODO(sheniang03): Add timeout for wait, now timeout unused
@@ -94,7 +94,7 @@ ProcessGroupBKCL::ProcessGroupBKCL(const std::shared_ptr<Store>& store,
                                    int size,
                                    const platform::Place& place,
                                    int gid)
-    : ProcessGroup(rank, size, place, gid), store_(store) {
+    : ProcessGroupStream(rank, size, place, gid), store_(store) {
   platform::SetXPUDeviceId(place_.device);
 }
 
@@ -140,6 +140,10 @@ void ProcessGroupBKCL::CreateBKCLManagerCache(
     PADDLE_ENFORCE_XPU_SUCCESS(bkcl_get_unique_id(&bkcl_id));
   }
   BroadcastUniqueBKCLID(bkcl_ids);
+
+  VLOG(3) << "init bkcl rank: " << rank_ << ", nranks: " << size_
+          << ", place: " << places_key
+          << ", bkcl uniqueid: " << SerializeBKCLUniqueId(bkcl_id);
 
   std::vector<std::unique_ptr<XPUContext>> dev_ctx;
   dev_ctx.resize(places.size());

@@ -61,7 +61,7 @@ class XPUEventManager {
 
   bool IsCreated() const { return is_created_; }
   bool DeviceId() const { return device_index_; }
-  xpuEventHandle GetRawXPUEvent() const { return event_; }
+  xpuEventHandle GetRawXpuEvent() const { return event_; }
 
   void Record(const XPUContext& ctx) {
     auto device_index = ctx.GetPlace().device;
