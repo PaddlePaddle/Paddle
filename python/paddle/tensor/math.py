@@ -1318,11 +1318,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             #      [[[1, nan], [3, 4]],
             #      [[5, 6], [-nan, 8]]]
             # Each example is followed by the corresponding output tensor.
-<<<<<<< HEAD
-            y = np.array([[[1, float('nan')], [3, 4]], 
-=======
             y = paddle.to_tensor([[[1, float('nan')], [3, 4]],
->>>>>>> 912be4f897 (fix numpy issue in codeblock examples for operators under python/paddle/tensor folder (#46765))
                             [[5, 6], [float('-nan'), 8]]])
             out5 = paddle.nansum(y, axis=[1, 2]) # [8, 19]
             out6 = paddle.nansum(y, axis=[0, 1]) # [9, 18]
@@ -4218,13 +4214,8 @@ def rad2deg(x, name=None):
         .. code-block:: python
 
             import paddle
-<<<<<<< HEAD
-            import numpy as np
-            
-=======
             import math
 
->>>>>>> 912be4f897 (fix numpy issue in codeblock examples for operators under python/paddle/tensor folder (#46765))
             x1 = paddle.to_tensor([3.142, -3.142, 6.283, -6.283, 1.570, -1.570])
             result1 = paddle.rad2deg(x1)
             print(result1)
