@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
-
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/utils/type_registry.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -42,8 +42,10 @@ struct NPUStorageProperties
   virtual ~NPUStorageProperties() = default;
   static const char* name() { return "NPUStorageProperties"; }
 
-  int64_t storage_format;
-  int64_t storage_layout;
+  int64_t origin_format{-1};
+  int64_t storage_format{-1};
+  DDim origin_dims;
+  DDim storage_dims;
 };
 
 // Add OneDNNStorageProperties firstly for unittest covergae
@@ -74,10 +76,14 @@ static std::unique_ptr<StorageProperties> CopyStorageProperties(
   if (sp) {
     if (NPUStorageProperties::classof(sp.get())) {
       auto result = std::make_unique<NPUStorageProperties>();
+      result->origin_format =
+          static_cast<NPUStorageProperties*>(sp.get())->origin_format;
       result->storage_format =
           static_cast<NPUStorageProperties*>(sp.get())->storage_format;
-      result->storage_layout =
-          static_cast<NPUStorageProperties*>(sp.get())->storage_layout;
+      result->origin_dims =
+          static_cast<NPUStorageProperties*>(sp.get())->origin_dims;
+      result->storage_dims =
+          static_cast<NPUStorageProperties*>(sp.get())->storage_dims;
       return result;
 #ifdef PADDLE_WITH_MKLDNN
     } else if (OneDNNStorageProperties::classof(sp.get())) {
