@@ -58,10 +58,6 @@ class DenseTensor;
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#endif
-
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
@@ -1413,29 +1409,15 @@ bool OperatorWithKernel::SupportsKernelType(
   }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
-    auto tmp_kernel_type = kernel_type;
-    tmp_kernel_type.library_type_ = framework::LibraryType::kCUDNN;
-    return kernels.find(tmp_kernel_type) != kernels.end();
-  }
-#endif
-
   return kernel_iter != kernels.end();
 }
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  // NOTE(jiahongyu): Only mkldnn kernels need to check "use_mkldnn" attribute,
-  // hence we first call function SupportsMKLDNN. If we check "use_mkldnn"
-  // attribute first, it will cause error because some codes add "use_mkldnn"
-  // attribute to non-mkldnn ops.
-  if (!this->SupportsMKLDNN(data_type)) {
-    return false;
-  }
   const std::string use_mkldnn_attr = "use_mkldnn";
   return ctx.HasAttr(use_mkldnn_attr) && ctx.Attr<bool>(use_mkldnn_attr) &&
-         platform::is_cpu_place(ctx.GetPlace());
+         platform::is_cpu_place(ctx.GetPlace()) &&
+         this->SupportsMKLDNN(data_type);
 }
 
 void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
@@ -1598,12 +1580,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
-      }
-#endif
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
-        kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
       }
 #endif
 
@@ -1847,12 +1823,6 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
-  }
-#endif
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(ctx)) {
-    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
 #endif
 

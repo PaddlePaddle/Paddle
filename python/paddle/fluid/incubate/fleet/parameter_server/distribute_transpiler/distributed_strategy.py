@@ -341,7 +341,7 @@ class DistributedStrategy(object):
 
 class SyncStrategy(DistributedStrategy):
     def __init__(self):
-        super(SyncStrategy, self).__init__()
+        super().__init__()
         self.check_program_config()
         self.check_trainer_runtime_config()
         self.check_server_runtime_config()
@@ -369,7 +369,7 @@ class SyncStrategy(DistributedStrategy):
 
 class AsyncStrategy(DistributedStrategy):
     def __init__(self):
-        super(AsyncStrategy, self).__init__()
+        super().__init__()
         self.check_program_config()
         self.check_trainer_runtime_config()
         self.check_server_runtime_config()
@@ -395,7 +395,7 @@ class AsyncStrategy(DistributedStrategy):
 
 class HalfAsyncStrategy(DistributedStrategy):
     def __init__(self):
-        super(HalfAsyncStrategy, self).__init__()
+        super().__init__()
         self.check_program_config()
         self.check_trainer_runtime_config()
         self.check_server_runtime_config()
@@ -422,7 +422,7 @@ class HalfAsyncStrategy(DistributedStrategy):
 
 class GeoStrategy(DistributedStrategy):
     def __init__(self, update_frequency=100):
-        super(GeoStrategy, self).__init__()
+        super().__init__()
         self._program_config.geo_sgd_need_push_nums = update_frequency
         self.check_program_config()
         self.check_trainer_runtime_config()

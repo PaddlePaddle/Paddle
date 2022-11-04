@@ -640,7 +640,7 @@ class TestStridedSliceAPI(unittest.TestCase):
 
 class ArrayLayer(paddle.nn.Layer):
     def __init__(self, input_size=224, output_size=10, array_size=1):
-        super(ArrayLayer, self).__init__()
+        super().__init__()
         self.input_size = input_size
         self.output_size = output_size
         self.array_size = array_size
@@ -764,7 +764,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
                 class Simple(paddle.nn.Layer):
                     def __init__(self):
-                        super(Simple, self).__init__()
+                        super().__init__()
 
                     def forward(self, inps):
                         tensor_array = None

@@ -307,7 +307,7 @@ class FC(paddle.nn.Layer):
         is_test=False,
         dtype="float32",
     ):
-        super(FC, self).__init__(dtype)
+        super().__init__(dtype)
 
         self._size = size
         self._num_flatten_dims = num_flatten_dims
@@ -466,7 +466,7 @@ class BOW(paddle.nn.Layer):
         """
         initialize
         """
-        super(BOW, self).__init__()
+        super().__init__()
         self.dict_size = conf_dict["dict_size"]
         self.task_mode = conf_dict["task_mode"]
         self.emb_dim = conf_dict["net"]["emb_dim"]

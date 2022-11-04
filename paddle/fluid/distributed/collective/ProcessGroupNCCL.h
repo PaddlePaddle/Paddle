@@ -39,8 +39,6 @@
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
-constexpr const char* NCCL_BACKEND_NAME = "NCCL";
-
 namespace paddle {
 namespace distributed {
 
@@ -94,9 +92,7 @@ class ProcessGroupNCCL : public ProcessGroupStream {
                    const platform::Place& place,
                    int gid);
 
-  const std::string GetBackendName() const override {
-    return std::string(NCCL_BACKEND_NAME);
-  }
+  std::string GetBackendName() const override { return "NCCL"; }
 
   const phi::DeviceContext& GetDeviceContext(const Place& place) const override;
 

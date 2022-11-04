@@ -28,7 +28,7 @@ batch_num = 1000
 
 class SimpleNetUnusedParam(fluid.Layer):
     def __init__(self):
-        super(SimpleNetUnusedParam, self).__init__()
+        super().__init__()
         self.net_a = Linear(input_dim=10, output_dim=20)
         self.net_b = Linear(input_dim=20, output_dim=5)
         self.net_c = Linear(input_dim=5, output_dim=10)

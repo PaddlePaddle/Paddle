@@ -27,7 +27,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class Discriminator(fluid.Layer):
     def __init__(self):
-        super(Discriminator, self).__init__()
+        super().__init__()
         self._fc1 = Linear(1, 32, act='elu')
         self._fc2 = Linear(32, 1)
 
@@ -39,7 +39,7 @@ class Discriminator(fluid.Layer):
 
 class Generator(fluid.Layer):
     def __init__(self):
-        super(Generator, self).__init__()
+        super().__init__()
         self._fc1 = Linear(2, 64, act='elu')
         self._fc2 = Linear(64, 64, act='elu')
         self._fc3 = Linear(64, 1)

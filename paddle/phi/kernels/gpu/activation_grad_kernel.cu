@@ -40,6 +40,7 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
       d_out, errors::NotFound("The input DenseTensor dOut can not be nullptr"));
   PADDLE_ENFORCE_NOT_NULL(
       d_x, errors::NotFound("The output DenseTensor dX can not be nullptr"));
+
   if (!out) {
     out = d_out;  // fake out
   }
@@ -372,7 +373,7 @@ PD_REGISTER_KERNEL(exp_grad,
                    int64_t,
                    phi::dtype::float16) {}
 
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(soft_shrink_grad, SoftShrinkGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(softshrink_grad, SoftShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_shrink_grad, HardShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_shrink_grad, TanhShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(silu_grad, SiluGradKernel)
@@ -415,6 +416,16 @@ PD_REGISTER_KERNEL(square_double_grad,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(sin_double_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SinDoubleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softsign_grad, SoftsignGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)

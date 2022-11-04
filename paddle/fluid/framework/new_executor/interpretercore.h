@@ -92,7 +92,7 @@ class InterpreterCore {
   void RunInstructionAsync(size_t instr_id);
   void RunInstruction(const Instruction& instr_node);
   void RunNextInstructions(const Instruction& instr_id,
-                           std::queue<size_t>* reserved_next_ops);
+                           std::deque<size_t>* reserved_next_ops);
   // only used when program contains no feed op
   void Prepare(const std::vector<std::string>& feed_names,
                const std::vector<phi::DenseTensor>& feed_tensors,
