@@ -149,8 +149,8 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                auto in_dense = *p_dense;
                 auto *out_dense = p_dense.get();
+                auto in_dense = *p_dense;
                 distributed::AllreduceOptions opts{op};
                 return self.AllReduce(out_dense, in_dense, opts, sync_op);
               },
@@ -183,11 +183,12 @@ void BindDistributed(py::module *m) {
                  int src,
                  bool sync_op) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                distributed::BroadcastOptions opts{src};
-                auto dense =
+                auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.Broadcast(tensors, tensors, opts, sync_op);
+                auto *out_dense = p_dense.get();
+                auto in_dense = *p_dense;
+                distributed::BroadcastOptions opts{src};
+                return self.Broadcast(out_dense, in_dense, opts, sync_op);
               },
               py::arg("tensor"),
               py::arg("src"),
@@ -380,52 +381,52 @@ void BindDistributed(py::module *m) {
           .def(
               "allgather",
               [](distributed::ProcessGroup &self,
-                 py::handle py_in_tensor,
                  py::handle py_out_tensor_list,
+                 py::handle py_in_tensor,
                  bool sync_op) {
-                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
-                auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    in_tensor.impl());
-                std::vector<phi::DenseTensor> in_wrapper = {*in_dense};
-
                 auto out_tensor_list =
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
                 Tensor concat_out_tensor = paddle::concat(out_tensor_list, 0);
-                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
                     concat_out_tensor.impl());
-                std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
+                auto *out_dense = p_out_tensor.get();
+
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto p_in_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                auto in_dense = *p_in_tensor;
 
                 const auto &dev_ctx = self.GetDeviceContext(in_tensor.place());
-                auto task = self.AllGather(in_wrapper, out_wrapper, sync_op);
+                auto task = self.AllGather(out_dense, in_dense, sync_op);
                 distributed::SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
                 task->UpdateWaitChain(dev_ctx);
                 return task;
               },
-              py::arg("in"),
               py::arg("out"),
+              py::arg("in"),
               py::arg("sync_op"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
               "allgather_into_tensor",
               [](distributed::ProcessGroup &self,
-                 py::handle py_in_tensor,
                  py::handle py_out_tensor,
+                 py::handle py_in_tensor,
                  bool sync_op) {
-                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
-                auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    in_tensor.impl());
-                std::vector<phi::DenseTensor> in_wrapper = {*in_dense};
-
                 auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
-                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
                     out_tensor.impl());
-                std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
+                auto *out_dense = p_out_tensor.get();
 
-                return self.AllGather(in_wrapper, out_wrapper, sync_op);
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto p_in_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                auto in_dense = *p_in_tensor;
+
+                return self.AllGather(out_dense, in_dense, sync_op);
               },
-              py::arg("in"),
               py::arg("out"),
+              py::arg("in"),
               py::arg("sync_op"),
               py::call_guard<py::gil_scoped_release>())
 
@@ -784,55 +785,55 @@ void BindDistributed(py::module *m) {
           .def(
               "allgather_on_calc_stream",
               [](distributed::ProcessGroupStream &self,
-                 py::handle py_in_tensor,
-                 py::handle py_out_tensor_list) {
-                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
-                auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    in_tensor.impl());
-                std::vector<phi::DenseTensor> in_wrapper = {*in_dense};
-
+                 py::handle py_out_tensor_list,
+                 py::handle py_in_tensor) {
                 auto out_tensor_list =
                     CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
                 Tensor concat_out_tensor = paddle::concat(out_tensor_list, 0);
-                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
                     concat_out_tensor.impl());
-                std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
+                auto *out_dense = p_out_tensor.get();
+
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto p_in_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                auto in_dense = *p_in_tensor;
 
                 const auto &dev_ctx =
                     self.GetDeviceContext(in_tensor.place(), true);
-                auto task = self.AllGather(in_wrapper,
-                                           out_wrapper,
+                auto task = self.AllGather(out_dense,
+                                           in_dense,
                                            /*sync_op*/ true,
                                            /*use_calc_stream*/ true);
                 distributed::SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
                 return task;
               },
-              py::arg("in"),
               py::arg("out"),
+              py::arg("in"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
               "allgather_into_tensor_on_calc_stream",
               [](distributed::ProcessGroupStream &self,
-                 py::handle py_in_tensor,
-                 py::handle py_out_tensor) {
-                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
-                auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    in_tensor.impl());
-                std::vector<phi::DenseTensor> in_wrapper = {*in_dense};
-
+                 py::handle py_out_tensor,
+                 py::handle py_in_tensor) {
                 auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
-                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
                     out_tensor.impl());
-                std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
+                auto *out_dense = p_out_tensor.get();
 
-                return self.AllGather(in_wrapper,
-                                      out_wrapper,
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto p_in_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                auto in_dense = *p_in_tensor;
+
+                return self.AllGather(out_dense,
+                                      in_dense,
                                       /*sync_op*/ true,
                                       /*use_calc_stream*/ true);
               },
-              py::arg("in"),
               py::arg("out"),
+              py::arg("in"),
               py::call_guard<py::gil_scoped_release>())
 
           .def(
@@ -980,12 +981,13 @@ void BindDistributed(py::module *m) {
                  py::handle py_tensor,
                  int src) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                distributed::BroadcastOptions opts{src};
-                auto dense =
+                auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.Broadcast(tensors,
-                                      tensors,
+                auto *out_dense = p_dense.get();
+                auto in_dense = *p_dense;
+                distributed::BroadcastOptions opts{src};
+                return self.Broadcast(out_dense,
+                                      in_dense,
                                       opts,
                                       /*sync_op*/ true,
                                       /*use_calc_stream*/ true);

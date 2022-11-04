@@ -92,10 +92,26 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   const phi::DeviceContext& GetDeviceContext(
       const Place& place, bool use_calc_stream) const override;
 
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      bool sync_op,
+      bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
       const AllreduceOptions& opts,
+      bool sync_op,
+      bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Barrier(
+      const BarrierOptions& = BarrierOptions()) override;
+
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const BroadcastOptions& opts,
       bool sync_op,
       bool use_calc_stream) override;
 
@@ -109,16 +125,6 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
-
-  std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const BroadcastOptions& opts,
-      bool sync_op,
-      bool use_calc_stream) override;
-
-  std::shared_ptr<ProcessGroup::Task> Barrier(
-      const BarrierOptions& = BarrierOptions()) override;
 
   std::shared_ptr<ProcessGroup::Task> Send(
       std::vector<phi::DenseTensor>& tensors, int dst_rank) override;
@@ -167,12 +173,6 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      bool sync_op,
-      bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
       std::vector<phi::DenseTensor>& in_tensors,
@@ -341,6 +341,7 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
       place_to_comm_ctx_;
 
+  // TODO(sunyilun): below will be removed later
   std::mutex mutex_;
   std::unordered_map<std::string, std::vector<phi::GPUContext*>> places_to_ctx_;
 };

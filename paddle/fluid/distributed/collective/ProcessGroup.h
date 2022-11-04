@@ -100,6 +100,15 @@ class ProcessGroup {
         GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> AllGather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      bool sync_op) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support all_gather with sync_op flag",
+        GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
@@ -107,6 +116,22 @@ class ProcessGroup {
       bool sync_op) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support all_reduce with sync_op flag",
+        GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Barrier(
+      const BarrierOptions& = BarrierOptions()) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support barrier", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const BroadcastOptions& opts,
+      bool sync_op) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support broadcast with sync_op flag",
         GetBackendName()));
   }
 
@@ -145,12 +170,6 @@ class ProcessGroup {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support broadcast with sync_op flag",
         GetBackendName()));
-  }
-
-  virtual std::shared_ptr<ProcessGroup::Task> Barrier(
-      const BarrierOptions& = BarrierOptions()) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support barrier", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Send(
