@@ -670,7 +670,6 @@ def save(obj, path, protocol=4, **configs):
     Examples:
         .. code-block:: python
             :name: code-example-1
-
             # example 1: dynamic graph
             import paddle
             emb = paddle.nn.Embedding(10, 10)
