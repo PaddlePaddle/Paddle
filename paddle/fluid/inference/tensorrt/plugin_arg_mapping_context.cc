@@ -104,6 +104,14 @@ bool PluginArgumentMappingContext::IsSelectedRowsInput(
     const std::string& name) const {
   return false;
 }
+bool PluginArgumentMappingContext::IsSparseCooTensorInput(
+    const std::string& name) const {
+  return false;
+}
+bool PluginArgumentMappingContext::IsSparseCsrTensorInput(
+    const std::string& name) const {
+  return false;
+}
 bool PluginArgumentMappingContext::IsDenseTensorVectorInput(
     const std::string& name) const {
   return false;

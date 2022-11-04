@@ -26,7 +26,7 @@ from paddle.io import DataLoader, Dataset
 import unittest
 import paddle.nn as nn
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
 
 def set_random_seed(seed, dp_id, rank_id):

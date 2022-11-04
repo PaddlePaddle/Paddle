@@ -337,7 +337,7 @@ endif()
 
 if(LINUX
    AND NOT WITH_CUSTOM_DEVICE
-   AND NOT ON_INFER)
+   AND WITH_PYTHON)
   set(WITH_CUSTOM_DEVICE
       ON
       CACHE BOOL "Enable Custom Device when compiling for Linux" FORCE)

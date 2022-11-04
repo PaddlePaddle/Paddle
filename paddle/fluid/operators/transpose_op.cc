@@ -275,13 +275,49 @@ class Transpose2Op : public TransposeOp {
   }
 };
 
-class Transpose2OpMaker : public TransposeOpMaker {
+class Transpose2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    TransposeOpMaker::Make();
+    AddInput(
+        "X",
+        "(Tensor) The input tensor, tensors with rank up to 6 are supported.");
+    AddOutput("Out", "(Tensor)The output tensor.");
+    AddAttr<std::vector<int>>(
+        "axis",
+        "(vector<int>) A list of values, and the size of the list should be "
+        "the same with the input tensor rank. This operator permutes the input "
+        "tensor's axes according to the values given.");
     AddOutput("XShape", "(Tensor)The output tensor.")
         .AsIntermediate()
         .AsExtra();
+    AddComment(R"DOC(
+Transpose Operator.
+
+The input tensor will be permuted according to the axes given.
+The behavior of this operator is similar to how `numpy.transpose` works.
+
+- suppose the input `X` is a 2-D tensor:
+    $$
+    X = \begin{pmatrix}
+    0 &1 &2 \\
+    3 &4 &5
+    \end{pmatrix}$$
+
+    the given `axes` is: $[1, 0]$, and $Y$ = transpose($X$, axis)
+
+    then the output $Y$ is:
+
+    $$
+    Y = \begin{pmatrix}
+         0 &3 \\
+         1 &4  \\
+         2 &5
+    \end{pmatrix}$$
+
+- Given a input tensor with shape $(N, C, H, W)$ and the `axes` is
+$[0, 2, 3, 1]$, then shape of the output tensor will be: $(N, H, W, C)$.
+
+)DOC");
   }
 };
 

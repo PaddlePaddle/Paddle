@@ -25,7 +25,7 @@ from collections import OrderedDict
 from dist_pass_test_base import DistPassTestBase
 
 import paddle.distributed.fleet as fleet
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling

@@ -136,6 +136,16 @@ class TestTunableSpace(unittest.TestCase):
         self.assertEqual(new_space.variables["int_range"].step, 1)
         self.assertEqual(new_space.variables["int_range"].endpoint, False)
 
+    def test_expection(self):
+        space = ts.TunableSpace()
+        flag = True
+        try:
+            val = space.get_value("test")
+            flag = False
+        except:
+            pass
+        self.assertTrue(flag)
+
 
 if __name__ == "__main__":
     unittest.main()

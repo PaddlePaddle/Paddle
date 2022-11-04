@@ -101,8 +101,12 @@ class DistributedSplitImpl(DistributedOperatorImpl):
         return changed
 
     def is_auto_compatible(self, dist_op):
-        raise NotImplementedError(
-            "Auto Search is not supported by dist split yet.")
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)) or \
+            (not self.is_compatible(dist_op)):
+            return False
+
+        return True
 
     @staticmethod
     def forward(ctx, *args, **kwargs):

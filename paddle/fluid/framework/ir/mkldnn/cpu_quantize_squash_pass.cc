@@ -104,51 +104,24 @@ void CPUQuantizeSquashPass::FindNodesToKeep(
   AddStatis(found_count);
 }
 
-bool CPUQuantizeSquashPass::IsDequantizeInputUint8(
-    const Node* dequant_in) const {
-  PADDLE_ENFORCE_EQ(
-      dequant_in->inputs.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "Dequantize (id: %f) should have only one input.", dequant_in->id()));
-  if (dequant_in->inputs[0]->IsOp()) {
-    auto prev_op = dequant_in->inputs[0]->Op();
-    std::string act_name;
-    if (prev_op->Type() == "relu") {
-      return true;
-    } else {
-      if (prev_op->Type() == "conv2d") {
-        act_name = "fuse_activation";
-      } else if (prev_op->Type() == "fc") {
-        act_name = "activation_type";
-      }
-      if (!act_name.empty()) {
-        auto act = prev_op->GetAttrIfExists<std::string>(act_name);
-        if (act == "relu" || act == "relu6") {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
 bool CPUQuantizeSquashPass::IsDequantizeQuantizeIncompatible(
-    Node* quant_op, Node* dequant_in, Node* next_op) const {
-  bool is_concat_signed =
+    Node* quant_op, Node* dequant_op, Node* next_op) const {
+  bool is_next_op_signed =
       quant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
-  bool is_input_unsigned = IsDequantizeInputUint8(dequant_in);
+  bool is_input_signed =
+      dequant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
+
   /* TODO(sfraczek): remove elementwise from this condition when BinaryMKLDNN
    kernel will support two different input data types */
   bool is_next_op_concat_or_elementwise =
       next_op->Op()->Type() == "concat" ||
       next_op->Op()->Type().find("elementwise") == 0;
-  if (is_next_op_concat_or_elementwise && is_concat_signed &&
-      is_input_unsigned) {
+  if (is_next_op_concat_or_elementwise &&
+      (is_next_op_signed ^ is_input_signed)) {
     VLOG(4) << "Do not squash dequant-quant, because "
             << "next_op is: " << next_op->Op()->Type()
-            << ", is_concat_signed: " << is_concat_signed
-            << ", is_input_unsigned: " << is_input_unsigned << ".";
+            << ", is_next_op_signed: " << is_next_op_signed
+            << ", is_input_signed: " << is_input_signed << ".";
     return true;
   }
   return false;
@@ -173,7 +146,7 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     GET_IR_NODE_FROM_SUBGRAPH(quant_out, quant_out, squash_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, squash_pattern);
 
-    if (IsDequantizeQuantizeIncompatible(quant_op, dequant_in, next_op)) {
+    if (IsDequantizeQuantizeIncompatible(quant_op, dequant_op, next_op)) {
       return;
     }
 

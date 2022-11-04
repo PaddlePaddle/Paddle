@@ -378,7 +378,7 @@ class PipelineLayer(Layer):
         for virtual_pp_rank in range(self._num_virtual_pipeline_stages):
             # Mapping the virtual pipeline stage to the real pipeline stage.
             # start_idx marks the start of a new virtual pp stage.
-            start_idx = virtual_pp_rank * self._num_virtual_pipeline_stages
+            start_idx = virtual_pp_rank * self._num_stages
             for stage in range(self._num_stages):
                 # stage mark the real pp stage
                 if self.segment_parts[start_idx +
@@ -484,7 +484,7 @@ class PipelineLayer(Layer):
                     ", ".join(str(arg) for arg in self.segment_parts))
 
         for i in range(self._stage_id, self._total_stages_with_virtual_stages,
-                       self._num_virtual_pipeline_stages):
+                       self._num_stages):
             # If there are 2 real pp stages and 2 virtual pp stages, and the model has 8 layers.
             # Layers [0, 1], [4, 5] will be assigned to the first real pp stage.
             # Layers [2, 3], [6, 7] will be assigned to the second real pp stage.
@@ -529,7 +529,7 @@ class PipelineLayer(Layer):
                 stage_to_virtual_stage_info = "stage {} contains virtual stages: ".format(
                     stage)
                 for i in range(stage, self._total_stages_with_virtual_stages,
-                               self._num_virtual_pipeline_stages):
+                               self._num_stages):
                     stage_to_virtual_stage_info += " {},".format(i)
                 logger.info(stage_to_virtual_stage_info)
 
@@ -601,11 +601,12 @@ class PipelineLayer(Layer):
         return run_function
 
     def forward_function(self, start, end):
+        run_function = self.run_function
 
         def execute_func(*x):
             if len(x) == 1:
                 x = x[0]
-            for idx, layer in enumerate(self.run_function[start:end]):
+            for idx, layer in enumerate(run_function[start:end]):
                 x = layer(x)
             return x
 

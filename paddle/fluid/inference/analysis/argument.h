@@ -150,6 +150,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
   DECL_ARGUMENT_FIELD(enable_analysis_optim, EnableAnalysisOptim, bool);
 
+  // For JITLayer
+  DECL_ARGUMENT_FIELD(skip_load_params, SkipLoadParams, bool);
+
   // The overall graph to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);
   // The overall Scope to work on.
@@ -343,6 +346,12 @@ struct Argument {
                       IpuAvailableMemoryProportion,
                       float);
   DECL_ARGUMENT_FIELD(ipu_enable_half_partial, IpuEnableHalfPartial, bool);
+  DECL_ARGUMENT_FIELD(ipu_custom_ops_info,
+                      IpuCustomOpsInfo,
+                      std::vector<std::vector<std::string>>);
+  DECL_ARGUMENT_FIELD(ipu_custom_patterns,
+                      IpuCustomPatterns,
+                      std::vector<std::vector<std::string>>);
 
   // npu related
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);

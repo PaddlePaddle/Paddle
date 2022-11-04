@@ -21,6 +21,7 @@ endif()
 
 if(WITH_MKLDNN)
   list(APPEND BACKENDS_SRCS onednn/onednn_context.cc)
+  list(APPEND BACKENDS_SRCS onednn/axpy_handler.cc)
   list(APPEND BACKENDS_DEPS mkldnn)
 endif()
 

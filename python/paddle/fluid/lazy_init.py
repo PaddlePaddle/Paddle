@@ -36,7 +36,7 @@ class LazyInitHelper(object):
         """
         if self._state:
             return
-        assert framework.in_dygraph_mode(
+        assert framework._non_static_mode(
         ), "LazyInit.enable() is only available in dygraph mode."
         self._state = True
 

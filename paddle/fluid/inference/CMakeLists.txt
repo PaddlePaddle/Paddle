@@ -58,6 +58,14 @@ set(STATIC_INFERENCE_API
     phi
     ${mkldnn_quantizer_cfg})
 
+set(OP_LIST
+    ""
+    CACHE STRING "The list of operators that will be compiled")
+
+set(KERNEL_LIST
+    ""
+    CACHE STRING "The list of phi kernels that will be compiled")
+
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
 if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} phi ${STATIC_INFERENCE_API}

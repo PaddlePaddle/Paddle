@@ -146,7 +146,7 @@ class DygraphShardingOptimizer(object):
                         # instead of the relative logic rank id within group
                         src=self._hcg.get_sharding_parallel_group().ranks[rank],
                         group=self._hcg.get_sharding_parallel_group(),
-                        use_calc_stream=True)
+                        sync_op=True)
 
     def _update_trainable(self):
         """

@@ -170,7 +170,7 @@ class ShardingStage3(nn.Layer):
             dist.broadcast(p,
                            src=self._global_root_rank,
                            group=self._group,
-                           use_calc_stream=True)
+                           sync_op=True)
 
         # Multi stream operation will be supported later
         dist.wait(tensor=p, group=self._group, use_calc_stream=True)
@@ -435,7 +435,7 @@ class ShardingStage3(nn.Layer):
             dist.broadcast(buffer,
                            self._global_root_rank,
                            self._group,
-                           use_calc_stream=True)
+                           sync_op=True)
         # Multi stream operation will be supported later
         dist.wait(tensor=buffer, group=self._group, use_calc_stream=True)
 
@@ -478,7 +478,7 @@ class ShardingStage3(nn.Layer):
             grad_storage.buffer.scale_(scale=self._world_size_scaling)
             dist.all_reduce(tensor=grad_storage.buffer,
                             group=self._group,
-                            use_calc_stream=True)
+                            sync_op=True)
             dist.wait(tensor=grad_storage.buffer,
                       group=self._group,
                       use_calc_stream=True)
@@ -541,7 +541,7 @@ class ShardingStage3(nn.Layer):
                 # Only support sync allreduce current rank's layer now
                 dist.all_reduce(tensor=full_grad,
                                 group=self._group,
-                                use_calc_stream=True)
+                                sync_op=True)
                 dist.wait(tensor=full_grad,
                           group=self._group,
                           use_calc_stream=True)

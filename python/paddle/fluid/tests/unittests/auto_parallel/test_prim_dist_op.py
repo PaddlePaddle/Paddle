@@ -14,13 +14,13 @@
 
 import unittest
 import paddle
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 from paddle.fluid import program_guard
 from paddle.incubate.autograd import prim2orig, enable_prim, prim_enabled
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import set_var_dist_attr

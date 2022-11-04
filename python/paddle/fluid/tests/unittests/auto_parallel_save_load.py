@@ -25,7 +25,7 @@ import paddle.nn as nn
 import paddle.utils as utils
 import paddle.static as static
 import paddle.nn.functional as F
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 from paddle.distributed import fleet
 from paddle.fluid.initializer import NumpyArrayInitializer

@@ -19,7 +19,7 @@ import sys
 
 import numpy as np
 
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from auto_parallel_relaunch_model import mlp_pretrain_forward
 from auto_parallel_relaunch_model import batch_generator_creator
 

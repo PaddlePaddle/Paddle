@@ -47,7 +47,9 @@ typedef SSIZE_T ssize_t;
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -1102,27 +1104,11 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
             "please check the type of tensor."));
       }
 
-      if (!value_tensor_tmp.initialized()) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        SetTensorFromPyArray(
-            static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
-            value,
-            platform::Place(platform::CUDAPlace(0)),
-            false);
-#else
-        SetTensorFromPyArray(
-            static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
-            value,
-            platform::Place(platform::CPUPlace()),
-            false);
-#endif
-      } else {
-        SetTensorFromPyArray(
-            static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
-            value,
-            value_tensor_tmp.place(),
-            false);
-      }
+      SetTensorFromPyArray(
+          static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
+          value,
+          self->tensor.place(),
+          false);
 
       value_tensor = value_tensor_tmp;
     } else {
@@ -1149,11 +1135,15 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
         } else if (self->tensor.dtype() ==
                    paddle::experimental::DataType::BOOL) {
           attrs["bool_values"] = std::vector<int>{value_obj_tmp.cast<bool>()};
+        } else if (self->tensor.dtype() ==
+                   paddle::experimental::DataType::FLOAT16) {
+          attrs["fp16_values"] =
+              std::vector<float>{value_obj_tmp.cast<float>()};
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "When assign a value to a paddle.Tensor, "
               "the data type of the paddle.Tensor must be bool, "
-              "float32, int32 or int64, "
+              "float32, int32, int64 or float16, "
               "please check the type of tensor."));
         }
         attrs["shape"] = std::vector<int64_t>{1};
@@ -1171,6 +1161,17 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // Release gil and do tracing
       py::gil_scoped_release release;
       // use inplace set_value_ operator
+      if (value_tensor.initialized() &&
+          (self->tensor.dtype() != value_tensor.dtype())) {
+        paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                             egr::kSlotSmallVectorSize>
+            tmps = {{self->tensor}, {value_tensor}};
+        auto amp_dtype = egr::GetAmpDestDtype("set_value", tmps);
+        self->tensor = egr::EagerAmpAutoCast(
+            self->tensor.name(), self->tensor, amp_dtype, "set_value");
+        value_tensor = egr::EagerAmpAutoCast(
+            value_tensor.name(), value_tensor, amp_dtype, "set_value");
+      }
       self->tensor = set_value__dygraph_function(
           self->tensor, value_tensor, {}, {}, {}, attrs);
     }
@@ -1571,6 +1572,15 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_is_same_shape(TensorObject* self,
+                                             PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  auto other = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  return ToPyObject(self->tensor.shape() == other.shape());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__inplace_version(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -1964,6 +1974,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"is_sparse_csr",
      (PyCFunction)(void (*)(void))tensor_method_is_sparse_csr,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"is_same_shape",
+     (PyCFunction)(void (*)(void))tensor_method_is_same_shape,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"to_sparse_csr",

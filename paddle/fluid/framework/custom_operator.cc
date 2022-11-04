@@ -801,7 +801,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
 
   // Infer Dtype
   if (infer_dtype_func == nullptr) {
-    // use defalut InferDtype
+    // use default InferDtype
     info.infer_var_type_ = [op_inputs, op_outputs](InferVarTypeContext* ctx) {
       PADDLE_ENFORCE_EQ(
           op_inputs.size(),

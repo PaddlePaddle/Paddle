@@ -181,7 +181,7 @@ class GroupShardedStage3(nn.Layer):
             collective.broadcast(p,
                                  src=self._global_root_rank,
                                  group=self._group,
-                                 use_calc_stream=True)
+                                 sync_op=True)
 
     def _clear_gradients(self):
         assert len(self._trainable_params.keys()) > 0
@@ -446,7 +446,7 @@ class GroupShardedStage3(nn.Layer):
             collective.broadcast(buffer,
                                  self._global_root_rank,
                                  self._group,
-                                 use_calc_stream=True)
+                                 sync_op=True)
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""

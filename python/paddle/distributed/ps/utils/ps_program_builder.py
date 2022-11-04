@@ -373,8 +373,8 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
         _main_file = ps_log_root_dir + '4_fl_worker_main_program.prototxt'
         #debug_program(_main_file, self.cloned_main)
 
-        fake_init_ops_pass = new_pass("fake_init_ops_pass", self.attrs)
-        fake_init_ops_pass.apply([None], [self.cloned_startup], self.pass_ctx)
+        #fake_init_ops_pass = new_pass("fake_init_ops_pass", self.attrs)
+        #fake_init_ops_pass.apply([None], [self.cloned_startup], self.pass_ctx)
 
         _main_file = ps_log_root_dir + '5_fl_worker_main_program.prototxt'
         #debug_program(_main_file, self.cloned_main)

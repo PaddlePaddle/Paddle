@@ -16,7 +16,7 @@ import random
 import paddle
 import unittest
 import numpy as np
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.incubate.autograd import Hessian
 
 np.random.seed(1234)

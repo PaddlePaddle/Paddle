@@ -1073,7 +1073,7 @@ struct ResidualElementwise : public PatternBase {
 };
 
 // General struct for immutable ops:
-// reshape, transpose, slice, shape, nearest-interp
+// reshape, transpose, slice, nearest-interp
 // Forward pass for no weights-op.
 // immutable_out is a result of the operator.
 struct Immutable : public PatternBase {
@@ -1917,11 +1917,13 @@ struct LayerNorm : public PatternBase {
 //
 struct LayernormShiftPartitionPattern : public PatternBase {
   LayernormShiftPartitionPattern(PDPattern* pattern,
-                                 const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "layernorm_shift_partition") {}
+                                 const std::string& name_scope,
+                                 bool with_roll)
+      : PatternBase(pattern, name_scope, "layernorm_shift_partition"),
+        with_roll_(with_roll) {}
 
   PDNode* operator()();
-
+  bool with_roll_;
   PATTERN_DECL_NODE(layer_norm_in);
   PATTERN_DECL_NODE(layer_norm_op);
   PATTERN_DECL_NODE(layer_norm_bias);
@@ -1929,6 +1931,10 @@ struct LayernormShiftPartitionPattern : public PatternBase {
   PATTERN_DECL_NODE(layer_norm_out);
   PATTERN_DECL_NODE(reshape1_op);
   PATTERN_DECL_NODE(reshape1_out);
+  // optional op roll
+  PATTERN_DECL_NODE(roll1_op);
+  PATTERN_DECL_NODE(roll1_out);
+
   PATTERN_DECL_NODE(reshape2_op);
   PATTERN_DECL_NODE(reshape2_out);
   PATTERN_DECL_NODE(transpose_op);
@@ -1955,6 +1961,14 @@ struct AddSupportInt8 : public PatternBase {
 #define IR_NODE_LINK_TO(a, b) \
   a->outputs.push_back(b);    \
   b->inputs.push_back(a);
+
+// UnLink 2 ir::Nodes from each other.
+#define IR_NODE_UNLINK(a, b)                                                  \
+  a->outputs.erase(                                                           \
+      std::remove(std::begin(a->outputs), std::end(a->outputs), b),           \
+      std::end(a->outputs));                                                  \
+  b->inputs.erase(std::remove(std::begin(b->inputs), std::end(b->inputs), a), \
+                  std::end(b->inputs));
 
 // Set the out_var as the output of the op
 #define IR_OP_VAR_LINK(op, out_var) \

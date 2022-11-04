@@ -171,8 +171,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
                                                                        240)
     set_tests_properties(test_trt_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT
                                                                        240)
-    set_tests_properties(test_trt_reshape2_matmul_fuse_pass PROPERTIES TIMEOUT
-                                                                       240)
     set_tests_properties(test_shuffle_channel_detect_pass PROPERTIES TIMEOUT
                                                                      120)
     if(WIN32)

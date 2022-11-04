@@ -49,9 +49,15 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             else:
                 return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-        for in_dtype in [0, 2, 4, 5, 6]:
-            for out_dtype in [0, 2, 4, 5, 6]:
-                dics = [{"in_dtype": in_dtype, "out_dtype": out_dtype}]
+        for in_dtype in [0, 2, 5, 6]:
+            for out_dtype in [0, 2, 5, 6]:
+                dics = [{
+                    "in_dtype": in_dtype,
+                    "out_dtype": out_dtype
+                }, {
+                    "in_dtype": out_dtype,
+                    "out_dtype": in_dtype
+                }]
 
                 ops_config = [{
                     "op_type": "cast",
@@ -59,10 +65,20 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
                         "X": ["input_data"]
                     },
                     "op_outputs": {
-                        "Out": ["cast_output_data"]
+                        "Out": ["cast_output_data0"]
                     },
                     "op_attrs": dics[0]
+                }, {
+                    "op_type": "cast",
+                    "op_inputs": {
+                        "X": ["cast_output_data0"]
+                    },
+                    "op_outputs": {
+                        "Out": ["cast_output_data1"]
+                    },
+                    "op_attrs": dics[1]
                 }]
+
                 ops = self.generate_op_config(ops_config)
 
                 program_config = ProgramConfig(
@@ -72,7 +88,7 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
                         "input_data":
                         TensorConfig(data_gen=partial(generate_input, in_dtype))
                     },
-                    outputs=["cast_output_data"])
+                    outputs=["cast_output_data1"])
 
                 yield program_config
 

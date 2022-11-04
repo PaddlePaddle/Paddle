@@ -59,7 +59,7 @@ ATTR_TYPE_STRING_MAP = {
 
 def parse_attr(attr_str):
     result = re.search(
-        r"(?P<attr_type>[a-z[\]]+)\s+(?P<name>[a-zA-Z0-9_]+)\s*=\s*(?P<default_val>\S+)",
+        r"(?P<attr_type>[a-zA-Z0-9_[\]]+)\s+(?P<name>[a-zA-Z0-9_]+)\s*=\s*(?P<default_val>\S+)",
         attr_str)
     return ATTR_TYPE_STRING_MAP[result.group('attr_type')], result.group(
         'name'), result.group('default_val')

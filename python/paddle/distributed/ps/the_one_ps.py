@@ -192,6 +192,8 @@ class Accessor:
                     sgd_param.name = "SparseNaiveSGDRule"
                 if common_accessor.accessor_class == "adam":
                     sgd_param.name = "SparseAdamSGDRule"
+                else:  # for fl-ps, because geo accessor is 'sum'
+                    sgd_param.name = "SparseAdamSGDRule"
 
             if sgd_param.name == "SparseAdaGradSGDRule" or sgd_param.name == "StdAdaGradSGDRule":
                 if not sgd_param.adagrad.HasField("learning_rate"):

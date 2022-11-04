@@ -69,7 +69,7 @@ class TestCollectiveAllToAllSingle(unittest.TestCase):
                                     output,
                                     in_split_sizes,
                                     out_split_sizes,
-                                    use_calc_stream=False,
+                                    sync_op=False,
                                     group=group)
         task.wait()
 

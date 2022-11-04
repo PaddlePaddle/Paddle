@@ -543,6 +543,9 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
             linear = paddle.nn.Linear(x.shape[-1], 5)
             linear_out = linear(x)
             out = self.pd_api(linear_out, axis, keepdim=self.keepdim)
+
+            sgd = paddle.optimizer.SGD(learning_rate=0.)
+            sgd.minimize(paddle.mean(out))
             exe = paddle.static.Executor(self.place)
             exe.run(starup_prog)
             static_out = exe.run(feed={'x': self.x.numpy().astype('float32')},

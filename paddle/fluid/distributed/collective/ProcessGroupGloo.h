@@ -120,6 +120,12 @@ class ProcessGroupGloo : public ProcessGroup {
       std::vector<phi::DenseTensor>& outputs,
       const AllreduceOptions& opts = AllreduceOptions()) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllReduce(
+      std::vector<phi::DenseTensor>& inputs,
+      std::vector<phi::DenseTensor>& outputs,
+      const AllreduceOptions& opts,
+      bool sync_op) override;
+
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
 

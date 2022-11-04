@@ -83,8 +83,9 @@ class TestCollectiveReduceScatter(unittest.TestCase):
         # [1, 2, 3, 4]  # Rank-1
 
         output = paddle.empty(shape=[2], dtype=input.dtype)
-        task = paddle.distributed.collective._reduce_scatter_base(
-            output, input, use_calc_stream=False)
+        task = paddle.distributed.collective._reduce_scatter_base(output,
+                                                                  input,
+                                                                  sync_op=False)
 
         task.wait()
 

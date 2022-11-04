@@ -7,3 +7,8 @@ cc_library(
   jit_pe_engine
   SRCS pe_engine.cc
   DEPS parallel_executor)
+
+cc_library(
+  jit_predictor_engine
+  SRCS predictor_engine.cc
+  DEPS paddle_inference_api analysis_predictor)

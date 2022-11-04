@@ -151,7 +151,7 @@ class ProcessGroup:
             tmp = paddle.to_tensor(
                 [1], dtype="int32") if _non_static_mode() else fill_constant(
                     [0], dtype="int32", value="1")
-            paddle.distributed.all_reduce(tmp, use_calc_stream=True, group=self)
+            paddle.distributed.all_reduce(tmp, sync_op=True, group=self)
             paddle.distributed.wait(tmp, group=self)
             paddle.enable_static()
 

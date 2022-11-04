@@ -139,7 +139,7 @@ class ProxyLayer(Layer):
         """
         outs = []
         for metric in self.metrics:
-            outs.extend(metric.compute(*inputs))
+            outs.append(to_list(metric.compute(*inputs)))
 
         return outs
 
@@ -341,6 +341,7 @@ class ProgramHelper(object):
         try:
             return self.proxy_layer.startup_program
         except Exception as err:
+            self._logger.warning("`lazy init` failed.")
             if isinstance(err, AssertionError):
                 return self.concrete_program.startup_program
             raise err

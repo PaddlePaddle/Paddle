@@ -14,7 +14,7 @@
 
 import unittest
 import paddle
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward

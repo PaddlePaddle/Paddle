@@ -250,6 +250,12 @@ class MatMulV2MKLDNNHandler
 
     AppendActivation(ctx, post_operations);
 
+    if (ctx.HasAttr("fused_output_scale")) {
+      float scale_alpha = ctx.Attr<float>("fused_output_scale");
+      post_operations.append_eltwise(
+          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+    }
+
     matmul_attrs.set_post_ops(post_operations);
     return matmul_attrs;
   }
@@ -290,103 +296,6 @@ class MatMulV2MKLDNNHandler
     // of Tensor as computed in ComputeInferShape
     OT* ptr = output->mutable_data<OT>(this->place_);
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
-  }
-};
-
-template <typename T>
-class ActivationMKLDNNHandler
-    : public MKLDNNHandlerNoCachingT<T,
-                                     dnnl::eltwise_forward,
-                                     dnnl::eltwise_backward> {
- public:
-  ActivationMKLDNNHandler(dnnl::algorithm algorithm,
-                          const framework::ExecutionContext& ctx,
-                          const dnnl::engine engine,
-                          Place cpu_place,
-                          const framework::Tensor* x)
-      : platform::MKLDNNHandlerNoCachingT<T,
-                                          dnnl::eltwise_forward,
-                                          dnnl::eltwise_backward>(engine,
-                                                                  cpu_place) {
-    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
-    float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
-
-    if (ctx.Type() == "scale") {
-      bool bias_after_scale = ctx.Attr<bool>("bias_after_scale");
-      auto* scale_tensor = ctx.Input<Tensor>("ScaleTensor");
-      alpha = (scale_tensor == nullptr)
-                  ? ctx.Attr<float>("scale")
-                  : static_cast<float>(*(scale_tensor->data<T>()));
-      beta = ctx.Attr<float>("bias");
-      // if bias_after_scale == true
-      //   out = scale*X + bias
-      // else
-      //   out = scale*(X + bias) = scale*X + scale*bias
-      if (!bias_after_scale) {
-        beta *= alpha;
-      }
-    } else if (ctx.Type() == "clip") {
-      alpha = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min")->data<float>()[0]
-                                  : ctx.Attr<float>("min");
-      beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
-                                 : ctx.Attr<float>("max");
-    } else {
-      // paddle uses beta but mkldnn uses alpha for swish
-      if (algorithm == dnnl::algorithm::eltwise_swish) {
-        std::swap(alpha, beta);
-      } else if (algorithm == dnnl::algorithm::eltwise_bounded_relu) {
-        alpha = ctx.Attr<float>("threshold");
-      }
-    }
-
-    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            algorithm,
-                                            x->mem_desc(),
-                                            alpha,
-                                            beta);
-  }
-
-  ActivationMKLDNNHandler(dnnl::algorithm algorithm,
-                          const framework::ExecutionContext& ctx,
-                          const dnnl::engine engine,
-                          Place cpu_place,
-                          const framework::Tensor* x,
-                          const Tensor* dout)
-      : platform::MKLDNNHandlerNoCachingT<T,
-                                          dnnl::eltwise_forward,
-                                          dnnl::eltwise_backward>(engine,
-                                                                  cpu_place) {
-    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
-    float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
-
-    // paddle uses beta but mkldnn uses alpha for swish
-    if (algorithm == dnnl::algorithm::eltwise_swish) {
-      std::swap(alpha, beta);
-    } else if (algorithm == dnnl::algorithm::eltwise_bounded_relu) {
-      alpha = ctx.Attr<float>("threshold");
-    }
-
-    if (ctx.Type() == "clip_grad") {
-      alpha = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min")->data<float>()[0]
-                                  : ctx.Attr<float>("min");
-      beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
-                                 : ctx.Attr<float>("max");
-    }
-
-    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            algorithm,
-                                            x->mem_desc(),
-                                            alpha,
-                                            beta);
-    this->AcquireBackwardPrimitiveDescriptor(
-        algorithm, dout->mem_desc(), x->mem_desc(), alpha, beta);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireBackwardSrcMemory(
-      const framework::Tensor* input) {
-    const T* input_data = input->data<T>();
-    return this->AcquireMemoryFromPrimitive(this->bwd_pd_->src_desc(),
-                                            to_void_cast<T>(input_data));
   }
 };
 

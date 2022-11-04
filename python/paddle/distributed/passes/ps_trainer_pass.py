@@ -617,6 +617,8 @@ class DeleteExtraOptimizerPass(PassBase):
         for var in remote_optimize_vars:
             if var in local_optimize_vars:
                 continue
+            if 'learning_rate_0' == var:
+                continue
             if var not in remote_optimize_op_role_vars:
                 optimize_need_delete_vars.append(var)
         need_delete_optimize_vars = list(set(optimize_need_delete_vars))

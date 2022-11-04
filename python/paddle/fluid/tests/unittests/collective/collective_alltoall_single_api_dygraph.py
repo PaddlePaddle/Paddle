@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import paddle
+import paddle.distributed as dist
 import paddle.fluid as fluid
 import test_collective_api_base as test_base
 
@@ -26,10 +27,17 @@ class TestCollectiveAllToAllSingleAPI(test_base.TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
         with fluid.program_guard(main_prog, startup_program):
-            tindata = paddle.to_tensor(indata)
-            toutdata = paddle.to_tensor(indata)
-            paddle.distributed.alltoall_single(tindata, toutdata)
-            return [toutdata.numpy()]
+            # NOTE: this is a hack relying on an undocumented behavior that `to_tensor` uses uint16 to replace bfloat16
+            if indata.dtype == "bfloat16":
+                tindata = paddle.to_tensor(indata, "float32").cast("uint16")
+                toutdata = paddle.to_tensor(tindata, "float32").cast("uint16")
+                dist.alltoall_single(tindata, toutdata)
+                return [toutdata.cast("float32").numpy()]
+            else:
+                tindata = paddle.to_tensor(indata)
+                toutdata = paddle.to_tensor(indata)
+                dist.alltoall_single(tindata, toutdata)
+                return [toutdata.numpy()]
 
 
 if __name__ == "__main__":

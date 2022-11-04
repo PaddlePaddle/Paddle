@@ -165,17 +165,6 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
 
     def add_skip_trt_case(self):
 
-        def teller1(program_config, predictor_config):
-            if len(
-                    self.dynamic_shape.min_input_shape
-            ) != 0 and self.trt_param.precision == paddle_infer.PrecisionType.Half:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in dynamic fp16 mode.")
-
         def teller2(program_config, predictor_config):
             if len(self.dynamic_shape.min_input_shape) != 0 and os.name == 'nt':
                 return True

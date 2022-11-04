@@ -169,6 +169,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
     return vec_res;
   }
+
   std::string GetInputNameByIdx(size_t idx) const override {
     auto& op_proto =
         paddle::framework::OpInfoMap::Instance().Get(op_type_).proto_;

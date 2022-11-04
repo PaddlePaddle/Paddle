@@ -18,7 +18,11 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle
 from .. import functional as F
-from paddle.fluid.framework import _varbase_creator, in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import (
+    _varbase_creator,
+    in_dygraph_mode,
+    _in_legacy_dygraph,
+)
 from .. import Layer
 from paddle import in_dynamic_mode
 
@@ -106,15 +110,14 @@ class BCEWithLogitsLoss(Layer):
 
     """
 
-    def __init__(self,
-                 weight=None,
-                 reduction='mean',
-                 pos_weight=None,
-                 name=None):
+    def __init__(
+        self, weight=None, reduction='mean', pos_weight=None, name=None
+    ):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in BCEWithLogitsLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
+                "received %s, which is not allowed." % reduction
+            )
 
         super(BCEWithLogitsLoss, self).__init__()
         self.weight = weight
@@ -124,30 +127,35 @@ class BCEWithLogitsLoss(Layer):
 
     def forward(self, logit, label):
         out = paddle.nn.functional.binary_cross_entropy_with_logits(
-            logit, label, self.weight, self.reduction, self.pos_weight,
-            self.name)
+            logit,
+            label,
+            self.weight,
+            self.reduction,
+            self.pos_weight,
+            self.name,
+        )
         return out
 
 
 class CrossEntropyLoss(Layer):
     r"""
-    By default, this operator implements the cross entropy loss function with softmax. This function 
-    combines the calculation of the softmax operation and the cross entropy loss function 
+    By default, this operator implements the cross entropy loss function with softmax. This function
+    combines the calculation of the softmax operation and the cross entropy loss function
     to provide a more numerically stable computing.
 
     This operator will calculate the cross entropy loss function without softmax when use_softmax=False.
 
-    By default, this operator will calculate the mean of the result, and you can also affect 
-    the default behavior by using the reduction parameter. Please refer to the part of 
+    By default, this operator will calculate the mean of the result, and you can also affect
+    the default behavior by using the reduction parameter. Please refer to the part of
     parameters for details.
 
     This operator can be used to calculate the softmax cross entropy loss with soft and hard labels.
-    Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels 
+    Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels
     mean the probability of the actual label, 0.6, 0.8, 0.2, etc.
 
     The calculation of this operator includes the following two steps.
 
-    -  **I.softmax cross entropy** 
+    -  **I.softmax cross entropy**
 
         1. Hard label (each sample can only be assigned into one category)
 
@@ -184,7 +192,7 @@ class CrossEntropyLoss(Layer):
 
 
 
-    -  **II.Weight and reduction processing** 
+    -  **II.Weight and reduction processing**
 
         1. Weight
 
@@ -196,7 +204,7 @@ class CrossEntropyLoss(Layer):
             1.1. Hard labels (soft_label = False)
 
             .. math::
-                \\loss_j=loss_j*weight[label_j] 
+                \\loss_j=loss_j*weight[label_j]
 
 
             1.2. Soft labels (soft_label = True)
@@ -206,21 +214,21 @@ class CrossEntropyLoss(Layer):
 
         2. reduction
 
-            2.1 if the ``reduction`` parameter is ``none`` 
+            2.1 if the ``reduction`` parameter is ``none``
 
             Return the previous result directly
 
-            2.2 if the ``reduction`` parameter is ``sum`` 
+            2.2 if the ``reduction`` parameter is ``sum``
 
             Return the sum of the previous results
 
             .. math::
                \\loss=\sum_{j}loss_j
 
-            2.3 if the ``reduction`` parameter is ``mean`` , it will be processed according to 
-            the ``weight`` parameter as follows. 
+            2.3 if the ``reduction`` parameter is ``mean`` , it will be processed according to
+            the ``weight`` parameter as follows.
 
-            2.3.1. If the  ``weight``  parameter is ``None`` 
+            2.3.1. If the  ``weight``  parameter is ``None``
 
             Return the average value of the previous results
 
@@ -234,27 +242,27 @@ class CrossEntropyLoss(Layer):
             1. Hard labels (soft_label = False)
 
              .. math::
-                \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j] 
+                \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j]
 
             2. Soft labels (soft_label = True)
 
              .. math::
                 \\loss=\sum_{j}loss_j/\sum_{j}\left(\sum_{i}weight[label_i]\right)
- 
- 
+
+
     Parameters:
 
         - **weight** (Tensor, optional)
 
-            a manual rescaling weight given to each class. 
-            If given, has to be a Tensor of size C and the data type is float32, float64. 
+            a manual rescaling weight given to each class.
+            If given, has to be a Tensor of size C and the data type is float32, float64.
             Default is ``'None'`` .
 
         - **ignore_index** (int64, optional)
 
             Specifies a target value that is ignored
-            and does not contribute to the loss. A negative value means that no label 
-            value needs to be ignored. Only valid when soft_label = False.  
+            and does not contribute to the loss. A negative value means that no label
+            value needs to be ignored. Only valid when soft_label = False.
             Default is ``-100`` .
 
         - **reduction** (str, optional)
@@ -268,15 +276,15 @@ class CrossEntropyLoss(Layer):
 
         - **soft_label** (bool, optional)
 
-            Indicate whether label is soft. 
+            Indicate whether label is soft.
             If soft_label=False, the label is hard.  If soft_label=True, the label is soft.
             Default is ``False``.
 
         - **axis** (int, optional)
 
-            The index of dimension to perform softmax calculations. 
-            It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the number 
-            of dimensions of input :attr:`input`. 
+            The index of dimension to perform softmax calculations.
+            It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the number
+            of dimensions of input :attr:`input`.
             Default is ``-1`` .
 
         - **use_softmax** (bool, optional)
@@ -295,11 +303,11 @@ class CrossEntropyLoss(Layer):
         - **input** (Tensor)
 
             Input tensor, the data type is float32, float64. Shape is
-        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
+        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` .
 
-            Note: 
+            Note:
 
-                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the 
+                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the
                 output of softmax operator, which will produce incorrect results.
 
                 2. when use_softmax=False, it expects the output of softmax operator.
@@ -307,11 +315,11 @@ class CrossEntropyLoss(Layer):
 
         - **label** (Tensor)
 
-            1. If soft_label=False, the shape is 
+            1. If soft_label=False, the shape is
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
 
-            2. If soft_label=True, the shape and data type should be same with ``input`` , 
+            2. If soft_label=True, the shape and data type should be same with ``input`` ,
             and the sum of the labels for each sample should be 1.
 
         - **output** (Tensor)
@@ -324,24 +332,24 @@ class CrossEntropyLoss(Layer):
 
             If :attr:`reduction` is ``'none'``:
 
-            1. If soft_label = False, the dimension of return value is the same with ``label`` . 
+            1. If soft_label = False, the dimension of return value is the same with ``label`` .
 
-            2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
+            2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` .
 
     Examples:
 
         .. code-block:: python
-            
+
             # hard labels
             import paddle
             paddle.seed(99999)
             N=100
             C=200
             reduction='mean'
-            input =  paddle.rand([N, C], dtype='float64')  
+            input =  paddle.rand([N, C], dtype='float64')
             label =  paddle.randint(0, C, shape=[N], dtype='int64')
-            weight = paddle.rand([C], dtype='float64') 
-            
+            weight = paddle.rand([C], dtype='float64')
+
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=reduction)
             dy_ret = cross_entropy_loss(
@@ -365,9 +373,9 @@ class CrossEntropyLoss(Layer):
             labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
-                                                                  logits,  
-                                                                  labels, 
-                                                                  soft_label=True, 
+                                                                  logits,
+                                                                  labels,
+                                                                  soft_label=True,
                                                                   axis=axis,
                                                                   weight=weight,
                                                                   reduction=reduction)
@@ -375,14 +383,16 @@ class CrossEntropyLoss(Layer):
 
     """
 
-    def __init__(self,
-                 weight=None,
-                 ignore_index=-100,
-                 reduction='mean',
-                 soft_label=False,
-                 axis=-1,
-                 use_softmax=True,
-                 name=None):
+    def __init__(
+        self,
+        weight=None,
+        ignore_index=-100,
+        reduction='mean',
+        soft_label=False,
+        axis=-1,
+        use_softmax=True,
+        name=None,
+    ):
         super(CrossEntropyLoss, self).__init__()
         self.weight = weight
         self.reduction = reduction
@@ -393,15 +403,17 @@ class CrossEntropyLoss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        ret = paddle.nn.functional.cross_entropy(input,
-                                                 label,
-                                                 weight=self.weight,
-                                                 ignore_index=self.ignore_index,
-                                                 reduction=self.reduction,
-                                                 soft_label=self.soft_label,
-                                                 axis=self.axis,
-                                                 use_softmax=self.use_softmax,
-                                                 name=self.name)
+        ret = paddle.nn.functional.cross_entropy(
+            input,
+            label,
+            weight=self.weight,
+            ignore_index=self.ignore_index,
+            reduction=self.reduction,
+            soft_label=self.soft_label,
+            axis=self.axis,
+            use_softmax=self.use_softmax,
+            name=self.name,
+        )
 
         return ret
 
@@ -409,7 +421,7 @@ class CrossEntropyLoss(Layer):
 class HSigmoidLoss(Layer):
     """
     Hierarchical Sigmoid Layer.
-    
+
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
     and speed up the model training, especially the training of language model.
     Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
@@ -444,7 +456,7 @@ class HSigmoidLoss(Layer):
             is set to False, no bias will be added. If it is set to None or one attribute of ParamAttr,
             hsigmoid will create a ParamAttr as bias_attr. If the Initializer of the bias_attr is not
             set, the bias is initialized zero. Default is None.
-        is_custom (bool, optional): Whether use custom binary tree. If it's True, `path_table` and 
+        is_custom (bool, optional): Whether use custom binary tree. If it's True, `path_table` and
             `path_code` should be passed to its forward method, otherwise `path_table` and `path_code`
             should not be passed to its forward method. Default is False.
         is_sparse (bool, optional): Whether use sparse updating instead of dense updating, if it's True,
@@ -477,18 +489,21 @@ class HSigmoidLoss(Layer):
             #  [2.34564662]]
     """
 
-    def __init__(self,
-                 feature_size,
-                 num_classes,
-                 weight_attr=None,
-                 bias_attr=None,
-                 is_custom=False,
-                 is_sparse=False,
-                 name=None):
+    def __init__(
+        self,
+        feature_size,
+        num_classes,
+        weight_attr=None,
+        bias_attr=None,
+        is_custom=False,
+        is_sparse=False,
+        name=None,
+    ):
         super(HSigmoidLoss, self).__init__()
         if (num_classes < 2) and (not is_custom):
             raise ValueError(
-                "num_classes must not be less than 2 with default tree")
+                "num_classes must not be less than 2 with default tree"
+            )
 
         if (not is_custom) and (is_sparse):
             print("Sparse mode should not be used without custom tree")
@@ -506,29 +521,34 @@ class HSigmoidLoss(Layer):
         self._dtype = paddle.get_default_dtype()
 
         remote_prefetch = is_sparse
-        print("With sparse mode, if your models has only"
-              " small parameter prefetch may cause speed down")
+        print(
+            "With sparse mode, if your models has only"
+            " small parameter prefetch may cause speed down"
+        )
 
         C = self._num_classes if is_custom else self._num_classes - 1
-        self.weight = self.create_parameter([C, self._feature_size],
-                                            attr=self._weight_attr,
-                                            is_bias=False,
-                                            dtype=self._dtype)
-        self.bias = self.create_parameter([C, 1],
-                                          attr=self._bias_attr,
-                                          is_bias=True,
-                                          dtype=self._dtype)
+        self.weight = self.create_parameter(
+            [C, self._feature_size],
+            attr=self._weight_attr,
+            is_bias=False,
+            dtype=self._dtype,
+        )
+        self.bias = self.create_parameter(
+            [C, 1], attr=self._bias_attr, is_bias=True, dtype=self._dtype
+        )
 
     def forward(self, input, label, path_table=None, path_code=None):
-        out = F.hsigmoid_loss(input,
-                              label,
-                              self._num_classes,
-                              self.weight,
-                              self.bias,
-                              path_table=path_table,
-                              path_code=path_code,
-                              is_sparse=self._is_sparse,
-                              name=self._name)
+        out = F.hsigmoid_loss(
+            input,
+            label,
+            self._num_classes,
+            self.weight,
+            self.bias,
+            path_table=path_table,
+            path_code=path_code,
+            is_sparse=self._is_sparse,
+            name=self._name,
+        )
         return out
 
 
@@ -589,17 +609,18 @@ class MSELoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MSELoss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction))
+                "but received {}.".format(reduction)
+            )
         self.reduction = reduction
 
     def forward(self, input, label):
         if not in_dynamic_mode():
-            fluid.data_feeder.check_variable_and_dtype(input, 'input',
-                                                       ['float32', 'float64'],
-                                                       'MSELoss')
-            fluid.data_feeder.check_variable_and_dtype(label, 'label',
-                                                       ['float32', 'float64'],
-                                                       'MSELoss')
+            fluid.data_feeder.check_variable_and_dtype(
+                input, 'input', ['float32', 'float64'], 'MSELoss'
+            )
+            fluid.data_feeder.check_variable_and_dtype(
+                label, 'label', ['float32', 'float64'], 'MSELoss'
+            )
 
         if in_dygraph_mode():
             square_out = paddle._C_ops.square(paddle.subtract(input, label))
@@ -654,7 +675,7 @@ class L1Loss(Layer):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
             import numpy as np
 
@@ -684,16 +705,16 @@ class L1Loss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
+                "received %s, which is not allowed." % reduction
+            )
         super(L1Loss, self).__init__()
         self.reduction = reduction
         self.name = name
 
     def forward(self, input, label):
-        return paddle.nn.functional.l1_loss(input,
-                                            label,
-                                            self.reduction,
-                                            name=self.name)
+        return paddle.nn.functional.l1_loss(
+            input, label, self.reduction, name=self.name
+        )
 
 
 class BCELoss(Layer):
@@ -773,7 +794,8 @@ class BCELoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in bce_loss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
+                "received %s, which is not allowed." % reduction
+            )
 
         super(BCELoss, self).__init__()
         self.weight = weight
@@ -781,10 +803,9 @@ class BCELoss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        out = paddle.nn.functional.binary_cross_entropy(input, label,
-                                                        self.weight,
-                                                        self.reduction,
-                                                        self.name)
+        out = paddle.nn.functional.binary_cross_entropy(
+            input, label, self.weight, self.reduction, self.name
+        )
         return out
 
 
@@ -874,15 +895,14 @@ class NLLLoss(Layer):
 
     """
 
-    def __init__(self,
-                 weight=None,
-                 ignore_index=-100,
-                 reduction='mean',
-                 name=None):
+    def __init__(
+        self, weight=None, ignore_index=-100, reduction='mean', name=None
+    ):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in nll_loss should be 'sum', 'mean' or "
-                "'none', but received %s, which is not allowed." % reduction)
+                "'none', but received %s, which is not allowed." % reduction
+            )
         super(NLLLoss, self).__init__()
         self._weight = weight
         self._ignore_index = ignore_index
@@ -890,12 +910,14 @@ class NLLLoss(Layer):
         self._name = name
 
     def forward(self, input, label):
-        return F.nll_loss(input,
-                          label,
-                          weight=self._weight,
-                          ignore_index=self._ignore_index,
-                          reduction=self._reduction,
-                          name=self._name)
+        return F.nll_loss(
+            input,
+            label,
+            weight=self._weight,
+            ignore_index=self._ignore_index,
+            reduction=self._reduction,
+            name=self._name,
+        )
 
 
 class KLDivLoss(Layer):
@@ -999,7 +1021,7 @@ class MarginRankingLoss(Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-    
+
         input: N-D Tensor, the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
 
         other: N-D Tensor, `other` have the same shape and dtype as `input`.
@@ -1031,17 +1053,17 @@ class MarginRankingLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
+                "received %s, which is not allowed." % reduction
+            )
         super(MarginRankingLoss, self).__init__()
         self.margin = margin
         self.reduction = reduction
         self.name = name
 
     def forward(self, input, other, label):
-        out = paddle.nn.functional.margin_ranking_loss(input, other, label,
-                                                       self.margin,
-                                                       self.reduction,
-                                                       self.name)
+        out = paddle.nn.functional.margin_ranking_loss(
+            input, other, label, self.margin, self.reduction, self.name
+        )
         return out
 
 
@@ -1125,19 +1147,23 @@ class CTCLoss(Layer):
         self.blank = blank
         self.reduction = reduction
 
-    def forward(self,
-                log_probs,
-                labels,
-                input_lengths,
-                label_lengths,
-                norm_by_times=False):
-        return paddle.nn.functional.ctc_loss(log_probs,
-                                             labels,
-                                             input_lengths,
-                                             label_lengths,
-                                             self.blank,
-                                             self.reduction,
-                                             norm_by_times=norm_by_times)
+    def forward(
+        self,
+        log_probs,
+        labels,
+        input_lengths,
+        label_lengths,
+        norm_by_times=False,
+    ):
+        return paddle.nn.functional.ctc_loss(
+            log_probs,
+            labels,
+            input_lengths,
+            label_lengths,
+            self.blank,
+            self.reduction,
+            norm_by_times=norm_by_times,
+        )
 
 
 class SmoothL1Loss(Layer):
@@ -1207,11 +1233,13 @@ class SmoothL1Loss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        return F.smooth_l1_loss(input,
-                                label,
-                                reduction=self.reduction,
-                                delta=self.delta,
-                                name=self.name)
+        return F.smooth_l1_loss(
+            input,
+            label,
+            reduction=self.reduction,
+            delta=self.delta,
+            name=self.name,
+        )
 
 
 class MultiLabelSoftMarginLoss(Layer):
@@ -1279,17 +1307,20 @@ class MultiLabelSoftMarginLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MultiLabelSoftMarginloss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction))
+                "but received {}.".format(reduction)
+            )
         self.weight = weight
         self.reduction = reduction
         self.name = name
 
     def forward(self, input, label):
-        return F.multi_label_soft_margin_loss(input,
-                                              label,
-                                              weight=self.weight,
-                                              reduction=self.reduction,
-                                              name=self.name)
+        return F.multi_label_soft_margin_loss(
+            input,
+            label,
+            weight=self.weight,
+            reduction=self.reduction,
+            name=self.name,
+        )
 
 
 class HingeEmbeddingLoss(Layer):
@@ -1379,11 +1410,13 @@ class HingeEmbeddingLoss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        return F.hinge_embedding_loss(input,
-                                      label,
-                                      reduction=self.reduction,
-                                      margin=self.margin,
-                                      name=self.name)
+        return F.hinge_embedding_loss(
+            input,
+            label,
+            reduction=self.reduction,
+            margin=self.margin,
+            name=self.name,
+        )
 
 
 class CosineEmbeddingLoss(Layer):
@@ -1457,23 +1490,27 @@ class CosineEmbeddingLoss(Layer):
         if margin > 1 or margin < -1:
             raise ValueError(
                 "The value of 'margin' should be in the interval of [-1, 1], but received %f, which is not allowed."
-                % margin)
+                % margin
+            )
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' should be 'sum', 'mean' or "
-                "'none', but received %s, which is not allowed." % reduction)
+                "'none', but received %s, which is not allowed." % reduction
+            )
         super(CosineEmbeddingLoss, self).__init__()
         self.margin = margin
         self.reduction = reduction
         self.name = name
 
     def forward(self, input1, input2, label):
-        return F.cosine_embedding_loss(input1,
-                                       input2,
-                                       label,
-                                       margin=self.margin,
-                                       reduction=self.reduction,
-                                       name=self.name)
+        return F.cosine_embedding_loss(
+            input1,
+            input2,
+            label,
+            margin=self.margin,
+            reduction=self.reduction,
+            name=self.name,
+        )
 
 
 class TripletMarginWithDistanceLoss(Layer):
@@ -1491,22 +1528,22 @@ class TripletMarginWithDistanceLoss(Layer):
         L(input, pos, neg) = \max \{d(input_i, pos_i) - d(input_i, neg_i) + {\rm margin}, 0\}
 
     where the default `distance_function`
-    
+
     .. math::
-    	d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_2
-    
-    or user can define their own distance function. `margin` is a nonnegative margin representing the minimum difference 
+        d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_2
+
+    or user can define their own distance function. `margin` is a nonnegative margin representing the minimum difference
     between the positive and negative distances that is required for the loss to be 0. If `swap` is true, it will compare distance of (input, negative) with
     distance of (negative, positive) and change it to the smaller one. For more details see http://www.bmva.org/bmvc/2016/papers/paper119/paper119.pdf.
 
     Parameters:
         distance_function (Callable, Optional): Quantifies the distance between two tensors. if not specified, 2 norm functions will be used.
-	
+
         margin (float, Optional):Default: :math:`1`.A nonnegative margin representing the minimum difference
                 between the positive and negative distances required for the loss to be 0. Larger
                 margins penalize cases where the negative examples are not distant enough from the
                 anchors, relative to the positives.
-		
+
         swap (bool, Optional):The distance swap changes the negative distance to the swap distance (distance between positive samples
                 and negative samples) if swap distance smaller than negative distance. Default: ``False``.
 
@@ -1518,18 +1555,18 @@ class TripletMarginWithDistanceLoss(Layer):
                 Default: ``'mean'``
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-	    
+
     Shapes:
         input (Tensor):Input tensor, the data type is float32 or float64.
-	the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+        the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
 
         positive (Tensor):Positive tensor, the data type is float32 or float64.
-	The shape of label is the same as the shape of input.
+        The shape of label is the same as the shape of input.
 
         negative (Tensor):Negative tensor, the data type is float32 or float64.
-	The shape of label is the same as the shape of input.
-	
-	    output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+        The shape of label is the same as the shape of input.
+
+            output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
     Return：
         A callable object of TripletMarginWithDistanceLoss
@@ -1555,18 +1592,21 @@ class TripletMarginWithDistanceLoss(Layer):
 
     """
 
-    def __init__(self,
-                 distance_function=None,
-                 margin=1.0,
-                 swap=False,
-                 reduction: str = 'mean',
-                 name=None):
+    def __init__(
+        self,
+        distance_function=None,
+        margin=1.0,
+        swap=False,
+        reduction: str = 'mean',
+        name=None,
+    ):
         super(TripletMarginWithDistanceLoss, self).__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in TripletMarginWithDistanceLoss "
                 "should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
+                "received %s, which is not allowed." % reduction
+            )
         self.margin = margin
         self.swap = swap
         self.reduction = reduction
@@ -1574,13 +1614,15 @@ class TripletMarginWithDistanceLoss(Layer):
         self.name = name
 
     def forward(self, input, positive, negative):
-        return F.triplet_margin_with_distance_loss(input,
-                                                   positive,
-                                                   negative,
-                                                   margin=self.margin,
-                                                   swap=self.swap,
-                                                   reduction=self.reduction,
-                                                   name=self.name)
+        return F.triplet_margin_with_distance_loss(
+            input,
+            positive,
+            negative,
+            margin=self.margin,
+            swap=self.swap,
+            reduction=self.reduction,
+            name=self.name,
+        )
 
 
 class TripletMarginLoss(Layer):
@@ -1650,7 +1692,7 @@ class TripletMarginLoss(Layer):
             loss = triplet_margin_loss(input, positive, negative)
             print(loss)
             # Tensor([0.        , 0.57496738, 0.        ])
-	    
+
             triplet_margin_loss = paddle.nn.TripletMarginLoss(margin=1.0, swap=True, reduction='mean', )
             loss = triplet_margin_loss(input, positive, negative,)
             print(loss)
@@ -1658,18 +1700,21 @@ class TripletMarginLoss(Layer):
 
     """
 
-    def __init__(self,
-                 margin=1.0,
-                 p=2.,
-                 epsilon=1e-6,
-                 swap=False,
-                 reduction='mean',
-                 name=None):
+    def __init__(
+        self,
+        margin=1.0,
+        p=2.0,
+        epsilon=1e-6,
+        swap=False,
+        reduction='mean',
+        name=None,
+    ):
         super(TripletMarginLoss, self).__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in TripletMarginLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
+                "received %s, which is not allowed." % reduction
+            )
         self.margin = margin
         self.p = p
         self.epsilon = epsilon
@@ -1678,15 +1723,17 @@ class TripletMarginLoss(Layer):
         self.name = name
 
     def forward(self, input, positive, negative):
-        return F.triplet_margin_loss(input,
-                                     positive,
-                                     negative,
-                                     margin=self.margin,
-                                     p=self.p,
-                                     epsilon=self.epsilon,
-                                     swap=self.swap,
-                                     reduction=self.reduction,
-                                     name=self.name)
+        return F.triplet_margin_loss(
+            input,
+            positive,
+            negative,
+            margin=self.margin,
+            p=self.p,
+            epsilon=self.epsilon,
+            swap=self.swap,
+            reduction=self.reduction,
+            name=self.name,
+        )
 
 
 class SoftMarginLoss(Layer):
@@ -1748,13 +1795,15 @@ class SoftMarginLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in SoftMarginLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
+                "received %s, which is not allowed." % reduction
+            )
 
         super(SoftMarginLoss, self).__init__()
         self.reduction = reduction
         self.name = name
 
     def forward(self, input, label):
-        out = paddle.nn.functional.soft_margin_loss(input, label,
-                                                    self.reduction, self.name)
+        out = paddle.nn.functional.soft_margin_loss(
+            input, label, self.reduction, self.name
+        )
         return out

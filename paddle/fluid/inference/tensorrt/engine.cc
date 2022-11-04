@@ -231,6 +231,35 @@ void TensorRTEngine::FreezeNetwork() {
             nvinfer1::OptProfileSelector::kOPT,
             Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
       }
+
+      for (int input_id = 0; input_id < network()->getNbInputs(); input_id++) {
+        auto input_name = network()->getInput(input_id)->getName();
+        if (!itensor_map_.count(input_name)) continue;
+        if (!GetITensor(input_name)->isShapeTensor()) continue;
+        PADDLE_ENFORCE_EQ(min_shape_tensor_.count(input_name) &&
+                              max_shape_tensor_.count(input_name) &&
+                              optim_shape_tensor_.count(input_name),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Fail to find min/max/optim shape value for TRT "
+                              "network's shape tensor input named %s.",
+                              input_name));
+        auto min_vec = min_shape_tensor_.at(input_name);
+        optim_profiles_[i]->setShapeValues(input_name,
+                                           nvinfer1::OptProfileSelector::kMIN,
+                                           min_vec.data(),
+                                           min_vec.size());
+        optim_profiles_[i]->setShapeValues(input_name,
+                                           nvinfer1::OptProfileSelector::kMAX,
+                                           max_shape_tensor_[input_name].data(),
+                                           min_vec.size());
+        optim_profiles_[i]->setShapeValues(
+            input_name,
+            nvinfer1::OptProfileSelector::kOPT,
+            optim_shape_tensor_[input_name].data(),
+            min_vec.size());
+      }
+
       infer_builder_config_->addOptimizationProfile(optim_profiles_[i]);
     }
     if (WithFp16() && disable_trt_plugin_fp16()) {
@@ -369,11 +398,47 @@ void TensorRTEngine::SetITensor(const std::string &name,
 }
 
 nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
-  PADDLE_ENFORCE_EQ(itensor_map_.count(name),
-                    true,
-                    platform::errors::NotFound(
-                        "Tensor named %s is not found in TRT engine", name));
-  return itensor_map_[name];
+  if (itensor_map_.count(name)) {
+    return itensor_map_[name];
+  } else {
+    ConvertWeight2ITensor(name);
+    return itensor_map_[name];
+  }
+}
+
+// For cases when input is not middle-tensor , but persistable tensor
+// you should call this.
+nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
+    const std::string &name) {
+  auto *var_v = scope_->FindVar(name);
+  PADDLE_ENFORCE_NOT_NULL(
+      var_v,
+      platform::errors::NotFound("You are converting a persistable weight to a "
+                                 "tensor, but there is no "
+                                 "persistable variable called %s in scope.",
+                                 name));
+  auto *var_t = var_v->GetMutable<framework::LoDTensor>();
+  auto weight = this->GetTrtWeight(name, *var_t);
+
+  // Now we have create weights, then we need create a itensor
+  auto var_dims = var_t->dims();
+  nvinfer1::Dims trt_in_shape;
+  trt_in_shape.nbDims = var_t->dims().size();
+  for (int64_t i = 0; i < trt_in_shape.nbDims; i++) {
+    trt_in_shape.d[i] = var_dims[i];
+  }
+  // In fact , this is not always right, because we can't determine if the 0th
+  // dimension is batch. Just for run chenqu's model
+  if (!this->with_dynamic_shape()) {
+    trt_in_shape.nbDims--;
+    for (int i = 0; i < trt_in_shape.nbDims; i++) {
+      trt_in_shape.d[i] = trt_in_shape.d[i + 1];
+    }
+  }
+  nvinfer1::ILayer *layer =
+      TRT_ENGINE_ADD_LAYER(this, Constant, trt_in_shape, weight.get());
+  this->SetITensor(name, layer->getOutput(0));
+  return layer->getOutput(0);
 }
 
 std::unordered_map<std::string, nvinfer1::ITensor *>
@@ -610,9 +675,8 @@ void TensorRTEngine::GetEngineInfo() {
   LOG(INFO) << "====== engine info ======";
   std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
       infer_engine_->createEngineInspector());
-  auto infer_context = infer_ptr<nvinfer1::IExecutionContext>(
-      infer_engine_->createExecutionContextWithoutDeviceMemory());
-  infer_inspector->setExecutionContext(infer_context.get());
+  auto infer_context = context();
+  infer_inspector->setExecutionContext(infer_context);
   LOG(INFO) << infer_inspector->getEngineInformation(
       nvinfer1::LayerInformationFormat::kONELINE);
   LOG(INFO) << "====== engine info end ======";

@@ -16,7 +16,7 @@ import paddle
 import warnings
 import logging
 import numpy as np
-from .utils import get_logger
+from ..utils.log_utils import get_logger
 
 
 class Converter(object):

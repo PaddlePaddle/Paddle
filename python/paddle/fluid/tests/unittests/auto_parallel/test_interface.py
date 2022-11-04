@@ -21,7 +21,7 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.static as static
 import paddle.distributed as dist
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr

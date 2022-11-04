@@ -55,7 +55,9 @@ static std::unordered_set<std::string> black_ops_list = {"run_program",
                                                          "fused_gate_attention",
                                                          "fused_feedforward",
                                                          "fused_attention",
-                                                         "fused_gemm_epilogue"};
+                                                         "fused_gemm_epilogue",
+                                                         "sparse_divide_scalar",
+                                                         "sparse_scale"};
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
@@ -1797,6 +1799,15 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     generated_function_body += amp_context;
     generated_function_body += "\n";
   }
+
+  if (!forward_inplace_map.empty()) {
+    generated_function_body +=
+        "  auto current_level = egr::Controller::Instance().GetAMPLevel();\n";
+    generated_function_body +=
+        "  "
+        "egr::Controller::Instance().SetAMPLevel(paddle::imperative::AmpLevel::"
+        "O0);\n";
+  }
   // forward ins insert
   const char* FWD_INS_MAP_TEMPLATE =
       "  std::map<std::string, "
@@ -1998,6 +2009,10 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       return_contents[return_position] = output_varname;
     }
     trace_op_body_str += out_tensor_str;
+  }
+  if (!forward_inplace_map.empty()) {
+    trace_op_body_str +=
+        "  egr::Controller::Instance().SetAMPLevel(current_level);\n";
   }
   trace_op_body_str += "\n";
   VLOG(6) << "Converted Output VarBase to EagerVariable(s)";
@@ -3145,6 +3160,12 @@ static void DygraphCodeGeneration(const std::string& output_dir,
     if (!CheckOpProto(op_proto)) continue;
     const std::string& op_type = op_proto->type();
     if (black_ops_list.count(op_type)) {
+      continue;
+    }
+
+    // Skip the sparse op
+    if (op_type.compare(0, 7, "sparse_") == 0 && op_type != "sparse_momentum" &&
+        op_type != "sparse_attention") {
       continue;
     }
 

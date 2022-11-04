@@ -142,7 +142,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
           scales_[var_name] = scales_[input_var_name];
         }
         compute_scale = false;
-      } else if (op->Type() == "slice" || op->Type() == "shape") {
+      } else if (op->Type() == "slice") {
         auto input_var_name = op->Input("Input")[0];
         PADDLE_ENFORCE_NE(scales_.find(input_var_name),
                           scales_.end(),

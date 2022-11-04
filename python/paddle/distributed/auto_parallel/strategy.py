@@ -59,10 +59,11 @@ class BaseConfig(object):
         return result_dict
 
     def __repr__(self):
-        return yaml.dump(self.to_dict(),
-                         default_flow_style=False,
-                         sort_keys=True,
-                         indent=4)
+        result_dict = self.to_dict()
+        string = "{"
+        for k, v in result_dict.items():
+            string += "\"%s\":\"%s\"," % (k, v)
+        return string + "}"
 
     def __deepcopy__(self, memo):
         cls = self.__class__
@@ -115,6 +116,13 @@ class TuningConfig(BaseConfig):
         super(TuningConfig, self).__init__(category, config_dict)
 
 
+class DatasetConfig(BaseConfig):
+
+    def __init__(self, config_dict=None):
+        category = constants.DATASET
+        super(DatasetConfig, self).__init__(category, config_dict)
+
+
 class Strategy(BaseConfig):
     """
     The `Strategy` object is used to configure the paralleization and optimization beheviors.
@@ -130,7 +138,7 @@ class Strategy(BaseConfig):
         .. code-block:: python
 
             import paddle
-            import paddle.distributed.auto_parallel as auto
+            from paddle.distributed.fleet import auto
 
             strategy = auto.Strategy()
             sharding = strategy.sharding
@@ -179,3 +187,6 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.TUNING, None)
         self.tuning = TuningConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.DATASET, None)
+        self.dataset = DatasetConfig(config_dict)

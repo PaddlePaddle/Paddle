@@ -20,7 +20,7 @@ import paddle.utils as utils
 import paddle.fluid as fluid
 import paddle.static as static
 import paddle.nn.functional as F
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.completion import Completer

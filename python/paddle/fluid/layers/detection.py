@@ -836,7 +836,7 @@ def box_coder(prior_box,
     **Box Coder Layer**
 
     Encode/Decode the target bounding box with the priorbox information.
-    
+
     The Encoding schema described below:
 
     .. math::
@@ -845,78 +845,78 @@ def box_coder(prior_box,
 
         oy = (ty - py) / ph / pyv
 
-        ow = \log(\abs(tw / pw)) / pwv 
+        ow = \log(\abs(tw / pw)) / pwv
 
-        oh = \log(\abs(th / ph)) / phv 
+        oh = \log(\abs(th / ph)) / phv
 
     The Decoding schema described below:
-    
+
     .. math::
-  
+
         ox = (pw * pxv * tx * + px) - tw / 2
 
         oy = (ph * pyv * ty * + py) - th / 2
 
         ow = \exp(pwv * tw) * pw + tw / 2
 
-        oh = \exp(phv * th) * ph + th / 2   
+        oh = \exp(phv * th) * ph + th / 2
 
-    where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, 
-    width and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote 
-    the priorbox's (anchor) center coordinates, width and height. `pxv`, 
-    `pyv`, `pwv`, `phv` denote the variance of the priorbox and `ox`, `oy`, 
-    `ow`, `oh` denote the encoded/decoded coordinates, width and height. 
+    where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates,
+    width and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote
+    the priorbox's (anchor) center coordinates, width and height. `pxv`,
+    `pyv`, `pwv`, `phv` denote the variance of the priorbox and `ox`, `oy`,
+    `ow`, `oh` denote the encoded/decoded coordinates, width and height.
 
-    During Box Decoding, two modes for broadcast are supported. Say target 
-    box has shape [N, M, 4], and the shape of prior box can be [N, 4] or 
-    [M, 4]. Then prior box will broadcast to target box along the 
-    assigned axis. 
+    During Box Decoding, two modes for broadcast are supported. Say target
+    box has shape [N, M, 4], and the shape of prior box can be [N, 4] or
+    [M, 4]. Then prior box will broadcast to target box along the
+    assigned axis.
 
     Args:
-        prior_box(Variable): Box list prior_box is a 2-D Tensor with shape 
+        prior_box(Variable): Box list prior_box is a 2-D Tensor with shape
             [M, 4] holds M boxes and data type is float32 or float64. Each box
-            is represented as [xmin, ymin, xmax, ymax], [xmin, ymin] is the 
+            is represented as [xmin, ymin, xmax, ymax], [xmin, ymin] is the
             left top coordinate of the anchor box, if the input is image feature
-            map, they are close to the origin of the coordinate system. 
-            [xmax, ymax] is the right bottom coordinate of the anchor box.       
-        prior_box_var(List|Variable|None): prior_box_var supports three types 
-            of input. One is variable with shape [M, 4] which holds M group and 
-            data type is float32 or float64. The second is list consist of 
-            4 elements shared by all boxes and data type is float32 or float64. 
-            Other is None and not involved in calculation. 
-        target_box(Variable): This input can be a 2-D LoDTensor with shape 
-            [N, 4] when code_type is 'encode_center_size'. This input also can 
-            be a 3-D Tensor with shape [N, M, 4] when code_type is 
-            'decode_center_size'. Each box is represented as 
-            [xmin, ymin, xmax, ymax]. The data type is float32 or float64. 
-            This tensor can contain LoD information to represent a batch of inputs. 
+            map, they are close to the origin of the coordinate system.
+            [xmax, ymax] is the right bottom coordinate of the anchor box.
+        prior_box_var(List|Variable|None): prior_box_var supports three types
+            of input. One is variable with shape [M, 4] which holds M group and
+            data type is float32 or float64. The second is list consist of
+            4 elements shared by all boxes and data type is float32 or float64.
+            Other is None and not involved in calculation.
+        target_box(Variable): This input can be a 2-D LoDTensor with shape
+            [N, 4] when code_type is 'encode_center_size'. This input also can
+            be a 3-D Tensor with shape [N, M, 4] when code_type is
+            'decode_center_size'. Each box is represented as
+            [xmin, ymin, xmax, ymax]. The data type is float32 or float64.
+            This tensor can contain LoD information to represent a batch of inputs.
         code_type(str): The code type used with the target box. It can be
-            `encode_center_size` or `decode_center_size`. `encode_center_size` 
+            `encode_center_size` or `decode_center_size`. `encode_center_size`
             by default.
         box_normalized(bool): Whether treat the priorbox as a normalized box.
             Set true by default.
-        name(str, optional): For detailed information, please refer 
-            to :ref:`api_guide_Name`. Usually name is no need to set and 
-            None by default. 
-        axis(int): Which axis in PriorBox to broadcast for box decode, 
-            for example, if axis is 0 and TargetBox has shape [N, M, 4] and 
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
+        axis(int): Which axis in PriorBox to broadcast for box decode,
+            for example, if axis is 0 and TargetBox has shape [N, M, 4] and
             PriorBox has shape [M, 4], then PriorBox will broadcast to [N, M, 4]
-            for decoding. It is only valid when code type is 
-            `decode_center_size`. Set 0 by default. 
+            for decoding. It is only valid when code type is
+            `decode_center_size`. Set 0 by default.
 
     Returns:
         Variable:
 
-        output_box(Variable): When code_type is 'encode_center_size', the 
-        output tensor of box_coder_op with shape [N, M, 4] representing the 
-        result of N target boxes encoded with M Prior boxes and variances. 
-        When code_type is 'decode_center_size', N represents the batch size 
+        output_box(Variable): When code_type is 'encode_center_size', the
+        output tensor of box_coder_op with shape [N, M, 4] representing the
+        result of N target boxes encoded with M Prior boxes and variances.
+        When code_type is 'decode_center_size', N represents the batch size
         and M represents the number of decoded boxes.
 
     Examples:
- 
+
         .. code-block:: python
- 
+
             import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
@@ -945,45 +945,13 @@ def box_coder(prior_box,
                                     box_normalized=False,
                                     axis=1)
     """
-    check_variable_and_dtype(prior_box, 'prior_box', ['float32', 'float64'],
-                             'box_coder')
-    check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
-                             'box_coder')
-    if in_dygraph_mode():
-        if isinstance(prior_box_var, Variable):
-            box_coder_op = _C_ops.box_coder(prior_box, prior_box_var,
-                                            target_box, code_type,
-                                            box_normalized, axis, [])
-        elif isinstance(prior_box_var, list):
-            box_coder_op = _C_ops.box_coder(prior_box, None, target_box,
-                                            code_type, box_normalized, axis,
-                                            prior_box_var)
-        else:
-            raise TypeError(
-                "Input variance of box_coder must be Variable or lisz")
-        return box_coder_op
-    helper = LayerHelper("box_coder", **locals())
-
-    output_box = helper.create_variable_for_type_inference(
-        dtype=prior_box.dtype)
-
-    inputs = {"PriorBox": prior_box, "TargetBox": target_box}
-    attrs = {
-        "code_type": code_type,
-        "box_normalized": box_normalized,
-        "axis": axis
-    }
-    if isinstance(prior_box_var, Variable):
-        inputs['PriorBoxVar'] = prior_box_var
-    elif isinstance(prior_box_var, list):
-        attrs['variance'] = prior_box_var
-    else:
-        raise TypeError("Input variance of box_coder must be Variable or lisz")
-    helper.append_op(type="box_coder",
-                     inputs=inputs,
-                     attrs=attrs,
-                     outputs={"OutputBox": output_box})
-    return output_box
+    return paddle.vision.ops.box_coder(prior_box=prior_box,
+                                       prior_box_var=prior_box_var,
+                                       target_box=target_box,
+                                       code_type=code_type,
+                                       box_normalized=box_normalized,
+                                       axis=axis,
+                                       name=name)
 
 
 @templatedoc()
@@ -1872,16 +1840,16 @@ def prior_box(
 	    place = fluid.CPUPlace()
 	    exe = fluid.Executor(place)
 	    exe.run(fluid.default_startup_program())
- 
+
 	    # prepare a batch of data
 	    input_data = np.random.rand(1,3,6,9).astype("float32")
 	    image_data = np.random.rand(1,3,9,12).astype("float32")
- 
+
 	    box_out, var_out = exe.run(fluid.default_main_program(),
                 feed={"input":input_data,"image":image_data},
                 fetch_list=[box,var],
                 return_numpy=True)
- 
+
 	    # print(box_out.shape)
 	    # (6, 9, 1, 4)
 	    # print(var_out.shape)
@@ -1905,68 +1873,19 @@ def prior_box(
 		# [6L, 9L, 1L, 4L]
 
     """
-
-    if in_dygraph_mode():
-        step_w, step_h = steps
-        if max_sizes == None:
-            max_sizes = []
-        return _C_ops.prior_box(input, image, min_sizes, aspect_ratios,
-                                variance, max_sizes, flip, clip, step_w, step_h,
-                                offset, min_max_aspect_ratios_order)
-    helper = LayerHelper("prior_box", **locals())
-    dtype = helper.input_dtype()
-    check_variable_and_dtype(input, 'input',
-                             ['uint8', 'int8', 'float32', 'float64'],
-                             'prior_box')
-
-    def _is_list_or_tuple_(data):
-        return (isinstance(data, list) or isinstance(data, tuple))
-
-    if not _is_list_or_tuple_(min_sizes):
-        min_sizes = [min_sizes]
-    if not _is_list_or_tuple_(aspect_ratios):
-        aspect_ratios = [aspect_ratios]
-    if not (_is_list_or_tuple_(steps) and len(steps) == 2):
-        raise ValueError('steps should be a list or tuple ',
-                         'with length 2, (step_width, step_height).')
-
-    min_sizes = list(map(float, min_sizes))
-    aspect_ratios = list(map(float, aspect_ratios))
-    steps = list(map(float, steps))
-
-    attrs = {
-        'min_sizes': min_sizes,
-        'aspect_ratios': aspect_ratios,
-        'variances': variance,
-        'flip': flip,
-        'clip': clip,
-        'step_w': steps[0],
-        'step_h': steps[1],
-        'offset': offset,
-        'min_max_aspect_ratios_order': min_max_aspect_ratios_order
-    }
-    if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
-        if not _is_list_or_tuple_(max_sizes):
-            max_sizes = [max_sizes]
-        attrs['max_sizes'] = max_sizes
-
-    box = helper.create_variable_for_type_inference(dtype)
-    var = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="prior_box",
-        inputs={
-            "Input": input,
-            "Image": image
-        },
-        outputs={
-            "Boxes": box,
-            "Variances": var
-        },
-        attrs=attrs,
-    )
-    box.stop_gradient = True
-    var.stop_gradient = True
-    return box, var
+    return paddle.vision.ops.prior_box(
+        input=input,
+        image=image,
+        min_sizes=min_sizes,
+        max_sizes=max_sizes,
+        aspect_ratios=aspect_ratios,
+        variance=variance,
+        flip=flip,
+        clip=clip,
+        steps=steps,
+        offset=offset,
+        min_max_aspect_ratios_order=min_max_aspect_ratios_order,
+        name=name)
 
 
 def density_prior_box(input,

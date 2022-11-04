@@ -112,6 +112,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   if (graph.Nodes().empty()) return false;
 
   for (auto &node : GraphTraits::DFS(graph)) {
+    if (node.Name().rfind("__control_var") == 0) continue;
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
         VLOG(4) << "Node " << node.Name() << " marked as " << pdnode->name();
@@ -383,7 +384,6 @@ std::string PDPattern::DotString() const {
   // Create Edges
   for (const auto &edge : edges()) {
     if (!node2dot.count(edge.first) || !node2dot.count(edge.second)) {
-      LOG(ERROR) << "no node " << edge.first << " " << edge.second;
       continue;
     }
     auto &src = node2dot.at(edge.first);
@@ -453,7 +453,8 @@ PDNode *PDNode::assert_var_not_persistable() {
 
 PDNode *PDNode::assert_is_persistable_var() {
   assert_is_var();
-  asserts_.emplace_back([=](Node *x) { return x->Var()->Persistable(); });
+  asserts_.emplace_back(
+      [=](Node *x) { return x->Var() && x->Var()->Persistable(); });
   return this;
 }
 
@@ -3535,8 +3536,20 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
           });
   auto reshape1_out = pattern->NewNode(reshape1_out_repr())
                           ->AsIntermediate()
-                          ->assert_is_op_input("reshape2", "X")
                           ->assert_is_op_output("reshape2", "Out");
+  PDNode *roll1_op = nullptr;
+  PDNode *roll1_out = nullptr;
+
+  if (!with_roll_) {
+    reshape1_out->assert_is_op_input("reshape2", "X");
+  } else {
+    reshape1_out->assert_is_op_input("roll", "X");
+    roll1_op = pattern->NewNode(roll1_op_repr())->assert_is_op("roll");
+    roll1_out = pattern->NewNode(roll1_out_repr())
+                    ->AsIntermediate()
+                    ->assert_is_op_output("roll", "Out")
+                    ->assert_is_op_input("reshape2", "X");
+  }
   auto reshape2_op =
       pattern->NewNode(reshape2_op_repr())
           ->assert_is_op("reshape2")
@@ -3546,6 +3559,7 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
                                      node->Op()->GetAttr("shape"))
                         .size() == 6);
           });
+
   auto reshape2_out = pattern->NewNode(reshape2_out_repr())
                           ->AsIntermediate()
                           ->assert_is_op_input("transpose2", "X")
@@ -3594,7 +3608,12 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
   layer_norm_op->LinksFrom({layer_norm_in, layer_norm_bias, layer_norm_scale})
       .LinksTo({layer_norm_out});
   reshape1_op->LinksFrom({layer_norm_out}).LinksTo({reshape1_out});
-  reshape2_op->LinksFrom({reshape1_out}).LinksTo({reshape2_out});
+  if (!with_roll_) {
+    reshape2_op->LinksFrom({reshape1_out}).LinksTo({reshape2_out});
+  } else {
+    roll1_op->LinksFrom({reshape1_out}).LinksTo({roll1_out});
+    reshape2_op->LinksFrom({roll1_out}).LinksTo({reshape2_out});
+  }
   transpose_op->LinksFrom({reshape2_out}).LinksTo({transpose_out});
   reshape3_op->LinksFrom({transpose_out}).LinksTo({reshape3_out});
   reshape4_op->LinksFrom({reshape3_out}).LinksTo({reshape4_out});

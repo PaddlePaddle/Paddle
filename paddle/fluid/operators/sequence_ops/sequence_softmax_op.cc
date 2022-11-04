@@ -73,14 +73,6 @@ class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
         .SetDefault(false)
         .AsExtra();
-    AddAttr<std::string>(
-        "data_format",
-        "(string, default NCHW) Only used in "
-        "An optional string from: \"NHWC\", \"NCHW\". "
-        "Defaults to \"NHWC\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
-        .SetDefault("AnyLayout")
-        .AsExtra();
     AddComment(R"DOC(
 Sequence Softmax Operator.
 

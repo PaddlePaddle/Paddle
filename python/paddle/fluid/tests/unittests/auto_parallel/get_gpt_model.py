@@ -17,7 +17,7 @@ import numpy as np
 import random
 
 import paddle
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling

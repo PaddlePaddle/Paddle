@@ -344,7 +344,7 @@ class PostTrainingQuantization(object):
         self._fetch_list = None
         self._data_loader = data_loader
 
-        self._out_scale_op_list = utils._out_scale_op_list
+        self._out_scale_op_list = utils.QUANT_SUPPORTED_OP_TYPE_LIST
         self._quantized_weight_var_name = set()
         self._quantized_act_var_name = set()
         self._weight_op_pairs = {}
@@ -449,21 +449,7 @@ class PostTrainingQuantization(object):
             self._collect_dynamic_quantize_op_threshold(
                 self._dynamic_quantize_op_type)
 
-        # Move sub blocks persistable var to global block
-        global_block = self._program.global_block()
-        for _op in global_block.ops:
-            if _op.type == "while":
-                _block_id = _op.attr("sub_block").id
-                _block = self._program.block(_block_id)
-                persistables = []
-                for _name, _var in _block.vars.items():
-                    if _var.persistable:
-                        global_block._clone_variable(_var)
-                        persistables.append(_name)
-                for _name in persistables:
-                    _block._remove_var(_name)
-                persistables.extend(_op.input('X'))
-                _op.desc.set_input("X", persistables)
+        utils.move_persistable_var_to_global_block(self._program)
 
         if not self._return_graph:
             return self._program
@@ -843,9 +829,6 @@ class PostTrainingQuantization(object):
             hist, _ = np.histogram(var_tensor_abs, bins=bins)
             self._sampling_act_histogram[var_name][0] += hist
 
-    def l2_loss(self, gt, pred):
-        return ((gt - pred)**2).mean()
-
     def _sample_ptf(self):
         """
         The following code are modified from:
@@ -885,10 +868,10 @@ class PostTrainingQuantization(object):
                                                q_max) * scale4
             quant_dequant_var_scale8 = np.clip(np.round(var_tensor / scale8), 0,
                                                q_max) * scale8
-            score1 = self.l2_loss(var_tensor, quant_dequant_var_scale1)
-            score2 = self.l2_loss(var_tensor, quant_dequant_var_scale2)
-            score4 = self.l2_loss(var_tensor, quant_dequant_var_scale4)
-            score8 = self.l2_loss(var_tensor, quant_dequant_var_scale8)
+            score1 = utils.l2_loss(var_tensor, quant_dequant_var_scale1)
+            score2 = utils.l2_loss(var_tensor, quant_dequant_var_scale2)
+            score4 = utils.l2_loss(var_tensor, quant_dequant_var_scale4)
+            score8 = utils.l2_loss(var_tensor, quant_dequant_var_scale8)
             score = [score1, score2, score4, score8]
             mask = 2**score.index(min(score))
             scale = scale1 * mask
@@ -1035,7 +1018,7 @@ class PostTrainingQuantization(object):
                 scope=self._scope,
                 place=self._place,
                 quantizable_op_type=minor_quantizable_op_types,
-                is_full_quantized=self._is_full_quantize)
+                is_full_quantized=True)
 
         for sub_graph in graph.all_sub_graphs():
             sub_graph._for_test = True

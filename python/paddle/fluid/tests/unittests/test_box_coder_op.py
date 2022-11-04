@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import sys
-import math
 from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
@@ -286,5 +282,57 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
             run(place)
 
 
+class TestBoxCoderAPI(unittest.TestCase):
+
+    def setUp(self):
+        np.random.seed(678)
+        self.prior_box_np = np.random.random((80, 4)).astype('float32')
+        self.prior_box_var_np = np.random.random((80, 4)).astype('float32')
+        self.target_box_np = np.random.random((20, 80, 4)).astype('float32')
+
+    def test_dygraph_with_static(self):
+        paddle.enable_static()
+        prior_box = paddle.static.data(name='prior_box',
+                                       shape=[80, 4],
+                                       dtype='float32')
+        prior_box_var = paddle.static.data(name='prior_box_var',
+                                           shape=[80, 4],
+                                           dtype='float32')
+        target_box = paddle.static.data(name='target_box',
+                                        shape=[20, 80, 4],
+                                        dtype='float32')
+
+        boxes = paddle.vision.ops.box_coder(prior_box=prior_box,
+                                            prior_box_var=prior_box_var,
+                                            target_box=target_box,
+                                            code_type="decode_center_size",
+                                            box_normalized=False)
+
+        exe = paddle.static.Executor()
+        boxes_np = exe.run(paddle.static.default_main_program(),
+                           feed={
+                               'prior_box': self.prior_box_np,
+                               'prior_box_var': self.prior_box_var_np,
+                               'target_box': self.target_box_np,
+                           },
+                           fetch_list=[boxes])
+
+        paddle.disable_static()
+        prior_box_dy = paddle.to_tensor(self.prior_box_np)
+        prior_box_var_dy = paddle.to_tensor(self.prior_box_var_np)
+        target_box_dy = paddle.to_tensor(self.target_box_np)
+
+        boxes_dy = paddle.vision.ops.box_coder(prior_box=prior_box_dy,
+                                               prior_box_var=prior_box_var_dy,
+                                               target_box=target_box_dy,
+                                               code_type="decode_center_size",
+                                               box_normalized=False)
+        boxes_dy_np = boxes_dy.numpy()
+
+        np.testing.assert_allclose(boxes_np[0], boxes_dy_np)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

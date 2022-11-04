@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -43,13 +43,15 @@ static void AllReduce(framework::Tensor& tensor,  // NOLINT
 
   if (map->has(ring_id)) {
     paddle::distributed::ProcessGroup* pg = map->get(ring_id);
+    auto pg_nccl = static_cast<distributed::ProcessGroupNCCL*>(pg);
+
     std::vector<phi::DenseTensor> in_tensor;
     std::vector<phi::DenseTensor> out_tensor;
     in_tensor.push_back(tensor);
     out_tensor.push_back(tensor);
     paddle::distributed::AllreduceOptions opts;
     opts.reduce_op = distributed::ReduceOp::SUM;
-    auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+    auto task = pg_nccl->AllReduce(in_tensor, out_tensor, opts, true, true);
     task->Wait();
   } else {
     auto dtype = platform::ToNCCLDataType(
@@ -337,7 +339,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
                const framework::Tensor& linear1_out,
                const framework::Tensor* ln1_out,
                const framework::Tensor& dropout1_out,
-               const framework::Tensor& dropout2_out,
+               const framework::Tensor* dropout2_out,
                const framework::Tensor& linear1_weight,
                const framework::Tensor* linear1_bias,
                const framework::Tensor& linear2_weight,
@@ -420,7 +422,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
       fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
           ctx,
           d_out.data<T>(),
-          dropout2_out.data<T>(),
+          dropout2_out->data<T>(),
           dropout2_mask.data<uint8_t>(),
           ln2_gamma_ptr,
           ln2_mean->data<U>(),
@@ -504,7 +506,7 @@ class FusedFeedForwardGradKernel : public framework::OpKernel<T> {
     auto* ln1_out =
         pre_layer_norm ? context.Input<framework::Tensor>("Ln1Out") : nullptr;
     auto dropout1_out = *context.Input<framework::Tensor>("Dropout1Out");
-    auto dropout2_out = *context.Input<framework::Tensor>("Dropout2Out");
+    auto* dropout2_out = context.Input<framework::Tensor>("Dropout2Out");
     auto linear1_weight = *context.Input<framework::Tensor>("Linear1Weight");
     auto* linear1_bias = context.Input<framework::Tensor>("Linear1Bias");
     auto linear2_weight = *context.Input<framework::Tensor>("Linear2Weight");

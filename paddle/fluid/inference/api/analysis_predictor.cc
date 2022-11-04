@@ -129,17 +129,19 @@ phi::DataType ConvertPrecision(AnalysisConfig::Precision precision) {
   }
 }
 
-phi::Backend ConvertBackend(AnalysisConfig::Backend backend) {
+phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
   switch (backend) {
-    case AnalysisConfig::Backend::kGPU:
+    case paddle_infer::PlaceType::kGPU:
       // NOTE: phi also support phi::Backend::GPUDNN.
       return phi::Backend::GPU;
-    case AnalysisConfig::Backend::kNPU:
+    case paddle_infer::PlaceType::kNPU:
       return phi::Backend::NPU;
-    case AnalysisConfig::Backend::kXPU:
+    case paddle_infer::PlaceType::kXPU:
       return phi::Backend::XPU;
-    case AnalysisConfig::Backend::kCPU:
+    case paddle_infer::PlaceType::kCPU:
       return phi::Backend::CPU;
+    case paddle_infer::PlaceType::kIPU:
+      return phi::Backend::IPU;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Paddle Inference not support backend, we now only support GPU, XPU, "
@@ -166,20 +168,28 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
     LOG(ERROR) << "unsupported feed type " << pt.dtype;
     return false;
   }
-
-  PADDLE_ENFORCE_NOT_NULL(
-      input_ptr,
-      paddle::platform::errors::Fatal(
-          "Cannot convert to LoDTensor because LoDTensor creation failed."));
-  PADDLE_ENFORCE_NOT_NULL(
-      pt.data.data(),
-      paddle::platform::errors::InvalidArgument(
-          "The data contained in the input PaddleTensor is illegal."));
+  // NOTE(Aurelius84): Some kernels support zero shape input
+  // without memory holder, we should skip enforce logic.
+  bool has_zero_dim = (phi::product(ddim) == 0);
+  VLOG(3) << "Found zero dim: " << has_zero_dim
+          << " from input with ddim: " << ddim;
+  if (!has_zero_dim) {
+    PADDLE_ENFORCE_NOT_NULL(
+        input_ptr,
+        paddle::platform::errors::Fatal(
+            "Cannot convert to LoDTensor because LoDTensor creation failed."));
+    PADDLE_ENFORCE_NOT_NULL(
+        pt.data.data(),
+        paddle::platform::errors::InvalidArgument(
+            "The data contained in the input PaddleTensor is illegal."));
+  }
 
   if (platform::is_cpu_place(place)) {
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(
-        static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
+    if (input_ptr != nullptr) {
+      std::memcpy(
+          static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
+    }
   } else if (platform::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
     std::memcpy(
@@ -527,6 +537,11 @@ bool AnalysisPredictor::PrepareProgram(
     // If the program is passed from external, no need to optimize it, this
     // logic is used in the clone scenario.
     inference_program_ = program;
+    if (config_.apply_optim_) {
+      VLOG(3)
+          << "apply_optim is enabled, will call OptimizeInferenceProgram().";
+      OptimizeInferenceProgram();
+    }
   }
 
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
@@ -1063,11 +1078,12 @@ void AnalysisPredictor::PrepareArgument() {
                       false,
                       platform::errors::PreconditionNotMet(
                           "Either model_dir or prog_file should be set."));
-    std::string dir = inference::analysis::GetDirRoot(config_.prog_file());
 
     argument_.SetModelProgramPath(config_.prog_file());
     argument_.SetModelParamsPath(config_.params_file());
   }
+  // For JITLayer
+  argument_.SetSkipLoadParams(config_.skip_load_params_);
 
   argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
   argument_.SetTensorRtUseOSS(config_.trt_use_varseqlen_);
@@ -1160,6 +1176,8 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuAvailableMemoryProportion(
       config_.ipu_available_memory_proportion_);
   argument_.SetIpuEnableHalfPartial(config_.ipu_enable_half_partial_);
+  argument_.SetIpuCustomOpsInfo(config_.ipu_custom_ops_info_);
+  argument_.SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
 
   argument_.SetUseNpu(config_.use_npu_);
@@ -1244,6 +1262,16 @@ void AnalysisPredictor::PrepareArgument() {
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
   PrepareArgument();
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE_EQ(
@@ -1735,10 +1763,39 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     if (!var->IsType<framework::LoDTensor>()) {
       continue;
     }
-    framework::DDim dim = var->Get<framework::LoDTensor>().dims();
+    auto tensor = var->Get<framework::LoDTensor>();
+    framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
     shape_info_[name].emplace_back(shape);
+
+    // We need collect value range for shape tensor for Paddle-TRT's use.
+    // To be noticed, this method to identify all shape tensors is based on
+    // assumption that all shape tensors in the model have numbers <= 7.
+    // This is a simple method to identify all shape tensors with some
+    // mistakes, but it doesn't matter.
+    auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
+    if (tensor.dtype() == paddle::experimental::DataType::INT32 &&
+        is_shape_tensor) {
+      std::vector<int> int32_host(tensor.numel());
+      if (tensor.place() == platform::CPUPlace()) {
+        paddle::memory::Copy(platform::CPUPlace(),
+                             int32_host.data(),
+                             platform::CPUPlace(),
+                             tensor.data<int>(),
+                             tensor.numel() * sizeof(int));
+      } else if (tensor.place() == platform::CUDAPlace()) {
+#if defined(PADDLE_WITH_CUDA)
+        paddle::memory::Copy(platform::CPUPlace(),
+                             int32_host.data(),
+                             platform::CUDAPlace(),
+                             tensor.data<int>(),
+                             tensor.numel() * sizeof(int),
+                             nullptr);
+#endif
+      }
+      shape_tensor_value_[name].emplace_back(int32_host);
+    }
   }
 }
 
@@ -1746,43 +1803,61 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
   std::map<std::string, std::vector<int32_t>> min_shapes;
   std::map<std::string, std::vector<int32_t>> max_shapes;
   std::map<std::string, std::vector<int32_t>> opt_shapes;
-  for (auto it : shape_info_) {
-    auto name = it.first;
-    auto shapes = it.second;
+  std::map<std::string, std::vector<int32_t>> min_values;
+  std::map<std::string, std::vector<int32_t>> max_values;
+  std::map<std::string, std::vector<int32_t>> opt_values;
 
-    std::vector<int32_t> min_shape(shapes[0].begin(), shapes[0].end());
-    std::vector<int32_t> max_shape(shapes[0].begin(), shapes[0].end());
-    std::vector<int32_t> opt_shape(shapes[0].begin(), shapes[0].end());
+  auto extract_min_max_opt =
+      [](std::map<std::string, std::vector<int32_t>> &min_data,
+         decltype(min_data) max_data,
+         decltype(min_data) opt_data,
+         decltype(shape_info_) shape_data) {
+        for (auto it : shape_data) {
+          auto name = it.first;
+          auto shapes = it.second;
 
-    auto ShapeMaxFreq = [](const std::map<int32_t, int32_t> &m) -> int32_t {
-      std::vector<std::pair<int32_t, int32_t>> counter;
-      for (auto &it : m) counter.push_back(it);
-      std::sort(
-          counter.begin(),
-          counter.end(),
-          [](std::pair<int32_t, int32_t> &a, std::pair<int32_t, int32_t> &b) {
-            return a.second > b.second;
-          });
-      return counter[0].first;
-    };
+          std::vector<int32_t> min_shape(shapes[0].begin(), shapes[0].end());
+          std::vector<int32_t> max_shape(shapes[0].begin(), shapes[0].end());
+          std::vector<int32_t> opt_shape(shapes[0].begin(), shapes[0].end());
 
-    for (size_t d = 0; d < shapes[0].size(); ++d) {
-      std::map<int32_t, int32_t> counter;
-      for (size_t i = 0; i < shapes.size(); ++i) {
-        counter[shapes[i][d]] += 1;
-        if (shapes[i][d] < min_shape[d]) min_shape[d] = shapes[i][d];
-        if (shapes[i][d] > max_shape[d]) max_shape[d] = shapes[i][d];
-      }
-      opt_shape[d] = ShapeMaxFreq(counter);
-    }
+          auto ShapeMaxFreq =
+              [](const std::map<int32_t, int32_t> &m) -> int32_t {
+            std::vector<std::pair<int32_t, int32_t>> counter;
+            for (auto &it : m) counter.push_back(it);
+            std::sort(counter.begin(),
+                      counter.end(),
+                      [](std::pair<int32_t, int32_t> &a,
+                         std::pair<int32_t, int32_t> &b) {
+                        return a.second > b.second;
+                      });
+            return counter[0].first;
+          };
 
-    min_shapes[name] = min_shape;
-    max_shapes[name] = max_shape;
-    opt_shapes[name] = opt_shape;
-  }
+          for (size_t d = 0; d < shapes[0].size(); ++d) {
+            std::map<int32_t, int32_t> counter;
+            for (size_t i = 0; i < shapes.size(); ++i) {
+              counter[shapes[i][d]] += 1;
+              if (shapes[i][d] < min_shape[d]) min_shape[d] = shapes[i][d];
+              if (shapes[i][d] > max_shape[d]) max_shape[d] = shapes[i][d];
+            }
+            opt_shape[d] = ShapeMaxFreq(counter);
+          }
 
-  inference::SerializeShapeRangeInfo(
-      config_.shape_range_info_path(), min_shapes, max_shapes, opt_shapes);
+          min_data[name] = min_shape;
+          max_data[name] = max_shape;
+          opt_data[name] = opt_shape;
+        }
+      };
+  extract_min_max_opt(min_shapes, max_shapes, opt_shapes, shape_info_);
+  extract_min_max_opt(min_values, max_values, opt_values, shape_tensor_value_);
+
+  inference::SerializeShapeRangeInfo(config_.shape_range_info_path(),
+                                     min_shapes,
+                                     max_shapes,
+                                     opt_shapes,
+                                     min_values,
+                                     max_values,
+                                     opt_values);
 }
 
 bool AnalysisPredictor::LoadProgramDesc() {
@@ -2094,6 +2169,8 @@ USE_TRT_CONVERTER(elementwise_add_weight);
 USE_TRT_CONVERTER(elementwise_sub_weight);
 USE_TRT_CONVERTER(elementwise_mul_weight);
 USE_TRT_CONVERTER(elementwise_div_weight);
+USE_TRT_CONVERTER(elementwise_min_weight);
+USE_TRT_CONVERTER(elementwise_max_weight);
 USE_TRT_CONVERTER(elementwise_pow_weight);
 USE_TRT_CONVERTER(elementwise_add_tensor);
 USE_TRT_CONVERTER(elementwise_sub_tensor);
@@ -2107,6 +2184,8 @@ USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
 USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
+USE_TRT_CONVERTER(matmul_v2);
+USE_TRT_CONVERTER(bmm);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(exp);
@@ -2306,7 +2385,7 @@ void ConvertToMixedPrecision(const std::string &model_file,
                              const std::string &mixed_model_file,
                              const std::string &mixed_params_file,
                              PrecisionType mixed_precision,
-                             BackendType backend,
+                             paddle_infer::PlaceType backend,
                              bool keep_io_types,
                              std::unordered_set<std::string> black_list) {
   auto phi_backend = paddle::ConvertBackend(backend);

@@ -174,10 +174,6 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                  "3: XPUPlace. "
                  "4: NPUPlace. ")
         .SetDefault(-1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "
               "with the specified value");

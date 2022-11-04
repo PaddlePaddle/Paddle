@@ -59,6 +59,9 @@ class CompatMetaTensor : public phi::MetaTensor {
 
   bool initialized() const override { return initialized_; };
 
+  bool is_tensor_array() const;
+  bool is_dense() const;
+
   operator unspecified_bool_type() const override {
     return initialized_ ? unspecified_bool_true : 0;
   }

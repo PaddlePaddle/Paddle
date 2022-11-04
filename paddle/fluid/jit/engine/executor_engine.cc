@@ -44,14 +44,17 @@ std::vector<Tensor> ExecutorEngine::operator()(
 std::vector<DenseTensor> ExecutorEngine::operator()(
     const std::vector<DenseTensor> &inputs) {
   utils::ShareIntoScope(info_->InputArgNames(), inputs, &scope_);
+  const auto out_names = info_->OutputArgNames();
   inner_exe_.Run(info_->ProgramDesc(),
                  &scope_,
                  /*blockID=*/0,
                  false,
                  true,
-                 info_->OutputArgNames());
+                 out_names);
   std::vector<DenseTensor> outputs;
-  utils::FetchOuts(info_->OutputArgNames(), scope_, &outputs);
+  utils::FetchOuts(out_names, scope_, &outputs);
+  // Erase output vars to avoid data rewriting.
+  scope_.EraseVars(out_names);
   return outputs;
 }
 

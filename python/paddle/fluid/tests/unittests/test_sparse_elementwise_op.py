@@ -18,20 +18,20 @@ from operator import __add__, __sub__, __mul__, __truediv__
 
 import numpy as np
 import paddle
-import paddle.incubate.sparse as sparse
+import paddle.sparse as sparse
 
 op_list = [__add__, __sub__, __mul__, __truediv__]
 
 
 def get_actual_res(x, y, op):
     if op == __add__:
-        res = paddle.incubate.sparse.add(x, y)
+        res = paddle.sparse.add(x, y)
     elif op == __sub__:
-        res = paddle.incubate.sparse.subtract(x, y)
+        res = paddle.sparse.subtract(x, y)
     elif op == __mul__:
-        res = paddle.incubate.sparse.multiply(x, y)
+        res = paddle.sparse.multiply(x, y)
     elif op == __truediv__:
-        res = paddle.incubate.sparse.divide(x, y)
+        res = paddle.sparse.divide(x, y)
     else:
         raise ValueError("unsupported op")
     return res
@@ -162,6 +162,32 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                                    values1.grad.numpy())
         np.testing.assert_allclose(sp_b.grad.values().numpy(),
                                    values2.grad.numpy())
+
+    def test_add_bias(self):
+        indices_data = [[0, 1], [0, 3]]
+        values_data = [[1.0, 1.0], [2.0, 2.0]]
+        shape = [2, 4, 2]
+
+        sp_a = sparse.sparse_coo_tensor(indices_data,
+                                        values_data,
+                                        shape,
+                                        stop_gradient=False)
+
+        bias_values = [1.0, 2.0]
+
+        values1 = paddle.to_tensor(values_data, stop_gradient=False)
+        values2 = paddle.to_tensor(bias_values, stop_gradient=False)
+        values3 = paddle.to_tensor(bias_values, stop_gradient=False)
+
+        #c.values() = a.values() + b
+        sp_c = sparse.add(sp_a, values2)
+        sp_c.backward()
+        ref_c = values1 + values3
+        ref_c.backward()
+        np.testing.assert_allclose(sp_c.values().numpy(), ref_c.numpy())
+        np.testing.assert_allclose(sp_a.grad.values().numpy(),
+                                   values1.grad.numpy())
+        np.testing.assert_allclose(values2.grad.numpy(), values3.grad.numpy())
 
 
 if __name__ == "__main__":

@@ -30,6 +30,7 @@ from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import Br
 from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransformer
 from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import CastTransformer
 from paddle.fluid.dygraph.dygraph_to_static.grad_transformer import GradTransformer
+from paddle.fluid.dygraph.dygraph_to_static.typehint_transformer import TypeHintTransformer
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
 from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import LogicalTransformer
@@ -104,8 +105,9 @@ class DygraphToStaticAst(BaseTransformer):
             PrintTransformer,  # print statement
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
-            GradTransformer,  # transform paddle.grad to paddle.gradients
+            #GradTransformer,  # transform paddle.grad to paddle.gradients
             DecoratorTransformer,  # transform decorators to function call
+            TypeHintTransformer,  # remove all typehint in gast.Name
         ]
 
         apply_optimization(transformers)

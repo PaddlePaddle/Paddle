@@ -93,4 +93,5 @@ PD_REGISTER_KERNEL(gelu,
                    phi::GeluKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

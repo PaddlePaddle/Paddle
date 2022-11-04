@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -59,6 +60,22 @@ class FeedVariableVisitor {
     framework::Strings *out_str = out_var_->GetMutable<framework::Strings>();
     out_str->resize(in_str.size());
     *out_str = in_str;
+  }
+
+  void operator()(const phi::SparseCooTensor &in_tensor) const {
+    phi::SparseCooTensor *out_tensor =
+        out_var_->GetMutable<phi::SparseCooTensor>();
+    if (platform::is_same_place(in_tensor.place(), place_)) {
+      *out_tensor = in_tensor;
+    } else {
+      platform::DeviceContext *context =
+          platform::DeviceContextPool::Instance().Get(place_);
+
+      phi::DenseTensor indices, values;
+      framework::TensorCopy(in_tensor.indices(), place_, *context, &indices);
+      framework::TensorCopy(in_tensor.values(), place_, *context, &values);
+      out_tensor->SetMember(indices, values, in_tensor.meta());
+    }
   }
 
  private:

@@ -634,20 +634,26 @@ class ReduceGradOp : public framework::OperatorWithKernel {
                    "ReduceOp");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
-    auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
-    for (size_t i = 0; i < dims.size(); ++i) {
-      PADDLE_ENFORCE_LT(dims[i],
-                        x_rank,
-                        platform::errors::InvalidArgument(
-                            "The reduce dim index %d should be in the "
-                            "range [-dimension(X), dimension(X)], "
-                            "which dimesion = %d. But received dim index = %d.",
-                            i,
-                            x_rank,
-                            dims[i]));
-      if (dims[i] < 0) dims[i] = x_rank + dims[i];
+    // TODO(dev): We should delete Infershape and migrate it into
+    // UnchangeInferMeta.In case of 'dim' is Variable, it will
+    // not exist in Attrs but in Inputs.
+    if (ctx->HasAttr("dim")) {
+      auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
+      for (size_t i = 0; i < dims.size(); ++i) {
+        PADDLE_ENFORCE_LT(
+            dims[i],
+            x_rank,
+            platform::errors::InvalidArgument(
+                "The reduce dim index %d should be in the "
+                "range [-dimension(X), dimension(X)], "
+                "which dimesion = %d. But received dim index = %d.",
+                i,
+                x_rank,
+                dims[i]));
+        if (dims[i] < 0) dims[i] = x_rank + dims[i];
+      }
     }
-    sort(dims.begin(), dims.end());
+
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, x_dims);

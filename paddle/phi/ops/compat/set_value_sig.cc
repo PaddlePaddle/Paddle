@@ -724,6 +724,21 @@ KernelSignature SetValueOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                     "shape",
                                     "bool_values"},
                                    {"Out"});
+          } else if (ctx.HasAttr("fp16_values") &&
+                     !paddle::any_cast<std::vector<float>>(
+                          ctx.Attr("fp16_values"))
+                          .empty()) {
+            return KernelSignature("set_value",
+                                   {"Input"},
+                                   {"starts",
+                                    "ends",
+                                    "steps",
+                                    "axes",
+                                    "decrease_axes",
+                                    "none_axes",
+                                    "shape",
+                                    "fp16_values"},
+                                   {"Out"});
           }
         }
       }

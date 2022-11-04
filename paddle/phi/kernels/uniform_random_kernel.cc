@@ -51,8 +51,13 @@ PD_REGISTER_KERNEL(uniform_random,
                    phi::dtype::bfloat16) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(
-    uniform_random, GPU, ALL_LAYOUT, phi::UniformRandomKernel, float, double) {}
+PD_REGISTER_KERNEL(uniform_random,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::UniformRandomKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
 #endif
 
 #ifdef PADDLE_WITH_XPU

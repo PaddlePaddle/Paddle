@@ -28,7 +28,7 @@ import paddle.utils as utils
 from paddle.fluid import layers
 from paddle.io import Dataset, IterableDataset, DataLoader
 
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from engine_api_dp import MyDataset
 
 paddle.enable_static()

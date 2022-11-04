@@ -25,7 +25,7 @@ import paddle.static as static
 import paddle.nn.functional as F
 
 from paddle.distributed import fleet
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
@@ -199,7 +199,7 @@ class TestDistributedContext(unittest.TestCase):
                 "_serial_ordered_nodes", "_serial_ordered_tensor_nodes", \
                 "_serial_ordered_op_nodes", "_original_serial_loss", \
                 "_original_serial_feed_vars", "_original_serial_fetch_vars", \
-                "_serial_loss", "_serial_feed_vars", "_serial_fetch_vars", "_lr_optimizer", \
+                "_serial_loss", "_serial_feed_vars", "_serial_fetch_vars", "_serial_optimizer", \
                 "_backup_serial_main_program_stack", "_backup_serial_startup_program_stack", \
                 "_pass_context"]
 

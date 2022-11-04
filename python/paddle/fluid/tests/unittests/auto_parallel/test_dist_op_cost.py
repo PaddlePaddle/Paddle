@@ -16,7 +16,7 @@ import unittest
 import copy
 
 import paddle
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.operators.common import get_distributed_operator_impl_container, is_elementwise_op
 

@@ -15,8 +15,7 @@
 import unittest
 import numpy as np
 import paddle
-from paddle.incubate import sparse
-from paddle.incubate.sparse import nn
+from paddle.sparse import nn
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -26,10 +25,10 @@ class TestGradientAdd(unittest.TestCase):
         indentity = sp_x
         out = nn.functional.relu(sp_x)
         values = out.values() + indentity.values()
-        out = sparse.sparse_coo_tensor(out.indices(),
-                                       values,
-                                       shape=out.shape,
-                                       stop_gradient=out.stop_gradient)
+        out = paddle.sparse.sparse_coo_tensor(out.indices(),
+                                              values,
+                                              shape=out.shape,
+                                              stop_gradient=out.stop_gradient)
         return out
 
     def dense(self, x):

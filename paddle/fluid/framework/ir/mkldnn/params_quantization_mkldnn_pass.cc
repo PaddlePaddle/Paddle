@@ -52,35 +52,23 @@ bool HasBias(ir::Node* conv_op) {
          conv_op->Op()->Input("Bias").size() > 0;
 }
 
-bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
-  if (!platform::HasOpINT8DataType(conv_op->Op())) {
-    VLOG(4) << "Skipping non-int8 convolution (id: " << conv_op->id() << ").";
-    return true;
-  }
-
-  auto filter_var = scope->GetVar(conv_filter->Name());
-  if (filter_var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
-    VLOG(4) << "Skipping convolution (id: " << conv_op->id()
-            << ") because it's a bug that it is detected again.";
-    return true;
-  }
-
-  VLOG(4) << "Not skipping convolution (id: " << conv_op->id() << ")";
-  return false;
-}
-
 template <typename T>
 void QuantizeConvInput(Scope* scope,
                        ir::Graph* g,
                        ir::Node* conv_op,
                        const std::string& input_name,
                        const std::string& scales_attr_name) {
-  const auto scales =
-      conv_op->Op()->GetAttrIfExists<std::vector<float>>(scales_attr_name);
+  auto var = scope->GetVar(input_name);
+  if (var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
+    VLOG(1) << "Skipping quantize the input: " << input_name
+            << " of convolution because it is detected again.";
+  } else {
+    const auto scales =
+        conv_op->Op()->GetAttrIfExists<std::vector<float>>(scales_attr_name);
 
-  auto* tensor = scope->GetVar(input_name)->GetMutable<LoDTensor>();
-  QuantizeParams<T>(tensor, scales);
-
+    auto* tensor = scope->GetVar(input_name)->GetMutable<LoDTensor>();
+    QuantizeParams<T>(tensor, scales);
+  }
   conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
 }
 
@@ -151,7 +139,8 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
-    if (ShouldSkipConv(conv_op, scope, conv_filter)) {
+    // If not a quantized OP
+    if (!platform::HasOpINT8DataType(conv_op->Op())) {
       return;
     }
 

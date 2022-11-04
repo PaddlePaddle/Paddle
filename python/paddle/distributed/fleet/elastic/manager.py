@@ -26,13 +26,9 @@ import subprocess
 from paddle.distributed.fleet import cloud_utils
 from paddle.distributed.fleet import launch_utils
 
-logger = logging.getLogger("ELASTIC")
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter(
-    fmt='%(name)s %(levelname)s %(asctime)s %(message)s')
-ch = logging.StreamHandler()
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+from paddle.distributed.utils.log_utils import get_logger
+
+logger = get_logger("INFO", "ELASTIC")
 
 ELASTIC_EXIT_CODE = 101
 ELASTIC_AUTO_PARALLEL_EXIT_CODE = 102
@@ -354,7 +350,7 @@ class ElasticManager(object):
                                     stderr=subprocess.PIPE,
                                     shell=True).communicate()
         if err:
-            logger.warn("pre_hook exec failed")
+            logger.warning("pre_hook exec failed")
         else:
             logger.info(f"pre_hook exec result: {out.decode('utf-8').strip()}")
 

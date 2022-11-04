@@ -22,7 +22,7 @@ import copy
 import os
 import subprocess
 
-from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
 
 def get_cluster_from_args(selected_gpus):

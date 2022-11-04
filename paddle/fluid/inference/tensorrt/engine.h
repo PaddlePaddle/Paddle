@@ -24,9 +24,9 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "NvInferRuntimeCommon.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
@@ -214,6 +214,9 @@ class TensorRTEngine {
       const ShapeMapType min_input_shape = {},
       const ShapeMapType max_input_shape = {},
       const ShapeMapType optim_input_shape = {},
+      const ShapeMapType min_shape_tensor = {},
+      const ShapeMapType max_shape_tensor = {},
+      const ShapeMapType optim_shape_tensor = {},
       bool disable_trt_plugin_fp16 = false,
       phi::DataType model_precision = phi::DataType::FLOAT32,
       nvinfer1::ILogger& logger = NaiveLogger::Global())
@@ -225,6 +228,9 @@ class TensorRTEngine {
         min_input_shape_(min_input_shape),
         max_input_shape_(max_input_shape),
         optim_input_shape_(optim_input_shape),
+        min_shape_tensor_(min_shape_tensor),
+        max_shape_tensor_(max_shape_tensor),
+        optim_shape_tensor_(optim_shape_tensor),
         disable_trt_plugin_fp16_(disable_trt_plugin_fp16),
         model_precision_(model_precision),
         logger_(logger) {
@@ -283,6 +289,7 @@ class TensorRTEngine {
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
+  nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name);
   std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
@@ -529,6 +536,9 @@ class TensorRTEngine {
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
+  ShapeMapType min_shape_tensor() { return min_shape_tensor_; }
+  ShapeMapType max_shape_tensor() { return max_shape_tensor_; }
+  ShapeMapType optim_shape_tensor() { return optim_shape_tensor_; }
 
   bool AdjustDynamicShapeRange(const ShapeMapType& runtime_input_shape,
                                std::vector<std::string>* changed) {
@@ -691,12 +701,15 @@ class TensorRTEngine {
   void GetEngineInfo();
 
   void SetUseInspector(bool use_inspector) { use_inspector_ = use_inspector; }
+  void SetScope(const framework::Scope& scope) { scope_ = &scope; }
 
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
   // freshDeviceId().
   void freshDeviceId();
+  // Used for convert weight into Itensor
+  const framework::Scope* scope_;
 
   // the max batch size
   int max_batch_;
@@ -717,6 +730,9 @@ class TensorRTEngine {
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
+  ShapeMapType min_shape_tensor_;
+  ShapeMapType max_shape_tensor_;
+  ShapeMapType optim_shape_tensor_;
   bool disable_trt_plugin_fp16_{false};
   phi::DataType model_precision_{phi::DataType::FLOAT32};
   bool use_varseqlen_{false};
@@ -808,6 +824,9 @@ class TRTEngineManager {
       const std::map<std::string, std::vector<int>> min_input_shape = {},
       const std::map<std::string, std::vector<int>> max_input_shape = {},
       const std::map<std::string, std::vector<int>> optim_input_shape = {},
+      const std::map<std::string, std::vector<int>> min_shape_tensor = {},
+      const std::map<std::string, std::vector<int>> max_shape_tensor = {},
+      const std::map<std::string, std::vector<int>> optim_shape_tensor = {},
       bool disable_trt_plugin_fp16 = false,
       phi::DataType model_precision = phi::DataType::FLOAT32,
       nvinfer1::ILogger& logger = NaiveLogger::Global()) {
@@ -819,6 +838,9 @@ class TRTEngineManager {
                                  min_input_shape,
                                  max_input_shape,
                                  optim_input_shape,
+                                 min_shape_tensor,
+                                 max_shape_tensor,
+                                 optim_shape_tensor,
                                  disable_trt_plugin_fp16,
                                  model_precision,
                                  logger);
