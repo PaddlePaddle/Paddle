@@ -170,5 +170,17 @@ class TestProcessGroupFp32(unittest.TestCase):
             )
 
 
+class TestProcessGroupFp16(TestProcessGroupFp32):
+    def setUp(self):
+        paddle.seed(2022)
+        random.seed(2022)
+        np.random.seed(2022)
+        self.config()
+
+    def config(self):
+        self.dtype = "float16"
+        self.shape = (4, 20, 20)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -96,8 +96,16 @@ class ConcatFunctor<platform::XPUDeviceContext, T> {
 
     std::vector<const XPUType*> ptrs;
     for (int i = 0; i < num; ++i) {
-      ptrs.push_back(reinterpret_cast<const XPUType*>(input[i].data<T>()));
+      if (input[i].place() != context.GetPlace()) {
+        // data not on xpu, probably on cpu. move it now
+        phi::DenseTensor tmp_data = input[i];
+        context.template Alloc<T>(&tmp_data);
+        ptrs.push_back(reinterpret_cast<const XPUType*>(tmp_data.data<T>()));
+      } else {
+        ptrs.push_back(reinterpret_cast<const XPUType*>(input[i].data<T>()));
+      }
     }
+    context.template Alloc<T>(output);
 
     auto r = xpu::concat<XPUType>(context.x_context(),
                                   ptrs,
@@ -147,16 +155,22 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
 
     std::vector<XPUType*> ptrs(num);
     for (int i = 0; i < num; ++i) {
+      context.template Alloc<T>(outputs->at(i));
       ptrs[i] = reinterpret_cast<XPUType*>(outputs->at(i)->data<T>());
     }
+    phi::DenseTensor tmp_data = input;
+    if (input.place() != context.GetPlace()) {
+      // data not on xpu, probably on cpu. move it now
+      context.template Alloc<T>(&tmp_data);
+    }
 
-    auto r =
-        xpu::split<XPUType>(context.x_context(),
-                            reinterpret_cast<const XPUType*>(input.data<T>()),
-                            ptrs,
-                            xdims_list,
-                            split_list,
-                            axis);
+    auto r = xpu::split<XPUType>(
+        context.x_context(),
+        reinterpret_cast<const XPUType*>(tmp_data.data<T>()),
+        ptrs,
+        xdims_list,
+        split_list,
+        axis);
     PADDLE_ENFORCE_EQ(
         r,
         XPU_SUCCESS,
