@@ -262,6 +262,7 @@ function cmake_base() {
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+        -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -318,7 +319,8 @@ EOF
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}" \
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
-        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF};build_error=$?
+        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}  \
+        -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF};build_error=$?
 
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -997,6 +999,7 @@ function check_whl_size() {
 }
 
 function generate_upstream_develop_api_spec() {
+    set -x
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
@@ -1008,14 +1011,17 @@ function generate_upstream_develop_api_spec() {
     cd ${PADDLE_ROOT}
     git fetch upstream $BRANCH
     git checkout -b develop_base_pr -t upstream/$BRANCH
+    echo "upstream develop git log: "
     git log --pretty=oneline -10
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
     if [ "$url_return" == '200' ];then
+        echo "wget develop whl from bos! "
         mkdir -p ${PADDLE_ROOT}/build/python/dist && wget -q -P ${PADDLE_ROOT}/build/python/dist ${dev_url}
     else
+        echo "compile develop whl localy! "
         if [[ ${cmake_change} ]];then
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
@@ -1027,6 +1033,7 @@ function generate_upstream_develop_api_spec() {
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+    set +x
 }
 
 function generate_api_spec() {
@@ -1834,16 +1841,16 @@ function precise_card_test_single {
         cd ${PADDLE_ROOT}/build
         precise_card_test "^${case}$" $num
 
-        #if test failed,continue,if test succeed ,go on
+        #if test failed,continue,if test succeed ,go on 
         if_test_failed=$(cat $tmp_dir/^${case}$.log| grep "The following tests FAILED:")
-        if [[ "$if_test_failed" == "The following tests FAILED:" ]];then
+        if [[ "$if_test_failed" == "The following tests FAILED:" ]];then 
             echo "$testcases has failed,put it into prec_delta"
             continue
         else
             echo "$testcases succeed"
         fi
 
-        # c++
+        # c++ 
         if [ ! -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
             mkdir ${PADDLE_ROOT}/build/ut_map/$case
         fi
@@ -1865,9 +1872,9 @@ function precise_card_test_single {
             fi
             mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
         fi
-        find paddle/fluid -name *.gcda | xargs rm -f
-        find paddle/phi -name *.gcda | xargs rm -f
-        find paddle/utils -name *.gcda | xargs rm -f
+        find paddle/fluid -name *.gcda | xargs rm -f 
+        find paddle/phi -name *.gcda | xargs rm -f 
+        find paddle/utils -name *.gcda | xargs rm -f 
     done
 }
 
@@ -2031,7 +2038,7 @@ set -x
 
     #rerun the notSuccessut and get the mapping between notSuccessut and .cu files
     get_failedUts_precise_map_file
-
+    
     #analyze the mapping between unit tests and .cu files
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
     wait;
@@ -3672,7 +3679,6 @@ function main() {
         ;;
       check_xpu_coverage)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
-        sleep 1d
         parallel_test
         check_coverage
         ;;

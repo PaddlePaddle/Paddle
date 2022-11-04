@@ -318,12 +318,6 @@ if(WITH_PYTHON)
     target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
   endif()
 
-  if(WITH_XPU)
-    target_link_libraries(op_function_generator xpulib)
-    target_link_libraries(eager_legacy_op_function_generator xpulib)
-    target_link_libraries(kernel_signature_generator xpulib)
-  endif()
-
   set(op_function_output_path ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/)
   set(impl_file1 ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function1.cc)
   set(tmp_impl_file1 ${impl_file1}.tmp)
@@ -534,8 +528,7 @@ if(WITH_PYTHON)
     add_custom_command(
       OUTPUT op_function
       COMMAND
-        ${CMAKE_COMMAND} -E env
-        "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:.:${PADDLE_BINARY_DIR}/third_party/install/xpu/lib"
+        ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
         "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
         "${op_function_output_path}" "${CODE_GEN_SPLIT_FILE_COUNT}"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_impl_file1}
@@ -568,8 +561,7 @@ if(WITH_PYTHON)
       add_custom_command(
         OUTPUT ${eager_impl_file}
         COMMAND
-          ${CMAKE_COMMAND} -E env
-          "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:.:${PADDLE_BINARY_DIR}/third_party/install/xpu/lib"
+          ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
           "${CMAKE_CURRENT_BINARY_DIR}/eager_legacy_op_function_generator"
           "${tmp_eager_impl_file}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file}

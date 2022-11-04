@@ -22,10 +22,6 @@ if(WITH_ROCM)
   target_link_libraries(eager_generator ${ROCM_HIPRTC_LIB})
 endif()
 
-if(WITH_XPU)
-  target_link_libraries(eager_generator xpulib)
-endif()
-
 # Prepare file structure
 message(
   "Generate dygraph file structure at path: ${PADDLE_SOURCE_DIR}/paddle/fluid/eager/generated"
@@ -104,7 +100,7 @@ else()
     legacy_eager_codegen
     COMMAND
       ${CMAKE_COMMAND} -E env
-      "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind:${PADDLE_BINARY_DIR}/third_party/install/mklml/lib:${PADDLE_BINARY_DIR}/third_party/install/xpu/lib"
+      "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind:${PADDLE_BINARY_DIR}/third_party/install/mklml/lib"
       "${CMAKE_CURRENT_BINARY_DIR}/eager_generator"
       "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
       "${CODE_GEN_SPLIT_FILE_COUNT}"
