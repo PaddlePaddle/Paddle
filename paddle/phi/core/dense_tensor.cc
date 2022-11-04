@@ -266,7 +266,7 @@ template const NPUStorageProperties& DenseTensor::storage_properties() const;
 template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
 #endif
 
-bool DenseTensor::get_storage_properties_status() const {
+bool DenseTensor::storage_properties_initialized() const {
   return storage_properties_ != nullptr;
 }
 

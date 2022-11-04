@@ -166,7 +166,7 @@ class DenseTensor : public TensorBase,
 
   /// \brief Get whether the storage_properties is inited.
   /// \return The init status of storage_properties.
-  bool get_storage_properties_status() const;
+  bool storage_properties_initialized() const;
 
   /// \brief Returns the storage_properties of the tensor.
   /// \return The storage_properties of the tensor.
