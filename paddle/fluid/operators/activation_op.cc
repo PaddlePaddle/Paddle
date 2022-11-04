@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/infermeta/backward.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -881,7 +882,24 @@ class PowGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("pow_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework ::GradVarName("X"), this->InputGrad("X"));
+    op->SetInput("FactorTensor", this->Input("FactorTensor"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+template <typename T>
+class PowDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("pow_double_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    op->SetInput("DDx", this->OutputGrad(framework ::GradVarName("X")));
+    op->SetOutput("Dx", this->InputGrad("X"));
+    op->SetOutput("DDout", this->InputGrad(framework::GradVarName("Out")));
     op->SetInput("FactorTensor", this->Input("FactorTensor"));
     op->SetAttrMap(this->Attrs());
   }
@@ -940,6 +958,18 @@ class PowOpGrad : public framework::OperatorWithKernel {
         expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
+
+class PowOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "X");
+  }
+};
+
 DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
@@ -1208,6 +1238,9 @@ REGISTER_OPERATOR(
 /* ========================================================================== */
 
 /* ==========================   pow register  ============================ */
+DECLARE_INFER_SHAPE_FUNCTOR(pow_double_grad,
+                            PowDoubleGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralBinaryGradInferMeta));
 
 REGISTER_OPERATOR(
     pow,
@@ -1221,7 +1254,13 @@ REGISTER_OPERATOR(
                      void>::type);
 REGISTER_OPERATOR(pow_grad,
                   ops::PowOpGrad,
-                  ops::ActivationGradOpInplaceInferer);
+                  ops::ActivationGradOpInplaceInferer,
+                  ops::PowDoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::PowDoubleGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(pow_double_grad,
+                  ops::PowOpDoubleGrad,
+                  ops::ActivationDoubleGradOpInplaceInferer,
+                  PowDoubleGradInferShapeFunctor);
 /* ========================================================================== */
 
 /* ==========================  Log register ==================================*/

@@ -451,3 +451,14 @@ PD_REGISTER_KERNEL(pow_grad,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(pow_double_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::PowDoubleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
