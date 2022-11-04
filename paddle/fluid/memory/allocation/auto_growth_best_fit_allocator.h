@@ -68,7 +68,7 @@ class AutoGrowthBestFitAllocator : public Allocator {
   struct Chunk {
     explicit Chunk(DecoratedAllocationPtr allocation)
         : allocation_(std::move(allocation)) {}
-    bool operator==(const Chunk &value) { return this == &value; }
+    bool operator==(const Chunk &value) const { return this == &value; }
     DecoratedAllocationPtr allocation_;
     List<Block> blocks_;
   };
