@@ -1366,14 +1366,15 @@ bool OperatorWithKernel::SupportsCUDNN(
     const proto::VarType::Type data_type) const {
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
       phi::TransToPhiKernelName(type_));
-  auto has_phi_kernel =
-      std::any_of(phi_kernels.begin(),
-                  phi_kernels.end(),
-                  [data_type](phi::KernelKeyMap::const_reference kern_pair) {
-                    return kern_pair.first.backend() == phi::Backend::GPUDNN &&
-                           kern_pair.first.dtype() ==
-                               framework::TransToPhiDataType(data_type);
-                  });
+  paddle::experimental::DataType phi_data_type =
+      framework::TransToPhiDataType(data_type);
+  auto has_phi_kernel = std::any_of(
+      phi_kernels.begin(),
+      phi_kernels.end(),
+      [phi_data_type](phi::KernelKeyMap::const_reference kern_pair) {
+        return kern_pair.first.backend() == phi::Backend::GPUDNN &&
+               kern_pair.first.dtype() == phi_data_type;
+      });
   if (has_phi_kernel) {
     return true;
   } else {
@@ -1470,8 +1471,11 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                    paddle::platform::is_gpu_place(ctx.GetPlace());
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto& dev_ctx = ctx.device_context<phi::GPUContext>();
-  use_cudnn &= (dev_ctx.cudnn_handle() != nullptr);
+  if (use_cudnn) {
+    auto& dev_ctx = ctx.device_context<phi::GPUContext>();
+    use_cudnn &= (dev_ctx.cudnn_handle() != nullptr);
+  }
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 #if defined(PADDLE_WITH_CUDA)
   if (use_cudnn && data_type == framework::proto::VarType::BF16) {
@@ -1482,8 +1486,6 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
             "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
   }
 #endif  // PADDLE_WITH_CUDA
-
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
   return use_cudnn && this->SupportsCUDNN(data_type);
 }
