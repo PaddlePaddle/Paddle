@@ -105,8 +105,9 @@ def _get_group_map():
     global _group_map
     if _global_env_gid not in _group_map:
         genv = _get_global_env()
-        _group_map[_global_env_gid] = Group(genv.rank, 0,
-                                            list(range(genv.world_size)))
+        _group_map[_global_env_gid] = Group(
+            genv.rank, 0, list(range(genv.world_size))
+        )
     return _group_map
 
 
@@ -121,8 +122,10 @@ def _get_group_map_by_name():
 
 def _get_default_group():
     global _group_map_by_name
-    assert is_initialized(), ("Call paddle.distributed.init_parallel_env first "
-                              "to initialize the distributed environment.")
+    assert is_initialized(), (
+        "Call paddle.distributed.init_parallel_env first "
+        "to initialize the distributed environment."
+    )
     return _get_group_map_by_name()[_default_group_name]
 
 
@@ -178,21 +181,23 @@ def get_group(id=0):
     return gm[id] if id in gm else None
 
 
-def _new_process_group_impl(backend,
-                            store,
-                            rank,
-                            world_size,
-                            group_name,
-                            pg_options,
-                            group_id=0,
-                            src_rank=None,
-                            dst_rank=None):
+def _new_process_group_impl(
+    backend,
+    store,
+    rank,
+    world_size,
+    group_name,
+    pg_options,
+    group_id=0,
+    src_rank=None,
+    dst_rank=None,
+):
     pg = None
     genv = _get_global_env()
     if backend != 'heter':
         assert src_rank is None and dst_rank is None, (
-            "src_rank and dst_rank "
-            "can only be set for heter backend.")
+            "src_rank and dst_rank " "can only be set for heter backend."
+        )
     assert backend in _valid_backend_list, "Unsupported backend: %s." % backend
     if backend == "gloo":
         place = core.CPUPlace()
@@ -221,24 +226,27 @@ def _new_process_group_impl(backend,
         switch_ep = os.getenv("CLUSTER_SWITCH", None)
         assert switch_ep, "please set the CLUSTER_SWITCH variable."
         cluster_size_cumsum = np.cumsum(cluster_size)
-        cluster_offset = 0 if cluster_id == 0 else cluster_size_cumsum[
-            cluster_id - 1]
+        cluster_offset = (
+            0 if cluster_id == 0 else cluster_size_cumsum[cluster_id - 1]
+        )
         global_rank = cluster_offset + rank
         global_world_size = cluster_size_cumsum[-1]
         global_rank, global_world_size = _get_global_config(backend, rank)
-        pg = core.ProcessGroupHeter(store,
-                                    rank=global_rank,
-                                    world_size=global_world_size,
-                                    place=place,
-                                    gid=group_id,
-                                    local_rank=rank,
-                                    local_size=world_size,
-                                    gloo_rank=cluster_id,
-                                    gloo_size=len(cluster_size),
-                                    with_switch=True,
-                                    switch_endpoint=switch_ep,
-                                    src_rank=src_rank,
-                                    dst_rank=dst_rank)
+        pg = core.ProcessGroupHeter(
+            store,
+            rank=global_rank,
+            world_size=global_world_size,
+            place=place,
+            gid=group_id,
+            local_rank=rank,
+            local_size=world_size,
+            gloo_rank=cluster_id,
+            gloo_size=len(cluster_size),
+            with_switch=True,
+            switch_endpoint=switch_ep,
+            src_rank=src_rank,
+            dst_rank=dst_rank,
+        )
 
     return pg
 
@@ -284,10 +292,12 @@ def barrier(group=None):
     if not isinstance(ring_id, int):
         raise ValueError("The type of 'group' for barrier must be int.")
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type,
-                     inputs={'X': [temp]},
-                     outputs={'Out': [temp]},
-                     attrs={'ring_id': ring_id})
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [temp]},
+        outputs={'Out': [temp]},
+        attrs={'ring_id': ring_id},
+    )
 
 
 # _custom_gid provides a way for users to
@@ -309,7 +319,7 @@ def _barrier_by_tcp_store(group_name, store, timeout):
         return
 
     barrier_prefix = "Barrier/" + group_name + "/"
-    is_master = (global_rank == 0)
+    is_master = global_rank == 0
 
     def _check_keys_ready(wait_keys):
         start_time = time.time()
@@ -322,9 +332,12 @@ def _barrier_by_tcp_store(group_name, store, timeout):
                     "Keys {} are not ready sinck rank {} is waiting them."
                     "Two reason may cause this error:\n 1. The create process group api should be called by all ranks.\n"
                     " 2. Try to increase the waiting time.\n".format(
-                        group_name, wait_keys, global_rank))
+                        group_name, wait_keys, global_rank
+                    )
+                )
             wait_keys = list(
-                filter(lambda key: int(store.get(key)) != 1, wait_keys))
+                filter(lambda key: int(store.get(key)) != 1, wait_keys)
+            )
 
     # all the workers set their exiting key and exit
     # the master will wait for all workers' exiting key, ensure to exit in the end
@@ -376,22 +389,25 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                 ranks = global_ranks
             assert len(ranks) <= len(global_ranks), (
                 "Size of new group must be less than or "
-                "equal to that of the default global group.")
+                "equal to that of the default global group."
+            )
         size = len(ranks)
         ranks = sorted(ranks)
         if backend == 'heter' or (size > 1 and global_rank in ranks):
             rank = 0 if backend == 'heter' else ranks.index(global_rank)
             src_rank = ranks[0] if backend == 'heter' else None
             dst_rank = ranks[1] if backend == 'heter' else None
-            pg = _new_process_group_impl(backend,
-                                         _default_store,
-                                         rank,
-                                         size,
-                                         group_name,
-                                         pg_options=None,
-                                         group_id=gid,
-                                         src_rank=src_rank,
-                                         dst_rank=dst_rank)
+            pg = _new_process_group_impl(
+                backend,
+                _default_store,
+                rank,
+                size,
+                group_name,
+                pg_options=None,
+                group_id=gid,
+                src_rank=src_rank,
+                dst_rank=dst_rank,
+            )
         else:
             rank = -1
             pg = None
@@ -399,7 +415,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
         _group_map_backend[group] = backend
-        #TODO: The method below is a new method for group management, will replace the previous
+        # TODO: The method below is a new method for group management, will replace the previous
         # three in the future.
         _add_new_group(group)
 
@@ -415,7 +431,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
 
     if not backend:
         backend = 'nccl'
-    assert backend == 'nccl', ("backend other than nccl is not supported yet")
+    assert backend == 'nccl', "backend other than nccl is not supported yet"
 
     genv = _get_global_env()
     global_rank = genv.rank
@@ -444,30 +460,36 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
 
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
-                core.NCCLParallelContext(strategy,
-                                         place).init_with_ring_id(ring_id)
+                core.NCCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
             elif core.is_compiled_with_npu():
                 place = core.NPUPlace(genv.device_id)
-                core.HCCLParallelContext(strategy,
-                                         place).init_with_ring_id(ring_id)
+                core.HCCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
             elif core.is_compiled_with_mlu():
                 place = core.MLUPlace(genv.device_id)
-                core.CNCLParallelContext(strategy,
-                                         place).init_with_ring_id(ring_id)
+                core.CNCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
             elif core.is_compiled_with_xpu():
                 place = core.XPUPlace(genv.device_id)
-                core.BKCLParallelContext(strategy,
-                                         place).init_with_ring_id(ring_id)
+                core.BKCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
             else:
-                assert False, ("no cuda device found")
+                assert False, "no cuda device found"
         else:
             return gp
 
     # TODO(shenliang03): This is a temporary solution to solve the problem of
     # hang caused by cross-creation of new_group
-    tmp = paddle.to_tensor(
-        [1], dtype="int32") if _non_static_mode() else fill_constant(
-            [0], dtype="int32", value="1")
+    tmp = (
+        paddle.to_tensor([1], dtype="int32")
+        if _non_static_mode()
+        else fill_constant([0], dtype="int32", value="1")
+    )
     paddle.distributed.all_reduce(tmp, sync_op=True)
     paddle.distributed.wait(tmp)
     return gp
@@ -504,10 +526,10 @@ def destroy_process_group(group=None):
     Destroy a given group for communication
 
     Args:
-        group (ProcessGroup, optional): The group to be destroyed. All of process groups, including 
-                                        the default group, will be destroyed and the distributed 
+        group (ProcessGroup, optional): The group to be destroyed. All of process groups, including
+                                        the default group, will be destroyed and the distributed
                                         environment will be deinitialized.
-    
+
     Returns : None
 
     Examples:
@@ -599,8 +621,9 @@ def _sync_calc_stream(tensor):
 def _sync_comm_stream(tensor, ring_id=0):
 
     if _non_static_mode():
-        return _legacy_C_ops.c_sync_comm_stream([tensor], [tensor], 'ring_id',
-                                                ring_id)
+        return _legacy_C_ops.c_sync_comm_stream(
+            [tensor], [tensor], 'ring_id', ring_id
+        )
 
     op_type = 'c_sync_comm_stream'
 
@@ -661,7 +684,7 @@ def broadcast(tensor, src, group=None, sync_op=True):
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         gsrc = group.get_group_rank(src)
-        assert gsrc >= 0, ("src rank out of group, need global rank")
+        assert gsrc >= 0, "src rank out of group, need global rank"
         task = group.process_group.broadcast(tensor, gsrc)
         if sync_op:
             task.wait()
@@ -672,28 +695,48 @@ def broadcast(tensor, src, group=None, sync_op=True):
     use_calc_stream = sync_op
     ring_id = ring_id = 0 if group is None else group.id
     gsrc = src if group is None else group.get_group_rank(src)
-    assert gsrc >= 0, ("src rank out of group, need global rank")
+    assert gsrc >= 0, "src rank out of group, need global rank"
 
     if _non_static_mode():
-        return _legacy_C_ops.c_broadcast(tensor, tensor, 'root', gsrc,
-                                         'use_calc_stream', use_calc_stream,
-                                         'ring_id', ring_id)
+        return _legacy_C_ops.c_broadcast(
+            tensor,
+            tensor,
+            'root',
+            gsrc,
+            'use_calc_stream',
+            use_calc_stream,
+            'ring_id',
+            ring_id,
+        )
 
     op_type = 'c_broadcast'
-    check_variable_and_dtype(tensor, 'tensor', [
-        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
-        'bool'
-    ], 'broadcast')
+    check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+        ],
+        'broadcast',
+    )
 
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type,
-                     inputs={'X': [tensor]},
-                     outputs={'Out': [tensor]},
-                     attrs={
-                         'root': gsrc,
-                         'use_calc_stream': use_calc_stream,
-                         'ring_id': ring_id,
-                     })
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+        attrs={
+            'root': gsrc,
+            'use_calc_stream': use_calc_stream,
+            'ring_id': ring_id,
+        },
+    )
 
 
 def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
@@ -743,7 +786,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
         op_type = _get_reduce_op(op, "reduce")
         group = _get_default_group() if group is None else group
         gdst = group.get_group_rank(dst)
-        assert gdst >= 0, ("dst rank out of group, need global rank")
+        assert gdst >= 0, "dst rank out of group, need global rank"
         task = group.process_group.reduce(tensor, gdst, op_type)
         if sync_op:
             task.wait()
@@ -754,34 +797,72 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
     use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
     gdst = dst if group is None else group.get_group_rank(dst)
-    assert gdst >= 0, ("dst rank out of group, need global rank")
+    assert gdst >= 0, "dst rank out of group, need global rank"
 
     if _non_static_mode():
         if op == ReduceOp.SUM:
-            return _legacy_C_ops.c_reduce_sum(tensor, tensor, 'use_calc_stream',
-                                              use_calc_stream, 'ring_id',
-                                              ring_id, 'root_id', gdst)
+            return _legacy_C_ops.c_reduce_sum(
+                tensor,
+                tensor,
+                'use_calc_stream',
+                use_calc_stream,
+                'ring_id',
+                ring_id,
+                'root_id',
+                gdst,
+            )
         elif op == ReduceOp.MAX:
-            return _legacy_C_ops.c_reduce_max(tensor, tensor, 'use_calc_stream',
-                                              use_calc_stream, 'ring_id',
-                                              ring_id, 'root_id', gdst)
+            return _legacy_C_ops.c_reduce_max(
+                tensor,
+                tensor,
+                'use_calc_stream',
+                use_calc_stream,
+                'ring_id',
+                ring_id,
+                'root_id',
+                gdst,
+            )
         elif op == ReduceOp.MIN:
-            return _legacy_C_ops.c_reduce_min(tensor, tensor, 'use_calc_stream',
-                                              use_calc_stream, 'ring_id',
-                                              ring_id, 'root_id', gdst)
+            return _legacy_C_ops.c_reduce_min(
+                tensor,
+                tensor,
+                'use_calc_stream',
+                use_calc_stream,
+                'ring_id',
+                ring_id,
+                'root_id',
+                gdst,
+            )
         elif op == ReduceOp.PROD:
-            return _legacy_C_ops.c_reduce_prod(tensor, tensor,
-                                               'use_calc_stream',
-                                               use_calc_stream, 'ring_id',
-                                               ring_id, 'root_id', gdst)
+            return _legacy_C_ops.c_reduce_prod(
+                tensor,
+                tensor,
+                'use_calc_stream',
+                use_calc_stream,
+                'ring_id',
+                ring_id,
+                'root_id',
+                gdst,
+            )
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
     op_type = 'c_reduce'
-    check_variable_and_dtype(tensor, 'tensor', [
-        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
-        'bool'
-    ], 'reduce')
+    check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+        ],
+        'reduce',
+    )
 
     if op == ReduceOp.SUM:
         op_type = 'c_reduce_sum'
@@ -793,14 +874,16 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
         op_type = 'c_reduce_prod'
 
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type,
-                     inputs={'X': [tensor]},
-                     outputs={'Out': [tensor]},
-                     attrs={
-                         'ring_id': ring_id,
-                         'use_calc_stream': use_calc_stream,
-                         'root_id': gdst,
-                     })
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': use_calc_stream,
+            'root_id': gdst,
+        },
+    )
 
 
 def all_gather(tensor_list, tensor, group=None, sync_op=True):
@@ -853,8 +936,9 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
             list_of_complex.append(paddle.as_complex(tensor))
         return list_of_complex
 
-    is_input_complex = (tensor.dtype == paddle.complex64
-                        or tensor.dtype == paddle.complex128)
+    is_input_complex = (
+        tensor.dtype == paddle.complex64 or tensor.dtype == paddle.complex128
+    )
     if is_input_complex:
         tensor = paddle.as_real(tensor)
 
@@ -881,33 +965,68 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
     nranks = _get_global_group().nranks if group is None else group.nranks
 
     if _non_static_mode():
-        out = _legacy_C_ops.c_allgather(tensor, 'use_calc_stream',
-                                        use_calc_stream, 'ring_id', ring_id,
-                                        'nranks', nranks)
+        out = _legacy_C_ops.c_allgather(
+            tensor,
+            'use_calc_stream',
+            use_calc_stream,
+            'ring_id',
+            ring_id,
+            'nranks',
+            nranks,
+        )
     else:
         op_type = 'c_allgather'
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
         if not isinstance(tensor_list, list):
-            raise ValueError("The type of 'tensor_list' for all_gather "
-                             "should be list.")
+            raise ValueError(
+                "The type of 'tensor_list' for all_gather " "should be list."
+            )
         for elem in tensor_list:
-            check_variable_and_dtype(elem, 'tensor_list', [
-                'float16', 'float32', 'float64', 'int32', 'int64', 'bool',
-                'int8', 'uint8', 'complex64', 'complex128'
-            ], 'all_gather')
-        check_variable_and_dtype(tensor, 'tensor', [
-            'float16', 'float32', 'float64', 'int32', 'int64', 'bool', 'int8',
-            'uint8', 'complex64', 'complex128'
-        ], 'all_gather')
-        helper.append_op(type=op_type,
-                         inputs={'X': [tensor]},
-                         outputs={'Out': [out]},
-                         attrs={
-                             'ring_id': ring_id,
-                             'use_calc_stream': use_calc_stream,
-                             'nranks': nranks
-                         })
+            check_variable_and_dtype(
+                elem,
+                'tensor_list',
+                [
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'bool',
+                    'int8',
+                    'uint8',
+                    'complex64',
+                    'complex128',
+                ],
+                'all_gather',
+            )
+        check_variable_and_dtype(
+            tensor,
+            'tensor',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'int8',
+                'uint8',
+                'complex64',
+                'complex128',
+            ],
+            'all_gather',
+        )
+        helper.append_op(
+            type=op_type,
+            inputs={'X': [tensor]},
+            outputs={'Out': [out]},
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': use_calc_stream,
+                'nranks': nranks,
+            },
+        )
 
     list_of_tensor = paddle.split(out, nranks, 0)
     if is_input_complex:
@@ -963,7 +1082,8 @@ def all_gather_object(object_list, obj, group=None):
             print(object_list)
             # [{'foo': [1, 2, 3]}, {'bar': [4, 5, 6]}] (2 GPUs)
     """
-    assert in_dygraph_mode(
+    assert (
+        in_dygraph_mode()
     ), "all_gather_object doesn't support static graph mode."
 
     tensor, len_of_tensor = _convert_object_to_tensor(obj)
@@ -984,7 +1104,8 @@ def all_gather_object(object_list, obj, group=None):
     all_gather(tensor_list, input_tensor, group)
     for i, tensor in enumerate(tensor_list):
         object_list.append(
-            _convert_tensor_to_object(tensor, list_len_of_tensor[i]))
+            _convert_tensor_to_object(tensor, list_len_of_tensor[i])
+        )
 
 
 def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
@@ -1046,7 +1167,7 @@ def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
         gsrc = src if group is None else group.get_group_rank(src)
         rank = _get_global_group().rank if group is None else group.rank
         nranks = _get_global_group().nranks if group is None else group.nranks
-    assert gsrc >= 0, ("src rank out of group, need global rank")
+    assert gsrc >= 0, "src rank out of group, need global rank"
 
     if rank != gsrc:
         tensor_list = []
@@ -1063,24 +1184,46 @@ def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
 
     use_calc_stream = sync_op
     if _non_static_mode():
-        return _legacy_C_ops.c_scatter(temp, tensor, 'use_calc_stream',
-                                       use_calc_stream, 'ring_id', ring_id,
-                                       'nranks', nranks, 'root', gsrc)
+        return _legacy_C_ops.c_scatter(
+            temp,
+            tensor,
+            'use_calc_stream',
+            use_calc_stream,
+            'ring_id',
+            ring_id,
+            'nranks',
+            nranks,
+            'root',
+            gsrc,
+        )
     op_type = 'c_scatter'
-    check_variable_and_dtype(tensor, 'tensor', [
-        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
-        'bool'
-    ], 'scatter')
+    check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+        ],
+        'scatter',
+    )
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type,
-                     inputs={'X': [temp]},
-                     outputs={'Out': [tensor]},
-                     attrs={
-                         'ring_id': ring_id,
-                         'root': gsrc,
-                         'use_calc_stream': use_calc_stream,
-                         'nranks': nranks,
-                     })
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [temp]},
+        outputs={'Out': [tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'root': gsrc,
+            'use_calc_stream': use_calc_stream,
+            'nranks': nranks,
+        },
+    )
 
 
 def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):
@@ -1105,7 +1248,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):
 
     Returns:
         None.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1132,7 +1275,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         backend = _group_map_backend[group]
-        assert backend != 'gloo', ("backend gloo is not supported yet")
+        assert backend != 'gloo', "backend gloo is not supported yet"
     else:
         ring_id = 0 if group is None else group.id
 
@@ -1153,44 +1296,56 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):
 
     use_calc_stream = sync_op
     if _non_static_mode():
-        out = _legacy_C_ops.alltoall(temp, 'use_calc_stream', use_calc_stream,
-                                     'ring_id', ring_id)
+        out = _legacy_C_ops.alltoall(
+            temp, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id
+        )
     else:
         op_type = 'alltoall'
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(
-            dtype=in_tensor_list[0].dtype)
+            dtype=in_tensor_list[0].dtype
+        )
 
         if not isinstance(in_tensor_list, list):
-            raise ValueError("The type of 'in_tensor_list' for all_to_all "
-                             "should be list.")
+            raise ValueError(
+                "The type of 'in_tensor_list' for all_to_all " "should be list."
+            )
         for elem in in_tensor_list:
             check_variable_and_dtype(
-                elem, 'in_tensor_list',
+                elem,
+                'in_tensor_list',
                 ['float16', 'float32', 'float64', 'int32', 'int64'],
-                'all_to_all')
+                'all_to_all',
+            )
         if not isinstance(out_tensor_list, list):
-            raise ValueError("The type of 'out_tensor_list' for all_to_all "
-                             "should be list.")
+            raise ValueError(
+                "The type of 'out_tensor_list' for all_to_all "
+                "should be list."
+            )
         if len(out_tensor_list) != 0:
-            raise ValueError("The 'out_tensor_list' for all_to_all "
-                             "must be an empty list.")
-        helper.append_op(type=op_type,
-                         inputs={'X': [temp]},
-                         outputs={'Out': [out]},
-                         attrs={
-                             'ring_id': ring_id,
-                             'use_calc_stream': use_calc_stream,
-                         })
+            raise ValueError(
+                "The 'out_tensor_list' for all_to_all " "must be an empty list."
+            )
+        helper.append_op(
+            type=op_type,
+            inputs={'X': [temp]},
+            outputs={'Out': [out]},
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': use_calc_stream,
+            },
+        )
     out_tensor_list.extend(paddle.split(out, nranks, 0))
 
 
-def alltoall_single(in_tensor,
-                    out_tensor,
-                    in_split_sizes=None,
-                    out_split_sizes=None,
-                    group=None,
-                    sync_op=True):
+def alltoall_single(
+    in_tensor,
+    out_tensor,
+    in_split_sizes=None,
+    out_split_sizes=None,
+    group=None,
+    sync_op=True,
+):
     """
     Scatter a single input tensor to all participators and gather the received tensors in out_tensor.
 
@@ -1200,9 +1355,9 @@ def alltoall_single(in_tensor,
     Args:
         in_tensor (Tensor): Input tensor. The data type should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         out_tensor (Tensor): Output Tensor. The data type should be the same as the data type of the input Tensor.
-        in_split_sizes (list[int], optional): Split sizes of ``in_tensor`` for dim[0]. If not given, dim[0] of ``in_tensor`` 
+        in_split_sizes (list[int], optional): Split sizes of ``in_tensor`` for dim[0]. If not given, dim[0] of ``in_tensor``
             must be divisible by group size and ``in_tensor`` will be scattered averagely to all participators. Default: None.
-        out_split_sizes (list[int], optional): Split sizes of ``out_tensor`` for dim[0]. If not given, dim[0] of ``out_tensor`` 
+        out_split_sizes (list[int], optional): Split sizes of ``out_tensor`` for dim[0]. If not given, dim[0] of ``out_tensor``
             must be divisible by group size and ``out_tensor`` will be gathered averagely from all participators. Default: None.
         group (Group, optional): The group instance return by ``new_group`` or None for global default group. Default: None.
         sync_op (bool, optional): Whether this op is a sync op. The default value is True.
@@ -1263,13 +1418,14 @@ def alltoall_single(in_tensor,
 
     group = _get_default_group() if group is None else group
     backend = _group_map_backend[group]
-    assert backend != 'gloo', ("backend gloo is not supported yet")
+    assert backend != 'gloo', "backend gloo is not supported yet"
 
     in_split_sizes = [] if in_split_sizes is None else in_split_sizes
     out_split_sizes = [] if out_split_sizes is None else out_split_sizes
 
-    task = group.process_group.alltoall_single(in_tensor, out_tensor,
-                                               in_split_sizes, out_split_sizes)
+    task = group.process_group.alltoall_single(
+        in_tensor, out_tensor, in_split_sizes, out_split_sizes
+    )
     if sync_op:
         task.wait()
         return
@@ -1318,7 +1474,7 @@ def send(tensor, dst=0, group=None, sync_op=True):
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         backend = _group_map_backend[group]
-        assert backend != 'gloo', ("backend gloo is not supported yet")
+        assert backend != 'gloo', "backend gloo is not supported yet"
         task = group.process_group.send(tensor, dst)
         if sync_op:
             task.wait()
@@ -1330,21 +1486,33 @@ def send(tensor, dst=0, group=None, sync_op=True):
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
-        return _legacy_C_ops.send_v2(tensor, 'use_calc_stream', use_calc_stream,
-                                     'ring_id', ring_id, 'peer', dst)
+        return _legacy_C_ops.send_v2(
+            tensor,
+            'use_calc_stream',
+            use_calc_stream,
+            'ring_id',
+            ring_id,
+            'peer',
+            dst,
+        )
     op_type = 'send_v2'
     check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'send')
+        tensor,
+        'tensor',
+        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'send',
+    )
 
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type,
-                     inputs={'X': [tensor]},
-                     attrs={
-                         'ring_id': ring_id,
-                         'peer': dst,
-                         'use_calc_stream': use_calc_stream,
-                     })
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'peer': dst,
+            'use_calc_stream': use_calc_stream,
+        },
+    )
 
 
 def recv(tensor, src=0, group=None, sync_op=True):
@@ -1385,7 +1553,7 @@ def recv(tensor, src=0, group=None, sync_op=True):
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         backend = _group_map_backend[group]
-        assert backend != 'gloo', ("backend gloo is not supported yet")
+        assert backend != 'gloo', "backend gloo is not supported yet"
         task = group.process_group.recv(tensor, src)
         if sync_op:
             task.wait()
@@ -1397,37 +1565,58 @@ def recv(tensor, src=0, group=None, sync_op=True):
     ring_id = 0 if group is None else group.id
 
     if _non_static_mode():
-        return _legacy_C_ops.recv_v2(tensor, 'use_calc_stream', use_calc_stream,
-                                     'ring_id', ring_id, 'peer', src, 'dtype',
-                                     tensor.dtype, 'out_shape', tensor.shape)
+        return _legacy_C_ops.recv_v2(
+            tensor,
+            'use_calc_stream',
+            use_calc_stream,
+            'ring_id',
+            ring_id,
+            'peer',
+            src,
+            'dtype',
+            tensor.dtype,
+            'out_shape',
+            tensor.shape,
+        )
     op_type = 'recv_v2'
     check_variable_and_dtype(
-        tensor, 'tensor', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'recv')
+        tensor,
+        'tensor',
+        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'recv',
+    )
     helper = LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type,
-                     outputs={'Out': [tensor]},
-                     attrs={
-                         'ring_id': ring_id,
-                         'peer': src,
-                         'out_shape': tensor.shape,
-                         'dtype': tensor.dtype,
-                         'use_calc_stream': use_calc_stream,
-                     })
+    helper.append_op(
+        type=op_type,
+        outputs={'Out': [tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'peer': src,
+            'out_shape': tensor.shape,
+            'dtype': tensor.dtype,
+            'use_calc_stream': use_calc_stream,
+        },
+    )
 
 
 def _check_single_tensor(tensor, tensor_name):
     if not isinstance(tensor, (core.eager.Tensor, paddle.Tensor)):
-        raise RuntimeError("Invalid function argument. Expected parameter {}"
-                           "to be of type paddle.Tensor, but it's {}".format(
-                               tensor_name, type(tensor)))
+        raise RuntimeError(
+            "Invalid function argument. Expected parameter {}"
+            "to be of type paddle.Tensor, but it's {}".format(
+                tensor_name, type(tensor)
+            )
+        )
 
 
 def _check_tensor_list(tensor_list, tensor_name):
-    if not isinstance(tensor_list, list) or \
-        not all(isinstance(t, (core.eager.Tensor, paddle.Tensor)) for t in tensor_list):
-        raise RuntimeError("Invalid function argument. Expected parameter {}"
-                           "to be of type paddle.Tensor".format(tensor_name))
+    if not isinstance(tensor_list, list) or not all(
+        isinstance(t, (core.eager.Tensor, paddle.Tensor)) for t in tensor_list
+    ):
+        raise RuntimeError(
+            "Invalid function argument. Expected parameter {}"
+            "to be of type paddle.Tensor".format(tensor_name)
+        )
 
 
 def isend(tensor, dst, group=None):
@@ -1439,11 +1628,11 @@ def isend(tensor, dst, group=None):
             should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         dst (int): The destination rank.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-    
+
     Returns:
         A distributed task object.
 
-    Warning:    
+    Warning:
         This API only supports the dygraph mode.
 
     Examples:
@@ -1472,9 +1661,9 @@ def isend(tensor, dst, group=None):
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         backend = _group_map_backend[group]
-        assert backend != 'gloo', ("backend gloo is not supported yet")
+        assert backend != 'gloo', "backend gloo is not supported yet"
         group_dst_rank = group.get_group_rank(dst)
-        assert group_dst_rank >= 0, ("dst rank out of group, need global rank")
+        assert group_dst_rank >= 0, "dst rank out of group, need global rank"
         return group.process_group.send(tensor, group_dst_rank)
     else:
         raise RuntimeError("Only support eager dygraph mode.")
@@ -1493,7 +1682,7 @@ def irecv(tensor, src=None, group=None):
     Returns:
         A distributed task object.
 
-    Warning:    
+    Warning:
         This API only supports the dygraph mode.
 
     Examples:
@@ -1521,9 +1710,9 @@ def irecv(tensor, src=None, group=None):
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
         backend = _group_map_backend[group]
-        assert backend != 'gloo', ("backend gloo is not supported yet")
+        assert backend != 'gloo', "backend gloo is not supported yet"
         group_src_rank = group.get_group_rank(src)
-        assert group_src_rank >= 0, ("src rank out of group, need global rank")
+        assert group_src_rank >= 0, "src rank out of group, need global rank"
         return group.process_group.recv(tensor, group_src_rank)
     else:
         raise RuntimeError("Only support eager dygraph mode.")
@@ -1542,16 +1731,18 @@ class P2POp(object):
             The type of ``op`` is either ``paddle.distributed.isend`` or ``paddle.distributed.irecv``.
         tensor (Tensor): Tensor to send or receive.
         peer (int): The destination or source rank.
-        group (Group, optional): The group instance return by new_group or None for global 
+        group (Group, optional): The group instance return by new_group or None for global
             default group. Default: None.
 
     """
 
     def __init__(self, op, tensor, peer, group=None):
         if op not in [isend, irecv]:
-            raise RuntimeError("Invalid ``op`` function. Expected ``op`` "
-                               "to be of type ``paddle.distributed.isend`` or "
-                               "``paddle.distributed.irecv``.")
+            raise RuntimeError(
+                "Invalid ``op`` function. Expected ``op`` "
+                "to be of type ``paddle.distributed.isend`` or "
+                "``paddle.distributed.irecv``."
+            )
         _check_single_tensor(tensor, "tensor")
 
         self.op = op
@@ -1577,13 +1768,17 @@ def _check_p2p_op_list(p2p_op_list):
     all ops use the same backend.
     """
     if not isinstance(p2p_op_list, list) or not all(
-            isinstance(p2p_op, P2POp) for p2p_op in p2p_op_list):
-        raise RuntimeError("Invalid ``p2p_op_list``. Each op is expected to "
-                           "to be of type ``paddle.distributed.P2POp``.")
+        isinstance(p2p_op, P2POp) for p2p_op in p2p_op_list
+    ):
+        raise RuntimeError(
+            "Invalid ``p2p_op_list``. Each op is expected to "
+            "to be of type ``paddle.distributed.P2POp``."
+        )
 
     backend = _group_map_backend[p2p_op_list[0].group]
-    if not all(backend == _group_map_backend[p2p_op.group]
-               for p2p_op in p2p_op_list):
+    if not all(
+        backend == _group_map_backend[p2p_op.group] for p2p_op in p2p_op_list
+    ):
         raise RuntimeError("All groups need to use the same backend.")
 
 
@@ -1591,7 +1786,7 @@ def batch_isend_irecv(p2p_op_list):
     """
     Send or Receive a batch of tensors asynchronously and return a list of requests.
 
-    Process each of the point-to-point operations in ``p2p_op_list`` and return the 
+    Process each of the point-to-point operations in ``p2p_op_list`` and return the
     corresponding tasks. NCCL are currently supported.
 
     Args:
@@ -1602,9 +1797,9 @@ def batch_isend_irecv(p2p_op_list):
 
     Returns:
         A list of distributed tasks returned by calling the corresponding
-        op in the op_list. 
+        op in the op_list.
 
-    Warning:    
+    Warning:
         This API only supports the dygraph mode.
 
     Examples:
@@ -1632,7 +1827,7 @@ def batch_isend_irecv(p2p_op_list):
 
             for task in tasks:
                 task.wait()
-            
+
             print(recv_t)
             # paddle.tensor([1, 2])     # Rank-0
             # paddle.tensor([0, 1])     # Rank-1
@@ -1660,11 +1855,9 @@ def batch_isend_irecv(p2p_op_list):
         raise RuntimeError("Don't support static graph mode currently.")
 
 
-def reduce_scatter(tensor,
-                   tensor_list,
-                   op=ReduceOp.SUM,
-                   group=None,
-                   sync_op=True):
+def reduce_scatter(
+    tensor, tensor_list, op=ReduceOp.SUM, group=None, sync_op=True
+):
     """
     Reduces, then scatters a list of tensors to all processes in a group
 
@@ -1673,7 +1866,7 @@ def reduce_scatter(tensor,
         tensor_list (list[Tensor]): List of tensors to reduce and scatter. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
-        group (Group, optional): The group instance return by new_group or None for global 
+        group (Group, optional): The group instance return by new_group or None for global
             default group. Default: None.
         sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 
@@ -1715,7 +1908,7 @@ def reduce_scatter(tensor,
         op_type = _get_reduce_op(op, "reduce_scatter")
         group = _get_default_group() if group is None else group
         backend = _group_map_backend[group]
-        assert backend != 'gloo', ("backend gloo is not supported yet")
+        assert backend != 'gloo', "backend gloo is not supported yet"
 
         temp = paddle.concat(tensor_list, axis=0)
         task = group.process_group._reduce_scatter_base(tensor, temp, op_type)
@@ -1728,11 +1921,9 @@ def reduce_scatter(tensor,
         raise RuntimeError("Don't support static graph mode currently.")
 
 
-def _reduce_scatter_base(output,
-                         input,
-                         op=ReduceOp.SUM,
-                         group=None,
-                         sync_op=True):
+def _reduce_scatter_base(
+    output, input, op=ReduceOp.SUM, group=None, sync_op=True
+):
     """
     Reduces, then scatters a flattened tensor to all processes in a group.
 

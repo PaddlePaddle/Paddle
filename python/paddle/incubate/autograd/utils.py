@@ -18,7 +18,6 @@ from paddle.fluid import framework as framework
 
 
 class PrimOption(object):
-
     def __init__(self):
         self.enable_prim = False
 
@@ -38,9 +37,9 @@ def prim_enabled():
     .. note::
         **ONLY available in the static mode.**
 
-    Shows whether the automatic differentiation mechanism based on 
+    Shows whether the automatic differentiation mechanism based on
     automatic differential basic operators is ON. Defaults to OFF.
-     
+
     Returns:
         flag(bool): Whether the automatic differentiation mechanism based on automatic differential basic operators is ON.
 
@@ -50,7 +49,7 @@ def prim_enabled():
 
             import paddle
             from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
-            
+
             paddle.enable_static()
             enable_prim()
 
@@ -69,16 +68,16 @@ def enable_prim():
     .. note::
         **ONLY available in the static mode.**
 
-    Turns ON automatic differentiation mechanism based on automatic 
+    Turns ON automatic differentiation mechanism based on automatic
     differential basic operators.
-    
+
     Examples:
 
         .. code-block:: python
 
             import paddle
             from paddle.incubate.autograd import enable_prim, prim_enabled
-            
+
             paddle.enable_static()
             enable_prim()
 
@@ -93,16 +92,16 @@ def disable_prim():
     .. note::
         **ONLY available in the static mode.**
 
-    Turns OFF automatic differentiation mechanism based on automatic 
+    Turns OFF automatic differentiation mechanism based on automatic
     differential basic operators.
-    
+
     Examples:
 
         .. code-block:: python
 
             import paddle
             from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
-            
+
             paddle.enable_static()
             enable_prim()
 
@@ -175,7 +174,7 @@ def flatten_and_remove_none(inp):
 
 def as_tensors(xs):
     if isinstance(xs, framework.Variable):
-        return (xs, )
+        return (xs,)
     elif isinstance(xs, typing.Sequence):
         return tuple(xs)
     else:
