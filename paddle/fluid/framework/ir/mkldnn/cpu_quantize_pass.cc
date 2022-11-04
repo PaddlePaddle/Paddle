@@ -259,11 +259,6 @@ void CPUQuantizePass::DequantizeOutputs(Graph* g,
                         op->Name(),
                         outputs.size()));
 
-  // create a dequantize op node for output.
-  OpDesc deq_desc;
-  deq_desc.SetType("dequantize");
-
-  std::vector<Node*> dequantize_in_nodes(outputs.size());
   std::vector<std::string> quantize_in_node_names(outputs.size());
 
   unsigned max = is_unsigned ? U8_MAX : S8_MAX;
@@ -272,20 +267,24 @@ void CPUQuantizePass::DequantizeOutputs(Graph* g,
   for (size_t i = 0; i < outputs.size(); i++) {
     // Create dequantize input variable
     VarDesc dequantize_in_desc(patterns::PDNodeName("dequantize", "in"));
-    dequantize_in_nodes[i] = g->CreateVarNode(&dequantize_in_desc);
-    quantize_in_node_names[i] = dequantize_in_nodes[i]->Name();
+    Node* dequantize_in_node = g->CreateVarNode(&dequantize_in_desc);
+    quantize_in_node_names[i] = dequantize_in_node->Name();
 
+    // create a dequantize op node for output.
+    OpDesc deq_desc;
+    deq_desc.SetType("dequantize");
     deq_desc.SetInput("Input",
                       std::vector<std::string>({quantize_in_node_names[i]}));
     deq_desc.SetOutput("Output",
                        std::vector<std::string>({outputs[i]->Name()}));
     deq_desc.SetAttr("Scale", scale);
+    deq_desc.SetAttr("is_negative_input", !is_unsigned);
     auto dequantize_op = g->CreateOpNode(&deq_desc);  // OpDesc will be copied.
 
     // link dequantize op
     UnlinkNodes(op, outputs[i]);
-    IR_NODE_LINK_TO(op, dequantize_in_nodes[i]);
-    IR_NODE_LINK_TO(dequantize_in_nodes[i], dequantize_op);
+    IR_NODE_LINK_TO(op, dequantize_in_node);
+    IR_NODE_LINK_TO(dequantize_in_node, dequantize_op);
     IR_NODE_LINK_TO(dequantize_op, outputs[i]);
   }
 
