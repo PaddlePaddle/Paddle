@@ -92,6 +92,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Broadcast(
       "ProcessGroup%s does not support do broadcast", GetBackendName()));
 }
 
+// TODO(sunyilun): methods below will be removed later
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllToAll(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,

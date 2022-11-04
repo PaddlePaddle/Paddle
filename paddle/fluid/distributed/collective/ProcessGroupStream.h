@@ -30,6 +30,8 @@ class ProcessGroupStream : public ProcessGroup {
     TaskStream(int rank, CommType comm_type, bool sync_op, bool use_calc_stream)
         : Task(rank, comm_type, sync_op), use_calc_stream_(use_calc_stream) {}
 
+    virtual ~TaskStream() = default;
+
     // TODO(liyurui): This constructor is temporary here for compatible reason,
     // will be deleted soon.
     TaskStream(int rank,
@@ -45,8 +47,6 @@ class ProcessGroupStream : public ProcessGroup {
         : Task(rank, inputs, comm_type, sync_op),
           use_calc_stream_(use_calc_stream) {}
 
-    virtual ~TaskStream() = default;
-
    protected:
     bool UseCalcStream() const { return use_calc_stream_; }
 
@@ -54,6 +54,7 @@ class ProcessGroupStream : public ProcessGroup {
     bool use_calc_stream_{false};
   };
 
+ public:
   ProcessGroupStream(int rank, int size, const platform::Place& place, int gid);
   virtual ~ProcessGroupStream() = default;
 
@@ -97,6 +98,7 @@ class ProcessGroupStream : public ProcessGroup {
       bool sync_op,
       bool use_calc_stream);
 
+  // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT

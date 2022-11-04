@@ -50,16 +50,6 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   class NCCLTask final : public ProcessGroupStream::TaskStream,
                          public std::enable_shared_from_this<NCCLTask> {
    public:
-    NCCLTask(const std::vector<Place>& places,
-             int rank,
-             CommType CommType,
-             const std::vector<phi::DenseTensor>& inputs);
-    NCCLTask(const std::vector<Place>& places,
-             int rank,
-             CommType comm_type,
-             const std::vector<phi::DenseTensor>& inputs,
-             bool sync_op,
-             bool use_calc_stream);
     NCCLTask(const Place& place,
              int rank,
              CommType comm_type,
@@ -72,6 +62,19 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
     void Synchronize() override;
     void UpdateWaitChain(const phi::DeviceContext& ctx) override;
 
+    // TODO(sunyilun): methods below will be removed later
+    NCCLTask(const std::vector<Place>& places,
+             int rank,
+             CommType CommType,
+             const std::vector<phi::DenseTensor>& inputs);
+    NCCLTask(const std::vector<Place>& places,
+             int rank,
+             CommType comm_type,
+             const std::vector<phi::DenseTensor>& inputs,
+             bool sync_op,
+             bool use_calc_stream);
+
+   public:
     bool barrier_{false};
     platform::DeviceEvent comm_event_;  // event on comm stream
 
@@ -79,6 +82,7 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
     Place place_;
   };
 
+ public:
   ProcessGroupNCCL(const std::shared_ptr<Store>& store,
                    int rank,
                    int size,
@@ -115,12 +119,19 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream) override;
 
+  static void GroupStart();
+
+  static void GroupEnd();
+
+  ncclComm_t NCCLComm(const Place& place) const;
+
   // TODO(liyurui): This API will be moved later
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const AllreduceOptions& = AllreduceOptions()) override;
 
+  // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
@@ -248,27 +259,7 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       phi::DenseTensor&,  // NOLINT
       const ReduceScatterOptions&) override;
 
-  static void GroupStart();
-
-  static void GroupEnd();
-
-  ncclComm_t NCCLComm(const Place& place) const;
-
  private:
-  std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
-      std::vector<Place> places,
-      int rank,
-      CommType op_type,
-      const std::vector<phi::DenseTensor>& inputs);
-
-  std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
-      const std::vector<Place>& places,
-      int rank,
-      CommType op_type,
-      const std::vector<phi::DenseTensor>& inputs,
-      bool sync_op,
-      bool use_calc_stream);
-
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,
                                                          int rank,
                                                          CommType op_type,
@@ -290,6 +281,21 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
   void SyncCalcStream(const Place& place,
                       const std::shared_ptr<platform::DeviceEvent>& event);
+
+  // TODO(sunyilun): methods below will be removed later
+  std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
+      std::vector<Place> places,
+      int rank,
+      CommType op_type,
+      const std::vector<phi::DenseTensor>& inputs);
+
+  std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
+      const std::vector<Place>& places,
+      int rank,
+      CommType op_type,
+      const std::vector<phi::DenseTensor>& inputs,
+      bool sync_op,
+      bool use_calc_stream);
 
   template <typename Fn>
   std::shared_ptr<ProcessGroup::Task> Collective(
@@ -335,13 +341,14 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   void CheckSplitSizes(std::vector<int64_t>* split_sizes,
                        std::vector<int64_t> tensor_shape);
 
+ private:
   std::shared_ptr<Store> store_;
   std::shared_ptr<platform::DeviceEvent> calc_event_;  // event on calc stream
   std::unordered_map<std::string, phi::GPUContext*> place_to_calc_ctx_;
   std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
       place_to_comm_ctx_;
 
-  // TODO(sunyilun): below will be removed later
+  // TODO(sunyilun): attrs below will be removed later
   std::mutex mutex_;
   std::unordered_map<std::string, std::vector<phi::GPUContext*>> places_to_ctx_;
 };

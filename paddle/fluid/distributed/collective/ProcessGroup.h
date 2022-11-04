@@ -54,13 +54,6 @@ class ProcessGroup {
  public:
   class Task {
    public:
-    Task(int rank,
-         const std::vector<phi::DenseTensor>& inputs,
-         CommType comm_type);
-    Task(int rank,
-         const std::vector<phi::DenseTensor>& inputs,
-         CommType comm_type,
-         bool sync_op);
     Task(int rank, CommType comm_type, bool sync_op);
 
     virtual ~Task();
@@ -69,6 +62,15 @@ class ProcessGroup {
     virtual void Synchronize();
     virtual void UpdateWaitChain(const phi::DeviceContext& ctx);
     bool IsSync() const { return sync_op_; }
+
+    // TODO(sunyilun): methods below will be removed later
+    Task(int rank,
+         const std::vector<phi::DenseTensor>& inputs,
+         CommType comm_type);
+    Task(int rank,
+         const std::vector<phi::DenseTensor>& inputs,
+         CommType comm_type,
+         bool sync_op);
 
    protected:
     const int rank_;
@@ -80,6 +82,7 @@ class ProcessGroup {
     bool sync_op_{true};
   };
 
+ public:
   explicit ProcessGroup(int rank,
                         int size,
                         const platform::Place& place,
@@ -94,6 +97,7 @@ class ProcessGroup {
   int GetSize() const { return size_; }
 
   virtual std::string GetBackendName() const = 0;
+
   virtual const phi::DeviceContext& GetDeviceContext(const Place& place) const {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Does not support to get device_context from ProcessGroup%s.",
@@ -154,6 +158,7 @@ class ProcessGroup {
         GetBackendName()));
   }
 
+  // TODO(sunyilun): methods below will be removed later
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
       std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
