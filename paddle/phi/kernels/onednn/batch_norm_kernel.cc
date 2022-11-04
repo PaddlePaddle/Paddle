@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
@@ -120,12 +119,6 @@ void BatchNormInferKernel(const Context &dev_ctx,
                           DenseTensor *y,
                           DenseTensor *mean_out,
                           DenseTensor *variance_out) {
-  // Since saved_mean and saved_variance are used regardless of whether
-  // they are in test mode, temporary variables need to be created here
-  // to be compatible
-  auto saved_mean = phi::EmptyLike<T, Context>(dev_ctx, *mean_out);
-  auto saved_variance = phi::EmptyLike<T, Context>(dev_ctx, *variance_out);
-
   BatchNormKernel<T, Context>(dev_ctx,
                               x,
                               mean,
@@ -141,8 +134,8 @@ void BatchNormInferKernel(const Context &dev_ctx,
                               y,
                               mean_out,
                               variance_out,
-                              &saved_mean,
-                              &saved_variance,
+                              /*saved_mean*/ nullptr,
+                              /*saved_variance*/ nullptr,
                               /*reserve_space=*/nullptr);
 }
 
