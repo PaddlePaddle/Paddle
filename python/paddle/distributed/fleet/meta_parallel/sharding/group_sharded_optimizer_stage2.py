@@ -28,6 +28,7 @@ import warnings
 from collections import OrderedDict
 
 import paddle
+import paddle.distributed as dist
 from paddle.fluid import core
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
@@ -38,7 +39,6 @@ HybridParallelClipGrad = (
 )
 from paddle.distributed.collective import (
     _get_global_group,
-    broadcast,
     new_group,
 )
 
@@ -206,12 +206,12 @@ class GroupShardedOptimizerStage2(Optimizer):
         """
 
         for p in self._local_params:
-            broadcast(
+            dist.broadcast(
                 p, src=self._global_root_rank, group=self._group, sync_op=True
             )
 
             if self._dp_group:
-                broadcast(
+                dist.broadcast(
                     p,
                     src=self._dp_group.ranks[0],
                     group=self._dp_group,
@@ -562,7 +562,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         else:
             for dtype_per_rank in self.param_storages.values():
                 for dst_rank, internal_storage in dtype_per_rank.items():
-                    broadcast(
+                    dist.broadcast(
                         tensor=internal_storage.buffer,
                         src=self._group.ranks[dst_rank],
                         group=self._group,
@@ -590,7 +590,7 @@ class GroupShardedOptimizerStage2(Optimizer):
             if x.trainable:
                 group = self._broadcast_groups[group_idx]
                 group_idx = (group_idx + 1) % self._number_of_broadcast_groups
-                task = broadcast(
+                task = dist.broadcast(
                     tensor=x,
                     src=group.ranks[self._param2rank[x.name]],
                     group=group,

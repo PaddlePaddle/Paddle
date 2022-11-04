@@ -131,6 +131,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : celu
+  backward : celu_grad, celu_double_grad(celu_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : cholesky
   inputs :
     x : X
@@ -316,7 +323,11 @@
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : elu
-  backward : elu_grad
+  backward : elu_grad, elu_double_grad (elu_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -504,7 +515,13 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : leaky_relu
-  backward : leaky_relu_grad
+  backward : leaky_relu_grad, leaky_relu_double_grad (leaky_relu_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs:
+    negative_slope : alpha
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -520,7 +537,11 @@
     attrs : [bool use_mkldnn = false]
 
 - op : log
-  backward : log_grad
+  backward : log_grad, log_double_grad (log_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -725,7 +746,11 @@
     attrs : [bool use_mkldnn = false]
 
 - op : relu
-  backward : relu_grad
+  backward : relu_grad, relu_double_grad (relu_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -754,7 +779,11 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : rsqrt
-  backward : rsqrt_grad
+  backward : rsqrt_grad, rsqrt_double_grad (rsqrt_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -784,7 +813,11 @@
     attrs : [bool use_mkldnn = false]
 
 - op : sigmoid
-  backward : sigmoid_grad
+  backward : sigmoid_grad, sigmoid_double_grad (sigmoid_grad_grad), sigmoid_triple_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -827,12 +860,29 @@
 
 - op : softplus
   backward : softplus_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false, str fuse_activation_type = "", float fuse_activation_alpha = 0.0f,
              float fuse_activation_beta = 0.0f, float fuse_activation_scale = 1.0f]
 
+- op : softshrink
+  backward : softshrink_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    threshold : lambda
+
 - op : softsign
   backward : softsign_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -843,12 +893,20 @@
     out : Out
 
 - op : sqrt
-  backward : sqrt_grad
+  backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : square
-  backward : square_grad
+  backward : square_grad, square_double_grad (square_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -903,8 +961,18 @@
 
 - op : tanh_shrink
   backward : tanh_shrink_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : thresholded_relu
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : trace
   inputs :

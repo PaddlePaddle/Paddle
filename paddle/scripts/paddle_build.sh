@@ -2539,6 +2539,7 @@ set -x
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         #check change of pr_unnitests and dev_unnitests
         check_approvals_of_unittest 2
+        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         fi
@@ -2571,7 +2572,6 @@ set +x
         mkdir -p ${PADDLE_ROOT}/build/Testing/Temporary/
         cp -r ${PADDLE_ROOT}/build/CTestCostData.txt ${PADDLE_ROOT}/build/Testing/Temporary/
 
-        ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'    # indicate whether the case was in quickly disable list
         test_cases=$(ctest -N -V) # get all test cases
 
