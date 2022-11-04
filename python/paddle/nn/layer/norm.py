@@ -333,42 +333,42 @@ class InstanceNorm3D(_InstanceNormBase):
 
 class GroupNorm(Layer):
     """
-        This interface is used to construct a callable object of the ``GroupNorm`` class.
-        For more details, refer to code examples.
-        It implements the function of the Group Normalization Layer.
-        Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
+    This interface is used to construct a callable object of the ``GroupNorm`` class.
+    For more details, refer to code examples.
+    It implements the function of the Group Normalization Layer.
+    Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
-        Parameters:
-            num_groups(int): The number of groups that divided from channels.
-            num_channels(int): The number of channels of input.
-            epsilon(float, optional): The small value added to the variance to prevent
-                                      division by zero. Default: 1e-05.
-            weight_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
-                                             scale :math:`g`. If it is set to False, no scale will be added to the output units.
-                                             If it is set to None, the bias is initialized one. Default: None.
-            bias_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
-                                            bias :math:`b`. If it is set to False, no bias will be added to the output units.
-                                            If it is set to None, the bias is initialized zero. Default: None.
-            data_format(str, optional): Specify the input data format. Only NCHW is supported. Default: NCHW.
-            name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+    Parameters:
+        num_groups(int): The number of groups that divided from channels.
+        num_channels(int): The number of channels of input.
+        epsilon(float, optional): The small value added to the variance to prevent
+                                  division by zero. Default: 1e-05.
+        weight_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
+                                         scale :math:`g`. If it is set to False, no scale will be added to the output units.
+                                         If it is set to None, the bias is initialized one. Default: None.
+        bias_attr(ParamAttr|bool, optional): The parameter attribute for the learnable
+                                        bias :math:`b`. If it is set to False, no bias will be added to the output units.
+                                        If it is set to None, the bias is initialized zero. Default: None.
+        data_format(str, optional): Specify the input data format. Only NCHW is supported. Default: NCHW.
+        name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
-        Shape:
-            - x: Tensor with shape: (batch, num_features, *).
-            - output: The same shape as input x.
+    Shape:
+        - x: Tensor with shape: (batch, num_features, *).
+        - output: The same shape as input x.
 
-        Returns:
-            None
+    Returns:
+        None
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                import paddle
+            import paddle
 
-                x = paddle.arange(48, dtype="float32").reshape((2, 6, 2, 2))
-                group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
-                group_norm_out = group_norm(x)
+            x = paddle.arange(48, dtype="float32").reshape((2, 6, 2, 2))
+            group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
+            group_norm_out = group_norm(x)
 
-                print(group_norm_out)
+            print(group_norm_out)
     """
 
     def __init__(
