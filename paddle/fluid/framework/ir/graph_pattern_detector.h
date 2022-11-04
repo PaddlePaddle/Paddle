@@ -549,7 +549,7 @@ struct Squeeze2Transpose2 : public PatternBase {
   PATTERN_DECL_NODE(squeeze2_op);
   PATTERN_DECL_NODE(squeeze2_op_out);
   PATTERN_DECL_NODE(transpose2_op);
-}
+};
 
 struct OperatorUnsqueeze2 : public PatternBase {
   OperatorUnsqueeze2(PDPattern* pattern, const std::string& name_scope)
