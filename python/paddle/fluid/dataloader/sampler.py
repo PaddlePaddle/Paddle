@@ -151,13 +151,13 @@ class RandomSampler(Sampler):
 
     Args:
         data_source(Dataset): dataset to sample, this could be an
-                instance of :code:`paddle.io.Dataset` or :code:`paddle.io.IterableDataset` or other Python
+                instance of :ref:api_paddle_io_Dataset or :ref:api_paddle_io_IterableDataset or other Python
                 object which implemented :code:`__len__` to get indices as the range of :code:`dataset` length. Default None.
-        replacement(bool): If False, sample the whole dataset, If True,
+        replacement(bool, optional): If False, sample the whole dataset, If True,
                 set :attr:`num_samples` for how many samples to draw. Default False.
-        num_samples(int): set sample number to draw if :attr:`replacement`
-                is True, then it will take samples according to the number you set. Default None.
-        generator(Generator): specify a generator to sample the :code:`data_source`. Default None.
+        num_samples(int, optional): set sample number to draw if :attr:`replacement`
+                is True, then it will take samples according to the number you set. Default None, disabled.
+        generator(Generator, optional): specify a generator to sample the :code:`data_source`. Default None, disabled.
 
     Returns:
         RandomSampler: a Sampler yield sample index randomly.

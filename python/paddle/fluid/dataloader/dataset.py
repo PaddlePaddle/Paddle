@@ -89,15 +89,15 @@ class IterableDataset(Dataset):
     An abstract class to encapsulate methods and behaviors of iterable datasets.
 
     All datasets in iterable-style (can only get sample one by one sequentially, like
-    a Python iterator) should be a subclass of `paddle.io.IterableDataset`. All subclasses should
+    a Python iterator) should be a subclass of :ref:api_paddle_io_IterableDataset. All subclasses should
     implement following methods:
 
-    :code:`__iter__`: yield sample sequentially. This method is required by reading dataset sample in :code:`paddle.io.DataLoader`.
+    :code:`__iter__`: yield sample sequentially. This method is required by reading dataset sample in :ref:api_paddle_io_DataLoader.
 
     .. note::
         do not implement :code:`__getitem__` and :code:`__len__` in IterableDataset, should not be called either.
 
-    see :code:`paddle.io.DataLoader`.
+    see :ref:api_paddle_io_DataLoader.
 
     Examples 1:
 
