@@ -498,25 +498,6 @@ class Conv1DTranspose(_ConvNd):
     Examples:
        .. code-block:: python
 
-<<<<<<< HEAD
-          import paddle
-          from paddle.nn import Conv1DTranspose
-          import numpy as np
-          
-          # shape: (1, 2, 4)
-          x=np.array([[[4, 0, 9, 7],
-                       [8, 0, 9, 2]]]).astype(np.float32)
-          # shape: (2, 1, 2)
-          y=np.array([[[7, 0]],
-                      [[4, 2]]]).astype(np.float32)
-          x_t = paddle.to_tensor(x)
-          conv = Conv1DTranspose(2, 1, 2)
-          conv.weight.set_value(y)
-          y_t = conv(x_t)
-          print(y_t)
-          
-          # [[[60. 16. 99. 75.  4.]]]
-=======
             import paddle
             from paddle.nn import Conv1DTranspose
 
@@ -533,7 +514,6 @@ class Conv1DTranspose(_ConvNd):
             print(y)
             # Tensor(shape=[1, 1, 5], dtype=float32, place=Place(gpu:0), stop_gradient=False,
             #        [[[60., 16., 99., 75., 4. ]]])
->>>>>>> a276130838 (Remove reduntant numpy input in Example code （test=document_fix） (#47555))
     """
 
     def __init__(
