@@ -42,14 +42,15 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
+    platform::SetInMemDescWithLogicalLayoutFusesSupport(
+        ctx, const_cast<phi::DenseTensor*>(x), x->mem_desc());
+
     if (ndims == 1) {
       framework::TensorCopy(*x, x->place(), out);
       out->set_mem_desc(x->mem_desc());
       return;
     }
 
-    platform::SetInMemDescWithLogicalLayoutFusesSupport(
-        ctx, const_cast<phi::DenseTensor*>(x), x->mem_desc());
     auto x_vec_dims = phi::vectorize(x->dims());
 
     framework::proto::VarType::Type x_paddle_type =

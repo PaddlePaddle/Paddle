@@ -959,11 +959,12 @@ PDNode *patterns::OperatorActivation::operator()(
 }
 
 PDNode *patterns::Squeeze2Transpose2::operator()() {
-  auto *preceding_op_out = pattern->NewNode(preceding_op_out_repr())
-                               ->AsInput()
-                               ->assert_is_op_input("squeeze2", "X");
-  auto *squeeze2_op =
-      pattern->NewNode(squeeze2_op_repr())->assert_is_op("squeeze2");
+  auto *squeeze2_op_in = pattern->NewNode(squeeze2_op_in_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("squeeze2", "X");
+  auto *squeeze2_op = pattern->NewNode(squeeze2_op_repr())
+                          ->assert_is_op("squeeze2")
+                          ->assert_has_n_outputs(2);
   auto *squeeze2_op_out = pattern->NewNode(squeeze2_op_out_repr())
                               ->AsIntermediate()
                               ->assert_is_op_output("squeeze2", "Out")
@@ -971,7 +972,7 @@ PDNode *patterns::Squeeze2Transpose2::operator()() {
   auto *transpose2_op =
       pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
 
-  squeeze2_op->LinksFrom({preceding_op_out}).LinksTo({squeeze2_op_out});
+  squeeze2_op->LinksFrom({squeeze2_op_in}).LinksTo({squeeze2_op_out});
   transpose2_op->LinksFrom({squeeze2_op_out});
   return transpose2_op;
 }

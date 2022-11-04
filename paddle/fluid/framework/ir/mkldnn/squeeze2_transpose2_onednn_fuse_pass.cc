@@ -22,7 +22,7 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void FuseSqueeze2Transpoe2OneDNNPass::ApplyImpl(Graph *graph) const {
+void FuseSqueeze2Transpose2OneDNNPass::ApplyImpl(Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
 
@@ -38,7 +38,7 @@ void FuseSqueeze2Transpoe2OneDNNPass::ApplyImpl(Graph *graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     GET_IR_NODE_FROM_SUBGRAPH(
-        preceding_op_out, preceding_op_out, squeeze2_transpose2_pattern);
+        squeeze2_op_in, squeeze2_op_in, squeeze2_transpose2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         squeeze2_op, squeeze2_op, squeeze2_transpose2_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
@@ -55,32 +55,12 @@ void FuseSqueeze2Transpoe2OneDNNPass::ApplyImpl(Graph *graph) const {
       return;
     }
 
-    auto const &names = squeeze2_op->Op()->InputNames();
-    bool has_axes_tensor =
-        std::find(names.begin(), names.end(), "AxesTensor") != names.end();
-    bool has_axes_tensor_list =
-        std::find(names.begin(), names.end(), "AxesTensorList") != names.end();
-    if (has_axes_tensor && squeeze2_op->Op()->Input("AxesTensor").size() > 0) {
-      VLOG(4) << "Cannot fuse squeeze2 and transpose2 because squeeze2 dims "
-                 "are specified by "
-              << "AxesTensor!";
-      return;
-    }
-
-    if (has_axes_tensor_list &&
-        squeeze2_op->Op()->Input("AxesTensorList").size() > 0) {
-      VLOG(4) << "Cannot fuse squeeze2 and transpose2 because squeeze2 dims "
-                 "are specified by "
-              << "AxesTensorList!";
-      return;
-    }
-
     std::vector<int> squeeze2_axes =
         PADDLE_GET_CONST(std::vector<int>, squeeze2_op->Op()->GetAttr("axes"));
     transpose2_op->Op()->SetAttr("fused_squeeze2_axes", squeeze2_axes);
-    transpose2_op->Op()->SetInput("X", {preceding_op_out->Name()});
+    transpose2_op->Op()->SetInput("X", {squeeze2_op_in->Name()});
 
-    IR_VAR_OP_LINK(preceding_op_out, transpose2_op);
+    IR_VAR_OP_LINK(squeeze2_op_in, transpose2_op);
     GraphSafeRemoveNodes(g, {squeeze2_op, squeeze2_op_out});
     found_count++;
   };
@@ -97,7 +77,7 @@ void FuseSqueeze2Transpoe2OneDNNPass::ApplyImpl(Graph *graph) const {
 }  // namespace paddle
 
 REGISTER_PASS(squeeze2_transpose2_onednn_fuse_pass,
-              paddle::framework::ir::FuseSqueeze2Transpoe2OneDNNPass);
+              paddle::framework::ir::FuseSqueeze2Transpose2OneDNNPass);
 REGISTER_PASS_CAPABILITY(squeeze2_transpose2_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()

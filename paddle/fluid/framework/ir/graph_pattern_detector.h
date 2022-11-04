@@ -545,7 +545,7 @@ struct Squeeze2Transpose2 : public PatternBase {
 
   PDNode* operator()();
 
-  PATTERN_DECL_NODE(preceding_op_out);
+  PATTERN_DECL_NODE(squeeze2_op_in);
   PATTERN_DECL_NODE(squeeze2_op);
   PATTERN_DECL_NODE(squeeze2_op_out);
   PATTERN_DECL_NODE(transpose2_op);
