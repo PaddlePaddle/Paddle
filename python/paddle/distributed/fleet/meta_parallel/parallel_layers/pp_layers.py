@@ -170,7 +170,10 @@ class SegmentLayers(object):
 
     def uniform(self, num_items, num_parts):
         result = [0 for _ in range(num_parts + 1)]
-        part_size = math.floor(num_items / num_parts)
+        ps_tmp = num_items / num_parts
+        part_size = (
+            math.floor(ps_tmp) if (ps_tmp % 1 < 0.5) else math.ceil(ps_tmp)
+        )
         for i in range(num_parts):
             result[i] = int(min(part_size * i, num_items))
         result[num_parts] = num_items
