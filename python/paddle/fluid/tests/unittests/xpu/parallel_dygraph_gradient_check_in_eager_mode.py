@@ -18,7 +18,7 @@ import paddle
 import numpy as np
 import paddle.distributed as dist
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
+from paddle.nn import Linear
 from paddle.fluid.framework import _test_eager_guard
 
 paddle.seed(1024)
@@ -44,10 +44,10 @@ class SimpleNet(fluid.Layer):
             shape=[out_dim, in_dim], dtype="float32"
         )
 
-        # just for test sync_params_buffers
-        # self.register_buffer("queue", paddle.randn([10, 5]))
-        # self.queue = paddle.nn.functional.normalize(self.queue, axis=0)
-        # self.register_buffer("queue_ptr", paddle.zeros([1], 'int64'))
+        # for test sync_params_buffers
+        self.register_buffer("queue", paddle.randn([10, 5]))
+        self.queue = paddle.nn.functional.normalize(self.queue, axis=0)
+        self.register_buffer("queue_ptr", paddle.zeros([1], 'int64'))
 
         self.trainer_id = train_id
 

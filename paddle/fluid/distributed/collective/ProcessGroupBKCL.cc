@@ -20,7 +20,6 @@
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace distributed {

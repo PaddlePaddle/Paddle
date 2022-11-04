@@ -72,7 +72,7 @@ class ProcessGroupBKCL : public ProcessGroupStream {
                    const platform::Place& place,
                    int gid);
 
-  const std::string GetBackendName() const override {
+  std::string GetBackendName() const override {
     return std::string(BKCL_BACKEND_NAME);
   }
 
