@@ -20,10 +20,10 @@ from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import dygraph_only
 import copy
 import sys
-
+from .save_for_auto import save_for_auto_inference
 from paddle.distributed.fleet.utils.log_util import logger
 
-__all__ = ["save"]
+__all__ = ["save", "save_for_auto_inference"]
 
 
 @dygraph_only
