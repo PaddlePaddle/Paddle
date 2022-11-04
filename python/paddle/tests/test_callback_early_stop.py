@@ -28,7 +28,7 @@ from paddle.nn.layer.loss import CrossEntropyLoss
 
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True, sample_num=None):
-        super(MnistDataset, self).__init__(mode=mode)
+        super().__init__(mode=mode)
         self.return_label = return_label
         if sample_num:
             self.images = self.images[:sample_num]

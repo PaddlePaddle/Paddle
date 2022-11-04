@@ -31,7 +31,7 @@ class SimpleNet(Layer):
         is_sparse=False,
         dtype="float64",
     ):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale

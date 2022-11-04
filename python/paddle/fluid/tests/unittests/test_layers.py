@@ -86,7 +86,7 @@ class TestLayer(LayerTest):
     def test_custom_layer_with_kwargs(self):
         class CustomLayer(fluid.Layer):
             def __init__(self, input_size, linear1_size=4):
-                super(CustomLayer, self).__init__()
+                super().__init__()
                 self.linear1 = nn.Linear(
                     input_size, linear1_size, bias_attr=False
                 )
@@ -4797,57 +4797,6 @@ class TestBook(LayerTest):
             self.assertIsNotNone(out)
         print(str(program))
 
-    def test_deformable_conv(self):
-        with self.static_graph():
-            input = layers.data(
-                name='input',
-                append_batch_size=False,
-                shape=[2, 3, 32, 32],
-                dtype="float32",
-            )
-            offset = layers.data(
-                name='offset',
-                append_batch_size=False,
-                shape=[2, 18, 32, 32],
-                dtype="float32",
-            )
-            mask = layers.data(
-                name='mask',
-                append_batch_size=False,
-                shape=[2, 9, 32, 32],
-                dtype="float32",
-            )
-            out = layers.deformable_conv(
-                input=input,
-                offset=offset,
-                mask=mask,
-                num_filters=2,
-                filter_size=3,
-                padding=1,
-            )
-            return out
-
-    def test_deformable_conv2(self):
-        with self.static_graph():
-            input = fluid.data(
-                name='input', shape=[None, 3, None, None], dtype="float32"
-            )
-            offset = fluid.data(
-                name='offset', shape=[None, 18, None, None], dtype="float32"
-            )
-            mask = fluid.data(
-                name='mask', shape=[None, 9, None, None], dtype="float32"
-            )
-            out = layers.deformable_conv(
-                input=input,
-                offset=offset,
-                mask=mask,
-                num_filters=2,
-                filter_size=3,
-                padding=1,
-            )
-            return out
-
     def test_unfold(self):
         with self.static_graph():
             x = layers.data(name='x', shape=[3, 20, 20], dtype='float32')
@@ -4899,33 +4848,6 @@ class TestBook(LayerTest):
                 trans_std=0.1,
             )
         return out
-
-    def test_deformable_conv_v1(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = layers.data(
-                name='input',
-                append_batch_size=False,
-                shape=[2, 3, 32, 32],
-                dtype="float32",
-            )
-            offset = layers.data(
-                name='offset',
-                append_batch_size=False,
-                shape=[2, 18, 32, 32],
-                dtype="float32",
-            )
-            out = layers.deformable_conv(
-                input=input,
-                offset=offset,
-                mask=None,
-                num_filters=2,
-                filter_size=3,
-                padding=1,
-                modulated=False,
-            )
-            return out
 
     def test_retinanet_target_assign(self):
         with program_guard(
@@ -5169,7 +5091,7 @@ class TestMetricsDetectionMap(unittest.TestCase):
 
 class ExampleNet(paddle.nn.Layer):
     def __init__(self):
-        super(ExampleNet, self).__init__()
+        super().__init__()
         self.weight = self.create_parameter(
             shape=[1, 1], attr=paddle.ParamAttr(trainable=False)
         )
@@ -5205,7 +5127,7 @@ class TestLayerTrainingAttribute(unittest.TestCase):
 
 class MyLayer(paddle.nn.Layer):
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
         self._linear = paddle.nn.Linear(1, 1)
         self._dropout = paddle.nn.Dropout(p=0.5)
 
@@ -5217,7 +5139,7 @@ class MyLayer(paddle.nn.Layer):
 
 class MySuperLayer(paddle.nn.Layer):
     def __init__(self):
-        super(MySuperLayer, self).__init__()
+        super().__init__()
         self._mylayer = MyLayer()
 
     def forward(self, input):

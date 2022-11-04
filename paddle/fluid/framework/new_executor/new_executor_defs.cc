@@ -675,7 +675,8 @@ Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx,
                          const Priority priority)
-    : id_(id),
+    : is_artificial_(op_func_node.operator_base_->Type() == "depend"),
+      id_(id),
       op_func_node_(op_func_node),
       dev_ctx_(dev_ctx),
       priority_(priority) {

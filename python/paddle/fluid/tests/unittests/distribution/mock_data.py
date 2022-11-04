@@ -24,7 +24,7 @@ class Exponential(paddle.distribution.ExponentialFamily):
 
     def __init__(self, rate):
         self._rate = rate
-        super(Exponential, self).__init__(batch_shape=rate.shape)
+        super().__init__(batch_shape=rate.shape)
 
     @property
     def rate(self):

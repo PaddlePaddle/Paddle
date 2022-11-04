@@ -230,7 +230,7 @@ def nested_if_else_3(x):
 
 class NetWithControlFlowIf(fluid.dygraph.Layer):
     def __init__(self, hidden_dim=16):
-        super(NetWithControlFlowIf, self).__init__()
+        super().__init__()
         self.hidden_dim = hidden_dim
         self.fc = fluid.dygraph.Linear(
             input_dim=hidden_dim,

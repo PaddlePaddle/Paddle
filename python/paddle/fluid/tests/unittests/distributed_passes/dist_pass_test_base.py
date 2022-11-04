@@ -266,7 +266,7 @@ class DistPassTestBase(unittest.TestCase):
 class PassConflictChecker(DistPassTestBase):
     def setUp(self):
         os.environ['DEBUG'] = '1'  # to save the debug directory
-        super(PassConflictChecker, self).setUp()
+        super().setUp()
 
     def pass_config(self):
         raise NotImplementedError()

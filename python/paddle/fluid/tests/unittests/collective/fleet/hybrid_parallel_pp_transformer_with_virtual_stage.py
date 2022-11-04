@@ -44,7 +44,7 @@ dim_feedforward = 4 * d_model
 
 class EmbeddingNet(Layer):
     def __init__(self):
-        super(EmbeddingNet, self).__init__()
+        super().__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
         self.position_embeddings = nn.Embedding(vocab_size, hidden_size)
 
@@ -67,7 +67,7 @@ class EmbeddingNet(Layer):
 
 class TransformerNet(Layer):
     def __init__(self):
-        super(TransformerNet, self).__init__()
+        super().__init__()
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.linear2 = nn.Linear(dim_feedforward, d_model)
 
@@ -112,7 +112,7 @@ class TransformerNetPipe(TransformerNet):
 
 class CriterionPipe(Layer):
     def __init__(self):
-        super(CriterionPipe, self).__init__()
+        super().__init__()
 
     def forward(self, out, label):
         loss = out.mean()

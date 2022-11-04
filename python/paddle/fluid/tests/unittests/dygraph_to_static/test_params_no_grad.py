@@ -21,7 +21,7 @@ import unittest
 
 class Net(nn.Layer):
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
         self.emb1 = nn.Embedding(100, 16)
         self.emb2 = nn.Embedding(100, 16)
 

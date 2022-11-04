@@ -83,7 +83,7 @@ def config_callbacks(
 
 class ProgBarLoggerAuto(ProgBarLogger):
     def __init__(self, log_freq=1, verbose=2):
-        super(ProgBarLoggerAuto, self).__init__(log_freq, verbose)
+        super().__init__(log_freq, verbose)
 
     def _is_print(self):
         return True
@@ -158,7 +158,7 @@ class ProgBarLoggerAuto(ProgBarLogger):
 
 class LRSchedulerAuto(LRScheduler):
     def __init__(self, by_step=True, by_epoch=False):
-        super(LRSchedulerAuto, self).__init__(by_step, by_epoch)
+        super().__init__(by_step, by_epoch)
 
     def on_epoch_begin(self, epoch=None, logs=None):
         self.acc_step = self.params["acc_step"]
@@ -225,7 +225,7 @@ class Profiler(Callback):
 
 class ModelCheckpointAuto(ModelCheckpoint):
     def __init__(self, *args, **kwargs):
-        super(ModelCheckpointAuto, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _is_save(self):
         return self.model and self.save_dir
