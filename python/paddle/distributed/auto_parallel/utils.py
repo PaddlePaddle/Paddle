@@ -1925,7 +1925,10 @@ def set_data_parallel(x):
 
 
 def is_naive_data_parallel(dist_context):
-    # navie data parallel only completes dist_attr once from front to back.
+    # Navie data parallel only completes dist_attr once from the front to back.
+    if not dist_context.data_parallel:
+        return False
+
     ops_type = [
         op.type
         for op in dist_context._original_serial_main_program.global_block().ops
