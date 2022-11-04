@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
@@ -106,6 +107,47 @@ void BatchNormKernel(const Context &dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void BatchNormInferKernel(const Context &dev_ctx,
+                          const DenseTensor &x,
+                          const DenseTensor &mean,
+                          const DenseTensor &variance,
+                          const DenseTensor &scale,
+                          const DenseTensor &bias,
+                          float momentum,
+                          float epsilon,
+                          const std::string &data_layout,
+                          DenseTensor *y,
+                          DenseTensor *mean_out,
+                          DenseTensor *variance_out) {
+  // Since saved_mean and saved_variance are used regardless of whether
+  // they are in test mode, temporary variables need to be created here
+  // to be compatible
+  auto saved_mean = phi::EmptyLike<T, Context>(dev_ctx, *mean_out);
+  auto saved_variance = phi::EmptyLike<T, Context>(dev_ctx, *variance_out);
+
+  BatchNormKernel<T, Context>(dev_ctx,
+                              x,
+                              mean,
+                              variance,
+                              scale,
+                              bias,
+                              /*is_test=*/true,
+                              momentum,
+                              epsilon,
+                              data_layout,
+                              /*use_global_stats=*/false,
+                              /*trainable_statistics=*/false,
+                              y,
+                              mean_out,
+                              variance_out,
+                              &saved_mean,
+                              &saved_variance,
+                              /*reserve_space=*/nullptr);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(batch_norm, OneDNN, ONEDNN, phi::BatchNormKernel, float) {}
+PD_REGISTER_KERNEL(
+    batch_norm_infer, OneDNN, ONEDNN, phi::BatchNormInferKernel, float) {}
