@@ -127,8 +127,11 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         astream, *transpose_src_memory_p, *transpose_dst_memory_p);
     astream.wait();
 
-    output->set_layout(DataLayout::kNCHW);
-    output->set_format(MKLDNNMemoryFormat::undef);
+    platform::SetOutMemDescWithLogicalLayoutFusesSupport(
+        ctx,
+        out,
+        reorder_dst_memory_p->get_desc().permute_axes(
+            TransposeToPermuteAxis(transpose_axis)));
   }
 };
 
