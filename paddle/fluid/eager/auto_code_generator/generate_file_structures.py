@@ -144,6 +144,7 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
             f.write("nodes" + str(i + 1) + ".cc ")
         f.write("${fluid_manual_nodes} DEPS ${eager_deps} ${fluid_deps})\n")
         f.write("add_dependencies(dygraph_node copy_dygraph_node)")
+        f.write("target_link_libraries(dygraph_node ${PYTHON_LIBRARIES})")
 
     with open(forwards_level_cmakelist_path, "w") as f:
         f.write("add_custom_target(\n")
@@ -183,6 +184,7 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
         f.write(
             "add_dependencies(dygraph_function copy_dygraph_forward_functions)"
         )
+        f.write("target_link_libraries(dygraph_function ${PYTHON_LIBRARIES})")
 
     with open(generated_level_cmakelist_path, "w") as f:
         f.write("add_subdirectory(forwards)\nadd_subdirectory(nodes)")
