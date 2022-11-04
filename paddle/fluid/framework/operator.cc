@@ -2702,7 +2702,7 @@ OpKernelType OperatorWithKernel::GetExpectedKernelType(
    * 2. If an op calls corresponding derived-class function, then this op uses
    * dnn kernel, unless derived-class function changes `dnn_fallback` flag.
    */
-  this->SetDnnFallback(true);
+  if (platform::is_gpu_place(ctx.GetPlace())) this->SetDnnFallback(true);
   return OpKernelType(IndicateDataType(ctx), ctx.GetPlace());
 }
 
