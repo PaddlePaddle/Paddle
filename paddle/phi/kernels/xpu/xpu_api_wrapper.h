@@ -58,6 +58,7 @@ struct XpuFcInfo {
   float* max_x;
   float* max_y;
   float* max_out;
+  bool is_x_need_broadcast;
   XpuFcInfo()
       : bs(0),
         m(0),
@@ -70,7 +71,8 @@ struct XpuFcInfo {
         stride_out(0),
         max_x(nullptr),
         max_y(nullptr),
-        max_out(nullptr) {}
+        max_out(nullptr),
+        is_x_need_broadcast(false) {}
   void InitFcInfo(int bs,
                   int m,
                   int n,
@@ -145,8 +147,12 @@ static void GetFCInfo(const phi::DDim& x_dims,
             y_dims.to_str(),
             mat_dim_a.trans_,
             mat_dim_b.trans_));
-    mat_dim_b.height_ *= mat_dim_b.batch_size_;
-    mat_dim_b.batch_size_ = 0;
+    if (mat_dim_a.width_ == mat_dim_b.batch_size_ * mat_dim_b.height_) {
+      mat_dim_b.height_ *= mat_dim_b.batch_size_;
+      mat_dim_b.batch_size_ = 0;
+    } else {
+      info->is_x_need_broadcast = true;
+    }
   }
 
   if (mat_dim_a.width_ == mat_dim_b.height_) {
@@ -171,7 +177,7 @@ static void GetFCInfo(const phi::DDim& x_dims,
   info->m = mat_dim_a.height_;
   info->n = mat_dim_b.width_;
   info->k = mat_dim_a.width_;
-  info->bs = mat_dim_a.batch_size_;
+  info->bs = std::max(mat_dim_a.batch_size_, mat_dim_b.batch_size_);
   info->trans_x = trans_x;
   info->trans_y = trans_y;
 
@@ -406,6 +412,7 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
   float* max_x = fcinfo.max_x;
   float* max_y = fcinfo.max_y;
   float* max_out = fcinfo.max_out;
+  bool is_x_need_broadcast = fcinfo.is_x_need_broadcast;
 
   if (batch_size <= 1) {
     fc_api(xpu_ctx,
@@ -428,6 +435,19 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
            nullptr,
            xpu::Activation_t::LINEAR);
   } else {
+    const XPUType* x_data = reinterpret_cast<const XPUType*>(x);
+    if (is_x_need_broadcast) {
+      XPUType* x_broadcast_data = nullptr;
+      xpu::ctx_guard RAII_GUARD(xpu_ctx);
+      x_broadcast_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(batch_size * m * k);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(x_broadcast_data);
+      std::vector<int> x_shape = {1, m, k};
+      std::vector<int> new_x_shape = {batch_size, m, k};
+      int r = xpu::broadcast<XPUType>(
+          xpu_ctx, x_data, x_broadcast_data, x_shape, new_x_shape);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
+      x_data = x_broadcast_data;
+    }
     // batch matmul
     fc_batch_api(xpu_ctx,                              // Context* ctx,
                  batch_size,                           // int batch_size,
@@ -437,7 +457,7 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
                  n,                                    // int n,
                  k,                                    // int k,
                  alpha,                                // float alpha,
-                 reinterpret_cast<const XPUType*>(x),  // const TX* x,
+                 x_data,                               // const TX* x,
                  ldx,                                  // int stride_a,
                  reinterpret_cast<const XPUType*>(y),  // const TW* w,
                  ldy,                                  // int stride_b,
@@ -554,6 +574,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         nullptr,
                         max_dout,
                         nullptr);
+    dy_shape.is_x_need_broadcast = dout_shape.is_x_need_broadcast;
     dy_a = x, dy_b = dout_new;
   } else if (trans_y) {
     // dx = dout * y
@@ -600,6 +621,7 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
                         nullptr,
                         max_dout,
                         nullptr);
+    dy_shape.is_x_need_broadcast = dout_shape.is_x_need_broadcast;
     dy_a = x, dy_b = dout_new;
   }
   std::tuple<XpuFcInfo, XpuFcInfo, const T*, const T*, const T*, const T*>

@@ -40,7 +40,7 @@ class SimpleConv(fluid.dygraph.Layer):
         groups=1,
         act=None,
     ):
-        super(SimpleConv, self).__init__()
+        super().__init__()
         self._conv = fluid.dygraph.Conv2D(
             num_channels=num_channels,
             num_filters=num_filters,
@@ -419,13 +419,13 @@ class TestAmpScaler(unittest.TestCase):
                 decr_every_n_nan_or_inf=2,
                 use_dynamic_loss_scaling=True,
             )
-            self.assertEqual(scaler.is_enable() == True, True)
+            self.assertEqual(scaler.is_enable(), True)
             self.assertEqual(scaler.get_init_loss_scaling() == 1024, True)
             self.assertEqual(scaler.get_incr_ratio() == 2.0, True)
             self.assertEqual(scaler.get_decr_ratio() == 0.5, True)
             self.assertEqual(scaler.get_incr_every_n_steps() == 1000, True)
             self.assertEqual(scaler.get_decr_every_n_nan_or_inf() == 2, True)
-            self.assertEqual(scaler.is_use_dynamic_loss_scaling() == True, True)
+            self.assertEqual(scaler.is_use_dynamic_loss_scaling(), True)
             scaler.set_decr_every_n_nan_or_inf(4)
             self.assertEqual(scaler.get_decr_every_n_nan_or_inf() == 4, True)
             scaler.set_decr_ratio(0.1)
@@ -459,7 +459,7 @@ class TestAmpScaler(unittest.TestCase):
 
             scaler3 = paddle.amp.GradScaler(enable=False)
             scaler3.load_state_dict(scaler_state)
-            self.assertEqual(scaler3.is_enable() == False, True)
+            self.assertFalse(scaler3.is_enable())
 
     def test_state_dict_and_load_state_dict_error(self):
         def test_error():
@@ -956,7 +956,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
 
         class LinearNet(nn.Layer):
             def __init__(self):
-                super(LinearNet, self).__init__()
+                super().__init__()
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
             def forward(self, x):

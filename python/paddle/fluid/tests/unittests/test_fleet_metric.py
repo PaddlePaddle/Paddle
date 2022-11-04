@@ -33,7 +33,7 @@ class TestFleetMetric(unittest.TestCase):
 
         class FakeUtil(UtilBase):
             def __init__(self, fake_fleet):
-                super(FakeUtil, self).__init__()
+                super().__init__()
                 self.fleet = fake_fleet
 
             def all_reduce(self, input, mode="sum", comm_world="worker"):

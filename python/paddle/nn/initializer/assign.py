@@ -98,4 +98,4 @@ class Assign(NumpyArrayInitializer):
         if isinstance(value, paddle.static.Variable):
             value = value.numpy()
 
-        super(Assign, self).__init__(value)
+        super().__init__(value)

@@ -797,7 +797,7 @@ class EarlyStopping(Callback):
         baseline=None,
         save_best_model=True,
     ):
-        super(EarlyStopping, self).__init__()
+        super().__init__()
         self.monitor = monitor
         self.patience = patience
         self.verbose = verbose
@@ -1242,7 +1242,7 @@ class ReduceLROnPlateau(Callback):
         cooldown=0,
         min_lr=0,
     ):
-        super(ReduceLROnPlateau, self).__init__()
+        super().__init__()
 
         self.monitor = monitor
         if factor >= 1.0:

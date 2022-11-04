@@ -28,7 +28,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 class DistributedReshape2(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedReshape2, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedReshape2("reshape2"))
@@ -36,7 +36,7 @@ register_distributed_operator_impl_container(DistributedReshape2("reshape2"))
 
 class DistributedReshapeImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedReshapeImpl0, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = False
 
@@ -286,7 +286,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
 
 class DistributedReshapeImpl1(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedReshapeImpl1, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = False
 
@@ -539,7 +539,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
 
 class DistributedReshapeImpl2(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedReshapeImpl2, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = False
 

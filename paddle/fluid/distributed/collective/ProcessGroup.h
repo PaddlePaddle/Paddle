@@ -92,7 +92,7 @@ class ProcessGroup {
 
   int GetSize() const { return size_; }
 
-  virtual const std::string GetBackendName() const = 0;
+  virtual std::string GetBackendName() const = 0;
   virtual const phi::DeviceContext& GetDeviceContext(const Place& place) const {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Does not support to get device_context from ProcessGroup%s.",

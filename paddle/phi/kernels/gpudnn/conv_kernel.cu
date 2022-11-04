@@ -42,18 +42,23 @@ void ConvCudnnKernel(const Context& ctx,
                      const std::vector<int>& strides,
                      const std::vector<int>& paddings_t,
                      const std::string& padding_algorithm,
-                     int groups,
                      const std::vector<int>& dilations_t,
+                     int groups,
                      const std::string& data_format,
-                     bool use_addto,
-                     int workspace_size_MB,
-                     bool exhaustive_search_t,
                      DenseTensor* output) {
   ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
 
-  bool exhaustive_search = FLAGS_cudnn_exhaustive_search || exhaustive_search_t;
+  bool has_exhaustive_search = ctx.HasDnnAttr("exhaustive_search");
+  VLOG(4) << "GPUContext contains `exhaustive_search`: "
+          << has_exhaustive_search;
+  bool exhaustive_search_attr =
+      has_exhaustive_search
+          ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("exhaustive_search"))
+          : false;
+  bool exhaustive_search =
+      FLAGS_cudnn_exhaustive_search || exhaustive_search_attr;
   bool deterministic = FLAGS_cudnn_deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
@@ -392,9 +397,6 @@ void Conv3DCudnnKernel(const Context& dev_ctx,
                        int groups,
                        const std::vector<int>& dilations,
                        const std::string& data_format,
-                       bool use_addto,
-                       int workspace_size_MB,
-                       bool exhaustive_search,
                        DenseTensor* out) {
   ConvCudnnKernel<T>(dev_ctx,
                      input,
@@ -402,12 +404,9 @@ void Conv3DCudnnKernel(const Context& dev_ctx,
                      strides,
                      paddings,
                      padding_algorithm,
-                     groups,
                      dilations,
+                     groups,
                      data_format,
-                     use_addto,
-                     workspace_size_MB,
-                     exhaustive_search,
                      out);
 }
 
@@ -421,10 +420,6 @@ void DepthwiseConvCudnnKernel(const Context& dev_ctx,
                               int groups,
                               const std::vector<int>& dilations,
                               const std::string& data_format,
-                              bool use_addto,
-                              int workspace_size_MB,
-                              bool exhaustive_search,
-                              bool fuse_relu,
                               DenseTensor* out) {
   ConvCudnnKernel<T>(dev_ctx,
                      input,
@@ -432,12 +427,9 @@ void DepthwiseConvCudnnKernel(const Context& dev_ctx,
                      strides,
                      paddings,
                      padding_algorithm,
-                     groups,
                      dilations,
+                     groups,
                      data_format,
-                     use_addto,
-                     workspace_size_MB,
-                     exhaustive_search,
                      out);
 }
 

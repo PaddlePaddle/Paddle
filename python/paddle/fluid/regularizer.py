@@ -111,7 +111,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
     def __init__(self, regularization_coeff=0.0):
         assert regularization_coeff is not None
-        super(L2DecayRegularizer, self).__init__()
+        super().__init__()
         self._regularization_coeff = regularization_coeff
 
     def __call__(self, param, grad, block):
@@ -224,7 +224,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
 
     def __init__(self, regularization_coeff=0.0):
         assert regularization_coeff is not None
-        super(L1DecayRegularizer, self).__init__()
+        super().__init__()
         self._regularization_coeff = regularization_coeff
 
     def __call__(self, param, grad, block):

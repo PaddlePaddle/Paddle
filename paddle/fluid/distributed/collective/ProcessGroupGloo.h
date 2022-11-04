@@ -26,8 +26,6 @@
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/distributed/store/tcp_store.h"
 
-constexpr const char* GLOO_BACKEND_NAME = "GLOO";
-
 namespace paddle {
 namespace distributed {
 
@@ -146,9 +144,7 @@ class ProcessGroupGloo : public ProcessGroup {
   std::shared_ptr<::gloo::Context> get_context() { return _context; }
   uint64_t next_tag() { return _tag++; }
 
-  const std::string GetBackendName() const override {
-    return GLOO_BACKEND_NAME;
-  }
+  std::string GetBackendName() const override { return "GLOO"; }
 
   const phi::DeviceContext& GetDeviceContext(
       const Place& place) const override {
