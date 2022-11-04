@@ -194,6 +194,7 @@ from .tensor.manipulation import moveaxis  # noqa: F401
 from .tensor.manipulation import repeat_interleave  # noqa: F401
 from .tensor.manipulation import index_add  # noqa: F401
 from .tensor.manipulation import index_add_  # noqa: F401
+from .tensor.manipulation import npu_identity  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401

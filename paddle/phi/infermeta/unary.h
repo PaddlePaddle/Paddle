@@ -682,4 +682,6 @@ void UnStackInferMeta(const MetaTensor& x,
                       int num,
                       std::vector<MetaTensor*> outs);
 
+void NPUIdentityInferMeta(const MetaTensor& x, int format, MetaTensor* out);
+
 }  // namespace phi

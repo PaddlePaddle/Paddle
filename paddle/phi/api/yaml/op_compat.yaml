@@ -652,6 +652,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : npu_identity
+  inputs :
+    x : Input
+  outputs :
+    out : Out
+
 - op : pad2d
   backward : pad2d_grad
   extra :

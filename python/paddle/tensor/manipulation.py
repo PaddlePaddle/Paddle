@@ -4853,3 +4853,59 @@ __METHODS = {
 for name, func in __METHODS.items():
     setattr(core.VarBase, name, func)
     setattr(core.eager.Tensor, name, func)
+
+
+def npu_identity(x, format=-1):
+    """
+
+    This OP takes in the Tensor :attr:`x` and change it to ouptut with
+    aclFormat with int value. Only used for Ascend CANN.
+
+    Args:
+        x(Tensor): An input N-D Tensor with data type bool, float16,
+                   float32, float64, int32, int64, uint8.
+        format(int): Data format of the output in aclFormat, default
+                   value is -1, i.e. will not change to aclFormat.
+
+    Returns:
+        Tensor: A Tensor with acl format storage on NPU.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones(shape=[64, 6, 28, 28])
+            y = paddle.npu_identity(x, 3) # NC0HWC1 = 3
+            # y.shape = [64, 1, 28, 28, 16]
+    """
+    if in_dygraph_mode():
+        return _C_ops.npu_identity(x, format)
+
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.npu_identity(x, format)
+
+    check_variable_and_dtype(
+        x,
+        'x',
+        [
+            'int32',
+            'int64',
+            'float16',
+            'float32',
+            'float64',
+        ],
+        'npu_identity',
+    )
+
+    helper = LayerHelper('npu_identity', **locals())
+    out = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=x.stop_gradient
+    )
+    helper.append_op(
+        type='npu_identity',
+        inputs={'Input': [x]},
+        outputs={'Out': [out]},
+        attrs={'format': format},
+    )
+    return out

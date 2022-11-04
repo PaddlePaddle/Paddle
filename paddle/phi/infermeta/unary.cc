@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/kernels/funcs/npu_identity.h"
 #include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
@@ -4681,6 +4682,16 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
   auto output_dims = input_dims;
   out->set_dtype(x.dtype());
   out->set_dims(output_dims);
+}
+
+void NPUIdentityInferMeta(const MetaTensor& x, int format, MetaTensor* out) {
+  if (format < 0) {
+    out->share_meta(x);
+    return;
+  }
+  auto out_dims = funcs::GetNPUIdentityShape(x.dims(), format);
+  out->set_dtype(x.dtype());
+  out->set_dims(out_dims);
 }
 
 }  // namespace phi
