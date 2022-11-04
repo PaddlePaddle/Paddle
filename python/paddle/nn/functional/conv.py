@@ -947,26 +947,11 @@ def conv1d_transpose(
 
           import paddle
           import paddle.nn.functional as F
-<<<<<<< HEAD
-          import numpy as np
-          
-=======
 
->>>>>>> a276130838 (Remove reduntant numpy input in Example code （test=document_fix） (#47555))
           # shape: (1, 2, 4)
           x = paddle.to_tensor([[[4, 0, 9, 7],
                                 [8, 0, 9, 2,]]], dtype="float32")
           # shape: (2, 1, 2)
-<<<<<<< HEAD
-          w=np.array([[[7, 0]],
-                      [[4, 2]]]).astype(np.float32)
-          x_var = paddle.to_tensor(x)
-          w_var = paddle.to_tensor(w)
-          y_var = F.conv1d_transpose(x_var, w_var)
-          print(y_var)
-          
-          # [[[60. 16. 99. 75.  4.]]]
-=======
           w = paddle.to_tensor([[[7, 0]],
                                 [[4, 2]]], dtype="float32")
 
@@ -974,7 +959,6 @@ def conv1d_transpose(
           print(y)
           # Tensor(shape=[1, 1, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
           #        [[[60., 16., 99., 75., 4. ]]])
->>>>>>> a276130838 (Remove reduntant numpy input in Example code （test=document_fix） (#47555))
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:
