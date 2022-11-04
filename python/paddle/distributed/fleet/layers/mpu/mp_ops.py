@@ -22,7 +22,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.dygraph import layers
 from paddle.distributed import collective
-from ....communication.reduce import ReduceOp
+from ....communication.reduce import ReduceOp, _get_reduce_op
 from paddle.fluid.data_feeder import check_dtype
 import paddle.fluid.dygraph_utils as dygraph_utils
 
@@ -61,7 +61,7 @@ def _c_identity(tensor, group=None):
 
             @staticmethod
             def backward(ctx, dy):
-                op_type = collective._get_reduce_op(ReduceOp.SUM, "_c_identity")
+                op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
                 group.process_group.allreduce_on_calc_stream(dy, op_type)
                 return dy
 
@@ -254,7 +254,7 @@ def _mp_allreduce(
                 ctx.ring_id = group.id
 
                 if use_calc_stream:
-                    op_type = collective._get_reduce_op(op, "_mp_allreduce")
+                    op_type = _get_reduce_op(op, "_mp_allreduce")
                     group.process_group.allreduce_on_calc_stream(
                         tensor, op_type
                     )
