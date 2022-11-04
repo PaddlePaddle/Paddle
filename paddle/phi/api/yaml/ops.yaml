@@ -106,6 +106,16 @@
   inplace : (x -> out)
   backward : ceil_grad
 
+- op : celu
+  args : (Tensor x, float alpha = 1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : celu
+  backward : celu_grad
+
 - op : cholesky
   args : (Tensor x, bool upper=false)
   output : Tensor
@@ -206,6 +216,17 @@
     func : dot
     data_type : x
   backward : dot_grad
+
+- op : elu
+  args : (Tensor x, float alpha = 1.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : elu
+  inplace : (x -> out)
+  backward : elu_grad
 
 - op : erf
   args : (Tensor x)
@@ -312,6 +333,16 @@
     func : hard_sigmoid
   backward : hardsigmoid_grad
 
+- op : leaky_relu
+  args : (Tensor x, float negative_slope = 0.02f)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : leaky_relu
+  backward : leaky_relu_grad
+
 - op : lgamma
   args : (Tensor x)
   output : Tensor(out)
@@ -320,6 +351,15 @@
   kernel :
     func : lgamma
   backward : lgamma_grad
+
+- op : log
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : log
+  backward: log_grad
 
 - op : log10
   args : (Tensor x)
@@ -395,6 +435,16 @@
   inplace : (x -> out)
   backward : reciprocal_grad
 
+- op : relu
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : relu
+  inplace : (x -> out)
+  backward : relu_grad
+
 - op : round
   args : (Tensor x)
   output : Tensor(out)
@@ -405,6 +455,16 @@
   inplace : (x -> out)
   backward : round_grad
 
+- op : rsqrt
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : rsqrt
+  inplace : (x -> out)
+  backward : rsqrt_grad
+
 - op : send_uv
   args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD")
   output : Tensor(out)
@@ -414,6 +474,15 @@
     func : send_uv
     data_type : x
   backward : send_uv_grad
+
+- op : sigmoid
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sigmoid
+  backward : sigmoid_grad
 
 - op : silu
   args : (Tensor x)
@@ -442,6 +511,36 @@
     func : sinh
   backward : sinh_grad
 
+- op : softplus
+  args : (Tensor x, float beta = 1.0, float threshold = 20.0f)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softplus
+  backward : softplus_grad
+
+- op : softshrink
+  args : (Tensor x, float threshold = 0.5)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softshrink
+  backward : softshrink_grad
+
+- op : softsign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softsign
+  backward : softsign_grad
+
 - op : solve
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -451,6 +550,27 @@
     func : solve
     data_type : x
   backward : solve_grad
+
+- op : sqrt
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sqrt {dense -> dense},
+           sqrt_sr {selected_rows -> selected_rows}
+  inplace : (x -> out)
+  backward : sqrt_grad
+
+- op : square
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : square {dense -> dense},
+           square_sr {selected_rows -> selected_rows}
+  backward : square_grad
 
 - op : tan
   args : (Tensor x)
@@ -470,6 +590,25 @@
     func : tanh
   inplace : (x -> out)
   backward : tanh_grad
+
+- op : tanh_shrink
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : tanh_shrink
+  backward : tanh_shrink_grad
+
+- op : thresholded_relu
+  args : (Tensor x, float threshold = 1.0)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : thresholded_relu
+  backward : thresholded_relu_grad
 
 - op : trace
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)

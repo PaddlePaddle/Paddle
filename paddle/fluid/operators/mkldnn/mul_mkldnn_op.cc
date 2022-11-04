@@ -199,15 +199,17 @@ class MulPrimitiveFactory {
                           const ExecutionContext &ctx) {
     Tensor x_tmp;
     Tensor data_matrix;
-    MKLDNNMemoryFormat src_fmt = data->format();
-    MKLDNNMemoryFormat dst_fmt;
-    auto src_mdesc = CreateMemDescriptor<T>(data, src_fmt);
+    // This code is enforcing plain (non-blocked) memory arrangement
+    // in order to flatten (reduce dimensionality) of Tensor later
+    auto src_mdesc = data->mem_desc();
+    auto dst_mdesc =
+        data->dims().size() >= 4
+            ? (data->dims().size() == 5
+                   ? CreateMemDescriptor<T>(data, MKLDNNMemoryFormat::ncdhw)
+                   : CreateMemDescriptor<T>(data, MKLDNNMemoryFormat::nchw))
+            : src_mdesc;
 
-    if ((data->dims().size() == 4 &&
-         src_fmt != (dst_fmt = MKLDNNMemoryFormat::nchw)) ||
-        (data->dims().size() == 5 &&
-         src_fmt != (dst_fmt = MKLDNNMemoryFormat::ncdhw))) {
-      auto dst_mdesc = CreateMemDescriptor<T>(data, dst_fmt);
+    if (src_mdesc != dst_mdesc) {
       x_tmp.mutable_data<T>(ctx.GetPlace(), data->memory_size());
 
       Reorder(src_mdesc,

@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-import paddle.fluid as fluid
 from op_test_xpu import OpTest, XPUOpTest
 import paddle
 from xpu.get_test_cover_info import (
@@ -303,40 +302,6 @@ class XPUTestModulatedDeformableConvOp(XPUOpTestWrapper):
                 self.input_size[2],
                 self.input_size[3],
             ]
-
-    class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
-        def test_error(self):
-            def test_invalid_input():
-                paddle.enable_static()
-                input = [1, 3, 32, 32]
-                offset = fluid.data(
-                    name='offset', shape=[None, 3, 32, 32], dtype='float32'
-                )
-                mask = fluid.data(
-                    name='mask', shape=[None, 3, 32, 32], dtype='float32'
-                )
-                loss = fluid.layers.deformable_conv(
-                    input, offset, mask, num_filters=4, filter_size=1
-                )
-
-            self.assertRaises(TypeError, test_invalid_input)
-
-            def test_invalid_offset():
-                paddle.enable_static()
-                input = fluid.data(
-                    name='input', shape=[None, 3, 32, 32], dtype='int32'
-                )
-                offset = fluid.data(
-                    name='offset', shape=[None, 3, 32, 32], dtype='float32'
-                )
-                mask = fluid.data(
-                    name='mask', shape=[None, 3, 32, 32], dtype='float32'
-                )
-                loss = fluid.layers.deformable_conv(
-                    input, offset, mask, num_filters=4, filter_size=1
-                )
-
-            self.assertRaises(TypeError, test_invalid_offset)
 
 
 support_types = get_xpu_op_support_types('deformable_conv')

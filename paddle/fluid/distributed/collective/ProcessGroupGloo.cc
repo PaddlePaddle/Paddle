@@ -233,6 +233,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,
     const BroadcastOptions& opts) {
+  return Broadcast(inputs, outputs, opts, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
+    std::vector<phi::DenseTensor>& inputs,
+    std::vector<phi::DenseTensor>& outputs,
+    const BroadcastOptions& opts,
+    bool sync_op) {
   auto root = opts.source_rank;
   std::unique_ptr<BroadcastGlooTask> task;
   auto tag = next_tag();
@@ -442,6 +450,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,
     const ReduceOptions& opts) {
+  return Reduce(inputs, outputs, opts, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
+    std::vector<phi::DenseTensor>& inputs,
+    std::vector<phi::DenseTensor>& outputs,
+    const ReduceOptions& opts,
+    bool sync_op) {
   std::shared_ptr<ReduceGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
@@ -497,6 +513,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const ScatterOptions& opts) {
+  return Scatter(in_tensors, out_tensors, opts, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    const ScatterOptions& opts,
+    bool sync_op) {
   std::shared_ptr<ScatterGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
