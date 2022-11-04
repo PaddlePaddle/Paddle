@@ -569,21 +569,19 @@ class BlockGuardWithCompletion(BlockGuard):
     def __init__(self, rnn):
         if not isinstance(rnn, StaticRNN):
             raise TypeError("BlockGuardWithCompletion takes a StaticRNN")
-        super(BlockGuardWithCompletion, self).__init__(rnn.helper.main_program)
+        super().__init__(rnn.helper.main_program)
         self.rnn = rnn
 
     def __enter__(self):
         self.rnn.status = StaticRNN.IN_RNN_BLOCK
-        return super(BlockGuardWithCompletion, self).__enter__()
+        return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return False
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
         self.rnn._complete_op()
-        return super(BlockGuardWithCompletion, self).__exit__(
-            exc_type, exc_val, exc_tb
-        )
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
 class StaticRNNMemoryLink(object):
@@ -1104,19 +1102,19 @@ class WhileGuard(BlockGuard):
     def __init__(self, while_op):
         if not isinstance(while_op, While):
             raise TypeError("WhileGuard takes a while op")
-        super(WhileGuard, self).__init__(while_op.helper.main_program)
+        super().__init__(while_op.helper.main_program)
         self.while_op = while_op
 
     def __enter__(self):
         self.while_op.status = While.IN_WHILE_BLOCK
-        return super(WhileGuard, self).__enter__()
+        return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
         self.while_op._complete()
-        return super(WhileGuard, self).__exit__(exc_type, exc_val, exc_tb)
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
 def get_inputs_outputs_in_block(
@@ -2454,17 +2452,15 @@ class ConditionalBlockGuard(BlockGuard):
 
     def __init__(self, block):
         check_type(block, "block", ConditionalBlock, "ConditionalBlockGuard")
-        super(ConditionalBlockGuard, self).__init__(block.helper.main_program)
+        super().__init__(block.helper.main_program)
         self.block = block
 
     def __enter__(self):
-        return super(ConditionalBlockGuard, self).__enter__()
+        return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.block.complete()
-        return super(ConditionalBlockGuard, self).__exit__(
-            exc_type, exc_val, exc_tb
-        )
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
 class ConditionalBlock(object):

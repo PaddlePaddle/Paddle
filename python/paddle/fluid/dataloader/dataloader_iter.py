@@ -167,7 +167,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     """
 
     def __init__(self, loader):
-        super(_DataLoaderIterSingleProcess, self).__init__(loader)
+        super().__init__(loader)
 
         self._dataset_fetcher = _DatasetKind.create_fetcher(
             self._dataset_kind,
@@ -379,7 +379,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
 class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
     def __init__(self, loader):
-        super(_DataLoaderIterMultiProcess, self).__init__(loader)
+        super().__init__(loader)
 
         self._persistent_workers = loader._persistent_workers
         self._resume_worker_cnt = 0

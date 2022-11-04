@@ -31,6 +31,11 @@ import paddle
 from paddle.fluid import core
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.distributed import fleet, ParallelMode
+
+HybridParallelClipGrad = (
+    fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer.HybridParallelClipGrad
+)
 from paddle.distributed.collective import (
     _get_global_group,
     broadcast,
@@ -157,9 +162,18 @@ class GroupShardedOptimizerStage2(Optimizer):
                 "While using ClipGradByGlobalNorm in GroupShardedOptimizerStage2, the grad clip of original optimizer will be changed."
             )
 
-            self._optim._grad_clip = GroupShardedClipGrad(
-                self._optim._grad_clip, paddle.get_device(), self._group
-            )
+            hcg = fleet.fleet._hcg if hasattr(fleet.fleet, "_hcg") else None
+            if (
+                hcg
+                and hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL
+            ):
+                self._optim._grad_clip = HybridParallelClipGrad(
+                    self._optim._grad_clip, hcg
+                )
+            else:
+                self._optim._grad_clip = GroupShardedClipGrad(
+                    self._optim._grad_clip, paddle.get_device(), self._group
+                )
             if self._optim._parameter_list and isinstance(
                 self._optim._parameter_list[0], dict
             ):

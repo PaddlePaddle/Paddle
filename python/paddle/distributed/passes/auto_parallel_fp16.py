@@ -699,7 +699,7 @@ def cast_startup_program():
 @register_pass("auto_parallel_fp16")
 class FP16Pass(AMPPass):
     def __init__(self):
-        super(FP16Pass, self).__init__()
+        super().__init__()
 
     # NOTE: why FP16Pass can override apply_single_impl instead of
     # apply_impl? AMP is an optimization pass for serial program,

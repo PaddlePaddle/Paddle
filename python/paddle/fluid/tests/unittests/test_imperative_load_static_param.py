@@ -182,7 +182,7 @@ class TestDygraphLoadStatic(unittest.TestCase):
 
             class MyTest(fluid.dygraph.Layer):
                 def __init__(self):
-                    super(MyTest, self).__init__()
+                    super().__init__()
 
                     self.linear1 = Linear(10, 10)
                     self.lienar2 = Linear(10, 20)

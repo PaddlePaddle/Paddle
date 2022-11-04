@@ -221,7 +221,7 @@ class ClipGradByGloblNormPass(PassBase):
     """
 
     def __init__(self):
-        super(ClipGradByGloblNormPass, self).__init__()
+        super().__init__()
         self.set_attr("rank_id", None)
         self.set_attr("dist_context", None)
         self.set_attr("params_grads", None)

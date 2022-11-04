@@ -106,7 +106,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         use_global_stats=None,
         name=None,
     ):
-        super(BatchNorm, self).__init__(
+        super().__init__(
             num_features,
             momentum=momentum,
             epsilon=epsilon,
@@ -309,7 +309,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         data_format='NCHW',
         name=None,
     ):
-        super(SyncBatchNorm, self).__init__(
+        super().__init__(
             num_features,
             momentum,
             epsilon,

@@ -45,7 +45,7 @@ class ConvPoolLayer(nn.Layer):
         groups=1,
         act=None,
     ):
-        super(ConvPoolLayer, self).__init__()
+        super().__init__()
 
         self.relu = ReLU() if act == "relu" else None
 
@@ -97,7 +97,7 @@ class AlexNet(nn.Layer):
     """
 
     def __init__(self, num_classes=1000):
-        super(AlexNet, self).__init__()
+        super().__init__()
         self.num_classes = num_classes
         stdv = 1.0 / math.sqrt(3 * 11 * 11)
         self._conv1 = ConvPoolLayer(3, 64, 11, 4, 2, stdv, act="relu")

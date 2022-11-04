@@ -237,7 +237,7 @@ class TestSimpleMul(SeedFixedTestCase):
     class SimpleMul(BaseRNN):
         def __init__(self):
             base = TestSimpleMul
-            super(base.SimpleMul, self).__init__(
+            super().__init__(
                 {base.DATA_NAME: {'shape': [base.DATA_WIDTH]}},
                 {},
                 {
@@ -313,7 +313,7 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
 
     class SimpleMulWithMemory(BaseRNN):
         def __init__(self):
-            super(TestSimpleMulWithMemory.SimpleMulWithMemory, self).__init__(
+            super().__init__(
                 {
                     TestSimpleMulWithMemory.DATA_NAME: {
                         'shape': [TestSimpleMulWithMemory.DATA_WIDTH]

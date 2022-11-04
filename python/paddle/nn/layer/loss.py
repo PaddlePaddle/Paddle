@@ -114,7 +114,7 @@ class BCEWithLogitsLoss(Layer):
                 "received %s, which is not allowed." % reduction
             )
 
-        super(BCEWithLogitsLoss, self).__init__()
+        super().__init__()
         self.weight = weight
         self.reduction = reduction
         self.pos_weight = pos_weight
@@ -388,7 +388,7 @@ class CrossEntropyLoss(Layer):
         use_softmax=True,
         name=None,
     ):
-        super(CrossEntropyLoss, self).__init__()
+        super().__init__()
         self.weight = weight
         self.reduction = reduction
         self.ignore_index = ignore_index
@@ -494,7 +494,7 @@ class HSigmoidLoss(Layer):
         is_sparse=False,
         name=None,
     ):
-        super(HSigmoidLoss, self).__init__()
+        super().__init__()
         if (num_classes < 2) and (not is_custom):
             raise ValueError(
                 "num_classes must not be less than 2 with default tree"
@@ -596,7 +596,7 @@ class MSELoss(Layer):
     """
 
     def __init__(self, reduction='mean'):
-        super(MSELoss, self).__init__()
+        super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MSELoss' should be 'sum', 'mean' or 'none', "
@@ -695,7 +695,7 @@ class L1Loss(Layer):
                 "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
                 "received %s, which is not allowed." % reduction
             )
-        super(L1Loss, self).__init__()
+        super().__init__()
         self.reduction = reduction
         self.name = name
 
@@ -784,7 +784,7 @@ class BCELoss(Layer):
                 "received %s, which is not allowed." % reduction
             )
 
-        super(BCELoss, self).__init__()
+        super().__init__()
         self.weight = weight
         self.reduction = reduction
         self.name = name
@@ -890,7 +890,7 @@ class NLLLoss(Layer):
                 "The value of 'reduction' in nll_loss should be 'sum', 'mean' or "
                 "'none', but received %s, which is not allowed." % reduction
             )
-        super(NLLLoss, self).__init__()
+        super().__init__()
         self._weight = weight
         self._ignore_index = ignore_index
         self._reduction = reduction
@@ -968,7 +968,7 @@ class KLDivLoss(Layer):
     """
 
     def __init__(self, reduction='mean'):
-        super(KLDivLoss, self).__init__()
+        super().__init__()
         self.reduction = reduction
 
     def forward(self, input, label):
@@ -1038,7 +1038,7 @@ class MarginRankingLoss(Layer):
                 "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
                 "received %s, which is not allowed." % reduction
             )
-        super(MarginRankingLoss, self).__init__()
+        super().__init__()
         self.margin = margin
         self.reduction = reduction
         self.name = name
@@ -1123,7 +1123,7 @@ class CTCLoss(Layer):
     """
 
     def __init__(self, blank=0, reduction='mean'):
-        super(CTCLoss, self).__init__()
+        super().__init__()
         self.blank = blank
         self.reduction = reduction
 
@@ -1204,7 +1204,7 @@ class SmoothL1Loss(Layer):
     """
 
     def __init__(self, reduction='mean', delta=1.0, name=None):
-        super(SmoothL1Loss, self).__init__()
+        super().__init__()
         self.reduction = reduction
         self.delta = delta
         self.name = name
@@ -1280,7 +1280,7 @@ class MultiLabelSoftMarginLoss(Layer):
         """
 
     def __init__(self, weight=None, reduction="mean", name=None):
-        super(MultiLabelSoftMarginLoss, self).__init__()
+        super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MultiLabelSoftMarginloss' should be 'sum', 'mean' or 'none', "
@@ -1381,7 +1381,7 @@ class HingeEmbeddingLoss(Layer):
     """
 
     def __init__(self, margin=1.0, reduction="mean", name=None):
-        super(HingeEmbeddingLoss, self).__init__()
+        super().__init__()
         self.margin = margin
         self.reduction = reduction
         self.name = name
@@ -1474,7 +1474,7 @@ class CosineEmbeddingLoss(Layer):
                 "The value of 'reduction' should be 'sum', 'mean' or "
                 "'none', but received %s, which is not allowed." % reduction
             )
-        super(CosineEmbeddingLoss, self).__init__()
+        super().__init__()
         self.margin = margin
         self.reduction = reduction
         self.name = name
@@ -1577,7 +1577,7 @@ class TripletMarginWithDistanceLoss(Layer):
         reduction: str = 'mean',
         name=None,
     ):
-        super(TripletMarginWithDistanceLoss, self).__init__()
+        super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in TripletMarginWithDistanceLoss "
@@ -1686,7 +1686,7 @@ class TripletMarginLoss(Layer):
         reduction='mean',
         name=None,
     ):
-        super(TripletMarginLoss, self).__init__()
+        super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in TripletMarginLoss should be 'sum', 'mean' or 'none', but "
@@ -1791,7 +1791,7 @@ class MultiMarginLoss(Layer):
         reduction="mean",
         name=None,
     ):
-        super(MultiMarginLoss, self).__init__()
+        super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MultiMarginLoss' should be 'sum', 'mean' or 'none', "
@@ -1886,7 +1886,7 @@ class SoftMarginLoss(Layer):
                 "received %s, which is not allowed." % reduction
             )
 
-        super(SoftMarginLoss, self).__init__()
+        super().__init__()
         self.reduction = reduction
         self.name = name
 

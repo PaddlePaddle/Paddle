@@ -420,7 +420,7 @@ void InterpreterCore::BuildInplace() {
   std::set<std::string> skip_inplace_outvars;
   for (Instruction& instr : vec_instruction_) {
     OperatorBase* op = instr.OpBase();
-    if (op->Type() == "coalesce_tensor") {
+    if (op->Type() == kCoalesceTensor) {
       const std::vector<std::string>& outputs =
           op->OutputVars(/*has_intermediate=*/false);
       skip_inplace_outvars.insert(outputs.begin(), outputs.end());
@@ -897,8 +897,9 @@ void InterpreterCore::RunNextInstructions(
     int64_t first_op = -1;
     for (auto next_id : direct_run_ops) {
       if (IsReady(next_id)) {
-        // only keep one op running in current thread
-        if (first_op == -1) {
+        // only keep one sync op running in current thread
+        if (first_op == -1 &&
+            vec_instruction_[next_id].KernelType() == OpFuncType::kQueueSync) {
           first_op = next_id;
           continue;
         }
@@ -935,11 +936,11 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     try {
       interpreter::WaitEvent(instr_node, place_);
 
-      RunInstruction(instr_node);
-
-      CheckGC(instr_node);
-
-      interpreter::LogDeviceMemoryStats(place_);
+      if (!instr_node.IsArtificial()) {
+        RunInstruction(instr_node);
+        CheckGC(instr_node);
+        interpreter::LogDeviceMemoryStats(place_);
+      }
 
       interpreter::RecordEvent(instr_node, place_);
     } catch (platform::EnforceNotMet& ex) {
