@@ -605,9 +605,7 @@ def batch_norm_orig2prim(
 
 @REGISTER_ORIG2PRIM('size')
 def size_orig2prim(op, x):
-    return fill_const(
-        functools.reduce(operator.mul, x.shape), (1,), paddle.int64
-    )
+    return fill_const(functools.reduce(operator.mul, x.shape), (), paddle.int64)
 
 
 ## Register prim2orig lower rules

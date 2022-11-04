@@ -16,6 +16,8 @@ import unittest
 import numpy as np
 import paddle
 
+paddle.enable_static()
+
 
 def ref_std(x, axis=None, unbiased=True, keepdim=False):
     ddof = 1 if unbiased else 0
