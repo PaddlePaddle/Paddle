@@ -25,8 +25,7 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
-DECLARE_bool(abort_on_nan_inf);
-DECLARE_bool(check_tensor_max_min);
+DECLARE_int32(check_nan_inf_level);
 
 namespace paddle {
 namespace framework {
@@ -233,23 +232,46 @@ __global__ void FindNanInfAndBlockMaxMin(const T* value_ptr,
                                 tensor_block_mean_ptr);
 }
 
-template <typename T>
+template <typename T,
+          typename MT,
+          std::enable_if_t<std::is_same<T, float>::value, bool> = true>
+__device__ bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
+  if (check_nan_inf_level >= 3) {
+    return true;
+  } else if (check_nan_inf_level >= 2) {
+    MT fp16_max =
+        static_cast<MT>(std::numeric_limits<phi::dtype::float16>::max());
+    return max_value > fp16_max || min_value < -fp16_max;
+  }
+  return false;
+}
+
+template <typename T,
+          typename MT,
+          std::enable_if_t<!std::is_same<T, float>::value, bool> = true>
+__device__ bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
+  if (check_nan_inf_level >= 3) {
+    return true;
+  }
+  return false;
+}
+
+template <typename T, typename MT>
 __global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
-                                         const T* tensor_block_max_ptr,
-                                         const T* tensor_block_min_ptr,
-                                         const T* tensor_block_mean_ptr,
+                                         const MT* tensor_block_max_ptr,
+                                         const MT* tensor_block_min_ptr,
+                                         const MT* tensor_block_mean_ptr,
                                          const char* debug_info,
                                          int64_t numel,
                                          int64_t numel_max_min,
-                                         bool abort_on_nan_inf,
-                                         bool check_tensor_max_min) {
+                                         int check_nan_inf_level) {
   if (blockIdx.x == 0 && threadIdx.x == 0) {
     int has_nan = found_nan_inf_ptr[0];
     int has_inf = found_nan_inf_ptr[1];
 
-    T max_value = static_cast<T>(0);
-    T min_value = static_cast<T>(0);
-    T mean_value = static_cast<T>(0);
+    MT max_value = static_cast<MT>(0);
+    MT min_value = static_cast<MT>(0);
+    MT mean_value = static_cast<MT>(0);
     if (tensor_block_max_ptr && tensor_block_min_ptr && tensor_block_mean_ptr) {
       max_value = tensor_block_max_ptr[0];
       min_value = tensor_block_min_ptr[0];
@@ -257,9 +279,9 @@ __global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
 
       // numel_max_min <= 128
       for (int64_t i = 1; i < numel_max_min; ++i) {
-        T tmp_max_value = tensor_block_max_ptr[i];
-        T tmp_min_value = tensor_block_min_ptr[i];
-        T tmp_mean_value = tensor_block_mean_ptr[i];
+        MT tmp_max_value = tensor_block_max_ptr[i];
+        MT tmp_min_value = tensor_block_min_ptr[i];
+        MT tmp_mean_value = tensor_block_mean_ptr[i];
 
         max_value = tmp_max_value > max_value ? tmp_max_value : max_value;
         min_value = tmp_min_value < min_value ? tmp_min_value : min_value;
@@ -268,7 +290,7 @@ __global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
     }
 
     if (has_nan || has_inf) {
-      if (abort_on_nan_inf) {
+      if (check_nan_inf_level == 0) {
         PADDLE_ENFORCE(false,
                        "===[PRECISION] [ERROR] in %s, numel=%ld, find_nan=%d, "
                        "find_inf=%d, "
@@ -280,7 +302,7 @@ __global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
                        static_cast<float>(max_value),
                        static_cast<float>(min_value),
                        static_cast<float>(mean_value));
-      } else {
+      } else if (check_nan_inf_level >= 1) {
         printf(
             "===[PRECISION] [ERROR] in %s, numel=%ld, find_nan=%d, "
             "find_inf=%d, "
@@ -293,7 +315,7 @@ __global__ void FindGlobalMaxMinAndPrint(const int* found_nan_inf_ptr,
             static_cast<float>(min_value),
             static_cast<float>(mean_value));
       }
-    } else if (check_tensor_max_min) {
+    } else if (NeedPrint<T, MT>(max_value, min_value, check_nan_inf_level)) {
       printf("[PRECISION] in %s, numel=%ld, max=%e, min=%e, mean=%e\n",
              debug_info,
              numel,
@@ -423,9 +445,8 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                                                   tensor_block_min_ptr,
                                                   tensor_block_mean_ptr);
 
-  bool abort_on_nan_inf = FLAGS_abort_on_nan_inf;
-  bool check_tensor_max_min = FLAGS_check_tensor_max_min;
-  FindGlobalMaxMinAndPrint<MT>
+  int check_nan_inf_level = FLAGS_check_nan_inf_level;
+  FindGlobalMaxMinAndPrint<T, MT>
       <<<1, 1, 0, dev_ctx->stream()>>>(found_nan_inf_ptr,
                                        tensor_block_max_ptr,
                                        tensor_block_min_ptr,
@@ -433,8 +454,7 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                                        gpu_str_ptr,
                                        tensor_.numel(),
                                        numel_max_min,
-                                       abort_on_nan_inf,
-                                       check_tensor_max_min);
+                                       check_nan_inf_level);
 #endif
 }
 
