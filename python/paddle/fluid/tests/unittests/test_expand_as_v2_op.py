@@ -22,7 +22,6 @@ import paddle.fluid as fluid
 
 
 class TestExpandAsBasic(OpTest):
-
     def setUp(self):
         self.op_type = "expand_as_v2"
         self.python_api = paddle.expand_as
@@ -42,7 +41,6 @@ class TestExpandAsBasic(OpTest):
 
 
 class TestExpandAsOpRank2(TestExpandAsBasic):
-
     def setUp(self):
         self.op_type = "expand_as_v2"
         self.python_api = paddle.expand_as
@@ -56,7 +54,6 @@ class TestExpandAsOpRank2(TestExpandAsBasic):
 
 
 class TestExpandAsOpRank3(TestExpandAsBasic):
-
     def setUp(self):
         self.op_type = "expand_as_v2"
         self.python_api = paddle.expand_as
@@ -70,7 +67,6 @@ class TestExpandAsOpRank3(TestExpandAsBasic):
 
 
 class TestExpandAsOpRank4(TestExpandAsBasic):
-
     def setUp(self):
         self.op_type = "expand_as_v2"
         self.python_api = paddle.expand_as
@@ -102,7 +98,6 @@ class TestExpandAsOpRank5(TestExpandAsBasic):
 
 
 class TestExpandAsV2Error(unittest.TestCase):
-
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x1 = fluid.layers.data(name='x1', shape=[4], dtype="uint8")
@@ -115,29 +110,28 @@ class TestExpandAsV2Error(unittest.TestCase):
 
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
-
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([2, 12, 14]).astype("float32")
-        x = fluid.layers.data(name='x',
-                              shape=[12, 14],
-                              append_batch_size=False,
-                              dtype="float32")
+        x = fluid.layers.data(
+            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
+        )
 
-        y = fluid.layers.data(name='target_tensor',
-                              shape=[2, 12, 14],
-                              append_batch_size=False,
-                              dtype="float32")
+        y = fluid.layers.data(
+            name='target_tensor',
+            shape=[2, 12, 14],
+            append_batch_size=False,
+            dtype="float32",
+        )
 
         out_1 = paddle.expand_as(x, y=y)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1 = exe.run(fluid.default_main_program(),
-                        feed={
-                            "x": input1,
-                            "target_tensor": input2
-                        },
-                        fetch_list=[out_1])
+        res_1 = exe.run(
+            fluid.default_main_program(),
+            feed={"x": input1, "target_tensor": input2},
+            fetch_list=[out_1],
+        )
         assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 

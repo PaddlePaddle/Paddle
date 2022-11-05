@@ -22,7 +22,6 @@ from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
 class TestAMPPass(unittest.TestCase):
-
     def test_mp2(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "amp_pass_unittest.py")
@@ -33,10 +32,19 @@ class TestAMPPass(unittest.TestCase):
             coverage_args = []
 
         tmp_dir = tempfile.TemporaryDirectory()
-        cmd = [sys.executable, "-u"] + coverage_args + [
-            "-m", "paddle.distributed.launch", "--devices", "0,1", "--log_dir",
-            tmp_dir.name, launch_model_path
-        ]
+        cmd = (
+            [sys.executable, "-u"]
+            + coverage_args
+            + [
+                "-m",
+                "paddle.distributed.launch",
+                "--devices",
+                "0,1",
+                "--log_dir",
+                tmp_dir.name,
+                launch_model_path,
+            ]
+        )
 
         process = subprocess.Popen(cmd)
         process.wait()

@@ -25,6 +25,7 @@ from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.backward import append_backward
+
 '''
 class TestAssignOp(op_test.OpTest):
     def setUp(self):

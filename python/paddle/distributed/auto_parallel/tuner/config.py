@@ -31,7 +31,7 @@ class TuningConfig(object):
     """
     A uniform config wrap:
     distributed strategy: the user defined configuration for optimization pass
-    tuning config: configuration for the tuning process: mode (profile or cost model), log dir, extra tuning config for optimization like search range for specific 
+    tuning config: configuration for the tuning process: mode (profile or cost model), log dir, extra tuning config for optimization like search range for specific
     """
 
     def __init__(self, user_config, strategy):
@@ -111,8 +111,10 @@ class TuningConfig(object):
         self._project_dir = project_dir
 
         for p in _tuning_supported_passes:
-            if getattr(self._dist_strategy, p) and _get_pass_config(
-                    self._dist_strategy, p).enable_tuning:
+            if (
+                getattr(self._dist_strategy, p)
+                and _get_pass_config(self._dist_strategy, p).enable_tuning
+            ):
                 # TODO distinguish different args of each passes
                 self._tuning_passes_name.add(p)
 

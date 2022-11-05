@@ -23,7 +23,6 @@ paddle.enable_static()
 
 
 class TestConcatOp(TestDistBase):
-
     def _setup_config(self):
         pass
 

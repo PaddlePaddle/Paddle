@@ -17,11 +17,18 @@ from __future__ import print_function
 import astor
 from paddle.utils import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+    AstNodeWrapper,
+    StaticAnalysisVisitor,
+)
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import slice_is_num
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    is_control_flow_to_transform,
+)
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    BaseTransformer,
+)
 
 
 class ListTransformer(BaseTransformer):
@@ -39,7 +46,8 @@ class ListTransformer(BaseTransformer):
         self.list_nodes = set()
 
         self.static_analysis_visitor = StaticAnalysisVisitor(self.root)
-        self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        self.node_to_wrapper_map = (
+            self.static_analysis_visitor.get_node_to_wrapper_map()
         )
         var_env = self.static_analysis_visitor.get_var_env()
         var_env.cur_scope = var_env.cur_scope.sub_scopes[0]
@@ -68,22 +76,25 @@ class ListTransformer(BaseTransformer):
 
     def visit_If(self, node):
         self.generic_visit(node)
-        if is_control_flow_to_transform(node, self.static_analysis_visitor,
-                                        self.scope_var_type_dict):
+        if is_control_flow_to_transform(
+            node, self.static_analysis_visitor, self.scope_var_type_dict
+        ):
             self._transform_list_append_in_control_flow(node)
         return node
 
     def visit_While(self, node):
         self.generic_visit(node)
-        if is_control_flow_to_transform(node, self.static_analysis_visitor,
-                                        self.scope_var_type_dict):
+        if is_control_flow_to_transform(
+            node, self.static_analysis_visitor, self.scope_var_type_dict
+        ):
             self._transform_list_append_in_control_flow(node)
         return node
 
     def visit_For(self, node):
         self.generic_visit(node)
-        if is_control_flow_to_transform(node, self.static_analysis_visitor,
-                                        self.scope_var_type_dict):
+        if is_control_flow_to_transform(
+            node, self.static_analysis_visitor, self.scope_var_type_dict
+        ):
             self._transform_list_append_in_control_flow(node)
         return node
 
@@ -92,13 +103,13 @@ class ListTransformer(BaseTransformer):
             if isinstance(child_node, gast.Assign):
                 if self._need_to_create_tensor_array(child_node):
                     child_node.value = self._create_tensor_array(
-                        child_node.value)
+                        child_node.value
+                    )
 
     def _transform_list_append_in_control_flow(self, node):
         for child_node in gast.walk(node):
             if self._need_to_array_write_node(child_node):
-                child_node.value = \
-                    self._to_array_write_node(child_node.value)
+                child_node.value = self._to_array_write_node(child_node.value)
 
     def _need_to_array_write_node(self, node):
         if isinstance(node, gast.Expr):
@@ -126,11 +137,16 @@ class ListTransformer(BaseTransformer):
             pass
         elif slice_is_num(target_node):
             value_code = ast_to_source_code(node.value)
-            i = "paddle.cast(" \
-                "x=_jst.to_static_variable({})," \
+            i = (
+                "paddle.cast("
+                "x=_jst.to_static_variable({}),"
                 "dtype='int64')".format(ast_to_source_code(slice_node))
-            assign_code = "{} = paddle.tensor.array_write(x={}, i={}, array={})" \
-                .format(target_name, value_code, i, target_name)
+            )
+            assign_code = (
+                "{} = paddle.tensor.array_write(x={}, i={}, array={})".format(
+                    target_name, value_code, i, target_name
+                )
+            )
             assign_node = gast.parse(assign_code).body[0]
         return assign_node
 
@@ -192,7 +208,8 @@ class ListTransformer(BaseTransformer):
         # Although `dtype='float32'`, other types such as `int32` can also be supported
         init_value = ast_to_source_code(value_node).strip()
         func_code = "paddle.tensor.create_array('float32', {})".format(
-            init_value)
+            init_value
+        )
         func_node = gast.parse(func_code).body[0].value
         return func_node
 
@@ -202,7 +219,8 @@ class ListTransformer(BaseTransformer):
         x = astor.to_source(gast.gast_to_ast(node.args[0]))
         i = "paddle.tensor.array_length({})".format(array)
         func_code = "paddle.tensor.array_write(x={}, i={}, array={})".format(
-            x, i, array)
+            x, i, array
+        )
         return gast.parse(func_code).body[0].value
 
     def _update_list_name_to_updated(self, node):
@@ -218,8 +236,10 @@ class ListTransformer(BaseTransformer):
             self.list_name_to_updated[target_id] = False
             self.list_nodes.add(node)
             return True
-        elif target_id in self.list_name_to_updated and \
-                self.list_name_to_updated[target_id] == False:
+        elif (
+            target_id in self.list_name_to_updated
+            and self.list_name_to_updated[target_id] == False
+        ):
             del self.list_name_to_updated[target_id]
         return False
 
@@ -250,8 +270,9 @@ class ListTransformer(BaseTransformer):
         # 2. pop stmt for a list or dict if len(args_str) == 1
         # 3. pop stmt for a dict if len(args_str) == 2
         if len(args_str) <= 2:
-            new_pop_str = "_jst.Pop({}, {})"\
-                .format(target_str, ",".join(args_str))
+            new_pop_str = "_jst.Pop({}, {})".format(
+                target_str, ",".join(args_str)
+            )
             new_pop_node = gast.parse(new_pop_str).body[0].value
             return new_pop_node
         else:

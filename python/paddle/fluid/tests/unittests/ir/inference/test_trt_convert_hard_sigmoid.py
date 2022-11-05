@@ -22,12 +22,10 @@ import unittest
 
 
 class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -37,33 +35,34 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
                 for slope in [0.1, 0.5]:
                     for offset in [0.2, 0.7]:
                         dics = [{"slope": slope, "offset": offset}]
-                        ops_config = [{
-                            "op_type": "hard_sigmoid",
-                            "op_inputs": {
-                                "X": ["input_data"],
-                            },
-                            "op_outputs": {
-                                "Out": ["output_data"]
-                            },
-                            "op_attrs": dics[0]
-                        }]
+                        ops_config = [
+                            {
+                                "op_type": "hard_sigmoid",
+                                "op_inputs": {
+                                    "X": ["input_data"],
+                                },
+                                "op_outputs": {"Out": ["output_data"]},
+                                "op_attrs": dics[0],
+                            }
+                        ]
                         ops = self.generate_op_config(ops_config)
 
                         program_config = ProgramConfig(
                             ops=ops,
                             weights={},
                             inputs={
-                                "input_data":
-                                TensorConfig(
-                                    data_gen=partial(generate_input, shape))
+                                "input_data": TensorConfig(
+                                    data_gen=partial(generate_input, shape)
+                                )
                             },
-                            outputs=["output_data"])
+                            outputs=["output_data"],
+                        )
 
                         yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             if self.input_dim == 2:
                 self.dynamic_shape.min_input_shape = {"input_data": [1, 8]}

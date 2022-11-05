@@ -20,11 +20,17 @@ import os
 import sys
 import inspect
 
-from paddle.distributed.fleet.utils.fs import LocalFS, FS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
+from paddle.distributed.fleet.utils.fs import (
+    LocalFS,
+    FS,
+    HDFSClient,
+    FSTimeOut,
+    FSFileExistsError,
+    FSFileNotExistsError,
+)
 
 
 class FSTest(unittest.TestCase):
-
     def _test_method(self, func):
         if sys.version_info[0] <= 2:
             args = inspect.getargspec(func).args

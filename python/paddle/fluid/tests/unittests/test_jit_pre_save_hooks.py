@@ -18,15 +18,17 @@ from __future__ import print_function
 import unittest
 
 import paddle
-from paddle.fluid.dygraph.jit import _run_save_pre_hooks, _clear_save_pre_hooks, _register_save_pre_hook
+from paddle.fluid.dygraph.jit import (
+    _run_save_pre_hooks,
+    _clear_save_pre_hooks,
+    _register_save_pre_hook,
+)
 
 _counter = 0
 
 
 class TestPreSaveHooks(unittest.TestCase):
-
     def test_pre_save_hook_functions(self):
-
         def fake_func(*args, **kwgs):
             global _counter
             _counter += 1
@@ -34,13 +36,15 @@ class TestPreSaveHooks(unittest.TestCase):
         remove_handler = _register_save_pre_hook(fake_func)
         self.assertEqual(len(paddle.fluid.dygraph.jit._save_pre_hooks), 1)
         self.assertTrue(
-            paddle.fluid.dygraph.jit._save_pre_hooks[0] is fake_func)
+            paddle.fluid.dygraph.jit._save_pre_hooks[0] is fake_func
+        )
 
         # Test of avoiding redundancy hanging
         remove_handler = _register_save_pre_hook(fake_func)
         self.assertEqual(len(paddle.fluid.dygraph.jit._save_pre_hooks), 1)
         self.assertTrue(
-            paddle.fluid.dygraph.jit._save_pre_hooks[0] is fake_func)
+            paddle.fluid.dygraph.jit._save_pre_hooks[0] is fake_func
+        )
 
         remove_handler.remove()
         self.assertEqual(len(paddle.fluid.dygraph.jit._save_pre_hooks), 0)

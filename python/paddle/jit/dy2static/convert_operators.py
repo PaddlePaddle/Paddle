@@ -13,19 +13,49 @@
 # limitations under the License.
 from __future__ import print_function
 
-from ...fluid.dygraph.dygraph_to_static.convert_operators import cast_bool_if_necessary  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_assert  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_ifelse  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_len  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_and  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_not  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_logical_or  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_pop  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_print  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_shape_compare  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_var_dtype  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_shape  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import convert_while_loop  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.convert_operators import unpack_by_structure, indexable, convert_attr  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    cast_bool_if_necessary,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_assert,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_ifelse,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_len,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_logical_and,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_logical_not,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_logical_or,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_pop,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_print,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_shape_compare,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_var_dtype,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_shape,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_while_loop,
+)  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_operators import (
+    unpack_by_structure,
+    indexable,
+    convert_attr,
+)  # noqa: F401
 
 __all__ = []

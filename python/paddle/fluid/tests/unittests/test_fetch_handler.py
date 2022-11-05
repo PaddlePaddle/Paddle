@@ -24,7 +24,6 @@ import paddle.fluid as fluid
 
 
 class TestFetchHandler(unittest.TestCase):
-
     @unittest.skip(reason="Skip unstable ci")
     def test_fetch_handler(self):
         place = core.CPUPlace()
@@ -38,7 +37,6 @@ class TestFetchHandler(unittest.TestCase):
         var_emb3 = block.create_var(name='emb3', type=core.VarDesc.VarType.FP32)
 
         class FH(fluid.executor.FetchHandler):
-
             def handler(self, fetch_dict):
                 assert len(fetch_dict) == 1
 
@@ -51,14 +49,13 @@ class TestFetchHandler(unittest.TestCase):
         time.sleep(3)
         fm.stop()
 
-        default_fh = fluid.executor.FetchHandler(var_dict={
-            'emb': var_emb,
-            'emb2': None,
-            'emb3': var_emb3
-        },
-                                                 period_secs=1)
+        default_fh = fluid.executor.FetchHandler(
+            var_dict={'emb': var_emb, 'emb2': None, 'emb3': var_emb3},
+            period_secs=1,
+        )
         default_fm = fluid.trainer_factory.FetchHandlerMonitor(
-            scope, default_fh)
+            scope, default_fh
+        )
         default_fm.start()
         time.sleep(5)
         default_fm.stop()

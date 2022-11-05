@@ -36,7 +36,6 @@ paddle.enable_static()
 
 
 class TestRNNOp(OpTest):
-
     def get_weight_names(self):
         weight_names = []
         for i in range(self.num_layers):
@@ -50,8 +49,11 @@ class TestRNNOp(OpTest):
     def setUp(self):
         self.op_type = "rnn"
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
-        self.sequence_length = None if core.is_compiled_with_rocm(
-        ) else np.array([12, 11, 10, 9, 8], dtype=np.int32)
+        self.sequence_length = (
+            None
+            if core.is_compiled_with_rocm()
+            else np.array([12, 11, 10, 9, 8], dtype=np.int32)
+        )
         self.num_layers = 1
         self.is_bidirec = False
         self.mode = "LSTM"
@@ -66,27 +68,29 @@ class TestRNNOp(OpTest):
         input_size = 3
         hidden_size = 2
 
-        input = np.random.uniform(low=-0.1,
-                                  high=0.1,
-                                  size=(seq_length, batch_size,
-                                        input_size)).astype(self.dtype)
+        input = np.random.uniform(
+            low=-0.1, high=0.1, size=(seq_length, batch_size, input_size)
+        ).astype(self.dtype)
         if self.sequence_length is not None:
             input[11][1:][:] = 0
             input[10][2:][:] = 0
             input[9][3:][:] = 0
             input[8][4:][:] = 0
 
-        rnn1 = LSTM(input_size,
-                    hidden_size,
-                    num_layers=self.num_layers,
-                    time_major=True,
-                    direction=direction,
-                    dropout=self.dropout,
-                    dtype=self.dtype)
+        rnn1 = LSTM(
+            input_size,
+            hidden_size,
+            num_layers=self.num_layers,
+            time_major=True,
+            direction=direction,
+            dropout=self.dropout,
+            dtype=self.dtype,
+        )
 
         flat_w = get_params_for_net(rnn1)
-        output, (last_hidden,
-                 last_cell) = rnn1(input, sequence_length=self.sequence_length)
+        output, (last_hidden, last_cell) = rnn1(
+            input, sequence_length=self.sequence_length
+        )
 
         if core.is_compiled_with_rocm():
 
@@ -96,17 +100,19 @@ class TestRNNOp(OpTest):
 
             self._get_places = rocm_rnn_get_place
 
-        init_h = np.zeros((self.num_layers * self.direction_num, batch_size,
-                           hidden_size)).astype(self.dtype)
-        init_c = np.zeros((self.num_layers * self.direction_num, batch_size,
-                           hidden_size)).astype(self.dtype)
+        init_h = np.zeros(
+            (self.num_layers * self.direction_num, batch_size, hidden_size)
+        ).astype(self.dtype)
+        init_c = np.zeros(
+            (self.num_layers * self.direction_num, batch_size, hidden_size)
+        ).astype(self.dtype)
         state_out = np.ndarray((300)).astype("uint8")
 
         self.inputs = {
             'Input': input,
             'WeightList': flat_w,
             'PreState': [('init_h', init_h), ('init_c', init_c)],
-            'SequenceLength': self.sequence_length
+            'SequenceLength': self.sequence_length,
         }
         if self.sequence_length is None:
             self.inputs = {
@@ -121,13 +127,13 @@ class TestRNNOp(OpTest):
             'hidden_size': hidden_size,
             'num_layers': self.num_layers,
             'mode': self.mode,
-            'is_test': self.is_test
+            'is_test': self.is_test,
         }
         self.outputs = {
             'Out': output,
             "State": [('last_hidden', last_hidden), ('last_cell', last_cell)],
             'Reserve': np.ndarray((400)).astype("uint8"),
-            'DropoutState': state_out
+            'DropoutState': state_out,
         }
 
     def test_output(self):
@@ -141,32 +147,29 @@ class TestRNNOp(OpTest):
             var_name_list = self.get_weight_names()
             grad_check_list = ['Input', 'init_h', 'init_c']
             grad_check_list.extend(var_name_list)
-            self.check_grad(set(grad_check_list),
-                            ['Out', 'last_hidden', 'last_cell'])
+            self.check_grad(
+                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+            )
 
 
 class TestRNNOp1(TestRNNOp):
-
     def set_attrs(self):
         self.sequence_length = None
 
 
 class TestRNNOp2(TestRNNOp):
-
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
 
 
 class TestRNNOp3(TestRNNOp):
-
     def set_attrs(self):
         self.is_test = True
         self.sequence_length = None
 
 
 class TestRNNOp4(TestRNNOp):
-
     def set_attrs(self):
         self.is_test = True
         self.sequence_length = None
@@ -174,20 +177,17 @@ class TestRNNOp4(TestRNNOp):
 
 
 class TestRNNOp5(TestRNNOp):
-
     def set_attrs(self):
         self.num_layers = 2
 
 
 class TestRNNOp6(TestRNNOp):
-
     def set_attrs(self):
         self.num_layers = 2
         self.is_bidirec = True
 
 
 class TestRNNOp7(TestRNNOp):
-
     def set_attrs(self):
         self.num_layers = 2
         self.is_bidirec = True
@@ -195,7 +195,6 @@ class TestRNNOp7(TestRNNOp):
 
 
 class TestRNNOp8(TestRNNOp):
-
     def set_attrs(self):
         self.num_layers = 2
         self.is_bidirec = True
@@ -203,7 +202,6 @@ class TestRNNOp8(TestRNNOp):
 
 
 class TestRNNOp9(TestRNNOp):
-
     def set_attrs(self):
         self.num_layers = 3
 

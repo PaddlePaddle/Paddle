@@ -49,8 +49,9 @@ class FunctionSpec(object):
         self._arg_names, self._default_kwargs = parse_arg_and_kwargs(function)
         # parse *args
         self.varargs_name = parse_varargs_name(function)
-        if self.varargs_name is not None and isinstance(function.__self__,
-                                                        TranslatedLayer):
+        if self.varargs_name is not None and isinstance(
+            function.__self__, TranslatedLayer
+        ):
             self._arg_names += function.__self__._input_args_names
 
     def unified_args_and_kwargs(self, args, kwargs):
@@ -73,8 +74,12 @@ class FunctionSpec(object):
         """
         if len(self._arg_names) < len(args):
             error_msg = "The decorated function `{}` requires {} arguments: {}, but received {} with {}.".format(
-                self._dygraph_function.__name__, len(self._arg_names),
-                self._arg_names, len(args), args)
+                self._dygraph_function.__name__,
+                len(self._arg_names),
+                self._arg_names,
+                len(args),
+                args,
+            )
             if args and inspect.isclass(args[0]):
                 error_msg += "\n\tMaybe the function has more than one decorator, we don't support this for now."
                 raise NotImplementedError(error_msg)
@@ -91,9 +96,13 @@ class FunctionSpec(object):
             else:
                 if arg_name not in self._default_kwargs:
                     raise ValueError(
-                        "`{}()` requires `{}` arguments, but not found in input `args`: {} and `kwargs`: {}."
-                        .format(self._dygraph_function.__name__, arg_name, args,
-                                kwargs))
+                        "`{}()` requires `{}` arguments, but not found in input `args`: {} and `kwargs`: {}.".format(
+                            self._dygraph_function.__name__,
+                            arg_name,
+                            args,
+                            kwargs,
+                        )
+                    )
                 args.append(self._default_kwargs[arg_name])
 
         return tuple(args), kwargs
@@ -136,16 +145,20 @@ class FunctionSpec(object):
             # So we don't support to deal this case while specificing `input_spec` currently.
             if kwargs:
                 raise ValueError(
-                    "{} got unexpected keyword arguments: {}. Cannot trace the function when `input_spec` is specificed."
-                    .format(self._dygraph_function.__name__, kwargs))
+                    "{} got unexpected keyword arguments: {}. Cannot trace the function when `input_spec` is specificed.".format(
+                        self._dygraph_function.__name__, kwargs
+                    )
+                )
 
             # Note: The length of `input_spec` can be greater than `args`,
             # because `args` may contains non-tensor value merged form `kwargs`
             # after `unified_args_and_kwargs`.
             if len(args) < len(self._input_spec):
                 raise ValueError(
-                    "Requires len(arguments) >= len(input_spec), but received len(args):{} < len(InputSpec): {}"
-                    .format(len(args), len(self._input_spec)))
+                    "Requires len(arguments) >= len(input_spec), but received len(args):{} < len(InputSpec): {}".format(
+                        len(args), len(self._input_spec)
+                    )
+                )
 
             # replace argument with corresponding InputSpec.
             args_with_spec = convert_to_input_spec(args, self._input_spec)
@@ -155,8 +168,9 @@ class FunctionSpec(object):
 
         # If without specificing name in input_spec, add default name
         # according to argument name from decorated function.
-        args_with_spec = replace_spec_empty_name(self._arg_names,
-                                                 args_with_spec)
+        args_with_spec = replace_spec_empty_name(
+            self._arg_names, args_with_spec
+        )
 
         return args_with_spec, kwargs_with_spec
 
@@ -183,7 +197,8 @@ class FunctionSpec(object):
                     dtype=var_spec.dtype,
                     is_data=True,
                     need_check_feed=False,
-                    stop_gradient=stop_gradient)
+                    stop_gradient=stop_gradient,
+                )
             else:
                 feed_layer = var_spec
             inputs.append(feed_layer)
@@ -196,15 +211,19 @@ class FunctionSpec(object):
         """
         if not isinstance(input_spec, (tuple, list)):
             raise TypeError(
-                "The type(input_spec) should be one of (tuple, list), but received {}."
-                .format(type_name(input_spec)))
+                "The type(input_spec) should be one of (tuple, list), but received {}.".format(
+                    type_name(input_spec)
+                )
+            )
 
         return tuple(input_spec)
 
     def __repr__(self):
         return "function: {}({}), input_spec: {}".format(
-            self._dygraph_function.__name__, ','.join(self._arg_names),
-            self._input_spec)
+            self._dygraph_function.__name__,
+            ','.join(self._arg_names),
+            self._input_spec,
+        )
 
     @property
     def dygraph_function(self):
@@ -243,8 +262,10 @@ def get_parameters(layer_instance, include_sublayer=True):
                 params = layer_instance._parameters
         else:
             raise TypeError(
-                "Type of `layer_instance` should be nn.Layer, but received {}".
-                format(type_name(layer_instance)))
+                "Type of `layer_instance` should be nn.Layer, but received {}".format(
+                    type_name(layer_instance)
+                )
+            )
 
     return params
 
@@ -265,32 +286,39 @@ def get_buffers(layer_instance, include_sublayer=True):
                 buffers = layer_instance._buffers
         else:
             raise TypeError(
-                "Type of `layer_instance` should be nn.Layer, but received {}".
-                format(type_name(layer_instance)))
+                "Type of `layer_instance` should be nn.Layer, but received {}".format(
+                    type_name(layer_instance)
+                )
+            )
     return buffers
 
 
 def convert_to_input_spec(inputs, input_spec):
     """
     Replaces tensor in structured `inputs` by InputSpec in `input_spec`.
-    
+
     Args:
         inputs(list|dict): nested structure list or dict.
-        input_spec(list|dict): same nested structure list or dict as inputs. 
+        input_spec(list|dict): same nested structure list or dict as inputs.
 
-    
+
     Return:
         Same structure with inputs by replacing the element with specified InputSpec.
     """
 
     def check_type_and_len(input, spec, check_length=False):
         if type(input) is not type(spec):
-            raise TypeError('type(input) should be {}, but received {}.'.format(
-                type(spec), type(input)))
+            raise TypeError(
+                'type(input) should be {}, but received {}.'.format(
+                    type(spec), type(input)
+                )
+            )
         if check_length and len(input) < len(spec):
             raise ValueError(
-                'Requires len(inputs) >= len(input_spec), but received len(inputs):{} < len(input_spec):{}'
-                .format(len(inputs), len(input_spec)))
+                'Requires len(inputs) >= len(input_spec), but received len(inputs):{} < len(input_spec):{}'.format(
+                    len(inputs), len(input_spec)
+                )
+            )
 
     if isinstance(input_spec, (tuple, list)):
         input_with_spec = []
@@ -303,13 +331,15 @@ def convert_to_input_spec(inputs, input_spec):
         # Note: If the rest inputs contain tensor or numpy.ndarray
         # without specific InputSpec, raise warning.
         if len(inputs) > len(input_spec):
-            for rest_input in inputs[len(input_spec):]:
+            for rest_input in inputs[len(input_spec) :]:
                 if isinstance(rest_input, (core.VarBase, np.ndarray)):
                     logging_utils.warn(
                         "The inputs constain `{}` without specificing InputSpec, its shape and dtype will be treated immutable. "
-                        "Please specific InputSpec information in `@to_static` if you expect them as mutable inputs."
-                        .format(type_name(rest_input)))
-        input_with_spec.extend(inputs[len(input_spec):])
+                        "Please specific InputSpec information in `@to_static` if you expect them as mutable inputs.".format(
+                            type_name(rest_input)
+                        )
+                    )
+        input_with_spec.extend(inputs[len(input_spec) :])
 
         return input_with_spec
     elif isinstance(input_spec, dict):
@@ -318,7 +348,8 @@ def convert_to_input_spec(inputs, input_spec):
         for name, input in six.iteritems(inputs):
             if name in input_spec:
                 input_with_spec[name] = convert_to_input_spec(
-                    input, input_spec[name])
+                    input, input_spec[name]
+                )
             else:
                 input_with_spec[name] = input
         return input_with_spec
@@ -341,7 +372,7 @@ def replace_spec_empty_name(args_name, input_with_spec):
         4. If the arguments `input_dic` corresponds to a dict(InputSpec), using key as name.
 
     For example:
-        
+
         # case 1: foo(x, y)
         foo = to_static(foo, input_spec=[InputSpec([None, 10]), InputSpec([None])])
         print([in_var.name for in_var in foo.inputs])  # [x, y]
@@ -355,7 +386,7 @@ def replace_spec_empty_name(args_name, input_with_spec):
         print([in_var.name for in_var in foo.inputs])  # [x, y]
     """
     input_with_spec = list(input_with_spec)
-    candidate_arg_names = args_name[:len(input_with_spec)]
+    candidate_arg_names = args_name[: len(input_with_spec)]
 
     for i, arg_name in enumerate(candidate_arg_names):
         input_spec = input_with_spec[i]
@@ -406,11 +437,13 @@ def _hash_spec_names(args_specs, kwargs_specs):
     the former has one input ('x'), but the latter has two input ('x', 'y').
     """
     spec_names = [
-        spec.name for spec in flatten(args_specs)
+        spec.name
+        for spec in flatten(args_specs)
         if isinstance(spec, paddle.static.InputSpec)
     ]
     spec_names += [
-        spec.name for spec in flatten(kwargs_specs)
+        spec.name
+        for spec in flatten(kwargs_specs)
         if isinstance(spec, paddle.static.InputSpec)
     ]
     i, name_ids = 0, {}

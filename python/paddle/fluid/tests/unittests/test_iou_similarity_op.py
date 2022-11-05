@@ -23,7 +23,6 @@ from op_test import OpTest
 
 
 class TestIOUSimilarityOp(OpTest):
-
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
@@ -39,7 +38,9 @@ class TestIOUSimilarityOp(OpTest):
         self.attrs = {"box_normalized": self.box_normalized}
         self.outputs = {'Out': self.output}
 
-    def _compute_iou(self, ):
+    def _compute_iou(
+        self,
+    ):
         for row in range(self.boxes1.shape[0]):
             for col in range(self.boxes2.shape[0]):
                 xmin1, ymin1, xmax1, ymax1 = self.boxes1[row]
@@ -69,7 +70,6 @@ class TestIOUSimilarityOp(OpTest):
 
 
 class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
-
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 
@@ -86,7 +86,6 @@ class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
 
 
 class TestIOUSimilarityOpWithBoxNormalized(TestIOUSimilarityOp):
-
     def test_check_output(self):
         self.check_output(check_dygraph=False)
 

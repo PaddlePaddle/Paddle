@@ -20,8 +20,8 @@ from paddle.distribution import independent
 
 
 class TransformedDistribution(distribution.Distribution):
-    r"""    
-    Applies a sequence of Transforms to a base distribution. 
+    r"""
+    Applies a sequence of Transforms to a base distribution.
 
     Args:
         base (Distribution): The base distribution.
@@ -30,12 +30,12 @@ class TransformedDistribution(distribution.Distribution):
     Examples:
 
         .. code-block:: python
-        
-            import paddle 
+
+            import paddle
             from paddle.distribution import transformed_distribution
 
             d = transformed_distribution.TransformedDistribution(
-                paddle.distribution.Normal(0., 1.), 
+                paddle.distribution.Normal(0., 1.),
                 [paddle.distribution.AffineTransform(paddle.to_tensor(1.), paddle.to_tensor(2.))]
             )
 
@@ -67,17 +67,25 @@ class TransformedDistribution(distribution.Distribution):
             )
         if chain._domain.event_rank > len(base.event_shape):
             base = independent.Independent(
-                (base, chain._domain.event_rank - len(base.event_shape)))
+                (base, chain._domain.event_rank - len(base.event_shape))
+            )
         self._base = base
         self._transforms = transforms
 
-        transformed_shape = chain.forward_shape(base.batch_shape +
-                                                base.event_shape)
-        transformed_event_rank = chain._codomain.event_rank + \
-            max(len(base.event_shape)-chain._domain.event_rank, 0)
+        transformed_shape = chain.forward_shape(
+            base.batch_shape + base.event_shape
+        )
+        transformed_event_rank = chain._codomain.event_rank + max(
+            len(base.event_shape) - chain._domain.event_rank, 0
+        )
         super(TransformedDistribution, self).__init__(
-            transformed_shape[:len(transformed_shape) - transformed_event_rank],
-            transformed_shape[len(transformed_shape) - transformed_event_rank:])
+            transformed_shape[
+                : len(transformed_shape) - transformed_event_rank
+            ],
+            transformed_shape[
+                len(transformed_shape) - transformed_event_rank :
+            ],
+        )
 
     def sample(self, shape=()):
         """Sample from ``TransformedDistribution``.
@@ -108,12 +116,13 @@ class TransformedDistribution(distribution.Distribution):
         for t in reversed(self._transforms):
             x = t.inverse(y)
             event_rank += t._domain.event_rank - t._codomain.event_rank
-            log_prob = log_prob - \
-                _sum_rightmost(t.forward_log_det_jacobian(
-                    x), event_rank-t._domain.event_rank)
+            log_prob = log_prob - _sum_rightmost(
+                t.forward_log_det_jacobian(x), event_rank - t._domain.event_rank
+            )
             y = x
-        log_prob += _sum_rightmost(self._base.log_prob(y),
-                                   event_rank - len(self._base.event_shape))
+        log_prob += _sum_rightmost(
+            self._base.log_prob(y), event_rank - len(self._base.event_shape)
+        )
         return log_prob
 
 

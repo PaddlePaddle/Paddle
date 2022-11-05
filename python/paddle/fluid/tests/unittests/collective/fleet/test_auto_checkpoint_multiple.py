@@ -29,15 +29,19 @@ from paddle.fluid import unique_name
 import numpy as np
 from paddle.io import Dataset, BatchSampler, DataLoader
 
-from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBase, get_logger
-from paddle.fluid.tests.unittests.test_auto_checkpoint import AutoCheckPointACLBase
+from paddle.fluid.tests.unittests.auto_checkpoint_utils import (
+    AutoCheckpointBase,
+    get_logger,
+)
+from paddle.fluid.tests.unittests.test_auto_checkpoint import (
+    AutoCheckPointACLBase,
+)
 
 paddle.enable_static()
 logger = get_logger()
 
 
 class AutoCheckpointTestMul(AutoCheckPointACLBase):
-
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -54,7 +58,7 @@ class AutoCheckpointTestMul(AutoCheckPointACLBase):
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint_dist_multiple",
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
             "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test_dist_multiple",
-            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0",
         }
         os.environ.update(proc_env)
 
@@ -72,11 +76,23 @@ class AutoCheckpointTestMul(AutoCheckPointACLBase):
         exe, main_prog1, startup_prog1 = self._generate()
         _, main_prog2, startup_prog2 = self._generate()
 
-        compiled1, data_loader1, optimizer1, loss1, image1, label1 = \
-            self._init_env(exe, main_prog1, startup_prog1)
+        (
+            compiled1,
+            data_loader1,
+            optimizer1,
+            loss1,
+            image1,
+            label1,
+        ) = self._init_env(exe, main_prog1, startup_prog1)
 
-        compiled2, data_loader2, optimizer2, loss2, image2, label2 = \
-            self._init_env(exe, main_prog2, startup_prog2)
+        (
+            compiled2,
+            data_loader2,
+            optimizer2,
+            loss2,
+            image2,
+            label2,
+        ) = self._init_env(exe, main_prog2, startup_prog2)
 
         o = None
         epochs = []

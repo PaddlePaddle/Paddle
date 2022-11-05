@@ -23,7 +23,9 @@ import paddle.distributed as dist
 from paddle.fluid.dygraph.nn import Linear
 from paddle.autograd import PyLayer
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
-from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
+from paddle.distributed.fleet.utils.hybrid_parallel_util import (
+    fused_allreduce_gradients,
+)
 
 batch = 5
 in_dim = 20
@@ -31,7 +33,6 @@ out_dim = 10
 
 
 class cus_tanh(PyLayer):
-
     @staticmethod
     def forward(ctx, x):
         y = paddle.tanh(x)
@@ -40,13 +41,12 @@ class cus_tanh(PyLayer):
 
     @staticmethod
     def backward(ctx, dy):
-        y, = ctx.saved_tensor()
+        (y,) = ctx.saved_tensor()
         grad = dy * (1 - paddle.square(y))
         return grad
 
 
 class SimpleNet(paddle.nn.Layer):
-
     def __init__(self, train_id, model_id):
         super(SimpleNet, self).__init__()
         self.w = self.create_parameter(shape=[in_dim, batch], dtype="float32")
@@ -67,7 +67,6 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestDistTraning(unittest.TestCase):
-
     def test_multiple_gpus(self):
         self.trainer_id = dist.get_rank()
         dist.init_parallel_env()

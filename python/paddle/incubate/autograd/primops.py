@@ -34,13 +34,9 @@ def _simple_binop(helper):
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type=optype,
-                     inputs={
-                         'X': x,
-                         'Y': y
-                     },
-                     outputs={'Z': out},
-                     attrs={})
+    helper.append_op(
+        type=optype, inputs={'X': x, 'Y': y}, outputs={'Z': out}, attrs={}
+    )
     return out
 
 
@@ -50,16 +46,16 @@ def _manipulation_unop(helper):
 
     attrs = {
         k: helper.kwargs[k]
-        for k in ('shape', 'axis', 'index') if k in helper.kwargs
+        for k in ('shape', 'axis', 'index')
+        if k in helper.kwargs
     }
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type=optype,
-                     inputs={'X': x},
-                     outputs={'Y': out},
-                     attrs=attrs)
+    helper.append_op(
+        type=optype, inputs={'X': x}, outputs={'Y': out}, attrs=attrs
+    )
     return out
 
 
@@ -82,13 +78,12 @@ def set_value(x, y, axis, starts, ends, strides, out):
     assert x is out, "x and out should be the same Tensor in set_value"
     attrs = {'axes': axis, 'starts': starts, 'ends': ends, 'steps': strides}
     helper = LayerHelper('set_value', **locals())
-    helper.append_op(type=helper.layer_type,
-                     inputs={
-                         'Input': x,
-                         'ValueTensor': y
-                     },
-                     outputs={'Out': out},
-                     attrs=attrs)
+    helper.append_op(
+        type=helper.layer_type,
+        inputs={'Input': x, 'ValueTensor': y},
+        outputs={'Out': out},
+        attrs=attrs,
+    )
     return out
 
 
@@ -176,10 +171,12 @@ def split(x, num_or_sections, axis=0, outs=None):
             helper.create_variable_for_type_inference(dtype=x.dtype)
             for i in range(n)
         ]
-    helper.append_op(type=helper.layer_type,
-                     inputs={'X': x},
-                     outputs={'YS': outs},
-                     attrs=attrs)
+    helper.append_op(
+        type=helper.layer_type,
+        inputs={'X': x},
+        outputs={'YS': outs},
+        attrs=attrs,
+    )
     return outs
 
 
@@ -191,17 +188,19 @@ def concat(xs, axis=0, out=None):
     helper = LayerHelper('concat_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=xs[0].dtype)
-    helper.append_op(type=helper.layer_type,
-                     inputs={'XS': xs},
-                     outputs={'Y': out},
-                     attrs=attrs)
+    helper.append_op(
+        type=helper.layer_type,
+        inputs={'XS': xs},
+        outputs={'Y': out},
+        attrs=attrs,
+    )
     return out
 
 
 @REGISTER_FN('reduce_sum_p', 'X', 'Y')
 def reduce_sum(x, axis=None, keepdim=False, out=None):
     axes = axis or tuple(range(0, len(x.shape)))
-    axes = (axes, ) if isinstance(axes, int) else axes
+    axes = (axes,) if isinstance(axes, int) else axes
     if not isinstance(axis, (tuple, list)):
         raise TypeError(f'axis must be tuple or list, but got {type(axis)}')
     if not isinstance(keepdim, bool):
@@ -212,10 +211,9 @@ def reduce_sum(x, axis=None, keepdim=False, out=None):
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type=helper.layer_type,
-                     inputs={'X': x},
-                     outputs={'Y': out},
-                     attrs=attrs)
+    helper.append_op(
+        type=helper.layer_type, inputs={'X': x}, outputs={'Y': out}, attrs=attrs
+    )
     return out
 
 
@@ -227,28 +225,33 @@ def matmul(x, y, out=None):
 @REGISTER_FN('slice_select_p', 'X', 'Y')
 def slice_select(x, axis, starts, ends, strides, out=None):
     if not isinstance(axis, (list, tuple)):
-        raise TypeError(f'Argument type error. `axis` is supposed to be list or'
-                        f' tuple but found {type(axis)}.')
+        raise TypeError(
+            f'Argument type error. `axis` is supposed to be list or'
+            f' tuple but found {type(axis)}.'
+        )
     if not isinstance(starts, (list, tuple)):
         raise TypeError(
             f'Argument type error. `starts` is supposed to be list or'
-            f' tuple but found {type(starts)}.')
+            f' tuple but found {type(starts)}.'
+        )
     if not isinstance(ends, (list, tuple)):
-        raise TypeError(f'Argument type error. `ends` is supposed to be list or'
-                        f' tuple but found {type(ends)}.')
+        raise TypeError(
+            f'Argument type error. `ends` is supposed to be list or'
+            f' tuple but found {type(ends)}.'
+        )
     assert len(axis) == len(starts) == len(ends) == len(strides), (
         f'len(axis), len(starts), len(ends) and len(strides) should be equal, '
         f'but len(axis)={len(axis)}, len(starts)={len(starts)}, '
-        f'len(ends)={len(ends)} and len(strides)={len(strides)}')
+        f'len(ends)={len(ends)} and len(strides)={len(strides)}'
+    )
 
     attrs = {'axis': axis, 'starts': starts, 'ends': ends, 'strides': strides}
     helper = LayerHelper('slice_select_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type=helper.layer_type,
-                     inputs={'X': x},
-                     outputs={'Y': out},
-                     attrs=attrs)
+    helper.append_op(
+        type=helper.layer_type, inputs={'X': x}, outputs={'Y': out}, attrs=attrs
+    )
     return out
 
 
@@ -257,22 +260,23 @@ def slice_assign(x, y, axis, starts, ends, strides, out=None):
     assert len(starts) == len(ends) == len(strides) == len(axis), (
         f'len(starts), len(ends), len(strides) and len(axis) should be equal, '
         f'but len(starts)={len(starts)}, len(ends)={len(ends)}, '
-        f'len(strides)={len(strides)} and len(axis)={len(axis)}')
+        f'len(strides)={len(strides)} and len(axis)={len(axis)}'
+    )
     assert len(y.shape) == len(x.shape), (
         f'len(y.shape) should be equal to len(x.shape), '
-        f'but len(y.shape)={len(y.shape)} and len(x.shape)={len(x.shape)}.')
+        f'but len(y.shape)={len(y.shape)} and len(x.shape)={len(x.shape)}.'
+    )
 
     attrs = {'axis': axis, 'starts': starts, 'ends': ends, 'strides': strides}
     helper = LayerHelper('slice_assign_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type=helper.layer_type,
-                     inputs={
-                         'X': x,
-                         'Y': y
-                     },
-                     outputs={'Z': out},
-                     attrs=attrs)
+    helper.append_op(
+        type=helper.layer_type,
+        inputs={'X': x, 'Y': y},
+        outputs={'Z': out},
+        attrs=attrs,
+    )
     return out
 
 
@@ -282,13 +286,12 @@ def gather(x, indextensor, axis, out=None):
     helper = LayerHelper('gather_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type=helper.layer_type,
-                     inputs={
-                         'X': x,
-                         'IndexTensor': indextensor
-                     },
-                     outputs={'Y': out},
-                     attrs=attrs)
+    helper.append_op(
+        type=helper.layer_type,
+        inputs={'X': x, 'IndexTensor': indextensor},
+        outputs={'Y': out},
+        attrs=attrs,
+    )
     return out
 
 
@@ -296,26 +299,26 @@ def gather(x, indextensor, axis, out=None):
 def scatter_add(x, y, indextensor, axis, out=None):
     assert len(x.shape) == len(y.shape), (
         f'len(x.shape) should be equal to len(y.shape), '
-        f'but len(x.shape)={len(x.shape)} and len(y.shape)={len(y.shape)}.')
-    assert len(
-        indextensor.shape
-    ) == 1, f'len(indextensor.shape) must be equal to 1, but got {len(indextensor.shape)}.'
+        f'but len(x.shape)={len(x.shape)} and len(y.shape)={len(y.shape)}.'
+    )
+    assert (
+        len(indextensor.shape) == 1
+    ), f'len(indextensor.shape) must be equal to 1, but got {len(indextensor.shape)}.'
     assert y.shape[axis] == indextensor.shape[0], (
         f'y.shape[axis] should be equal to indextensor.shape[0], '
         f'but y.shape[axis]={y.shape[axis]} and '
-        f'indextensor.shape[0]={indextensor.shape[0]}.')
+        f'indextensor.shape[0]={indextensor.shape[0]}.'
+    )
     attrs = {'axis': axis}
     helper = LayerHelper('scatter_add_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type=helper.layer_type,
-                     inputs={
-                         'X': x,
-                         'Y': y,
-                         'IndexTensor': indextensor
-                     },
-                     outputs={'Z': out},
-                     attrs=attrs)
+    helper.append_op(
+        type=helper.layer_type,
+        inputs={'X': x, 'Y': y, 'IndexTensor': indextensor},
+        outputs={'Z': out},
+        attrs=attrs,
+    )
     return out
 
 
@@ -328,24 +331,26 @@ def log(x, out=None):
 def select(cond, x, y, out=None):
     if len(cond.shape) != len(x.shape):
         raise ValueError(
-            "len(cond.shape) should be equal to len(x.shape), but len(cond.shape)={} and len(x.shape)={}."
-            .format(len(cond.shape), len(x.shape)))
+            "len(cond.shape) should be equal to len(x.shape), but len(cond.shape)={} and len(x.shape)={}.".format(
+                len(cond.shape), len(x.shape)
+            )
+        )
 
     if len(x.shape) != len(y.shape):
         raise ValueError(
-            "len(x.shape) should be equal to len(y.shape), but len(x.shape)={} and len(y.shape)={}."
-            .format(len(x.shape), len(y.shape)))
+            "len(x.shape) should be equal to len(y.shape), but len(x.shape)={} and len(y.shape)={}.".format(
+                len(x.shape), len(y.shape)
+            )
+        )
 
     helper = LayerHelper('select_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type=helper.layer_type,
-                     inputs={
-                         'Condition': cond,
-                         'X': x,
-                         'Y': y
-                     },
-                     outputs={'Z': out})
+    helper.append_op(
+        type=helper.layer_type,
+        inputs={'Condition': cond, 'X': x, 'Y': y},
+        outputs={'Z': out},
+    )
     return out
 
 
@@ -389,8 +394,10 @@ def cast(x, dtype, out=None):
     helper = LayerHelper('cast_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type=helper.layer_type,
-                     inputs={'X': x},
-                     outputs={'Y': out},
-                     attrs={'dtype': dtype})
+    helper.append_op(
+        type=helper.layer_type,
+        inputs={'X': x},
+        outputs={'Y': out},
+        attrs={'dtype': dtype},
+    )
     return out

@@ -17,9 +17,13 @@ from __future__ import print_function
 from paddle.utils import gast
 import warnings
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+    AstNodeWrapper,
+)
 from paddle.fluid.dygraph.dygraph_to_static import utils
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    BaseTransformer,
+)
 
 
 class GradTransformer(BaseTransformer):
@@ -44,21 +48,33 @@ class GradTransformer(BaseTransformer):
             return node
 
         dygraph_grad_parameters = [
-            "outputs", "inputs", "grad_outputs", "retain_graph", "create_graph",
-            "only_inputs", "allow_unused", "no_grad_vars"
+            "outputs",
+            "inputs",
+            "grad_outputs",
+            "retain_graph",
+            "create_graph",
+            "only_inputs",
+            "allow_unused",
+            "no_grad_vars",
         ]
         to_static_grad_param = {
             "outputs": "targets",
             "inputs": "inputs",
             "grad_outputs": "target_gradients",
-            "no_grad_vars": "no_grad_set"
+            "no_grad_vars": "no_grad_set",
         }
         static_keywords = []
 
         for kw in node.keywords:
-            if kw.arg not in dygraph_grad_parameters or kw.arg not in to_static_grad_param:
-                warnings.warn("paddle.grad has unsupported parameter in jit: " +
-                              kw.arg + ", jit will discard it")
+            if (
+                kw.arg not in dygraph_grad_parameters
+                or kw.arg not in to_static_grad_param
+            ):
+                warnings.warn(
+                    "paddle.grad has unsupported parameter in jit: "
+                    + kw.arg
+                    + ", jit will discard it"
+                )
                 continue
             dygraph_grad_parameters.remove(kw.arg)
             kw.arg = to_static_grad_param[kw.arg]
@@ -67,11 +83,15 @@ class GradTransformer(BaseTransformer):
         for i in range(len(node.args)):
             arg_name = dygraph_grad_parameters[i]
             if arg_name not in to_static_grad_param:
-                warnings.warn("paddle.grad has unsupported parameter in jit: " +
-                              kw.arg + ", jit will discard it")
+                warnings.warn(
+                    "paddle.grad has unsupported parameter in jit: "
+                    + kw.arg
+                    + ", jit will discard it"
+                )
                 continue
-            kw = gast.keyword(arg=to_static_grad_param[arg_name],
-                              value=node.args[i])
+            kw = gast.keyword(
+                arg=to_static_grad_param[arg_name], value=node.args[i]
+            )
             static_keywords.append(kw)
 
         node.func = gast.parse('paddle.static.gradients').body[0].value

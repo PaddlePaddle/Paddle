@@ -19,7 +19,6 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestProcessGroup(TestMultipleGpus):
-
     def test_process_group_nccl(self):
         self.run_mnist_2gpu('process_group_nccl.py')
 

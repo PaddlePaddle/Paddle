@@ -28,7 +28,6 @@ from paddle.fluid.backward import append_backward
 
 
 class PassTest(unittest.TestCase):
-
     @classmethod
     def setUpClass(self):
         self.main_program = fluid.Program()
@@ -73,10 +72,12 @@ class PassTest(unittest.TestCase):
             self.check_output_with_place(place, startup_on_cpu, atol)
 
     def _run_program(self, executor, program):
-        outs = executor.run(program=program,
-                            feed=self.feeds,
-                            fetch_list=self.fetch_list,
-                            return_numpy=False)
+        outs = executor.run(
+            program=program,
+            feed=self.feeds,
+            fetch_list=self.fetch_list,
+            return_numpy=False,
+        )
         outs_np = []
         outs_lod = []
         for out in outs:
@@ -134,8 +135,10 @@ class PassTest(unittest.TestCase):
             outs, lods = self._run_program(executor, self.main_program)
         self.assertTrue(
             len(self.fetch_list) == len(outs),
-            "Checking the number of fetchs failed. Expected: {}, Received: {}".
-            format(len(self.fetch_list), len(outs)))
+            "Checking the number of fetchs failed. Expected: {}, Received: {}".format(
+                len(self.fetch_list), len(outs)
+            ),
+        )
 
         # Parameters may be changed in ir passes.
         opt_program = self._apply_ir_passes()
@@ -144,13 +147,16 @@ class PassTest(unittest.TestCase):
         if startup_on_cpu and not isinstance(place, fluid.CPUPlace):
             warnings.warn(
                 "Parameters are on CPU, and will be transferred to GPU "
-                "automatically by data transform.")
+                "automatically by data transform."
+            )
 
         outs_opt, lods_opt = self._run_program(executor, opt_program)
         self.assertTrue(
             len(self.fetch_list) == len(outs_opt),
-            "Checking the number of fetchs failed. Expected: {}, Received: {}".
-            format(len(self.fetch_list), len(outs_opt)))
+            "Checking the number of fetchs failed. Expected: {}, Received: {}".format(
+                len(self.fetch_list), len(outs_opt)
+            ),
+        )
         for i in six.moves.xrange(len(self.fetch_list)):
             is_allclose = np.allclose(outs_opt[i], outs[i], atol=atol)
             if not is_allclose:
@@ -162,9 +168,17 @@ class PassTest(unittest.TestCase):
                 self.assertTrue(
                     is_allclose,
                     "Output (name: %s, shape: %s, dtype: %s) has diff at %s. The maximum diff is %e, first error element is %d, expected %e, but got %e"
-                    % (self.fetch_list[i].name, str(self.fetch_list[i].shape),
-                       self.fetch_list[i].dtype, str(place), max_diff, offset,
-                       a.flatten()[offset], b.flatten()[offset]))
+                    % (
+                        self.fetch_list[i].name,
+                        str(self.fetch_list[i].shape),
+                        self.fetch_list[i].dtype,
+                        str(place),
+                        max_diff,
+                        offset,
+                        a.flatten()[offset],
+                        b.flatten()[offset],
+                    ),
+                )
 
     def _check_fused_ops(self, program):
         '''
@@ -185,9 +199,10 @@ class PassTest(unittest.TestCase):
         self.assertTrue(
             self.num_fused_ops == acctual_num_fused_ops,
             "Checking of the number of fused operator < {} > failed. "
-            "Expected: {}, Received: {}".format(self.fused_op_type,
-                                                self.num_fused_ops,
-                                                acctual_num_fused_ops))
+            "Expected: {}, Received: {}".format(
+                self.fused_op_type, self.num_fused_ops, acctual_num_fused_ops
+            ),
+        )
 
     def check_program(self, program=None):
         '''
@@ -202,13 +217,16 @@ class PassTest(unittest.TestCase):
         self.assertTrue(
             self.main_program.desc != program.desc,
             "The optimized program and the origin main_program hold the same "
-            "desc.")
+            "desc.",
+        )
 
         self.assertTrue(
             self.main_program.num_blocks == program.num_blocks,
             "The number of blocks of the origin program and the optimized "
             "program are different ({} vs {}).".format(
-                self.main_program.num_blocks, program.num_blocks))
+                self.main_program.num_blocks, program.num_blocks
+            ),
+        )
 
         is_different = False
         for i in six.moves.xrange(program.num_blocks):
@@ -225,7 +243,8 @@ class PassTest(unittest.TestCase):
                     break
 
             if len(self.main_program.block(i).vars) != len(
-                    program.block(i).vars):
+                program.block(i).vars
+            ):
                 # The number of vars in the block i of the origin program and
                 # the optimized program is different.
                 is_different = True
@@ -241,7 +260,8 @@ class PassTest(unittest.TestCase):
         self.assertTrue(
             is_different,
             "The optimized program is logically the same with the origin "
-            "program.")
+            "program.",
+        )
 
     def _find_op(self, specified_op, program, block_id):
         is_find = False

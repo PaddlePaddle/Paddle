@@ -29,7 +29,7 @@ import six
 
 __all__ = []
 
-#URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+# URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
 URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
 MD5 = '30177ea32e27c525793142b6bf2c8e2d'
 
@@ -60,9 +60,10 @@ def build_dict(min_word_freq=50):
     train_filename = './simple-examples/data/ptb.train.txt'
     test_filename = './simple-examples/data/ptb.valid.txt'
     with tarfile.open(
-            paddle.dataset.common.download(paddle.dataset.imikolov.URL,
-                                           'imikolov',
-                                           paddle.dataset.imikolov.MD5)) as tf:
+        paddle.dataset.common.download(
+            paddle.dataset.imikolov.URL, 'imikolov', paddle.dataset.imikolov.MD5
+        )
+    ) as tf:
         trainf = tf.extractfile(train_filename)
         testf = tf.extractfile(test_filename)
         word_freq = word_count(testf, word_count(trainf))
@@ -83,12 +84,14 @@ def build_dict(min_word_freq=50):
 
 
 def reader_creator(filename, word_idx, n, data_type):
-
     def reader():
         with tarfile.open(
-                paddle.dataset.common.download(
-                    paddle.dataset.imikolov.URL, 'imikolov',
-                    paddle.dataset.imikolov.MD5)) as tf:
+            paddle.dataset.common.download(
+                paddle.dataset.imikolov.URL,
+                'imikolov',
+                paddle.dataset.imikolov.MD5,
+            )
+        ) as tf:
             f = tf.extractfile(filename)
 
             UNK = word_idx['<unk>']
@@ -99,13 +102,14 @@ def reader_creator(filename, word_idx, n, data_type):
                     if len(l) >= n:
                         l = [word_idx.get(w, UNK) for w in l]
                         for i in six.moves.range(n, len(l) + 1):
-                            yield tuple(l[i - n:i])
+                            yield tuple(l[i - n : i])
                 elif DataType.SEQ == data_type:
                     l = l.strip().split()
                     l = [word_idx.get(w, UNK) for w in l]
                     src_seq = [word_idx['<s>']] + l
                     trg_seq = l + [word_idx['<e>']]
-                    if n > 0 and len(src_seq) > n: continue
+                    if n > 0 and len(src_seq) > n:
+                        continue
                     yield src_seq, trg_seq
                 else:
                     assert False, 'Unknow data type'
@@ -117,7 +121,8 @@ def reader_creator(filename, word_idx, n, data_type):
     since="2.0.0",
     update_to="paddle.text.datasets.Imikolov",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def train(word_idx, n, data_type=DataType.NGRAM):
     """
     imikolov training set creator.
@@ -134,15 +139,17 @@ def train(word_idx, n, data_type=DataType.NGRAM):
     :return: Training reader creator
     :rtype: callable
     """
-    return reader_creator('./simple-examples/data/ptb.train.txt', word_idx, n,
-                          data_type)
+    return reader_creator(
+        './simple-examples/data/ptb.train.txt', word_idx, n, data_type
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imikolov",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def test(word_idx, n, data_type=DataType.NGRAM):
     """
     imikolov test set creator.
@@ -159,14 +166,16 @@ def test(word_idx, n, data_type=DataType.NGRAM):
     :return: Test reader creator
     :rtype: callable
     """
-    return reader_creator('./simple-examples/data/ptb.valid.txt', word_idx, n,
-                          data_type)
+    return reader_creator(
+        './simple-examples/data/ptb.valid.txt', word_idx, n, data_type
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imikolov",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def fetch():
     paddle.dataset.common.download(URL, "imikolov", MD5)

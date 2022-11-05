@@ -70,7 +70,8 @@ def reader_creator(filename, sub_name):
     since="2.0.0",
     update_to="paddle.vision.datasets.VOC2012",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def train():
     """
     Create a train dataset reader containing 2913 images in HWC order.
@@ -82,7 +83,8 @@ def train():
     since="2.0.0",
     update_to="paddle.vision.datasets.VOC2012",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def test():
     """
     Create a test dataset reader containing 1464 images in HWC order.
@@ -94,7 +96,8 @@ def test():
     since="2.0.0",
     update_to="paddle.vision.datasets.VOC2012",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def val():
     """
     Create a val dataset reader containing 1449 images in HWC order.

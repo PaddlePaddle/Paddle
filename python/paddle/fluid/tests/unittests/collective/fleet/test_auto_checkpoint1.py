@@ -29,15 +29,19 @@ from paddle.fluid import unique_name
 import numpy as np
 from paddle.io import Dataset, BatchSampler, DataLoader
 
-from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBase, get_logger
-from paddle.fluid.tests.unittests.test_auto_checkpoint import AutoCheckPointACLBase
+from paddle.fluid.tests.unittests.auto_checkpoint_utils import (
+    AutoCheckpointBase,
+    get_logger,
+)
+from paddle.fluid.tests.unittests.test_auto_checkpoint import (
+    AutoCheckPointACLBase,
+)
 
 paddle.enable_static()
 logger = get_logger()
 
 
 class AutoCheckpointTest1(AutoCheckPointACLBase):
-
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -54,7 +58,7 @@ class AutoCheckpointTest1(AutoCheckPointACLBase):
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint_1",
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
             "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test_1",
-            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0",
         }
         os.environ.update(proc_env)
 

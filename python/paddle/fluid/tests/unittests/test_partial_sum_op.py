@@ -26,7 +26,6 @@ import six
 
 
 class TestPartialSumOp(OpTest):
-
     def setUp(self):
         self.op_type = "partial_sum"
         self.init_kernel_type()
@@ -38,13 +37,15 @@ class TestPartialSumOp(OpTest):
         self.var_names = [
             'x' + str(num) for num in six.moves.range(self.var_num)
         ]
-        self.vars = [np.random.random((self.batch_size, self.column)).astype(self.dtype)\
-                     for num in six.moves.range(self.var_num) ]
+        self.vars = [
+            np.random.random((self.batch_size, self.column)).astype(self.dtype)
+            for num in six.moves.range(self.var_num)
+        ]
         self.inputs = {'X': list(zip(self.var_names, self.vars))}
         self.attrs = {'start_index': self.start_index, 'length': self.length}
-        y = self.vars[0][:, self.start_index:end_index]
+        y = self.vars[0][:, self.start_index : end_index]
         for i in six.moves.range(1, self.var_num):
-            y = y + self.vars[i][:, self.start_index:end_index]
+            y = y + self.vars[i][:, self.start_index : end_index]
 
         self.outputs = {'Out': y}
 
@@ -67,7 +68,6 @@ class TestPartialSumOp(OpTest):
 
 
 class TestPartialSumOp2(TestPartialSumOp):
-
     def init_para(self):
         self.batch_size = random.randint(1, 10)
         self.column = random.randint(101, 200)
@@ -77,7 +77,6 @@ class TestPartialSumOp2(TestPartialSumOp):
 
 
 class TestPartialSumOp3(TestPartialSumOp):
-
     def init_para(self):
         self.batch_size = random.randint(1, 10)
         self.column = random.randint(101, 200)
@@ -87,7 +86,6 @@ class TestPartialSumOp3(TestPartialSumOp):
 
 
 class TestPartialSumOp4(TestPartialSumOp):
-
     def init_para(self):
         self.batch_size = random.randint(1, 10)
         self.column = random.randint(101, 200)

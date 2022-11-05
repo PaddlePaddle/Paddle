@@ -19,7 +19,6 @@ import paddle.compat as cpt
 
 
 class TestCompatible(unittest.TestCase):
-
     def test_type(self):
         self.assertEqual(cpt.int_type, int)
         self.assertEqual(cpt.long_type, int)

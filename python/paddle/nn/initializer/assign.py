@@ -38,7 +38,7 @@ class Assign(NumpyArrayInitializer):
             # numpy array
             data_1 = paddle.ones(shape=[1, 2], dtype='float32')
             weight_attr_1 = paddle.framework.ParamAttr(
-                name="linear_weight_1", 
+                name="linear_weight_1",
                 initializer=paddle.nn.initializer.Assign(np.array([2, 2])))
             bias_attr_1 = paddle.framework.ParamAttr(
                 name="linear_bias_1",
@@ -83,15 +83,19 @@ class Assign(NumpyArrayInitializer):
 
     def __init__(self, value, name=None):
         import numpy
-        check_type(value, 'value',
-                   (numpy.ndarray, list, tuple, paddle.static.Variable),
-                   'Assign')
 
-        if (isinstance(value, (list, tuple))):
+        check_type(
+            value,
+            'value',
+            (numpy.ndarray, list, tuple, paddle.static.Variable),
+            'Assign',
+        )
+
+        if isinstance(value, (list, tuple)):
             value = numpy.array(value)
 
         # TODO: value is already is a tensor, accounting efficiency maybe it does not need to convert tensor to numpy data and then initialized.
-        if (isinstance(value, paddle.static.Variable)):
+        if isinstance(value, paddle.static.Variable):
             value = value.numpy()
 
         super(Assign, self).__init__(value)

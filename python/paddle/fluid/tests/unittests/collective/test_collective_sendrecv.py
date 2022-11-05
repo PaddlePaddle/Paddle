@@ -23,7 +23,6 @@ paddle.enable_static()
 
 
 class TestSendRecvOp(TestDistBase):
-
     def _setup_config(self):
         pass
 
@@ -31,12 +30,14 @@ class TestSendRecvOp(TestDistBase):
         self.check_with_place("collective_sendrecv_op.py", "sendrecv")
 
     def test_sendrecv_dynamic_shape(self):
-        self.check_with_place("collective_sendrecv_op_dynamic_shape.py",
-                              "sendrecv_dynamic_shape")
+        self.check_with_place(
+            "collective_sendrecv_op_dynamic_shape.py", "sendrecv_dynamic_shape"
+        )
 
     def test_sendrecv_array(self):
-        self.check_with_place("collective_sendrecv_op_array.py",
-                              "sendrecv_array")
+        self.check_with_place(
+            "collective_sendrecv_op_array.py", "sendrecv_array"
+        )
 
 
 if __name__ == '__main__':

@@ -21,7 +21,6 @@ from op_test import OpTest
 
 
 class TestFlattenOp(OpTest):
-
     def setUp(self):
         self.op_type = "flatten"
         self.init_test_case()
@@ -45,7 +44,6 @@ class TestFlattenOp(OpTest):
 
 
 class TestFlattenOp1(TestFlattenOp):
-
     def init_test_case(self):
         self.in_shape = (3, 2, 2, 10)
         self.axis = 0
@@ -53,7 +51,6 @@ class TestFlattenOp1(TestFlattenOp):
 
 
 class TestFlattenOpWithDefaultAxis(TestFlattenOp):
-
     def init_test_case(self):
         self.in_shape = (10, 2, 2, 3)
         self.new_shape = (10, 12)
@@ -63,7 +60,6 @@ class TestFlattenOpWithDefaultAxis(TestFlattenOp):
 
 
 class TestFlattenOpSixDims(TestFlattenOp):
-
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.axis = 4

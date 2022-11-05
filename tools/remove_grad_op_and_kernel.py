@@ -56,8 +56,11 @@ def update_operator_cmake(cmake_file):
 
         match = re.findall(pat2, content, flags=re.DOTALL)
         content = content.replace(
-            match[0], code2 + '\n' +
-            match[0].replace('py_func_op', 'py_func_op ${LOSS_OPS}'))
+            match[0],
+            code2
+            + '\n'
+            + match[0].replace('py_func_op', 'py_func_op ${LOSS_OPS}'),
+        )
 
     with open(cmake_file, 'w') as f:
         f.write(content)
@@ -68,21 +71,30 @@ if __name__ == '__main__':
     tool_dir = os.path.dirname(os.path.abspath(__file__))
 
     if sys.version_info[0] == 3:
-        all_op = glob.glob(os.path.join(tool_dir,
-                                        '../paddle/fluid/operators/**/*.cc'),
-                           recursive=True)
-        all_op += glob.glob(os.path.join(tool_dir,
-                                         '../paddle/fluid/operators/**/*.cu'),
-                            recursive=True)
+        all_op = glob.glob(
+            os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cc'),
+            recursive=True,
+        )
+        all_op += glob.glob(
+            os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cu'),
+            recursive=True,
+        )
     elif sys.version_info[0] == 2:
         all_op = find_type_files(
-            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cc')
+            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cc'
+        )
         all_op = find_type_files(
-            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cu', all_op)
+            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cu', all_op
+        )
 
     spec_ops = ['activation_op.cc']
 
-    register_op_count, register_op_cpu_kernel_count, register_op_cuda_kernel_count, register_op_xpu_kernel_count = 0, 0, 0, 0
+    (
+        register_op_count,
+        register_op_cpu_kernel_count,
+        register_op_cuda_kernel_count,
+        register_op_xpu_kernel_count,
+    ) = (0, 0, 0, 0)
     register_op_kernel_count, register_op_kernel_with_custom_type_count = 0, 0
 
     # 1. remove all grad op and kernel
@@ -108,7 +120,9 @@ if __name__ == '__main__':
         op_kernel_pattern2 = 'REGISTER_OP_KERNEL\(.*?_grad,.*?\);?'
 
         custom_pattern1 = 'REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE\(.*?\);?'
-        custom_pattern2 = 'REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE\(.*?_grad,.*?\);?'
+        custom_pattern2 = (
+            'REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE\(.*?_grad,.*?\);?'
+        )
 
         op_name = os.path.split(op_file)[1]
         if op_name in spec_ops:
@@ -129,18 +143,24 @@ if __name__ == '__main__':
         with io.open(op_file, 'r', encoding='utf-8') as f:
             content = ''.join(f.readlines())
 
-            op, op_count = remove_grad_op_and_kernel(content, op_pattern1,
-                                                     op_pattern2)
+            op, op_count = remove_grad_op_and_kernel(
+                content, op_pattern1, op_pattern2
+            )
             cpu_kernel, cpu_kernel_count = remove_grad_op_and_kernel(
-                content, cpu_kernel_pattern1, cpu_kernel_pattern2)
+                content, cpu_kernel_pattern1, cpu_kernel_pattern2
+            )
             gpu_kernel, gpu_kernel_count = remove_grad_op_and_kernel(
-                content, gpu_kernel_pattern1, gpu_kernel_pattern2)
+                content, gpu_kernel_pattern1, gpu_kernel_pattern2
+            )
             xpu_kernel, xpu_kernel_count = remove_grad_op_and_kernel(
-                content, xpu_kernel_pattern1, xpu_kernel_pattern2)
+                content, xpu_kernel_pattern1, xpu_kernel_pattern2
+            )
             op_kernel, op_kernel_count = remove_grad_op_and_kernel(
-                content, op_kernel_pattern1, op_kernel_pattern2)
+                content, op_kernel_pattern1, op_kernel_pattern2
+            )
             custom_kernel, custom_kernel_count = remove_grad_op_and_kernel(
-                content, custom_pattern1, custom_pattern2)
+                content, custom_pattern1, custom_pattern2
+            )
 
             register_op_count += op_count
             register_op_cpu_kernel_count += cpu_kernel_count
@@ -163,17 +183,24 @@ if __name__ == '__main__':
             f.write(u'{}'.format(content))
 
     # 2. update operators/CMakeLists.txt
-    cmake_file = os.path.join(tool_dir,
-                              '../paddle/fluid/operators/CMakeLists.txt')
+    cmake_file = os.path.join(
+        tool_dir, '../paddle/fluid/operators/CMakeLists.txt'
+    )
     update_operator_cmake(cmake_file)
 
     print('We erase all grad op and kernel for Paddle-Inference lib.')
     print('%50s%10s' % ('type', 'count'))
     print('%50s%10s' % ('REGISTER_OPERATOR', register_op_count))
     print('%50s%10s' % ('REGISTER_OP_CPU_KERNEL', register_op_cpu_kernel_count))
-    print('%50s%10s' %
-          ('REGISTER_OP_CUDA_KERNEL', register_op_cuda_kernel_count))
+    print(
+        '%50s%10s' % ('REGISTER_OP_CUDA_KERNEL', register_op_cuda_kernel_count)
+    )
     print('%50s%10s' % ('REGISTER_OP_XPU_KERNEL', register_op_xpu_kernel_count))
     print('%50s%10s' % ('REGISTER_OP_KERNEL', register_op_kernel_count))
-    print('%50s%10s' % ('REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE',
-                        register_op_kernel_with_custom_type_count))
+    print(
+        '%50s%10s'
+        % (
+            'REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE',
+            register_op_kernel_with_custom_type_count,
+        )
+    )

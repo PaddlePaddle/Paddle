@@ -37,19 +37,17 @@ class Variable(object):
         return self._event_rank
 
     def constraint(self, value):
-        """Check whether the 'value' meet the constraint conditions of this 
+        """Check whether the 'value' meet the constraint conditions of this
         random variable."""
         return self._constraint(value)
 
 
 class Real(Variable):
-
     def __init__(self, event_rank=0):
         super(Real, self).__init__(False, event_rank, constraint.real)
 
 
 class Positive(Variable):
-
     def __init__(self, event_rank=0):
         super(Positive, self).__init__(False, event_rank, constraint.positive)
 
@@ -59,30 +57,31 @@ class Independent(Variable):
 
     Args:
         base (Variable): Base variable.
-        reinterpreted_batch_rank (int): The rightmost batch rank to be 
-            reinterpreted. 
+        reinterpreted_batch_rank (int): The rightmost batch rank to be
+            reinterpreted.
     """
 
     def __init__(self, base, reinterpreted_batch_rank):
         self._base = base
         self._reinterpreted_batch_rank = reinterpreted_batch_rank
-        super(Independent,
-              self).__init__(base.is_discrete,
-                             base.event_rank + reinterpreted_batch_rank)
+        super(Independent, self).__init__(
+            base.is_discrete, base.event_rank + reinterpreted_batch_rank
+        )
 
     def constraint(self, value):
         ret = self._base.constraint(value)
         if ret.dim() < self._reinterpreted_batch_rank:
             raise ValueError(
                 "Input dimensions must be equal or grater than  {}".format(
-                    self._reinterpreted_batch_rank))
-        return ret.reshape(ret.shape[:ret.dim() -
-                                     self.reinterpreted_batch_rank] +
-                           (-1, )).all(-1)
+                    self._reinterpreted_batch_rank
+                )
+            )
+        return ret.reshape(
+            ret.shape[: ret.dim() - self.reinterpreted_batch_rank] + (-1,)
+        ).all(-1)
 
 
 class Stack(Variable):
-
     def __init__(self, vars, axis=0):
         self._vars = vars
         self._axis = axis
@@ -102,12 +101,18 @@ class Stack(Variable):
         if not (-value.dim() <= self._axis < value.dim()):
             raise ValueError(
                 f'Input dimensions {value.dim()} should be grater than stack '
-                f'constraint axis {self._axis}.')
+                f'constraint axis {self._axis}.'
+            )
 
-        return paddle.stack([
-            var.check(value)
-            for var, value in zip(self._vars, paddle.unstack(value, self._axis))
-        ], self._axis)
+        return paddle.stack(
+            [
+                var.check(value)
+                for var, value in zip(
+                    self._vars, paddle.unstack(value, self._axis)
+                )
+            ],
+            self._axis,
+        )
 
 
 real = Real()

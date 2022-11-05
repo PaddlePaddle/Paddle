@@ -31,7 +31,6 @@ from google.protobuf import text_format
 
 
 class TestTheOnePs(PsPassTestBase):
-
     def setUp(self):
         pass
 
@@ -66,14 +65,16 @@ class TestTheOnePs(PsPassTestBase):
         self.config['run_the_one_ps'] = '1'
 
         self.config['debug_the_one_ps'] = '0'
-        self.config[
-            'log_dir'] = ps_log_root_dir + "async_cpu_log_old_the_one_ps"
+        self.config['log_dir'] = (
+            ps_log_root_dir + "async_cpu_log_old_the_one_ps"
+        )
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch()
 
         self.config['debug_the_one_ps'] = '1'
-        self.config[
-            'log_dir'] = ps_log_root_dir + "async_cpu_log_new_the_one_ps"
+        self.config['log_dir'] = (
+            ps_log_root_dir + "async_cpu_log_new_the_one_ps"
+        )
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch()
 

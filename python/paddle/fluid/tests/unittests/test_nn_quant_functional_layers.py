@@ -20,8 +20,7 @@ import paddle
 
 
 class TestFunctionalLayers(unittest.TestCase):
-    """
-    """
+    """ """
 
     def setUp(self):
         paddle.disable_static()

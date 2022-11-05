@@ -13,6 +13,8 @@
 # limitations under the License.
 from __future__ import print_function
 
-from ...fluid.dygraph.dygraph_to_static.convert_call_func import convert_call  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_call_func import (
+    convert_call,
+)  # noqa: F401
 
 __all__ = []

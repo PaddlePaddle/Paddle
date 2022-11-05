@@ -24,7 +24,6 @@ import paddle
 
 
 class TestSparseSquareOp(unittest.TestCase):
-
     def check_with_place(self, place):
         scope = core.Scope()
 
@@ -62,7 +61,6 @@ class TestSparseSquareOp(unittest.TestCase):
 
 
 class TestSparseSqrtOp(unittest.TestCase):
-
     def check_with_place(self, place):
         scope = core.Scope()
 

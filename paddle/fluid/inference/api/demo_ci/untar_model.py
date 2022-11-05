@@ -20,7 +20,7 @@ def untar(fname, dirs):
     """
     extract the tar.gz file
     :param fname: the name of tar.gz file
-    :param dirs: the path of decompressed file 
+    :param dirs: the path of decompressed file
     :return: bool
     """
     try:

@@ -27,7 +27,6 @@ from paddle.fluid import Program, program_guard
 
 
 class TestXPUClipByNormOp(XPUOpTest):
-
     def setUp(self):
         self.op_type = "clip_by_norm"
         self.dtype = np.float32
@@ -55,26 +54,23 @@ class TestXPUClipByNormOp(XPUOpTest):
             self.check_output_with_place(place)
 
     def initTestCase(self):
-        self.shape = (100, )
+        self.shape = (100,)
         self.max_norm = 1.0
 
 
 class TestCase1(TestXPUClipByNormOp):
-
     def initTestCase(self):
-        self.shape = (100, )
+        self.shape = (100,)
         self.max_norm = 1e20
 
 
 class TestCase2(TestXPUClipByNormOp):
-
     def initTestCase(self):
         self.shape = (16, 16)
         self.max_norm = 0.1
 
 
 class TestCase3(TestXPUClipByNormOp):
-
     def initTestCase(self):
         self.shape = (4, 8, 16)
         self.max_norm = 1.0

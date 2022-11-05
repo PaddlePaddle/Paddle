@@ -29,6 +29,5 @@ logger.setLevel(logging.INFO)
 
 
 class DatasetSimnetReader(fleet.MultiSlotDataGenerator):
-
     def generate_sample(self, line):
         pass

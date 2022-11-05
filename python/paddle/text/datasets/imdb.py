@@ -74,15 +74,20 @@ class Imdb(Dataset):
     """
 
     def __init__(self, data_file=None, mode='train', cutoff=150, download=True):
-        assert mode.lower() in ['train', 'test'], \
-            "mode should be 'train', 'test', but got {}".format(mode)
+        assert mode.lower() in [
+            'train',
+            'test',
+        ], "mode should be 'train', 'test', but got {}".format(mode)
         self.mode = mode.lower()
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(data_file, URL, MD5,
-                                                        'imdb', download)
+            assert (
+                download
+            ), "data_file is not set and downloading automatically is disabled"
+            self.data_file = _check_exists_and_download(
+                data_file, URL, MD5, 'imdb', download
+            )
 
         # Build a word dictionary from the corpus
         self.word_idx = self._build_work_dict(cutoff)
@@ -114,10 +119,13 @@ class Imdb(Dataset):
                 if bool(pattern.match(tf.name)):
                     # newline and punctuations removal and ad-hoc tokenization.
                     data.append(
-                        tarf.extractfile(tf).read().rstrip(
-                            six.b("\n\r")).translate(
-                                None,
-                                six.b(string.punctuation)).lower().split())
+                        tarf.extractfile(tf)
+                        .read()
+                        .rstrip(six.b("\n\r"))
+                        .translate(None, six.b(string.punctuation))
+                        .lower()
+                        .split()
+                    )
                 tf = tarf.next()
 
         return data

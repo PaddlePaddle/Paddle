@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -64,7 +63,6 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {
             'name': 'x',

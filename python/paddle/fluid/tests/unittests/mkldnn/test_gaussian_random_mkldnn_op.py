@@ -16,17 +16,17 @@ from __future__ import print_function
 
 import unittest
 
-from paddle.fluid.tests.unittests.test_gaussian_random_op import TestGaussianRandomOp
+from paddle.fluid.tests.unittests.test_gaussian_random_op import (
+    TestGaussianRandomOp,
+)
 
 
 class TestMKLDNNGaussianRandomOpSeed10(TestGaussianRandomOp):
-
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestMKLDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
-
     def setUp(self):
         TestGaussianRandomOp.setUp(self)
         self.use_mkldnn = True
@@ -35,7 +35,7 @@ class TestMKLDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
             "mean": 1.0,
             "std": 2.0,
             "seed": 10,
-            "use_mkldnn": self.use_mkldnn
+            "use_mkldnn": self.use_mkldnn,
         }
 
 

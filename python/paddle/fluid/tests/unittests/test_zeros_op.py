@@ -26,7 +26,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestZerosOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             shape = [4]
@@ -39,27 +38,26 @@ class TestZerosOpError(unittest.TestCase):
 
 
 class ApiZerosTest(unittest.TestCase):
-
     def test_out(self):
         with program_guard(Program()):
             zeros = paddle.zeros(shape=[10], dtype='float64')
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            (result, ) = exe.run(fetch_list=[zeros])
+            (result,) = exe.run(fetch_list=[zeros])
             expected_result = np.zeros(10, dtype='float64')
         self.assertEqual((result == expected_result).all(), True)
         with paddle.static.program_guard(Program()):
             zeros = paddle.zeros(shape=[10], dtype='int64')
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            (result, ) = exe.run(fetch_list=[zeros])
+            (result,) = exe.run(fetch_list=[zeros])
             expected_result = np.zeros(10, dtype='int64')
         self.assertEqual((result == expected_result).all(), True)
         with program_guard(Program()):
             zeros = paddle.zeros(shape=[10], dtype='int64')
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            (result, ) = exe.run(fetch_list=[zeros])
+            (result,) = exe.run(fetch_list=[zeros])
             expected_result = np.zeros(10, dtype='int64')
         self.assertEqual((result == expected_result).all(), True)
         with program_guard(Program()):
@@ -75,7 +73,7 @@ class ApiZerosTest(unittest.TestCase):
             zeros = fluid.layers.zeros(shape=[10], dtype='int64')
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            (result, ) = exe.run(fetch_list=[zeros])
+            (result,) = exe.run(fetch_list=[zeros])
             expected_result = np.zeros(10, dtype='int64')
         self.assertEqual((result == expected_result).all(), True)
 
@@ -86,9 +84,7 @@ class ApiZerosTest(unittest.TestCase):
 
 
 class ApiZerosError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_error1():
             with paddle.static.program_guard(fluid.Program()):
                 ones = fluid.layers.zeros(shape=10, dtype='int64')
@@ -116,5 +112,5 @@ class ApiZerosError(unittest.TestCase):
             self.test_shape_errors()
 
 
-if (__name__ == '__main__'):
+if __name__ == '__main__':
     unittest.main()

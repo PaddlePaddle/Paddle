@@ -23,7 +23,6 @@ from paddle.distributed.fleet.elastic.manager import LauncherInterface
 
 
 class CollectiveLauncher(LauncherInterface):
-
     def __init__(self, args):
         self.args = args
         self.procs = []
@@ -34,7 +33,8 @@ class CollectiveLauncher(LauncherInterface):
         self.tmp_dir = tempfile.mkdtemp()
         cluster, pod = paddle.distributed.fleet.launch.get_cluster_info(args)
         global_envs = paddle.distributed.fleet.launch.get_global_envs(
-            args, self.tmp_dir)
+            args, self.tmp_dir
+        )
 
         self.procs = start_local_trainers(
             cluster,
@@ -42,7 +42,8 @@ class CollectiveLauncher(LauncherInterface):
             training_script=args.training_script,
             training_script_args=args.training_script_args,
             log_dir=args.log_dir,
-            envs=global_envs)
+            envs=global_envs,
+        )
 
         for idx, proc in enumerate(self.procs):
             logger.info("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))

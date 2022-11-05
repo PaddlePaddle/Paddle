@@ -16,12 +16,14 @@
 
 import unittest
 import shlex
-from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import prepare_python_path_and_return_module, remove_path_if_exists
+from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import (
+    prepare_python_path_and_return_module,
+    remove_path_if_exists,
+)
 import os
 
 
 class FlPsTest(unittest.TestCase):
-
     def test_launch_fl_ps(self):
         pass
         '''
