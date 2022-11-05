@@ -1487,7 +1487,27 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
   }
 #endif  // PADDLE_WITH_CUDA
 
-  return use_cudnn && this->SupportsCUDNN(data_type);
+  if (use_cudnn && this->SupportsCUDNN(data_type)) {
+    std::stringstream debug_str;
+    if (this->Type() == "tanh") {
+      auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+          phi::TransToPhiKernelName(type_));
+      for (auto iter = phi_kernels.begin(); iter != phi_kernels.end(); iter++) {
+        debug_str << iter->first;
+      }
+      auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+      if (op_kernel_iter != OperatorWithKernel::AllOpKernels().end()) {
+        auto& op_kernels = op_kernel_iter->second;
+        for (auto iter = op_kernels.begin(); iter != op_kernels.end(); iter++) {
+          debug_str << iter->first;
+        }
+      }
+    }
+    PADDLE_ENFORCE(this->Type() != "tanh",
+                   "tanh selected CUDNN Kernel " + debug_str.str());
+    return true;
+  }
+  return false;
 }
 
 void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
