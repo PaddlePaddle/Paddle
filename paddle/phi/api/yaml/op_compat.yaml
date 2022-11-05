@@ -899,7 +899,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh_shrink
   backward : tanh_shrink_grad
