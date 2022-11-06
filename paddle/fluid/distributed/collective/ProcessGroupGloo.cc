@@ -229,6 +229,14 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
   }
 };
 
+// TODO(sunyilun): for compatibility, will be updated later
+std::shared_ptr<ProcessGroup::Task> Broadcast(phi::DenseTensor* out_tensor,
+                                              const phi::DenseTensor& in_tensor,
+                                              const BroadcastOptions& opts,
+                                              bool sync_op) {
+  return Broadcast({in_tensor}, {*out_tensor}, opts, true);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,

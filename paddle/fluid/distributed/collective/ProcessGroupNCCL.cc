@@ -15,12 +15,8 @@
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 
 #include "paddle/fluid/distributed/collective/Common.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/device_context.h"
 
 DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
@@ -105,7 +101,7 @@ const phi::DeviceContext& ProcessGroupNCCL::GetDeviceContext(
 
 const phi::DeviceContext& ProcessGroupNCCL::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
-  const std::string key = GetKeyFromPlace(place);
+  const std::string& key = GetKeyFromPlace(place);
   if (use_calc_stream) {
     const auto& iter = place_to_calc_ctx_.find(key);
     return *iter->second;
@@ -121,7 +117,7 @@ const phi::DeviceContext& ProcessGroupNCCL::GetDeviceContext(
 }
 
 ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
-  const std::string key = GetKeyFromPlace(place);
+  const std::string& key = GetKeyFromPlace(place);
   const auto& iter = place_to_comm_ctx_.find(key);
   PADDLE_ENFORCE_NE(
       iter,
@@ -282,7 +278,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
 void ProcessGroupNCCL::SyncCalcStream(
     const Place& place, const std::shared_ptr<platform::DeviceEvent>& event) {
-  const std::string key = GetKeyFromPlace(place);
+  const std::string& key = GetKeyFromPlace(place);
   const auto* calc_ctx = place_to_calc_ctx_[key];
   const auto* comm_ctx = place_to_comm_ctx_[key].get();
   event->Record(calc_ctx);
@@ -592,7 +588,7 @@ void ProcessGroupNCCL::Collective(const phi::DenseTensor* in,
                                   CommType op_type) {
   std::vector<Place> places;
   places.push_back(in->place());
-  const auto key = GetKeyFromPlaces(places);
+  const std::string& key = GetKeyFromPlaces(places);
 
   {
     std::lock_guard<std::mutex> lock(mutex_);
