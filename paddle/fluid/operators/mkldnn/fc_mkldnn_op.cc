@@ -20,7 +20,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-enum { kFCMKLDNNFP32 = 1, kFCMKLDNNINT8 = 2 };
 
 using dnnl::inner_product_forward;
 using dnnl::memory;
