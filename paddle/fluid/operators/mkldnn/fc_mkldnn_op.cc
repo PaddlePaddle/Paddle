@@ -20,6 +20,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+enum { kFCMKLDNNFP32 = 1, kFCMKLDNNINT8 = 2 };
 
 using dnnl::inner_product_forward;
 using dnnl::memory;
@@ -333,35 +334,24 @@ class FCMKLDNNHandler
   }  // namespace operators
 };   // namespace paddle
 
-#define IF_CHANGE_FC_TW_TYPENAME(condition, ...) \
-  if (condition) {                               \
-    using T_w = int8_t;                          \
-    __VA_ARGS__();                               \
-  } else {                                       \
-    using T_w = T_in;                            \
-    __VA_ARGS__();                               \
-  }
-
-template <typename T_in>
+template <typename T_in, typename T_w>
 class FCMKLDNNKernel : public framework::OpKernel<T_in> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
     bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
 
-    IF_CHANGE_FC_TW_TYPENAME((std::is_same<T_in, uint8_t>::value), ([&] {
-                               if (force_fp32_output) {
-                                 this->RunKernel<float, T_w>(ctx);
-                               } else if (IsInt8<T_in>()) {
-                                 if (fuse_relu) {
-                                   this->RunKernel<uint8_t, T_w>(ctx);
-                                 } else {
-                                   this->RunKernel<int8_t, T_w>(ctx);
-                                 }
-                               } else {
-                                 this->RunKernel<T_in, T_w>(ctx);
-                               }
-                             }));
+    if (force_fp32_output) {
+      this->RunKernel<float>(ctx);
+    } else if (IsInt8<T_in>()) {
+      if (fuse_relu) {
+        this->RunKernel<uint8_t>(ctx);
+      } else {
+        this->RunKernel<int8_t>(ctx);
+      }
+    } else {
+      this->RunKernel<T_in>(ctx);
+    }
   }
 
   void PrepareSrcMem(const std::shared_ptr<inner_product_forward>& fc_p,
@@ -381,7 +371,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     }
   }
 
-  template <typename T_out, typename T_w>
+  template <typename T_out = T_w>
   void RunKernel(const framework::ExecutionContext& ctx) const {
     const auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
@@ -526,11 +516,32 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 // data type implies their destination data type. (What's eventually going to
 // be used during computations of kernel).
 namespace ops = paddle::operators;
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(fc,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    FP32,
+                                    ops::kFCMKLDNNFP32,
+                                    ops::FCMKLDNNKernel<float, float>);
 
-REGISTER_OP_KERNEL(fc,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   ops::FCMKLDNNKernel<float>,
-                   ops::FCMKLDNNKernel<paddle::platform::bfloat16>,
-                   ops::FCMKLDNNKernel<uint8_t>,
-                   ops::FCMKLDNNKernel<int8_t>);
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
+    fc,
+    MKLDNN,
+    ::paddle::platform::CPUPlace,
+    BF16,
+    ops::kFCMKLDNNFP32,
+    ops::FCMKLDNNKernel<paddle::platform::bfloat16,
+                        paddle::platform::bfloat16>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(fc,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    U8,
+                                    ops::kFCMKLDNNINT8,
+                                    ops::FCMKLDNNKernel<uint8_t, int8_t>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(fc,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    S8,
+                                    ops::kFCMKLDNNINT8,
+                                    ops::FCMKLDNNKernel<int8_t, int8_t>);
