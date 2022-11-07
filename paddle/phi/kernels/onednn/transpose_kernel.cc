@@ -60,9 +60,7 @@ void TransposeKernel(const Context& dev_ctx,
   }
   dst_md =
       dnnl::memory::desc(x_vec_dims, x.mem_desc().data_type(), fake_strides);
-  auto dst_data =
-      out->mutable_data(dev_ctx.GetPlace(), x.type(), dst_md.get_size());
-
+  auto dst_data = dev_ctx.Alloc(out, x.type());
   auto reorder_dst_memory_p =
       std::make_shared<dnnl::memory>(dst_md, onednn_engine, dst_data);
 
