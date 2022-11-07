@@ -670,6 +670,7 @@ def save(obj, path, protocol=4, **configs):
     Examples:
         .. code-block:: python
             :name: code-example-1
+
             # example 1: dynamic graph
             import paddle
             emb = paddle.nn.Embedding(10, 10)
@@ -692,6 +693,7 @@ def save(obj, path, protocol=4, **configs):
 
         .. code-block:: python
             :name: code-example-2
+
             # example 2: Save multiple state_dict at the same time
             import paddle
             from paddle import nn
@@ -705,6 +707,7 @@ def save(obj, path, protocol=4, **configs):
 
         .. code-block:: python
             :name: code-example-3
+
             # example 3: static graph
             import paddle
             import paddle.static as static
@@ -734,6 +737,7 @@ def save(obj, path, protocol=4, **configs):
 
         .. code-block:: python
             :name: code-example-4
+
             # example 4: save program
             import paddle
 
@@ -748,6 +752,7 @@ def save(obj, path, protocol=4, **configs):
 
         .. code-block:: python
             :name: code-example-5
+
             # example 5: save object to memory
             from io import BytesIO
             import paddle
