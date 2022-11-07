@@ -90,6 +90,7 @@ class Adam(Optimizer):
             different semantics with the original Adam algorithm and may lead to different result.
             The default value is False.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
+        chunk_size(int, optional) ChunkSize for blocks computing. Default is 32*2048.
         use_multi_tensor (bool, optional): Whether to use multi-tensor strategy to update all parameters at once . Default is false.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -172,6 +173,7 @@ class Adam(Optimizer):
         grad_clip=None,
         lazy_mode=False,
         multi_precision=False,
+        chunk_size=32 * 2048,
         use_multi_tensor=False,
         name=None,
     ):
@@ -201,12 +203,14 @@ class Adam(Optimizer):
             grad_clip=grad_clip,
             name=name,
         )
+
         self.type = "adam"
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
         self._lazy_mode = lazy_mode
         self._multi_precision = multi_precision
+        self.chunk_size = chunk_size
         self._master_weights = {}
         self._default_dict = {
             'beta1': beta1,
@@ -712,7 +716,26 @@ class Adam(Optimizer):
                     else self._beta2.numpy().item(0)
                 )
 
+                i = 0
+                use_multi_tensor_adam = True
+                for beta1_pow, beta2_pow, lr in zip(
+                    self._beta1_pow_acc_dict[key][param_group_idx],
+                    self._beta2_pow_acc_dict[key][param_group_idx],
+                    lr_dict[key],
+                ):
+                    if i == 0:
+                        beta1_pow_first = beta1_pow
+                        beta2_pow_first = beta2_pow
+                        lr_first = lr
+                    if (
+                        beta1_pow_first != beta1_pow
+                        or beta2_pow_first != beta2_pow
+                        or lr_first != lr
+                    ):
+                        use_multi_tensor_adam = False
+
                 if framework._non_static_mode():
+
                     master_weight = self._master_weight_dict[key]
                     master_weight = (
                         master_weight[param_group_idx]
@@ -720,47 +743,108 @@ class Adam(Optimizer):
                         else None
                     )
                     if in_dygraph_mode():
-
-                        _, _, _, _, _, _ = _C_ops.merged_adam_(
-                            self._param_dict[key][param_group_idx],
-                            grad_dict[key],
-                            lr_dict[key],
-                            self._moment1_dict[key][param_group_idx],
-                            self._moment2_dict[key][param_group_idx],
-                            self._beta1_pow_acc_dict[key][param_group_idx],
-                            self._beta2_pow_acc_dict[key][param_group_idx],
-                            master_weight,
-                            _beta1,
-                            _beta2,
-                            self._epsilon,
-                            find_master,
-                            False,
-                        )
+                        if use_multi_tensor_adam:
+                            found_inf = self._get_auxiliary_var('found_inf')
+                            _, _, _, _, _, _ = _C_ops.multi_tensor_adam_(
+                                self._param_dict[key][param_group_idx],
+                                grad_dict[key],
+                                lr_dict[key][0],
+                                self._moment1_dict[key][param_group_idx],
+                                self._moment2_dict[key][param_group_idx],
+                                self._beta1_pow_acc_dict[key][param_group_idx][
+                                    0
+                                ],
+                                self._beta2_pow_acc_dict[key][param_group_idx][
+                                    0
+                                ],
+                                master_weight,
+                                found_inf,
+                                _beta1,
+                                _beta2,
+                                self._epsilon,
+                                self.chunk_size,
+                                0.0,
+                                False,
+                                find_master,
+                                False,
+                            )
+                        else:
+                            _, _, _, _, _, _ = _C_ops.merged_adam_(
+                                self._param_dict[key][param_group_idx],
+                                grad_dict[key],
+                                lr_dict[key],
+                                self._moment1_dict[key][param_group_idx],
+                                self._moment2_dict[key][param_group_idx],
+                                self._beta1_pow_acc_dict[key][param_group_idx],
+                                self._beta2_pow_acc_dict[key][param_group_idx],
+                                master_weight,
+                                _beta1,
+                                _beta2,
+                                self._epsilon,
+                                find_master,
+                                False,
+                            )
                     else:
-                        _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
-                            self._param_dict[key][param_group_idx],
-                            grad_dict[key],
-                            lr_dict[key],
-                            self._moment1_dict[key][param_group_idx],
-                            self._moment2_dict[key][param_group_idx],
-                            self._beta1_pow_acc_dict[key][param_group_idx],
-                            self._beta2_pow_acc_dict[key][param_group_idx],
-                            master_weight,
-                            self._param_dict[key][param_group_idx],
-                            self._moment1_dict[key][param_group_idx],
-                            self._moment2_dict[key][param_group_idx],
-                            self._beta1_pow_acc_dict[key][param_group_idx],
-                            self._beta2_pow_acc_dict[key][param_group_idx],
-                            master_weight,
-                            'epsilon',
-                            self._epsilon,
-                            'beta1',
-                            _beta1,
-                            'beta2',
-                            _beta2,
-                            'multi_precision',
-                            find_master,
-                        )
+                        if use_multi_tensor_adam:
+                            _, _, _, _, _, _ = _legacy_C_ops.multi_tensor_adam(
+                                self._param_dict[key][param_group_idx],
+                                grad_dict[key],
+                                lr_dict[key][0],
+                                self._moment1_dict[key][param_group_idx],
+                                self._moment2_dict[key][param_group_idx],
+                                self.beta1_pow_acc[param_group_idx],
+                                self.beta2_pow_acc[param_group_idx],
+                                master_weight,
+                                self._param_dict[key][param_group_idx],
+                                self._moment1_dict[key][param_group_idx],
+                                self._moment2_dict[key][param_group_idx],
+                                self._beta1_pow_acc_dict[key][param_group_idx][
+                                    0
+                                ],
+                                self._beta2_pow_acc_dict[key][param_group_idx][
+                                    0
+                                ],
+                                master_weight,
+                                'epsilon',
+                                self._epsilon,
+                                'beta1',
+                                _beta1,
+                                'beta2',
+                                _beta2,
+                                'chunk_size',
+                                self.chunk_size,
+                                'weight_decay',
+                                0.0,
+                                'use_adamw',
+                                False,
+                                'multi_precision',
+                                find_master,
+                            )
+                        else:
+                            _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
+                                self._param_dict[key][param_group_idx],
+                                grad_dict[key],
+                                lr_dict[key],
+                                self._moment1_dict[key][param_group_idx],
+                                self._moment2_dict[key][param_group_idx],
+                                self._beta1_pow_acc_dict[key][param_group_idx],
+                                self._beta2_pow_acc_dict[key][param_group_idx],
+                                master_weight,
+                                self._param_dict[key][param_group_idx],
+                                self._moment1_dict[key][param_group_idx],
+                                self._moment2_dict[key][param_group_idx],
+                                self._beta1_pow_acc_dict[key][param_group_idx],
+                                self._beta2_pow_acc_dict[key][param_group_idx],
+                                master_weight,
+                                'epsilon',
+                                self._epsilon,
+                                'beta1',
+                                _beta1,
+                                'beta2',
+                                _beta2,
+                                'multi_precision',
+                                find_master,
+                            )
                 else:
                     inputs = {
                         "Param": self._param_dict[key][param_group_idx],
