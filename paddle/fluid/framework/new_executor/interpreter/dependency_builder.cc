@@ -84,7 +84,6 @@ bool DependencyBuilder::OpHappensBefore(int prior_op_idx,
 }
 
 void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
-  const std::string kCoalesceTensor = "coalesce_tensor";
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (instructions_->at(op_idx).OpBase()->Type() == kCoalesceTensor) {
       VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;

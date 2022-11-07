@@ -20,8 +20,6 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-#pragma GCC diagnostic ignored "-Wunused-variable"
-
 paddle::experimental::Tensor fused_gemm_epilogue_dygraph_function(
     const paddle::experimental::Tensor& X,
     const paddle::experimental::Tensor& Y,

@@ -37,6 +37,8 @@ __not_shape_var_type__ = [
     core.VarDesc.VarType.STEP_SCOPES,
 ]
 
+__not_naive_data_parallel_op__ = ["expand_v2"]
+
 
 def get_logger(log_level, name="auto_parallel"):
     logger = logging.getLogger(name)
@@ -1907,6 +1909,35 @@ def validate_opt(optimizer):
         optimizer._parameter_list = None
         optimizer._param_groups = None
     return optimizer
+
+
+def set_data_parallel(x):
+    from .process_group import get_world_process_group
+    from .interface import shard_tensor, ProcessMesh
+
+    world_ranks = get_world_process_group().ranks
+    process_mesh = ProcessMesh(world_ranks, ['dp'])
+    shard_spec = ['dp' if len(world_ranks) > 1 else None] + [
+        None for _ in range(len(x.shape) - 1)
+    ]
+
+    return shard_tensor(x, process_mesh, shard_spec)
+
+
+def is_naive_data_parallel(dist_context):
+    # Navie data parallel only completes dist_attr once from the front to back.
+    if not dist_context.data_parallel:
+        return False
+
+    ops_type = [
+        op.type
+        for op in dist_context._original_serial_main_program.global_block().ops
+    ]
+    if (
+        not set(ops_type) & set(__not_naive_data_parallel_op__)
+    ) and dist_context.data_parallel:
+        return True
+    return False
 
 
 def _copy_tensor_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr):
