@@ -102,10 +102,12 @@ std::unordered_map<aclFormat, FormatHelper::FormatInfo> FormatHelper::info = {
 FormatShape InferShapeLessTo4(FormatShape dims) {
   FormatShape res;
   res.resize(4);
-  PADDLE_ENFORCE_LE(
-      dims.size(),
-      4,
-      phi::errors::InvalidArgument("input dim > 4 when InferShapeLessTo4"));
+  PADDLE_ENFORCE_LE(dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The size of input dims of InferShapeLessTo4 must be "
+                        "less than 4, but got dims.size = [%d].",
+                        dims.size()));
   switch (dims.size()) {
     case 0:
       res[0] = 1;
@@ -141,7 +143,7 @@ FormatShape InferShapeLessTo4(FormatShape dims) {
       res[3] = dims[3];
       break;
     default:
-      LOG(FATAL) << "dims of NCHW shape should not be greater than 4, which is "
+      LOG(FATAL) << "dims of NCHW shape should not be less than 4, which is "
                  << dims.size();
   }
   return res;
@@ -225,10 +227,13 @@ FormatShape InferShapeNCHWToND(FormatShape storage_dims,
   if (storage_dims.size() != 4) {
     cur_storage_dims = InferShapeLessTo4(storage_dims);
   }
-  PADDLE_ENFORCE_EQ(cur_storage_dims.size(),
-                    4,
-                    phi::errors::InvalidArgument(
-                        "input dim num not equal 4 when InferShapeNCHWToND"));
+  PADDLE_ENFORCE_EQ(
+      cur_storage_dims.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The size of cur_storage_dims of InferShapeNCHWToND must be equal to "
+          "4, but got cur_storage_dims.size = [%d].",
+          cur_storage_dims.size()));
 
   if (base_dims.size() == 0) {
     FormatShape temp_dims;
@@ -240,37 +245,42 @@ FormatShape InferShapeNCHWToND(FormatShape storage_dims,
       // reshape_type = RESHAPE_TYPE_C;
       res.resize(1);
       res[0] = cur_storage_dims[1];
-      PADDLE_ENFORCE_EQ(
-          cur_storage_dims[0],
-          1,
-          phi::errors::InvalidArgument(
-              "reshape type RESHAPE_TYPE_C erase dim N must be 1"));
-      PADDLE_ENFORCE_EQ(
-          cur_storage_dims[2],
-          1,
-          phi::errors::InvalidArgument(
-              "reshape type RESHAPE_TYPE_C erase dim H must be 1"));
-      PADDLE_ENFORCE_EQ(
-          cur_storage_dims[3],
-          1,
-          phi::errors::InvalidArgument(
-              "reshape type RESHAPE_TYPE_C erase dim W must be 1"));
+      PADDLE_ENFORCE_EQ(cur_storage_dims[0],
+                        1,
+                        phi::errors::InvalidArgument(
+                            "Reshape type RESHAPE_TYPE_C erase dim N must be "
+                            "1, but got cur_storage_dims[0] = [%d].",
+                            cur_storage_dims[0]));
+      PADDLE_ENFORCE_EQ(cur_storage_dims[2],
+                        1,
+                        phi::errors::InvalidArgument(
+                            "Reshape type RESHAPE_TYPE_C erase dim H must be "
+                            "1, but got cur_storage_dims[0] = [%d].",
+                            cur_storage_dims[2]));
+      PADDLE_ENFORCE_EQ(cur_storage_dims[3],
+                        1,
+                        phi::errors::InvalidArgument(
+                            "Reshape type RESHAPE_TYPE_C erase dim W must be "
+                            "1, but got cur_storage_dims[3] = [%d].",
+                            cur_storage_dims[3]));
       break;
     case 2:
       // reshape_type = RESHAPE_TYPE_CH;
       res.resize(2);
       res[0] = cur_storage_dims[1];
       res[1] = cur_storage_dims[2];
-      PADDLE_ENFORCE_EQ(
-          cur_storage_dims[0],
-          1,
-          phi::errors::InvalidArgument(
-              "reshape type RESHAPE_TYPE_CH erase dim N must be 1"));
-      PADDLE_ENFORCE_EQ(
-          cur_storage_dims[3],
-          1,
-          phi::errors::InvalidArgument(
-              "reshape type RESHAPE_TYPE_CH erase dim W must be 1"));
+      PADDLE_ENFORCE_EQ(cur_storage_dims[0],
+                        1,
+                        phi::errors::InvalidArgument(
+                            "Reshape type RESHAPE_TYPE_CH erase dim N must be "
+                            "1, but got cur_storage_dims[0] = [%d].",
+                            cur_storage_dims[0]));
+      PADDLE_ENFORCE_EQ(cur_storage_dims[3],
+                        1,
+                        phi::errors::InvalidArgument(
+                            "Reshape type RESHAPE_TYPE_CH erase dim W must be "
+                            "1, but got cur_storage_dims[0] = [%d].",
+                            cur_storage_dims[3]));
       break;
     case 3:
       // reshape_type = RESHAPE_TYPE_CHW;
@@ -278,11 +288,12 @@ FormatShape InferShapeNCHWToND(FormatShape storage_dims,
       res[0] = cur_storage_dims[1];
       res[1] = cur_storage_dims[2];
       res[2] = cur_storage_dims[3];
-      PADDLE_ENFORCE_EQ(
-          cur_storage_dims[0],
-          1,
-          phi::errors::InvalidArgument(
-              "reshape type RESHAPE_TYPE_CHW erase dim N must be 1"));
+      PADDLE_ENFORCE_EQ(cur_storage_dims[0],
+                        1,
+                        phi::errors::InvalidArgument(
+                            "Reshape type RESHAPE_TYPE_CHW erase dim N must be "
+                            "1, but got cur_storage_dims[0] = [%d].",
+                            cur_storage_dims[0]));
       break;
     case 4:
       res = cur_storage_dims;
@@ -295,23 +306,29 @@ FormatShape InferShapeNCHWToND(FormatShape storage_dims,
 
 FormatShape InferShapeNDToNCHW(FormatShape storage_dims,
                                FormatShape base_dims) {
-  PADDLE_ENFORCE_LE(
-      storage_dims.size(),
-      4,
-      phi::errors::InvalidArgument("input storage dim not less than 4"));
-  PADDLE_ENFORCE_LE(
-      base_dims.size(),
-      4,
-      phi::errors::InvalidArgument("input storage dim not less than 4"));
+  PADDLE_ENFORCE_LE(storage_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The size of storage_dims of InferShapeNDToNCHW must "
+                        "be less than 4, but got storage_dims.size = [%d].",
+                        storage_dims.size()));
+  PADDLE_ENFORCE_LE(base_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The size of base_dims of InferShapeNDToNCHW must be "
+                        "less than 4, but got base_dims.size = [%d].",
+                        base_dims.size()));
   return InferShapeLessTo4(base_dims);
 }
 
 FormatShape InferShapeNDToNCDHW(FormatShape storage_dims,
                                 FormatShape base_dims) {
-  PADDLE_ENFORCE_EQ(
-      storage_dims.size(),
-      5,
-      phi::errors::InvalidArgument("ND failed to convert to NCDHW"));
+  PADDLE_ENFORCE_EQ(storage_dims.size(),
+                    5,
+                    phi::errors::InvalidArgument(
+                        "The size of storage_dims of InferShapeNDToNCDHW must "
+                        "be equal to 5, but got storage_dims.size = [%d].",
+                        storage_dims.size()));
   FormatShape res;
   res.resize(5);
   res = storage_dims;
@@ -323,10 +340,13 @@ FormatShape InferShapeNCDHWToND(FormatShape storage_dims,
   FormatShape res;
   res.resize(5);
   res = storage_dims;
+
   PADDLE_ENFORCE_EQ(res.size(),
                     5,
                     phi::errors::InvalidArgument(
-                        "input dim num not equal 5 when InferShapeNCDHWToND"));
+                        "The size of res of InferShapeNCDHWToND must be equal "
+                        "to 5, but got res.size = [%d].",
+                        res.size()));
   return res;
 }
 
@@ -335,8 +355,9 @@ FormatShape InferShapeOfNDHWC(FormatShape dims) {
   PADDLE_ENFORCE_LE(
       dims.size(),
       5,
-      phi::errors::InvalidArgument(
-          "input dim num not less than 5 when InferShapeOfNDHWC"));
+      phi::errors::InvalidArgument("The size of dims of InferShapeOfNDHWC must "
+                                   "be less than 5, but got dims.size = [%d].",
+                                   dims.size()));
   FormatShape res;
   res.resize(5);
   res[0] = dims[0];
@@ -352,8 +373,9 @@ FormatShape InferShapeOfNCDHW(FormatShape dims) {
   PADDLE_ENFORCE_LE(
       dims.size(),
       5,
-      phi::errors::InvalidArgument(
-          "input dim num not less than 5 when InferShapeOfNCDHW"));
+      phi::errors::InvalidArgument("The size of dims of InferShapeOfNCDHW must "
+                                   "be less than 5, but got dims.size = [%d].",
+                                   dims.size()));
   FormatShape res;
   res.resize(5);
   res[0] = dims[0];
@@ -366,11 +388,12 @@ FormatShape InferShapeOfNCDHW(FormatShape dims) {
 
 // NCDHW to NDC1HWC0
 FormatShape InferShapeOfNDC1HWC0(FormatShape dims) {
-  PADDLE_ENFORCE_LE(
-      dims.size(),
-      5,
-      phi::errors::InvalidArgument(
-          "input dim num not less than 5 when InferShapeOfNDC1HWC0"));
+  PADDLE_ENFORCE_LE(dims.size(),
+                    5,
+                    phi::errors::InvalidArgument(
+                        "The size of dims of InferShapeOfNDC1HWC0 must be less "
+                        "than 5, but got dims.size = [%d].",
+                        dims.size()));
   FormatShape res;
   res.resize(6);
   res[0] = dims[0];
@@ -384,10 +407,12 @@ FormatShape InferShapeOfNDC1HWC0(FormatShape dims) {
 
 // NCDHW to FZ_3D
 FormatShape InferShapeOfFZ3D(FormatShape dims) {
-  PADDLE_ENFORCE_LE(dims.size(),
-                    5,
-                    phi::errors::InvalidArgument(
-                        "input dim num not less than 5 when InferShapeOfFZ3D"));
+  PADDLE_ENFORCE_LE(
+      dims.size(),
+      5,
+      phi::errors::InvalidArgument("The size of dims of InferShapeOfFZ3D must "
+                                   "be less than 5, but got dims.size = [%d].",
+                                   dims.size()));
   int64_t d1 = dims[2];
   int64_t d2 = (dims[1] + BLOCKSIZE - 1) / BLOCKSIZE;
   int64_t d3 = dims[3];
