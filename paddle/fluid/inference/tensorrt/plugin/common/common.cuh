@@ -18,6 +18,7 @@
 
 #include <cub/cub.cuh>
 #include "cublas_v2.h"
+namespace paddle {
 
 using kv_float = cub::KeyValuePair<float, float>;
 using kv_half = cub::KeyValuePair<half, half>;
@@ -286,4 +287,5 @@ inline void TransposeQKV(const int batch,
     TransposeQkvKernel<half>
         <<<grid, block, 0, stream>>>(head_size, input, output);
   }
+}
 }
