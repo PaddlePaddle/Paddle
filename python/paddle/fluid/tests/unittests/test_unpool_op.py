@@ -180,41 +180,67 @@ class TestUnpoolOpOutput(TestUnpoolOp):
 class TestUnpoolOpException(unittest.TestCase):
     def test_exception(self):
         def indices_size_error():
-            data = paddle.randint(shape=[1, 1, 3, 3])
-            indices = paddle.reshape(paddle.arange(0, 12), shape[1, 1, 3, 4])
-            MaxPool2D = F.maxunpool2d(data, indices, kernel_size=2, stride=2)
+            data = paddle.rand(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(
+                paddle.arange(0, 12), shape=[1, 1, 3, 4]
+            ).astype("int32")
+            MaxPool2D = F.max_unpool2d(data, indices, kernel_size=2, stride=2)
 
         def indices_value_error():
-            data = paddle.randint(shape=[1, 1, 3, 3])
-            indices = paddle.reshape(paddle.arange(4, 40), shape[1, 1, 3, 4])
-            MaxPool2D = F.maxunpool2d(data, indices, kernel_size=2, stride=2)
+            data = paddle.rand(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(
+                paddle.arange(31, 40), shape=[1, 1, 3, 3]
+            ).astype("int32")
+            MaxPool2D = F.max_unpool2d(data, indices, kernel_size=2, stride=2)
 
         def data_format_error():
-            data = paddle.randint(shape=[1, 1, 3, 3])
-            indices = paddle.reshape(paddle.arange(4, 40), shape[1, 1, 3, 4])
-            MaxPool2D = F.maxunpool2d(
+            data = paddle.rand(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(
+                paddle.arange(0, 9), shape=[1, 1, 3, 3]
+            ).astype("int32")
+            MaxPool2D = F.max_unpool2d(
                 data, indices, kernel_size=2, stride=2, data_format="NHWC"
             )
 
         def data_outputsize_error():
-            data = paddle.randint(shape=[1, 1, 3, 3])
-            indices = paddle.reshape(paddle.arange(4, 40), shape[1, 1, 3, 4])
-            MaxPool2D = F.maxunpool2d(
+            data = paddle.rand(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(
+                paddle.arange(0, 9), shape=[1, 1, 3, 3]
+            ).astype("int32")
+            MaxPool2D = F.max_unpool2d(
                 data, indices, kernel_size=2, stride=2, output_size=[5, 6, 7, 8]
             )
 
         def data_outputsize_error2():
-            data = paddle.randint(shape=[1, 1, 3, 3])
-            indices = paddle.reshape(paddle.arange(4, 40), shape[1, 1, 3, 4])
-            MaxPool2D = F.maxunpool2d(
+            data = paddle.rand(shape=[1, 1, 3, 3])
+            indices = paddle.reshape(
+                paddle.arange(0, 9), shape=[1, 1, 3, 3]
+            ).astype("int32")
+            MaxPool2D = F.max_unpool2d(
                 data, indices, kernel_size=2, stride=2, output_size=[100, 100]
             )
 
-        self.assertRaises(ValueError, indices_size_error)
-        self.assertRaises(ValueError, indices_value_error)
-        self.assertRaises(ValueError, data_format_error)
-        self.assertRaises(ValueError, data_outputsize_error)
-        self.assertRaises(ValueError, data_outputsize_error2)
+        self.assertRaisesRegex(
+            ValueError,
+            r"\(InvalidArgument\) The dimensions of Input\(X\) must.+",
+            indices_size_error,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            r"\(InvalidArgument\) index should less than output.+",
+            indices_value_error,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            r"Attr\(data_format\) should be 'NCHW'.+",
+            data_format_error,
+        )
+        self.assertRaisesRegex(
+            ValueError, r"invalid output_size.+", data_outputsize_error
+        )
+        self.assertRaisesRegex(
+            ValueError, r"invalid output_size.+", data_outputsize_error2
+        )
 
 
 class TestUnpoolOpAPI_dy(unittest.TestCase):
