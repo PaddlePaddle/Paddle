@@ -313,11 +313,11 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
 }
 
 template <typename IntT>
-__global__ void GetOutIndexTable(const IntT* indices,
-                                 const IntT non_zero_num,
-                                 const Dims4D dims,
-                                 int* index_flags,
-                                 int* out_index_table) {
+__global__ void GetOutIndexTable1(const IntT* indices,
+                                  const IntT non_zero_num,
+                                  const Dims4D dims,
+                                  int* index_flags,
+                                  int* out_index_table) {
   CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
     IntT batch = indices[i];
     IntT in_z = indices[i + non_zero_num];
@@ -618,14 +618,14 @@ int ProductRuleBook(const Context& dev_ctx,
     //     out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
-    GetOutIndexTable<IntT><<<config.block_per_grid,
-                             config.thread_per_block,
-                             0,
-                             dev_ctx.stream()>>>(out_indices.data<IntT>(),
-                                                 non_zero_num,
-                                                 d_x_dims,
-                                                 index_flags_ptr,
-                                                 out_index_table_ptr);
+    GetOutIndexTable1<IntT><<<config.block_per_grid,
+                              config.thread_per_block,
+                              0,
+                              dev_ctx.stream()>>>(out_indices.data<IntT>(),
+                                                  non_zero_num,
+                                                  d_x_dims,
+                                                  index_flags_ptr,
+                                                  out_index_table_ptr);
 
     size_t cache_size =
         kernel_size * 2 * sizeof(int) +
