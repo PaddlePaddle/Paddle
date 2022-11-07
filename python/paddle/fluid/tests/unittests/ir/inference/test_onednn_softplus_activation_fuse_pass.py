@@ -118,7 +118,9 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, passes=['softplus_activation_mkldnn_fuse_pass']
+            quant=False,
+            max_examples=40,
+            passes=['softplus_activation_mkldnn_fuse_pass'],
         )
 
 
