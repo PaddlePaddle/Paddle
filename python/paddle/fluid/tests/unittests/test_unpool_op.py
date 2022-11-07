@@ -179,9 +179,6 @@ class TestUnpoolOpOutput(TestUnpoolOp):
 
 class TestUnpoolOpException(unittest.TestCase):
     def test_exception(self):
-        import paddle.nn.functional as F
-        import paddle
-
         def indices_size_error():
             data = paddle.randint(shape=[1, 1, 3, 3])
             indices = paddle.reshape(paddle.arange(0, 12), shape[1, 1, 3, 4])
