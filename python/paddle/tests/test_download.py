@@ -20,7 +20,6 @@ from paddle.utils.download import get_path_from_url
 
 
 class TestDownload(unittest.TestCase):
-
     def download(self, url, md5sum):
         get_weights_path_from_url(url, md5sum)
 
@@ -75,8 +74,9 @@ class TestDownload(unittest.TestCase):
     def test_uncompress_result(self):
         results = [
             [
-                "files/single_dir/file1", "files/single_dir/file2",
-                "files/single_file.pdparams"
+                "files/single_dir/file1",
+                "files/single_dir/file2",
+                "files/single_file.pdparams",
             ],
             ["single_dir/file1", "single_dir/file2"],
             ["single_file.pdparams"],
@@ -89,8 +89,14 @@ class TestDownload(unittest.TestCase):
 
         for url, uncompressd_res in zip(tar_urls, results):
             uncompressed_path = get_path_from_url(url, root_dir='./test_tar')
-            self.assertTrue(all([os.path.exists(os.path.join("./test_tar", filepath)) \
-                                 for filepath in uncompressd_res]))
+            self.assertTrue(
+                all(
+                    [
+                        os.path.exists(os.path.join("./test_tar", filepath))
+                        for filepath in uncompressd_res
+                    ]
+                )
+            )
 
         zip_urls = [
             "https://paddle-hapi.bj.bcebos.com/unittest/files.zip",
@@ -99,23 +105,37 @@ class TestDownload(unittest.TestCase):
         ]
         for url, uncompressd_res in zip(zip_urls, results):
             uncompressed_path = get_path_from_url(url, root_dir='./test_zip')
-            self.assertTrue(all([os.path.exists(os.path.join("./test_zip", filepath)) \
-                                 for filepath in uncompressd_res]))
+            self.assertTrue(
+                all(
+                    [
+                        os.path.exists(os.path.join("./test_zip", filepath))
+                        for filepath in uncompressd_res
+                    ]
+                )
+            )
 
-    def test_retry_exception(self, ):
+    def test_retry_exception(
+        self,
+    ):
         with self.assertRaises(RuntimeError):
             from paddle.utils.download import _download
+
             _download(
                 'www.baidu.com',
                 './test',
             )
 
-    def test_wget_download_error(self, ):
+    def test_wget_download_error(
+        self,
+    ):
         with self.assertRaises(RuntimeError):
             from paddle.utils.download import _download
+
             _download('www.baidu', './test', method='wget')
 
-    def test_download_methods(self, ):
+    def test_download_methods(
+        self,
+    ):
         urls = [
             "https://paddle-hapi.bj.bcebos.com/unittest/files.tar",
             "https://paddle-hapi.bj.bcebos.com/unittest/files.zip",
@@ -123,6 +143,7 @@ class TestDownload(unittest.TestCase):
 
         import sys
         from paddle.utils.download import _download
+
         if sys.platform == 'linux':
             methods = ['wget', 'get']
         else:

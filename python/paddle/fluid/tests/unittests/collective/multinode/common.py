@@ -17,8 +17,8 @@ from paddle.distributed import fleet
 
 def init_parallel_env(mode, global_batch_size, seed=1024):
     '''
-        Args:
-            mode:(str) DP1-MP1-PP1-SH1-O1
+    Args:
+        mode:(str) DP1-MP1-PP1-SH1-O1
     '''
 
     def parse_mode(mode):
@@ -42,7 +42,7 @@ def init_parallel_env(mode, global_batch_size, seed=1024):
         "dp_degree": DP,
         "mp_degree": MP,
         "pp_degree": PP,
-        "sharding_degree": SH
+        "sharding_degree": SH,
     }
 
     accumulate_steps = 1
@@ -50,7 +50,7 @@ def init_parallel_env(mode, global_batch_size, seed=1024):
     if PP > 1:
         strategy.pipeline_configs = {
             "accumulate_steps": accumulate_steps,
-            "micro_batch_size": global_batch_size // DP // accumulate_steps
+            "micro_batch_size": global_batch_size // DP // accumulate_steps,
         }
 
     # set control in tensor parallel

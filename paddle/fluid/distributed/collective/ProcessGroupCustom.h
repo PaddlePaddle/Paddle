@@ -69,9 +69,7 @@ class ProcessGroupCustom : public ProcessGroup {
                      const platform::Place& place,
                      int gid);
 
-  const std::string GetBackendName() const override {
-    return "XCCL_" + device_type_;
-  }
+  std::string GetBackendName() const override { return "XCCL_" + device_type_; }
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
@@ -95,6 +93,8 @@ class ProcessGroupCustom : public ProcessGroup {
 
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
+
+  phi::ccl::CCLComm CustomCCLComm(const Place& place) const;
 
  protected:
   virtual std::shared_ptr<ProcessGroupCustom::CustomTask> CreateTask(

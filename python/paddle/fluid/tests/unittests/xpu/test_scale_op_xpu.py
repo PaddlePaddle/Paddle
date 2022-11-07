@@ -22,17 +22,19 @@ import paddle
 from paddle.fluid import Program, program_guard
 
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 
 class XPUTestScaleOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'scale'
         self.use_dynamic_create_class = False
 
     class TestScaleOp(XPUOpTest):
-
         def setUp(self):
             self.init_dtype()
             self.set_xpu()
@@ -77,33 +79,27 @@ class XPUTestScaleOp(XPUOpTestWrapper):
                 self.check_output_with_place(place)
 
     class TestScaleOp1(TestScaleOp):
-
         def set_attrs(self):
             self.attrs = {'scale': 3.5}
 
     class TestScaleOp2(TestScaleOp):
-
         def set_attrs(self):
             self.attrs = {'scale': 6.77}
 
     class TestScaleOp3(TestScaleOp):
-
         def set_attrs(self):
             self.attrs = {'scale': -9.19}
 
     class TestScaleOp4(TestScaleOp):
-
         def set_attrs(self):
             self.attrs = {'scale': 0.0}
 
     class TestScaleOp5(TestScaleOp):
-
         def set_attrs(self):
             self.attrs = {'scale': -0.003}
 
 
 class TestScaleApiStatic(unittest.TestCase):
-
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -121,13 +117,11 @@ class TestScaleApiStatic(unittest.TestCase):
 
 
 class TestScaleInplaceApiStatic(TestScaleApiStatic):
-
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 
 
 class TestScaleApiDygraph(unittest.TestCase):
-
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -141,7 +135,6 @@ class TestScaleApiDygraph(unittest.TestCase):
 
 
 class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
-
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 

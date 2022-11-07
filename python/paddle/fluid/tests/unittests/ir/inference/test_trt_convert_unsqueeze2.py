@@ -22,7 +22,6 @@ from typing import Any, Dict, List
 
 
 class TrtConvertSplitTest(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -34,17 +33,17 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     self.dims = dims
                     self.axes = axes
                     dics = [{"axes": axes}]
-                    ops_config = [{
-                        "op_type": "unsqueeze2",
-                        "op_inputs": {
-                            "X": ["in_data"]
-                        },
-                        "op_outputs": {
-                            "Out": ["out_data"],
-                            "XShape": ["XShape_data"]
-                        },
-                        "op_attrs": dics[0]
-                    }]
+                    ops_config = [
+                        {
+                            "op_type": "unsqueeze2",
+                            "op_inputs": {"X": ["in_data"]},
+                            "op_outputs": {
+                                "Out": ["out_data"],
+                                "XShape": ["XShape_data"],
+                            },
+                            "op_attrs": dics[0],
+                        }
+                    ]
 
                     # generate input data
                     self.input_shape = [1] * dims
@@ -54,24 +53,26 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     def generate_input1(attrs: List[Dict[str, Any]], batch):
                         self.input_shape[0] = batch
                         return np.random.random(self.input_shape).astype(
-                            np.float32)
+                            np.float32
+                        )
 
                     ops = self.generate_op_config(ops_config)
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
-                            "in_data":
-                            TensorConfig(
-                                data_gen=partial(generate_input1, dics, batch))
+                            "in_data": TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch)
+                            )
                         },
-                        outputs=["out_data"])
+                        outputs=["out_data"],
+                    )
 
                     yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             max_shape = list(self.input_shape)
             min_shape = list(self.input_shape)
@@ -98,19 +99,23 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-3
 
     def add_skip_trt_case(self):
         pass

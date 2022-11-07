@@ -47,7 +47,7 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = place.GetDeviceId();
-    LoDTensor& total_keys_tensor = keys_tensor[device_id];
+    phi::DenseTensor& total_keys_tensor = keys_tensor[device_id];
     uint64_t* total_keys = reinterpret_cast<uint64_t*>(
         total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
 
@@ -155,7 +155,7 @@ void BoxWrapper::PushSparseGradCase(
   } else if (platform::is_gpu_place(place)) {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
     int device_id = place.GetDeviceId();
-    LoDTensor& cached_total_keys_tensor = keys_tensor[device_id];
+    phi::DenseTensor& cached_total_keys_tensor = keys_tensor[device_id];
     uint64_t* total_keys =
         reinterpret_cast<uint64_t*>(cached_total_keys_tensor.data<int64_t>());
     VLOG(3) << "Begin copy grad tensor to boxps struct";

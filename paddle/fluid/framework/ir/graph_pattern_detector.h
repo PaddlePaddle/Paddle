@@ -539,6 +539,44 @@ struct OperatorActivation : public PatternBase {
   PATTERN_DECL_NODE(activation_out);
 };
 
+struct Squeeze2Transpose2 : public PatternBase {
+  Squeeze2Transpose2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "squeeze2_transpose2") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(squeeze2_op_in);
+  PATTERN_DECL_NODE(squeeze2_op);
+  PATTERN_DECL_NODE(squeeze2_op_out);
+  PATTERN_DECL_NODE(transpose2_op);
+};
+
+struct OperatorUnsqueeze2 : public PatternBase {
+  OperatorUnsqueeze2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "operator_unsqueeze2") {}
+
+  PDNode* operator()(const std::string& operator_type,
+                     const int num_of_outputs);
+
+  PATTERN_DECL_NODE(preceding_op);
+  PATTERN_DECL_NODE(preceding_op_out);
+  PATTERN_DECL_NODE(unsqueeze2_op);
+  PATTERN_DECL_NODE(unsqueeze2_out);
+};
+
+struct OperatorReshape2 : public PatternBase {
+  OperatorReshape2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "operator_reshape2") {}
+
+  PDNode* operator()(const std::string& operator_type,
+                     const int num_of_outputs);
+
+  PATTERN_DECL_NODE(preceding_op);
+  PATTERN_DECL_NODE(preceding_op_out);
+  PATTERN_DECL_NODE(reshape2_op);
+  PATTERN_DECL_NODE(reshape2_out);
+};
+
 // SEQCONV with Elementwise_Add ReLU
 // op: seqconv + elementwise_add + relu
 // named nodes:
@@ -1990,11 +2028,25 @@ struct AddSupportInt8 : public PatternBase {
   a->outputs.push_back(b);    \
   b->inputs.push_back(a);
 
+// UnLink 2 ir::Nodes from each other.
+#define IR_NODE_UNLINK(a, b)                                                  \
+  a->outputs.erase(                                                           \
+      std::remove(std::begin(a->outputs), std::end(a->outputs), b),           \
+      std::end(a->outputs));                                                  \
+  b->inputs.erase(std::remove(std::begin(b->inputs), std::end(b->inputs), a), \
+                  std::end(b->inputs));
+
 // Set the out_var as the output of the op
 #define IR_OP_VAR_LINK(op, out_var) \
   op->outputs.push_back(out_var);   \
   out_var->inputs.clear();          \
   out_var->inputs.push_back(op);
+
+// Set the in_var as the input of the op
+#define IR_VAR_OP_LINK(in_var, op) \
+  in_var->outputs.clear();         \
+  in_var->outputs.push_back(op);   \
+  op->inputs.push_back(in_var);
 
 }  // namespace ir
 }  // namespace framework

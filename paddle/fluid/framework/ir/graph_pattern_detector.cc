@@ -112,6 +112,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   if (graph.Nodes().empty()) return false;
 
   for (auto &node : GraphTraits::DFS(graph)) {
+    if (node.Name().rfind("__control_var") == 0) continue;
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
         VLOG(4) << "Node " << node.Name() << " marked as " << pdnode->name();
@@ -383,7 +384,6 @@ std::string PDPattern::DotString() const {
   // Create Edges
   for (const auto &edge : edges()) {
     if (!node2dot.count(edge.first) || !node2dot.count(edge.second)) {
-      LOG(ERROR) << "no node " << edge.first << " " << edge.second;
       continue;
     }
     auto &src = node2dot.at(edge.first);
@@ -453,7 +453,8 @@ PDNode *PDNode::assert_var_not_persistable() {
 
 PDNode *PDNode::assert_is_persistable_var() {
   assert_is_var();
-  asserts_.emplace_back([=](Node *x) { return x->Var()->Persistable(); });
+  asserts_.emplace_back(
+      [=](Node *x) { return x->Var() && x->Var()->Persistable(); });
   return this;
 }
 
@@ -955,6 +956,63 @@ PDNode *patterns::OperatorActivation::operator()(
   preceding_op->LinksTo({preceding_op_out});
   activation_op->LinksFrom({preceding_op_out}).LinksTo({activation_out});
   return activation_out;
+}
+
+PDNode *patterns::Squeeze2Transpose2::operator()() {
+  auto *squeeze2_op_in = pattern->NewNode(squeeze2_op_in_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("squeeze2", "X");
+  auto *squeeze2_op = pattern->NewNode(squeeze2_op_repr())
+                          ->assert_is_op("squeeze2")
+                          ->assert_has_n_outputs(2);
+  auto *squeeze2_op_out = pattern->NewNode(squeeze2_op_out_repr())
+                              ->AsIntermediate()
+                              ->assert_is_op_output("squeeze2", "Out")
+                              ->assert_is_op_input("transpose2", "X");
+  auto *transpose2_op =
+      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
+
+  squeeze2_op->LinksFrom({squeeze2_op_in}).LinksTo({squeeze2_op_out});
+  transpose2_op->LinksFrom({squeeze2_op_out});
+  return transpose2_op;
+}
+
+PDNode *patterns::OperatorUnsqueeze2::operator()(
+    const std::string &operator_type, const int num_of_operator_outs) {
+  auto *preceding_op = pattern->NewNode(preceding_op_repr())
+                           ->assert_is_op(operator_type)
+                           ->assert_has_n_outputs(num_of_operator_outs);
+  auto *preceding_op_out = pattern->NewNode(preceding_op_out_repr())
+                               ->AsIntermediate()
+                               ->assert_is_op_output(operator_type, "Out")
+                               ->assert_is_op_input("unsqueeze2");
+  auto *unsqueeze2_op =
+      pattern->NewNode(unsqueeze2_op_repr())->assert_is_op("unsqueeze2");
+  auto *unsqueeze2_out = pattern->NewNode(unsqueeze2_out_repr())
+                             ->AsOutput()
+                             ->assert_is_op_output("unsqueeze2");
+  preceding_op->LinksTo({preceding_op_out});
+  unsqueeze2_op->LinksFrom({preceding_op_out}).LinksTo({unsqueeze2_out});
+  return unsqueeze2_out;
+}
+
+PDNode *patterns::OperatorReshape2::operator()(const std::string &operator_type,
+                                               const int num_of_operator_outs) {
+  auto *preceding_op = pattern->NewNode(preceding_op_repr())
+                           ->assert_is_op(operator_type)
+                           ->assert_has_n_outputs(num_of_operator_outs);
+  auto *preceding_op_out = pattern->NewNode(preceding_op_out_repr())
+                               ->AsIntermediate()
+                               ->assert_is_op_output(operator_type, "Out")
+                               ->assert_is_op_input("reshape2");
+  auto *reshape2_op =
+      pattern->NewNode(reshape2_op_repr())->assert_is_op("reshape2");
+  auto *reshape2_out = pattern->NewNode(reshape2_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("reshape2");
+  preceding_op->LinksTo({preceding_op_out});
+  reshape2_op->LinksFrom({preceding_op_out}).LinksTo({reshape2_out});
+  return reshape2_out;
 }
 
 PDNode *patterns::SeqConvEltAddRelu::operator()(

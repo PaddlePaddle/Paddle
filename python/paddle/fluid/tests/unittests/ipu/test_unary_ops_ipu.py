@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_test_op()
@@ -44,9 +43,9 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         out = self.op(x, **self.op_attrs)
         self.fetch_list = [out.name]
 
@@ -62,7 +61,6 @@ class TestBase(IPUOpTest):
 
 
 class TestAcos(TestBase):
-
     @property
     def fp16_enabled(self):
         return False
@@ -77,63 +75,54 @@ class TestAcos(TestBase):
 
 
 class TestAsin(TestAcos):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.asin
         self.op_attrs = {}
 
 
 class TestSinh(TestAcos):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.sinh
         self.op_attrs = {}
 
 
 class TestAtan(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.atan
         self.op_attrs = {}
 
 
 class TestCeil(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.ceil
         self.op_attrs = {}
 
 
 class TestCos(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.cos
         self.op_attrs = {}
 
 
 class TestCosh(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.cosh
         self.op_attrs = {}
 
 
 class TestErf(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.erf
         self.op_attrs = {}
 
 
 class TestExp(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.exp
         self.op_attrs = {}
 
 
 class TestFloor(TestBase):
-
     @property
     def fp16_enabled(self):
         return False
@@ -144,84 +133,72 @@ class TestFloor(TestBase):
 
 
 class TestLog(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.log
         self.op_attrs = {}
 
 
 class TestReciprocal(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.reciprocal
         self.op_attrs = {}
 
 
 class TestRelu(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.relu
         self.op_attrs = {}
 
 
 class TestRound(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.round
         self.op_attrs = {}
 
 
 class TestSigmoid(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.sigmoid
         self.op_attrs = {}
 
 
 class TestSign(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.sign
         self.op_attrs = {}
 
 
 class TestSin(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.sin
         self.op_attrs = {}
 
 
 class TestSoftplus(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.softplus
         self.op_attrs = {}
 
 
 class TestSoftsign(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.softsign
         self.op_attrs = {}
 
 
 class TestSqrt(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.sqrt
         self.op_attrs = {}
 
 
 class TestTan(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.tan
         self.op_attrs = {}
 
 
 class TestTanh(TestBase):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.tanh
         self.op_attrs = {}
