@@ -52,9 +52,9 @@ def set_default_dtype(d):
             'float16',
             'float32',
             'float64',
-            u'float16',
-            u'float32',
-            u'float64',
+            'float16',
+            'float32',
+            'float64',
         ]:
             # this code is a little bit dangerous, since error could happen
             # when casting no-ascii code to str in python2.
