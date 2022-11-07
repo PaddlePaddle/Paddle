@@ -283,13 +283,13 @@ class Tanh(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
             m = paddle.nn.Tanh()
             out = m(x)
             print(out)
-            # [-0.37994896 -0.19737532  0.09966799  0.29131261]
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-0.37994894, -0.19737533,  0.09966800,  0.29131261])
     """
 
     def __init__(self, name=None):
@@ -880,11 +880,13 @@ class Softshrink(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.9, -0.2, 0.1, 0.8]))
+            x = paddle.to_tensor([-0.9, -0.2, 0.1, 0.8])
             m = paddle.nn.Softshrink()
-            out = m(x) # [-0.4, 0, 0, 0.3]
+            out = m(x)
+            print(out)
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-0.39999998,  0.        ,  0.        ,  0.30000001])
     """
 
     def __init__(self, threshold=0.5, name=None):
@@ -920,11 +922,13 @@ class Softsign(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
             m = paddle.nn.Softsign()
-            out = m(x) # [-0.285714, -0.166667, 0.0909091, 0.230769]
+            out = m(x)
+            print(out)
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
 
     def __init__(self, name=None):
@@ -959,11 +963,13 @@ class Swish(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-2., 0., 1.]))
+            x = paddle.to_tensor([-2., 0., 1.])
             m = paddle.nn.Swish()
-            out = m(x) # [-0.238406, 0., 0.731059]
+            out = m(x)
+            print(out)
+            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-0.23840584,  0.        ,  0.73105854])
     """
 
     def __init__(self, name=None):
@@ -1043,11 +1049,13 @@ class Tanhshrink(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
             m = paddle.nn.Tanhshrink()
-            out = m(x) # [-0.020051, -0.00262468, 0.000332005, 0.00868739]
+            out = m(x)
+            print(out)
+            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-0.02005106, -0.00262468,  0.00033200,  0.00868741])
     """
 
     def __init__(self, name=None):
@@ -1090,11 +1098,13 @@ class ThresholdedReLU(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([2., 0., 1.]))
+            x = paddle.to_tensor([2., 0., 1.])
             m = paddle.nn.ThresholdedReLU()
-            out = m(x) # [2., 0., 0.]
+            out = m(x)
+            print(out)
+            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [2., 0., 0.])
     """
 
     def __init__(self, threshold=1.0, name=None):
