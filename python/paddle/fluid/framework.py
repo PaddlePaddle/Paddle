@@ -6106,7 +6106,7 @@ class Program(object):
             for j in six.moves.range(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
-                    op._set_attr('is_test', True)
+                    op._set_bool_attr('is_test', True)
                 if op.type() == "batch_norm":
                     # Remove the output ReserveSpace of batch_norm if exists.
                     op.remove_output("ReserveSpace")
