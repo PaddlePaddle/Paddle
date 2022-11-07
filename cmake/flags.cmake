@@ -220,8 +220,7 @@ if(APPLE)
       -Werror=uninitialized
       -Werror=tautological-constant-out-of-range-compare
       -Werror=literal-conversion
-      -Werror=pragma-pack
-      -ll)
+      -Werror=pragma-pack)
 endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)
