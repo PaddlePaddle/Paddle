@@ -213,7 +213,7 @@
   backward : relu_grad
 
 - op : relu6
-  args : (Tensor x, float threshold)
+  args : (Tensor x)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
