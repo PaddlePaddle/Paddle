@@ -167,7 +167,6 @@ __global__ void FusedActBias(Functor act,
   const int32_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
   using LoadT = phi::AlignedVector<T, VecSize>;
   using LoadInType = phi::AlignedVector<InType, VecSize>;
-  using LoadFloat = phi::AlignedVector<float, VecSize>;
   using StoreOutType = phi::AlignedVector<OutType, VecSize>;
 
   LoadInType src_vec;
