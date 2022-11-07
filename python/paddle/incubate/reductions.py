@@ -197,4 +197,5 @@ def init_reductions():
     ForkingPickler.register(
         paddle.fluid.framework.EagerParamBase, _reduce_tensor
     )
-    ForkingPickler.register(paddle.fluid.core.LoDTensor, _reduce_lodtensor)
+    # _reduce_lodtensor is conflict with use_shared_memory
+    # ForkingPickler.register(paddle.fluid.core.LoDTensor, _reduce_lodtensor)

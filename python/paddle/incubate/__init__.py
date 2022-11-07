@@ -54,3 +54,7 @@ __all__ = [
     'segment_min',
     'identity_loss',
 ]
+
+from .reductions import init_reductions
+
+init_reductions()

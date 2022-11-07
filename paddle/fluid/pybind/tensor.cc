@@ -1014,55 +1014,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            },
            R"DOC(
             Decrease reference count of share_filename tensor.
-      )DOC")
-      .def(py::pickle(
-          [](const phi::DenseTensor &t) {  // __getstate__
-            auto holder = t.Holder();
-            PADDLE_ENFORCE_EQ(platform::is_cpu_place(holder->place()), true,
-                              platform::errors::PreconditionNotMet(
-                                  "Tensor is not on CPU."
-                                  "Now only Tensor on CPU can be serialized."));
-            auto *mmap_writer_allocation =
-                dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
-                    holder.get());
-            PADDLE_ENFORCE_NOT_NULL(
-                mmap_writer_allocation,
-                platform::errors::PreconditionNotMet(
-                    "Tensor is not in shared memory."
-                    "Now only Tensor on shared memory can be serialized."));
-            int type_idx = static_cast<int>(t.type());
-
-            return py::make_tuple(mmap_writer_allocation->ipc_name(),
-                                  mmap_writer_allocation->size(), type_idx,
-                                  vectorize(t.dims()), t.lod());
-          },
-          [](py::tuple t) {  // __setstate__
-            if (t.size() != 5)
-              throw std::runtime_error("Invalid Tensor state!");
-
-            // 1. Create a new C++ instance
-            phi::DenseTensor tensor;
-
-            // 2. Rebuild Allocation
-            const std::string &ipc_name = t[0].cast<std::string>();
-            size_t size = t[1].cast<size_t>();
-            auto shared_reader_holder =
-                memory::allocation::RebuildMemoryMapReaderAllocation(ipc_name,
-                                                                     size);
-
-            // 3. Maintain global fd set
-            VLOG(3) << "Tensor ipc name: " << ipc_name;
-            memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
-
-            // 4. Rebuild Tensor
-            tensor.ResetHolderWithType(
-                shared_reader_holder,
-                static_cast<paddle::experimental::DataType>(t[2].cast<int>()));
-            tensor.Resize(phi::make_ddim(t[3].cast<std::vector<int>>()));
-            tensor.set_lod(t[4].cast<framework::LoD>());
-
-            return tensor;
-          }));
+      )DOC");
 #endif
 
   py::class_<phi::SelectedRows>(m, "SelectedRows")
