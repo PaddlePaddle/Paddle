@@ -724,14 +724,8 @@ class Adam(Optimizer):
                     lr_dict[key],
                 ):
                     if i == 0:
-                        beta1_pow_first = beta1_pow
-                        beta2_pow_first = beta2_pow
                         lr_first = lr
-                    if (
-                        beta1_pow_first != beta1_pow
-                        or beta2_pow_first != beta2_pow
-                        or lr_first != lr
-                    ):
+                    if lr_first != lr:
                         use_multi_tensor_adam = False
 
                 if framework._non_static_mode():
