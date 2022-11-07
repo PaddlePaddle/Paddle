@@ -190,26 +190,28 @@ static PyObject* eager_api_tensor_copy(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* eager_api_get_params_and_grads(PyObject* self,
-                                         PyObject* args,
-                                         PyObject* kwargs) {
+PyObject* eager_api_get_all_grads(PyObject* self,
+                                  PyObject* args,
+                                  PyObject* kwargs) {
   EAGER_TRY
   auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
 
-  std::vector<std::vector<paddle::experimental::Tensor>> ret;
+  std::vector<paddle::experimental::Tensor> ret;
   for (auto& tensor : tensor_list) {
     VLOG(6) << "Get grad for tensor: " << tensor.name();
     auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
     if (meta->StopGradient()) {
+      ret.emplace_back(paddle::experimental::Tensor());
       continue;
     }
     VLOG(6) << meta << " initialized: " << meta->Grad().initialized();
     if (meta && meta->Grad().initialized()) {
-      ret.emplace_back(
-          std::vector<paddle::experimental::Tensor>({tensor, meta->Grad()}));
+      ret.emplace_back(meta->Grad());
+    } else {
+      ret.emplace_back(paddle::experimental::Tensor());
     }
   }
-  return ToPyObject(ret);
+  return ToPyObject(ret, true);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1059,8 +1061,8 @@ PyMethodDef variable_functions[] = {
      (PyCFunction)(void (*)(void))eager_api_tensor_copy,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
-    {"get_params_and_grads",
-     (PyCFunction)(void (*)(void))eager_api_get_params_and_grads,
+    {"get_all_grads",
+     (PyCFunction)(void (*)(void))eager_api_get_all_grads,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"get_grads_lists",
