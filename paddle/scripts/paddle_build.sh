@@ -2887,8 +2887,8 @@ function parallel_test() {
 }
 
 function nv_test() {
-    FLAGS_enable_cudnn_frontend=0
-    ctest -R "conv" --output-on-failure --repeat-until-fail 3 --timeout 150
+    export FLAGS_enable_cudnn_frontend=0
+    ctest -R "conv" --output-on-failure --timeout 150
 }
 
 
