@@ -59,14 +59,15 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
-    // Since we fuse QKVBiasAdd into qkv_bias_add_transpose_split. 
+    // Since we fuse QKVBiasAdd into qkv_bias_add_transpose_split, here we set
+    // compute_bias as false.
     auto qkv_compute = AttnMatMul<T>(dev_ctx,
                                      false,
                                      trans_qkvw,
                                      bsz_seq,
                                      output_size,
                                      input_size,
-                                     false/*compute_bias*/);
+                                     false /*compute_bias*/);
     Tensor qkv_out;
     qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
     auto *qkv_out_data =
@@ -113,10 +114,12 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     Tensor q_transpose_out, kv_transpose_out, qk_out;
     q_transpose_out.Resize({{bsz, num_head, seq_len, dim_head}});
-    auto *q_transpose_out_data = dev_ctx.Alloc<T>(&q_transpose_out, q_transpose_out.numel() * sizeof(T));
+    auto *q_transpose_out_data =
+        dev_ctx.Alloc<T>(&q_transpose_out, q_transpose_out.numel() * sizeof(T));
 
     kv_transpose_out.Resize({{2, bsz, num_head, seq_len, dim_head}});
-    auto *kv_transpose_out_data = dev_ctx.Alloc<T>(&kv_transpose_out, kv_transpose_out.numel() * sizeof(T));
+    auto *kv_transpose_out_data = dev_ctx.Alloc<T>(
+        &kv_transpose_out, kv_transpose_out.numel() * sizeof(T));
 
     qk_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
     auto *qk_out_data = dev_ctx.Alloc<T>(&qk_out, qk_out.numel() * sizeof(T));
@@ -309,20 +312,20 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         Tensor *pre_cache_kv_out_tmp =
             cache_offset > 0 ? &pre_cache_kv_out : nullptr;
         Tensor *src_mask_tmp = cache_offset > 0 ? &src_mask_out : nullptr;
-        qkv_bias_add_transpose_split<T>(dev_ctx, 
-                                        q_transpose_out_data, 
-                                        kv_transpose_out_data, 
-                                        qkv_out_data, 
-                                        qkv_bias->data<T>(), 
-                                        bsz, 
-                                        num_head, 
-                                        seq_len, 
-                                        dim_head, 
-                                        compute_bias); 
+        qkv_bias_add_transpose_split<T>(dev_ctx,
+                                        q_transpose_out_data,
+                                        kv_transpose_out_data,
+                                        qkv_out_data,
+                                        qkv_bias->data<T>(),
+                                        bsz,
+                                        num_head,
+                                        seq_len,
+                                        dim_head,
+                                        compute_bias);
         fmha_compute.ComputeForwardForMultiTransformer(qkv_out,
                                                        pre_cache_kv_tensor,
                                                        src_mask,
-                                                       &q_transpose_out, 
+                                                       &q_transpose_out,
                                                        &kv_transpose_out,
                                                        pre_cache_kv_out_tmp,
                                                        &qk_out,
@@ -370,22 +373,22 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                           dim_head);
       } else {  // not generation
         // TODO(wangxi): can remove dropout in inference
-        qkv_bias_add_transpose_split<T>(dev_ctx, 
-                                        q_transpose_out_data, 
-                                        kv_transpose_out_data, 
-                                        qkv_out_data, 
-                                        qkv_bias->data<T>(), 
-                                        bsz, 
-                                        num_head, 
-                                        seq_len, 
-                                        dim_head, 
+        qkv_bias_add_transpose_split<T>(dev_ctx,
+                                        q_transpose_out_data,
+                                        kv_transpose_out_data,
+                                        qkv_out_data,
+                                        qkv_bias->data<T>(),
+                                        bsz,
+                                        num_head,
+                                        seq_len,
+                                        dim_head,
                                         compute_bias);
 
         fmha_compute.ComputeForwardForMultiTransformer(qkv_out,
                                                        cache_kv,
                                                        src_mask,
-                                                       &q_transpose_out, 
-                                                  &kv_transpose_out,
+                                                       &q_transpose_out,
+                                                       &kv_transpose_out,
                                                        cache_kv_out,
                                                        &qk_out,
                                                        nullptr,

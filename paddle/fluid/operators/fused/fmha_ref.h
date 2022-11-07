@@ -258,19 +258,20 @@ class FMHARef {
         dev_ctx_, *qktv_out_tensor, perm_3, fmha_out_tensor);
   }
 
-  void ComputeForwardForMultiTransformer(const phi::DenseTensor& qkv_input_tensor,
-                                         const phi::DenseTensor* cache_kv_tensor,
-                                         const phi::DenseTensor* src_mask_tensor,
-                                         phi::DenseTensor* q_transpose_out_tensor, 
-                                         phi::DenseTensor* kv_transpose_out_tensor, 
-                                         phi::DenseTensor* cache_kv_out_tensor,
-                                         phi::DenseTensor* qk_out_tensor,
-                                         phi::DenseTensor* src_mask_out_tensor,
-                                         phi::DenseTensor* softmax_out_tensor,
-                                         phi::DenseTensor* dropout_mask_out_tensor,
-                                         phi::DenseTensor* dropout_out_tensor,
-                                         phi::DenseTensor* qktv_out_tensor,
-                                         phi::DenseTensor* fmha_out_tensor) {
+  void ComputeForwardForMultiTransformer(
+      const phi::DenseTensor& qkv_input_tensor,
+      const phi::DenseTensor* cache_kv_tensor,
+      const phi::DenseTensor* src_mask_tensor,
+      phi::DenseTensor* q_transpose_out_tensor,
+      phi::DenseTensor* kv_transpose_out_tensor,
+      phi::DenseTensor* cache_kv_out_tensor,
+      phi::DenseTensor* qk_out_tensor,
+      phi::DenseTensor* src_mask_out_tensor,
+      phi::DenseTensor* softmax_out_tensor,
+      phi::DenseTensor* dropout_mask_out_tensor,
+      phi::DenseTensor* dropout_out_tensor,
+      phi::DenseTensor* qktv_out_tensor,
+      phi::DenseTensor* fmha_out_tensor) {
     // input shape: [bs, seq_len, 3, num_head, head_dim]
     // transpose with perm [2, 0, 3, 1, 4],
     // output_shape: [3, bs, num_head, seq_len, head_dim]
@@ -285,11 +286,15 @@ class FMHARef {
       // kv [2, bs, num_head, seq_len, head_dim]
       phi::funcs::ConcatFunctor<phi::GPUContext, T> concat;
       // out [2, bs, num_head, cache_seq_len + seq_len, head_dim]
-      concat(dev_ctx_, {*cache_kv_tensor, *kv_transpose_out_tensor}, 3, cache_kv_out_tensor);
+      concat(dev_ctx_,
+             {*cache_kv_tensor, *kv_transpose_out_tensor},
+             3,
+             cache_kv_out_tensor);
       out_seq_len = cache_kv_out_tensor->dims()[3];
     }
 
     int64_t q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
+    // We split q, kv tensor.
     T* q_ptr = q_transpose_out_tensor->data<T>();
     T* k_ptr = nullptr;
     T* v_ptr = nullptr;
