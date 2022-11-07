@@ -47,9 +47,9 @@ from ..fluid.framework import set_flags  # noqa: F401
 from ..fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
 from ..fluid.dygraph.base import disable_dygraph as enable_static  # noqa: F401
 from ..fluid.framework import _non_static_mode as in_dynamic_mode  # noqa: F401
-from ..fluid.framework import (
-    _non_static_mode,
-)  #  noqa: F401; temporary used for hackson
+from ..fluid.framework import (  # noqa: F401
+    _non_static_mode,  # temporary used for hackson
+)
 from ..fluid.framework import (
     _current_expected_place,
     _get_paddle_place,

@@ -483,8 +483,16 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
     PADDLE_SELECTED_ROWS_ADD(phi::GPUContext, double);
   } else {
 #endif
-    PADDLE_SELECTED_ROWS_ADD(phi::CPUContext, float);
-    PADDLE_SELECTED_ROWS_ADD(phi::CPUContext, double);
+#if defined(PADDLE_WITH_XPU)
+    if (paddle::platform::is_xpu_place(place)) {
+      PADDLE_SELECTED_ROWS_ADD(phi::XPUContext, float);
+    } else {
+#endif
+      PADDLE_SELECTED_ROWS_ADD(phi::CPUContext, float);
+      PADDLE_SELECTED_ROWS_ADD(phi::CPUContext, double);
+#if defined(PADDLE_WITH_XPU)
+    }
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   }
 #endif
@@ -858,6 +866,5 @@ void SortedGradientAccumulator::SumGrad(std::shared_ptr<VariableWrapper> var,
     dst_var->SetType(framework::proto::VarType::SELECTED_ROWS);
   }
 }
-
 }  // namespace imperative
 }  // namespace paddle

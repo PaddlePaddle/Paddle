@@ -605,6 +605,14 @@ void BatchNormGradRawKernel(const Context &ctx,
           "the dimensions of input is [%s]",
           x_dims.size(),
           x_dims));
+
+  PADDLE_ENFORCE_EQ((d_scale == nullptr && d_bias == nullptr) ||
+                        (d_scale != nullptr && d_bias != nullptr),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Weight and bias's stop_gradient of BatchNorm must be "
+                        "True or False at the same time."));
+
   int N, C, H, W, D;
   phi::funcs::ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 

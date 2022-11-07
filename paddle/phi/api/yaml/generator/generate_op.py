@@ -75,6 +75,11 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
         else:
             return names[0].strip(), names[1].split(')')[0].strip()
 
+    def update_api_attr_name(attrs, attrs_alias_map):
+        for attr_item in attrs:
+            if attr_item['name'] in attrs_alias_map:
+                attr_item['name'] = attrs_alias_map[attr_item['name']]
+
     for api_args in api_op_map:
         api_name, op_name = get_api_and_op_name(api_args['op'])
         if api_name not in forward_api_dict:
@@ -99,6 +104,13 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
                 double_grad_item = backward_api_dict[double_grad_api_name]
                 backward_api_item['backward'] = double_grad_op_name
                 double_grad_item['op_name'] = double_grad_op_name
+                if 'attrs' in api_args:
+                    update_api_attr_name(
+                        double_grad_item['attrs'], api_args['attrs']
+                    )
+                    update_api_attr_name(
+                        double_grad_item['forward']['attrs'], api_args['attrs']
+                    )
 
                 # for triple grad
                 if len(backward_op_list) > 2:
@@ -109,6 +121,14 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
                     triple_grad_item = backward_api_dict[triple_grad_api_name]
                     double_grad_item['backward'] = triple_grad_op_name
                     triple_grad_item['op_name'] = triple_grad_op_name
+                    if 'attrs' in api_args:
+                        update_api_attr_name(
+                            triple_grad_item['attrs'], api_args['attrs']
+                        )
+                        update_api_attr_name(
+                            triple_grad_item['forward']['attrs'],
+                            api_args['attrs'],
+                        )
 
         key_set = ['inputs', 'attrs', 'outputs']
         args_map = {}
