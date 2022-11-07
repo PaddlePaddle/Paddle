@@ -19,7 +19,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/inference/tensorrt/plugin/roformer_multihead_matmul_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/multihead_matmul_roformer_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/fluid/platform/device_context.h"
