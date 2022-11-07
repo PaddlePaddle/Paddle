@@ -20,7 +20,6 @@ __all__ = []
 
 
 class ShardingParallel(MetaParallelBase):
-
     def __init__(self, layers, hcg, **kwargs):
         super(ShardingParallel, self).__init__(layers, hcg, **kwargs)
 

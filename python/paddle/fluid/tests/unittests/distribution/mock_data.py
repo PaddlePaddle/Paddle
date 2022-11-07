@@ -17,8 +17,9 @@ import paddle
 
 class Exponential(paddle.distribution.ExponentialFamily):
     """mock exponential distribution, which support computing entropy and
-       kl use bregman divergence
+    kl use bregman divergence
     """
+
     _mean_carrier_measure = 0
 
     def __init__(self, rate):
@@ -34,15 +35,14 @@ class Exponential(paddle.distribution.ExponentialFamily):
 
     @property
     def _natural_parameters(self):
-        return (-self._rate, )
+        return (-self._rate,)
 
     def _log_normalizer(self, x):
         return -paddle.log(-x)
 
 
 class DummyExpFamily(paddle.distribution.ExponentialFamily):
-    """dummy class extend from exponential family
-    """
+    """dummy class extend from exponential family"""
 
     def __init__(self, *args):
         pass
@@ -52,7 +52,7 @@ class DummyExpFamily(paddle.distribution.ExponentialFamily):
 
     @property
     def _natural_parameters(self):
-        return (1.0, )
+        return (1.0,)
 
     def _log_normalizer(self, x):
         return -paddle.log(-x)

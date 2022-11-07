@@ -15,7 +15,10 @@
 import numpy as np
 import paddle
 import paddle.distributed.fleet as fleet
-from test_collective_multi_nodes import TestCollectiveAPIRunnerBase, runtime_main
+from test_collective_multi_nodes import (
+    TestCollectiveAPIRunnerBase,
+    runtime_main,
+)
 from paddle import nn
 import numpy as np
 
@@ -30,15 +33,14 @@ def weight_init(mp, shape, col=True, seed=1024):
     else:
         if col:
             step = shape[1] // mp.nranks
-            _w = w[:, mp.rank * step:mp.rank * step + step]
+            _w = w[:, mp.rank * step : mp.rank * step + step]
         else:
             step = shape[0] // mp.nranks
-            _w = w[mp.rank * step:mp.rank * step + step, :]
+            _w = w[mp.rank * step : mp.rank * step + step, :]
     return paddle.fluid.initializer.NumpyArrayInitializer(_w)
 
 
 class Criterion(nn.Layer):
-
     def __init__(self):
         super(Criterion, self).__init__()
         self.loss_func = nn.MSELoss(reduction="mean")
@@ -49,7 +51,6 @@ class Criterion(nn.Layer):
 
 
 class RecomputeMatmulBlock(nn.Layer):
-
     def __init__(self, mp, seed, m, n, k):
         super(RecomputeMatmulBlock, self).__init__()
         self.mp = mp
@@ -59,22 +60,22 @@ class RecomputeMatmulBlock(nn.Layer):
                 n,
                 weight_attr=weight_init(mp, (m, n), True, seed),
                 has_bias=True,
-                gather_output=False)
+                gather_output=False,
+            )
             mp_linear_2 = fleet.meta_parallel.RowParallelLinear(
                 n,
                 k,
                 weight_attr=weight_init(mp, (n, k), False, seed + 1),
                 has_bias=True,
-                input_is_parallel=True)
+                input_is_parallel=True,
+            )
         else:
-            mp_linear_1 = nn.Linear(m,
-                                    n,
-                                    weight_attr=weight_init(
-                                        None, (m, n), True, seed))
-            mp_linear_2 = nn.Linear(n,
-                                    k,
-                                    weight_attr=weight_init(
-                                        None, (n, k), True, seed + 1))
+            mp_linear_1 = nn.Linear(
+                m, n, weight_attr=weight_init(None, (m, n), True, seed)
+            )
+            mp_linear_2 = nn.Linear(
+                n, k, weight_attr=weight_init(None, (n, k), True, seed + 1)
+            )
         self.layers = nn.Sequential(mp_linear_1, mp_linear_2)
 
     def forward(self, x):
@@ -88,7 +89,6 @@ RecomputeBlock = RecomputeMatmulBlock
 
 
 class ModelPipeline(fleet.meta_parallel.PipelineLayer):
-
     def __init__(self, hcg):
         paddle.seed(1024)
         dp_linear = nn.Linear(32, 64)
@@ -104,13 +104,12 @@ class ModelPipeline(fleet.meta_parallel.PipelineLayer):
 
         out = nn.Linear(64, 32)
         self.layers_pp.append(out)
-        super(ModelPipeline, self).__init__(layers=self.layers_pp,
-                                            loss_fn=Criterion(),
-                                            topology=self.topology)
+        super(ModelPipeline, self).__init__(
+            layers=self.layers_pp, loss_fn=Criterion(), topology=self.topology
+        )
 
 
 class Model(nn.Layer):
-
     def __init__(self, hcg):
         super(Model, self).__init__()
         paddle.seed(1024)
@@ -133,7 +132,6 @@ class Model(nn.Layer):
 
 
 class TestDygrapgHybridRecompute(TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         pass
 
@@ -142,9 +140,11 @@ class TestDygrapgHybridRecompute(TestCollectiveAPIRunnerBase):
         from common import init_parallel_env
         import paddle
         from paddle.distributed import fleet
+
         hcg = init_parallel_env("DP4-MP2-PP2-SH1-O1", 64)
         pp_degree = hcg.get_pipe_parallel_world_size()
         import numpy as np
+
         crit = Criterion()
         if pp_degree <= 1:
             model = Model(hcg)
@@ -153,10 +153,12 @@ class TestDygrapgHybridRecompute(TestCollectiveAPIRunnerBase):
 
         model_base = Model(None)
 
-        optimizer = paddle.optimizer.Adam(learning_rate=0.01,
-                                          parameters=model.parameters())
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=model.parameters()
+        )
         optimizer_base = paddle.optimizer.Adam(
-            learning_rate=0.01, parameters=model_base.parameters())
+            learning_rate=0.01, parameters=model_base.parameters()
+        )
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)

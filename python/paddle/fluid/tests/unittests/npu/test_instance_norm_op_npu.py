@@ -31,7 +31,6 @@ paddle.enable_static()
 
 
 class TestInstanceNorm(unittest.TestCase):
-
     def test_dygraph(self):
         places = [fluid.NPUPlace(0)]
         for p in places:

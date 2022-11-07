@@ -27,20 +27,23 @@ paddle.enable_static()
 
 
 @parameterize.place(config.DEVICES)
-@parameterize.parameterize_cls((parameterize.TEST_CASE_NAME, 'loc', 'scale'), [
-    ('one-dim', parameterize.xrand((4, )), parameterize.xrand((4, ))),
-    ('multi-dim', parameterize.xrand((5, 3)), parameterize.xrand((5, 3))),
-])
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'loc', 'scale'),
+    [
+        ('one-dim', parameterize.xrand((4,)), parameterize.xrand((4,))),
+        ('multi-dim', parameterize.xrand((5, 3)), parameterize.xrand((5, 3))),
+    ],
+)
 class TestGumbel(unittest.TestCase):
-
     def setUp(self):
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         executor = paddle.static.Executor(self.place)
         with paddle.static.program_guard(main_program, startup_program):
             loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
-            scale = paddle.static.data('scale', self.scale.shape,
-                                       self.scale.dtype)
+            scale = paddle.static.data(
+                'scale', self.scale.shape, self.scale.dtype
+            )
             self._dist = Gumbel(loc=loc, scale=scale)
             self.sample_shape = [50000]
             mean = self._dist.mean
@@ -52,50 +55,63 @@ class TestGumbel(unittest.TestCase):
         self.feeds = {'loc': self.loc, 'scale': self.scale}
 
         executor.run(startup_program)
-        [self.mean, self.var, self.stddev, self.entropy,
-         self.samples] = executor.run(main_program,
-                                      feed=self.feeds,
-                                      fetch_list=fetch_list)
+        [
+            self.mean,
+            self.var,
+            self.stddev,
+            self.entropy,
+            self.samples,
+        ] = executor.run(main_program, feed=self.feeds, fetch_list=fetch_list)
 
     def test_mean(self):
         self.assertEqual(str(self.mean.dtype).split('.')[-1], self.scale.dtype)
-        np.testing.assert_allclose(self.mean,
-                                   self._np_mean(),
-                                   rtol=config.RTOL.get(str(self.scale.dtype)),
-                                   atol=config.ATOL.get(str(self.scale.dtype)))
+        np.testing.assert_allclose(
+            self.mean,
+            self._np_mean(),
+            rtol=config.RTOL.get(str(self.scale.dtype)),
+            atol=config.ATOL.get(str(self.scale.dtype)),
+        )
 
     def test_variance(self):
         self.assertEqual(str(self.var.dtype).split('.')[-1], self.scale.dtype)
-        np.testing.assert_allclose(self.var,
-                                   self._np_variance(),
-                                   rtol=config.RTOL.get(str(self.scale.dtype)),
-                                   atol=config.ATOL.get(str(self.scale.dtype)))
+        np.testing.assert_allclose(
+            self.var,
+            self._np_variance(),
+            rtol=config.RTOL.get(str(self.scale.dtype)),
+            atol=config.ATOL.get(str(self.scale.dtype)),
+        )
 
     def test_stddev(self):
         self.assertEqual(
-            str(self.stddev.dtype).split('.')[-1], self.scale.dtype)
-        np.testing.assert_allclose(self.stddev,
-                                   self._np_stddev(),
-                                   rtol=config.RTOL.get(str(self.scale.dtype)),
-                                   atol=config.ATOL.get(str(self.scale.dtype)))
+            str(self.stddev.dtype).split('.')[-1], self.scale.dtype
+        )
+        np.testing.assert_allclose(
+            self.stddev,
+            self._np_stddev(),
+            rtol=config.RTOL.get(str(self.scale.dtype)),
+            atol=config.ATOL.get(str(self.scale.dtype)),
+        )
 
     def test_entropy(self):
         self.assertEqual(
-            str(self.entropy.dtype).split('.')[-1], self.scale.dtype)
+            str(self.entropy.dtype).split('.')[-1], self.scale.dtype
+        )
 
     def test_sample(self):
         self.assertEqual(self.samples.dtype, self.scale.dtype)
 
-        np.testing.assert_allclose(self.samples.mean(axis=0),
-                                   scipy.stats.gumbel_r.mean(self.loc,
-                                                             scale=self.scale),
-                                   rtol=0.1,
-                                   atol=config.ATOL.get(str(self.scale.dtype)))
-        np.testing.assert_allclose(self.samples.var(axis=0),
-                                   scipy.stats.gumbel_r.var(self.loc,
-                                                            scale=self.scale),
-                                   rtol=0.1,
-                                   atol=config.ATOL.get(str(self.scale.dtype)))
+        np.testing.assert_allclose(
+            self.samples.mean(axis=0),
+            scipy.stats.gumbel_r.mean(self.loc, scale=self.scale),
+            rtol=0.1,
+            atol=config.ATOL.get(str(self.scale.dtype)),
+        )
+        np.testing.assert_allclose(
+            self.samples.var(axis=0),
+            scipy.stats.gumbel_r.var(self.loc, scale=self.scale),
+            rtol=0.1,
+            atol=config.ATOL.get(str(self.scale.dtype)),
+        )
 
     def _np_mean(self):
         return self.loc + self.scale * np.euler_gamma
@@ -105,7 +121,8 @@ class TestGumbel(unittest.TestCase):
 
     def _np_variance(self):
         return np.divide(
-            np.multiply(np.power(self.scale, 2), np.power(np.pi, 2)), 6)
+            np.multiply(np.power(self.scale, 2), np.power(np.pi, 2)), 6
+        )
 
     def _np_entropy(self):
         return np.log(self.scale) + 1 + np.euler_gamma
@@ -113,15 +130,24 @@ class TestGumbel(unittest.TestCase):
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'loc', 'scale', 'value'), [
-        ('value-float', np.array([0.1, 0.4]), np.array([1., 4.
-                                                        ]), np.array([3., 7.])),
+    (parameterize.TEST_CASE_NAME, 'loc', 'scale', 'value'),
+    [
+        (
+            'value-float',
+            np.array([0.1, 0.4]),
+            np.array([1.0, 4.0]),
+            np.array([3.0, 7.0]),
+        ),
         ('value-int', np.array([0.1, 0.4]), np.array([1, 4]), np.array([3, 7])),
-        ('value-multi-dim', np.array([0.1, 0.4]), np.array(
-            [1, 4]), np.array([[5., 4], [6, 2]])),
-    ])
+        (
+            'value-multi-dim',
+            np.array([0.1, 0.4]),
+            np.array([1, 4]),
+            np.array([[5.0, 4], [6, 2]]),
+        ),
+    ],
+)
 class TestGumbelPDF(unittest.TestCase):
-
     def setUp(self):
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
@@ -129,10 +155,12 @@ class TestGumbelPDF(unittest.TestCase):
 
         with paddle.static.program_guard(main_program, startup_program):
             loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
-            scale = paddle.static.data('scale', self.scale.shape,
-                                       self.scale.dtype)
-            value = paddle.static.data('value', self.value.shape,
-                                       self.value.dtype)
+            scale = paddle.static.data(
+                'scale', self.scale.shape, self.scale.dtype
+            )
+            value = paddle.static.data(
+                'value', self.value.shape, self.value.dtype
+            )
             self._dist = Gumbel(loc=loc, scale=scale)
             prob = self._dist.prob(value)
             log_prob = self._dist.log_prob(value)
@@ -141,31 +169,33 @@ class TestGumbelPDF(unittest.TestCase):
         self.feeds = {'loc': self.loc, 'scale': self.scale, 'value': self.value}
 
         executor.run(startup_program)
-        [self.prob, self.log_prob,
-         self.cdf] = executor.run(main_program,
-                                  feed=self.feeds,
-                                  fetch_list=fetch_list)
+        [self.prob, self.log_prob, self.cdf] = executor.run(
+            main_program, feed=self.feeds, fetch_list=fetch_list
+        )
 
     def test_prob(self):
-        np.testing.assert_allclose(self.prob,
-                                   scipy.stats.gumbel_r.pdf(
-                                       self.value, self.loc, self.scale),
-                                   rtol=config.RTOL.get(str(self.loc.dtype)),
-                                   atol=config.ATOL.get(str(self.loc.dtype)))
+        np.testing.assert_allclose(
+            self.prob,
+            scipy.stats.gumbel_r.pdf(self.value, self.loc, self.scale),
+            rtol=config.RTOL.get(str(self.loc.dtype)),
+            atol=config.ATOL.get(str(self.loc.dtype)),
+        )
 
     def test_log_prob(self):
-        np.testing.assert_allclose(self.log_prob,
-                                   scipy.stats.gumbel_r.logpdf(
-                                       self.value, self.loc, self.scale),
-                                   rtol=config.RTOL.get(str(self.loc.dtype)),
-                                   atol=config.ATOL.get(str(self.loc.dtype)))
+        np.testing.assert_allclose(
+            self.log_prob,
+            scipy.stats.gumbel_r.logpdf(self.value, self.loc, self.scale),
+            rtol=config.RTOL.get(str(self.loc.dtype)),
+            atol=config.ATOL.get(str(self.loc.dtype)),
+        )
 
     def test_cdf(self):
-        np.testing.assert_allclose(self.cdf,
-                                   scipy.stats.gumbel_r.cdf(
-                                       self.value, self.loc, self.scale),
-                                   rtol=0.3,
-                                   atol=config.ATOL.get(str(self.loc.dtype)))
+        np.testing.assert_allclose(
+            self.cdf,
+            scipy.stats.gumbel_r.cdf(self.value, self.loc, self.scale),
+            rtol=0.3,
+            atol=config.ATOL.get(str(self.loc.dtype)),
+        )
 
 
 if __name__ == '__main__':

@@ -21,37 +21,77 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.param_attr import ParamAttr
 
 
-def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
-                scale_z, bias_z, mean_z, var_z, stride, stride_z, padding,
-                dilation, groups, momentum, eps, data_format, fuse_add,
-                has_shortcut, use_global_stats, is_test, act):
+def resnet_unit(
+    x,
+    filter_x,
+    scale_x,
+    bias_x,
+    mean_x,
+    var_x,
+    z,
+    filter_z,
+    scale_z,
+    bias_z,
+    mean_z,
+    var_z,
+    stride,
+    stride_z,
+    padding,
+    dilation,
+    groups,
+    momentum,
+    eps,
+    data_format,
+    fuse_add,
+    has_shortcut,
+    use_global_stats,
+    is_test,
+    act,
+):
 
     helper = LayerHelper('resnet_unit', **locals())
     bn_param_dtype = fluid.core.VarDesc.VarType.FP32
     bit_mask_dtype = fluid.core.VarDesc.VarType.INT32
     out = helper.create_variable_for_type_inference(x.dtype)
-    bit_mask = helper.create_variable_for_type_inference(dtype=bit_mask_dtype,
-                                                         stop_gradient=True)
+    bit_mask = helper.create_variable_for_type_inference(
+        dtype=bit_mask_dtype, stop_gradient=True
+    )
     # intermediate_out for x
-    conv_x = helper.create_variable_for_type_inference(dtype=x.dtype,
-                                                       stop_gradient=True)
+    conv_x = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True
+    )
     saved_mean_x = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True)
+        dtype=bn_param_dtype, stop_gradient=True
+    )
     saved_invstd_x = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True)
+        dtype=bn_param_dtype, stop_gradient=True
+    )
     running_mean_x = mean_x
     running_var_x = var_x
     # intermediate_out for z
-    conv_z = helper.create_variable_for_type_inference(dtype=x.dtype,
-                                                       stop_gradient=True)
+    conv_z = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True
+    )
     saved_mean_z = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True)
+        dtype=bn_param_dtype, stop_gradient=True
+    )
     saved_invstd_z = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True)
-    running_mean_z = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True) if mean_z is None else mean_z
-    running_var_z = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True) if var_z is None else var_z
+        dtype=bn_param_dtype, stop_gradient=True
+    )
+    running_mean_z = (
+        helper.create_variable_for_type_inference(
+            dtype=bn_param_dtype, stop_gradient=True
+        )
+        if mean_z is None
+        else mean_z
+    )
+    running_var_z = (
+        helper.create_variable_for_type_inference(
+            dtype=bn_param_dtype, stop_gradient=True
+        )
+        if var_z is None
+        else var_z
+    )
 
     inputs = {
         'X': x,
@@ -65,7 +105,7 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
         'ScaleZ': scale_z,
         'BiasZ': bias_z,
         'MeanZ': mean_z,
-        'VarZ': var_z
+        'VarZ': var_z,
     }
 
     attrs = {
@@ -81,7 +121,7 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
         'has_shortcut': has_shortcut,
         'use_global_stats': use_global_stats,
         'is_test': is_test,
-        'act_type': act
+        'act_type': act,
     }
 
     outputs = {
@@ -99,10 +139,9 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
         'RunningVarZ': running_var_z,
     }
 
-    helper.append_op(type='resnet_unit',
-                     inputs=inputs,
-                     outputs=outputs,
-                     attrs=attrs)
+    helper.append_op(
+        type='resnet_unit', inputs=inputs, outputs=outputs, attrs=attrs
+    )
 
     return out
 
@@ -113,31 +152,33 @@ class ResNetUnit(Layer):
     ResNetUnit is designed for optimize the performence by using cudnnv8 API.
     """
 
-    def __init__(self,
-                 num_channels_x,
-                 num_filters,
-                 filter_size,
-                 stride=1,
-                 momentum=0.9,
-                 eps=1e-5,
-                 data_format='NHWC',
-                 act='relu',
-                 fuse_add=False,
-                 has_shortcut=False,
-                 use_global_stats=False,
-                 is_test=False,
-                 filter_x_attr=None,
-                 scale_x_attr=None,
-                 bias_x_attr=None,
-                 moving_mean_x_name=None,
-                 moving_var_x_name=None,
-                 num_channels_z=1,
-                 stride_z=1,
-                 filter_z_attr=None,
-                 scale_z_attr=None,
-                 bias_z_attr=None,
-                 moving_mean_z_name=None,
-                 moving_var_z_name=None):
+    def __init__(
+        self,
+        num_channels_x,
+        num_filters,
+        filter_size,
+        stride=1,
+        momentum=0.9,
+        eps=1e-5,
+        data_format='NHWC',
+        act='relu',
+        fuse_add=False,
+        has_shortcut=False,
+        use_global_stats=False,
+        is_test=False,
+        filter_x_attr=None,
+        scale_x_attr=None,
+        bias_x_attr=None,
+        moving_mean_x_name=None,
+        moving_var_x_name=None,
+        num_channels_z=1,
+        stride_z=1,
+        filter_z_attr=None,
+        scale_z_attr=None,
+        bias_z_attr=None,
+        moving_mean_z_name=None,
+        moving_var_z_name=None,
+    ):
         super(ResNetUnit, self).__init__()
         self._stride = stride
         self._stride_z = stride_z
@@ -158,89 +199,124 @@ class ResNetUnit(Layer):
         valid_format = {'NHWC', 'NCHW'}
         if data_format not in valid_format:
             raise ValueError(
-                "conv_format must be one of {}, but got conv_format='{}'".
-                format(valid_format, data_format))
+                "conv_format must be one of {}, but got conv_format='{}'".format(
+                    valid_format, data_format
+                )
+            )
 
         def _get_default_param_initializer(channels):
             filter_elem_num = np.prod(self._kernel_size) * channels
-            std = (2.0 / filter_elem_num)**0.5
+            std = (2.0 / filter_elem_num) ** 0.5
             return I.Normal(0.0, std)
 
-        is_nchw = (data_format == 'NCHW')
+        is_nchw = data_format == 'NCHW'
         # initial filter
         bn_param_dtype = fluid.core.VarDesc.VarType.FP32
         if not is_nchw:
             bn_param_shape = [1, 1, 1, num_filters]
             filter_x_shape = [
-                num_filters, filter_size, filter_size, num_channels_x
+                num_filters,
+                filter_size,
+                filter_size,
+                num_channels_x,
             ]
             filter_z_shape = [
-                num_filters, filter_size, filter_size, num_channels_z
+                num_filters,
+                filter_size,
+                filter_size,
+                num_channels_z,
             ]
         else:
             bn_param_shape = [1, num_filters, 1, 1]
             filter_x_shape = [
-                num_filters, num_channels_x, filter_size, filter_size
+                num_filters,
+                num_channels_x,
+                filter_size,
+                filter_size,
             ]
             filter_z_shape = [
-                num_filters, num_channels_z, filter_size, filter_size
+                num_filters,
+                num_channels_z,
+                filter_size,
+                filter_size,
             ]
 
         self.filter_x = self.create_parameter(
             shape=filter_x_shape,
             attr=filter_x_attr,
-            default_initializer=_get_default_param_initializer(num_channels_x))
+            default_initializer=_get_default_param_initializer(num_channels_x),
+        )
         self.scale_x = self.create_parameter(
             shape=bn_param_shape,
             attr=scale_x_attr,
             dtype=bn_param_dtype,
-            default_initializer=I.Constant(1.0))
-        self.bias_x = self.create_parameter(shape=bn_param_shape,
-                                            attr=bias_x_attr,
-                                            dtype=bn_param_dtype,
-                                            is_bias=True)
-        self.mean_x = self.create_parameter(attr=ParamAttr(
-            name=moving_mean_x_name,
-            initializer=I.Constant(0.0),
-            trainable=False),
-                                            shape=bn_param_shape,
-                                            dtype=bn_param_dtype)
+            default_initializer=I.Constant(1.0),
+        )
+        self.bias_x = self.create_parameter(
+            shape=bn_param_shape,
+            attr=bias_x_attr,
+            dtype=bn_param_dtype,
+            is_bias=True,
+        )
+        self.mean_x = self.create_parameter(
+            attr=ParamAttr(
+                name=moving_mean_x_name,
+                initializer=I.Constant(0.0),
+                trainable=False,
+            ),
+            shape=bn_param_shape,
+            dtype=bn_param_dtype,
+        )
         self.mean_x.stop_gradient = True
-        self.var_x = self.create_parameter(attr=ParamAttr(
-            name=moving_var_x_name,
-            initializer=I.Constant(1.0),
-            trainable=False),
-                                           shape=bn_param_shape,
-                                           dtype=bn_param_dtype)
+        self.var_x = self.create_parameter(
+            attr=ParamAttr(
+                name=moving_var_x_name,
+                initializer=I.Constant(1.0),
+                trainable=False,
+            ),
+            shape=bn_param_shape,
+            dtype=bn_param_dtype,
+        )
         self.var_x.stop_gradient = True
         if has_shortcut:
             self.filter_z = self.create_parameter(
                 shape=filter_z_shape,
                 attr=filter_z_attr,
                 default_initializer=_get_default_param_initializer(
-                    num_channels_z))
+                    num_channels_z
+                ),
+            )
             self.scale_z = self.create_parameter(
                 shape=bn_param_shape,
                 attr=scale_z_attr,
                 dtype=bn_param_dtype,
-                default_initializer=I.Constant(1.0))
-            self.bias_z = self.create_parameter(shape=bn_param_shape,
-                                                attr=bias_z_attr,
-                                                dtype=bn_param_dtype,
-                                                is_bias=True)
-            self.mean_z = self.create_parameter(attr=ParamAttr(
-                name=moving_mean_z_name,
-                initializer=I.Constant(0.0),
-                trainable=False),
-                                                shape=bn_param_shape,
-                                                dtype=bn_param_dtype)
+                default_initializer=I.Constant(1.0),
+            )
+            self.bias_z = self.create_parameter(
+                shape=bn_param_shape,
+                attr=bias_z_attr,
+                dtype=bn_param_dtype,
+                is_bias=True,
+            )
+            self.mean_z = self.create_parameter(
+                attr=ParamAttr(
+                    name=moving_mean_z_name,
+                    initializer=I.Constant(0.0),
+                    trainable=False,
+                ),
+                shape=bn_param_shape,
+                dtype=bn_param_dtype,
+            )
             self.mean_z.stop_gradient = True
-            self.var_z = self.create_parameter(attr=ParamAttr(
-                name=moving_var_z_name,
-                initializer=I.Constant(1.0),
-                trainable=False),
-                                               shape=bn_param_shape,
-                                               dtype=bn_param_dtype)
+            self.var_z = self.create_parameter(
+                attr=ParamAttr(
+                    name=moving_var_z_name,
+                    initializer=I.Constant(1.0),
+                    trainable=False,
+                ),
+                shape=bn_param_shape,
+                dtype=bn_param_dtype,
+            )
             self.var_z.stop_gradient = True
         else:
             self.filter_z = None
@@ -253,12 +329,31 @@ class ResNetUnit(Layer):
         if self._fuse_add and z is None:
             raise ValueError("z can not be None")
 
-        out = resnet_unit(x, self.filter_x, self.scale_x, self.bias_x,
-                          self.mean_x, self.var_x, z, self.filter_z,
-                          self.scale_z, self.bias_z, self.mean_z, self.var_z,
-                          self._stride, self._stride_z, self._padding,
-                          self._dilation, self._groups, self._momentum,
-                          self._eps, self._data_format, self._fuse_add,
-                          self._has_shortcut, self._use_global_stats,
-                          self._is_test, self._act)
+        out = resnet_unit(
+            x,
+            self.filter_x,
+            self.scale_x,
+            self.bias_x,
+            self.mean_x,
+            self.var_x,
+            z,
+            self.filter_z,
+            self.scale_z,
+            self.bias_z,
+            self.mean_z,
+            self.var_z,
+            self._stride,
+            self._stride_z,
+            self._padding,
+            self._dilation,
+            self._groups,
+            self._momentum,
+            self._eps,
+            self._data_format,
+            self._fuse_add,
+            self._has_shortcut,
+            self._use_global_stats,
+            self._is_test,
+            self._act,
+        )
         return out

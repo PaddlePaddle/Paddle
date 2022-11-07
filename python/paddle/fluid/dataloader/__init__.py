@@ -24,7 +24,9 @@ from .dataloader_iter import *
 from . import sampler
 from .sampler import *
 
-__all__ = dataset.__all__ \
-        + batch_sampler.__all__ \
-        + dataloader_iter.__all__ \
-        + sampler.__all__
+__all__ = (
+    dataset.__all__
+    + batch_sampler.__all__
+    + dataloader_iter.__all__
+    + sampler.__all__
+)

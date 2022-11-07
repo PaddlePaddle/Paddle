@@ -18,7 +18,6 @@ from paddle.dataset.common import download, DATA_HOME, md5file
 
 
 class TestDataSetDownload(unittest.TestCase):
-
     def setUp(self):
         flower_path = DATA_HOME + "/flowers/imagelabels.mat"
 
@@ -35,7 +34,7 @@ class TestDataSetDownload(unittest.TestCase):
         except Exception as e:
             catch_exp = True
 
-        self.assertTrue(catch_exp == False)
+        self.assertTrue(not catch_exp)
 
         file_path = DATA_HOME + "/flowers/imagelabels.mat"
 

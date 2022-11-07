@@ -16,9 +16,15 @@ import paddle.fluid.framework as framework
 from paddle.distributed import collective
 
 
-def _alltoall_single_in_dygraph(out_tensor, in_tensor, out_split_sizes,
-                                in_split_sizes, group, sync_op,
-                                use_calc_stream):
+def _alltoall_single_in_dygraph(
+    out_tensor,
+    in_tensor,
+    out_split_sizes,
+    in_split_sizes,
+    group,
+    sync_op,
+    use_calc_stream,
+):
     group = collective._get_default_group() if group is None else group
 
     if out_split_sizes is None:
@@ -28,24 +34,27 @@ def _alltoall_single_in_dygraph(out_tensor, in_tensor, out_split_sizes,
 
     if use_calc_stream:
         return group.process_group.alltoall_single_on_calc_stream(
-            in_tensor, out_tensor, in_split_sizes, out_split_sizes)
+            in_tensor, out_tensor, in_split_sizes, out_split_sizes
+        )
 
-    task = group.process_group.alltoall_single(in_tensor, out_tensor,
-                                               in_split_sizes, out_split_sizes,
-                                               sync_op)
+    task = group.process_group.alltoall_single(
+        in_tensor, out_tensor, in_split_sizes, out_split_sizes, sync_op
+    )
     if sync_op:
         task.wait()
 
     return task
 
 
-def alltoall_single(out_tensor,
-                    in_tensor,
-                    out_split_sizes=None,
-                    in_split_sizes=None,
-                    group=None,
-                    sync_op=True,
-                    use_calc_stream=False):
+def alltoall_single(
+    out_tensor,
+    in_tensor,
+    out_split_sizes=None,
+    in_split_sizes=None,
+    group=None,
+    sync_op=True,
+    use_calc_stream=False,
+):
     """
 
     Split and Scatter the splitted input tensor to the out tensor across devices.
@@ -116,12 +125,19 @@ def alltoall_single(out_tensor,
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be true in sync op behavior.")
+            "use_calc_stream can only be true in sync op behavior."
+        )
 
     if framework.in_dygraph_mode():
-        return _alltoall_single_in_dygraph(out_tensor, in_tensor,
-                                           out_split_sizes, in_split_sizes,
-                                           group, sync_op, use_calc_stream)
+        return _alltoall_single_in_dygraph(
+            out_tensor,
+            in_tensor,
+            out_split_sizes,
+            in_split_sizes,
+            group,
+            sync_op,
+            use_calc_stream,
+        )
 
     raise RuntimeError(
         "paddle.distributed.stream.alltoall_single is only supported in dygraph mode now."

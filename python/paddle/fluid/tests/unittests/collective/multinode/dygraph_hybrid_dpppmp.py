@@ -15,7 +15,10 @@
 import numpy as np
 import paddle
 import paddle.distributed.fleet as fleet
-from test_collective_multi_nodes import TestCollectiveAPIRunnerBase, runtime_main
+from test_collective_multi_nodes import (
+    TestCollectiveAPIRunnerBase,
+    runtime_main,
+)
 from paddle import nn
 import numpy as np
 
@@ -28,15 +31,14 @@ def weight_init(mp, shape, col=True, seed=1024):
     else:
         if col:
             step = shape[1] // mp.nranks
-            _w = w[:, mp.rank * step:mp.rank * step + step]
+            _w = w[:, mp.rank * step : mp.rank * step + step]
         else:
             step = shape[0] // mp.nranks
-            _w = w[mp.rank * step:mp.rank * step + step, :]
+            _w = w[mp.rank * step : mp.rank * step + step, :]
     return paddle.fluid.initializer.NumpyArrayInitializer(_w)
 
 
 class Criterion(nn.Layer):
-
     def __init__(self):
         super(Criterion, self).__init__()
         self.loss_func = nn.MSELoss(reduction="mean")
@@ -47,7 +49,6 @@ class Criterion(nn.Layer):
 
 
 class ModelPipeline(fleet.meta_parallel.PipelineLayer):
-
     def __init__(self, hcg):
         paddle.seed(1024)
         dp_linear = nn.Linear(32, 128)
@@ -62,35 +63,38 @@ class ModelPipeline(fleet.meta_parallel.PipelineLayer):
                     512,
                     weight_attr=weight_init(mp, (128, 512), True, 1204 + i),
                     has_bias=True,
-                    gather_output=False)
+                    gather_output=False,
+                )
                 mp_linear_2 = fleet.meta_parallel.RowParallelLinear(
                     512,
                     128,
                     weight_attr=weight_init(mp, (512, 128), False, 2012 + i),
                     has_bias=True,
-                    input_is_parallel=True)
+                    input_is_parallel=True,
+                )
             else:
-                mp_linear_1 = nn.Linear(128,
-                                        512,
-                                        weight_attr=weight_init(
-                                            None, (128, 512), True, 1204 + i))
-                mp_linear_2 = nn.Linear(512,
-                                        128,
-                                        weight_attr=weight_init(
-                                            None, (512, 128), True, 2012 + i))
+                mp_linear_1 = nn.Linear(
+                    128,
+                    512,
+                    weight_attr=weight_init(None, (128, 512), True, 1204 + i),
+                )
+                mp_linear_2 = nn.Linear(
+                    512,
+                    128,
+                    weight_attr=weight_init(None, (512, 128), True, 2012 + i),
+                )
             act = nn.ReLU6()
             layer_seq = nn.Sequential(mp_linear_1, mp_linear_2, act)
             self.layers_pp.append(layer_seq)
 
         out = nn.Linear(128, 32)
         self.layers_pp.append(out)
-        super(ModelPipeline, self).__init__(layers=self.layers_pp,
-                                            loss_fn=Criterion(),
-                                            topology=self.topology)
+        super(ModelPipeline, self).__init__(
+            layers=self.layers_pp, loss_fn=Criterion(), topology=self.topology
+        )
 
 
 class Model(nn.Layer):
-
     def __init__(self, hcg):
         super(Model, self).__init__()
         paddle.seed(1024)
@@ -105,22 +109,26 @@ class Model(nn.Layer):
                     512,
                     weight_attr=weight_init(mp, (128, 512), True, 1204 + i),
                     has_bias=True,
-                    gather_output=False)
+                    gather_output=False,
+                )
                 mp_linear_2 = fleet.meta_parallel.RowParallelLinear(
                     512,
                     128,
                     weight_attr=weight_init(mp, (512, 128), False, 2012 + i),
                     has_bias=True,
-                    input_is_parallel=True)
+                    input_is_parallel=True,
+                )
             else:
-                mp_linear_1 = nn.Linear(128,
-                                        512,
-                                        weight_attr=weight_init(
-                                            None, (128, 512), True, 1204 + i))
-                mp_linear_2 = nn.Linear(512,
-                                        128,
-                                        weight_attr=weight_init(
-                                            None, (512, 128), True, 2012 + i))
+                mp_linear_1 = nn.Linear(
+                    128,
+                    512,
+                    weight_attr=weight_init(None, (128, 512), True, 1204 + i),
+                )
+                mp_linear_2 = nn.Linear(
+                    512,
+                    128,
+                    weight_attr=weight_init(None, (512, 128), True, 2012 + i),
+                )
             act = nn.ReLU6()
             layer_seq = nn.Sequential(mp_linear_1, mp_linear_2, act)
             self.layers_pp.append(layer_seq)
@@ -134,7 +142,6 @@ class Model(nn.Layer):
 
 
 class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         pass
 
@@ -143,9 +150,11 @@ class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
         from common import init_parallel_env
         import paddle
         from paddle.distributed import fleet
+
         hcg = init_parallel_env("DP4-MP2-PP2-SH1-O1", 64)
         pp_degree = hcg.get_pipe_parallel_world_size()
         import numpy as np
+
         crit = Criterion()
         if pp_degree <= 1:
             model = Model(hcg)
@@ -154,10 +163,12 @@ class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
 
         model_base = Model(None)
 
-        optimizer = paddle.optimizer.Adam(learning_rate=0.01,
-                                          parameters=model.parameters())
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=model.parameters()
+        )
         optimizer_base = paddle.optimizer.Adam(
-            learning_rate=0.01, parameters=model_base.parameters())
+            learning_rate=0.01, parameters=model_base.parameters()
+        )
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)

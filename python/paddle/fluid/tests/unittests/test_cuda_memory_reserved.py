@@ -20,7 +20,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMemoryreserved(unittest.TestCase):
-
     def func_test_memory_reserved(self, device=None):
         if core.is_compiled_with_cuda():
             tensor = paddle.zeros(shape=[256])
@@ -51,7 +50,11 @@ class TestMemoryreserved(unittest.TestCase):
         if core.is_compiled_with_cuda():
             wrong_device = [
                 core.CPUPlace(),
-                device_count() + 1, -2, 0.5, "gpu1", "npu"
+                device_count() + 1,
+                -2,
+                0.5,
+                "gpu1",
+                "npu",
             ]
             for device in wrong_device:
                 with self.assertRaises(BaseException):

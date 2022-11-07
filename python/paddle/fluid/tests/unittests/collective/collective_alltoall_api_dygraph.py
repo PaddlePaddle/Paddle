@@ -19,7 +19,6 @@ import test_collective_api_base as test_base
 
 
 class TestCollectiveAllToAllAPI(test_base.TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 

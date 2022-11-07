@@ -23,11 +23,16 @@ import paddle
 import paddle.fluid as fluid
 
 import transformer_util as util
-from transformer_dygraph_model import CrossEntropyCriterion, Transformer, position_encoding_init
+from transformer_dygraph_model import (
+    CrossEntropyCriterion,
+    Transformer,
+    position_encoding_init,
+)
 
 trainer_count = 1
-place = fluid.CUDAPlace(
-    0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+place = (
+    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+)
 SEED = 10
 STEP_NUM = 10
 
@@ -42,46 +47,73 @@ def train_static(args, batch_generator):
     with fluid.program_guard(train_prog, startup_prog):
         with fluid.unique_name.guard():
             # define input and reader
-            input_field_names = util.encoder_data_input_fields + \
-                                util.decoder_data_input_fields[:-1] + util.label_data_input_fields
+            input_field_names = (
+                util.encoder_data_input_fields
+                + util.decoder_data_input_fields[:-1]
+                + util.label_data_input_fields
+            )
             input_descs = util.get_input_descs(args)
-            input_slots = [{
-                "name": name,
-                "shape": input_descs[name][0],
-                "dtype": input_descs[name][1]
-            } for name in input_field_names]
+            input_slots = [
+                {
+                    "name": name,
+                    "shape": input_descs[name][0],
+                    "dtype": input_descs[name][1],
+                }
+                for name in input_field_names
+            ]
             input_field = util.InputField(input_slots)
             # Define DataLoader
             data_loader = fluid.io.DataLoader.from_generator(
-                input_field.feed_list, capacity=60)
+                input_field.feed_list, capacity=60
+            )
             data_loader.set_batch_generator(batch_generator, places=place)
             # define model
             transformer = Transformer(
-                args.src_vocab_size, args.trg_vocab_size, args.max_length + 1,
-                args.n_layer, args.n_head, args.d_key, args.d_value,
-                args.d_model, args.d_inner_hid, args.prepostprocess_dropout,
-                args.attention_dropout, args.relu_dropout, args.preprocess_cmd,
-                args.postprocess_cmd, args.weight_sharing, args.bos_idx,
-                args.eos_idx)
+                args.src_vocab_size,
+                args.trg_vocab_size,
+                args.max_length + 1,
+                args.n_layer,
+                args.n_head,
+                args.d_key,
+                args.d_value,
+                args.d_model,
+                args.d_inner_hid,
+                args.prepostprocess_dropout,
+                args.attention_dropout,
+                args.relu_dropout,
+                args.preprocess_cmd,
+                args.postprocess_cmd,
+                args.weight_sharing,
+                args.bos_idx,
+                args.eos_idx,
+            )
             logits = transformer(*input_field.feed_list[:7])
             # define loss
             criterion = CrossEntropyCriterion(args.label_smooth_eps)
             lbl_word, lbl_weight = input_field.feed_list[7:]
-            sum_cost, avg_cost, token_num = criterion(logits, lbl_word,
-                                                      lbl_weight)
+            sum_cost, avg_cost, token_num = criterion(
+                logits, lbl_word, lbl_weight
+            )
             # define optimizer
             learning_rate = fluid.layers.learning_rate_scheduler.noam_decay(
-                args.d_model, args.warmup_steps, args.learning_rate)
-            optimizer = fluid.optimizer.Adam(learning_rate=learning_rate,
-                                             beta1=args.beta1,
-                                             beta2=args.beta2,
-                                             epsilon=float(args.eps))
+                args.d_model, args.warmup_steps, args.learning_rate
+            )
+            optimizer = fluid.optimizer.Adam(
+                learning_rate=learning_rate,
+                beta1=args.beta1,
+                beta2=args.beta2,
+                epsilon=float(args.eps),
+            )
             optimizer.minimize(avg_cost)
             # the best cross-entropy value with label smoothing
-            loss_normalizer = -((1. - args.label_smooth_eps) * np.log(
-                (1. - args.label_smooth_eps)) + args.label_smooth_eps *
-                                np.log(args.label_smooth_eps /
-                                       (args.trg_vocab_size - 1) + 1e-20))
+            loss_normalizer = -(
+                (1.0 - args.label_smooth_eps)
+                * np.log((1.0 - args.label_smooth_eps))
+                + args.label_smooth_eps
+                * np.log(
+                    args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20
+                )
+            )
     step_idx = 0
     total_batch_num = 0
     avg_loss = []
@@ -90,12 +122,15 @@ def train_static(args, batch_generator):
     for pass_id in range(args.epoch):
         batch_id = 0
         for feed_dict in data_loader:
-            outs = exe.run(program=train_prog,
-                           feed=feed_dict,
-                           fetch_list=[sum_cost.name, token_num.name])
+            outs = exe.run(
+                program=train_prog,
+                feed=feed_dict,
+                fetch_list=[sum_cost.name, token_num.name],
+            )
             if step_idx % args.print_step == 0:
                 sum_cost_val, token_num_val = np.array(outs[0]), np.array(
-                    outs[1])
+                    outs[1]
+                )
                 total_sum_cost = sum_cost_val.sum()
                 total_token_num = token_num_val.sum()
                 total_avg_cost = total_sum_cost / total_token_num
@@ -103,27 +138,40 @@ def train_static(args, batch_generator):
                 if step_idx == 0:
                     logging.info(
                         "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
-                        "normalized loss: %f, ppl: %f" %
-                        (step_idx, pass_id, batch_id, total_avg_cost,
-                         total_avg_cost - loss_normalizer,
-                         np.exp([min(total_avg_cost, 100)])))
+                        "normalized loss: %f, ppl: %f"
+                        % (
+                            step_idx,
+                            pass_id,
+                            batch_id,
+                            total_avg_cost,
+                            total_avg_cost - loss_normalizer,
+                            np.exp([min(total_avg_cost, 100)]),
+                        )
+                    )
                     avg_batch_time = time.time()
                 else:
                     logging.info(
                         "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
-                        "normalized loss: %f, ppl: %f, speed: %.2f steps/s" %
-                        (step_idx, pass_id, batch_id, total_avg_cost,
-                         total_avg_cost - loss_normalizer,
-                         np.exp([min(total_avg_cost, 100)]), args.print_step /
-                         (time.time() - avg_batch_time)))
+                        "normalized loss: %f, ppl: %f, speed: %.2f steps/s"
+                        % (
+                            step_idx,
+                            pass_id,
+                            batch_id,
+                            total_avg_cost,
+                            total_avg_cost - loss_normalizer,
+                            np.exp([min(total_avg_cost, 100)]),
+                            args.print_step / (time.time() - avg_batch_time),
+                        )
+                    )
                     avg_batch_time = time.time()
             batch_id += 1
             step_idx += 1
             total_batch_num = total_batch_num + 1
             if step_idx == STEP_NUM:
                 if args.save_dygraph_model_path:
-                    model_path = os.path.join(args.save_static_model_path,
-                                              "transformer")
+                    model_path = os.path.join(
+                        args.save_static_model_path, "transformer"
+                    )
                     fluid.save(train_prog, model_path)
                 break
     return np.array(avg_loss)
@@ -139,30 +187,45 @@ def train_dygraph(args, batch_generator):
         train_loader.set_batch_generator(batch_generator, places=place)
         # define model
         transformer = Transformer(
-            args.src_vocab_size, args.trg_vocab_size, args.max_length + 1,
-            args.n_layer, args.n_head, args.d_key, args.d_value, args.d_model,
-            args.d_inner_hid, args.prepostprocess_dropout,
-            args.attention_dropout, args.relu_dropout, args.preprocess_cmd,
-            args.postprocess_cmd, args.weight_sharing, args.bos_idx,
-            args.eos_idx)
+            args.src_vocab_size,
+            args.trg_vocab_size,
+            args.max_length + 1,
+            args.n_layer,
+            args.n_head,
+            args.d_key,
+            args.d_value,
+            args.d_model,
+            args.d_inner_hid,
+            args.prepostprocess_dropout,
+            args.attention_dropout,
+            args.relu_dropout,
+            args.preprocess_cmd,
+            args.postprocess_cmd,
+            args.weight_sharing,
+            args.bos_idx,
+            args.eos_idx,
+        )
         # define loss
         criterion = CrossEntropyCriterion(args.label_smooth_eps)
         # define optimizer
         learning_rate = fluid.layers.learning_rate_scheduler.noam_decay(
-            args.d_model, args.warmup_steps, args.learning_rate)
+            args.d_model, args.warmup_steps, args.learning_rate
+        )
         # define optimizer
         optimizer = fluid.optimizer.Adam(
             learning_rate=learning_rate,
             beta1=args.beta1,
             beta2=args.beta2,
             epsilon=float(args.eps),
-            parameter_list=transformer.parameters())
+            parameter_list=transformer.parameters(),
+        )
         # the best cross-entropy value with label smoothing
         loss_normalizer = -(
-            (1. - args.label_smooth_eps) * np.log(
-                (1. - args.label_smooth_eps)) +
-            args.label_smooth_eps * np.log(args.label_smooth_eps /
-                                           (args.trg_vocab_size - 1) + 1e-20))
+            (1.0 - args.label_smooth_eps)
+            * np.log((1.0 - args.label_smooth_eps))
+            + args.label_smooth_eps
+            * np.log(args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20)
+        )
         ce_time = []
         ce_ppl = []
         avg_loss = []
@@ -171,14 +234,29 @@ def train_dygraph(args, batch_generator):
             pass_start_time = time.time()
             batch_id = 0
             for input_data in train_loader():
-                (src_word, src_pos, src_slf_attn_bias, trg_word, trg_pos,
-                 trg_slf_attn_bias, trg_src_attn_bias, lbl_word,
-                 lbl_weight) = input_data
-                logits = transformer(src_word, src_pos, src_slf_attn_bias,
-                                     trg_word, trg_pos, trg_slf_attn_bias,
-                                     trg_src_attn_bias)
+                (
+                    src_word,
+                    src_pos,
+                    src_slf_attn_bias,
+                    trg_word,
+                    trg_pos,
+                    trg_slf_attn_bias,
+                    trg_src_attn_bias,
+                    lbl_word,
+                    lbl_weight,
+                ) = input_data
+                logits = transformer(
+                    src_word,
+                    src_pos,
+                    src_slf_attn_bias,
+                    trg_word,
+                    trg_pos,
+                    trg_slf_attn_bias,
+                    trg_src_attn_bias,
+                )
                 sum_cost, avg_cost, token_num = criterion(
-                    logits, lbl_word, lbl_weight)
+                    logits, lbl_word, lbl_weight
+                )
                 avg_cost.backward()
                 optimizer.minimize(avg_cost)
                 transformer.clear_gradients()
@@ -188,20 +266,32 @@ def train_dygraph(args, batch_generator):
                     if step_idx == 0:
                         logging.info(
                             "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
-                            "normalized loss: %f, ppl: %f" %
-                            (step_idx, pass_id, batch_id, total_avg_cost,
-                             total_avg_cost - loss_normalizer,
-                             np.exp([min(total_avg_cost, 100)])))
+                            "normalized loss: %f, ppl: %f"
+                            % (
+                                step_idx,
+                                pass_id,
+                                batch_id,
+                                total_avg_cost,
+                                total_avg_cost - loss_normalizer,
+                                np.exp([min(total_avg_cost, 100)]),
+                            )
+                        )
                         avg_batch_time = time.time()
                     else:
                         logging.info(
                             "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
                             "normalized loss: %f, ppl: %f, speed: %.2f steps/s"
-                            % (step_idx, pass_id, batch_id, total_avg_cost,
-                               total_avg_cost - loss_normalizer,
-                               np.exp([min(total_avg_cost, 100)
-                                       ]), args.print_step /
-                               (time.time() - avg_batch_time)))
+                            % (
+                                step_idx,
+                                pass_id,
+                                batch_id,
+                                total_avg_cost,
+                                total_avg_cost - loss_normalizer,
+                                np.exp([min(total_avg_cost, 100)]),
+                                args.print_step
+                                / (time.time() - avg_batch_time),
+                            )
+                        )
                         ce_ppl.append(np.exp([min(total_avg_cost, 100)]))
                         avg_batch_time = time.time()
                 batch_id += 1
@@ -213,10 +303,12 @@ def train_dygraph(args, batch_generator):
                             os.makedirs(model_dir)
                         fluid.save_dygraph(
                             transformer.state_dict(),
-                            os.path.join(model_dir, "transformer"))
+                            os.path.join(model_dir, "transformer"),
+                        )
                         fluid.save_dygraph(
                             optimizer.state_dict(),
-                            os.path.join(model_dir, "transformer"))
+                            os.path.join(model_dir, "transformer"),
+                        )
                     break
             time_consumed = time.time() - pass_start_time
             ce_time.append(time_consumed)
@@ -234,22 +326,37 @@ def predict_dygraph(args, batch_generator):
 
         # define model
         transformer = Transformer(
-            args.src_vocab_size, args.trg_vocab_size, args.max_length + 1,
-            args.n_layer, args.n_head, args.d_key, args.d_value, args.d_model,
-            args.d_inner_hid, args.prepostprocess_dropout,
-            args.attention_dropout, args.relu_dropout, args.preprocess_cmd,
-            args.postprocess_cmd, args.weight_sharing, args.bos_idx,
-            args.eos_idx)
+            args.src_vocab_size,
+            args.trg_vocab_size,
+            args.max_length + 1,
+            args.n_layer,
+            args.n_head,
+            args.d_key,
+            args.d_value,
+            args.d_model,
+            args.d_inner_hid,
+            args.prepostprocess_dropout,
+            args.attention_dropout,
+            args.relu_dropout,
+            args.preprocess_cmd,
+            args.postprocess_cmd,
+            args.weight_sharing,
+            args.bos_idx,
+            args.eos_idx,
+        )
 
         # load the trained model
         model_dict, _ = util.load_dygraph(
-            os.path.join(args.save_dygraph_model_path, "transformer"))
+            os.path.join(args.save_dygraph_model_path, "transformer")
+        )
         # to avoid a longer length than training, reset the size of position
         # encoding to max_length
         model_dict["encoder.pos_encoder.weight"] = position_encoding_init(
-            args.max_length + 1, args.d_model)
+            args.max_length + 1, args.d_model
+        )
         model_dict["decoder.pos_encoder.weight"] = position_encoding_init(
-            args.max_length + 1, args.d_model)
+            args.max_length + 1, args.d_model
+        )
         transformer.load_dict(model_dict)
 
         # set evaluate mode
@@ -258,8 +365,13 @@ def predict_dygraph(args, batch_generator):
         step_idx = 0
         speed_list = []
         for input_data in test_loader():
-            (src_word, src_pos, src_slf_attn_bias, trg_word,
-             trg_src_attn_bias) = input_data
+            (
+                src_word,
+                src_pos,
+                src_slf_attn_bias,
+                trg_word,
+                trg_src_attn_bias,
+            ) = input_data
             seq_ids, seq_scores = transformer.beam_search(
                 src_word,
                 src_pos,
@@ -269,28 +381,32 @@ def predict_dygraph(args, batch_generator):
                 bos_id=args.bos_idx,
                 eos_id=args.eos_idx,
                 beam_size=args.beam_size,
-                max_len=args.max_out_len)
+                max_len=args.max_out_len,
+            )
             seq_ids = seq_ids.numpy()
             seq_scores = seq_scores.numpy()
             if step_idx % args.print_step == 0:
                 if step_idx == 0:
                     logging.info(
                         "Dygraph Predict: step_idx: %d, 1st seq_id: %d, 1st seq_score: %.2f"
-                        % (step_idx, seq_ids[0][0][0], seq_scores[0][0]))
+                        % (step_idx, seq_ids[0][0][0], seq_scores[0][0])
+                    )
                     avg_batch_time = time.time()
                 else:
                     speed = args.print_step / (time.time() - avg_batch_time)
                     speed_list.append(speed)
                     logging.info(
                         "Dygraph Predict: step_idx: %d, 1st seq_id: %d, 1st seq_score: %.2f, speed: %.3f steps/s"
-                        % (step_idx, seq_ids[0][0][0], seq_scores[0][0], speed))
+                        % (step_idx, seq_ids[0][0][0], seq_scores[0][0], speed)
+                    )
                     avg_batch_time = time.time()
 
             step_idx += 1
             if step_idx == STEP_NUM:
                 break
-        logging.info("Dygraph Predict:  avg_speed: %.4f steps/s" %
-                     (np.mean(speed_list)))
+        logging.info(
+            "Dygraph Predict:  avg_speed: %.4f steps/s" % (np.mean(speed_list))
+        )
         return seq_ids, seq_scores
 
 
@@ -301,33 +417,53 @@ def predict_static(args, batch_generator):
         paddle.framework.random._manual_program_seed(SEED)
 
         # define input and reader
-        input_field_names = util.encoder_data_input_fields + util.fast_decoder_data_input_fields
+        input_field_names = (
+            util.encoder_data_input_fields + util.fast_decoder_data_input_fields
+        )
         input_descs = util.get_input_descs(args, 'test')
-        input_slots = [{
-            "name": name,
-            "shape": input_descs[name][0],
-            "dtype": input_descs[name][1]
-        } for name in input_field_names]
+        input_slots = [
+            {
+                "name": name,
+                "shape": input_descs[name][0],
+                "dtype": input_descs[name][1],
+            }
+            for name in input_field_names
+        ]
 
         input_field = util.InputField(input_slots)
         feed_list = input_field.feed_list
-        loader = fluid.io.DataLoader.from_generator(feed_list=feed_list,
-                                                    capacity=10)
+        loader = fluid.io.DataLoader.from_generator(
+            feed_list=feed_list, capacity=10
+        )
 
         # define model
         transformer = Transformer(
-            args.src_vocab_size, args.trg_vocab_size, args.max_length + 1,
-            args.n_layer, args.n_head, args.d_key, args.d_value, args.d_model,
-            args.d_inner_hid, args.prepostprocess_dropout,
-            args.attention_dropout, args.relu_dropout, args.preprocess_cmd,
-            args.postprocess_cmd, args.weight_sharing, args.bos_idx,
-            args.eos_idx)
+            args.src_vocab_size,
+            args.trg_vocab_size,
+            args.max_length + 1,
+            args.n_layer,
+            args.n_head,
+            args.d_key,
+            args.d_value,
+            args.d_model,
+            args.d_inner_hid,
+            args.prepostprocess_dropout,
+            args.attention_dropout,
+            args.relu_dropout,
+            args.preprocess_cmd,
+            args.postprocess_cmd,
+            args.weight_sharing,
+            args.bos_idx,
+            args.eos_idx,
+        )
 
-        out_ids, out_scores = transformer.beam_search(*feed_list,
-                                                      bos_id=args.bos_idx,
-                                                      eos_id=args.eos_idx,
-                                                      beam_size=args.beam_size,
-                                                      max_len=args.max_out_len)
+        out_ids, out_scores = transformer.beam_search(
+            *feed_list,
+            bos_id=args.bos_idx,
+            eos_id=args.eos_idx,
+            beam_size=args.beam_size,
+            max_len=args.max_out_len
+        )
 
     # This is used here to set dropout to the test mode.
     test_prog = test_prog.clone(for_test=True)
@@ -335,8 +471,9 @@ def predict_static(args, batch_generator):
     # define the executor and program for training
     exe = fluid.Executor(place)
 
-    util.load(test_prog, os.path.join(args.save_static_model_path,
-                                      "transformer"), exe)
+    util.load(
+        test_prog, os.path.join(args.save_static_model_path, "transformer"), exe
+    )
 
     loader.set_batch_generator(batch_generator, places=place)
 
@@ -347,32 +484,35 @@ def predict_static(args, batch_generator):
             test_prog,
             feed=feed_dict,
             fetch_list=[out_ids.name, out_scores.name],
-            return_numpy=True)
+            return_numpy=True,
+        )
         if step_idx % args.print_step == 0:
             if step_idx == 0:
                 logging.info(
                     "Static Predict: step_idx: %d, 1st seq_id: %d, 1st seq_score: %.2f,"
-                    % (step_idx, seq_ids[0][0][0], seq_scores[0][0]))
+                    % (step_idx, seq_ids[0][0][0], seq_scores[0][0])
+                )
                 avg_batch_time = time.time()
             else:
                 speed = args.print_step / (time.time() - avg_batch_time)
                 speed_list.append(speed)
                 logging.info(
                     "Static Predict: step_idx: %d, 1st seq_id: %d, 1st seq_score: %.2f, speed: %.3f steps/s"
-                    % (step_idx, seq_ids[0][0][0], seq_scores[0][0], speed))
+                    % (step_idx, seq_ids[0][0][0], seq_scores[0][0], speed)
+                )
                 avg_batch_time = time.time()
 
         step_idx += 1
         if step_idx == STEP_NUM:
             break
-    logging.info("Static Predict:  avg_speed: %.4f steps/s" %
-                 (np.mean(speed_list)))
+    logging.info(
+        "Static Predict:  avg_speed: %.4f steps/s" % (np.mean(speed_list))
+    )
 
     return seq_ids, seq_scores
 
 
 class TestTransformer(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -382,11 +522,14 @@ class TestTransformer(unittest.TestCase):
     def prepare(self, mode='train'):
         args = util.ModelHyperParams()
         args.save_dygraph_model_path = os.path.join(
-            self.temp_dir.name, args.save_dygraph_model_path)
-        args.save_static_model_path = os.path.join(self.temp_dir.name,
-                                                   args.save_static_model_path)
-        args.inference_model_dir = os.path.join(self.temp_dir.name,
-                                                args.inference_model_dir)
+            self.temp_dir.name, args.save_dygraph_model_path
+        )
+        args.save_static_model_path = os.path.join(
+            self.temp_dir.name, args.save_static_model_path
+        )
+        args.inference_model_dir = os.path.join(
+            self.temp_dir.name, args.inference_model_dir
+        )
         args.output_file = os.path.join(self.temp_dir.name, args.output_file)
         batch_generator = util.get_feed_data_reader(args, mode)
         return args, batch_generator
@@ -395,9 +538,9 @@ class TestTransformer(unittest.TestCase):
         args, batch_generator = self.prepare(mode='train')
         static_avg_loss = train_static(args, batch_generator)
         dygraph_avg_loss = train_dygraph(args, batch_generator)
-        np.testing.assert_allclose(static_avg_loss,
-                                   dygraph_avg_loss,
-                                   rtol=1e-05)
+        np.testing.assert_allclose(
+            static_avg_loss, dygraph_avg_loss, rtol=1e-05
+        )
 
     def _test_predict(self):
         args, batch_generator = self.prepare(mode='test')

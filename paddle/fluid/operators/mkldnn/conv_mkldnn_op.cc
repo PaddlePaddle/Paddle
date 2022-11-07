@@ -14,11 +14,11 @@
 
 #include <tuple>
 
-#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/core/expect.h"
 
 #include "paddle/phi/core/visit_type.h"
 
@@ -835,9 +835,11 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const bool is_test = ctx.Attr<bool>("is_test");
-    const bool is_conv3d = ctx.Attr<std::vector<int>>("strides").size() == 3U;
-    const bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
+    bool is_test = ctx.Attr<bool>("is_test");
+    const auto& strides = ctx.Attr<std::vector<int>>("strides");
+    bool is_conv3d = strides.size() == 3UL;
+    bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
+    int groups = ctx.Attr<int>("groups");
 
     const auto* input = ctx.Input<phi::DenseTensor>("Input");
     const auto* filter = ctx.Input<phi::DenseTensor>("Filter");
@@ -861,7 +863,7 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
           auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
           auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-              filter, ctx.Attr<int>("groups"), is_conv3d, is_test);
+              filter, groups, is_conv3d, is_test);
 
           std::shared_ptr<dnnl::memory> dst_memory_p;
           if (fuse_residual_conn) {
@@ -1181,20 +1183,6 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
-REGISTER_OP_KERNEL(conv2d,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   ops::ConvMKLDNNOpKernel<float>,
-                   ops::ConvMKLDNNOpKernel<paddle::platform::bfloat16>,
-                   ops::ConvMKLDNNOpKernel<uint8_t>,
-                   ops::ConvMKLDNNOpKernel<int8_t>);
-
-REGISTER_OP_KERNEL(conv2d_grad,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   ops::ConvMKLDNNGradOpKernel<float>,
-                   ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16>);
 
 REGISTER_OP_KERNEL(depthwise_conv2d,
                    MKLDNN,

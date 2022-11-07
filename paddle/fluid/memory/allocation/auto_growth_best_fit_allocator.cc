@@ -37,6 +37,11 @@ PADDLE_DEFINE_EXPORTED_READONLY_bool(
     "chunk would be freed when out of memory occurs. This flag "
     "only works when FLAGS_allocator_strategy=auto_growth.");
 
+PADDLE_DEFINE_EXPORTED_uint64(
+    free_idle_chunk_if_reach_limit_in_mb,
+    0,
+    "Free idle chunks if reach memory limit. 0 means no limit.");
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -49,7 +54,8 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
     : underlying_allocator_(underlying_allocator),
       alignment_(alignment),
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
-      allow_free_idle_chunk_(allow_free_idle_chunk) {}
+      allow_free_idle_chunk_(allow_free_idle_chunk),
+      reserved_bytes_(0) {}
 
 phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     size_t unaligned_size) {
@@ -90,6 +96,7 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     try {
       chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
           underlying_allocator_->Allocate(realloc_size)));
+      reserved_bytes_ += realloc_size;
     } catch (BadAlloc &ex) {
       if (FLAGS_free_when_no_cache_hit) throw ex;
       FreeIdleChunks();
@@ -154,14 +161,18 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
 
   delete allocation;
 
-  delete allocation;
-    size_t bytes = GetAllocatedSize();
-    size_t limit = ((size_t)1 << 30) * 24;
-    if (bytes > limit)
-    {
-       //std::cout<<bytes<<" free 2\n";
-       FreeIdleChunks();
+  if (allow_free_idle_chunk_ &&
+      (FLAGS_free_idle_chunk_if_reach_limit_in_mb > 0) &&
+      ((reserved_bytes_ >> 20) > FLAGS_free_idle_chunk_if_reach_limit_in_mb)) {
+    auto *ck = block_it->chunk_;
+    auto &blocks = ck->blocks_;
+    if (blocks.size() == 1 && blocks.begin()->is_free_) {
+      auto &block = *blocks.begin();
+      free_blocks_.erase(std::make_pair(block.size_, block.ptr_));
+      reserved_bytes_ -= ck->allocation_->size();
+      chunks_.remove(*ck);
     }
+  }
 
   if (FLAGS_free_idle_chunk) {
     FreeIdleChunks();
@@ -180,6 +191,7 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
       VLOG(2) << "Free chunk with size " << block.size_;
       bytes += block.size_;
       free_blocks_.erase(std::make_pair(block.size_, block.ptr_));
+      reserved_bytes_ -= chunk_it->allocation_->size();
       chunk_it = chunks_.erase(chunk_it);
     } else {
       ++chunk_it;
