@@ -6,9 +6,6 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 if(WITH_XPU_BKCL)
   list(REMOVE_ITEM TEST_OPS "test_gen_bkcl_id_op")
-  list(REMOVE_ITEM TEST_OPS "test_collective_identity_xpu")
-  list(REMOVE_ITEM TEST_OPS "test_collective_allgather_xpu")
-  list(REMOVE_ITEM TEST_OPS "test_collective_allreduce_xpu")
 endif()
 
 file(
@@ -31,3 +28,6 @@ set_tests_properties(test_conv2d_op_xpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_mul_op_xpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_matmul_v2_op_xpu PROPERTIES TIMEOUT 900)
 set_tests_properties(test_matmul_op_xpu PROPERTIES TIMEOUT 300)
+set_tests_properties(test_collective_identity_xpu PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:DIST_KUNLUN")
+set_tests_properties(test_collective_allgather_xpu PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:DIST_KUNLUN")
+set_tests_properties(test_collective_allreduce_xpu PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:DIST_KUNLUN")
