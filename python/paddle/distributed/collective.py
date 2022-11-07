@@ -546,7 +546,7 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
             out = paddle.empty(tensor_shape, tensor.dtype)
         else:
             out = paddle.concat(tensor_list, axis=0)
-        task = group.process_group.all_gather(tensor, out)
+        task = group.process_group.all_gather_into_tensor(out, tensor, sync_op)
         task.wait()
         tensor_list.clear()
         list_of_tensor = paddle.split(out, group.nranks, 0)
