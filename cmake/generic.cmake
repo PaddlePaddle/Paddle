@@ -537,6 +537,10 @@ function(cc_test TARGET_NAME)
         ARGS
         ${cc_test_ARGS})
     else()
+      if(APPLE)
+        target_link_options(${TARGET_NAME} PRIVATE -lm)
+      endif()
+
       list(LENGTH cc_test_SRCS len)
       # message("cc_test_SRCS ${cc_test_SRCS}")
       # message("cc_test_ARGS ${cc_test_ARGS}")
