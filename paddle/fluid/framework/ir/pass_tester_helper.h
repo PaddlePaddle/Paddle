@@ -146,12 +146,32 @@ struct Layers {
     return unary_op("relu", x, out);
   }
 
+  VarDesc* gelu(VarDesc* x, VarDesc* out = nullptr, bool approximate = true) {
+    AttributeMap attrs;
+    attrs["approximate"] = approximate;
+    return unary_op("gelu", x, out, &attrs);
+  }
+
   VarDesc* sigmoid(VarDesc* x, VarDesc* out = nullptr) {
     return unary_op("sigmoid", x, out);
   }
 
   VarDesc* tanh(VarDesc* x, VarDesc* out = nullptr) {
     return unary_op("tanh", x, out);
+  }
+
+  VarDesc* c_identity(VarDesc* x, VarDesc* out = nullptr, int ring_id = -1) {
+    AttributeMap attrs;
+    attrs["ring_id"] = ring_id;
+    return unary_op("c_identity", x, out, &attrs);
+  }
+
+  VarDesc* c_allreduce_sum(VarDesc* x,
+                           VarDesc* out = nullptr,
+                           int ring_id = -1) {
+    AttributeMap attrs;
+    attrs["ring_id"] = ring_id;
+    return unary_op("c_allreduce_sum", x, out, &attrs);
   }
 
   VarDesc* fc(VarDesc* input,
@@ -332,6 +352,37 @@ struct Layers {
     return outs;
   }
 
+  std::vector<VarDesc*> split(VarDesc* x, int num_or_section, int axis = 0) {
+    std::vector<VarDesc*> outs(num_or_section);
+    for (int i = 0; i < num_or_section; i++) {
+      outs[i] = lod_tensor(unique_name());
+    }
+    std::vector<std::string> out_names(num_or_section);
+    for (int i = 0; i < num_or_section; i++) {
+      out_names[i] = outs[i]->Name();
+    }
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("split");
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", out_names);
+    op->SetAttr("num_or_section", num_or_section);
+    op->SetAttr("axis", axis);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return outs;
+  }
+
+  VarDesc* assign(VarDesc* x) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("assign");
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
   VarDesc* matmul(VarDesc* x,
                   VarDesc* y,
                   VarDesc* alpha = nullptr,
@@ -459,6 +510,24 @@ struct Layers {
     return out;
   }
 
+  VarDesc* while_loop(std::vector<VarDesc*> xs, VarDesc* cond = nullptr) {
+    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* step_scopes = lod_tensor(unique_name());
+    if (cond == nullptr) cond = lod_tensor(unique_name());
+
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("while");
+    std::vector<std::string> xs_names;
+    for (auto& x : xs) xs_names.emplace_back(x->Name());
+    op->SetInput("X", xs_names);
+    op->SetInput("Condition", {cond->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetOutput("StepScopes", {step_scopes->Name()});
+    op->SetAttr("sub_block", {program_.MutableBlock(0)});
+    op->SetAttr("is_test", true);
+    return out;
+  }
+
   void backward(std::vector<VarDesc*> targets) {
     // This function is designed to simulate the structure of training program,
     //  but is constructed differently as the actual program.
@@ -523,7 +592,10 @@ struct Layers {
     return var;
   }
 
-  VarDesc* unary_op(std::string type, VarDesc* x, VarDesc* out = nullptr) {
+  VarDesc* unary_op(std::string type,
+                    VarDesc* x,
+                    VarDesc* out = nullptr,
+                    const AttributeMap* attrs = nullptr) {
     if (!out) {
       out = lod_tensor(unique_name());
     }
@@ -531,6 +603,11 @@ struct Layers {
     op->SetType(type);
     op->SetInput("X", {x->Name()});
     op->SetOutput("Out", {out->Name()});
+    if (attrs) {
+      for (auto& iter : *attrs) {
+        op->SetAttr(iter.first, iter.second);
+      }
+    }
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;

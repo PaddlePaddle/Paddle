@@ -22,7 +22,6 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTGatherNdTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[-1, 3, 4], dtype="float32")
@@ -32,40 +31,37 @@ class TRTGatherNdTest(InferencePassTest):
 
         self.feeds = {
             "data": np.random.random([2, 3, 4]).astype("float32"),
-            "index": np.array([[[0, 1], [1, 0]], [[1, 2],
-                                                  [0, 1]]]).astype("int32"),
+            "index": np.array([[[0, 1], [1, 0]], [[1, 2], [0, 1]]]).astype(
+                "int32"
+            ),
         }
         self.enable_trt = True
         self.trt_parameters = TRTGatherNdTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
         self.dynamic_shape_params = TRTGatherNdTest.DynamicShapeParam(
-            {
-                'data': [1, 3, 4],
-                'index': [1, 2, 2]
-            }, {
-                'data': [3, 3, 4],
-                'index': [3, 2, 2]
-            }, {
-                'data': [3, 3, 4],
-                'index': [3, 2, 2]
-            }, False)
+            {'data': [1, 3, 4], 'index': [1, 2, 2]},
+            {'data': [3, 3, 4], 'index': [3, 2, 2]},
+            {'data': [3, 3, 4], 'index': [3, 2, 2]},
+            False,
+        )
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTGatherNdFp16Test(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 1280, 192],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 1280, 192], dtype="float32"
+            )
             index = fluid.data(name="index", shape=[-1, 1028, 2], dtype="int32")
             gather_nd = fluid.layers.gather_nd(data, index)
             out = fluid.layers.batch_norm(gather_nd, is_test=True)
@@ -77,26 +73,23 @@ class TRTGatherNdFp16Test(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTGatherNdFp16Test.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False
+        )
         self.fetch_list = [out]
         self.dynamic_shape_params = TRTGatherNdFp16Test.DynamicShapeParam(
-            {
-                'data': [1, 1280, 192],
-                'index': [1, 1028, 2]
-            }, {
-                'data': [3, 1280, 192],
-                'index': [3, 1028, 2]
-            }, {
-                'data': [3, 1280, 192],
-                'index': [3, 1028, 2]
-            }, False)
+            {'data': [1, 1280, 192], 'index': [1, 1028, 2]},
+            {'data': [3, 1280, 192], 'index': [3, 1028, 2]},
+            {'data': [3, 1280, 192], 'index': [3, 1028, 2]},
+            False,
+        )
 
     def test_check_output(self, atol=1e-3):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 if __name__ == "__main__":

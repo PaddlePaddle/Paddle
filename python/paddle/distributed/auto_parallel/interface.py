@@ -63,29 +63,39 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     """
 
     if process_mesh is not None:
-        assert isinstance(process_mesh, ProcessMesh), \
-            "Argument process_mesh {} is not an instance of ProcessMesh".format(process_mesh)
+        assert isinstance(
+            process_mesh, ProcessMesh
+        ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
+            process_mesh
+        )
     else:
         process_mesh = get_current_process_mesh()
-        assert  process_mesh is not None, \
-            "Specify the process mesh argument or use ProcessMesh context manager first."
-    assert isinstance(shard_spec, list), \
-        "Argument shard_spec {} is not an instance of list".format(shard_spec)
+        assert (
+            process_mesh is not None
+        ), "Specify the process mesh argument or use ProcessMesh context manager first."
+    assert isinstance(
+        shard_spec, list
+    ), "Argument shard_spec {} is not an instance of list".format(shard_spec)
     dist_tensor = DistributedTensor(x)
     serial_tensor = dist_tensor.serial_tensor
     dist_tensor.dist_attr.process_mesh = process_mesh
-    if serial_tensor.type == core.VarDesc.VarType.READER \
-        or serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
-        or serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES:
+    if (
+        serial_tensor.type == core.VarDesc.VarType.READER
+        or serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+        or serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES
+    ):
         tensor_shape = []
     else:
         tensor_shape = serial_tensor.shape
     if shard_spec is not None:
-        assert verify_shard_spec(shard_spec, tensor_shape, process_mesh), \
-            "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
-                serial_tensor.name, shard_spec, tensor_shape, process_mesh)
+        assert verify_shard_spec(
+            shard_spec, tensor_shape, process_mesh
+        ), "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
+            serial_tensor.name, shard_spec, tensor_shape, process_mesh
+        )
         dist_tensor.dist_attr.dims_mapping = convert_to_dims_mapping(
-            shard_spec, process_mesh)
+            shard_spec, process_mesh
+        )
     if process_mesh is not None:
         dist_tensor.dist_attr.mark_annotated("process_mesh")
     if shard_spec is not None:
@@ -140,41 +150,54 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
     """
 
     if process_mesh is not None:
-        assert isinstance(process_mesh, ProcessMesh), \
-            "Argument process_mesh {} is not an instance of ProcessMesh".format(process_mesh)
+        assert isinstance(
+            process_mesh, ProcessMesh
+        ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
+            process_mesh
+        )
     else:
         process_mesh = get_current_process_mesh()
-        assert  process_mesh is not None, \
-            "Specify the process mesh argument or use ProcessMesh context manager first."
+        assert (
+            process_mesh is not None
+        ), "Specify the process mesh argument or use ProcessMesh context manager first."
     in_dims_mappings = []
     if in_shard_specs is not None:
-        assert all((isinstance(shard_spec, list) or shard_spec is None) for shard_spec in in_shard_specs), \
-            "in_shard_spec {} is not a list of list or None".format(in_shard_specs)
+        assert all(
+            (isinstance(shard_spec, list) or shard_spec is None)
+            for shard_spec in in_shard_specs
+        ), "in_shard_spec {} is not a list of list or None".format(
+            in_shard_specs
+        )
         for shard_spec in in_shard_specs:
             if shard_spec is not None:
                 in_dims_mappings.append(
-                    convert_to_dims_mapping(shard_spec, process_mesh))
+                    convert_to_dims_mapping(shard_spec, process_mesh)
+                )
             else:
                 in_dims_mappings.append(None)
     out_dims_mappings = []
     if out_shard_specs is not None:
-        assert all((isinstance(shard_spec, list) or shard_spec is None) for shard_spec in out_shard_specs), \
-            "out_shard_spec {} is not a list of list or None".format(out_shard_specs)
+        assert all(
+            (isinstance(shard_spec, list) or shard_spec is None)
+            for shard_spec in out_shard_specs
+        ), "out_shard_spec {} is not a list of list or None".format(
+            out_shard_specs
+        )
         for shard_spec in out_shard_specs:
             if shard_spec is not None:
                 out_dims_mappings.append(
-                    convert_to_dims_mapping(shard_spec, process_mesh))
+                    convert_to_dims_mapping(shard_spec, process_mesh)
+                )
             else:
                 out_dims_mappings.append(None)
-    op = DistributedOperatorHelper(op, process_mesh, in_dims_mappings,
-                                   out_dims_mappings)
+    op = DistributedOperatorHelper(
+        op, process_mesh, in_dims_mappings, out_dims_mappings
+    )
     return op
 
 
 def recompute(op):
-
     class RecomputeOperator:
-
         def __init__(self, op):
             self._op = op
 
@@ -214,8 +237,14 @@ def add_to_collection(collection_name, value, name=None):
     if collection_name not in _g_collections:
         _g_collections[collection_name] = []
     if name is not None:
+        for _, v in _g_collections[collection_name]:
+            if v == value:
+                return
         _g_collections[collection_name].append((name, value))
     else:
+        for _, v in _g_collections[collection_name]:
+            if v == value:
+                return
         _g_collections[collection_name].append((None, value))
 
 

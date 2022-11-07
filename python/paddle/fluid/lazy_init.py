@@ -36,7 +36,8 @@ class LazyInitHelper(object):
         """
         if self._state:
             return
-        assert framework._non_static_mode(
+        assert (
+            framework._non_static_mode()
         ), "LazyInit.enable() is only available in dygraph mode."
         self._state = True
 
@@ -56,7 +57,8 @@ class LazyInitHelper(object):
         dygraph mode into static mode.
         """
         self.enable()
-        if self._in_guard: return
+        if self._in_guard:
+            return
         self._tracer = framework._dygraph_tracer_
         framework._dygraph_tracer_ = None
         self._in_guard = True
@@ -66,7 +68,8 @@ class LazyInitHelper(object):
         Exit from lazy mode and recover _dygraph_tracer_.
         """
         self.disable()
-        if not self._in_guard: return
+        if not self._in_guard:
+            return
         assert self._tracer is not None
         framework._dygraph_tracer_ = self._tracer
         self._tracer = None

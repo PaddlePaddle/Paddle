@@ -22,7 +22,6 @@ import hypothesis.strategies as st
 
 
 class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -40,39 +39,55 @@ class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
         def generate_input(attrs, type):
             if attrs[1]['transpose_X'] and attrs[1]['transpose_Y']:
                 shape_x = [
-                    attrs[2]['batch_size'], attrs[2]['channel'],
-                    attrs[2]['input_dim'], 32
+                    attrs[2]['batch_size'],
+                    attrs[2]['channel'],
+                    attrs[2]['input_dim'],
+                    32,
                 ]
                 shape_y = [
-                    attrs[2]['batch_size'], attrs[2]['channel'], 64,
-                    attrs[2]['input_dim']
+                    attrs[2]['batch_size'],
+                    attrs[2]['channel'],
+                    64,
+                    attrs[2]['input_dim'],
                 ]
             elif attrs[1]['transpose_X']:
                 shape_x = [
-                    attrs[2]['batch_size'], attrs[2]['channel'],
-                    attrs[2]['input_dim'], 32
+                    attrs[2]['batch_size'],
+                    attrs[2]['channel'],
+                    attrs[2]['input_dim'],
+                    32,
                 ]
                 shape_y = [
-                    attrs[2]['batch_size'], attrs[2]['channel'],
-                    attrs[2]['input_dim'], 64
+                    attrs[2]['batch_size'],
+                    attrs[2]['channel'],
+                    attrs[2]['input_dim'],
+                    64,
                 ]
             elif attrs[1]['transpose_Y']:
                 shape_x = [
-                    attrs[2]['batch_size'], attrs[2]['channel'], 32,
-                    attrs[2]['input_dim']
+                    attrs[2]['batch_size'],
+                    attrs[2]['channel'],
+                    32,
+                    attrs[2]['input_dim'],
                 ]
                 shape_y = [
-                    attrs[2]['batch_size'], attrs[2]['channel'], 8,
-                    attrs[2]['input_dim']
+                    attrs[2]['batch_size'],
+                    attrs[2]['channel'],
+                    8,
+                    attrs[2]['input_dim'],
                 ]
             else:
                 shape_x = [
-                    attrs[2]['batch_size'], attrs[2]['channel'], 32,
-                    attrs[2]['input_dim']
+                    attrs[2]['batch_size'],
+                    attrs[2]['channel'],
+                    32,
+                    attrs[2]['input_dim'],
                 ]
                 shape_y = [
-                    attrs[2]['batch_size'], attrs[2]['channel'],
-                    attrs[2]['input_dim'], 16
+                    attrs[2]['batch_size'],
+                    attrs[2]['channel'],
+                    attrs[2]['input_dim'],
+                    16,
                 ]
 
             if type == "x":
@@ -80,54 +95,52 @@ class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
             else:
                 return np.random.random(shape_y).astype(np.float32)
 
-        attrs = [{
-            "scale": scale,
-            "bias": bias,
-            "bias_after_scale": bias_after_scale
-        }, {
-            "transpose_X": transpose_X,
-            "transpose_Y": transpose_Y,
-            "alpha": alpha
-        }, {
-            'batch_size': batch_size,
-            'channel': channel,
-            'input_dim': input_dim
-        }]
+        attrs = [
+            {
+                "scale": scale,
+                "bias": bias,
+                "bias_after_scale": bias_after_scale,
+            },
+            {
+                "transpose_X": transpose_X,
+                "transpose_Y": transpose_Y,
+                "alpha": alpha,
+            },
+            {
+                'batch_size': batch_size,
+                'channel': channel,
+                'input_dim': input_dim,
+            },
+        ]
 
-        ops_config = [{
-            "op_type": "scale",
-            "op_inputs": {
-                "X": ["input_data1"]
+        ops_config = [
+            {
+                "op_type": "scale",
+                "op_inputs": {"X": ["input_data1"]},
+                "op_outputs": {"Out": ["scale_output"]},
+                "op_attrs": {
+                    "scale": attrs[0]['scale'],
+                    "bias": attrs[0]['bias'],
+                    "bias_after_scale": attrs[0]['bias_after_scale'],
+                },
             },
-            "op_outputs": {
-                "Out": ["scale_output"]
+            {
+                "op_type": "matmul",
+                "op_inputs": {"X": ["scale_output"], "Y": ["input_data2"]},
+                "op_outputs": {"Out": ["matmul_output"]},
+                "op_attrs": {
+                    'transpose_X': attrs[1]['transpose_X'],
+                    'transpose_Y': attrs[1]['transpose_Y'],
+                    'alpha': attrs[1]['alpha'],
+                    "fused_reshape_X": [],
+                    "fused_reshape_Y": [],
+                    "fused_transpose_X": [],
+                    "fused_transpose_Y": [],
+                    "fused_reshape_Out": [],
+                    "fused_transpose_Out": [],
+                },
             },
-            "op_attrs": {
-                "scale": attrs[0]['scale'],
-                "bias": attrs[0]['bias'],
-                "bias_after_scale": attrs[0]['bias_after_scale']
-            },
-        }, {
-            "op_type": "matmul",
-            "op_inputs": {
-                "X": ["scale_output"],
-                "Y": ["input_data2"]
-            },
-            "op_outputs": {
-                "Out": ["matmul_output"]
-            },
-            "op_attrs": {
-                'transpose_X': attrs[1]['transpose_X'],
-                'transpose_Y': attrs[1]['transpose_Y'],
-                'alpha': attrs[1]['alpha'],
-                "fused_reshape_X": [],
-                "fused_reshape_Y": [],
-                "fused_transpose_X": [],
-                "fused_transpose_Y": [],
-                "fused_reshape_Out": [],
-                "fused_transpose_Out": []
-            }
-        }]
+        ]
 
         ops = self.generate_op_config(ops_config)
 
@@ -135,12 +148,15 @@ class TestScaleMatmulMkldnnFusePass(PassAutoScanTest):
             ops=ops,
             weights={},
             inputs={
-                "input_data1":
-                TensorConfig(data_gen=partial(generate_input, attrs, "x")),
-                "input_data2":
-                TensorConfig(data_gen=partial(generate_input, attrs, "y"))
+                "input_data1": TensorConfig(
+                    data_gen=partial(generate_input, attrs, "x")
+                ),
+                "input_data2": TensorConfig(
+                    data_gen=partial(generate_input, attrs, "y")
+                ),
             },
-            outputs=["matmul_output"])
+            outputs=["matmul_output"],
+        )
 
         return program_config
 

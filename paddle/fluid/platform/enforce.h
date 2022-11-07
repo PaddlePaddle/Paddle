@@ -122,77 +122,80 @@ using namespace ::phi::enforce;  // NOLINT
 #endif
 
 /*
- * Summary: This PADDLE_GET(_**) series macros are used to call paddle::get
- *   safely. paddle::get is not a completely safe api, although it will not
- *   go wrong in most cases, but in extreme cases, it may fail and directly
- *   throw a paddle::bad_variant_access const exception, without any stack
- *information.
- *   This kind of problems is difficult to debug, so add these macros to
- *   enrich paddle::get error information. At the same time, we restrict
- *   the direct use of paddle::get by CI rule.
+ * Summary: This macro is used to get Variable or internal type
+ *   data (such as LoDTensor or SelectedRows) of the Input and
+ *   Output in op, generally used when call scope.FindVar(Input/
+ *   Output("Name")) or ctx.Input<LoDTensor>().
+ *   Firstly this macro check whether the obtained pointer is null,
+ *   and then return data if it is not null.
+ *
+ * Note: This macro is only suitable for specific scenarios and
+ *   does not intended to be widely used. If it cannot meet the
+ *   requirements, please use other PADDLE_ENFORCE** check macro.
  *
  * Parameters:
- *     __TYPE: the target variable type
- *     __VALUE: the target variable to get
+ *     __PTR: pointer
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
+ *
+ * Return: The data pointed to by the pointer.
  *
  * Examples:
- *     - unsafe writing: int x = paddle::get<int>(y);
- *     - safe writing: int x = PADDLE_GET(int, y);
- *
- * Note: GCC 4.8 cannot select right overloaded function here, so need
- *    to define different functions and macros here, after we upgreade
- *    CI gcc version, we can only define one PADDLE_GET macro.
+ *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
  */
-namespace details {
+#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)               \
+  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {      \
+    auto* __ptr = (__PTR);                                              \
+    if (UNLIKELY(nullptr == __ptr)) {                                   \
+      auto __summary__ = phi::errors::NotFound(                         \
+          "Unable to get %s data of %s %s in operator %s. "             \
+          "Possible reasons are:\n"                                     \
+          "  1. The %s is not the %s of operator %s;\n"                 \
+          "  2. The %s has no corresponding variable passed in;\n"      \
+          "  3. The %s corresponding variable is not initialized.",     \
+          phi::demangle(                                                \
+              typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
+                  .name()),                                             \
+          __ROLE,                                                       \
+          __NAME,                                                       \
+          __OP_TYPE,                                                    \
+          __NAME,                                                       \
+          __ROLE,                                                       \
+          __OP_TYPE,                                                    \
+          __NAME,                                                       \
+          __NAME);                                                      \
+      auto __message__ = ::paddle::string::Sprintf(                     \
+          "%s\n  [Hint: pointer " #__PTR " should not be null.]",       \
+          __summary__.error_message());                                 \
+      __THROW_ERROR_INTERNAL__(                                         \
+          phi::ErrorSummary(__summary__.code(), __message__));          \
+    }                                                                   \
+    return *__ptr;                                                      \
+  })())
 
-using namespace phi::enforce::details;  // NOLINT
-
-#define DEFINE_SAFE_PADDLE_GET(                                              \
-    __InputType, __OutputType, __OutputTypePtr, __FuncName)                  \
-  template <typename OutputType, typename InputType>                         \
-  auto __FuncName(                                                           \
-      __InputType input, const char* expression, const char* file, int line) \
-      ->typename std::conditional<std::is_pointer<InputType>::value,         \
-                                  __OutputTypePtr,                           \
-                                  __OutputType>::type {                      \
-    try {                                                                    \
-      return paddle::get<OutputType>(input);                                 \
-    } catch (paddle::bad_variant_access const&) {                            \
-      HANDLE_THE_ERROR                                                       \
-      throw ::phi::enforce::EnforceNotMet(                                   \
-          phi::errors::InvalidArgument(                                      \
-              "paddle::get failed, cannot get value "                        \
-              "(%s) by type %s, its type is %s.",                            \
-              expression,                                                    \
-              phi::enforce::demangle(typeid(OutputType).name()),             \
-              phi::enforce::demangle(input.type().name())),                  \
-          file,                                                              \
-          line);                                                             \
-      END_HANDLE_THE_ERROR                                                   \
-    }                                                                        \
-  }
-
-DEFINE_SAFE_PADDLE_GET(InputType&, OutputType&, OutputType*, SafeBoostGet);
-DEFINE_SAFE_PADDLE_GET(const InputType&,
-                       const OutputType&,
-                       const OutputType*,
-                       SafeBoostGetConst);
-DEFINE_SAFE_PADDLE_GET(InputType&&,
-                       OutputType,
-                       OutputType*,
-                       SafeBoostGetMutable);
-
-}  // namespace details
-
-#define PADDLE_GET(__TYPE, __VALUE)                \
-  paddle::platform::details::SafeBoostGet<__TYPE>( \
-      __VALUE, #__VALUE, __FILE__, __LINE__)
-#define PADDLE_GET_CONST(__TYPE, __VALUE)               \
-  paddle::platform::details::SafeBoostGetConst<__TYPE>( \
-      __VALUE, #__VALUE, __FILE__, __LINE__)
-#define PADDLE_GET_MUTABLE(__TYPE, __VALUE)               \
-  paddle::platform::details::SafeBoostGetMutable<__TYPE>( \
-      __VALUE, #__VALUE, __FILE__, __LINE__)
+/*
+ * Summary: This macro is used to check whether op has specified
+ * Input or Output Variables. Because op's Input and Output
+ * checking are written similarly, so abstract this macro.
+ *
+ * Parameters:
+ *     __EXPR: (bool), the bool expression
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
+ *
+ * Examples:
+ *    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Mul");
+ */
+#define OP_INOUT_CHECK(__EXPR, __ROLE, __NAME, __OP_TYPE)                    \
+  do {                                                                       \
+    PADDLE_ENFORCE_EQ(                                                       \
+        __EXPR,                                                              \
+        true,                                                                \
+        phi::errors::NotFound(                                               \
+            "No %s(%s) found for %s operator.", __ROLE, __NAME, __OP_TYPE)); \
+  } while (0)
 
 /** OTHER EXCEPTION AND ENFORCE **/
 
