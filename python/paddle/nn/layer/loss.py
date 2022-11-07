@@ -590,15 +590,11 @@ class MSELoss(Layer):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            input_data = np.array([1.5]).astype("float32")
-            label_data = np.array([1.7]).astype("float32")
-
             mse_loss = paddle.nn.loss.MSELoss()
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.to_tensor([1.5])
+            label = paddle.to_tensor([1.7])
             output = mse_loss(input, label)
             print(output)
             # [0.04000002]
@@ -638,10 +634,10 @@ class MSELoss(Layer):
 
 class L1Loss(Layer):
     r"""
-    This interface is used to construct a callable object of the ``L1Loss`` class.
+    Construct a callable object of the ``L1Loss`` class.
     The L1Loss layer calculates the L1 Loss of ``input`` and ``label`` as follows.
 
-     If `reduction` set to ``'none'``, the loss is:
+    If `reduction` set to ``'none'``, the loss is:
 
     .. math::
         Out = \lvert input - label\rvert
@@ -677,12 +673,9 @@ class L1Loss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
-            label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.to_tensor([[1.5, 0.8], [0.2, 1.3]])
+            label = paddle.to_tensor([[1.7, 1], [0.4, 0.5]])
 
             l1_loss = paddle.nn.L1Loss()
             output = l1_loss(input, label)
@@ -921,9 +914,10 @@ class NLLLoss(Layer):
 
 class KLDivLoss(Layer):
     r"""
-    This interface calculates the Kullback-Leibler divergence loss
-    between Input(X) and Input(Target). Notes that Input(X) is the
-    log-probability and Input(Target) is the probability.
+    Generate a callable object of 'KLDivLoss' to calculate the
+    Kullback-Leibler divergence loss between Input(X) and
+    Input(Target). Notes that Input(X) is the log-probability
+    and Input(Target) is the probability.
 
     KL divergence loss is calculated as follows:
 
@@ -951,35 +945,30 @@ class KLDivLoss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn as nn
 
             shape = (5, 20)
-            x = np.random.uniform(-10, 10, shape).astype('float32')
-            target = np.random.uniform(-10, 10, shape).astype('float32')
+            x = paddle.uniform(shape, min=-10, max=10).astype('float32')
+            target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
+            pred_loss = kldiv_criterion(x, target)
             # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='mean')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
+            pred_loss = kldiv_criterion(x, target)
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='sum')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
+            pred_loss = kldiv_criterion(x, target)
             # shape=[1]
 
             # 'none' reduction, loss shape is same with X shape
             kldiv_criterion = nn.KLDivLoss(reduction='none')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
+            pred_loss = kldiv_criterion(x, target)
             # shape=[5, 20]
     """
 
@@ -1171,16 +1160,16 @@ class SmoothL1Loss(Layer):
 
     .. math::
 
-         loss(x,y) = \frac{1}{n}\sum_{i}z_i
+        loss(x, y) = \frac{1}{n}\sum_{i}z_i
 
-    where z_i is given by:
+    where :math:`z_i` is given by:
 
     .. math::
 
         \mathop{z_i} = \left\{\begin{array}{rcl}
-        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\
-        delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
-        \end{array} \right.
+                0.5(x_i - y_i)^2 & & {if |x_i - y_i| < \delta} \\
+                \delta * |x_i - y_i| - 0.5 * \delta^2 & & {otherwise}
+            \end{array} \right.
 
     Parameters:
         reduction (str, optional): Indicate how to average the loss by batch_size,
@@ -1189,12 +1178,11 @@ class SmoothL1Loss(Layer):
             If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-        delta (float, optional): Specifies the hyperparameter delta to be used.
+        delta (float, optional): Specifies the hyperparameter :math:`\delta` to be used.
             The value determines how large the errors need to be to use L1. Errors
             smaller than delta are minimized with L2. Parameter is ignored for
-            negative/zero values. Default = 1.0
-        name (str, optional): Name for the operation (optional, default is
-            None). For more information, please refer to :ref:`api_guide_Name`.
+            negative/zero values. Default value is :math:`1.0`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Call Parameters:
 
@@ -1212,14 +1200,12 @@ class SmoothL1Loss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            input_data = np.random.rand(3,3).astype("float32")
-            label_data = np.random.rand(3,3).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.rand([3, 3]).astype("float32")
+            label = paddle.rand([3, 3]).astype("float32")
             loss = paddle.nn.SmoothL1Loss()
             output = loss(input, label)
             print(output)
+            # [0.049606]
     """
 
     def __init__(self, reduction='mean', delta=1.0, name=None):
@@ -1321,7 +1307,7 @@ class MultiLabelSoftMarginLoss(Layer):
 
 class HingeEmbeddingLoss(Layer):
     r"""
-    This operator calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
+    Create a callable object of `HingeEmbeddingLoss` to calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
     This is usually used for measuring whether two inputs are similar or dissimilar, e.g. using the L1 pairwise distance as :math:`x`,
     and is typically used for learning nonlinear embeddings or semi-supervised learning.
 

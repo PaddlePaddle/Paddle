@@ -124,9 +124,6 @@ def fc(
     Returns:
         Tensor, its shape is :math:`[batch\_size, *, size]` , and the data type is same with input.
 
-    Raises:
-        ValueError: If dimensions of the input tensor is less than 2.
-
     Examples:
         .. code-block:: python
 
@@ -281,9 +278,7 @@ def deform_conv2d(
     Returns:
         Tensor: The tensor storing the deformable convolution \
                   result. A Tensor with type float32, float64.
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
+
     Examples:
         .. code-block:: python
 
