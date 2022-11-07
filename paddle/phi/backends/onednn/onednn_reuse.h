@@ -1629,6 +1629,73 @@ class PoolingOneDNNHandler
   }
 };
 
+static void SetOutMemDescWithUnsqueeze2FuseSupport(
+    const phi::OneDNNContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  const std::vector<int>& fused_unsqueeze2_axes =
+      ctx.HasDnnAttr("fused_unsqueeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             ctx.GetDnnAttr("fused_unsqueeze2_axes"))
+          : std::vector<int>();
+  const std::vector<int64_t>& op_tz = out_md.dims();
+  std::vector<int64_t> unsqueezed_op_tz(
+      op_tz.size() + fused_unsqueeze2_axes.size(), 0);
+
+  for (const auto& axis : fused_unsqueeze2_axes) {
+    int positive_axis = axis < 0 ? unsqueezed_op_tz.size() + axis : axis;
+    unsqueezed_op_tz[positive_axis] = 1;
+  }
+
+  int j = 0;
+  for (size_t i = 0; i < unsqueezed_op_tz.size(); ++i) {
+    if (unsqueezed_op_tz[i] == 0) {
+      unsqueezed_op_tz[i] = op_tz[j++];
+    }
+  }
+  out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
+  out->Resize(phi::make_ddim(unsqueezed_op_tz));
+}
+
+static void SetOutMemDescWithReshape2FuseSupport(
+    const phi::OneDNNContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  std::vector<int64_t> fused_reshape2_shape =
+      ctx.HasDnnAttr("fused_reshape2_shape")
+          ? PADDLE_GET_CONST(std::vector<int64_t>,
+                             ctx.GetDnnAttr("fused_reshape2_shape"))
+          : std::vector<int64_t>();
+  const int out_shape_numel = out->numel();
+  const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
+                                              fused_reshape2_shape.end(),
+                                              1,
+                                              std::multiplies<int64_t>());
+
+  for (size_t i = 0; i < fused_reshape2_shape.size(); ++i) {
+    if (fused_reshape2_shape[i] == -1) {
+      fused_reshape2_shape[i] = -out_shape_numel / new_shape_numel;
+      break;
+    }
+  }
+
+  out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
+  out->Resize(phi::make_ddim(fused_reshape2_shape));
+}
+
+static void SetOutMemDescWithLogicalLayoutFusesSupport(
+    const phi::OneDNNContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  if (ctx.HasDnnAttr("fused_unsqueeze2_axes")) {
+    SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
+  } else if (ctx.HasDnnAttr("fused_reshape2_shape")) {
+    SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
+  } else {
+    out->set_mem_desc(out_md);
+  }
+}
+
 static DDim RowMatrixDimsFromVector(const DDim& x_dim) {
   return x_dim.size() > 1 ? x_dim : make_ddim({1, x_dim[0]});
 }
