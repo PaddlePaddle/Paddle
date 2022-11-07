@@ -2889,6 +2889,12 @@ function parallel_test() {
     echo "ipipe_log_param_TestCases_Total_Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
 
+function nv_test() {
+    export FLAGS_enable_cudnn_frontend=0
+    ctest -R "conv" --output-on-failure --timeout 150
+}
+
+
 function enable_unused_var_check() {
     # NOTE(zhiqiu): Set FLAGS_enable_unused_var_check=1 here to enable unused_var_check,
     # which checks if an operator has unused input variable(s).
@@ -3585,6 +3591,11 @@ function main() {
         ;;
       gpu_cicheck_coverage)
         parallel_test
+        check_coverage
+        ;;
+      nv_cicheck_coverage)
+        parallel_test
+        nv_test
         check_coverage
         ;;
       check_coverage_build)
