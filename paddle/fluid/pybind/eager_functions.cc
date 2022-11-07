@@ -190,12 +190,36 @@ static PyObject* eager_api_tensor_copy(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* eager_api_get_params_and_grads(PyObject* self,
+                                         PyObject* args,
+                                         PyObject* kwargs) {
+  EAGER_TRY
+  auto tensor_base_list =
+      CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
+
+  std::vector<std::vector<paddle::experimental::Tensor>> ret;
+  for (auto& tensor : tensor_base_list) {
+    VLOG(6) << "Get grad for tensor: " << tensor.name();
+    auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
+    if (meta->StopGradient()) {
+      continue;
+    }
+    VLOG(6) << meta << " initialized: " << meta->Grad().initialized();
+    if (meta && meta->Grad().initialized()) {
+      ret.emplace_back(
+          std::vector<paddle::experimental::Tensor>({tensor, meta->Grad()}));
+    }
+  }
+  return ToPyObject(ret);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyObject* eager_api_get_grads_lists(PyObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
   EAGER_TRY
   auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
-
+  // The order of the 3 vectors is: FP16_grads, BF16_grads, FP32_grads
   std::vector<std::vector<paddle::experimental::Tensor>> ret(3);
 
   for (auto& tensor : tensor_list) {
@@ -1034,6 +1058,10 @@ PyMethodDef variable_functions[] = {
      NULL},
     {"tensor_copy",
      (PyCFunction)(void (*)(void))eager_api_tensor_copy,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"get_params_and_grads",
+     (PyCFunction)(void (*)(void))eager_api_get_params_and_grads,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"get_grads_lists",
