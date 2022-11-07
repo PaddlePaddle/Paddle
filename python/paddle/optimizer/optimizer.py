@@ -1032,6 +1032,18 @@ class Optimizer(object):
                 # It is very time-consuming to call c++ functions in a loop on the python side.
                 # We put this part of the code on the c++ side to improve the speed in eager mode.
                 params_grads = core.eager.get_params_and_grads(parameter_list)
+                for index, item in enumerate(params_grads):
+                    item[0] = parameter_list[index]
+
+                # params_grads = []
+                # for param in parameter_list:
+                #     if param.stop_gradient:
+                #         continue
+                #     if param._grad_ivar() is not None:
+                #         # create gradient tensor
+                #         grad_var = param._grad_ivar()
+                #         params_grads.append((param, grad_var))
+                # import pdb; pdb.set_trace()
             else:
                 # Keep the original code to support legacy mode.
                 # Delete the else branch when the legacy mode exits.

@@ -194,11 +194,10 @@ PyObject* eager_api_get_params_and_grads(PyObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
-  auto tensor_base_list =
-      CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
+  auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
 
   std::vector<std::vector<paddle::experimental::Tensor>> ret;
-  for (auto& tensor : tensor_base_list) {
+  for (auto& tensor : tensor_list) {
     VLOG(6) << "Get grad for tensor: " << tensor.name();
     auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
     if (meta->StopGradient()) {
