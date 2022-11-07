@@ -32,13 +32,15 @@ namespace framework {
 
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
-constexpr int kEmptyVarIndex = 0;
+constexpr const char* kCoalesceTensor = "coalesce_tensor";
 
 // stream types
 constexpr const char* kCustomStream = "CustromStream";
 constexpr const char* kDefaultStream = "DefaultStream";
 constexpr const char* kD2HStream = "D2HStream";
 constexpr const char* kH2DStream = "H2DStream";
+
+constexpr int kEmptyVarIndex = 0;
 
 enum class Priority { kLowest, kNormal };
 
@@ -305,6 +307,8 @@ class Instruction {
               const platform::DeviceContext& dev_ctx,
               const Priority priority);
 
+  bool IsArtificial() const { return is_artificial_; }
+
   size_t Id() const;
 
   const std::map<std::string, std::vector<int>>& Inputs() const;
@@ -368,6 +372,9 @@ class Instruction {
   Priority GetPriority() const { return priority_; }
 
  private:
+  bool is_artificial_;  // Instruction is artificial means that it is only used
+                        // to assist scheduling and no need to be executed.
+
   size_t id_;
   OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned

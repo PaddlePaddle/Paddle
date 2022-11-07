@@ -89,7 +89,7 @@ class BasicBlock(nn.Layer):
         dilation=1,
         norm_layer=None,
     ):
-        super(BasicBlock, self).__init__()
+        super().__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2D
 
@@ -142,7 +142,7 @@ class BottleneckBlock(nn.Layer):
         dilation=1,
         norm_layer=None,
     ):
-        super(BottleneckBlock, self).__init__()
+        super().__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2D
         width = int(planes * (base_width / 64.0)) * groups
@@ -244,7 +244,7 @@ class ResNet(nn.Layer):
         with_pool=True,
         groups=1,
     ):
-        super(ResNet, self).__init__()
+        super().__init__()
         layer_cfg = {
             18: [2, 2, 2, 2],
             34: [3, 4, 6, 3],

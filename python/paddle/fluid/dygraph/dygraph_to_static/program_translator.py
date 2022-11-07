@@ -692,7 +692,7 @@ class StaticFunction(object):
 
                 class Net(paddle.nn.Layer):
                     def __init__(self):
-                        super(Net, self).__init__()
+                        super().__init__()
 
                     def forward(self, x, flag=True):
                         if flag:
@@ -752,7 +752,7 @@ class StaticFunction(object):
 
                 class Net(paddle.nn.Layer):
                     def __init__(self):
-                        super(Net, self).__init__()
+                        super().__init__()
 
                     def forward(self, x, flag=True):
                         if flag:

@@ -39,7 +39,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         data_format="NCHW",
         dtype="float32",
     ):
-        super(Conv2DTransposeTestCase, self).__init__(methodName)
+        super().__init__(methodName)
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.num_filters = num_filters

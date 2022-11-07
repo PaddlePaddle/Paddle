@@ -1006,14 +1006,13 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
+                x = paddle.arange(26, dtype="float32").reshape([2, 13])
+
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
                                             parameters = linear.parameters())
-                out = linear(a)
+                out = linear(x)
                 out.backward()
                 adam.step()
                 adam.clear_grad()
@@ -1083,11 +1082,9 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
 
-                inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+                inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
                 linear = paddle.nn.Linear(10, 10)
-                inp = paddle.to_tensor(inp)
                 out = linear(inp)
                 loss = paddle.mean(out)
                 optimizer = paddle.optimizer.Adam(learning_rate=0.1,
@@ -1288,11 +1285,9 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import numpy as np
                 import paddle
 
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
+                a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
@@ -1398,14 +1393,12 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
 
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
+                a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                                            parameters = linear.parameters())
+                                        parameters = linear.parameters())
                 out = linear(a)
                 out.backward()
                 adam.step()

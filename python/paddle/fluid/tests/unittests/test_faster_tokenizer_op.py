@@ -68,7 +68,7 @@ def to_map_tensor(string_dict, name):
 
 class FasterTokenizer(nn.Layer):
     def __init__(self, vocab_dict):
-        super(FasterTokenizer, self).__init__()
+        super().__init__()
         vocab_tensor = to_map_tensor(vocab_dict, "vocab")
         self.register_buffer("vocab", vocab_tensor, persistable=True)
 

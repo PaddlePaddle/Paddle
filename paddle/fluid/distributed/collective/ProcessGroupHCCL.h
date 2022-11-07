@@ -30,8 +30,6 @@
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
 
-constexpr const char* HCCL_BACKEND_NAME = "HCCL";
-
 namespace paddle {
 namespace distributed {
 
@@ -77,9 +75,7 @@ class ProcessGroupHCCL : public ProcessGroup {
                    const platform::Place& place,
                    int gid);
 
-  const std::string GetBackendName() const override {
-    return std::string(HCCL_BACKEND_NAME);
-  }
+  std::string GetBackendName() const override { return "HCCL"; }
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,
@@ -114,8 +110,8 @@ class ProcessGroupHCCL : public ProcessGroup {
   std::set<int> used_place_ids_;
 
  private:
-  void BcastHCCLId(std::vector<HcclRootInfo>& hccl_ids,
-                   int root,  // NOLINT
+  void BcastHCCLId(std::vector<HcclRootInfo>& hccl_ids,  // NOLINT
+                   int root,                             // NOLINT
                    int server_fd);
 
   void BroadcastUniqueHCCLID(std::vector<HcclRootInfo>& hccl_ids);  // NOLINT

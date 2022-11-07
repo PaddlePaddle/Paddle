@@ -24,7 +24,7 @@ from ..process_group import new_process_group
 
 class DistributedReduceSumPrimtive(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedReduceSumPrimtive, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(
@@ -35,7 +35,7 @@ register_distributed_operator_impl_container(
 # Batch Dimension ReduceSum Primitive
 class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedReduceSumPrimtiveImpl0, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 

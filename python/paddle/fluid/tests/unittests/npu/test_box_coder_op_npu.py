@@ -224,14 +224,14 @@ class TestBoxCoderOp(OpTest):
 
 class TestBoxCoderOpWithoutBoxVar(TestBoxCoderOp):
     def set_init_config(self):
-        super(TestBoxCoderOpWithoutBoxVar, self).set_init_config()
+        super().set_init_config()
         self.without_prior_box_var = True
         self.lod = [[0, 1, 2, 3, 4, 5]]
 
 
 class TestBoxCoderOpWithLoD(TestBoxCoderOp):
     def set_init_config(self):
-        super(TestBoxCoderOpWithLoD, self).set_init_config()
+        super().set_init_config()
         self.M = 20
         self.N = 50
         self.lod = [[10, 20, 20]]
@@ -241,19 +241,19 @@ class TestBoxCoderOpWithLoD(TestBoxCoderOp):
 
 class TestBoxCoderOpWithLoDWithVariance(TestBoxCoderOpWithLoD):
     def set_init_config(self):
-        super(TestBoxCoderOpWithLoDWithVariance, self).set_init_config()
+        super().set_init_config()
         self.use_variance = True
 
 
 class TestBoxCoderOpWithAxis(TestBoxCoderOp):
     def set_init_config(self):
-        super(TestBoxCoderOpWithAxis, self).set_init_config()
+        super().set_init_config()
         self.axis = 1
 
 
 class TestBoxCoderOpWithVariance(TestBoxCoderOp):
     def set_init_config(self):
-        super(TestBoxCoderOpWithVariance, self).set_init_config()
+        super().set_init_config()
         self.use_variance = True
 
 
@@ -262,7 +262,7 @@ class TestBoxCoderOpFP16(TestBoxCoderOp):
         self.dtype = np.float16
 
     def set_init_config(self):
-        super(TestBoxCoderOpFP16, self).set_init_config()
+        super().set_init_config()
         self.atol = 1e-2
 
 
