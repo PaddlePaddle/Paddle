@@ -51,7 +51,9 @@ def set_default_dtype(d):
     else:
         # This branch is for np.dtype and str
         if d in ['float16', 'float32', 'float64']:
-            # Convert np.dtype to str
+            # NOTE(SigureMo): Since the np.dtype object is not an instance of
+            # type, so it will not be handled by the previous branch. We need
+            # to convert it to str here.
             d = str(d)
         else:
             raise TypeError(

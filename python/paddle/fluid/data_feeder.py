@@ -82,7 +82,9 @@ def convert_dtype(dtype):
             'complex64',
             'complex128',
         ]:
-            # Convert np.dtype to str
+            # NOTE(SigureMo): Since the np.dtype object is not an instance of
+            # type, so it will not be handled by the previous branch. We need
+            # to convert it to str here.
             return str(dtype)
         # NOTE(zhangbo): Now numpy does not support bfloat, and paddle use uint16 to represent bfloat16, and there binaries are consistent.
         if dtype in ['bfloat16']:
