@@ -30,7 +30,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
-#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/os_info.h"
 
@@ -272,16 +271,8 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
     dtypes[it->first] = shape_ctx.GetInputsVarType(it->first);
   }
 
-  const std::vector<std::string> *callstack_ptr = nullptr;
-  std::vector<std::string> callstack;
-  auto iter = attrs.find(
-      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
-  if (iter != attrs.end()) {
-    callstack_ptr = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
-    callstack = *callstack_ptr;
-  }
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      PosixInNsec(), type, input_shapes, dtypes, callstack);
+      PosixInNsec(), type, input_shapes, dtypes, attrs);
 }
 
 RecordOpInfoSupplement::RecordOpInfoSupplement(
@@ -306,16 +297,8 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
       dtypes[input_name] = shape_ctx.GetInputsVarType(input_name);
     }
   }
-  const std::vector<std::string> *callstack_ptr = nullptr;
-  std::vector<std::string> callstack;
-  auto iter = attrs.find(
-      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
-  if (iter != attrs.end()) {
-    callstack_ptr = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
-    callstack = *callstack_ptr;
-  }
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      PosixInNsec(), type, input_shapes, dtypes, callstack);
+      PosixInNsec(), type, input_shapes, dtypes, attrs);
 }
 
 RecordOpInfoSupplement::RecordOpInfoSupplement(
@@ -329,9 +312,9 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
     return;
   }
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
-  std::vector<std::string> callstack;
+  framework::AttributeMap attrs;
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      PosixInNsec(), type, input_shapes, dtypes, callstack);
+      PosixInNsec(), type, input_shapes, dtypes, attrs);
 }
 
 bool RecordEvent::IsEnabled() {
