@@ -195,7 +195,13 @@ def get_cudnn_version():
 
 def _convert_to_place(device):
     lower_device = device.lower()
-    if lower_device == 'cpu':
+    if device in core.get_all_custom_device_type():
+        selected_devices = os.getenv(
+            "FLAGS_selected_{}s".format(device), "0"
+        ).split(",")
+        device_id = int(selected_devices[0])
+        place = core.CustomPlace(device, device_id)
+    elif lower_device == 'cpu':
         place = core.CPUPlace()
     elif lower_device == 'gpu':
         if not core.is_compiled_with_cuda():
@@ -238,12 +244,6 @@ def _convert_to_place(device):
         selected_mlus = os.getenv("FLAGS_selected_mlus", "0").split(",")
         device_id = int(selected_mlus[0])
         place = core.MLUPlace(device_id)
-    elif device in core.get_all_custom_device_type():
-        selected_devices = os.getenv(
-            "FLAGS_selected_{}s".format(device), "0"
-        ).split(",")
-        device_id = int(selected_devices[0])
-        place = core.CustomPlace(device, device_id)
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)

@@ -26,6 +26,7 @@ import numpy as np
 from paddle import _C_ops, _legacy_C_ops
 from collections import defaultdict
 from enum import Enum
+from paddle.fluid import in_dygraph_mode
 
 __all__ = ['AmpScaler', 'OptimizerState']
 
@@ -297,26 +298,33 @@ class AmpScaler:
                         else:
                             param_grads_fp32.append(param._grad_ivar())
         else:
-            param_grads = [
-                param._grad_ivar()
-                for param in optimizer._parameter_list
-                if param._grad_ivar() is not None
-            ]
-            param_grads_fp16 = [
-                param
-                for param in param_grads
-                if param.dtype == core.VarDesc.VarType.FP16
-            ]
-            param_grads_bf16 = [
-                param
-                for param in param_grads
-                if param.dtype == core.VarDesc.VarType.BF16
-            ]
-            param_grads_fp32 = [
-                param
-                for param in param_grads
-                if param.dtype == core.VarDesc.VarType.FP32
-            ]
+            if in_dygraph_mode():
+                (
+                    param_grads_fp16,
+                    param_grads_bf16,
+                    param_grads_fp32,
+                ) = core.eager.get_grads_lists(optimizer._parameter_list)
+            else:
+                param_grads = [
+                    param._grad_ivar()
+                    for param in optimizer._parameter_list
+                    if param._grad_ivar() is not None
+                ]
+                param_grads_fp16 = [
+                    param
+                    for param in param_grads
+                    if param.dtype == core.VarDesc.VarType.FP16
+                ]
+                param_grads_bf16 = [
+                    param
+                    for param in param_grads
+                    if param.dtype == core.VarDesc.VarType.BF16
+                ]
+                param_grads_fp32 = [
+                    param
+                    for param in param_grads
+                    if param.dtype == core.VarDesc.VarType.FP32
+                ]
         if core.is_compiled_with_npu():
             float_status = _legacy_C_ops.alloc_float_status()
             _legacy_C_ops.clear_float_status(float_status, float_status)

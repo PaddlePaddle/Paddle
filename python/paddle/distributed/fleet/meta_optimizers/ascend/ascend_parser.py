@@ -17,7 +17,7 @@ from functools import reduce
 
 __all__ = []
 
-registerd_op = {  ## forwards
+registerd_op = {  # forwards
     "elementwise_add": "AddParser",
     "matmul": "MatMulParser",
     "mul": "MulParser",

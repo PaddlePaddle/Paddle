@@ -17,7 +17,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D, Linear, Embedding
+from paddle.fluid.dygraph.nn import Linear, Embedding
 from paddle.fluid.dygraph import to_variable, ProgramTranslator, declarative
 
 from test_lac import DynamicGRU
@@ -43,17 +43,15 @@ class SimpleConvPool(fluid.dygraph.Layer):
     ):
         super().__init__()
         self.batch_size = batch_size
-        self._conv2d = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv2d = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             padding=[1, 1],
-            use_cudnn=use_cudnn,
-            act='tanh',
         )
 
     def forward(self, inputs):
-        x = self._conv2d(inputs)
+        x = paddle.tanh(self._conv2d(inputs))
         x = fluid.layers.reduce_max(x, dim=-1)
         x = fluid.layers.reshape(x, shape=[self.batch_size, -1])
         return x

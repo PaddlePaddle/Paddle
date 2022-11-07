@@ -172,7 +172,7 @@ def get_user_defined_strategy(config):
             micro_num = 1
             strategy.pipeline_configs = {
                 "accumulate_steps": micro_num
-            }  ## num_microbatches
+            }  # num_microbatches
     elif sync_mode == "geo":
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
@@ -372,7 +372,7 @@ class DnnTrainer:
             print("entering run_minimize -- old")
             fleet_obj = fleet.distributed_optimizer(
                 inner_optimizer, user_defined_strategy
-            )  ## Fleet 对象
+            )  # Fleet object
             fleet_obj.minimize(loss)
 
         if fleet.is_server():

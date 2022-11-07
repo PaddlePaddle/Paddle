@@ -21,7 +21,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator, to_variable
-from paddle.fluid.dygraph.nn import Conv2D, BatchNorm, Linear, Pool2D
+from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 random.seed(0)
@@ -58,15 +58,14 @@ class ConvBNLayer(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
-            groups=None,
-            act=None,
-            param_attr=fluid.param_attr.ParamAttr(),
+            groups=1,
+            weight_attr=fluid.param_attr.ParamAttr(),
             bias_attr=False,
         )
 

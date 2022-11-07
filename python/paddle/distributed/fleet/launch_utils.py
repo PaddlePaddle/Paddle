@@ -1412,7 +1412,7 @@ class ParameterServerLauncher:
             assert (
                 args.heter_devices != ""
             ), "The setting of Parameter-Server heter mode must has heter_devices."
-            self.stage_device_map[1] = "cpu"  #  for cpu trainer
+            self.stage_device_map[1] = "cpu"  # for cpu trainer
             heter_devices_list = args.heter_devices.split(";")
             for i in range(len(heter_devices_list)):
                 self.stage_device_map[i + 2] = heter_devices_list[i]
