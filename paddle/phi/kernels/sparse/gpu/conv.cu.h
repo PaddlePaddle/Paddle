@@ -593,14 +593,15 @@ int ProductRuleBook(const Context& dev_ctx,
   DenseTensorMeta rulebook_meta(
       indices_dtype, {rulebook_rows, rulebook_cols}, DataLayout::NCHW);
 
-  int64_t table_size = 1;
+  int table_size = 1;
   for (int i = 0; i < out_dims.size() - 1; i++) {
     table_size *= out_dims[i];
   }
   DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
   int* out_index_table_ptr = out_index_table.data<int>();
   // index_flags: flag the indices exist or not
-  DenseTensor index_flags = phi::Empty<int>(dev_ctx, {table_size / 32});
+  int index_flags_size = (table_size + 31) / 32;
+  DenseTensor index_flags = phi::Empty<int>(dev_ctx, {index_flags_size});
   int* index_flags_ptr = index_flags.data<int>();
   phi::backends::gpu::GpuMemsetAsync(
       index_flags_ptr, 0, sizeof(int) * index_flags.numel(), dev_ctx.stream());
