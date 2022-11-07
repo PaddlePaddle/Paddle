@@ -105,6 +105,9 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Out");
     const T* input_data = input->data<T>();
 
+    platform::SetInMemDescWithLogicalLayoutFusesSupport(
+        ctx, const_cast<phi::DenseTensor*>(input), input->mem_desc());
+
     if (ndims == 1) {
       framework::TensorCopy(*input, input->place(), output);
       output->set_format(input->format());
