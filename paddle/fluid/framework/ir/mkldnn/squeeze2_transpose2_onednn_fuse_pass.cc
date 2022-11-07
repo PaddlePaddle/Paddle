@@ -23,9 +23,10 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseSqueeze2Transpose2OneDNNPass::ApplyImpl(Graph *graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
-                              "Input graph pointer argument should not be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      graph,
+      platform::errors::InvalidArgument(
+          "Input graph pointer argument should not be nullptr."));
 
   FusePassBase::Init("squeeze2_transpose2_onednn_fuse_pass", graph);
 
