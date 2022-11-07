@@ -51,6 +51,10 @@ void BindMetrics(py::module* m) {
       .def("get_wuauc_metric_msg",
            &framework::Metric::GetWuAucMetricMsg,
            py::call_guard<py::gil_scoped_release>())
+      .def("get_pn_metric_msg", &framework::Metric::GetPNMetricMsg,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_pn_type_metric_msg", &framework::Metric::GetPNTypeMetricMsg,
+           py::call_guard<py::gil_scoped_release>())
       .def("get_metric_name_list",
            &framework::Metric::GetMetricNameList,
            py::call_guard<py::gil_scoped_release>());

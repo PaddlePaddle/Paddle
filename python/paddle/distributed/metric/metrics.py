@@ -134,6 +134,34 @@ def init_metric(
                 ignore_rank,
                 bucket_size,
             )
+        elif metric_runner['method'] == 'PNCalculator':
+            metric_ptr.init_metric(
+                metric_runner['method'],
+                metric_runner['name'],
+                metric_runner['label'],
+                metric_runner['target'],
+                cmatch_rank_var,
+                mask_var,
+                metric_runner['uid'],
+                phase,
+                cmatch_rank_group,
+                ignore_rank,
+                bucket_size,
+            )
+        elif metric_runner['method'] == 'PNTypeCalculator':
+            metric_ptr.init_metric(
+                metric_runner['method'],
+                metric_runner['name'],
+                metric_runner['label'],
+                metric_runner['target'],
+                metric_runner['cmatch_var'],
+                mask_var,
+                metric_runner['uid'],
+                phase,
+                metric_runner['cmatch_group'],
+                ignore_rank,
+                bucket_size,
+            )
         else:
             metric_ptr.init_metric(
                 metric_runner['method'],
@@ -142,6 +170,7 @@ def init_metric(
                 metric_runner['target'],
                 cmatch_rank_var,
                 mask_var,
+                uid_var,
                 phase,
                 cmatch_rank_group,
                 ignore_rank,

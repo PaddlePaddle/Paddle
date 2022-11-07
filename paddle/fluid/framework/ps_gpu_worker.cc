@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/framework/fleet/metrics.h"
+
 
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
      defined PADDLE_WITH_XPU_BKCL) &&                        \
@@ -121,6 +123,21 @@ void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
   writer_.Reset(queue);
 }
 
+/**
+ * @brief add auc monitor
+ */
+inline void AddAucMonitor(const Scope* scope, const platform::Place& place) {
+  auto metric_ptr = Metric::GetInstance();
+  auto& metric_list = metric_ptr->GetMetricList();
+  for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
+    auto* metric_msg = iter->second;
+    if (metric_ptr->Phase() != metric_msg->MetricPhase()) {
+      continue;
+    }
+    metric_msg->add_data(scope, place);
+  }
+}
+
 void PSGPUWorker::TrainFiles() {
   VLOG(0) << "Begin to train files";
   platform::SetNumThreads(1);
@@ -151,6 +168,10 @@ void PSGPUWorker::TrainFiles() {
       if (!need_skip) {
         op->Run(*thread_scope_, place_);
       }
+    }
+    // add data for MetricMsg
+    if (Metric::GetInstance() != nullptr) {
+      AddAucMonitor(thread_scope_, place_);
     }
     if (need_dump_field_) {
       DumpField(*thread_scope_, dump_mode_, dump_interval_);

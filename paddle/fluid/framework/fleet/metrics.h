@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <ThreadPool.h>
-
 #include <atomic>
 #include <ctime>
 #include <map>
@@ -36,7 +35,6 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allreduce.h>
-
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
 
@@ -54,38 +52,94 @@ class BasicAucCalculator {
     float pred_;
   };
 
+  struct PNRecord {
+    uint64_t uid_;
+    float label_;
+    float pred_;
+  };
+
+  struct PNTypeRecord {
+    uint64_t uid;
+    float label;
+    float pred;
+    int rtype;
+  };
+
   struct WuaucRocData {
     double tp_;
     double fp_;
     double auc_;
   };
+
+  struct PNInfo {
+    float final_pn;
+    float final_wpn;
+    size_t count;
+    size_t positive_num;
+    size_t negtive_num;
+    double positive_wnum;
+    double negtive_wnum;
+    double pred_sum;
+    double label_sum;
+    double final_pred_avg;
+    double final_label_avg;
+
+    PNInfo() {
+        reset();
+    }
+    void reset() {
+        final_pn = 0;
+        final_wpn = 0;
+        count = 0;
+        positive_num = 0;
+        negtive_num = 0;
+        positive_wnum = 0.0;
+        negtive_wnum = 0.0;
+        pred_sum = 0.0;
+        label_sum = 0.0;
+        final_pred_avg = 0.0;
+        final_label_avg = 0.0;
+    }
+};
+
   void init(int table_size);
+  void init_pn(int type_num);
   void init_wuauc(int table_size);
   void reset();
-  void reset_records();
+  void reset_wuauc_records();
+  void reset_pn_records();
+  void reset_type_pn_records();
   // add single data in CPU with LOCK, deprecated
   void add_unlock_data(double pred, int label);
-  void add_uid_unlock_data(double pred, int label, uint64_t uid);
+  void add_uid_unlock_data_wuauc(double pred, int label, uint64_t uid);
+  void add_uid_unlock_data_pn(float pred, float label, uint64_t uid);
+  void add_uid_unlock_data_type_pn(float pred, float label, uint64_t uid, int64_t type);
   // add batch data
-  void add_data(const float* d_pred,
-                const int64_t* d_label,
-                int batch_size,
+  void add_data(const float* d_pred, const int64_t* d_label, int batch_size,
                 const paddle::platform::Place& place);
   // add mask data
-  void add_mask_data(const float* d_pred,
-                     const int64_t* d_label,
-                     const int64_t* d_mask,
-                     int batch_size,
+  void add_mask_data(const float* d_pred, const int64_t* d_label,
+                     const int64_t* d_mask, int batch_size,
                      const paddle::platform::Place& place);
   // add uid data
-  void add_uid_data(const float* d_pred,
-                    const int64_t* d_label,
-                    const int64_t* d_uid,
+  void add_uid_data_wuauc(const float* d_pred, const int64_t* d_label,
+                    const int64_t* d_uid, int batch_size,
+                    const paddle::platform::Place& place);
+  void add_uid_data_pn(const float* d_pred, const float* d_label,
+                    const int64_t* d_uid, int batch_size,
+                    const paddle::platform::Place& place);
+  void add_uid_data_type_pn(const float* d_pred, const float* d_label,
+                    const int64_t* d_uid, const int64_t* d_type, 
                     int batch_size,
                     const paddle::platform::Place& place);
 
   void compute();
   void computeWuAuc();
+  void computePN();
+  void computeTypePN();
+  void compute_pn_info(PNInfo& info);
+  void count_pn_pairs(const std::vector<PNRecord>& recs, size_t start, size_t end, double& positive_num, double& negtive_num);
+  void count_pn_type_pairs(const std::vector<PNTypeRecord>& recs, size_t start, size_t end);
   WuaucRocData computeSingelUserAuc(const std::vector<WuaucRecord>& records);
   int table_size() const { return _table_size; }
   double bucket_error() const { return _bucket_error; }
@@ -98,6 +152,12 @@ class BasicAucCalculator {
   double user_cnt() const { return _user_cnt; }
   double size() const { return _size; }
   double rmse() const { return _rmse; }
+  double final_pn() const { return _final_pn; }
+  double count() const { return _count; }
+  double positive_num() const { return _positive_num; }
+  double negtive_num() const { return _negtive_num; }
+  PNInfo pn_info() const { return _pn_info; }
+  std::vector<PNInfo> pn_infos() const { return _pn_infos; }
   std::unordered_set<uint64_t> uid_keys() const { return _uid_keys; }
   // lock and unlock
   std::mutex& table_mutex(void) { return _table_mutex; }
@@ -119,13 +179,23 @@ class BasicAucCalculator {
   double _size;
   double _user_cnt = 0;
   double _bucket_error = 0;
+  double _final_pn = 0;
+  double _count = 0;
+  double _positive_num = 0;
+  double _negtive_num = 0;
   std::unordered_set<uint64_t> _uid_keys;
 
  private:
   void set_table_size(int table_size) { _table_size = table_size; }
+  void set_pn_type_num(int type_num) { _type_num = type_num; }
   int _table_size;
+  int _type_num;
   std::vector<double> _table[2];
   std::vector<WuaucRecord> wuauc_records_;
+  std::vector<PNRecord> pn_records_;
+  std::vector<PNTypeRecord> pn_type_records_;
+  PNInfo _pn_info;
+  std::vector<PNInfo> _pn_infos;
   static constexpr double kRelativeErrorBound = 0.05;
   static constexpr double kMaxSpan = 0.01;
   std::mutex _table_mutex;
@@ -140,10 +210,8 @@ class Metric {
   class MetricMsg {
    public:
     MetricMsg() {}
-    MetricMsg(const std::string& label_varname,
-              const std::string& pred_varname,
-              int metric_phase,
-              int bucket_size = 1000000)
+    MetricMsg(const std::string& label_varname, const std::string& pred_varname,
+              int metric_phase, int bucket_size = 1000000)
         : label_varname_(label_varname),
           pred_varname_(pred_varname),
           metric_phase_(metric_phase) {
@@ -164,8 +232,7 @@ class Metric {
       const float* pred_data = NULL;
       get_data<int64_t>(exe_scope, label_varname_, &label_data, &label_len);
       get_data<float>(exe_scope, pred_varname_, &pred_data, &pred_len);
-      PADDLE_ENFORCE_EQ(label_len,
-                        pred_len,
+      PADDLE_ENFORCE_EQ(label_len, pred_len,
                         platform::errors::PreconditionNotMet(
                             "the predict data length should be consistent with "
                             "the label data length"));
@@ -174,30 +241,25 @@ class Metric {
 
     // get_data
     template <class T = float>
-    static void get_data(const Scope* exe_scope,
-                         const std::string& varname,
-                         const T** data,
-                         int* len) {
+    static void get_data(const Scope* exe_scope, const std::string& varname,
+                         const T** data, int* len) {
       auto* var = exe_scope->FindVar(varname.c_str());
       PADDLE_ENFORCE_NOT_NULL(
-          var,
-          platform::errors::NotFound("Error: var %s is not found in scope.",
-                                     varname.c_str()));
-      auto& cpu_tensor = var->Get<phi::DenseTensor>();
-      *data = cpu_tensor.data<T>();
-      *len = cpu_tensor.numel();
+          var, platform::errors::NotFound(
+                   "Error: var %s is not found in scope.", varname.c_str()));
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      *data = tensor->data<T>();
+      *len = tensor->numel();
     }
 
     template <class T = float>
-    static void get_data(const Scope* exe_scope,
-                         const std::string& varname,
+    static void get_data(const Scope* exe_scope, const std::string& varname,
                          std::vector<T>* data) {
       auto* var = exe_scope->FindVar(varname.c_str());
       PADDLE_ENFORCE_NOT_NULL(
-          var,
-          platform::errors::NotFound("Error: var %s is not found in scope.",
-                                     varname.c_str()));
-      auto& cpu_tensor = var->Get<phi::DenseTensor>();
+          var, platform::errors::NotFound(
+                   "Error: var %s is not found in scope.", varname.c_str()));
+      auto& cpu_tensor = var->Get<LoDTensor>();
       auto* cpu_data = cpu_tensor.data<T>();
       auto len = cpu_tensor.numel();
       data->resize(len);
@@ -224,8 +286,7 @@ class Metric {
    public:
     WuAucMetricMsg(const std::string& label_varname,
                    const std::string& pred_varname,
-                   const std::string& uid_varname,
-                   int metric_phase,
+                   const std::string& uid_varname, int metric_phase,
                    int bucket_size = 1000000) {
       label_varname_ = label_varname;
       pred_varname_ = pred_varname;
@@ -247,24 +308,117 @@ class Metric {
       int uid_len = 0;
       const int64_t* uid_data = NULL;
       get_data<int64_t>(exe_scope, uid_varname_, &uid_data, &uid_len);
-      PADDLE_ENFORCE_EQ(label_len,
-                        uid_len,
+      PADDLE_ENFORCE_EQ(label_len, uid_len,
                         platform::errors::PreconditionNotMet(
                             "the predict data length should be consistent with "
                             "the label data length"));
       auto cal = GetCalculator();
-      cal->add_uid_data(pred_data, label_data, uid_data, label_len, place);
+      cal->add_uid_data_wuauc(pred_data, label_data, uid_data, label_len, place);
     }
 
    protected:
     std::string uid_varname_;
   };
 
+
+ class PNMetricMsg : public MetricMsg {
+   public:
+    PNMetricMsg(const std::string& label_varname,
+                   const std::string& pred_varname,
+                   const std::string& uid_varname, 
+                   int metric_phase) {
+      label_varname_ = label_varname;
+      pred_varname_ = pred_varname;
+      uid_varname_ = uid_varname;
+      metric_phase_ = metric_phase;
+      calculator = new BasicAucCalculator();
+    }
+    virtual ~PNMetricMsg() {}
+    void add_data(const Scope* exe_scope,
+                  const paddle::platform::Place& place) override {
+      int label_len = 0;
+      const float* label_data = NULL;
+      get_data<float>(exe_scope, label_varname_, &label_data, &label_len);
+
+      int pred_len = 0;
+      const float* pred_data = NULL;
+      get_data<float>(exe_scope, pred_varname_, &pred_data, &pred_len);
+
+      int uid_len = 0;
+      const int64_t* uid_data = NULL;
+      get_data<int64_t>(exe_scope, uid_varname_, &uid_data, &uid_len);
+      PADDLE_ENFORCE_EQ(label_len, uid_len,
+                        platform::errors::PreconditionNotMet(
+                            "the predict data length should be consistent with "
+                            "the label data length"));
+      auto cal = GetCalculator();
+      cal->add_uid_data_pn(pred_data, label_data, uid_data, label_len, place);
+    }
+
+   protected:
+    std::string uid_varname_;
+  };
+
+ class PNTypeMetricMsg : public MetricMsg {
+   public:
+    PNTypeMetricMsg(const std::string& label_varname,
+                   const std::string& pred_varname,
+                   const std::string& uid_varname, 
+                   const std::string& cmatch_rank_varname, 
+                   const std::string& cmatch_rank_group, 
+                   int metric_phase) {
+      label_varname_ = label_varname;
+      pred_varname_ = pred_varname;
+      uid_varname_ = uid_varname;
+      cmatch_rank_varname_ = cmatch_rank_varname;
+      cmatch_rank_group_ = cmatch_rank_group;
+      metric_phase_ = metric_phase;
+      calculator = new BasicAucCalculator();
+      calculator->init_pn(stoi(cmatch_rank_group_));
+      calculator->reset_type_pn_records();
+    }
+    virtual ~PNTypeMetricMsg() {}
+    void add_data(const Scope* exe_scope,
+                  const paddle::platform::Place& place) override {
+      int label_len = 0;
+      const float* label_data = NULL;
+      get_data<float>(exe_scope, label_varname_, &label_data, &label_len);
+
+      int pred_len = 0;
+      const float* pred_data = NULL;
+      get_data<float>(exe_scope, pred_varname_, &pred_data, &pred_len);
+
+      int uid_len = 0;
+      const int64_t* uid_data = NULL;
+      get_data<int64_t>(exe_scope, uid_varname_, &uid_data, &uid_len);
+
+      int type_len = 0;
+      const int64_t* type_data = NULL;
+      get_data<int64_t>(exe_scope, cmatch_rank_varname_, &type_data, &type_len);
+
+      PADDLE_ENFORCE_EQ(label_len, uid_len,
+                        platform::errors::PreconditionNotMet(
+                            "the uid data length should be consistent with "
+                            "the label data length"));
+
+      PADDLE_ENFORCE_EQ(label_len, type_len,
+                        platform::errors::PreconditionNotMet(
+                            "the ins_type length should be consistent with "
+                            "the label data length"));
+      auto cal = GetCalculator();
+      cal->add_uid_data_type_pn(pred_data, label_data, uid_data, type_data, label_len, place);
+    }
+
+   protected:
+    std::string uid_varname_;
+    std::string cmatch_rank_varname_;
+    std::string cmatch_rank_group_;
+  };
+
   class MultiTaskMetricMsg : public MetricMsg {
    public:
     MultiTaskMetricMsg(const std::string& label_varname,
-                       const std::string& pred_varname_list,
-                       int metric_phase,
+                       const std::string& pred_varname_list, int metric_phase,
                        const std::string& cmatch_rank_group,
                        const std::string& cmatch_rank_varname,
                        int bucket_size = 1000000) {
@@ -277,8 +431,7 @@ class Metric {
         const std::vector<std::string>& cur_cmatch_rank =
             string::split_string(cmatch_rank, "_");
         PADDLE_ENFORCE_EQ(
-            cur_cmatch_rank.size(),
-            2,
+            cur_cmatch_rank.size(), 2,
             platform::errors::PreconditionNotMet(
                 "illegal multitask auc spec: %s", cmatch_rank.c_str()));
         cmatch_rank_v.emplace_back(atoi(cur_cmatch_rank[0].c_str()),
@@ -287,13 +440,11 @@ class Metric {
       for (const auto& pred_varname : string::split_string(pred_varname_list)) {
         pred_v.emplace_back(pred_varname);
       }
-      PADDLE_ENFORCE_EQ(cmatch_rank_v.size(),
-                        pred_v.size(),
+      PADDLE_ENFORCE_EQ(cmatch_rank_v.size(), pred_v.size(),
                         platform::errors::PreconditionNotMet(
                             "cmatch_rank's size [%lu] should be equal to pred "
                             "list's size [%lu], but ther are not equal",
-                            cmatch_rank_v.size(),
-                            pred_v.size()));
+                            cmatch_rank_v.size(), pred_v.size()));
     }
     virtual ~MultiTaskMetricMsg() {}
     void add_data(const Scope* exe_scope,
@@ -304,12 +455,10 @@ class Metric {
       get_data<int64_t>(exe_scope, label_varname_, &label_data);
       size_t batch_size = cmatch_rank_data.size();
       PADDLE_ENFORCE_EQ(
-          batch_size,
-          label_data.size(),
+          batch_size, label_data.size(),
           platform::errors::PreconditionNotMet(
               "illegal batch size: batch_size[%lu] and label_data[%lu]",
-              batch_size,
-              label_data.size()));
+              batch_size, label_data.size()));
 
       std::vector<std::vector<float>> pred_data_list(pred_v.size());
       for (size_t i = 0; i < pred_v.size(); ++i) {
@@ -317,19 +466,17 @@ class Metric {
       }
       for (size_t i = 0; i < pred_data_list.size(); ++i) {
         PADDLE_ENFORCE_EQ(
-            batch_size,
-            pred_data_list[i].size(),
+            batch_size, pred_data_list[i].size(),
             platform::errors::PreconditionNotMet(
                 "illegal batch size: batch_size[%lu] and pred_data[%lu]",
-                batch_size,
-                pred_data_list[i].size()));
+                batch_size, pred_data_list[i].size()));
       }
       auto cal = GetCalculator();
       std::lock_guard<std::mutex> lock(cal->table_mutex());
       for (size_t i = 0; i < batch_size; ++i) {
-        auto cmatch_rank_it = std::find(cmatch_rank_v.begin(),
-                                        cmatch_rank_v.end(),
-                                        parse_cmatch_rank(cmatch_rank_data[i]));
+        auto cmatch_rank_it =
+            std::find(cmatch_rank_v.begin(), cmatch_rank_v.end(),
+                      parse_cmatch_rank(cmatch_rank_data[i]));
         if (cmatch_rank_it != cmatch_rank_v.end()) {
           cal->add_unlock_data(pred_data_list[std::distance(
                                    cmatch_rank_v.begin(), cmatch_rank_it)][i],
@@ -347,12 +494,10 @@ class Metric {
   class CmatchRankMetricMsg : public MetricMsg {
    public:
     CmatchRankMetricMsg(const std::string& label_varname,
-                        const std::string& pred_varname,
-                        int metric_phase,
+                        const std::string& pred_varname, int metric_phase,
                         const std::string& cmatch_rank_group,
                         const std::string& cmatch_rank_varname,
-                        bool ignore_rank = false,
-                        int bucket_size = 1000000) {
+                        bool ignore_rank = false, int bucket_size = 1000000) {
       label_varname_ = label_varname;
       pred_varname_ = pred_varname;
       cmatch_rank_varname_ = cmatch_rank_varname;
@@ -368,8 +513,7 @@ class Metric {
         const std::vector<std::string>& cur_cmatch_rank =
             string::split_string(cmatch_rank, "_");
         PADDLE_ENFORCE_EQ(
-            cur_cmatch_rank.size(),
-            2,
+            cur_cmatch_rank.size(), 2,
             platform::errors::PreconditionNotMet(
                 "illegal cmatch_rank auc spec: %s", cmatch_rank.c_str()));
         cmatch_rank_v.emplace_back(atoi(cur_cmatch_rank[0].c_str()),
@@ -387,19 +531,15 @@ class Metric {
       get_data<float>(exe_scope, pred_varname_, &pred_data);
       size_t batch_size = cmatch_rank_data.size();
       PADDLE_ENFORCE_EQ(
-          batch_size,
-          label_data.size(),
+          batch_size, label_data.size(),
           platform::errors::PreconditionNotMet(
               "illegal batch size: cmatch_rank[%lu] and label_data[%lu]",
-              batch_size,
-              label_data.size()));
+              batch_size, label_data.size()));
       PADDLE_ENFORCE_EQ(
-          batch_size,
-          pred_data.size(),
+          batch_size, pred_data.size(),
           platform::errors::PreconditionNotMet(
               "illegal batch size: cmatch_rank[%lu] and pred_data[%lu]",
-              batch_size,
-              pred_data.size()));
+              batch_size, pred_data.size()));
       auto cal = GetCalculator();
       std::lock_guard<std::mutex> lock(cal->table_mutex());
       for (size_t i = 0; i < batch_size; ++i) {
@@ -428,10 +568,8 @@ class Metric {
   class MaskMetricMsg : public MetricMsg {
    public:
     MaskMetricMsg(const std::string& label_varname,
-                  const std::string& pred_varname,
-                  int metric_phase,
-                  const std::string& mask_varname,
-                  int bucket_size = 1000000) {
+                  const std::string& pred_varname, int metric_phase,
+                  const std::string& mask_varname, int bucket_size = 1000000) {
       label_varname_ = label_varname;
       pred_varname_ = pred_varname;
       mask_varname_ = mask_varname;
@@ -453,8 +591,7 @@ class Metric {
       int mask_len = 0;
       const int64_t* mask_data = NULL;
       get_data<int64_t>(exe_scope, mask_varname_, &mask_data, &mask_len);
-      PADDLE_ENFORCE_EQ(label_len,
-                        mask_len,
+      PADDLE_ENFORCE_EQ(label_len, mask_len,
                         platform::errors::PreconditionNotMet(
                             "the predict data length should be consistent with "
                             "the label data length"));
@@ -469,8 +606,7 @@ class Metric {
   class CmatchRankMaskMetricMsg : public MetricMsg {
    public:
     CmatchRankMaskMetricMsg(const std::string& label_varname,
-                            const std::string& pred_varname,
-                            int metric_phase,
+                            const std::string& pred_varname, int metric_phase,
                             const std::string& cmatch_rank_group,
                             const std::string& cmatch_rank_varname,
                             bool ignore_rank = false,
@@ -492,8 +628,7 @@ class Metric {
         const std::vector<std::string>& cur_cmatch_rank =
             string::split_string(cmatch_rank, "_");
         PADDLE_ENFORCE_EQ(
-            cur_cmatch_rank.size(),
-            2,
+            cur_cmatch_rank.size(), 2,
             platform::errors::PreconditionNotMet(
                 "illegal cmatch_rank auc spec: %s", cmatch_rank.c_str()));
         cmatch_rank_v.emplace_back(atoi(cur_cmatch_rank[0].c_str()),
@@ -511,30 +646,24 @@ class Metric {
       get_data<float>(exe_scope, pred_varname_, &pred_data);
       size_t batch_size = cmatch_rank_data.size();
       PADDLE_ENFORCE_EQ(
-          batch_size,
-          label_data.size(),
+          batch_size, label_data.size(),
           platform::errors::PreconditionNotMet(
               "illegal batch size: cmatch_rank[%lu] and label_data[%lu]",
-              batch_size,
-              label_data.size()));
+              batch_size, label_data.size()));
       PADDLE_ENFORCE_EQ(
-          batch_size,
-          pred_data.size(),
+          batch_size, pred_data.size(),
           platform::errors::PreconditionNotMet(
               "illegal batch size: cmatch_rank[%lu] and pred_data[%lu]",
-              batch_size,
-              pred_data.size()));
+              batch_size, pred_data.size()));
 
       std::vector<int64_t> mask_data;
       if (!mask_varname_.empty()) {
         get_data<int64_t>(exe_scope, mask_varname_, &mask_data);
         PADDLE_ENFORCE_EQ(
-            batch_size,
-            mask_data.size(),
+            batch_size, mask_data.size(),
             platform::errors::PreconditionNotMet(
                 "illegal batch size: cmatch_rank[%lu] and mask_data[%lu]",
-                batch_size,
-                mask_data.size()));
+                batch_size, mask_data.size()));
       }
 
       auto cal = GetCalculator();
@@ -597,8 +726,7 @@ class Metric {
       for (const auto& name : metric_name_list_) {
         const auto iter = metric_lists_.find(name);
         PADDLE_ENFORCE_NE(
-            iter,
-            metric_lists_.end(),
+            iter, metric_lists_.end(),
             platform::errors::InvalidArgument(
                 "The metric name you provided is not registered."));
 
@@ -619,76 +747,60 @@ class Metric {
   void FlipPhase() { phase_ = (phase_ + 1) % phase_num_; }
   std::map<std::string, MetricMsg*>& GetMetricList() { return metric_lists_; }
 
-  void InitMetric(const std::string& method,
-                  const std::string& name,
+  void InitMetric(const std::string& method, const std::string& name,
                   const std::string& label_varname,
                   const std::string& pred_varname,
                   const std::string& cmatch_rank_varname,
                   const std::string& mask_varname,
-                  const std::string& uid_varname,
-                  int metric_phase,
-                  const std::string& cmatch_rank_group,
-                  bool ignore_rank,
+                  const std::string& uid_varname, int metric_phase,
+                  const std::string& cmatch_rank_group, bool ignore_rank,
                   int bucket_size = 1000000) {
     if (method == "AucCalculator") {
-      metric_lists_.emplace(
-          name,
-          new MetricMsg(
-              label_varname, pred_varname, metric_phase, bucket_size));
+      metric_lists_.emplace(name, new MetricMsg(label_varname, pred_varname,
+                                                metric_phase, bucket_size));
     } else if (method == "MultiTaskAucCalculator") {
-      metric_lists_.emplace(name,
-                            new MultiTaskMetricMsg(label_varname,
-                                                   pred_varname,
-                                                   metric_phase,
-                                                   cmatch_rank_group,
-                                                   cmatch_rank_varname,
-                                                   bucket_size));
+      metric_lists_.emplace(
+          name, new MultiTaskMetricMsg(label_varname, pred_varname,
+                                       metric_phase, cmatch_rank_group,
+                                       cmatch_rank_varname, bucket_size));
     } else if (method == "CmatchRankAucCalculator") {
-      metric_lists_.emplace(name,
-                            new CmatchRankMetricMsg(label_varname,
-                                                    pred_varname,
-                                                    metric_phase,
-                                                    cmatch_rank_group,
-                                                    cmatch_rank_varname,
-                                                    ignore_rank,
-                                                    bucket_size));
+      metric_lists_.emplace(name, new CmatchRankMetricMsg(
+                                      label_varname, pred_varname, metric_phase,
+                                      cmatch_rank_group, cmatch_rank_varname,
+                                      ignore_rank, bucket_size));
     } else if (method == "MaskAucCalculator") {
-      metric_lists_.emplace(name,
-                            new MaskMetricMsg(label_varname,
-                                              pred_varname,
-                                              metric_phase,
-                                              mask_varname,
-                                              bucket_size));
+      metric_lists_.emplace(
+          name, new MaskMetricMsg(label_varname, pred_varname, metric_phase,
+                                  mask_varname, bucket_size));
     } else if (method == "CmatchRankMaskAucCalculator") {
-      metric_lists_.emplace(name,
-                            new CmatchRankMaskMetricMsg(label_varname,
-                                                        pred_varname,
-                                                        metric_phase,
-                                                        cmatch_rank_group,
-                                                        cmatch_rank_varname,
-                                                        ignore_rank,
-                                                        mask_varname,
-                                                        bucket_size));
+      metric_lists_.emplace(name, new CmatchRankMaskMetricMsg(
+                                      label_varname, pred_varname, metric_phase,
+                                      cmatch_rank_group, cmatch_rank_varname,
+                                      ignore_rank, mask_varname, bucket_size));
     } else if (method == "WuAucCalculator") {
-      metric_lists_.emplace(name,
-                            new WuAucMetricMsg(label_varname,
-                                               pred_varname,
-                                               uid_varname,
-                                               metric_phase,
-                                               bucket_size));
+      metric_lists_.emplace(
+          name, new WuAucMetricMsg(label_varname, pred_varname, uid_varname,
+                                   metric_phase, bucket_size));
+    } else if (method == "PNCalculator") {
+      metric_lists_.emplace(
+          name, new PNMetricMsg(label_varname, pred_varname, uid_varname,
+                                   metric_phase));
+    } else if (method == "PNTypeCalculator") {
+      metric_lists_.emplace(
+          name, new PNTypeMetricMsg(label_varname, pred_varname, uid_varname,
+                                   cmatch_rank_varname, cmatch_rank_group, metric_phase));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "PSLIB Metrics only support AucCalculator, MultiTaskAucCalculator, "
-          "CmatchRankAucCalculator, MaskAucCalculator, WuAucCalculator and "
-          "CmatchRankMaskAucCalculator"));
+          "CmatchRankAucCalculator, MaskAucCalculator, WuAucCalculator, "
+          "CmatchRankMaskAucCalculator, PNCalculator and PNTypeCalculator"));
     }
     metric_name_list_.emplace_back(name);
   }
 
   const std::vector<float> GetMetricMsg(const std::string& name) {
     const auto iter = metric_lists_.find(name);
-    PADDLE_ENFORCE_NE(iter,
-                      metric_lists_.end(),
+    PADDLE_ENFORCE_NE(iter, metric_lists_.end(),
                       platform::errors::InvalidArgument(
                           "The metric name you provided is not registered."));
     std::vector<float> metric_return_values_(8, 0.0);
@@ -709,8 +821,7 @@ class Metric {
 
   const std::vector<float> GetWuAucMetricMsg(const std::string& name) {
     const auto iter = metric_lists_.find(name);
-    PADDLE_ENFORCE_NE(iter,
-                      metric_lists_.end(),
+    PADDLE_ENFORCE_NE(iter, metric_lists_.end(),
                       platform::errors::InvalidArgument(
                           "The metric name you provided is not registered."));
     VLOG(0) << "begin GetWuAucMetricMsg";
@@ -737,16 +848,74 @@ class Metric {
       global_metric_return_values_[5] =
           global_metric_return_values_[3] /
           (global_metric_return_values_[1] + 1e-10);
-      auc_cal_->reset_records();
+      auc_cal_->reset_wuauc_records();
       return global_metric_return_values_;
     } else {
-      auc_cal_->reset_records();
+      auc_cal_->reset_wuauc_records();
       return metric_return_values_;
     }
 #else
-    auc_cal_->reset_records();
+    auc_cal_->reset_wuauc_records();
     return metric_return_values_;
 #endif
+  }
+
+ const std::vector<float> GetPNMetricMsg(const std::string& name) {
+    const auto iter = metric_lists_.find(name);
+    PADDLE_ENFORCE_NE(iter, metric_lists_.end(),
+                      platform::errors::InvalidArgument(
+                          "The metric name you provided is not registered."));
+    VLOG(0) << "begin GetPNMetricMsg";
+    std::vector<float> metric_return_values_(4, 0.0);
+    auto* auc_cal_ = iter->second->GetCalculator();
+    auc_cal_->computePN();
+    metric_return_values_[0] = auc_cal_->final_pn();
+    metric_return_values_[1] = auc_cal_->count();
+    metric_return_values_[2] = auc_cal_->positive_num();
+    metric_return_values_[3] = auc_cal_->negtive_num();
+
+    auc_cal_->reset_pn_records();
+    return metric_return_values_;
+  }
+
+ const std::vector<std::vector<float>> GetPNTypeMetricMsg(const std::string& name) {
+    const auto iter = metric_lists_.find(name);
+    PADDLE_ENFORCE_NE(iter, metric_lists_.end(),
+                      platform::errors::InvalidArgument(
+                          "The metric name you provided is not registered."));
+    VLOG(0) << "begin GetPNTypeMetricMsg";
+    std::vector<std::vector<float>> metric_return_values_;
+    std::vector<float> metric_return_value_(7, 0.0);
+    auto* auc_cal_ = iter->second->GetCalculator();
+    auc_cal_->computeTypePN();
+
+    auto pInfo = auc_cal_->pn_info();
+    metric_return_value_[0] = pInfo.final_pn;
+    metric_return_value_[1] = pInfo.final_wpn;
+    metric_return_value_[2] = pInfo.count;
+    metric_return_value_[3] = pInfo.positive_num;
+    metric_return_value_[4] = pInfo.negtive_num;
+    metric_return_value_[5] = pInfo.final_label_avg;
+    metric_return_value_[6] = pInfo.final_pred_avg;
+    metric_return_values_.push_back(metric_return_value_);
+    
+    auto pInfos = auc_cal_->pn_infos();
+    for (size_t i = 0; i < pInfos.size(); ++i) {
+      metric_return_value_.clear();
+      metric_return_value_.resize(7);
+      metric_return_value_[0] = pInfos[i].final_pn;
+      metric_return_value_[1] = pInfos[i].final_wpn;
+      metric_return_value_[2] = pInfos[i].count;
+      metric_return_value_[3] = pInfos[i].positive_num;
+      metric_return_value_[4] = pInfos[i].negtive_num;
+      metric_return_value_[5] = pInfos[i].final_label_avg;
+      metric_return_value_[6] = pInfos[i].final_pred_avg;
+      metric_return_values_.push_back(metric_return_value_);
+    }
+
+
+    auc_cal_->reset_type_pn_records();
+    return metric_return_values_;
   }
 
  private:
