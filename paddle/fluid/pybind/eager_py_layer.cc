@@ -259,8 +259,6 @@ PyObject* pylayer_method_apply(PyObject* cls,
   auto outputs = PyObject_Call(forward_fn, forward_args, kwargs);
   egr::Controller::Instance().SetHasGrad(trace_backward);
   if (!outputs) {
-    PADDLE_THROW(paddle::platform::errors::External(
-        pybind11::detail::error_string().c_str()));
     Py_XDECREF(forward_args);
     Py_XDECREF(kwargs_value_list);
     Py_XDECREF(backward_function);
