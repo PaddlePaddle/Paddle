@@ -58,7 +58,7 @@ def set_default_dtype(d):
         else:
             raise TypeError(
                 "set_default_dtype only supports [float16, float32, float64] "
-                ", but received %s" % d
+                ", but received %s" % str(d)
             )
 
     LayerHelperBase.set_default_dtype(d)
