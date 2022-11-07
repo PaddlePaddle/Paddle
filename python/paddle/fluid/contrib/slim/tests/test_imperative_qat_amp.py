@@ -12,8 +12,6 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-from __future__ import print_function
-
 import os
 import numpy as np
 import random
@@ -35,9 +33,9 @@ os.environ["CPU_NUM"] = "1"
 if paddle.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
 
-_logger = get_logger(__name__,
-                     logging.INFO,
-                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 
 class TestImperativeQatAmp(unittest.TestCase):
@@ -48,12 +46,14 @@ class TestImperativeQatAmp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.root_path = tempfile.TemporaryDirectory(
-            prefix="imperative_qat_amp_")
+            prefix="imperative_qat_amp_"
+        )
         cls.save_path = os.path.join(cls.root_path.name, "model")
 
         cls.download_path = 'dygraph_int8/download'
-        cls.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
-                                              cls.download_path)
+        cls.cache_folder = os.path.expanduser(
+            '~/.cache/paddle/dataset/' + cls.download_path
+        )
 
         cls.lenet_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/lenet_pretrained.tar.gz"
         cls.lenet_md5 = "953b802fb73b52fae42896e3c24f0afb"
@@ -70,7 +70,8 @@ class TestImperativeQatAmp(unittest.TestCase):
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
             cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
-                target_folder, zip_path)
+                target_folder, zip_path
+            )
             os.system(cmd)
 
     def download_model(self, data_url, data_md5, folder_name):
@@ -95,17 +96,21 @@ class TestImperativeQatAmp(unittest.TestCase):
     def model_train(self, model, batch_num=-1, batch_size=32, use_amp=False):
         model.train()
 
-        train_reader = paddle.batch(paddle.dataset.mnist.train(),
-                                    batch_size=batch_size)
-        adam = paddle.optimizer.Adam(learning_rate=0.001,
-                                     parameters=model.parameters())
+        train_reader = paddle.batch(
+            paddle.dataset.mnist.train(), batch_size=batch_size
+        )
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=model.parameters()
+        )
         scaler = paddle.amp.GradScaler(init_loss_scaling=500)
 
         for batch_id, data in enumerate(train_reader()):
-            x_data = np.array([x[0].reshape(1, 28, 28)
-                               for x in data]).astype('float32')
-            y_data = np.array([x[1]
-                               for x in data]).astype('int64').reshape(-1, 1)
+            x_data = np.array([x[0].reshape(1, 28, 28) for x in data]).astype(
+                'float32'
+            )
+            y_data = (
+                np.array([x[1] for x in data]).astype('int64').reshape(-1, 1)
+            )
 
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
@@ -132,8 +137,11 @@ class TestImperativeQatAmp(unittest.TestCase):
                 model.clear_gradients()
 
             if batch_id % 100 == 0:
-                _logger.info("Train | step {}: loss = {:}, acc= {:}".format(
-                    batch_id, avg_loss.numpy(), acc.numpy()))
+                _logger.info(
+                    "Train | step {}: loss = {:}, acc= {:}".format(
+                        batch_id, avg_loss.numpy(), acc.numpy()
+                    )
+                )
 
             if batch_num > 0 and batch_id + 1 >= batch_num:
                 break
@@ -141,15 +149,18 @@ class TestImperativeQatAmp(unittest.TestCase):
     def model_test(self, model, batch_num=-1, batch_size=32, use_amp=False):
         model.eval()
 
-        test_reader = paddle.batch(paddle.dataset.mnist.test(),
-                                   batch_size=batch_size)
+        test_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
 
         acc_top1_list = []
         for batch_id, data in enumerate(test_reader()):
-            x_data = np.array([x[0].reshape(1, 28, 28)
-                               for x in data]).astype('float32')
-            y_data = np.array([x[1]
-                               for x in data]).astype('int64').reshape(-1, 1)
+            x_data = np.array([x[0].reshape(1, 28, 28) for x in data]).astype(
+                'float32'
+            )
+            y_data = (
+                np.array([x[1] for x in data]).astype('int64').reshape(-1, 1)
+            )
 
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
@@ -161,8 +172,11 @@ class TestImperativeQatAmp(unittest.TestCase):
 
             acc_top1_list.append(float(acc_top1.numpy()))
             if batch_id % 100 == 0:
-                _logger.info("Test | At step {}: acc1 = {:}, acc5 = {:}".format(
-                    batch_id, acc_top1.numpy(), acc_top5.numpy()))
+                _logger.info(
+                    "Test | At step {}: acc1 = {:}, acc5 = {:}".format(
+                        batch_id, acc_top1.numpy(), acc_top5.numpy()
+                    )
+                )
 
             if batch_num > 0 and batch_id + 1 >= batch_num:
                 break
@@ -175,8 +189,9 @@ class TestImperativeQatAmp(unittest.TestCase):
 
         self.set_vars()
 
-        params_path = self.download_model(self.lenet_url, self.lenet_md5,
-                                          "lenet")
+        params_path = self.download_model(
+            self.lenet_url, self.lenet_md5, "lenet"
+        )
         params_path += "/lenet_pretrained/lenet.pdparams"
 
         with fluid.dygraph.guard():
@@ -185,24 +200,31 @@ class TestImperativeQatAmp(unittest.TestCase):
             model.set_state_dict(model_state_dict)
 
             _logger.info("Test fp32 model")
-            fp32_acc_top1 = self.model_test(model, self.test_batch_num,
-                                            self.test_batch_size)
+            fp32_acc_top1 = self.model_test(
+                model, self.test_batch_num, self.test_batch_size
+            )
 
             self.qat.quantize(model)
 
             use_amp = True
-            self.model_train(model, self.train_batch_num, self.train_batch_size,
-                             use_amp)
+            self.model_train(
+                model, self.train_batch_num, self.train_batch_size, use_amp
+            )
 
             _logger.info("Test int8 model")
-            int8_acc_top1 = self.model_test(model, self.test_batch_num,
-                                            self.test_batch_size, use_amp)
+            int8_acc_top1 = self.model_test(
+                model, self.test_batch_num, self.test_batch_size, use_amp
+            )
 
-            _logger.info('fp32_acc_top1: %f, int8_acc_top1: %f' %
-                         (fp32_acc_top1, int8_acc_top1))
-            self.assertTrue(int8_acc_top1 > fp32_acc_top1 - 0.01,
-                            msg='fp32_acc_top1: %f, int8_acc_top1: %f' %
-                            (fp32_acc_top1, int8_acc_top1))
+            _logger.info(
+                'fp32_acc_top1: %f, int8_acc_top1: %f'
+                % (fp32_acc_top1, int8_acc_top1)
+            )
+            self.assertTrue(
+                int8_acc_top1 > fp32_acc_top1 - 0.01,
+                msg='fp32_acc_top1: %f, int8_acc_top1: %f'
+                % (fp32_acc_top1, int8_acc_top1),
+            )
 
         input_spec = [
             paddle.static.InputSpec(shape=[None, 1, 28, 28], dtype='float32')

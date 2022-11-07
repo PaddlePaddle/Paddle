@@ -12,17 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid.layers as layers
 import paddle.fluid as fluid
-import random
-import six
 
 
 def create_tdm_tree():
@@ -59,15 +52,15 @@ def create_tdm_tree():
 
 
 class TestTDMChildOp(OpTest):
-
     def setUp(self):
         self.__class__.op_type = "tdm_child"
         self.config()
         tree_info = create_tdm_tree()
         tree_info_np = np.array(tree_info).astype(self.info_type)
 
-        x_np = np.random.randint(low=0, high=26,
-                                 size=self.x_shape).astype(self.x_type)
+        x_np = np.random.randint(low=0, high=26, size=self.x_shape).astype(
+            self.x_type
+        )
         children_res = []
         leaf_mask_res = []
         for batch in x_np:
@@ -107,9 +100,8 @@ class TestTDMChildOp(OpTest):
 
 
 class TestCase1(TestTDMChildOp):
-
     def config(self):
-        """check int int64_t """
+        """check int int64_t"""
         self.x_shape = (10, 20)
         self.child_shape = (10, 20, 2)
         self.x_type = 'int32'
@@ -117,9 +109,8 @@ class TestCase1(TestTDMChildOp):
 
 
 class TestCase2(TestTDMChildOp):
-
     def config(self):
-        """check int64_t int64_t """
+        """check int64_t int64_t"""
         self.x_shape = (10, 20)
         self.child_shape = (10, 20, 2)
         self.x_type = 'int64'
@@ -127,9 +118,8 @@ class TestCase2(TestTDMChildOp):
 
 
 class TestCase3(TestTDMChildOp):
-
     def config(self):
-        """check int64 int32 """
+        """check int64 int32"""
         self.x_shape = (10, 20)
         self.child_shape = (10, 20, 2)
         self.x_type = 'int64'
@@ -137,9 +127,8 @@ class TestCase3(TestTDMChildOp):
 
 
 class TestCase4(TestTDMChildOp):
-
     def config(self):
-        """check large shape """
+        """check large shape"""
         self.x_shape = (100, 20)
         self.child_shape = (100, 20, 2)
         self.x_type = 'int32'
@@ -147,7 +136,6 @@ class TestCase4(TestTDMChildOp):
 
 
 class TestTDMChildShape(unittest.TestCase):
-
     def test_shape(self):
         x = fluid.layers.data(name='x', shape=[1], dtype='int32', lod_level=1)
         tdm_tree_info = create_tdm_tree()
@@ -157,17 +145,21 @@ class TestTDMChildShape(unittest.TestCase):
             x=x,
             node_nums=26,
             child_nums=2,
-            param_attr=fluid.ParamAttr(initializer=fluid.initializer.
-                                       NumpyArrayInitializer(tree_info_np)))
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    tree_info_np
+                )
+            ),
+        )
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place=place)
         exe.run(fluid.default_startup_program())
 
         feed = {
-            'x':
-            np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11],
-                      [12]]).astype('int32')
+            'x': np.array(
+                [[1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12]]
+            ).astype('int32')
         }
         exe.run(feed=feed)
 

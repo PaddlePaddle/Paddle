@@ -107,4 +107,4 @@ void ScatterKernel(const Context &ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    scatter, XPU, ALL_LAYOUT, phi::ScatterKernel, float, int, int64_t) {}
+    scatter, XPU, ALL_LAYOUT, phi::ScatterKernel, float, int64_t) {}

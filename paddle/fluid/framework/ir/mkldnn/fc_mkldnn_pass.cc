@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/fc_mkldnn_pass.h"
 
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -28,26 +29,26 @@ namespace ir {
 
 class Graph;
 
-void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
-                              "Pointer to graph argument should not be NULL."));
-  Init("fc_mkldnn_pass", graph);
+namespace {
+void LogEnabledOps(const int counter, const std::string& details) {
+  std::string msg_ss{"---    enabled FC MKL-DNN for "};
+  msg_ss += counter + " fc ops " + details;
+  string::PrettyLogDetail(msg_ss.c_str());
+}
+}  // namespace
 
+void FCMKLDNNPass::ApplyPass(ir::Graph* graph, bool with_residual) const {
   GraphPatternDetector gpd;
-  auto* x = gpd.mutable_pattern()
-                ->NewNode("fc_mkldnn_pass/x")
-                ->AsInput()
-                ->assert_is_op_input("fc", "Input");
   patterns::FCMKLDNN fc_pattern(gpd.mutable_pattern(), "fc_mkldnn_pass");
-  fc_pattern(x, true /*with bias*/);
+  fc_pattern(with_residual);
 
   int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "Handle FC MKL-DNN pass";
     if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn"))) {
-      VLOG(3) << "do not perform fc fuse";
+      VLOG(3) << "do not enable FC MKL-DNN because it doesn't have use_mkldnn "
+                 "attribute.";
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_pattern);
@@ -77,6 +78,20 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_fc_count);
+
+  LogEnabledOps(found_fc_count,
+                (with_residual ? "with residual connection"
+                               : "without residual connection"));
+}
+
+void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE_NOT_NULL(graph,
+                          platform::errors::InvalidArgument(
+                              "Pointer to graph argument should not be NULL."));
+  Init("fc_mkldnn_pass", graph);
+
+  ApplyPass(graph, true);
+  ApplyPass(graph, false);
 }
 
 }  // namespace ir

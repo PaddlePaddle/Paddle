@@ -1,15 +1,17 @@
 # A image for building paddle binaries
-# Update CNTOOLKIT_VERSION, CNNL_VERSION and CNCL_VERSION if using other versions
+# Update CNTOOLKIT_VERSION, CNNL_VERSION, CNCL_VERSION and MLUOPS_VERSION if using other versions
 #
 # Build:
-# - CNTOOLKIT_VERSION 2.8.5
-# - CNNL_VERSION 1.10.5
-# - CNCL_VERSION 1.1.2
+# - CNTOOLKIT_VERSION 3.0.2-1
+# - CNNL_VERSION 1.13.0-1
+# - CNCL_VERSION 1.2.1-1
+# - MLUOPS_VERSION 0.2.0-1
 #
 # Download three packages from FTP (need to connect cambricon AE to get FTP url)
-# - cntoolkit_2.8.5.ubuntu18.04_amd64.deb
-# - cnnl_1.10.5.ubuntu18.04_amd64.deb
-# - cncl_1.1.2.ubuntu18.04_amd64.deb
+# - cntoolkit_3.0.2-1.ubuntu18.04_amd64.deb
+# - cnnl_1.13.0-1.ubuntu18.04_amd64.deb
+# - cncl_1.2.1-1.ubuntu18.04_amd64.deb
+# - mluops_0.2.0-1.ubuntu18.04_amd64.deb
 # copy them to current directory first, then run build commands
 #
 # For example:
@@ -19,11 +21,13 @@
 # (get cntoolkit pkg)
 # (get cnnl pkg)
 # (get cncl pkg)
+# (get mluops pkg)
 #
 # docker build -f Dockerfile.mlu  \
-# --build-arg CNTOOLKIT_VERSION=2.8.5 \
-# --build-arg CNNL_VERSION=1.10.5 \
-# --build-arg CNCL_VERSION=1.1.2 \
+# --build-arg CNTOOLKIT_VERSION=3.0.2-1 \
+# --build-arg CNNL_VERSION=1.13.0-1 \
+# --build-arg CNCL_VERSION=1.2.1-1 \
+# --build-arg MLUOPS_VERSION=0.2.0-1 \
 # -t paddlepaddle/paddle:latest-dev-mlu .
 #
 # without mlu device:
@@ -40,12 +44,14 @@ MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 ENV WITH_GPU=OFF
 
-ARG CNTOOLKIT_VERSION=2.8.5
-ARG CNNL_VERSION=1.10.5
-ARG CNCL_VERSION=1.1.2
+ARG CNTOOLKIT_VERSION=3.0.2-1
+ARG CNNL_VERSION=1.13.0-1
+ARG CNCL_VERSION=1.2.1-1
+ARG MLUOPS_VERSION=0.2.0-1
 ARG CNTOOLKIT_PKG=cntoolkit_$CNTOOLKIT_VERSION.ubuntu18.04_amd64.deb
 ARG CNNL_PKG=cnnl_$CNNL_VERSION.ubuntu18.04_amd64.deb
 ARG CNCL_PKG=cncl_$CNCL_VERSION.ubuntu18.04_amd64.deb
+ARG MLUOPS_PKG=mluops_$MLUOPS_VERSION.ubuntu18.04_amd64.deb
 
 # install cntoolkit
 COPY $CNTOOLKIT_PKG ./
@@ -66,6 +72,11 @@ RUN dpkg -i $CNNL_PKG && \
 COPY $CNCL_PKG ./
 RUN dpkg -i $CNCL_PKG && \
     rm -f $CNCL_PKG
+
+# install mluops
+COPY $MLUOPS_PKG ./
+RUN dpkg -i $MLUOPS_PKG && \
+    rm -f $MLUOPS_PKG
 
 # Clean
 RUN apt-get clean -y

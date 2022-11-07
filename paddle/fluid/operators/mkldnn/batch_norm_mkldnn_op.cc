@@ -128,13 +128,13 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(
-      const framework::Tensor *mean) {
+      const phi::DenseTensor *mean) {
     const T *mean_data = mean->data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
                                             to_void_cast<T>(mean_data));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireMeanMemory(framework::Tensor *mean) {
+  std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor *mean) {
     T *mean_data = mean->mutable_data<T>(this->place_,
                                          this->fwd_pd_->mean_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
@@ -142,14 +142,14 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
-      const framework::Tensor *variance) {
+      const phi::DenseTensor *variance) {
     const T *variance_data = variance->data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
                                             to_void_cast<T>(variance_data));
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
-      framework::Tensor *variance) {
+      phi::DenseTensor *variance) {
     T *variance_data = variance->mutable_data<T>(
         this->place_, this->fwd_pd_->variance_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
@@ -170,13 +170,13 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const bool test_mode = is_test && (!trainable_stats);
     const bool global_stats = test_mode || use_global_stats;
 
-    const auto *x = ctx.Input<Tensor>("X");
-    const auto *scale = ctx.Input<Tensor>("Scale");
-    const auto *shift = ctx.Input<Tensor>("Bias");
+    const auto *x = ctx.Input<phi::DenseTensor>("X");
+    const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto *shift = ctx.Input<phi::DenseTensor>("Bias");
 
-    auto *y = ctx.Output<Tensor>("Y");
-    auto *batch_mean = ctx.Output<Tensor>("SavedMean");
-    auto *batch_variance = ctx.Output<Tensor>("SavedVariance");
+    auto *y = ctx.Output<phi::DenseTensor>("Y");
+    auto *batch_mean = ctx.Output<phi::DenseTensor>("SavedMean");
+    auto *batch_variance = ctx.Output<phi::DenseTensor>("SavedVariance");
     BatchNormMKLDNNHandler<T> handler(
         ctx, mkldnn_engine, x, global_stats, test_mode);
 
@@ -190,8 +190,8 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     if (global_stats) {
       // mean and variance are taken from input Tensor
-      const auto *mean = ctx.Input<Tensor>("Mean");
-      const auto *variance = ctx.Input<Tensor>("Variance");
+      const auto *mean = ctx.Input<phi::DenseTensor>("Mean");
+      const auto *variance = ctx.Input<phi::DenseTensor>("Variance");
 
       mean_memory = handler.AcquireMeanMemory(mean);
       variance_memory = handler.AcquireVarianceMemory(variance);
@@ -213,8 +213,8 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     astream.wait();
 
     if (!global_stats) {
-      auto *mean_out = ctx.Output<Tensor>("MeanOut");
-      auto *variance_out = ctx.Output<Tensor>("VarianceOut");
+      auto *mean_out = ctx.Output<phi::DenseTensor>("MeanOut");
+      auto *variance_out = ctx.Output<phi::DenseTensor>("VarianceOut");
       const float momentum = ctx.Attr<float>("momentum");
 
       const unsigned int C = phi::vectorize(scale->dims())[0];
@@ -246,15 +246,18 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     auto mkldnn_engine = dev_ctx.GetEngine();
 
-    const auto *x = ctx.Input<Tensor>("X");
-    const auto *scale = ctx.Input<Tensor>("Scale");
-    const auto *shift = ctx.Input<Tensor>("Bias");
-    const auto *batch_mean = ctx.Input<Tensor>("SavedMean");
-    const auto *batch_variance = ctx.Input<Tensor>("SavedVariance");
-    const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto *diff_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *diff_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *diff_shift = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    const auto *x = ctx.Input<phi::DenseTensor>("X");
+    const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto *shift = ctx.Input<phi::DenseTensor>("Bias");
+    const auto *batch_mean = ctx.Input<phi::DenseTensor>("SavedMean");
+    const auto *batch_variance = ctx.Input<phi::DenseTensor>("SavedVariance");
+    const auto *diff_y =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto *diff_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *diff_scale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto *diff_shift =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     BatchNormMKLDNNHandler<T> handler(ctx, mkldnn_engine, x, scale, diff_y);
 

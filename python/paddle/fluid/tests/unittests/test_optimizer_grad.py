@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from collections import defaultdict
@@ -45,8 +43,8 @@ class SimpleNetWithCond(object):
 
     def _init_param(self):
         self.x = np.ones(self.shape).astype('float32')
-        self.y = np.ones(self.shape).astype('float32') * 2.
-        self.z = np.ones(self.shape).astype('float32') * 3.
+        self.y = np.ones(self.shape).astype('float32') * 2.0
+        self.z = np.ones(self.shape).astype('float32') * 3.0
 
     def _calc_gradient(self, cond_i):
         """
@@ -83,39 +81,42 @@ class SimpleNetWithCond(object):
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_x"),
-            default_initializer=fluid.initializer.NumpyArrayInitializer(self.x))
+            default_initializer=fluid.initializer.NumpyArrayInitializer(self.x),
+        )
 
         param_y = fluid.layers.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_y"),
-            default_initializer=fluid.initializer.NumpyArrayInitializer(self.y))
+            default_initializer=fluid.initializer.NumpyArrayInitializer(self.y),
+        )
         param_z = fluid.layers.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_z"),
-            default_initializer=fluid.initializer.NumpyArrayInitializer(self.z))
+            default_initializer=fluid.initializer.NumpyArrayInitializer(self.z),
+        )
 
         sum_xy = fluid.layers.elementwise_add(param_x, param_y, name='sum_xy')
         sub_yz = fluid.layers.elementwise_sub(param_y, param_z, name='sub_yz')
         useless = fluid.layers.fc(param_x, size=1, name='fc_useless')
 
         def cond_true():
-            cond_yz = fluid.layers.elementwise_add(param_y,
-                                                   param_z,
-                                                   name='sum_cond_yz')
+            cond_yz = fluid.layers.elementwise_add(
+                param_y, param_z, name='sum_cond_yz'
+            )
             # param_y will not be updated
             param_y.stop_gradient = self.y_no_grad
-            cond_res = fluid.layers.elementwise_add(cond_yz,
-                                                    param_z,
-                                                    name='sum_cond_true')
+            cond_res = fluid.layers.elementwise_add(
+                cond_yz, param_z, name='sum_cond_true'
+            )
             cond_useless = fluid.layers.elementwise_mul(param_x, param_y)
             return cond_res
 
         def cond_false():
-            cond_res = fluid.layers.elementwise_add(param_y,
-                                                    param_z,
-                                                    name='sum_cond_false')
+            cond_res = fluid.layers.elementwise_add(
+                param_y, param_z, name='sum_cond_false'
+            )
             cond_useless = fluid.layers.elementwise_mul(param_z, param_z)
             return cond_res
 
@@ -125,18 +126,23 @@ class SimpleNetWithCond(object):
         mean_out = paddle.mean(sum_all)
         if use_bf16:
             import paddle.static.amp as amp
+
             self.optimizer = amp.bf16.decorate_bf16(
                 self.optimizer,
                 amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(
-                    custom_fp32_list={'elementwise_add'}),
+                    custom_fp32_list={'elementwise_add'}
+                ),
                 use_bf16_guard=False,
-                use_pure_bf16=True)
+                use_pure_bf16=True,
+            )
 
         self.optimizer.minimize(mean_out)
 
-        fetch_list = ["param_x", "param_z"] if self.y_no_grad else [
-            "param_x", "param_y", "param_z"
-        ]
+        fetch_list = (
+            ["param_x", "param_z"]
+            if self.y_no_grad
+            else ["param_x", "param_y", "param_z"]
+        )
         fetch_list += [_append_grad_suffix_(param) for param in fetch_list]
         return fetch_list, self.optimizer
 
@@ -202,8 +208,9 @@ class TestOptimizer(unittest.TestCase):
             for param_lr in self.param_lr:
                 for cond_i in self.cond_i:
                     for y_no_grad in self.y_no_grad:
-                        self.attr[
-                            'lr'] = param_lr * self.optimizer._learning_rate
+                        self.attr['lr'] = (
+                            param_lr * self.optimizer._learning_rate
+                        )
                         self._init_param_attr()
 
                         main_program = fluid.Program()
@@ -211,11 +218,15 @@ class TestOptimizer(unittest.TestCase):
                         with fluid.program_guard(main_program, init_program):
                             # reset optimizer._accumulators to avoid duplicate name in loop.
                             self.optimizer._accumulators = defaultdict(
-                                lambda: dict())
-                            test_net = self.NetClass(self.optimizer, param_lr,
-                                                     y_no_grad)
-                            fetch_list, decorated_optimizer = test_net.build_net(
-                                cond_i, use_bf16)
+                                lambda: dict()
+                            )
+                            test_net = self.NetClass(
+                                self.optimizer, param_lr, y_no_grad
+                            )
+                            (
+                                fetch_list,
+                                decorated_optimizer,
+                            ) = test_net.build_net(cond_i, use_bf16)
                             if use_bf16:
                                 self.optimizer = decorated_optimizer
 
@@ -227,24 +238,28 @@ class TestOptimizer(unittest.TestCase):
                             # Train 2 steps to check validity
                             for batch_i in range(2):
 
-                                res = exe.run(main_program,
-                                              fetch_list=fetch_list)
+                                res = exe.run(
+                                    main_program, fetch_list=fetch_list
+                                )
                                 gt_grads = test_net._calc_gradient(cond_i)
                                 gt_params = self._apply_optimize(
-                                    test_net, gt_grads)
+                                    test_net, gt_grads
+                                )
                                 param_grads = gt_params + gt_grads
                                 for i in range(len(res)):
                                     np.testing.assert_allclose(
-                                        res[i], param_grads[i])
+                                        res[i], param_grads[i]
+                                    )
 
 
-@unittest.skipIf(not fluid.core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not fluid.core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestSGDOptimizer(TestOptimizer):
-
     def test_optimizer_multiblock_except(self):
-        with self.assertRaisesRegexp(ValueError,
-                                     "var param_y not in this block"):
+        with self.assertRaisesRegexp(
+            ValueError, "var param_y not in this block"
+        ):
             self._check_grads(use_bf16=True)
 
 
@@ -258,10 +273,9 @@ class TestAdamOptimizer(TestOptimizer):
     def setUp(self):
         self._init_config()
         beta1, beta2, epsilon = 0.9, 0.999, 1e-8
-        self.optimizer = optimizer.AdamOptimizer(learning_rate=0.01,
-                                                 beta1=beta1,
-                                                 beta2=beta2,
-                                                 epsilon=epsilon)
+        self.optimizer = optimizer.AdamOptimizer(
+            learning_rate=0.01, beta1=beta1, beta2=beta2, epsilon=epsilon
+        )
         self.attr = {
             "beta1": beta1,
             "beta2": beta2,
@@ -269,7 +283,7 @@ class TestAdamOptimizer(TestOptimizer):
             "beta2_pow": beta2,
             "moment1": np.zeros(SHAPE).astype("float32"),
             "moment2": np.zeros(SHAPE).astype("float32"),
-            "epsilon": epsilon
+            "epsilon": epsilon,
         }
 
     def _apply_gradient(self, param, grad, name):
@@ -282,13 +296,14 @@ class TestAdamOptimizer(TestOptimizer):
         beta1_pow, beta2_pow = attr['beta1_pow'], attr['beta2_pow']
         epsilon = attr['epsilon']
 
-        moment1_out = beta1 * moment1 + (1. - beta1) * grad
-        moment2_out = beta2 * moment2 + (1. - beta2) * np.square(grad)
+        moment1_out = beta1 * moment1 + (1.0 - beta1) * grad
+        moment2_out = beta2 * moment2 + (1.0 - beta2) * np.square(grad)
 
-        lr = attr['lr'] * np.sqrt(1. - beta2_pow) / (1. - beta1_pow)
+        lr = attr['lr'] * np.sqrt(1.0 - beta2_pow) / (1.0 - beta1_pow)
         param_out = param - lr * (
-            moment1_out /
-            (np.sqrt(moment2_out) + epsilon * np.sqrt(1 - beta2_pow)))
+            moment1_out
+            / (np.sqrt(moment2_out) + epsilon * np.sqrt(1 - beta2_pow))
+        )
 
         # update hyper-parameter of optimizer
         self.param_attr[name]['beta1_pow'] = beta1_pow * beta1

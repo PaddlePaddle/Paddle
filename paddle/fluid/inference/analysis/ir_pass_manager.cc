@@ -77,6 +77,15 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("optim_input_shape",
               new std::map<std::string, std::vector<int>>(
                   argument->optim_input_shape()));
+    // Now, shape tensor value is not explicit set by user,
+    // it is collected through API CollectShapeRangeInfo.
+    pass->Set("max_shape_tensor",
+              new std::map<std::string, std::vector<int>>());
+    pass->Set("min_shape_tensor",
+              new std::map<std::string, std::vector<int>>());
+    pass->Set("optim_shape_tensor",
+              new std::map<std::string, std::vector<int>>());
+
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
               new bool(argument->tensorrt_tuned_dynamic_shape()));
@@ -145,7 +154,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_calib_mode", new bool(use_calib_mode));
       pass->Set("precision_mode",
                 new AnalysisConfig::Precision(precision_mode));
-
+      pass->Set("context_memory_sharing",
+                new bool(argument->trt_engine_memory_sharing()));
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -253,6 +263,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("precision", new std::string(argument->xpu_precision()));
       pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
       pass->Set("xpu_device_id", new int(argument->xpu_device_id()));
+      pass->Set("enable_multi_stream",
+                new bool(argument->xpu_enable_multi_stream()));
       // NNAdapter Related
       pass->Set("use_nnadapter", new bool(argument->use_nnadapter()));
       pass->Set("nnadapter_model_cache_dir",

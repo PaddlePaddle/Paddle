@@ -70,6 +70,11 @@ OpVersionDesc&& OpVersionDesc::DeleteOutput(const std::string& name,
   return std::move(*this);
 }
 
+OpVersionRegistrar& OpVersionRegistrar::GetInstance() {
+  static OpVersionRegistrar instance;
+  return instance;
+}
+
 OpVersion& OpVersionRegistrar::Register(const std::string& op_type) {
   PADDLE_ENFORCE_EQ(
       op_version_map_.find(op_type),
@@ -87,6 +92,11 @@ uint32_t OpVersionRegistrar::version_id(const std::string& op_type) const {
       platform::errors::InvalidArgument(
           "The version of operator type %s has not been registered.", op_type));
   return op_version_map_.find(op_type)->second.version_id();
+}
+
+PassVersionCheckerRegistrar& PassVersionCheckerRegistrar::GetInstance() {
+  static PassVersionCheckerRegistrar instance;
+  return instance;
 }
 
 // Provide a fake registration item for pybind testing.

@@ -73,6 +73,11 @@ class NCCLCommImpl : public NCCLComm {
   std::shared_ptr<platform::CudaEventObject> comm_event_;
 };
 
+NCCLCommContext& NCCLCommContext::Instance() {
+  static NCCLCommContext comm_ctx;
+  return comm_ctx;
+}
+
 NCCLComm* NCCLCommContext::CreateComm(
     ncclUniqueId* nccl_id, int nranks, int rank, int dev_id, int ring_id) {
   PADDLE_ENFORCE_NOT_NULL(nccl_id,

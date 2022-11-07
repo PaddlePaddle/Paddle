@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/memcpy_kernel.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
@@ -157,6 +158,13 @@ void TransferLayoutKernel(const Context& dev_ctx,
   VLOG(10) << "TransDataLayout from " << static_cast<DataLayout>(src_layout)
            << " -> " << static_cast<DataLayout>(dst_layout);
 
+  VLOG_IF(10, x.initialized()) << "TransDataLayout from " << x.layout();
+  if (x.layout() == static_cast<DataLayout>(dst_layout)) {
+    VLOG(10) << "No need to transform, already is " << x.layout();
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    return;
+  }
+
 #ifdef PADDLE_WITH_MKLDNN
   TransferLayoutMKLDNN<Context>(dev_ctx,
                                 x,
@@ -176,3 +184,10 @@ PD_REGISTER_GENERAL_KERNEL(transfer_layout,
                            ALL_LAYOUT,
                            phi::TransferLayoutKernel<phi::CPUContext>,
                            ALL_DTYPE) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_GENERAL_KERNEL(transfer_layout,
+                           GPU,
+                           ALL_LAYOUT,
+                           phi::TransferLayoutKernel<phi::GPUContext>,
+                           ALL_DTYPE) {}
+#endif

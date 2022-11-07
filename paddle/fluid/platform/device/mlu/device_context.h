@@ -53,10 +53,17 @@ class MLUContext {
 
   const mluCnnlHandle& CnnlHandle() const { return cnnl_handle_; }
 
+  const mluOpHandle& MluOpHandle() const { return mluOp_handle_; }
+
  private:
   void InitCNNLContext() {
     PADDLE_ENFORCE_MLU_SUCCESS(cnnlCreate(&cnnl_handle_));
     PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetQueue(cnnl_handle_, RawStream()));
+  }
+
+  void InitMLUOPContext() {
+    PADDLE_ENFORCE_MLU_SUCCESS(mluOpCreate(&mluOp_handle_));
+    PADDLE_ENFORCE_MLU_SUCCESS(mluOpSetQueue(mluOp_handle_, RawStream()));
   }
 
   void DestoryCNNLContext() {
@@ -66,15 +73,25 @@ class MLUContext {
     cnnl_handle_ = nullptr;
   }
 
+  void DestoryMLUOPContext() {
+    if (mluOp_handle_) {
+      PADDLE_ENFORCE_MLU_SUCCESS(mluOpDestroy(mluOp_handle_));
+    }
+    mluOp_handle_ = nullptr;
+  }
+
   MLUPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
   std::unique_ptr<stream::MLUStream> stream_;
   mluCnnlHandle cnnl_handle_;
+  mluOpHandle mluOp_handle_;
 
   DISABLE_COPY_AND_ASSIGN(MLUContext);
 };
 
-class MLUDeviceContext : public DeviceContext {
+class MLUDeviceContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, MLUDeviceContext> {
  public:
   explicit MLUDeviceContext(MLUPlace place);
   virtual ~MLUDeviceContext();
@@ -88,6 +105,9 @@ class MLUDeviceContext : public DeviceContext {
 
   /*! \brief  Return cnnl handle in the device context. */
   mluCnnlHandle cnnl_handle() const;
+
+  /*! \brief  Return mluOp handle in the device context. */
+  mluOpHandle mluOp_handle() const;
 
   /*! \brief  Return mlu stream in the device context. */
   mluStream stream() const;
@@ -130,11 +150,14 @@ class MLUDeviceContext : public DeviceContext {
     return thread_ctx_.at(this);
   }
 
+  static const char* name() { return "MLUDeviceContext"; }
+
  private:
   int compute_capability_;
   int driver_version_;
   int runtime_version_;
   int cnnl_version_;
+  int mluOp_version_;
   MLUPlace place_;
   std::shared_ptr<MLUContext> default_ctx_;
 

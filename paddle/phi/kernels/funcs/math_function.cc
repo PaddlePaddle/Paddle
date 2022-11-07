@@ -108,8 +108,8 @@ DEFINE_CPU_TRANS(6);
 template <typename DeviceContext, typename T>
 void TransposeNormal<DeviceContext, T>::operator()(
     const DeviceContext& context,
-    const paddle::framework::Tensor& in,
-    paddle::framework::Tensor* out,
+    const phi::DenseTensor& in,
+    phi::DenseTensor* out,
     const std::vector<int>& axis) {
   const int rank = axis.size();
   auto in_stride = phi::stride(in.dims());
@@ -151,7 +151,7 @@ DEFINE_CPU_TRANS_NORMAL(phi::dtype::complex<float>);
 DEFINE_CPU_TRANS_NORMAL(phi::dtype::complex<double>);
 
 struct TensorSetConstantCPU {
-  TensorSetConstantCPU(paddle::framework::Tensor* tensor, float value)
+  TensorSetConstantCPU(phi::DenseTensor* tensor, float value)
       : tensor_(tensor), value_(value) {}
   template <typename T>
   void apply() const {
@@ -159,14 +159,14 @@ struct TensorSetConstantCPU {
     auto* begin = tensor_->mutable_data<T>(cpu);
     std::fill(begin, begin + tensor_->numel(), static_cast<T>(value_));
   }
-  paddle::framework::Tensor* tensor_;
+  phi::DenseTensor* tensor_;
   float value_;
 };
 
 template <>
 void set_constant_with_place<paddle::platform::XPUPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   PADDLE_THROW(phi::errors::Unimplemented("XPUPlace is not supported"));
 }
@@ -174,7 +174,7 @@ void set_constant_with_place<paddle::platform::XPUPlace>(
 template <>
 void set_constant_with_place<paddle::platform::NPUPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   PADDLE_THROW(phi::errors::Unimplemented("NPUPlace is not supported"));
 }
@@ -182,7 +182,7 @@ void set_constant_with_place<paddle::platform::NPUPlace>(
 template <>
 void set_constant_with_place<paddle::platform::NPUPinnedPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   PADDLE_THROW(phi::errors::Unimplemented("NPUPinnedPlace is not supported"));
 }
@@ -190,7 +190,7 @@ void set_constant_with_place<paddle::platform::NPUPinnedPlace>(
 template <>
 void set_constant_with_place<paddle::platform::IPUPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   PADDLE_THROW(phi::errors::Unimplemented("IPUPlace is not supported"));
 }
@@ -198,7 +198,7 @@ void set_constant_with_place<paddle::platform::IPUPlace>(
 template <>
 void set_constant_with_place<paddle::platform::CustomPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   PADDLE_THROW(phi::errors::Unimplemented("CustomPlace is not supported"));
 }
@@ -206,7 +206,7 @@ void set_constant_with_place<paddle::platform::CustomPlace>(
 template <>
 void set_constant_with_place<phi::CPUPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
@@ -214,7 +214,7 @@ void set_constant_with_place<phi::CPUPlace>(
 template <>
 void set_constant_with_place<paddle::platform::MLUPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   PADDLE_THROW(phi::errors::Unimplemented("MLUPlace is not supported"));
 }
@@ -222,7 +222,7 @@ void set_constant_with_place<paddle::platform::MLUPlace>(
 template <>
 void set_constant_with_place<paddle::platform::CUDAPinnedPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
@@ -230,7 +230,7 @@ void set_constant_with_place<paddle::platform::CUDAPinnedPlace>(
 struct TensorSetConstantWithPlace
     : public std::unary_function<paddle::platform::Place, void> {
   TensorSetConstantWithPlace(const paddle::platform::DeviceContext& context,
-                             paddle::framework::Tensor* tensor,
+                             phi::DenseTensor* tensor,
                              float value)
       : context_(context), tensor_(tensor), value_(value) {}
 
@@ -240,12 +240,12 @@ struct TensorSetConstantWithPlace
   }
 
   const paddle::platform::DeviceContext& context_;
-  paddle::framework::Tensor* tensor_;
+  phi::DenseTensor* tensor_;
   float value_;
 };
 
 void set_constant(const paddle::platform::DeviceContext& context,
-                  paddle::framework::Tensor* tensor,
+                  phi::DenseTensor* tensor,
                   float value) {
   TensorSetConstantWithPlace func(context, tensor, value);
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -273,9 +273,9 @@ template struct RowwiseMean<phi::CPUContext, double>;
 template <typename T>
 struct RowwiseAdd<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
-                  const paddle::framework::Tensor& input,
-                  const paddle::framework::Tensor& vector,
-                  paddle::framework::Tensor* output) {
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& vector,
+                  phi::DenseTensor* output) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto size = input.numel() / in_dims[0];

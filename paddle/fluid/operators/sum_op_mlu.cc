@@ -19,19 +19,19 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class SumMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensor>()) {
+    if (out_var->IsType<phi::DenseTensor>()) {
       // init
-      auto *out = out_var->GetMutable<framework::LoDTensor>();
-      auto ins = ctx.MultiInput<Tensor>("X");
+      auto *out = out_var->GetMutable<phi::DenseTensor>();
+      auto ins = ctx.MultiInput<phi::DenseTensor>("X");
       out->mutable_data<T>(ctx.GetPlace());
       auto place = ctx.GetPlace();
       int ins_size = static_cast<int>(ins.size());

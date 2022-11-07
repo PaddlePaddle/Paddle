@@ -12,20 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 # import yaml
 import unittest
 from paddle.distributed.fleet import auto
 
 
 class TestStrategy(unittest.TestCase):
-
     def test_default_config(self):
         strategy = auto.Strategy()
 
         recompute = strategy.recompute
         self.assertEqual(recompute.enable, False)
-        self.assertEqual(recompute.checkpoints, None)
+        self.assertIsNone(recompute.checkpoints)
 
         amp = strategy.amp
         self.assertEqual(amp.enable, False)
@@ -61,12 +59,12 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(qat.weight_bits, 8)
         self.assertEqual(qat.activation_bits, 8)
         self.assertEqual(qat.not_quant_pattern, ['skip_quant'])
-        self.assertEqual(qat.algo, None)
+        self.assertIsNone(qat.algo)
 
         tuning = strategy.tuning
         self.assertEqual(tuning.enable, False)
         self.assertEqual(tuning.batch_size, 1)
-        self.assertEqual(tuning.dataset, None)
+        self.assertIsNone(tuning.dataset)
         self.assertEqual(tuning.profile_start_step, 1)
         self.assertEqual(tuning.profile_end_step, 1)
         self.assertEqual(tuning.run_after_tuning, True)

@@ -116,3 +116,10 @@ set_field_default_config(TUNING, "profile_start_step", 1)
 set_field_default_config(TUNING, "profile_end_step", 1)
 set_field_default_config(TUNING, "run_after_tuning", True)
 set_field_default_config(TUNING, "verbose", True)
+
+#########################################
+# dataset configuration
+#########################################
+DATASET = "dataset"
+set_field_default_config(DATASET, "enable", False)
+set_field_default_config(DATASET, "num_shards", 1)

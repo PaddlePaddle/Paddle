@@ -533,17 +533,16 @@ static __global__ void BNForwardTraining2DWriteRes(
 template <typename T, typename Context>
 void BatchNormKernel(const Context &ctx,
                      const DenseTensor &x,
-                     const DenseTensor &scale,
-                     const DenseTensor &bias,
                      const DenseTensor &mean,
                      const DenseTensor &variance,
+                     const DenseTensor &scale,
+                     const DenseTensor &bias,
+                     bool is_test,
                      float momentum,
                      float epsilon_f,
                      const std::string &data_layout_str,
-                     bool is_test,
                      bool use_global_stats,
                      bool trainable_statistics,
-                     bool fuse_with_relu,
                      DenseTensor *y,
                      DenseTensor *mean_out,
                      DenseTensor *variance_out,
@@ -552,8 +551,7 @@ void BatchNormKernel(const Context &ctx,
                      DenseTensor *reserve_space) {
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_stats);
 
   // Get the size for each dimension.
@@ -1105,7 +1103,7 @@ void BatchNormKernel(const Context &ctx,
         // Create reserve space and workspace for batch norm.
         // Create tensor for each batchnorm op, it will be used in the
         // backward. Thus this tensor shouldn't be temp.
-        // auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+        // auto *reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
         if (reserve_space == nullptr) {
           reserve_space = &reserve_space_tensor;
         }

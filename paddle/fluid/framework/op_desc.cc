@@ -148,7 +148,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
       auto *out_var = block_.FindVarRecursive(out_var_names[i]);
       if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
           in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
-        VLOG(3) << "input " << in << " is not LoDTensor or LoDTensorArray.";
+        VLOG(3) << "input " << in
+                << " is not phi::DenseTensor or LoDTensorArray.";
         return;
       }
       out_var->SetLoDLevel(in_var->GetLoDLevel());
@@ -185,7 +186,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
         in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
-      VLOG(3) << "input " << in << " is not LoDTensor or LoDTensorArray.";
+      VLOG(3) << "input " << in
+              << " is not phi::DenseTensor or LoDTensorArray.";
       return;
     }
     out_var->SetLoDLevel(in_var->GetLoDLevel());
@@ -362,7 +364,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     DDim res;
     try {
       auto shape = var->GetShape();
-      res = shape.empty() ? phi::make_ddim({0UL}) : phi::make_ddim(shape);
+      res = phi::make_ddim(shape);
     } catch (...) {
       VLOG(5) << "GetDim of variable " << name << " error";
       std::rethrow_exception(std::current_exception());
@@ -883,6 +885,10 @@ void OpDesc::RenameOutput(const std::string &old_name,
     std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
   }
 
+  if (dist_attr_) {
+    dist_attr_->rename_output(old_name, new_name);
+  }
+
   need_update_ = true;
 }
 
@@ -896,6 +902,10 @@ void OpDesc::RenameInput(const std::string &old_name,
   if (it != attrs_.end()) {
     auto &op_vars = PADDLE_GET(std::vector<std::string>, it->second);
     std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
+  }
+
+  if (dist_attr_) {
+    dist_attr_->rename_input(old_name, new_name);
   }
 
   need_update_ = true;
@@ -1095,6 +1105,10 @@ void OpDesc::InferVarType(BlockDesc *block) const {
   }
 }
 
+const OperatorDistAttr *OpDesc::DistAttr() const {
+  return dist_attr_ ? dist_attr_.get() : nullptr;
+}
+
 OperatorDistAttr *OpDesc::MutableDistAttr() {
   if (dist_attr_) {
     return dist_attr_.get();
@@ -1227,17 +1241,12 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name,
   if (output_names.empty()) {
     return false;
   }
-  if (allow_null) {
-    for (auto &output : output_names) {
-      if (block_.HasVarRecursive(output)) return true;
-    }
-    return false;
-  } else {
+  if (!allow_null) {
     for (auto &output : output_names) {
       if (!block_.HasVarRecursive(output)) return false;
     }
-    return true;
   }
+  return true;
 }
 
 AttrReader CompileTimeInferShapeContext::Attrs() const {
@@ -1263,7 +1272,7 @@ std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
   try {
     auto shapes = var->GetShapes();
     for (const auto &s : shapes) {
-      res.push_back(s.empty() ? phi::make_ddim({0UL}) : phi::make_ddim(s));
+      res.push_back(phi::make_ddim(s));
     }
   } catch (...) {
     VLOG(5) << "GetRepeatedDim of variable " << name << " error.";

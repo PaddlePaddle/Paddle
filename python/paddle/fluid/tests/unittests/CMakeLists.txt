@@ -142,6 +142,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_complex_matmul)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
+  list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_no_bias)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
@@ -603,6 +604,11 @@ set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+
+if(WITH_RPC)
+  add_subdirectory(rpc)
+endif()
+
 if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
@@ -887,7 +893,7 @@ add_subdirectory(asp)
 
 add_subdirectory(ir)
 
-add_subdirectory(interpreter)
+add_subdirectory(standalone_executor)
 
 if(WITH_TESTING)
   set_property(TEST test_parallel_executor_mnist

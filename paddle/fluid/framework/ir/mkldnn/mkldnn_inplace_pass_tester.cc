@@ -27,11 +27,11 @@ USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP_ITSELF(leaky_relu);
-PD_DECLARE_KERNEL(leaky_relu, OneDNN, ALL_LAYOUT);
+PD_DECLARE_KERNEL(leaky_relu, OneDNN, ONEDNN);
 USE_OP_ITSELF(gelu);
 USE_OP_ITSELF(relu);
 USE_OP_ITSELF(tanh);
-PD_DECLARE_KERNEL(tanh, OneDNN, ALL_LAYOUT);
+PD_DECLARE_KERNEL(tanh, OneDNN, ONEDNN);
 PD_DECLARE_ARG_MAPPING_FN(gelu);
 
 namespace paddle {

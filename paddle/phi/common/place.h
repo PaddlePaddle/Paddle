@@ -226,7 +226,7 @@ using GPUPlace = phi::GPUPlace;
 
 /* NOTE [ Why need to temporarily adapt to PlaceType? ]
 
-`PlaceType` emum class is the place type used by custom operators since the
+`PlaceType` enum class is the place type used by custom operators since the
 release of 2.0. Since 2.3, we have refactored the operator library and designed
 a new external Place type. The original PlaceType is no longer suitable for use
 as an internal type of the framework, but immediately delete the PlaceType,

@@ -53,7 +53,7 @@ struct CudnnRNNCache {
   cudnnFilterDescriptor_t dw_desc_;
 
   size_t workspace_size_;
-  framework::Tensor workspace_data_;
+  phi::DenseTensor workspace_data_;
 
   size_t seq_length_;
 
@@ -78,7 +78,7 @@ struct CudnnRNNCache {
             int seed,
             int weight_numel,
             size_t *reserve_size_,
-            framework::Tensor *dropout_state_,
+            phi::DenseTensor *dropout_state_,
             bool initialized,
             cudnnDataType_t cudnn_type) {
     seq_length_ = seq_len;

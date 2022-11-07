@@ -87,10 +87,10 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &device_context = ctx.template device_context<DeviceContext>();
     auto stream = device_context.stream();
-    auto *X = ctx.Input<Tensor>("X");  // deep feature
-    auto *labels = ctx.Input<Tensor>("Label");
-    auto *centers = ctx.Input<Tensor>("Centers");
-    auto *update_rate = ctx.Input<Tensor>("CenterUpdateRate");
+    auto *X = ctx.Input<phi::DenseTensor>("X");  // deep feature
+    auto *labels = ctx.Input<phi::DenseTensor>("Label");
+    auto *centers = ctx.Input<phi::DenseTensor>("Centers");
+    auto *update_rate = ctx.Input<phi::DenseTensor>("CenterUpdateRate");
     int cluster_num = ctx.Attr<int>("cluster_num");
     auto *lr_center = update_rate->data<T>();
     bool need_update = static_cast<T>(ctx.Attr<bool>("need_update"));
@@ -102,24 +102,24 @@ class CenterLossCUDAKernel : public framework::OpKernel<T> {
     int batch_size = x_dims[0];
     const int deep_feat_dim = x_dims[1];
 
-    auto *centers_diff = ctx.Output<Tensor>("SampleCenterDiff");
+    auto *centers_diff = ctx.Output<phi::DenseTensor>("SampleCenterDiff");
     auto centers_diff_data = centers_diff->mutable_data<T>(ctx.GetPlace());
 
     auto centers_data = centers->data<T>();
     auto centers_dim = centers->dims();
-    auto *out_loss = ctx.Output<Tensor>("Loss");
+    auto *out_loss = ctx.Output<phi::DenseTensor>("Loss");
     auto loss_data = out_loss->mutable_data<T>(ctx.GetPlace());
 
-    auto *centers_out = ctx.Output<Tensor>("CentersOut");
+    auto *centers_out = ctx.Output<phi::DenseTensor>("CentersOut");
     auto *centers_out_data = centers_out->mutable_data<T>(ctx.GetPlace());
 
     auto ctx_place = ctx.GetPlace();
     if (centers != centers_out) {
       framework::TensorCopy(
-          *static_cast<const framework::Tensor *>(centers),
+          *static_cast<const phi::DenseTensor *>(centers),
           ctx_place,
           *platform::DeviceContextPool::Instance().Get(ctx_place),
-          static_cast<framework::Tensor *>(centers_out));
+          static_cast<phi::DenseTensor *>(centers_out));
     }
 
     int64_t numel = X->numel();

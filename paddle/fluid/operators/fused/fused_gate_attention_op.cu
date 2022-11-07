@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 struct SigmoidMultiplyFunctor {
@@ -69,7 +69,7 @@ void ComputeMergedQKVMatmulForward(const framework::ExecutionContext &ctx,
   // query: shape=[batch_size, seq_len_m, seq_len_r, qkv_dim]
   // qkv_weight: shape=[3, num_heads, head_dim, qkv_dim]
   // qkv_out: shape=[batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim]
-  auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
+  auto *qkv_weight = ctx.Input<phi::DenseTensor>("QKVWeight");
 
   // qkv_out = GEMM(query, qkv_weight^T)
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
@@ -87,9 +87,9 @@ void ComputeMergedQKVMatmulBackward(const framework::ExecutionContext &ctx,
                                     const Tensor *qkv_out_grad,
                                     Tensor *query_grad,
                                     bool use_addto) {
-  auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
+  auto *qkv_weight = ctx.Input<phi::DenseTensor>("QKVWeight");
   auto *qkv_weight_grad =
-      ctx.Output<Tensor>(framework::GradVarName("QKVWeight"));
+      ctx.Output<phi::DenseTensor>(framework::GradVarName("QKVWeight"));
   auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
   dev_ctx.Alloc<T>(qkv_weight_grad, qkv_weight_grad->numel() * sizeof(T));
 
@@ -116,9 +116,9 @@ void ComputeSeparatedQKVMatmulForward(const framework::ExecutionContext &ctx,
                                       Tensor *query_out,
                                       Tensor *key_out,
                                       Tensor *value_out) {
-  auto *query_weight = ctx.Input<Tensor>("QueryWeight");
-  auto *key_weight = ctx.Input<Tensor>("KeyWeight");
-  auto *value_weight = ctx.Input<Tensor>("ValueWeight");
+  auto *query_weight = ctx.Input<phi::DenseTensor>("QueryWeight");
+  auto *key_weight = ctx.Input<phi::DenseTensor>("KeyWeight");
+  auto *value_weight = ctx.Input<phi::DenseTensor>("ValueWeight");
 
   // query_out = GEMM(query, query_weight)
   // query: shape=[batch_size, seq_len_m, seq_len_r, q_dim]
@@ -158,9 +158,9 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
                                        Tensor *key_grad,
                                        bool use_addto) {
   // Gradient of GEMM(key, k_weight)
-  const auto *key_weight = ctx.Input<Tensor>("KeyWeight");
+  const auto *key_weight = ctx.Input<phi::DenseTensor>("KeyWeight");
   auto *key_weight_grad =
-      ctx.Output<Tensor>(framework::GradVarName("KeyWeight"));
+      ctx.Output<phi::DenseTensor>(framework::GradVarName("KeyWeight"));
   auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
   dev_ctx.Alloc<T>(key_weight_grad, key_weight_grad->numel() * sizeof(T));
 
@@ -173,9 +173,9 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
       key, key_weight, key_out_grad, key_grad, key_weight_grad, nullptr, false);
 
   // Gradient of GEMM(value, v_weight)
-  auto *value_weight = ctx.Input<Tensor>("ValueWeight");
+  auto *value_weight = ctx.Input<phi::DenseTensor>("ValueWeight");
   auto *value_weight_grad =
-      ctx.Output<Tensor>(framework::GradVarName("ValueWeight"));
+      ctx.Output<phi::DenseTensor>(framework::GradVarName("ValueWeight"));
   dev_ctx.Alloc<T>(value_weight_grad, value_weight_grad->numel() * sizeof(T));
 
   kv_compute.ComputeBackward(key,
@@ -187,9 +187,9 @@ void ComputeSeparatedQKVMatmulBackward(const framework::ExecutionContext &ctx,
                              true);
 
   // Gradient of GEMM(query, query_weight)
-  const auto *query_weight = ctx.Input<Tensor>("QueryWeight");
+  const auto *query_weight = ctx.Input<phi::DenseTensor>("QueryWeight");
   auto *query_weight_grad =
-      ctx.Output<Tensor>(framework::GradVarName("QueryWeight"));
+      ctx.Output<phi::DenseTensor>(framework::GradVarName("QueryWeight"));
   dev_ctx.Alloc<T>(query_weight_grad, query_weight_grad->numel() * sizeof(T));
 
   int q_m = config.batch_size * config.seq_len_m * config.seq_len_r;
@@ -212,8 +212,8 @@ void ComputeGatingLinearForward(const framework::ExecutionContext &ctx,
                                 const Tensor *query,
                                 const Tensor *fmha_out,
                                 Tensor *gate_out) {
-  auto *gate_weight = ctx.Input<Tensor>("GateWeight");
-  auto *gate_bias = ctx.Input<Tensor>("GateBias");
+  auto *gate_weight = ctx.Input<phi::DenseTensor>("GateWeight");
+  auto *gate_bias = ctx.Input<phi::DenseTensor>("GateBias");
 
   // The first gate_bias_out stores the result of the multiplication,
   // and the second gate_bias_out stores the result of the multiplication +
@@ -242,8 +242,8 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
                                  const Tensor *gate_out_grad,
                                  Tensor *query_grad,
                                  Tensor *fmha_out_grad) {
-  const auto *gate_weight = ctx.Input<Tensor>("GateWeight");
-  const auto *gate_bias = ctx.Input<Tensor>("GateBias");
+  const auto *gate_weight = ctx.Input<phi::DenseTensor>("GateWeight");
+  const auto *gate_bias = ctx.Input<phi::DenseTensor>("GateBias");
   auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
   // Re-compute gate_bias_out
   Tensor gate_bias_out;
@@ -267,8 +267,9 @@ void ComputeGatingLinearBackward(const framework::ExecutionContext &ctx,
 
   // Gradient of GEMM(query, gate_weight) + gate_bias
   auto *gate_weight_grad =
-      ctx.Output<Tensor>(framework::GradVarName("GateWeight"));
-  auto *gate_bias_grad = ctx.Output<Tensor>(framework::GradVarName("GateBias"));
+      ctx.Output<phi::DenseTensor>(framework::GradVarName("GateWeight"));
+  auto *gate_bias_grad =
+      ctx.Output<phi::DenseTensor>(framework::GradVarName("GateBias"));
   dev_ctx.Alloc<T>(gate_weight_grad, gate_weight_grad->numel() * sizeof(T));
   dev_ctx.Alloc<T>(gate_bias_grad, gate_bias_grad->numel() * sizeof(T));
 
@@ -285,8 +286,9 @@ void ComputeOutputLinearForward(const framework::ExecutionContext &ctx,
                                 const GateAttentionConfig<T> &config,
                                 const Tensor *fmha_or_gate_out,
                                 Tensor *out) {
-  const auto *out_linear_weight = ctx.Input<Tensor>("OutLinearWeight");
-  const auto *out_linear_bias = ctx.Input<Tensor>("OutLinearBias");
+  const auto *out_linear_weight =
+      ctx.Input<phi::DenseTensor>("OutLinearWeight");
+  const auto *out_linear_bias = ctx.Input<phi::DenseTensor>("OutLinearBias");
 
   // out = GEMM(fmha_or_gate_out, out_linear_weight) + out_linear_bias
   int m = config.batch_size * config.seq_len_m * config.seq_len_r;
@@ -304,13 +306,15 @@ void ComputeOutputLinearBackward(const framework::ExecutionContext &ctx,
                                  const Tensor *input,
                                  Tensor *input_grad) {
   auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
-  const auto *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-  const auto *out_linear_weight = ctx.Input<Tensor>("OutLinearWeight");
+  const auto *out_grad =
+      ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+  const auto *out_linear_weight =
+      ctx.Input<phi::DenseTensor>("OutLinearWeight");
 
   auto *out_linear_weight_grad =
-      ctx.Output<Tensor>(framework::GradVarName("OutLinearWeight"));
+      ctx.Output<phi::DenseTensor>(framework::GradVarName("OutLinearWeight"));
   auto *out_linear_bias_grad =
-      ctx.Output<Tensor>(framework::GradVarName("OutLinearBias"));
+      ctx.Output<phi::DenseTensor>(framework::GradVarName("OutLinearBias"));
 
   dev_ctx.Alloc<T>(out_linear_weight_grad,
                    out_linear_weight_grad->numel() * sizeof(T));
@@ -334,23 +338,23 @@ template <typename T>
 class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *query = ctx.Input<Tensor>("Query");
-    const auto *key = ctx.Input<Tensor>("Key");
-    const auto *query_weight = ctx.Input<Tensor>("QueryWeight");
-    const auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
+    const auto *query = ctx.Input<phi::DenseTensor>("Query");
+    const auto *key = ctx.Input<phi::DenseTensor>("Key");
+    const auto *query_weight = ctx.Input<phi::DenseTensor>("QueryWeight");
+    const auto *qkv_weight = ctx.Input<phi::DenseTensor>("QKVWeight");
 
-    const auto *src_mask = ctx.Input<Tensor>("SrcMask");
-    const auto *nonbatched_bias = ctx.Input<Tensor>("NonbatchedBias");
+    const auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
+    const auto *nonbatched_bias = ctx.Input<phi::DenseTensor>("NonbatchedBias");
 
-    auto *q_transpose_out = ctx.Output<Tensor>("QueryTransposeOut");
-    auto *k_transpose_out = ctx.Output<Tensor>("KeyTransposeOut");
-    auto *v_transpose_out = ctx.Output<Tensor>("ValueTransposeOut");
-    auto *qkv_transpose_out = ctx.Output<Tensor>("QKVTransposeOut");
+    auto *q_transpose_out = ctx.Output<phi::DenseTensor>("QueryTransposeOut");
+    auto *k_transpose_out = ctx.Output<phi::DenseTensor>("KeyTransposeOut");
+    auto *v_transpose_out = ctx.Output<phi::DenseTensor>("ValueTransposeOut");
+    auto *qkv_transpose_out = ctx.Output<phi::DenseTensor>("QKVTransposeOut");
 
-    auto *softmax_out = ctx.Output<Tensor>("SoftmaxOut");
-    auto *fmha_out = ctx.Output<Tensor>("FMHAOut");
-    auto *gate_out = ctx.Output<Tensor>("GateOut");
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *softmax_out = ctx.Output<phi::DenseTensor>("SoftmaxOut");
+    auto *fmha_out = ctx.Output<phi::DenseTensor>("FMHAOut");
+    auto *gate_out = ctx.Output<phi::DenseTensor>("GateOut");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
 
     const bool merge_qkv = ctx.Attr<bool>("merge_qkv");
     const bool has_gating = ctx.Attr<bool>("has_gating");
@@ -424,24 +428,29 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     // forward input
-    const auto *query = ctx.Input<Tensor>("Query");
-    const auto *key = ctx.Input<Tensor>("Key");
-    const auto *query_weight = ctx.Input<Tensor>("QueryWeight");
-    const auto *qkv_weight = ctx.Input<Tensor>("QKVWeight");
+    const auto *query = ctx.Input<phi::DenseTensor>("Query");
+    const auto *key = ctx.Input<phi::DenseTensor>("Key");
+    const auto *query_weight = ctx.Input<phi::DenseTensor>("QueryWeight");
+    const auto *qkv_weight = ctx.Input<phi::DenseTensor>("QKVWeight");
 
     // forward output, backward input
-    const auto *q_transpose_out = ctx.Input<Tensor>("QueryTransposeOut");
-    const auto *k_transpose_out = ctx.Input<Tensor>("KeyTransposeOut");
-    const auto *v_transpose_out = ctx.Input<Tensor>("ValueTransposeOut");
-    const auto *qkv_transpose_out = ctx.Input<Tensor>("QKVTransposeOut");
-    const auto *softmax_out = ctx.Input<Tensor>("SoftmaxOut");
-    const auto *fmha_out = ctx.Input<Tensor>("FMHAOut");
-    const auto *gate_out = ctx.Input<Tensor>("GateOut");
+    const auto *q_transpose_out =
+        ctx.Input<phi::DenseTensor>("QueryTransposeOut");
+    const auto *k_transpose_out =
+        ctx.Input<phi::DenseTensor>("KeyTransposeOut");
+    const auto *v_transpose_out =
+        ctx.Input<phi::DenseTensor>("ValueTransposeOut");
+    const auto *qkv_transpose_out =
+        ctx.Input<phi::DenseTensor>("QKVTransposeOut");
+    const auto *softmax_out = ctx.Input<phi::DenseTensor>("SoftmaxOut");
+    const auto *fmha_out = ctx.Input<phi::DenseTensor>("FMHAOut");
+    const auto *gate_out = ctx.Input<phi::DenseTensor>("GateOut");
 
     // backward output
-    auto *query_grad = ctx.Output<Tensor>(framework::GradVarName("Query"));
+    auto *query_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Query"));
     auto *nonbatched_bias_grad =
-        ctx.Output<Tensor>(framework::GradVarName("NonbatchedBias"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("NonbatchedBias"));
 
     bool has_gating = ctx.Attr<bool>("has_gating");
     bool merge_qkv = ctx.Attr<bool>("merge_qkv");
@@ -501,7 +510,8 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
           ctx, config, query, qkv_out_grad, query_grad, use_addto);
     } else {
       // 4. Gradient of Separated QKV Matmul
-      auto *key_grad = ctx.Output<Tensor>(framework::GradVarName("Key"));
+      auto *key_grad =
+          ctx.Output<phi::DenseTensor>(framework::GradVarName("Key"));
       if (key_grad) {
         AllocWithDebugInfo<T>(dev_ctx, "key_grad", key_grad);
       }

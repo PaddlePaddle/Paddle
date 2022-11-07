@@ -17,15 +17,11 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from ..utils import is_dim_shard
-from ..utils import is_valid_list_index
-from ..utils import compute_compatible_dim_mapping
-from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedSplit(DistributedOperatorImplContainer):
-
     def __init__(self, op_type):
         super(DistributedSplit, self).__init__(op_type)
 
@@ -34,7 +30,6 @@ register_distributed_operator_impl_container(DistributedSplit("split"))
 
 
 class DistributedSplitImpl(DistributedOperatorImpl):
-
     def __init__(self, name):
         super(DistributedSplitImpl, self).__init__(name)
         self._forward_implemented = True
@@ -65,8 +60,9 @@ class DistributedSplitImpl(DistributedOperatorImpl):
         return True
 
     def is_compatible(self, dist_op):
-        if (not self.is_input_compatible(dist_op)) or \
-            (not self.is_output_compatible(dist_op)):
+        if (not self.is_input_compatible(dist_op)) or (
+            not self.is_output_compatible(dist_op)
+        ):
             return False
 
         op_desc = dist_op.serial_op.desc
@@ -94,15 +90,22 @@ class DistributedSplitImpl(DistributedOperatorImpl):
             out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
             for i in range(len(x_dims_mapping)):
                 dim_changed = compute_compatible_and_update_dim_mapping(
-                    [x_dims_mapping, out_dims_mapping], [i, i])
+                    [x_dims_mapping, out_dims_mapping], [i, i]
+                )
                 if dim_changed:
                     changed = True
 
         return changed
 
     def is_auto_compatible(self, dist_op):
-        raise NotImplementedError(
-            "Auto Search is not supported by dist split yet.")
+        if (
+            (not self.is_input_compatible(dist_op))
+            or (not self.is_output_compatible(dist_op))
+            or (not self.is_compatible(dist_op))
+        ):
+            return False
+
+        return True
 
     @staticmethod
     def forward(ctx, *args, **kwargs):
@@ -113,5 +116,6 @@ class DistributedSplitImpl(DistributedOperatorImpl):
         DistributedDefaultImpl0.backward(ctx, *args, **kwargs)
 
 
-register_distributed_operator_impl("split",
-                                   DistributedSplitImpl("replicate_in_axis"))
+register_distributed_operator_impl(
+    "split", DistributedSplitImpl("replicate_in_axis")
+)

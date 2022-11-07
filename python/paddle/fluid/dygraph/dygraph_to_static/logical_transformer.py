@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    BaseTransformer,
+)
 
 cmpop_type_to_str = {
     gast.Eq: "==",
@@ -28,7 +28,7 @@ cmpop_type_to_str = {
     gast.Is: "is",
     gast.IsNot: "is not",
     gast.In: "in",
-    gast.NotIn: "not in"
+    gast.NotIn: "not in",
 }
 
 
@@ -72,7 +72,8 @@ class LogicalTransformer(BaseTransformer):
             new_node = self._create_bool_op_node(node.values, 'Or')
         else:
             raise TypeError(
-                "Only supports and/or syntax in control flow if statement.")
+                "Only supports and/or syntax in control flow if statement."
+            )
         return new_node
 
     def _create_bool_op_node(self, nodes, api_type):
@@ -82,10 +83,11 @@ class LogicalTransformer(BaseTransformer):
           according to the actual order. In `convert_logical_and(lambda:x>1, lambda:y<1)`, `lambda:y<1`
           must be run after `lambda:x>1`, If `x>1` is False, `y<1` should NOT be run.
         '''
-        assert len(
-            nodes
-        ) > 1, "The length of BoolOp should be at least 2, but received {}.".format(
-            len(nodes))
+        assert (
+            len(nodes) > 1
+        ), "The length of BoolOp should be at least 2, but received {}.".format(
+            len(nodes)
+        )
         if len(nodes) > 2:
             # Creates logic_and/logic_or node recursively.
             pre_logic_node = self._create_bool_op_node(nodes[:2], api_type)
@@ -97,7 +99,8 @@ class LogicalTransformer(BaseTransformer):
 
         args = [ast_to_source_code(child) for child in nodes]
         new_node_str = "_jst.{}(lambda:{}, lambda:{})".format(
-            api_type, args[0], args[1])
+            api_type, args[0], args[1]
+        )
         # NOTE: gast.parse return Module(body=[expr(...)])
         new_node = gast.parse(new_node_str).body[0].value
         return new_node

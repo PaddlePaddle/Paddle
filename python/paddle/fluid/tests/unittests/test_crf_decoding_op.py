@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import random
 import numpy as np
@@ -22,10 +20,10 @@ from op_test import OpTest
 
 
 class CRFDecoding(object):
-
-    def __init__(self, emission_weights, transition_weights,
-                 seq_start_positions):
-        assert (emission_weights.shape[0] == sum(seq_start_positions))
+    def __init__(
+        self, emission_weights, transition_weights, seq_start_positions
+    ):
+        assert emission_weights.shape[0] == sum(seq_start_positions)
         self.tag_num = emission_weights.shape[1]
         self.seq_num = len(seq_start_positions)
 
@@ -36,10 +34,12 @@ class CRFDecoding(object):
         self.b = transition_weights[1, :]
         self.w = transition_weights[2:, :]
 
-        self.track = np.zeros((sum(seq_start_positions), self.tag_num),
-                              dtype="int64")
-        self.decoded_path = np.zeros((sum(seq_start_positions), 1),
-                                     dtype="int64")
+        self.track = np.zeros(
+            (sum(seq_start_positions), self.tag_num), dtype="int64"
+        )
+        self.decoded_path = np.zeros(
+            (sum(seq_start_positions), 1), dtype="int64"
+        )
 
     def _decode_one_sequence(self, decoded_path, x):
         seq_len, tag_num = x.shape
@@ -79,8 +79,9 @@ class CRFDecoding(object):
             start = cur_pos
             cur_pos += self.seq_start_positions[i]
             end = cur_pos
-            self._decode_one_sequence(self.decoded_path[start:end, :],
-                                      self.x[start:end, :])
+            self._decode_one_sequence(
+                self.decoded_path[start:end, :], self.x[start:end, :]
+            )
         return self.decoded_path
 
 
@@ -100,10 +101,12 @@ class TestCRFDecodingOp1(OpTest):
         for i in range(SEQ_NUM):
             lod[-1].append(random.randint(1, MAX_SEQ_LEN))
             total_len += lod[-1][-1]
-        emission = np.random.uniform(-1, 1,
-                                     [total_len, TAG_NUM]).astype("float64")
-        transition = np.random.uniform(-0.5, 0.5,
-                                       [TAG_NUM + 2, TAG_NUM]).astype("float64")
+        emission = np.random.uniform(-1, 1, [total_len, TAG_NUM]).astype(
+            "float64"
+        )
+        transition = np.random.uniform(
+            -0.5, 0.5, [TAG_NUM + 2, TAG_NUM]
+        ).astype("float64")
 
         self.inputs = {
             "Emission": (emission, lod),
@@ -138,27 +141,29 @@ class TestCRFDecodingOp2(OpTest):
 
         self.init_lod()
         total_len = sum(self.lod[-1])
-        transition = np.repeat(np.arange(TAG_NUM,
-                                         dtype="float64").reshape(1, TAG_NUM),
-                               TAG_NUM + 2,
-                               axis=0)
-        emission = np.repeat(np.arange(TAG_NUM,
-                                       dtype="float64").reshape(1, TAG_NUM),
-                             total_len,
-                             axis=0)
+        transition = np.repeat(
+            np.arange(TAG_NUM, dtype="float64").reshape(1, TAG_NUM),
+            TAG_NUM + 2,
+            axis=0,
+        )
+        emission = np.repeat(
+            np.arange(TAG_NUM, dtype="float64").reshape(1, TAG_NUM),
+            total_len,
+            axis=0,
+        )
 
-        labels = np.random.randint(low=0,
-                                   high=TAG_NUM,
-                                   size=(total_len, 1),
-                                   dtype="int64")
-        predicted_labels = np.ones(
-            (total_len, 1), dtype="int64") * (TAG_NUM - 1)
+        labels = np.random.randint(
+            low=0, high=TAG_NUM, size=(total_len, 1), dtype="int64"
+        )
+        predicted_labels = np.ones((total_len, 1), dtype="int64") * (
+            TAG_NUM - 1
+        )
         expected_output = (labels == predicted_labels).astype("int64")
 
         self.inputs = {
             "Emission": (emission, self.lod),
             "Transition": transition,
-            "Label": (labels, self.lod)
+            "Label": (labels, self.lod),
         }
 
         self.outputs = {"ViterbiPath": expected_output}
@@ -168,13 +173,11 @@ class TestCRFDecodingOp2(OpTest):
 
 
 class TestCRFDecodingOp3(TestCRFDecodingOp2):
-
     def init_lod(self):
         self.lod = [[1, 0, 0, 4]]
 
 
 class TestCRFDecodingOp4(TestCRFDecodingOp2):
-
     def init_lod(self):
         self.lod = [[0, 2, 3, 0]]
 
@@ -185,7 +188,7 @@ def seq_pad(data, length):
     padded = np.zeros(shape).astype(data.dtype)
     offset = 0
     for i, l in enumerate(length):
-        padded[i, 0:l] = data[offset:offset + l]
+        padded[i, 0:l] = data[offset : offset + l]
         offset += l
     return np.squeeze(padded)
 
@@ -206,10 +209,12 @@ class TestCRFDecodingOp5(OpTest):
         for i in range(SEQ_NUM):
             lod[-1].append(random.randint(1, MAX_SEQ_LEN))
             total_len += lod[-1][-1]
-        emission = np.random.uniform(-1, 1,
-                                     [total_len, TAG_NUM]).astype("float64")
-        transition = np.random.uniform(-0.5, 0.5,
-                                       [TAG_NUM + 2, TAG_NUM]).astype("float64")
+        emission = np.random.uniform(-1, 1, [total_len, TAG_NUM]).astype(
+            "float64"
+        )
+        transition = np.random.uniform(
+            -0.5, 0.5, [TAG_NUM + 2, TAG_NUM]
+        ).astype("float64")
 
         self.inputs = {
             "Emission": seq_pad(emission, lod[0]),
@@ -231,7 +236,6 @@ class TestCRFDecodingOp5(OpTest):
 
 
 class TestCRFDecodingOp6(OpTest):
-
     def init_lod(self):
         self.lod = [[1, 2, 3, 4]]
 
@@ -241,21 +245,23 @@ class TestCRFDecodingOp6(OpTest):
 
         self.init_lod()
         total_len = sum(self.lod[-1])
-        transition = np.repeat(np.arange(TAG_NUM,
-                                         dtype="float64").reshape(1, TAG_NUM),
-                               TAG_NUM + 2,
-                               axis=0)
-        emission = np.repeat(np.arange(TAG_NUM,
-                                       dtype="float64").reshape(1, TAG_NUM),
-                             total_len,
-                             axis=0)
+        transition = np.repeat(
+            np.arange(TAG_NUM, dtype="float64").reshape(1, TAG_NUM),
+            TAG_NUM + 2,
+            axis=0,
+        )
+        emission = np.repeat(
+            np.arange(TAG_NUM, dtype="float64").reshape(1, TAG_NUM),
+            total_len,
+            axis=0,
+        )
 
-        labels = np.random.randint(low=0,
-                                   high=TAG_NUM,
-                                   size=(total_len, 1),
-                                   dtype="int64")
-        predicted_labels = np.ones(
-            (total_len, 1), dtype="int64") * (TAG_NUM - 1)
+        labels = np.random.randint(
+            low=0, high=TAG_NUM, size=(total_len, 1), dtype="int64"
+        )
+        predicted_labels = np.ones((total_len, 1), dtype="int64") * (
+            TAG_NUM - 1
+        )
         expected_output = (labels == predicted_labels).astype("int64")
 
         self.inputs = {

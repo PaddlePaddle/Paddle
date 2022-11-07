@@ -68,18 +68,18 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
   return BackendSet(Backend::UNDEFINED);
 }
 
-std::size_t CountLeadingZeros(uint64_t val) {
+std::size_t CountLeadingZeros(uint32_t val) {
 #if defined(__clang__) || defined(__GNUC__)
-  return __builtin_clzl(val);
+  return __builtin_clz(val);
 #elif defined(_MSC_VER)
-  return __lzcnt64(val);
+  return __lzcnt(val);
 #else
   if (val == 0) {
-    return 64;
+    return 32;
   }
   std::size_t zero_bits = 0;
-  for (std::size_t shift = 64 >> 1; shift; shift >>= 1) {
-    uint64_t tmp = val >> shift;
+  for (std::size_t shift = 32 >> 1; shift; shift >>= 1) {
+    uint32_t tmp = val >> shift;
     if (tmp) {
       val = tmp;
     } else {

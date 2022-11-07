@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
@@ -22,9 +20,8 @@ import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
 
 
-#normal starts && ends
+# normal starts && ends
 class SlicePluginTRTDynamicTest(InferencePassTest):
-
     def setUpSliceParams(self):
         self.params_axes = [1, 3]
         self.params_starts = [0, 1]
@@ -32,11 +29,15 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
 
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTDynamicTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.enable_trt = True
         self.dynamic_shape_params = SlicePluginTRTDynamicTest.DynamicShapeParam(
-            {'data': [1, 1, 1, 1]}, {'data': [8, 8, 8, 8]},
-            {'data': [8, 8, 8, 8]}, False)
+            {'data': [1, 1, 1, 1]},
+            {'data': [8, 8, 8, 8]},
+            {'data': [8, 8, 8, 8]},
+            False,
+        )
 
     def setUp(self):
         self.setUpSliceParams()
@@ -46,10 +47,9 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
-            slice_out = fluid.layers.slice(data,
-                                           axes=axes,
-                                           starts=starts,
-                                           ends=ends)
+            slice_out = fluid.layers.slice(
+                data, axes=axes, starts=starts, ends=ends
+            )
 
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("float32"),
@@ -68,7 +68,6 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
 
 
 class SlicePluginTRTDynamicBoundTest(SlicePluginTRTDynamicTest):
-
     def setUpSliceParams(self):
         self.params_axes = [1, 3]
         self.params_starts = [0, 1]
@@ -76,27 +75,40 @@ class SlicePluginTRTDynamicBoundTest(SlicePluginTRTDynamicTest):
 
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTDynamicBoundTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False
+        )
         self.enable_trt = True
-        self.dynamic_shape_params = SlicePluginTRTDynamicBoundTest.DynamicShapeParam(
-            {'data': [1, 1, 1, 1]}, {'data': [8, 8, 8, 8]},
-            {'data': [8, 8, 8, 8]}, False)
+        self.dynamic_shape_params = (
+            SlicePluginTRTDynamicBoundTest.DynamicShapeParam(
+                {'data': [1, 1, 1, 1]},
+                {'data': [8, 8, 8, 8]},
+                {'data': [8, 8, 8, 8]},
+                False,
+            )
+        )
 
 
 class SlicePluginTRTDynamicNegativeBoundTest(SlicePluginTRTDynamicTest):
-
     def setUpSliceParams(self):
         self.params_axes = [1, 3]
         self.params_starts = [-5, 1]
         self.params_ends = [2, 1000]
 
     def setUpTensorRTParams(self):
-        self.trt_parameters = SlicePluginTRTDynamicNegativeBoundTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
+        self.trt_parameters = (
+            SlicePluginTRTDynamicNegativeBoundTest.TensorRTParam(
+                1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False
+            )
+        )
         self.enable_trt = True
-        self.dynamic_shape_params = SlicePluginTRTDynamicNegativeBoundTest.DynamicShapeParam(
-            {'data': [1, 1, 1, 1]}, {'data': [8, 8, 8, 8]},
-            {'data': [8, 8, 8, 8]}, False)
+        self.dynamic_shape_params = (
+            SlicePluginTRTDynamicNegativeBoundTest.DynamicShapeParam(
+                {'data': [1, 1, 1, 1]},
+                {'data': [8, 8, 8, 8]},
+                {'data': [8, 8, 8, 8]},
+                False,
+            )
+        )
 
 
 if __name__ == "__main__":

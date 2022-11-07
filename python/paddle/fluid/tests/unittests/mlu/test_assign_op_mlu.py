@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -27,7 +25,6 @@ SEED = 2022
 
 
 class TestAssign(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.op_type = "assign"

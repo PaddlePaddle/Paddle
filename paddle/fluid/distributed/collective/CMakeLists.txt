@@ -43,6 +43,13 @@ if(WITH_NCCL OR WITH_RCCL)
   endif()
 endif()
 
+if(WITH_MPI)
+  cc_library(
+    processgroup_mpi
+    SRCS ProcessGroupMPI.cc MPITools.cc Common.cc
+    DEPS collective_helper device_context)
+endif()
+
 if(WITH_ASCEND_CL)
   cc_library(
     processgroup_hccl
@@ -79,11 +86,6 @@ if(WITH_CUSTOM_DEVICE)
   cc_library(
     processgroup_custom
     SRCS ProcessGroupCustom.cc CustomCCLTools.cc Common.cc
-    DEPS phi_backends
-         place
-         enforce
-         collective_helper
-         device_context
-         phi_api
-         eager_api)
+    DEPS processgroup phi_backends place enforce collective_helper
+         device_context)
 endif()

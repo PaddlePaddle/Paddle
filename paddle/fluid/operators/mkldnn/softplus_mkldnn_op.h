@@ -18,14 +18,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
-
 template <typename T>
 class SoftplusMKLDNNHandler
     : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
   SoftplusMKLDNNHandler(const framework::ExecutionContext& ctx,
-                        const Tensor* x,
+                        const phi::DenseTensor* x,
                         const float beta,
                         const dnnl::engine engine)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine,
@@ -70,8 +68,8 @@ void custom_softplus_eltwise_forward(const framework::ExecutionContext& ctx) {
       ctx.template device_context<platform::MKLDNNDeviceContext>();
   const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-  const auto* x = ctx.Input<Tensor>("X");
-  auto* out = ctx.Output<Tensor>("Out");
+  const auto* x = ctx.Input<phi::DenseTensor>("X");
+  auto* out = ctx.Output<phi::DenseTensor>("Out");
 
   bool is_inplaced = x->IsSharedBufferWith(*out);
 

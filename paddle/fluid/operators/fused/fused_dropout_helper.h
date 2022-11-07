@@ -28,7 +28,7 @@ namespace operators {
  * Support two Dropouts in the use senarieo.
  * This warpper can be used in FFN op.
  * The DropoutParam will be used in the fused_dropout_act_bias,
- * fused_residual_dropout_bias(pre_layer_norm=ture) or
+ * fused_residual_dropout_bias(pre_layer_norm=true) or
  * fused_layernorm_residual_dropout_bias(pre_layer_norm=false).
  */
 struct DropoutParam {
@@ -38,7 +38,7 @@ struct DropoutParam {
   bool is_test;
   bool fix_seed;
   int increment;
-  const framework::Tensor* tensor_seed;
+  const phi::DenseTensor* tensor_seed;
   int seed_val;
 
   DropoutParam() {
@@ -56,7 +56,7 @@ struct DropoutParam {
                bool is_test_,
                bool is_upscale_in_train_,
                float dropout_prob_,
-               const framework::Tensor* tensor_seed_,
+               const phi::DenseTensor* tensor_seed_,
                int seed_val_) {
     fix_seed = fix_seed_;
     seed = seed_;
@@ -95,8 +95,9 @@ struct DropoutParam {
     } else {
       str_seed = str_seed + "Seed";
     }
-    tensor_seed =
-        context.HasInput(str_seed) ? context.Input<Tensor>(str_seed) : nullptr;
+    tensor_seed = context.HasInput(str_seed)
+                      ? context.Input<phi::DenseTensor>(str_seed)
+                      : nullptr;
     seed_val = context.Attr<int>(pre_fix + "seed");
   }
 

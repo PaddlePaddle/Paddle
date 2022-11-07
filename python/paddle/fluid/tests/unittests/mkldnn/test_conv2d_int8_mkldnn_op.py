@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import os
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2DOp
+from paddle.fluid.tests.unittests.test_conv2d_op import (
+    conv2d_forward_naive,
+    TestConv2DOp,
+)
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):
@@ -27,10 +28,10 @@ def conv2d_forward_refer(input, filter, group, conv_param):
     return out
 
 
-@unittest.skipIf(not core.supports_int8(),
-                 "place does not support int8 computation")
+@unittest.skipIf(
+    not core.supports_int8(), "place does not support int8 computation"
+)
 class TestConv2DInt8Op(TestConv2DOp):
-
     def setUp(self):
         self.op_type = "conv2d"
         self.use_cudnn = False
@@ -51,85 +52,109 @@ class TestConv2DInt8Op(TestConv2DOp):
         conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
-            'dilation': self.dilations
+            'dilation': self.dilations,
         }
         # This implementation of convolution quantization is based on OneDNN documentation
         # https://oneapi-src.github.io/oneDNN/dev_guide_int8_computations.html#doxid-dev-guide-int8-computations-1dg-i8-comp-s11
-        inner_scale = 1. if self.fuse_activation != "" else self.scale_out
-        activation_scale = self.scale_out if self.fuse_activation != "" else 1.
-        scale_output_shift = (inner_scale /
-                              (self.scale_in * self.scale_weights[0]))
+        inner_scale = 1.0 if self.fuse_activation != "" else self.scale_out
+        activation_scale = self.scale_out if self.fuse_activation != "" else 1.0
+        scale_output_shift = inner_scale / (
+            self.scale_in * self.scale_weights[0]
+        )
         filter = np.random.random(self.filter_size).astype(self.weighttype)
 
         # When the Intel AVX2 or Intel AVX512 Instruction Set is used
         # the reorder additionally scales the weights by 0.5
         # to overcome the potential overflow issue. If the processor supports VNNI instructions,
         # modification of the weights is not necessary.
-        avx_scale = 0.5 if not core.supports_vnni(
-        ) and self.srctype == np.int8 else 1.
-        filter_int = np.round(filter * self.scale_weights[0] *
-                              avx_scale).astype(np.int32)
+        avx_scale = (
+            0.5 if not core.supports_vnni() and self.srctype == np.int8 else 1.0
+        )
+        filter_int = np.round(
+            filter * self.scale_weights[0] * avx_scale
+        ).astype(np.int32)
         scale_output_shift = scale_output_shift / avx_scale
 
         def conv2d_forward_refer_helper(input_):
-            return conv2d_forward_refer(input_.astype(np.int32), filter_int,
-                                        self.groups, conv2d_param).astype(
-                                            np.float32) * scale_output_shift
+            return (
+                conv2d_forward_refer(
+                    input_.astype(np.int32),
+                    filter_int,
+                    self.groups,
+                    conv2d_param,
+                ).astype(np.float32)
+                * scale_output_shift
+            )
 
         def residual_helper(init_low, init_high, output_):
             input_residual_ = np.random.randint(
-                init_low, init_high,
-                self.input_residual_size).astype(self.srctype)
-            return (output_ + input_residual_ *
-                    (inner_scale / self.scale_in_eltwise)), input_residual_
+                init_low, init_high, self.input_residual_size
+            ).astype(self.srctype)
+            return (
+                output_
+                + input_residual_ * (inner_scale / self.scale_in_eltwise)
+            ), input_residual_
 
         if self.srctype == np.int8:
             init_low, init_high = (-5, 5)
-            input = np.random.randint(init_low, init_high,
-                                      self.input_size).astype(self.srctype)
+            input = np.random.randint(
+                init_low, init_high, self.input_size
+            ).astype(self.srctype)
             input_shift = (np.ones(self.input_size) * 128).astype(np.uint8)
 
             output1 = conv2d_forward_refer_helper(
-                np.round(input + input_shift).astype(np.int32))
+                np.round(input + input_shift).astype(np.int32)
+            )
             output2 = conv2d_forward_refer_helper(
-                np.round(input_shift).astype(np.int32))
+                np.round(input_shift).astype(np.int32)
+            )
             output = output1 - output2
         else:
             init_low, init_high = (0, 10)
-            input = np.random.randint(init_low, init_high,
-                                      self.input_size).astype(self.srctype)
+            input = np.random.randint(
+                init_low, init_high, self.input_size
+            ).astype(self.srctype)
             output = conv2d_forward_refer_helper(input)
 
         if self.fuse_residual:
-            output, input_residual = residual_helper(init_low, init_high,
-                                                     output)
+            output, input_residual = residual_helper(
+                init_low, init_high, output
+            )
 
         if self.fuse_activation == "":
             pass
         elif self.fuse_activation == "relu":
             output = activation_scale * np.maximum(output, 0)
         elif self.fuse_activation == "hard_swish":
-            output = activation_scale * output / 6. * np.minimum(
-                np.maximum(0, output + 3.), 6)
+            output = (
+                activation_scale
+                * output
+                / 6.0
+                * np.minimum(np.maximum(0, output + 3.0), 6)
+            )
         elif self.fuse_activation == "relu6":
             output = activation_scale * np.maximum(0, np.minimum(6, output))
         elif self.fuse_activation == "swish":
-            output = activation_scale * output / (1. + np.exp(-1. * output))
+            output = activation_scale * output / (1.0 + np.exp(-1.0 * output))
         elif self.fuse_activation == "leaky_relu":
             output = activation_scale * np.maximum(output, 0.02 * output)
         else:
-            raise NotImplementedError("test for " + self.fuse_activation +
-                                      " activation not implemented")
+            raise NotImplementedError(
+                "test for "
+                + self.fuse_activation
+                + " activation not implemented"
+            )
 
         output = np.round(output).astype(self.dsttype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input.astype(self.srctype)),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
         }
         if self.fuse_residual:
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
-                input_residual)
+                input_residual
+            )
 
         self.attrs = {
             'strides': self.stride,
@@ -148,15 +173,15 @@ class TestConv2DInt8Op(TestConv2DOp):
             'fuse_alpha': self.fuse_alpha,
             'fuse_beta': self.fuse_beta,
             'fuse_residual_connection': self.fuse_residual,
-            'mkldnn_data_type': self.mkldnn_data_type
+            'mkldnn_data_type': self.mkldnn_data_type,
         }
         self.outputs = {'Output': output}
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output_with_place(core.CPUPlace(),
-                                     atol=0,
-                                     check_dygraph=False)
+        self.check_output_with_place(
+            core.CPUPlace(), atol=0, check_dygraph=False
+        )
 
     def test_check_grad(self):
         pass
@@ -195,7 +220,6 @@ class TestConv2DInt8Op(TestConv2DOp):
 
 
 class TestConv2D(TestConv2DInt8Op):
-
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -211,7 +235,6 @@ class TestConv2D(TestConv2DInt8Op):
 
 
 class TestWithHardSwish(TestConv2D):
-
     def init_fuse_activation(self):
         self.fuse_activation = "hard_swish"
         self.fuse_alpha = 0
@@ -219,7 +242,6 @@ class TestWithHardSwish(TestConv2D):
 
 
 class TestWithRelu6(TestConv2D):
-
     def init_fuse_activation(self):
         self.fuse_activation = "relu6"
         self.fuse_alpha = 6
@@ -227,7 +249,6 @@ class TestWithRelu6(TestConv2D):
 
 
 class TestWithSwish(TestConv2D):
-
     def init_fuse_activation(self):
         self.fuse_activation = "swish"
         self.fuse_alpha = 1
@@ -235,7 +256,6 @@ class TestWithSwish(TestConv2D):
 
 
 class TestWithLeakyRelu(TestConv2D):
-
     def init_fuse_activation(self):
         self.fuse_activation = "leaky_relu"
         self.fuse_alpha = 0.02
@@ -243,7 +263,6 @@ class TestWithLeakyRelu(TestConv2D):
 
 
 class TestWithPad(TestConv2D):
-
     def init_test_case(self):
         TestConv2D.init_test_case(self)
         self.pad = [1, 1]
@@ -251,13 +270,11 @@ class TestWithPad(TestConv2D):
 
 
 class TestWithGroup(TestConv2D):
-
     def init_group(self):
         self.groups = 3
 
 
 class TestWithStride(TestConv2DInt8Op):
-
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [2, 2]
@@ -273,7 +290,6 @@ class TestWithStride(TestConv2DInt8Op):
 
 
 class TestWithDilations(TestConv2DInt8Op):
-
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -290,7 +306,6 @@ class TestWithDilations(TestConv2DInt8Op):
 
 
 class TestWith1x1(TestConv2DInt8Op):
-
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -306,7 +321,6 @@ class TestWith1x1(TestConv2DInt8Op):
 
 
 class TestWithInput1x1Filter1x1(TestConv2DInt8Op):
-
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
@@ -337,37 +351,31 @@ def create_test_int8_class(parent):
 
     # --------------------test conv2d s8 in and u8 out--------------------
     class TestS8U8Case(parent):
-
         def init_data_type(self):
             init_data_type_with_fusion(self, np.int8, "relu", False)
 
     # --------------------test conv2d s8 in and s8 out--------------------
     class TestS8S8Case(parent):
-
         def init_data_type(self):
             init_data_type_with_fusion(self, np.int8, "", False)
 
     # --------------------test conv2d u8 in and s8 out--------------------
     class TestU8S8Case(parent):
-
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, "", False)
 
     # --------------------test conv2d u8 in and u8 out without residual fuse--------------------
     class TestU8U8Case(parent):
-
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, "relu", False)
 
     # --------------------test conv2d s8 in and s8 out with residual fuse--------------------
     class TestS8S8ResCase(parent):
-
         def init_data_type(self):
             init_data_type_with_fusion(self, np.int8, "", True)
 
     # --------------------test conv2d u8 in and s8 out with residual fuse--------------------
     class TestU8S8ResCase(parent):
-
         def init_data_type(self):
             init_data_type_with_fusion(self, np.uint8, "", True)
 
@@ -377,9 +385,11 @@ def create_test_int8_class(parent):
     cls_name_u8u8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "1")
 
     cls_name_s8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(
-        parent.__name__, "0", "1")
+        parent.__name__, "0", "1"
+    )
     cls_name_u8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(
-        parent.__name__, "0", "1")
+        parent.__name__, "0", "1"
+    )
     TestS8U8Case.__name__ = cls_name_s8u8
     TestS8S8Case.__name__ = cls_name_s8s8
     TestU8S8Case.__name__ = cls_name_u8s8
@@ -397,12 +407,12 @@ def create_test_int8_class(parent):
     if os.name != 'nt':
         # --------------------test conv2d s8 in and u8 out with residual fuse--------------------
         class TestS8U8ResCase(parent):
-
             def init_data_type(self):
                 init_data_type_with_fusion(self, np.int8, "relu", True)
 
         cls_name_s8u8_re_1 = "{0}_relu_{1}_residual_{2}".format(
-            parent.__name__, "1", "1")
+            parent.__name__, "1", "1"
+        )
         TestS8U8ResCase.__name__ = cls_name_s8u8_re_1
         globals()[cls_name_s8u8_re_1] = TestS8U8ResCase
 
@@ -417,7 +427,6 @@ create_test_int8_class(TestWithInput1x1Filter1x1)
 
 
 class TestConv2DOp_AsyPadding_INT_MKLDNN(TestConv2DInt8Op):
-
     def init_kernel_type(self):
         self.use_mkldnn = True
 
@@ -427,14 +436,12 @@ class TestConv2DOp_AsyPadding_INT_MKLDNN(TestConv2DInt8Op):
 
 
 class TestConv2DOp_Same_INT_MKLDNN(TestConv2DOp_AsyPadding_INT_MKLDNN):
-
     def init_paddings(self):
         self.pad = [0, 0]
         self.padding_algorithm = "SAME"
 
 
 class TestConv2DOp_Valid_INT_MKLDNN(TestConv2DOp_AsyPadding_INT_MKLDNN):
-
     def init_paddings(self):
         self.pad = [1, 1]
         self.padding_algorithm = "VALID"
@@ -442,5 +449,6 @@ class TestConv2DOp_Valid_INT_MKLDNN(TestConv2DOp_AsyPadding_INT_MKLDNN):
 
 if __name__ == '__main__':
     from paddle import enable_static
+
     enable_static()
     unittest.main()

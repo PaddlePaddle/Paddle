@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -29,7 +27,6 @@ SEED = 2021
 
 
 class TestLeadyRelu(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.op_type = "leaky_relu"
@@ -65,33 +62,29 @@ class TestLeadyRelu(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
-            self.check_grad_with_place(self.place, ['X'],
-                                       'Out',
-                                       max_relative_error=0.006)
+            self.check_grad_with_place(
+                self.place, ['X'], 'Out', max_relative_error=0.006
+            )
         else:
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class TestLeadyReluFP16(TestLeadyRelu):
-
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestLeadyRelu2(TestLeadyRelu):
-
     def set_attrs(self):
         self.attrs = {'alpha': 0.5}
 
 
 class TestLeadyRelu3(TestLeadyRelu):
-
     def set_attrs(self):
         self.attrs = {'alpha': -0.5}
 
 
 class TestLeakyReluNet(unittest.TestCase):
-
     def _test(self, run_mlu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -104,9 +97,9 @@ class TestLeakyReluNet(unittest.TestCase):
 
         with paddle.static.program_guard(main_prog, startup_prog):
             x = paddle.static.data(name="x", shape=[32, 32], dtype='float32')
-            label = paddle.static.data(name="label",
-                                       shape=[32, 1],
-                                       dtype='int64')
+            label = paddle.static.data(
+                name="label", shape=[32, 1], dtype='int64'
+            )
 
             y = paddle.nn.functional.leaky_relu(x)
 
@@ -129,15 +122,17 @@ class TestLeakyReluNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(main_prog,
-                                         feed={
-                                             "x": x_np,
-                                             "label": label_np
-                                         },
-                                         fetch_list=[prediction, loss])
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"x": x_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 

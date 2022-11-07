@@ -57,14 +57,17 @@ struct SeluGradFunctor {
         dx_data_ptr_(dx_data_ptr) {}
 
   HOSTDEVICE void operator()(size_t idx) const {
-    T y_ele = y_data_ptr_[idx];
-    T dy_ele = dy_data_ptr_[idx];
+    using MT =
+        typename std::conditional<(sizeof(T) > sizeof(float)), T, float>::type;
 
-    float tmp = scale_;
+    auto y_ele = static_cast<MT>(y_data_ptr_[idx]);
+    auto dy_ele = static_cast<MT>(dy_data_ptr_[idx]);
+
+    auto tmp = static_cast<MT>(scale_);
     if (y_ele <= 0) {
-      tmp = y_ele + la_;
+      tmp = y_ele + static_cast<MT>(la_);
     }
-    dx_data_ptr_[idx] = dy_ele * tmp;
+    dx_data_ptr_[idx] = static_cast<T>(dy_ele * tmp);
   }
   const T* y_data_ptr_;
   const T* dy_data_ptr_;

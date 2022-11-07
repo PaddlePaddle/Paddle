@@ -18,7 +18,7 @@
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
+
 using phi::GPUContext;
 using platform::ActivationDescriptor;
 using platform::TensorDescriptor;
@@ -49,7 +49,7 @@ struct CudnnActivationFunctor {
                          const cudnnActivationMode_t& m)
       : ctx_(ctx), coef_(c), mode_(m) {}
 #endif
-  void operator()(const Tensor& x, Tensor* out) {
+  void operator()(const phi::DenseTensor& x, phi::DenseTensor* out) {
     ActivationDescriptor act_desc;
     act_desc.set(mode_, coef_);
     TensorDescriptor x_desc, out_desc;
@@ -100,10 +100,10 @@ struct CudnnActivationGradFunctor {
                              const cudnnActivationMode_t& m)
       : ctx_(ctx), coef_(c), mode_(m) {}
 #endif
-  void operator()(const Tensor& x,
-                  const Tensor& out,
-                  const Tensor dout,
-                  Tensor* dx) {
+  void operator()(const phi::DenseTensor& x,
+                  const phi::DenseTensor& out,
+                  const phi::DenseTensor dout,
+                  phi::DenseTensor* dx) {
     ActivationDescriptor act_desc;
     act_desc.set(mode_, coef_);
     TensorDescriptor x_desc, out_desc, dout_desc, dx_desc;
@@ -217,8 +217,8 @@ class CudnnActivationKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& context) const override {
-    const framework::Tensor* X = nullptr;
-    framework::Tensor* Out = nullptr;
+    const phi::DenseTensor* X = nullptr;
+    phi::DenseTensor* Out = nullptr;
     ExtractActivationTensor(context, &X, &Out);
     Out->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<phi::GPUContext>();
@@ -236,9 +236,9 @@ class CudnnActivationGradKernel
     static_assert(Functor::FwdDeps() == ActBwdOpFwdDeps::kDepOut,
                   "Forward deps must be Out.");
 
-    const framework::Tensor *X, *Out, *dOut;
+    const phi::DenseTensor *X, *Out, *dOut;
     X = Out = dOut = nullptr;
-    framework::Tensor* dX = nullptr;
+    phi::DenseTensor* dX = nullptr;
     ExtractActivationGradTensor<Functor::FwdDeps()>(
         context, &X, &Out, &dOut, &dX);
     dX->mutable_data<T>(context.GetPlace());

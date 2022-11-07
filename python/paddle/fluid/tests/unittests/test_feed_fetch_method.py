@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle.fluid.core as core
 import unittest
 import numpy as np
 
 
 class TestFeedFetch(unittest.TestCase):
-
     def test_feed_fetch(self):
         scope = core.Scope()
         place = core.CPUPlace()

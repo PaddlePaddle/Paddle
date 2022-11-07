@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import tempfile
@@ -33,14 +31,13 @@ CLASS_NUM = 10
 
 # define a random dataset
 class RandomDataset(paddle.io.Dataset):
-
     def __init__(self, num_samples):
         self.num_samples = num_samples
 
     def __getitem__(self, idx):
         np.random.seed(SEED)
         image = np.random.random([IMAGE_SIZE]).astype('float32')
-        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+        label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype('int64')
         return image, label
 
     def __len__(self):
@@ -48,17 +45,18 @@ class RandomDataset(paddle.io.Dataset):
 
 
 class LinearNet(nn.Layer):
-
     def __init__(self):
         super(LinearNet, self).__init__()
         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
         self._dropout = paddle.nn.Dropout(p=0.5)
 
-    @paddle.jit.to_static(input_spec=[
-        paddle.static.InputSpec(shape=[None, IMAGE_SIZE],
-                                dtype='float32',
-                                name='x')
-    ])
+    @paddle.jit.to_static(
+        input_spec=[
+            paddle.static.InputSpec(
+                shape=[None, IMAGE_SIZE], dtype='float32', name='x'
+            )
+        ]
+    )
     def forward(self, x):
         return self._linear(x)
 
@@ -71,13 +69,15 @@ def train(layer, loader, loss_fn, opt):
             loss.backward()
             opt.step()
             opt.clear_grad()
-            print("Epoch {} batch {}: loss = {}".format(epoch_id, batch_id,
-                                                        np.mean(loss.numpy())))
+            print(
+                "Epoch {} batch {}: loss = {}".format(
+                    epoch_id, batch_id, np.mean(loss.numpy())
+                )
+            )
     return loss
 
 
 class TestTranslatedLayer(unittest.TestCase):
-
     def tearDown(self):
         self.temp_dir.cleanup()
 
@@ -93,17 +93,20 @@ class TestTranslatedLayer(unittest.TestCase):
         # create network
         self.layer = LinearNet()
         self.loss_fn = nn.CrossEntropyLoss()
-        self.sgd = opt.SGD(learning_rate=0.001,
-                           parameters=self.layer.parameters())
+        self.sgd = opt.SGD(
+            learning_rate=0.001, parameters=self.layer.parameters()
+        )
 
         # create data loader
         dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-        self.loader = paddle.io.DataLoader(dataset,
-                                           places=place,
-                                           batch_size=BATCH_SIZE,
-                                           shuffle=True,
-                                           drop_last=True,
-                                           num_workers=0)
+        self.loader = paddle.io.DataLoader(
+            dataset,
+            places=place,
+            batch_size=BATCH_SIZE,
+            shuffle=True,
+            drop_last=True,
+            num_workers=0,
+        )
 
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -111,8 +114,9 @@ class TestTranslatedLayer(unittest.TestCase):
         train(self.layer, self.loader, self.loss_fn, self.sgd)
 
         # save
-        self.model_path = os.path.join(self.temp_dir.name,
-                                       './linear.example.model')
+        self.model_path = os.path.join(
+            self.temp_dir.name, './linear.example.model'
+        )
         paddle.jit.save(self.layer, self.model_path)
 
     def test_inference_and_fine_tuning(self):
@@ -144,15 +148,18 @@ class TestTranslatedLayer(unittest.TestCase):
 
         # fine-tuning
         translated_layer.train()
-        sgd = opt.SGD(learning_rate=0.001,
-                      parameters=translated_layer.parameters())
+        sgd = opt.SGD(
+            learning_rate=0.001, parameters=translated_layer.parameters()
+        )
         loss = train(translated_layer, self.loader, self.loss_fn, sgd)
 
         np.testing.assert_array_equal(
             orig_loss.numpy(),
             loss.numpy(),
             err_msg='original loss:\n{}\nnew loss:\n{}\n'.format(
-                orig_loss.numpy(), loss.numpy()))
+                orig_loss.numpy(), loss.numpy()
+            ),
+        )
 
     def test_get_program(self):
         # load
@@ -173,9 +180,9 @@ class TestTranslatedLayer(unittest.TestCase):
         translated_layer = paddle.jit.load(self.model_path)
 
         expect_spec = [
-            paddle.static.InputSpec(shape=[None, IMAGE_SIZE],
-                                    dtype='float32',
-                                    name='x')
+            paddle.static.InputSpec(
+                shape=[None, IMAGE_SIZE], dtype='float32', name='x'
+            )
         ]
         actual_spec = translated_layer._input_spec()
 
@@ -187,9 +194,11 @@ class TestTranslatedLayer(unittest.TestCase):
         translated_layer = paddle.jit.load(self.model_path)
 
         expect_spec = [
-            paddle.static.InputSpec(shape=[None, CLASS_NUM],
-                                    dtype='float32',
-                                    name='translated_layer/scale_0.tmp_1')
+            paddle.static.InputSpec(
+                shape=[None, CLASS_NUM],
+                dtype='float32',
+                name='translated_layer/scale_0.tmp_1',
+            )
         ]
         actual_spec = translated_layer._output_spec()
 

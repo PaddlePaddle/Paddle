@@ -25,15 +25,15 @@ template <typename DeviceContext, typename T>
 class XPULogsumexpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
+    auto* input = context.Input<phi::DenseTensor>("X");
+    auto* output = context.Output<phi::DenseTensor>("Out");
 
     auto axis = context.Attr<std::vector<int>>("axis");
     auto reduce_all = context.Attr<bool>("reduce_all");
 
     const auto& input_dim_size = input->dims().size();
     // The dims has full dim, set the reduce_all is True
-    reduce_all |= (static_cast<const int>(axis.size()) == input_dim_size);
+    reduce_all |= (static_cast<int>(axis.size()) == input_dim_size);
 
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());

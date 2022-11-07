@@ -28,7 +28,7 @@ class LayerNormMKLDNNHandler
                          const float& epsilon,
                          const dnnl::normalization_flags& flags,
                          const bool& is_test,
-                         const Tensor* x,
+                         const phi::DenseTensor* x,
                          const dnnl::engine engine,
                          platform::Place cpu_place)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
@@ -39,8 +39,8 @@ class LayerNormMKLDNNHandler
         fwd_prop_kind, x->mem_desc(), epsilon, flags);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(const Tensor* scale,
-                                                        const Tensor* shift) {
+  std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(
+      const phi::DenseTensor* scale, const phi::DenseTensor* shift) {
     // OneDNN requires a single piece of memory for scale and shift data
     const unsigned int C = phi::vectorize(scale->dims())[0];
 
@@ -55,7 +55,7 @@ class LayerNormMKLDNNHandler
     return scaleshift_memory;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireMeanMemory(framework::Tensor* mean) {
+  std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor* mean) {
     T* mean_data = mean->mutable_data<T>(this->place_,
                                          this->fwd_pd_->mean_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
@@ -63,7 +63,7 @@ class LayerNormMKLDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
-      framework::Tensor* variance) {
+      phi::DenseTensor* variance) {
     T* variance_data = variance->mutable_data<T>(
         this->place_, this->fwd_pd_->variance_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
@@ -75,10 +75,10 @@ template <typename T>
 class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* scale = ctx.Input<Tensor>("Scale");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* out = ctx.Output<Tensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* out = ctx.Output<phi::DenseTensor>("Y");
 
     const float epsilon = ctx.Attr<float>("epsilon");
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
@@ -116,8 +116,8 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                                   {DNNL_ARG_DST, *dst_memory}};
 
     if (!is_test) {
-      auto* mean = ctx.Output<Tensor>("Mean");
-      auto* var = ctx.Output<Tensor>("Variance");
+      auto* mean = ctx.Output<phi::DenseTensor>("Mean");
+      auto* var = ctx.Output<phi::DenseTensor>("Variance");
 
       auto mean_memory = handler.AcquireMeanMemory(mean);
       auto variance_memory = handler.AcquireVarianceMemory(var);

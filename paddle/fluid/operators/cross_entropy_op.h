@@ -23,15 +23,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class CrossEntropyOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* labels = ctx.Input<Tensor>("Label");
-    auto* y = ctx.Output<Tensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* labels = ctx.Input<phi::DenseTensor>("Label");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
 
     int rank = x->dims().size();
@@ -126,10 +126,10 @@ template <typename DeviceContext, typename T>
 class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto* label = ctx.Input<Tensor>("Label");
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
 
     // Following computation only depends on the last dimension size. So it's
@@ -244,10 +244,10 @@ template <typename DeviceContext, typename T>
 class CrossEntropyOpKernel2 : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* label = ctx.Input<Tensor>("Label");
-    auto* y = ctx.Output<Tensor>("Y");
-    auto* match_x = ctx.Output<Tensor>("MatchX");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
+    auto* match_x = ctx.Output<phi::DenseTensor>("MatchX");
 
     auto& x_dims = x->dims();
     auto feature_size = x_dims[x_dims.size() - 1];
@@ -271,10 +271,10 @@ template <typename DeviceContext, typename T>
 class CrossEntropyGradientOpKernel2 : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto* match_x = ctx.Input<Tensor>("MatchX");
-    auto* label = ctx.Input<Tensor>("Label");
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* match_x = ctx.Input<phi::DenseTensor>("MatchX");
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
 
     auto* p_dx = dx->mutable_data<T>(ctx.GetPlace());
     auto* p_dy = dy->data<T>();

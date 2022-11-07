@@ -17,7 +17,6 @@ import unittest
 
 
 class TestDeviceCount(unittest.TestCase):
-
     def test_device_count(self):
         s = paddle.device.cuda.device_count()
         self.assertIsNotNone(s)

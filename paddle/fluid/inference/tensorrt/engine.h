@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <NvInfer.h>
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -37,6 +38,8 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/stream.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -171,7 +174,7 @@ class TRTInt8Calibrator;
 /*
  * TensorRT Engine.
  *
- * There are two alternative ways to use it, one is  to build from a paddle
+ * There are two alternative ways to use it, one is to build from a paddle
  * protobuf model, another way is to manually construct the network.
  */
 class TensorRTEngine {
@@ -214,6 +217,9 @@ class TensorRTEngine {
       const ShapeMapType min_input_shape = {},
       const ShapeMapType max_input_shape = {},
       const ShapeMapType optim_input_shape = {},
+      const ShapeMapType min_shape_tensor = {},
+      const ShapeMapType max_shape_tensor = {},
+      const ShapeMapType optim_shape_tensor = {},
       bool disable_trt_plugin_fp16 = false,
       phi::DataType model_precision = phi::DataType::FLOAT32,
       nvinfer1::ILogger& logger = NaiveLogger::Global())
@@ -225,6 +231,9 @@ class TensorRTEngine {
         min_input_shape_(min_input_shape),
         max_input_shape_(max_input_shape),
         optim_input_shape_(optim_input_shape),
+        min_shape_tensor_(min_shape_tensor),
+        max_shape_tensor_(max_shape_tensor),
+        optim_shape_tensor_(optim_shape_tensor),
         disable_trt_plugin_fp16_(disable_trt_plugin_fp16),
         model_precision_(model_precision),
         logger_(logger) {
@@ -287,51 +296,10 @@ class TensorRTEngine {
   std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
-  nvinfer1::IExecutionContext* context() {
-#ifndef PADDLE_WITH_TESTING
-    PADDLE_ENFORCE_GT(
-        predictor_id_per_thread,
-        -1,
-        platform::errors::InvalidArgument(
-            "thread local var predictor_id_per_thread must be "
-            "initialized to >= 0, but now predictor_id_per_thread = %d",
-            predictor_id_per_thread));
-#endif
-    std::unique_lock<std::mutex> lock(mutex_);
-    if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
-      PADDLE_ENFORCE_NOT_NULL(
-          infer_engine_,
-          platform::errors::InvalidArgument(
-              "You should build engine first and then set the context."));
-      // We may see trt warning: Profile 0 has been chosen by another
-      // IExecutionContext...
-      // It's ok. We will set it later.
-      infer_context_[predictor_id_per_thread].reset(
-          infer_engine_->createExecutionContext());
-      if (with_dynamic_shape_) {
-        // need new profile if it's not the first
-        if (cur_profile_num_ > 0) {
-          infer_context_[predictor_id_per_thread]->setOptimizationProfile(
-              cur_profile_num_);
-        }
-        profile_index_[predictor_id_per_thread] = cur_profile_num_;
-        ++cur_profile_num_;
-      }
-    }
-    return infer_context_[predictor_id_per_thread].get();
-  }
+  nvinfer1::IExecutionContext* context();
 
   int GetProfileIndex() {
     if (max_profile_num_ > 1) {
-#ifndef PADDLE_WITH_TESTING
-      PADDLE_ENFORCE_GT(
-          predictor_id_per_thread,
-          -1,
-          platform::errors::InvalidArgument(
-              "thread local var predictor_id_per_thread must be "
-              "initialized to >= 0, but now predictor_id_per_thread = %d",
-              predictor_id_per_thread));
-#endif
       std::unique_lock<std::mutex> lock(mutex_);
       return profile_index_[predictor_id_per_thread];
     } else {
@@ -350,15 +318,6 @@ class TensorRTEngine {
         infer_engine_,
         platform::errors::InvalidArgument(
             "You should build engine first and then set the context."));
-#ifndef PADDLE_WITH_TESTING
-    PADDLE_ENFORCE_GT(
-        predictor_id_per_thread,
-        -1,
-        platform::errors::InvalidArgument(
-            "thread local var predictor_id_per_thread must be "
-            "initialized to >= 0, but now predictor_id_per_thread = %d",
-            predictor_id_per_thread));
-#endif
     std::unique_lock<std::mutex> lock(mutex_);
     infer_context_[predictor_id_per_thread].reset(nullptr);
     infer_context_.erase(predictor_id_per_thread);
@@ -380,47 +339,7 @@ class TensorRTEngine {
     return ihost_memory_.get();
   }
 
-  void Deserialize(const std::string& engine_serialized_data) {
-    freshDeviceId();
-    infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
-
-    if (use_dla_) {
-      if (precision_ != AnalysisConfig::Precision::kInt8 &&
-          precision_ != AnalysisConfig::Precision::kHalf) {
-        LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
-                        "set float32, so DLA is not used.";
-      } else if (runtime->getNbDLACores() == 0) {
-        LOG(WARNING)
-            << "TensorRT DLA is set by config, but your device does not have "
-               "DLA, so DLA is not used.";
-      } else {
-        if (dla_core_ < 0 || dla_core_ >= runtime->getNbDLACores()) {
-          dla_core_ = 0;
-          LOG(WARNING) << "Invalid DLACore, must be 0 < DLACore < "
-                       << runtime->getNbDLACores() << ", but got " << dla_core_
-                       << ", so use use 0 as default.";
-        }
-        runtime->setDLACore(dla_core_);
-        LOG(INFO) << "TensorRT DLA enabled in Deserialize(), DLACore "
-                  << dla_core_;
-      }
-    }
-
-    infer_engine_.reset(runtime->deserializeCudaEngine(
-        engine_serialized_data.c_str(), engine_serialized_data.size()));
-
-    PADDLE_ENFORCE_NOT_NULL(
-        infer_engine_,
-        platform::errors::Fatal(
-            "Building TRT cuda engine failed when deserializing engine info. "
-            "Please check:\n1. Your TRT serialization is generated and loaded "
-            "on the same GPU architecture;\n2. The Paddle Inference version of "
-            "generating serialization file and doing inference are "
-            "consistent."));
-
-    binding_num_ = infer_engine_->getNbBindings();
-    GetEngineInfo();
-  }
+  void Deserialize(const std::string& engine_serialized_data);
 
   void SetRuntimeBatch(size_t batch_size);
   int GetRuntimeBatch();
@@ -451,15 +370,15 @@ class TensorRTEngine {
 
   // Get fp16 trt weight. If src weight is not fp16, we will cast.
   Weight GetFp16TrtWeight(const std::string& name,
-                          const framework::Tensor& weight_tensor);
+                          const phi::DenseTensor& weight_tensor);
 
   // Get fp32 trt weight. If src weight is not fp32, we will cast.
   Weight GetFp32TrtWeight(const std::string& name,
-                          const framework::Tensor& weight_tensor);
+                          const phi::DenseTensor& weight_tensor);
 
   // if the src weight type is fp16, then return fp16 trt weight, etc.
   Weight GetTrtWeight(const std::string& name,
-                      const framework::Tensor& weight_tensor);
+                      const phi::DenseTensor& weight_tensor);
 
   float GetTensorDynamicRange(nvinfer1::ITensor* tensor) {
     return quant_dynamic_range_[tensor];
@@ -474,13 +393,13 @@ class TensorRTEngine {
   // so we need to copy the weights from GPU to CPU in our op converter.
   // We use a map to store these weights for the weight memory is not released
   // in advance, which affecting the construction of TRT Op.
-  std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
+  std::unordered_map<std::string /*name*/, std::unique_ptr<phi::DenseTensor>>
       weight_map;
 
   // When setting weight_map, a self-increasing suffix is needed for the names
   // so as to avoid repeatedly setting weights with the same name.
   void SetWeights(std::string w_name,
-                  std::unique_ptr<framework::Tensor> w_tensor) {
+                  std::unique_ptr<phi::DenseTensor> w_tensor) {
     static int suffix_counter = 0;
     std::string suffix = std::to_string(suffix_counter);
     std::string splitter = "__";
@@ -530,6 +449,9 @@ class TensorRTEngine {
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
+  ShapeMapType min_shape_tensor() { return min_shape_tensor_; }
+  ShapeMapType max_shape_tensor() { return max_shape_tensor_; }
+  ShapeMapType optim_shape_tensor() { return optim_shape_tensor_; }
 
   bool AdjustDynamicShapeRange(const ShapeMapType& runtime_input_shape,
                                std::vector<std::string>* changed) {
@@ -694,6 +616,10 @@ class TensorRTEngine {
   void SetUseInspector(bool use_inspector) { use_inspector_ = use_inspector; }
   void SetScope(const framework::Scope& scope) { scope_ = &scope; }
 
+  void SetContextMemorySharing(bool context_memory_sharing) {
+    context_memory_sharing_ = context_memory_sharing;
+  }
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
@@ -714,6 +640,9 @@ class TensorRTEngine {
   // batch size of the current data, will be updated each Executation.
   int batch_size_{-1};
 
+  // use for engine context memory sharing
+  bool context_memory_sharing_{false};
+
   int device_id_;
   int max_profile_num_{1};
   int cur_profile_num_{0};
@@ -721,6 +650,9 @@ class TensorRTEngine {
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
+  ShapeMapType min_shape_tensor_;
+  ShapeMapType max_shape_tensor_;
+  ShapeMapType optim_shape_tensor_;
   bool disable_trt_plugin_fp16_{false};
   phi::DataType model_precision_{phi::DataType::FLOAT32};
   bool use_varseqlen_{false};
@@ -791,14 +723,23 @@ class TensorRTEngine {
   engine__->network()->add##layer__(__VA_ARGS__)
 
 class TRTEngineManager {
+  using PredictorID = int;
+  using AllocationPtr = phi::Allocator::AllocationPtr;
+
  public:
-  bool Empty() const { return engines_.size() == 0; }
+  bool Empty() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return engines_.size() == 0;
+  }
+
   bool Has(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (engines_.count(name) == 0) return false;
     return engines_.at(name).get() != nullptr;
   }
 
   TensorRTEngine* Get(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(mutex_);
     return engines_.at(name).get();
   }
 
@@ -812,6 +753,9 @@ class TRTEngineManager {
       const std::map<std::string, std::vector<int>> min_input_shape = {},
       const std::map<std::string, std::vector<int>> max_input_shape = {},
       const std::map<std::string, std::vector<int>> optim_input_shape = {},
+      const std::map<std::string, std::vector<int>> min_shape_tensor = {},
+      const std::map<std::string, std::vector<int>> max_shape_tensor = {},
+      const std::map<std::string, std::vector<int>> optim_shape_tensor = {},
       bool disable_trt_plugin_fp16 = false,
       phi::DataType model_precision = phi::DataType::FLOAT32,
       nvinfer1::ILogger& logger = NaiveLogger::Global()) {
@@ -823,20 +767,27 @@ class TRTEngineManager {
                                  min_input_shape,
                                  max_input_shape,
                                  optim_input_shape,
+                                 min_shape_tensor,
+                                 max_shape_tensor,
+                                 optim_shape_tensor,
                                  disable_trt_plugin_fp16,
                                  model_precision,
                                  logger);
+    std::lock_guard<std::mutex> lock(mutex_);
     engines_[name].reset(p);
     return p;
   }
 
   void DeleteAll() {
+    std::lock_guard<std::mutex> lock(mutex_);
     for (auto& item : engines_) {
       item.second.reset(nullptr);
     }
+    engines_.clear();
   }
 
   void DeleteKey(const std::string& key) {
+    std::lock_guard<std::mutex> lock(mutex_);
     auto iter = engines_.find(key);
     if (iter != engines_.end()) {
       iter->second.reset(nullptr);
@@ -844,7 +795,57 @@ class TRTEngineManager {
     }
   }
 
+  void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
+    bool size_updated{false};
+
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (max_ctx_mem_size_ < mem_size) {
+        max_ctx_mem_size_ = mem_size;
+        size_updated = true;
+      }
+    }
+
+    if (size_updated) {
+      releaseContextMemory(predictor_id);
+    }
+  }
+
+  void* getContextMemory(PredictorID predictor_id,
+                         const phi::GPUPlace& place,
+                         const phi::Stream& stream) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    static auto alignment = getAlignmentSize(place);
+    if (context_memorys_.count(predictor_id) == 0) {
+      auto context_memory =
+          memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
+      // context_memory_[predictor_id].reset(context_memory.release());
+      context_memorys_[predictor_id] = std::move(context_memory);
+    }
+    return getAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
+  }
+
+  void releaseContextMemory(PredictorID predictor_id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (context_memorys_.count(predictor_id)) {
+      context_memorys_[predictor_id].reset(nullptr);
+      context_memorys_.erase(predictor_id);
+    }
+  }
+
  private:
+  size_t getAlignmentSize(const phi::GPUPlace& place) {
+    const auto& prop = platform::GetDeviceProperties(place.GetDeviceId());
+    return prop.textureAlignment;
+  }
+
+  void* getAlignedMemory(void* addr, size_t alignment) {
+    return reinterpret_cast<void*>(uintptr_t(addr) & (~(alignment - 1)));
+  }
+
+  mutable std::mutex mutex_;
+  size_t max_ctx_mem_size_{0};
+  std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };
 

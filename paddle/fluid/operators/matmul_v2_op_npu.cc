@@ -21,15 +21,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 static void MatMul2D(const framework::ExecutionContext& ctx,
                      const aclrtStream& stream,
-                     const Tensor& X,
-                     const Tensor& Y,
-                     Tensor* Out,
+                     const phi::DenseTensor& X,
+                     const phi::DenseTensor& Y,
+                     phi::DenseTensor* Out,
                      const bool trans_x,
                      const bool trans_y) {
   Out->mutable_data<T>(ctx.GetPlace());
@@ -44,9 +44,9 @@ static void MatMul2D(const framework::ExecutionContext& ctx,
 template <typename T>
 static void MatMulND(const framework::ExecutionContext& ctx,
                      const aclrtStream& stream,
-                     const Tensor& X,
-                     const Tensor& Y,
-                     Tensor* Out,
+                     const phi::DenseTensor& X,
+                     const phi::DenseTensor& Y,
+                     phi::DenseTensor* Out,
                      const bool trans_x,
                      const bool trans_y) {
   Out->mutable_data<T>(ctx.GetPlace());
@@ -61,9 +61,9 @@ static void MatMulND(const framework::ExecutionContext& ctx,
 template <>
 void MatMulND<phi::dtype::float16>(const framework::ExecutionContext& ctx,
                                    const aclrtStream& stream,
-                                   const Tensor& X,
-                                   const Tensor& Y,
-                                   Tensor* Out,
+                                   const phi::DenseTensor& X,
+                                   const phi::DenseTensor& Y,
+                                   phi::DenseTensor* Out,
                                    const bool trans_x,
                                    const bool trans_y) {
   Out->mutable_data<phi::dtype::float16>(ctx.GetPlace());
@@ -114,8 +114,8 @@ static void ReduceDims(const framework::ExecutionContext& ctx,
                        const aclrtStream& stream,
                        const std::vector<int64_t>& dims,
                        const std::vector<int64_t>& brd_dims,
-                       const Tensor& in,
-                       Tensor* out) {
+                       const phi::DenseTensor& in,
+                       phi::DenseTensor* out) {
   std::vector<int64_t> axes;
   int64_t size = brd_dims.size();
   int64_t diff = brd_dims.size() - dims.size();
@@ -138,9 +138,9 @@ template <typename T>
 class MatMulV2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<Tensor>("X");
-    auto* Y = ctx.Input<Tensor>("Y");
-    auto* Out = ctx.Output<Tensor>("Out");
+    auto* X = ctx.Input<phi::DenseTensor>("X");
+    auto* Y = ctx.Input<phi::DenseTensor>("Y");
+    auto* Out = ctx.Output<phi::DenseTensor>("Out");
     const bool trans_x = ctx.Attr<bool>("trans_x");
     const bool trans_y = ctx.Attr<bool>("trans_y");
 
@@ -276,11 +276,11 @@ template <typename T>
 class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<Tensor>("X");
-    auto* Y = ctx.Input<Tensor>("Y");
-    auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dY = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* X = ctx.Input<phi::DenseTensor>("X");
+    auto* Y = ctx.Input<phi::DenseTensor>("Y");
+    auto* dOut = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dY = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     const bool trans_x = ctx.Attr<bool>("trans_x");
     const bool trans_y = ctx.Attr<bool>("trans_y");
 

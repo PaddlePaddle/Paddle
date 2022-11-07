@@ -69,25 +69,25 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+    PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           paddle::framework::ToTypeName(param_var->Type())));
-    using paddle::framework::Tensor;
+
     using MPDType = typename details::MPTypeTrait<T>::Type;
 
-    auto* param = ctx.Input<framework::Tensor>("Param");
-    auto* param_out = ctx.Output<framework::Tensor>("ParamOut");
-    auto* learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+    auto* param = ctx.Input<phi::DenseTensor>("Param");
+    auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    auto* learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
 
     auto* grad_var = ctx.InputVar("Grad");
 
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
-    const Tensor* master_param = nullptr;
-    Tensor* master_param_out = nullptr;
+    const phi::DenseTensor* master_param = nullptr;
+    phi::DenseTensor* master_param_out = nullptr;
     if (multi_precision) {
       bool has_master =
           ctx.HasInput("MasterParam") && ctx.HasOutput("MasterParamOut");
@@ -97,8 +97,8 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
                             "The Input(MasterParam) and Output(MasterParamOut) "
                             "should not be null when "
                             "the attr `multi_precision` is true"));
-      master_param = ctx.Input<framework::Tensor>("MasterParam");
-      master_param_out = ctx.Output<framework::Tensor>("MasterParamOut");
+      master_param = ctx.Input<phi::DenseTensor>("MasterParam");
+      master_param_out = ctx.Output<phi::DenseTensor>("MasterParamOut");
     }
     const MPDType* master_in_data =
         multi_precision ? master_param->data<MPDType>() : nullptr;
@@ -108,8 +108,8 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
             : nullptr;
 
     // Actually, all tensors are LoDTensor except SelectedRows.
-    if (grad_var->IsType<framework::LoDTensor>()) {
-      auto* grad = ctx.Input<framework::Tensor>("Grad");
+    if (grad_var->IsType<phi::DenseTensor>()) {
+      auto* grad = ctx.Input<phi::DenseTensor>("Grad");
 
       int block = 512;
       int grid = (param->numel() + block - 1) / block;

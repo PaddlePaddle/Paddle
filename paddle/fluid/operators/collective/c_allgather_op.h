@@ -37,8 +37,8 @@ class CAllGatherOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)
-    auto in = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     framework::DDim out_dims = in->dims();
     auto place = ctx.GetPlace();
 

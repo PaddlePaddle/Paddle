@@ -21,24 +21,24 @@
 
 namespace phi {
 
-template <typename T>
-void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
-                                               const T *input,
-                                               std::vector<int> input_shape,
-                                               const T *bias,
-                                               const T *scale,
-                                               T *output,
-                                               T *mean,
-                                               T *variance,
-                                               int begin_norm_axis,
-                                               float eps) {
+template <typename T, typename U>
+void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
+                                                  const T *input,
+                                                  std::vector<int> input_shape,
+                                                  const U *bias,
+                                                  const U *scale,
+                                                  T *output,
+                                                  U *mean,
+                                                  U *variance,
+                                                  int begin_norm_axis,
+                                                  float eps) {
   const auto x_dims = phi::make_ddim(input_shape);
   auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
   switch (paddle::operators::GetDesiredBlockDim(feature_size)) {
     FIXED_BLOCK_DIM_CASE(
-        paddle::operators::LayerNormForward<T, T, kBlockDim>
+        paddle::operators::LayerNormForward<T, U, kBlockDim>
         <<<batch_size, kBlockDim, 0, stream>>>(
             input, scale, bias, output, mean, variance, eps, feature_size));
     default:
@@ -49,7 +49,10 @@ void LayerNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
   }
 }
 
-template class LayerNormDirectCUDAFunctor<float>;
+template class LayerNormDirectCUDAFunctor<float, float>;
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+template class LayerNormDirectCUDAFunctor<half, float>;
+#endif
 
 template <typename T, typename Context>
 void LayerNormKernel(const Context &dev_ctx,

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from scipy.special import erf
@@ -25,7 +23,6 @@ import paddle.fluid.dygraph as dg
 
 
 class TestErfOp(OpTest):
-
     def setUp(self):
         self.op_type = "erf"
         self.dtype = self._init_dtype()
@@ -46,7 +43,6 @@ class TestErfOp(OpTest):
 
 
 class TestErfLayer(unittest.TestCase):
-
     def _test_case(self, place):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float64)
         y_ref = erf(x)

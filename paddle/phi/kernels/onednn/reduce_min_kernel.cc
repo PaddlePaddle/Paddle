@@ -35,9 +35,5 @@ void MinRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(min_raw,
-                   OneDNN,
-                   ALL_LAYOUT,
-                   phi::MinRawKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    min_raw, OneDNN, ONEDNN, phi::MinRawKernel, float, phi::dtype::bfloat16) {}

@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFusionTransposeFlattenConcationOp(OpTest):
-
     def setUp(self):
         self.init_test_case()
         self.op_type = "fusion_transpose_flatten_concat"
@@ -36,8 +34,10 @@ class TestFusionTransposeFlattenConcationOp(OpTest):
             ins.append(("x%d" % i, a))
 
             b = a.transpose(self.trans_axis)
-            flat_shape = (np.prod(b.shape[:self.flatten_axis]),
-                          np.prod(b.shape[self.flatten_axis:]))
+            flat_shape = (
+                np.prod(b.shape[: self.flatten_axis]),
+                np.prod(b.shape[self.flatten_axis :]),
+            )
             c = b.reshape(flat_shape)
             flats.append(c)
         out = np.concatenate(flats, axis=self.concat_axis)
@@ -46,7 +46,7 @@ class TestFusionTransposeFlattenConcationOp(OpTest):
         self.attrs = {
             'trans_axis': list(self.trans_axis),
             'flatten_axis': self.flatten_axis,
-            'concat_axis': self.concat_axis
+            'concat_axis': self.concat_axis,
         }
         self.outputs = {'Out': out}
 
@@ -61,10 +61,10 @@ class TestFusionTransposeFlattenConcationOp(OpTest):
         self.concat_axis = 1
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCase1(TestFusionTransposeFlattenConcationOp):
-
     def init_test_case(self):
         self.shapes = [(3, 4, 18, 17), (3, 8, 18, 7), (6, 12, 9, 5)]
         self.trans_axis = (0, 2, 3, 1)
@@ -72,10 +72,10 @@ class TestCase1(TestFusionTransposeFlattenConcationOp):
         self.concat_axis = 1
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCase2(TestFusionTransposeFlattenConcationOp):
-
     def init_test_case(self):
         self.shapes = [(3, 8, 20, 17), (3, 8, 19, 17), (3, 8, 40, 17)]
         self.trans_axis = (0, 2, 3, 1)
@@ -83,10 +83,10 @@ class TestCase2(TestFusionTransposeFlattenConcationOp):
         self.concat_axis = 0
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCase3(TestFusionTransposeFlattenConcationOp):
-
     def init_test_case(self):
         self.shapes = [(3, 8, 20, 17), (3, 8, 19, 17), (3, 8, 40, 17)]
         self.trans_axis = (0, 3, 2, 1)
@@ -94,10 +94,10 @@ class TestCase3(TestFusionTransposeFlattenConcationOp):
         self.concat_axis = 1
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCase4(TestFusionTransposeFlattenConcationOp):
-
     def init_test_case(self):
         self.shapes = [(3, 8, 9, 17), (8, 3, 9, 17), (4, 6, 9, 17)]
         self.trans_axis = (0, 2, 1, 3)
@@ -105,10 +105,10 @@ class TestCase4(TestFusionTransposeFlattenConcationOp):
         self.concat_axis = 1
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCase5(TestFusionTransposeFlattenConcationOp):
-
     def init_test_case(self):
         self.shapes = [(3, 8, 9, 17, 2), (3, 8, 2, 17, 9), (3, 17, 9, 8, 2)]
         self.trans_axis = (0, 2, 1, 4, 3)

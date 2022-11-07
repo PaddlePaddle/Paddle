@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 
@@ -28,14 +26,12 @@ else:
 
 
 class SimpleNet(paddle.nn.Layer):
-
     def __init__(self):
         super().__init__()
         self._linear = paddle.nn.Linear(1, 1)
 
     def forward(self, x):
-        """ forward with duplicate outputs.
-        """
+        """forward with duplicate outputs."""
         x = self._linear(x)
         return x, x
 

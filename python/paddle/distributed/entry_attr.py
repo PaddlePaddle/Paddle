@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 __all__ = []
 
 
@@ -126,11 +124,13 @@ class CountFilterEntry(EntryAttr):
 
         if not isinstance(count_filter, int):
             raise ValueError(
-                "count_filter must be a valid integer greater than 0")
+                "count_filter must be a valid integer greater than 0"
+            )
 
         if count_filter < 0:
             raise ValueError(
-                "count_filter must be a valid integer greater or equal than 0")
+                "count_filter must be a valid integer greater or equal than 0"
+            )
 
         self._name = "count_filter_entry"
         self._count_filter = count_filter

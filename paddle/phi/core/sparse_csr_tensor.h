@@ -209,7 +209,7 @@ class SparseCsrTensor : public TensorBase,
           [0, 0, 4, 0],
           [0, 5, 0, 6]]
      dims_ = (4, 4)
-     non_zero_elements_ = [1, 2, 3, 4, 5 ,6]
+     non_zero_elements_ = [1, 2, 3, 4, 5, 6]
      non_zero_crows_ = [0, 1, 3, 4, 6]
      non_zero_cols_ = [1, 0, 3, 2, 1, 3]
    */
@@ -228,7 +228,7 @@ class SparseCsrTensor : public TensorBase,
           [0, 0, 4, 0],
           [0, 5, 0, 0]]]
      dims_ = (2, 4, 4)
-     non_zero_elements_ = [1, 2, 3, 4, 5 ,6, 1, 2, 3, 4, 5]
+     non_zero_elements_ = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5]
      non_zero_crows_ = [0, 1, 3, 4, 6, 0, 1, 2, 4, 5]
      non_zero_cols_ = [1, 0, 3, 2, 1, 3, 1, 0, 3, 2, 1]
    */

@@ -31,7 +31,7 @@ class OpBase;
 }  // namespace imperative
 }  // namespace paddle
 
-using LoDTensor = paddle::framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using LoDTensorBlockingQueueHolder =
     paddle::operators::reader::LoDTensorBlockingQueueHolder;
 
@@ -78,7 +78,7 @@ class EnqueueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("queue_name",
                          "Name of the `LoDTensorBlockingQueueHolder` variable");
     AddComment(R"DOC(
-			Enqueue operator.
+      Enqueue operator.
       )DOC");
   }
 };

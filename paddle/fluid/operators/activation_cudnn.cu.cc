@@ -18,7 +18,7 @@
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
+
 using platform::ActivationDescriptor;
 using platform::TensorDescriptor;
 
@@ -27,7 +27,7 @@ class CudnnActivationKernel
     : public framework::OpKernel<Functor::ElEWISE_TYPE> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    framework::Tensor *X, *Out;
+    phi::DenseTensor *X, *Out;
     ExtractActivationTensor(context, X, Out);
     ActivationDescriptor act_desc;
     TensorDescriptor x_desc, out_desc;

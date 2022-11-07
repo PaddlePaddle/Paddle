@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class ElementwiseMinNPUKernel : public framework::OpKernel<T> {
@@ -30,10 +30,10 @@ class ElementwiseMinNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
 
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto place = ctx.GetPlace();
 
     out->mutable_data<T>(place);
@@ -71,11 +71,11 @@ class ElementwiseMinGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
     axis = (axis == -1 ? std::abs(x->dims().size() - y->dims().size()) : axis);
     auto stream = dev_ctx.stream();

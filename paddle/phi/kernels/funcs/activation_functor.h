@@ -956,7 +956,7 @@ struct TanhTripleGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct BReluFunctor : public BaseActivationFunctor<T> {
+struct HardTanhFunctor : public BaseActivationFunctor<T> {
   float t_min;
   float t_max;
 
@@ -974,7 +974,7 @@ struct BReluFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct BReluGradFunctor : public BaseActivationFunctor<T> {
+struct HardTanhGradFunctor : public BaseActivationFunctor<T> {
   float t_min;
   float t_max;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
@@ -2169,12 +2169,14 @@ struct CudaSeluFunctor : public BaseActivationFunctor<T> {
   }
 
   __device__ __forceinline__ T operator()(const T x) const {
-    T res = x;
-    if (res <= zero) {
+    using MT =
+        typename std::conditional<(sizeof(T) > sizeof(float)), T, float>::type;
+    MT res = static_cast<MT>(x);
+    if (x <= zero) {
       res = alpha * expf(res) - alpha;
     }
     res *= scale;
-    return res;
+    return static_cast<T>(res);
   }
 
  private:
@@ -2705,7 +2707,7 @@ struct CudaTanhGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaBReluFunctor : public BaseActivationFunctor<T> {
+struct CudaHardTanhFunctor : public BaseActivationFunctor<T> {
   float t_min;
   float t_max;
 
@@ -2773,7 +2775,7 @@ struct CudaMishGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CudaBReluGradFunctor : public BaseActivationFunctor<T> {
+struct CudaHardTanhGradFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);
   float t_min;
   float t_max;
