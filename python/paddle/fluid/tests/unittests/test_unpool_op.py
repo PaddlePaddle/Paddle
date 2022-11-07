@@ -184,21 +184,21 @@ class TestUnpoolOpException(unittest.TestCase):
             indices = paddle.reshape(
                 paddle.arange(0, 12), shape=[1, 1, 3, 4]
             ).astype("int32")
-            MaxPool2D = F.max_unpool2d(data, indices, kernel_size=2, stride=2)
+            F.max_unpool2d(data, indices, kernel_size=2, stride=2)
 
         def indices_value_error():
             data = paddle.rand(shape=[1, 1, 3, 3])
             indices = paddle.reshape(
                 paddle.arange(31, 40), shape=[1, 1, 3, 3]
             ).astype("int32")
-            MaxPool2D = F.max_unpool2d(data, indices, kernel_size=2, stride=2)
+            F.max_unpool2d(data, indices, kernel_size=2, stride=2)
 
         def data_format_error():
             data = paddle.rand(shape=[1, 1, 3, 3])
             indices = paddle.reshape(
                 paddle.arange(0, 9), shape=[1, 1, 3, 3]
             ).astype("int32")
-            MaxPool2D = F.max_unpool2d(
+            F.max_unpool2d(
                 data, indices, kernel_size=2, stride=2, data_format="NHWC"
             )
 
@@ -207,7 +207,7 @@ class TestUnpoolOpException(unittest.TestCase):
             indices = paddle.reshape(
                 paddle.arange(0, 9), shape=[1, 1, 3, 3]
             ).astype("int32")
-            MaxPool2D = F.max_unpool2d(
+            F.max_unpool2d(
                 data, indices, kernel_size=2, stride=2, output_size=[5, 6, 7, 8]
             )
 
@@ -216,7 +216,7 @@ class TestUnpoolOpException(unittest.TestCase):
             indices = paddle.reshape(
                 paddle.arange(0, 9), shape=[1, 1, 3, 3]
             ).astype("int32")
-            MaxPool2D = F.max_unpool2d(
+            F.max_unpool2d(
                 data, indices, kernel_size=2, stride=2, output_size=[100, 100]
             )
 

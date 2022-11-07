@@ -184,21 +184,21 @@ class TestUnpool3DOpException(unittest.TestCase):
             indices = paddle.reshape(
                 paddle.arange(0, 36), shape=[1, 1, 3, 3, 4]
             ).astype("int32")
-            MaxUnPool3D = F.max_unpool3d(data, indices, kernel_size=2, stride=2)
+            F.max_unpool3d(data, indices, kernel_size=2, stride=2)
 
         def indices_value_error():
             data = paddle.rand(shape=[1, 1, 3, 3, 3])
             indices = paddle.reshape(
                 paddle.arange(195, 222), shape=[1, 1, 3, 3, 3]
             ).astype("int32")
-            MaxUnPool3D = F.max_unpool3d(data, indices, kernel_size=2, stride=2)
+            F.max_unpool3d(data, indices, kernel_size=2, stride=2)
 
         def data_format_error():
             data = paddle.rand(shape=[1, 1, 3, 3, 3])
             indices = paddle.reshape(
                 paddle.arange(0, 27), shape=[1, 1, 3, 3, 3]
             ).astype("int32")
-            MaxUnPool3D = F.max_unpool3d(
+            F.max_unpool3d(
                 data, indices, kernel_size=2, stride=2, data_format="NDHWC"
             )
 
@@ -207,7 +207,7 @@ class TestUnpool3DOpException(unittest.TestCase):
             indices = paddle.reshape(
                 paddle.arange(0, 27), shape=[1, 1, 3, 3, 3]
             ).astype("int32")
-            MaxUnPool3D = F.max_unpool3d(
+            F.max_unpool3d(
                 data,
                 indices,
                 kernel_size=2,
@@ -220,7 +220,7 @@ class TestUnpool3DOpException(unittest.TestCase):
             indices = paddle.reshape(
                 paddle.arange(0, 27), shape=[1, 1, 3, 3, 3]
             )
-            MaxUnPool3D = F.max_unpool3d(
+            F.max_unpool3d(
                 data, indices, kernel_size=2, stride=2, output_size=[10, 10, 10]
             )
 
