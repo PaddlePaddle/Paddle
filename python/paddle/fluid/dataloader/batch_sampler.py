@@ -37,11 +37,11 @@ class BatchSampler(Sampler):
 
 
     Args:
-        dataset(Dataset, optional): this should be an instance of a subclass of :ref:api_paddle_io_Dataset or :ref:api_paddle_io_IterableDataset
+        dataset(Dataset, optional): this should be an instance of a subclass of :ref:api_paddle_io_Dataset or :ref:`api_paddle_io_IterableDataset`
                  or other python object which implemented. Default None, disabled.
                 :code:`__len__` for BatchSampler to get indices as the
                 range of :attr:`dataset` length. Default None, disabled.
-        sampler (Sampler, optional): this should be a :ref:api_paddle_io_Sample
+        sampler (Sampler, optional): this should be a :ref:`api_paddle_io_Sample`
                 instance which implemented :code:`__iter__` to generate
                 sample indices. :attr:`sampler` and :attr:`dataset`
                 can not be set in the same time.  If :attr:`sampler`
@@ -50,7 +50,7 @@ class BatchSampler(Sampler):
                 batch indices. Default False, don't shuffle indices before generating batch indices.
         batch_size(int, optional): sample indice number in a mini-batch indices. default 1, each mini-batch includes 1 sample.
         drop_last(bool, optional): whether drop the last incomplete (less than 1 mini-batch) batch dataset. Default False, keep it.
-    see :ref:api_paddle_io_DataLoader
+    see :ref:`api_paddle_io_DataLoader`
 
     Returns:
         BatchSampler: an iterable object for indices iterating
@@ -182,7 +182,7 @@ class DistributedBatchSampler(BatchSampler):
         Dataset is assumed to be of constant size.
 
     Args:
-        dataset(Dataset, optional): this could be an instance of subclass of :ref:api_paddle_io_Dataset
+        dataset(Dataset, optional): this could be an instance of subclass of :ref:`api_paddle_io_Dataset`
                      or other python object which implemented
                      `__len__` for BatchSampler to get indices of samples. default None.
         batch_size(int): sample size of each mini-batch.
@@ -192,7 +192,7 @@ class DistributedBatchSampler(BatchSampler):
             Default None.
         rank(int, optional): the rank of the current process among :attr:`num_replicas`
             processes. If :attr:`rank` is None, :attr:`rank` is retrieved from
-           :ref:api_paddle_distributed_ParallelEnv. Default None.
+           :ref:`api_paddle_distributed_ParallelEnv`. Default None.
         shuffle(bool, optional): whther to shuffle indices order before genrating
             batch indices. Default False.
         drop_last(bool, optional): whether drop the last incomplete(less than a mini-batch) batch dataset size.
