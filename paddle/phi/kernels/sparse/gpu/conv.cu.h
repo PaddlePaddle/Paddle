@@ -195,7 +195,6 @@ __global__ void UniqueKernel(const IntT* in_indexs,
   if (i < rulebook_len) {
     // atomicOr only support int
     int index = static_cast<int>(in_indexs[i]);
-    // int flag = atomicOr(out_index_table + index, 1);
     const bool flag = SetBits(index, index_flags);
     if (!flag) {
       int j = atomicAdd(&count, 1);
@@ -298,7 +297,6 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
             atomicAdd(&counter_buf[kernel_index], 1);
             kernel_i = kernel_index;
           }
-          // rulebook[kernel_index * non_zero_num + i] = kernel_i;
           rulebook[kernel_index * non_zero_num + i] = in_i;
           rulebook[kernel_index * non_zero_num + offset + i] = out_index;
           ++kernel_index;
@@ -325,7 +323,6 @@ __global__ void GetOutIndexTable1(const IntT* indices,
     IntT in_x = indices[i + 3 * non_zero_num];
     IntT index = PointToIndex(batch, in_x, in_y, in_z, dims);
     SetBits(index, index_flags);
-    // out_index_table[index] = i == 0 ? -1 : i;
     out_index_table[index] = i;
   }
 }
@@ -458,7 +455,6 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
   __syncthreads();
   for (int i = 0; i < kernel_size; i++) {
     if (threadIdx.x < counter_buf[i]) {
-      // rulebook[i * non_zero_num + counter_buf2[i] + threadIdx.x] = i;
       rulebook[i * non_zero_num + counter_buf2[i] + threadIdx.x] =
           rulebook_buf[i * blockDim.x + threadIdx.x];
       rulebook[i * non_zero_num + offset + counter_buf2[i] + threadIdx.x] =
@@ -614,8 +610,6 @@ int ProductRuleBook(const Context& dev_ctx,
 
     phi::Copy(dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &out_indices);
 
-    // phi::backends::gpu::GpuMemsetAsync(
-    //     out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
     GetOutIndexTable1<IntT><<<config.block_per_grid,
@@ -721,9 +715,6 @@ int ProductRuleBook(const Context& dev_ctx,
         phi::Empty<int>(dev_ctx, {static_cast<int>(rulebook_len)});
     int* out_index_ptr = out_index->data<int>();
     int* unique_key_ptr = unique_key.data<int>();
-
-    // phi::backends::gpu::GpuMemsetAsync(
-    //     out_index_table_ptr, 0, sizeof(int) * table_size, dev_ctx.stream());
 
     phi::backends::gpu::GpuMemsetAsync(
         unique_key_ptr, 0, sizeof(int), dev_ctx.stream());
