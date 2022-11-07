@@ -619,6 +619,11 @@ class GroupShardedStage2(nn.Layer):
 
     def _redefine_opt_step(self):
         grad_func = self._grad_scale
+        grad_storage_list = self._grad_storage_list
+        param_grads = self._param_grads
+        use_grad_storage = self._use_grad_storage
+        trainable_params = self._trainable_params
+
         for opt in self._sharding_optimizers:
             opt_step = opt.step
 
@@ -630,16 +635,17 @@ class GroupShardedStage2(nn.Layer):
 
                 # do dp allreduce here for gradient merge.
                 if self._dp_group and self._dp_group.nranks > 1:
-                    if self._use_grad_storage:
-                        for grad_storage in self._grad_storage_list:
-                            collective.all_reduce(
-                                tensor=grad_storage.buffer,
-                                group=self._dp_group,
-                                sync_op=True,
-                            )
-                    for param in self._param_grads:
-                        if param.grad is not None:
-                            collective.all_reduce(
+                    if use_grad_storage:
+                        for grad_storage in grad_storage_list:
+                            if grad_storage.buffer._is_initialized():
+                                dist.all_reduce(
+                                    tensor=grad_storage.buffer,
+                                    group=self._dp_group,
+                                    sync_op=True,
+                                )
+                    for param in trainable_params:
+                        if param.name in param_grads and param.grad is not None:
+                            dist.all_reduce(
                                 tensor=param.grad,
                                 group=self._dp_group,
                                 sync_op=True,
