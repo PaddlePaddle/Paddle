@@ -48,24 +48,10 @@ def set_default_dtype(d):
                 ", but received %s" % d.__name__
             )
     else:
-        if d in [
-            'float16',
-            'float32',
-            'float64',
-            'float16',
-            'float32',
-            'float64',
-        ]:
-            # this code is a little bit dangerous, since error could happen
-            # when casting no-ascii code to str in python2.
-            # but since the set itself is limited, so currently, it is good.
-            # however, jointly supporting python2 and python3, (as well as python4 maybe)
-            # may still be a long-lasting problem.
-            d = str(d)
-        else:
+        if d not in ['float16', 'float32', 'float64']:
             raise TypeError(
                 "set_default_dtype only supports [float16, float32, float64] "
-                ", but received %s" % str(d)
+                ", but received %s" % d
             )
 
     LayerHelperBase.set_default_dtype(d)
