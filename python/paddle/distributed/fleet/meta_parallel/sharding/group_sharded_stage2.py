@@ -411,17 +411,6 @@ class GroupShardedStage2(nn.Layer):
                         )
                     )
 
-                    if self._dp_group and self._dp_group.nranks > 1:
-                        assert (
-                            not self._reduce_overlap
-                        ), 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
-                        # TODO(wuhuachao):after the new communication lib upgrading, overlapping the comm of dp + stage2.
-                        dist.all_reduce(
-                            tensor=param.grad,
-                            group=self._dp_group,
-                            sync_op=True,
-                        )
-
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     # self._clear_task_flow()
 
@@ -477,17 +466,6 @@ class GroupShardedStage2(nn.Layer):
                                 sync_op=not self._reduce_overlap,
                             )
                         )
-
-                        if self._dp_group and self._dp_group.nranks > 1:
-                            assert (
-                                not self._reduce_overlap
-                            ), 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
-                            # TODO(wuhuachao):after the new communication lib upgrading, overlapping the comm of dp + stage2.
-                            dist.all_reduce(
-                                tensor=grad_storage.buffer,
-                                group=self._dp_group,
-                                sync_op=True,
-                            )
 
                         cleanup()
 
@@ -649,6 +627,24 @@ class GroupShardedStage2(nn.Layer):
                     # Wait for the last reduce task. This wait must before grad scale function.
                     assert self._comm_task is not None
                     self._comm_task.wait()
+
+                # do dp allreduce here for gradient merge.
+                if self._dp_group and self._dp_group.nranks > 1:
+                    if self._use_grad_storage:
+                        for grad_storage in self._grad_storage_list:
+                            collective.all_reduce(
+                                tensor=grad_storage.buffer,
+                                group=self._dp_group,
+                                sync_op=True,
+                            )
+                    for param in self._param_grads:
+                        if param.grad is not None:
+                            collective.all_reduce(
+                                tensor=param.grad,
+                                group=self._dp_group,
+                                sync_op=True,
+                            )
+
                 grad_func()
                 opt_step()
 
