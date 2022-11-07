@@ -40,6 +40,7 @@ def set_default_dtype(d):
 
     """
     if isinstance(d, type):
+        # This branch is for NumPy scalar types
         if d in [np.float16, np.float32, np.float64]:
             d = d.__name__
         else:
@@ -48,7 +49,11 @@ def set_default_dtype(d):
                 ", but received %s" % d.__name__
             )
     else:
-        if d not in ['float16', 'float32', 'float64']:
+        # This branch is for np.dtype and str
+        if d in ['float16', 'float32', 'float64']:
+            # Convert np.dtype to str
+            d = str(d)
+        else:
             raise TypeError(
                 "set_default_dtype only supports [float16, float32, float64] "
                 ", but received %s" % d

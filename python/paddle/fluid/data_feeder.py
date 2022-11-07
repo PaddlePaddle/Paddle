@@ -50,6 +50,7 @@ def convert_dtype(dtype):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
     elif isinstance(dtype, type):
+        # This branch is for NumPy scalar types
         if dtype in [
             bool,
             np.float16,
@@ -66,6 +67,7 @@ def convert_dtype(dtype):
         ]:
             return dtype.__name__
     else:
+        # This branch is for np.dtype and str
         if dtype in [
             'bool',
             'float16',
@@ -80,14 +82,8 @@ def convert_dtype(dtype):
             'complex64',
             'complex128',
         ]:
-            # For test start
-            assert isinstance(
-                dtype, str
-            ), "[convert_dtype] dtype should be str, but received {} (type is {}, convert to str is {})".format(
-                dtype, type(dtype), str(dtype)
-            )
-            # For test end
-            return dtype
+            # Convert np.dtype to str
+            return str(dtype)
         # NOTE(zhangbo): Now numpy does not support bfloat, and paddle use uint16 to represent bfloat16, and there binaries are consistent.
         if dtype in ['bfloat16']:
             return 'uint16'
