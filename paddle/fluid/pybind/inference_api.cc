@@ -90,6 +90,7 @@ using paddle::PaddlePredictor;
 using paddle::PaddleTensor;
 using paddle::PassStrategy;
 using paddle::ZeroCopyTensor;
+using paddle_infer::experimental::InternalUtils;
 
 namespace {
 void BindPaddleDType(py::module *m);
@@ -102,6 +103,7 @@ void BindNativeConfig(py::module *m);
 void BindNativePredictor(py::module *m);
 void BindLiteNNAdapterConfig(py::module *m);
 void BindAnalysisConfig(py::module *m);
+void BindInternalUtils(py::module *m);
 void BindAnalysisPredictor(py::module *m);
 void BindZeroCopyTensor(py::module *m);
 void BindPaddlePassBuilder(py::module *m);
@@ -379,6 +381,7 @@ void BindInferenceApi(py::module *m) {
   BindNativePredictor(m);
   BindLiteNNAdapterConfig(m);
   BindAnalysisConfig(m);
+  BindInternalUtils(m);
   BindAnalysisPredictor(m);
   BindPaddleInferPredictor(m);
   BindZeroCopyTensor(m);
@@ -828,6 +831,19 @@ void BindAnalysisConfig(py::module *m) {
       .def("rank", &DistConfig::rank)
       .def("comm_init_config", &DistConfig::comm_init_config)
       .def("use_dist_model", &DistConfig::use_dist_model);
+}
+
+void BindInternalUtils(py::module *m) {
+  py::class_<InternalUtils> internal_utils(*m, "InternalUtils");
+  internal_utils
+      .def_static("set_transformer_posid",
+                  [](paddle_infer::Config &config, std::string tensor_name) {
+                    InternalUtils::SetTransformerPosid(&config, tensor_name);
+                  })
+      .def_static("set_transformer_maskid",
+                  [](paddle_infer::Config &config, std::string tensor_name) {
+                    InternalUtils::SetTransformerMaskid(&config, tensor_name);
+                  });
 }
 
 void BindLiteNNAdapterConfig(py::module *m) {
