@@ -80,6 +80,13 @@ def convert_dtype(dtype):
             'complex64',
             'complex128',
         ]:
+            # For test start
+            assert isinstance(
+                dtype, str
+            ), "[convert_dtype] dtype should be str, but received {} (type is {}, convert to str is {})".format(
+                dtype, type(dtype), str(dtype)
+            )
+            # For test end
             return dtype
         # NOTE(zhangbo): Now numpy does not support bfloat, and paddle use uint16 to represent bfloat16, and there binaries are consistent.
         if dtype in ['bfloat16']:
