@@ -8,6 +8,7 @@ import sys
 import fnmatch
 import errno
 import platform
+import glob
 
 from contextlib import contextmanager
 from setuptools import Command
@@ -283,7 +284,6 @@ packages=['paddle',
           'paddle.incubate.tensor',
           'paddle.incubate.multiprocessing',
           'paddle.incubate.nn',
-          'paddle.incubate.sparse',
           'paddle.incubate.asp',
           'paddle.incubate.passes',
           'paddle.distribution',
@@ -304,6 +304,7 @@ packages=['paddle',
           'paddle.distributed.fleet.meta_optimizers.ascend',
           'paddle.distributed.fleet.meta_optimizers.dygraph_optimizer',
           'paddle.distributed.fleet.runtime',
+          'paddle.distributed.rpc',
           'paddle.distributed.fleet.dataset',
           'paddle.distributed.fleet.data_generator',
           'paddle.distributed.fleet.metrics',
@@ -370,8 +371,10 @@ packages=['paddle',
           'paddle.vision.transforms',
           'paddle.vision.datasets',
           'paddle.audio',
-	  'paddle.audio.functional',
-	  'paddle.audio.features',
+	      'paddle.audio.functional',
+	      'paddle.audio.features',
+	      'paddle.audio.datasets',
+	      'paddle.audio.backends',
           'paddle.text',
           'paddle.text.datasets',
           'paddle.incubate',
@@ -381,14 +384,16 @@ packages=['paddle',
           'paddle.incubate.optimizer.functional',
           'paddle.incubate.autograd',
           'paddle.incubate.distributed',
+          'paddle.incubate.distributed.utils',
+          'paddle.incubate.distributed.utils.io',
           'paddle.incubate.distributed.fleet',
           'paddle.incubate.distributed.models',
           'paddle.incubate.distributed.models.moe',
           'paddle.incubate.distributed.models.moe.gate',
-          'paddle.incubate.sparse',
-          'paddle.incubate.sparse.nn',
-          'paddle.incubate.sparse.nn.layer',
-          'paddle.incubate.sparse.nn.functional',
+          'paddle.sparse',
+          'paddle.sparse.nn',
+          'paddle.sparse.nn.layer',
+          'paddle.sparse.nn.functional',
           'paddle.incubate.xpu',
           'paddle.io',
           'paddle.optimizer',
@@ -467,6 +472,19 @@ shutil.copy('${BLAS_LIB}', libs_path)
 shutil.copy('${LAPACK_LIB}', libs_path)
 shutil.copy('${GFORTRAN_LIB}', libs_path)
 shutil.copy('${GNU_RT_LIB_1}', libs_path)
+if '${WITH_CUDNN_DSO}' == 'ON' and os.path.exists('${CUDNN_LIBRARY}'):
+    package_data['paddle.libs']+=[os.path.basename('${CUDNN_LIBRARY}')]
+    shutil.copy('${CUDNN_LIBRARY}', libs_path)
+    if sys.platform.startswith("linux") and '${CUDNN_MAJOR_VERSION}' == '8':
+        # libcudnn.so includes libcudnn_ops_infer.so, libcudnn_ops_train.so,
+        # libcudnn_cnn_infer.so, libcudnn_cnn_train.so, libcudnn_adv_infer.so,
+        # libcudnn_adv_train.so
+        cudnn_lib_files = glob.glob(os.path.dirname('${CUDNN_LIBRARY}') + '/libcudnn_*so.8')
+        for cudnn_lib in cudnn_lib_files:
+            if os.path.exists(cudnn_lib):
+                package_data['paddle.libs']+=[os.path.basename(cudnn_lib)]
+                shutil.copy(cudnn_lib, libs_path)
+
 if not sys.platform.startswith("linux"):
     package_data['paddle.libs']+=[os.path.basename('${GNU_RT_LIB_2}')]
     shutil.copy('${GNU_RT_LIB_2}', libs_path)
@@ -552,9 +570,11 @@ if '${WITH_XPU}' == 'ON':
             if os.system(command) != 0:
                 raise Exception("patch ${XPU_API_LIB} failed, command: %s" % command)
     shutil.copy('${XPU_API_LIB}', libs_path)
-    shutil.copy('${XPU_RT_LIB}', libs_path)
-    package_data['paddle.libs']+=['${XPU_API_LIB_NAME}',
-                                  '${XPU_RT_LIB_NAME}']
+    package_data['paddle.libs']+=['${XPU_API_LIB_NAME}']
+    xpu_rt_lib_list = glob.glob('${XPU_RT_LIB}*')
+    for xpu_rt_lib_file in xpu_rt_lib_list:
+        shutil.copy(xpu_rt_lib_file, libs_path)
+        package_data['paddle.libs']+=[os.path.basename(xpu_rt_lib_file)]
 
 if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)

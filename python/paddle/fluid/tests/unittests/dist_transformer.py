@@ -15,7 +15,7 @@
 import numpy as np
 import time
 import os
-import six
+import functools
 import time
 from functools import partial
 from os.path import expanduser
@@ -26,7 +26,6 @@ import tarfile
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
-import paddle.compat as cpt
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
@@ -36,7 +35,7 @@ fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
 
 
-#from transformer_config import ModelHyperParams, TrainTaskConfig, merge_cfg_from_list
+# from transformer_config import ModelHyperParams, TrainTaskConfig, merge_cfg_from_list
 class TrainTaskConfig(object):
     # only support GPU currently
     use_gpu = True
@@ -73,7 +72,8 @@ class TrainTaskConfig(object):
     check_acc = True
 
     data_path = expanduser("~") + (
-        "/.cache/paddle/dataset/test_dist_transformer/")
+        "/.cache/paddle/dataset/test_dist_transformer/"
+    )
     src_vocab_fpath = data_path + "vocab.bpe.32000"
     trg_vocab_fpath = data_path + "vocab.bpe.32000"
     train_file_pattern = data_path + "train.tok.clean.bpe.32000.en-de"
@@ -180,12 +180,17 @@ input_descs = {
     # encoder.
     # The actual data shape of src_slf_attn_bias is:
     # [batch_size, n_head, max_src_len_in_batch, max_src_len_in_batch]
-    "src_slf_attn_bias":
-    [(batch_size, ModelHyperParams.n_head, seq_len, seq_len), "float32"],
+    "src_slf_attn_bias": [
+        (batch_size, ModelHyperParams.n_head, seq_len, seq_len),
+        "float32",
+    ],
     # The actual data shape of trg_word is:
     # [batch_size * max_trg_len_in_batch, 1]
-    "trg_word": [(batch_size, seq_len, 1), "int64",
-                 2],  # lod_level is only used in fast decoder.
+    "trg_word": [
+        (batch_size, seq_len, 1),
+        "int64",
+        2,
+    ],  # lod_level is only used in fast decoder.
     # The actual data shape of trg_pos is:
     # [batch_size * max_trg_len_in_batch, 1]
     "trg_pos": [(batch_size, seq_len, 1), "int64"],
@@ -193,14 +198,18 @@ input_descs = {
     # subsequent words in the decoder.
     # The actual data shape of trg_slf_attn_bias is:
     # [batch_size, n_head, max_trg_len_in_batch, max_trg_len_in_batch]
-    "trg_slf_attn_bias":
-    [(batch_size, ModelHyperParams.n_head, seq_len, seq_len), "float32"],
+    "trg_slf_attn_bias": [
+        (batch_size, ModelHyperParams.n_head, seq_len, seq_len),
+        "float32",
+    ],
     # This input is used to remove attention weights on paddings of the source
     # input in the encoder-decoder attention.
     # The actual data shape of trg_src_attn_bias is:
     # [batch_size, n_head, max_trg_len_in_batch, max_src_len_in_batch]
-    "trg_src_attn_bias":
-    [(batch_size, ModelHyperParams.n_head, seq_len, seq_len), "float32"],
+    "trg_src_attn_bias": [
+        (batch_size, ModelHyperParams.n_head, seq_len, seq_len),
+        "float32",
+    ],
     # This input is used in independent decoder program for inference.
     # The actual data shape of enc_output is:
     # [batch_size, max_src_len_in_batch, d_model]
@@ -213,8 +222,8 @@ input_descs = {
     # [batch_size * max_trg_len_in_batch, 1]
     "lbl_weight": [(batch_size * seq_len, 1), "float32"],
     # These inputs are used to change the shape tensor in beam-search decoder.
-    "trg_slf_attn_pre_softmax_shape_delta": [(2, ), "int32"],
-    "trg_slf_attn_post_softmax_shape_delta": [(4, ), "int32"],
+    "trg_slf_attn_pre_softmax_shape_delta": [(2,), "int32"],
+    "trg_slf_attn_post_softmax_shape_delta": [(4,), "int32"],
     "init_score": [(batch_size, 1), "float32"],
 }
 
@@ -258,7 +267,7 @@ fast_decoder_data_input_fields = (
 #     "trg_slf_attn_post_softmax_shape_delta", )
 
 
-#from optim import LearningRateScheduler
+# from optim import LearningRateScheduler
 class LearningRateScheduler(object):
     """
     Wrapper for learning rate scheduling as described in the Transformer paper.
@@ -266,12 +275,14 @@ class LearningRateScheduler(object):
     learning rate will be fed into the main_program as input data.
     """
 
-    def __init__(self,
-                 d_model,
-                 warmup_steps,
-                 learning_rate=0.001,
-                 current_steps=0,
-                 name="learning_rate"):
+    def __init__(
+        self,
+        d_model,
+        warmup_steps,
+        learning_rate=0.001,
+        current_steps=0,
+        name="learning_rate",
+    ):
         self.current_steps = current_steps
         self.warmup_steps = warmup_steps
         self.d_model = d_model
@@ -281,68 +292,91 @@ class LearningRateScheduler(object):
             shape=[1],
             value=float(learning_rate),
             dtype="float32",
-            persistable=True)
+            persistable=True,
+        )
 
     def update_learning_rate(self):
         self.current_steps += 1
-        lr_value = np.power(self.d_model, -0.5) * np.min([
-            np.power(self.current_steps, -0.5),
-            np.power(self.warmup_steps, -1.5) * self.current_steps
-        ]) * self.static_lr
+        lr_value = (
+            np.power(self.d_model, -0.5)
+            * np.min(
+                [
+                    np.power(self.current_steps, -0.5),
+                    np.power(self.warmup_steps, -1.5) * self.current_steps,
+                ]
+            )
+            * self.static_lr
+        )
         return np.array([lr_value], dtype="float32")
 
 
-#from transformer_train import train_loop
-def pad_batch_data(insts,
-                   pad_idx,
-                   n_head,
-                   is_target=False,
-                   is_label=False,
-                   return_attn_bias=True,
-                   return_max_len=True,
-                   return_num_token=False):
+# from transformer_train import train_loop
+def pad_batch_data(
+    insts,
+    pad_idx,
+    n_head,
+    is_target=False,
+    is_label=False,
+    return_attn_bias=True,
+    return_max_len=True,
+    return_num_token=False,
+):
     """
     Pad the instances to the max sequence length in batch, and generate the
     corresponding position data and attention bias.
     """
     return_list = []
     max_len = max(len(inst) for inst in insts)
-    num_token = six.moves.reduce(lambda x, y: x + y,
-                                 [len(inst)
-                                  for inst in insts]) if return_num_token else 0
+    num_token = (
+        functools.reduce(lambda x, y: x + y, [len(inst) for inst in insts])
+        if return_num_token
+        else 0
+    )
     # Any token included in dict can be used to pad, since the paddings' loss
     # will be masked out by weights and make no effect on parameter gradients.
     inst_data = np.array(
-        [inst + [pad_idx] * (max_len - len(inst)) for inst in insts])
+        [inst + [pad_idx] * (max_len - len(inst)) for inst in insts]
+    )
     return_list += [inst_data.astype("int64").reshape([-1, 1])]
     if is_label:  # label weight
-        inst_weight = np.array([[1.] * len(inst) + [0.] * (max_len - len(inst))
-                                for inst in insts])
+        inst_weight = np.array(
+            [
+                [1.0] * len(inst) + [0.0] * (max_len - len(inst))
+                for inst in insts
+            ]
+        )
         return_list += [inst_weight.astype("float32").reshape([-1, 1])]
     else:  # position data
-        inst_pos = np.array([
-            list(range(1,
-                       len(inst) + 1)) + [0] * (max_len - len(inst))
-            for inst in insts
-        ])
+        inst_pos = np.array(
+            [
+                list(range(1, len(inst) + 1)) + [0] * (max_len - len(inst))
+                for inst in insts
+            ]
+        )
         return_list += [inst_pos.astype("int64").reshape([-1, 1])]
     if return_attn_bias:
         if is_target:
             # This is used to avoid attention on paddings and subsequent
             # words.
             slf_attn_bias_data = np.ones((inst_data.shape[0], max_len, max_len))
-            slf_attn_bias_data = np.triu(slf_attn_bias_data,
-                                         1).reshape([-1, 1, max_len, max_len])
-            slf_attn_bias_data = np.tile(slf_attn_bias_data,
-                                         [1, n_head, 1, 1]) * [-1e9]
+            slf_attn_bias_data = np.triu(slf_attn_bias_data, 1).reshape(
+                [-1, 1, max_len, max_len]
+            )
+            slf_attn_bias_data = np.tile(
+                slf_attn_bias_data, [1, n_head, 1, 1]
+            ) * [-1e9]
         else:
             # This is used to avoid attention on paddings.
-            slf_attn_bias_data = np.array([[0] * len(inst) + [-1e9] *
-                                           (max_len - len(inst))
-                                           for inst in insts])
+            slf_attn_bias_data = np.array(
+                [
+                    [0] * len(inst) + [-1e9] * (max_len - len(inst))
+                    for inst in insts
+                ]
+            )
             slf_attn_bias_data = np.tile(
                 slf_attn_bias_data.reshape([-1, 1, 1, max_len]),
-                [1, n_head, max_len, 1])
+                [1, n_head, max_len, 1],
+            )
         return_list += [slf_attn_bias_data.astype("float32")]
     if return_max_len:
         return_list += [max_len]
@@ -351,22 +385,26 @@ def pad_batch_data(insts,
     return return_list if len(return_list) > 1 else return_list[0]
 
 
-def prepare_batch_input(insts, data_input_names, src_pad_idx, trg_pad_idx,
-                        n_head, d_model):
+def prepare_batch_input(
+    insts, data_input_names, src_pad_idx, trg_pad_idx, n_head, d_model
+):
     """
     Put all padded data needed by training into a dict.
     """
     src_word, src_pos, src_slf_attn_bias, src_max_len = pad_batch_data(
-        [inst[0] for inst in insts], src_pad_idx, n_head, is_target=False)
+        [inst[0] for inst in insts], src_pad_idx, n_head, is_target=False
+    )
     src_word = src_word.reshape(-1, src_max_len, 1)
     src_pos = src_pos.reshape(-1, src_max_len, 1)
     trg_word, trg_pos, trg_slf_attn_bias, trg_max_len = pad_batch_data(
-        [inst[1] for inst in insts], trg_pad_idx, n_head, is_target=True)
+        [inst[1] for inst in insts], trg_pad_idx, n_head, is_target=True
+    )
     trg_word = trg_word.reshape(-1, trg_max_len, 1)
     trg_pos = trg_pos.reshape(-1, trg_max_len, 1)
 
-    trg_src_attn_bias = np.tile(src_slf_attn_bias[:, :, ::src_max_len, :],
-                                [1, 1, trg_max_len, 1]).astype("float32")
+    trg_src_attn_bias = np.tile(
+        src_slf_attn_bias[:, :, ::src_max_len, :], [1, 1, trg_max_len, 1]
+    ).astype("float32")
 
     lbl_word, lbl_weight, num_token = pad_batch_data(
         [inst[2] for inst in insts],
@@ -376,14 +414,27 @@ def prepare_batch_input(insts, data_input_names, src_pad_idx, trg_pad_idx,
         is_label=True,
         return_attn_bias=False,
         return_max_len=False,
-        return_num_token=True)
+        return_num_token=True,
+    )
 
     data_input_dict = dict(
         list(
-            zip(data_input_names, [
-                src_word, src_pos, src_slf_attn_bias, trg_word, trg_pos,
-                trg_slf_attn_bias, trg_src_attn_bias, lbl_word, lbl_weight
-            ])))
+            zip(
+                data_input_names,
+                [
+                    src_word,
+                    src_pos,
+                    src_slf_attn_bias,
+                    trg_word,
+                    trg_pos,
+                    trg_slf_attn_bias,
+                    trg_src_attn_bias,
+                    lbl_word,
+                    lbl_weight,
+                ],
+            )
+        )
+    )
     return data_input_dict, np.asarray([num_token], dtype="float32")
 
 
@@ -408,7 +459,7 @@ def read_multiple(reader, count, clip_last=True):
             if len(data) > count:
                 inst_num_per_part = len(data) // count
                 yield [
-                    data[inst_num_per_part * i:inst_num_per_part * (i + 1)]
+                    data[inst_num_per_part * i : inst_num_per_part * (i + 1)]
                     for i in range(count)
                 ]
 
@@ -424,21 +475,28 @@ def split_data(data, num_part):
     data = data[0]
     inst_num_per_part = len(data) // num_part
     return [
-        data[inst_num_per_part * i:inst_num_per_part * (i + 1)]
+        data[inst_num_per_part * i : inst_num_per_part * (i + 1)]
         for i in range(num_part)
     ]
 
 
-def test_context(test_program, avg_cost, train_exe, dev_count, data_input_names,
-                 sum_cost, token_num):
+def test_context(
+    test_program,
+    avg_cost,
+    train_exe,
+    dev_count,
+    data_input_names,
+    sum_cost,
+    token_num,
+):
     val_data = DataReader(
         src_vocab_fpath=TrainTaskConfig.src_vocab_fpath,
         trg_vocab_fpath=TrainTaskConfig.trg_vocab_fpath,
         fpattern=TrainTaskConfig.val_file_pattern,
         token_delimiter=TrainTaskConfig.token_delimiter,
         use_token_batch=TrainTaskConfig.use_token_batch,
-        batch_size=TrainTaskConfig.batch_size *
-        (1 if TrainTaskConfig.use_token_batch else dev_count),
+        batch_size=TrainTaskConfig.batch_size
+        * (1 if TrainTaskConfig.use_token_batch else dev_count),
         pool_size=TrainTaskConfig.pool_size,
         sort_type=TrainTaskConfig.sort_type,
         start_mark=TrainTaskConfig.special_token[0],
@@ -448,37 +506,47 @@ def test_context(test_program, avg_cost, train_exe, dev_count, data_input_names,
         max_length=ModelHyperParams.max_length - 2,
         clip_last_batch=False,
         shuffle=False,
-        shuffle_batch=False)
+        shuffle_batch=False,
+    )
 
     build_strategy = fluid.BuildStrategy()
 
     strategy = fluid.ExecutionStrategy()
     strategy.num_threads = 1
 
-    test_exe = fluid.ParallelExecutor(use_cuda=TrainTaskConfig.use_gpu,
-                                      main_program=test_program,
-                                      share_vars_from=train_exe,
-                                      build_strategy=build_strategy,
-                                      exec_strategy=strategy)
+    test_exe = fluid.ParallelExecutor(
+        use_cuda=TrainTaskConfig.use_gpu,
+        main_program=test_program,
+        share_vars_from=train_exe,
+        build_strategy=build_strategy,
+        exec_strategy=strategy,
+    )
 
     def test(exe=test_exe):
         test_total_cost = 0
         test_total_token = 0
         test_data = read_multiple(
             reader=val_data.batch_generator,
-            count=dev_count if TrainTaskConfig.use_token_batch else 1)
+            count=dev_count if TrainTaskConfig.use_token_batch else 1,
+        )
         for batch_id, data in enumerate(test_data()):
             feed_list = []
             for place_id, data_buffer in enumerate(
-                    split_data(data, num_part=dev_count)):
+                split_data(data, num_part=dev_count)
+            ):
                 data_input_dict, _ = prepare_batch_input(
-                    data_buffer, data_input_names, ModelHyperParams.eos_idx,
-                    ModelHyperParams.eos_idx, ModelHyperParams.n_head,
-                    ModelHyperParams.d_model)
+                    data_buffer,
+                    data_input_names,
+                    ModelHyperParams.eos_idx,
+                    ModelHyperParams.eos_idx,
+                    ModelHyperParams.n_head,
+                    ModelHyperParams.d_model,
+                )
                 feed_list.append(data_input_dict)
 
-            outs = exe.run(feed=feed_list,
-                           fetch_list=[sum_cost.name, token_num.name])
+            outs = exe.run(
+                feed=feed_list, fetch_list=[sum_cost.name, token_num.name]
+            )
             sum_cost_val, token_num_val = np.array(outs[0]), np.array(outs[1])
             test_total_cost += sum_cost_val.sum()
             test_total_token += token_num_val.sum()
@@ -489,8 +557,17 @@ def test_context(test_program, avg_cost, train_exe, dev_count, data_input_names,
     return test
 
 
-def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
-               token_num, predict, test_program):
+def train_loop(
+    exe,
+    train_progm,
+    dev_count,
+    sum_cost,
+    avg_cost,
+    lr_scheduler,
+    token_num,
+    predict,
+    test_program,
+):
     # Initialize the parameters.
     if TrainTaskConfig.ckpt_path:
         lr_scheduler.current_steps = TrainTaskConfig.start_step
@@ -503,8 +580,8 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
         fpattern=TrainTaskConfig.train_file_pattern,
         token_delimiter=TrainTaskConfig.token_delimiter,
         use_token_batch=TrainTaskConfig.use_token_batch,
-        batch_size=TrainTaskConfig.batch_size *
-        (1 if TrainTaskConfig.use_token_batch else dev_count),
+        batch_size=TrainTaskConfig.batch_size
+        * (1 if TrainTaskConfig.use_token_batch else dev_count),
         pool_size=TrainTaskConfig.pool_size,
         sort_type=TrainTaskConfig.sort_type,
         shuffle=TrainTaskConfig.shuffle,
@@ -514,41 +591,62 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
         unk_mark=TrainTaskConfig.special_token[2],
         # count start and end tokens out
         max_length=ModelHyperParams.max_length - 2,
-        clip_last_batch=False)
+        clip_last_batch=False,
+    )
     train_data = read_multiple(
         reader=train_data.batch_generator,
-        count=dev_count if TrainTaskConfig.use_token_batch else 1)
+        count=dev_count if TrainTaskConfig.use_token_batch else 1,
+    )
 
     build_strategy = fluid.BuildStrategy()
     # Since the token number differs among devices, customize gradient scale to
     # use token average cost among multi-devices. and the gradient scale is
     # `1 / token_number` for average cost.
-    build_strategy.gradient_scale_strategy = fluid.BuildStrategy.GradientScaleStrategy.Customized
+    build_strategy.gradient_scale_strategy = (
+        fluid.BuildStrategy.GradientScaleStrategy.Customized
+    )
 
     strategy = fluid.ExecutionStrategy()
     strategy.num_threads = 1
 
-    train_exe = fluid.ParallelExecutor(use_cuda=TrainTaskConfig.use_gpu,
-                                       loss_name=sum_cost.name,
-                                       main_program=train_progm,
-                                       build_strategy=build_strategy,
-                                       exec_strategy=strategy)
+    train_exe = fluid.ParallelExecutor(
+        use_cuda=TrainTaskConfig.use_gpu,
+        loss_name=sum_cost.name,
+        main_program=train_progm,
+        build_strategy=build_strategy,
+        exec_strategy=strategy,
+    )
 
-    data_input_names = encoder_data_input_fields + decoder_data_input_fields[:
-                                                                             -1] + label_data_input_fields
+    data_input_names = (
+        encoder_data_input_fields
+        + decoder_data_input_fields[:-1]
+        + label_data_input_fields
+    )
 
     if TrainTaskConfig.val_file_pattern is not None:
-        test = test_context(test_program, avg_cost, train_exe, dev_count,
-                            data_input_names, sum_cost, token_num)
+        test = test_context(
+            test_program,
+            avg_cost,
+            train_exe,
+            dev_count,
+            data_input_names,
+            sum_cost,
+            token_num,
+        )
 
     # the best cross-entropy value with label smoothing
-    loss_normalizer = -((1. - TrainTaskConfig.label_smooth_eps) * np.log(
-        (1. - TrainTaskConfig.label_smooth_eps)) +
-                        TrainTaskConfig.label_smooth_eps *
-                        np.log(TrainTaskConfig.label_smooth_eps /
-                               (ModelHyperParams.trg_vocab_size - 1) + 1e-20))
+    loss_normalizer = -(
+        (1.0 - TrainTaskConfig.label_smooth_eps)
+        * np.log((1.0 - TrainTaskConfig.label_smooth_eps))
+        + TrainTaskConfig.label_smooth_eps
+        * np.log(
+            TrainTaskConfig.label_smooth_eps
+            / (ModelHyperParams.trg_vocab_size - 1)
+            + 1e-20
+        )
+    )
     init = False
-    for pass_id in six.moves.xrange(TrainTaskConfig.pass_num):
+    for pass_id in range(TrainTaskConfig.pass_num):
         pass_start_time = time.time()
         for batch_id, data in enumerate(train_data()):
             if batch_id >= RUN_STEP:
@@ -561,36 +659,44 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
                 lr_rate = lr_scheduler.update_learning_rate()
 
             for place_id, data_buffer in enumerate(
-                    split_data(data, num_part=dev_count)):
+                split_data(data, num_part=dev_count)
+            ):
                 data_input_dict, num_token = prepare_batch_input(
-                    data_buffer, data_input_names, ModelHyperParams.eos_idx,
-                    ModelHyperParams.eos_idx, ModelHyperParams.n_head,
-                    ModelHyperParams.d_model)
+                    data_buffer,
+                    data_input_names,
+                    ModelHyperParams.eos_idx,
+                    ModelHyperParams.eos_idx,
+                    ModelHyperParams.n_head,
+                    ModelHyperParams.d_model,
+                )
                 total_num_token += num_token
                 feed_kv_pairs = list(data_input_dict.items())
                 if TrainTaskConfig.local:
                     feed_kv_pairs += list(
-                        {lr_scheduler.learning_rate.name: lr_rate}.items())
+                        {lr_scheduler.learning_rate.name: lr_rate}.items()
+                    )
                 feed_list.append(dict(feed_kv_pairs))
 
                 if not init:
                     for pos_enc_param_name in pos_enc_param_names:
                         pos_enc = position_encoding_init(
                             ModelHyperParams.max_length + 1,
-                            ModelHyperParams.d_model)
+                            ModelHyperParams.d_model,
+                        )
                         feed_list[place_id][pos_enc_param_name] = pos_enc
 
             if not TrainTaskConfig.check_acc:
                 for feed_dict in feed_list:
-                    feed_dict[sum_cost.name + "@GRAD"] = 1. / total_num_token
+                    feed_dict[sum_cost.name + "@GRAD"] = 1.0 / total_num_token
             else:
                 b = 100 * TrainTaskConfig.batch_size
                 a = np.asarray([b], dtype="float32")
                 for feed_dict in feed_list:
-                    feed_dict[sum_cost.name + "@GRAD"] = 1. / a
+                    feed_dict[sum_cost.name + "@GRAD"] = 1.0 / a
 
-            outs = train_exe.run(fetch_list=[sum_cost.name, token_num.name],
-                                 feed=feed_list)
+            outs = train_exe.run(
+                fetch_list=[sum_cost.name, token_num.name], feed=feed_list
+            )
 
             sum_cost_val, token_num_val = np.array(outs[0]), np.array(outs[1])
             total_sum_cost = sum_cost_val.sum()
@@ -604,10 +710,10 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
                 val_avg_cost, val_ppl = test()
                 print("[%f]" % val_avg_cost)
             else:
-                assert (False)
+                assert False
 
 
-#import transformer_reader as reader
+# import transformer_reader as reader
 class SortType(object):
     GLOBAL = 'global'
     POOL = 'pool'
@@ -615,7 +721,6 @@ class SortType(object):
 
 
 class Converter(object):
-
     def __init__(self, vocab, beg, end, unk, delimiter):
         self._vocab = vocab
         self._beg = beg
@@ -624,14 +729,17 @@ class Converter(object):
         self._delimiter = delimiter
 
     def __call__(self, sentence):
-        return [self._beg] + [
-            self._vocab.get(w, self._unk)
-            for w in sentence.split(self._delimiter)
-        ] + [self._end]
+        return (
+            [self._beg]
+            + [
+                self._vocab.get(w, self._unk)
+                for w in sentence.split(self._delimiter)
+            ]
+            + [self._end]
+        )
 
 
 class ComposedConverter(object):
-
     def __init__(self, converters):
         self._converters = converters
 
@@ -643,7 +751,6 @@ class ComposedConverter(object):
 
 
 class SentenceBatchCreator(object):
-
     def __init__(self, batch_size):
         self.batch = []
         self._batch_size = batch_size
@@ -657,7 +764,6 @@ class SentenceBatchCreator(object):
 
 
 class TokenBatchCreator(object):
-
     def __init__(self, batch_size):
         self.batch = []
         self.max_len = -1
@@ -677,7 +783,6 @@ class TokenBatchCreator(object):
 
 
 class SampleInfo(object):
-
     def __init__(self, i, max_len, min_len):
         self.i = i
         self.min_len = min_len
@@ -685,7 +790,6 @@ class SampleInfo(object):
 
 
 class MinMaxFilter(object):
-
     def __init__(self, max_len, min_len, underlying_creator):
         self._min_len = min_len
         self._max_len = max_len
@@ -775,26 +879,28 @@ class DataReader(object):
     :type seed: int
     """
 
-    def __init__(self,
-                 src_vocab_fpath,
-                 trg_vocab_fpath,
-                 fpattern,
-                 batch_size,
-                 pool_size,
-                 sort_type=SortType.GLOBAL,
-                 clip_last_batch=True,
-                 tar_fname=None,
-                 min_length=0,
-                 max_length=100,
-                 shuffle=True,
-                 shuffle_batch=False,
-                 use_token_batch=False,
-                 field_delimiter="\t",
-                 token_delimiter=" ",
-                 start_mark="<s>",
-                 end_mark="<e>",
-                 unk_mark="<unk>",
-                 seed=0):
+    def __init__(
+        self,
+        src_vocab_fpath,
+        trg_vocab_fpath,
+        fpattern,
+        batch_size,
+        pool_size,
+        sort_type=SortType.GLOBAL,
+        clip_last_batch=True,
+        tar_fname=None,
+        min_length=0,
+        max_length=100,
+        shuffle=True,
+        shuffle_batch=False,
+        use_token_batch=False,
+        field_delimiter="\t",
+        token_delimiter=" ",
+        start_mark="<s>",
+        end_mark="<e>",
+        unk_mark="<unk>",
+        seed=0,
+    ):
         self._src_vocab = self.load_dict(src_vocab_fpath)
         self._only_src = True
         if trg_vocab_fpath is not None:
@@ -811,26 +917,33 @@ class DataReader(object):
         self._max_length = max_length
         self._field_delimiter = field_delimiter
         self._token_delimiter = token_delimiter
-        self.load_src_trg_ids(end_mark, fpattern, start_mark, tar_fname,
-                              unk_mark)
+        self.load_src_trg_ids(
+            end_mark, fpattern, start_mark, tar_fname, unk_mark
+        )
         self._random = random.Random(x=seed)
 
-    def load_src_trg_ids(self, end_mark, fpattern, start_mark, tar_fname,
-                         unk_mark):
+    def load_src_trg_ids(
+        self, end_mark, fpattern, start_mark, tar_fname, unk_mark
+    ):
         converters = [
-            Converter(vocab=self._src_vocab,
-                      beg=self._src_vocab[start_mark],
-                      end=self._src_vocab[end_mark],
-                      unk=self._src_vocab[unk_mark],
-                      delimiter=self._token_delimiter)
+            Converter(
+                vocab=self._src_vocab,
+                beg=self._src_vocab[start_mark],
+                end=self._src_vocab[end_mark],
+                unk=self._src_vocab[unk_mark],
+                delimiter=self._token_delimiter,
+            )
         ]
         if not self._only_src:
             converters.append(
-                Converter(vocab=self._trg_vocab,
-                          beg=self._trg_vocab[start_mark],
-                          end=self._trg_vocab[end_mark],
-                          unk=self._trg_vocab[unk_mark],
-                          delimiter=self._token_delimiter))
+                Converter(
+                    vocab=self._trg_vocab,
+                    beg=self._trg_vocab[start_mark],
+                    end=self._trg_vocab[end_mark],
+                    unk=self._trg_vocab[unk_mark],
+                    delimiter=self._token_delimiter,
+                )
+            )
 
         converters = ComposedConverter(converters)
 
@@ -856,11 +969,11 @@ class DataReader(object):
 
             f = tarfile.open(fpaths[0], "r")
             for line in f.extractfile(tar_fname):
-                line = cpt.to_text(line)
+                line = line.decode()
                 fields = line.strip("\n").split(self._field_delimiter)
-                if (not self._only_src
-                        and len(fields) == 2) or (self._only_src
-                                                  and len(fields) == 1):
+                if (not self._only_src and len(fields) == 2) or (
+                    self._only_src and len(fields) == 1
+                ):
                     yield fields
         else:
             for fpath in fpaths:
@@ -869,11 +982,11 @@ class DataReader(object):
 
                 with open(fpath, "rb") as f:
                     for line in f:
-                        line = cpt.to_text(line)
+                        line = line.decode()
                         fields = line.strip("\n").split(self._field_delimiter)
-                        if (not self._only_src
-                                and len(fields) == 2) or (self._only_src
-                                                          and len(fields) == 1):
+                        if (not self._only_src and len(fields) == 2) or (
+                            self._only_src and len(fields) == 1
+                        ):
                             yield fields
 
     @staticmethod
@@ -881,7 +994,7 @@ class DataReader(object):
         word_dict = {}
         with open(dict_path, "rb") as fdict:
             for idx, line in enumerate(fdict):
-                line = cpt.to_text(line)
+                line = line.decode()
                 if reverse:
                     word_dict[idx] = line.strip("\n")
                 else:
@@ -891,9 +1004,9 @@ class DataReader(object):
     def batch_generator(self):
         # global sort or global shuffle
         if self._sort_type == SortType.GLOBAL:
-            infos = sorted(self._sample_infos,
-                           key=lambda x: x.max_len,
-                           reverse=True)
+            infos = sorted(
+                self._sample_infos, key=lambda x: x.max_len, reverse=True
+            )
         else:
             if self._shuffle:
                 infos = self._sample_infos
@@ -903,16 +1016,20 @@ class DataReader(object):
 
             if self._sort_type == SortType.POOL:
                 for i in range(0, len(infos), self._pool_size):
-                    infos[i:i + self._pool_size] = sorted(
-                        infos[i:i + self._pool_size], key=lambda x: x.max_len)
+                    infos[i : i + self._pool_size] = sorted(
+                        infos[i : i + self._pool_size], key=lambda x: x.max_len
+                    )
 
         # concat batch
         batches = []
-        batch_creator = TokenBatchCreator(
-            self._batch_size
-        ) if self._use_token_batch else SentenceBatchCreator(self._batch_size)
-        batch_creator = MinMaxFilter(self._max_length, self._min_length,
-                                     batch_creator)
+        batch_creator = (
+            TokenBatchCreator(self._batch_size)
+            if self._use_token_batch
+            else SentenceBatchCreator(self._batch_size)
+        )
+        batch_creator = MinMaxFilter(
+            self._max_length, self._min_length, batch_creator
+        )
 
         for info in infos:
             batch = batch_creator.append(info)
@@ -931,34 +1048,49 @@ class DataReader(object):
             if self._only_src:
                 yield [[self._src_seq_ids[idx]] for idx in batch_ids]
             else:
-                yield [(self._src_seq_ids[idx], self._trg_seq_ids[idx][:-1],
-                        self._trg_seq_ids[idx][1:]) for idx in batch_ids]
+                yield [
+                    (
+                        self._src_seq_ids[idx],
+                        self._trg_seq_ids[idx][:-1],
+                        self._trg_seq_ids[idx][1:],
+                    )
+                    for idx in batch_ids
+                ]
 
 
-#from transformer_model import transformer
+# from transformer_model import transformer
 def position_encoding_init(n_position, d_pos_vec):
     """
     Generate the initial values for the sinusoid position encoding table.
     """
-    position_enc = np.array([[
-        pos / np.power(10000, 2 * (j // 2) / d_pos_vec)
-        for j in range(d_pos_vec)
-    ] if pos != 0 else np.zeros(d_pos_vec) for pos in range(n_position)])
+    position_enc = np.array(
+        [
+            [
+                pos / np.power(10000, 2 * (j // 2) / d_pos_vec)
+                for j in range(d_pos_vec)
+            ]
+            if pos != 0
+            else np.zeros(d_pos_vec)
+            for pos in range(n_position)
+        ]
+    )
     position_enc[1:, 0::2] = np.sin(position_enc[1:, 0::2])  # dim 2i
     position_enc[1:, 1::2] = np.cos(position_enc[1:, 1::2])  # dim 2i+1
     return position_enc.astype("float32")
 
 
-def multi_head_attention(queries,
-                         keys,
-                         values,
-                         attn_bias,
-                         d_key,
-                         d_value,
-                         d_model,
-                         n_head=1,
-                         dropout_rate=0.,
-                         cache=None):
+def multi_head_attention(
+    queries,
+    keys,
+    values,
+    attn_bias,
+    d_key,
+    d_value,
+    d_model,
+    n_head=1,
+    dropout_rate=0.0,
+    cache=None,
+):
     """
     Multi-Head Attention. Note that attn_bias is added to the logit before
     computing softmax activiation to mask certain selected positions so that
@@ -966,27 +1098,34 @@ def multi_head_attention(queries,
     """
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
-            "Inputs: queries, keys and values should all be 3-D tensors.")
+            "Inputs: queries, keys and values should all be 3-D tensors."
+        )
 
     def __compute_qkv(queries, keys, values, n_head, d_key, d_value):
         """
         Add linear projection to queries, keys, and values.
         """
-        q = layers.fc(input=queries,
-                      size=d_key * n_head,
-                      num_flatten_dims=2,
-                      param_attr=const_para_attr,
-                      bias_attr=const_bias_attr)
-        k = layers.fc(input=keys,
-                      size=d_key * n_head,
-                      num_flatten_dims=2,
-                      param_attr=const_para_attr,
-                      bias_attr=const_bias_attr)
-        v = layers.fc(input=values,
-                      size=d_value * n_head,
-                      num_flatten_dims=2,
-                      param_attr=const_para_attr,
-                      bias_attr=const_bias_attr)
+        q = layers.fc(
+            input=queries,
+            size=d_key * n_head,
+            num_flatten_dims=2,
+            param_attr=const_para_attr,
+            bias_attr=const_bias_attr,
+        )
+        k = layers.fc(
+            input=keys,
+            size=d_key * n_head,
+            num_flatten_dims=2,
+            param_attr=const_para_attr,
+            bias_attr=const_bias_attr,
+        )
+        v = layers.fc(
+            input=values,
+            size=d_value * n_head,
+            num_flatten_dims=2,
+            param_attr=const_para_attr,
+            bias_attr=const_bias_attr,
+        )
         return q, k, v
 
     def __split_heads(x, n_head):
@@ -1002,8 +1141,9 @@ def multi_head_attention(queries,
         hidden_size = x.shape[-1]
         # The value 0 in shape attr means copying the corresponding dimension
         # size of the input as the output dimension size.
-        reshaped = layers.reshape(x=x,
-                                  shape=[0, 0, n_head, hidden_size // n_head])
+        reshaped = layers.reshape(
+            x=x, shape=[0, 0, n_head, hidden_size // n_head]
+        )
 
         # permute the dimensions into:
         # [batch_size, n_head, max_sequence_len, hidden_size_per_head]
@@ -1014,7 +1154,8 @@ def multi_head_attention(queries,
         Transpose and then reshape the last two dimensions of input tensor x
         so that it becomes one dimension, which is reverse to __split_heads.
         """
-        if len(x.shape) == 3: return x
+        if len(x.shape) == 3:
+            return x
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
@@ -1023,7 +1164,8 @@ def multi_head_attention(queries,
         # size of the input as the output dimension size.
         return layers.reshape(
             x=trans_x,
-            shape=list(map(int, [0, 0, trans_x.shape[2] * trans_x.shape[3]])))
+            shape=list(map(int, [0, 0, trans_x.shape[2] * trans_x.shape[3]])),
+        )
 
     def scaled_dot_product_attention(q, k, v, attn_bias, d_model, dropout_rate):
         """
@@ -1035,10 +1177,12 @@ def multi_head_attention(queries,
             product += attn_bias
         weights = layers.softmax(product)
         if dropout_rate:
-            weights = layers.dropout(weights,
-                                     dropout_prob=dropout_rate,
-                                     seed=ModelHyperParams.dropout_seed,
-                                     is_test=False)
+            weights = layers.dropout(
+                weights,
+                dropout_prob=dropout_rate,
+                seed=ModelHyperParams.dropout_seed,
+                is_test=False,
+            )
         out = layers.matmul(weights, v)
         return out
 
@@ -1052,17 +1196,20 @@ def multi_head_attention(queries,
     k = __split_heads(k, n_head)
     v = __split_heads(v, n_head)
 
-    ctx_multiheads = scaled_dot_product_attention(q, k, v, attn_bias, d_model,
-                                                  dropout_rate)
+    ctx_multiheads = scaled_dot_product_attention(
+        q, k, v, attn_bias, d_model, dropout_rate
+    )
 
     out = __combine_heads(ctx_multiheads)
 
     # Project back to the model size.
-    proj_out = layers.fc(input=out,
-                         size=d_model,
-                         num_flatten_dims=2,
-                         param_attr=const_para_attr,
-                         bias_attr=const_bias_attr)
+    proj_out = layers.fc(
+        input=out,
+        size=d_model,
+        num_flatten_dims=2,
+        param_attr=const_para_attr,
+        bias_attr=const_bias_attr,
+    )
     return proj_out
 
 
@@ -1072,21 +1219,25 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
     """
-    hidden = layers.fc(input=x,
-                       size=d_inner_hid,
-                       num_flatten_dims=2,
-                       act="relu",
-                       param_attr=const_para_attr,
-                       bias_attr=const_bias_attr)
-    out = layers.fc(input=hidden,
-                    size=d_hid,
-                    num_flatten_dims=2,
-                    param_attr=const_para_attr,
-                    bias_attr=const_bias_attr)
+    hidden = layers.fc(
+        input=x,
+        size=d_inner_hid,
+        num_flatten_dims=2,
+        act="relu",
+        param_attr=const_para_attr,
+        bias_attr=const_bias_attr,
+    )
+    out = layers.fc(
+        input=hidden,
+        size=d_hid,
+        num_flatten_dims=2,
+        param_attr=const_para_attr,
+        bias_attr=const_bias_attr,
+    )
     return out
 
 
-def pre_post_process_layer(prev_out, out, process_cmd, dropout_rate=0.):
+def pre_post_process_layer(prev_out, out, process_cmd, dropout_rate=0.0):
     """
     Add residual connection, layer normalization and droput to the out tensor
     optionally according to the value of process_cmd.
@@ -1097,16 +1248,20 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout_rate=0.):
         if cmd == "a":  # add residual connection
             out = out + prev_out if prev_out else out
         elif cmd == "n":  # add layer normalization
-            out = layers.layer_norm(out,
-                                    begin_norm_axis=len(out.shape) - 1,
-                                    param_attr=fluid.initializer.Constant(1.),
-                                    bias_attr=fluid.initializer.Constant(0.))
+            out = layers.layer_norm(
+                out,
+                begin_norm_axis=len(out.shape) - 1,
+                param_attr=fluid.initializer.Constant(1.0),
+                bias_attr=fluid.initializer.Constant(0.0),
+            )
         elif cmd == "d":  # add dropout
             if dropout_rate:
-                out = layers.dropout(out,
-                                     dropout_prob=dropout_rate,
-                                     seed=ModelHyperParams.dropout_seed,
-                                     is_test=False)
+                out = layers.dropout(
+                    out,
+                    dropout_prob=dropout_rate,
+                    seed=ModelHyperParams.dropout_seed,
+                    is_test=False,
+                )
     return out
 
 
@@ -1114,14 +1269,16 @@ pre_process_layer = partial(pre_post_process_layer, None)
 post_process_layer = pre_post_process_layer
 
 
-def prepare_encoder(src_word,
-                    src_pos,
-                    src_vocab_size,
-                    src_emb_dim,
-                    src_max_len,
-                    dropout_rate=0.,
-                    word_emb_param_name=None,
-                    pos_enc_param_name=None):
+def prepare_encoder(
+    src_word,
+    src_pos,
+    src_vocab_size,
+    src_emb_dim,
+    src_max_len,
+    dropout_rate=0.0,
+    word_emb_param_name=None,
+    pos_enc_param_name=None,
+):
     """Add word embeddings and position encodings.
     The output tensor has a shape of:
     [batch_size, max_src_length_in_batch, d_model].
@@ -1133,14 +1290,18 @@ def prepare_encoder(src_word,
             size=[src_vocab_size, src_emb_dim],
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.ConstantInitializer(0.001)))
+                initializer=fluid.initializer.ConstantInitializer(0.001),
+            ),
+        )
     else:
         src_word_emb = layers.embedding(
             src_word,
             size=[src_vocab_size, src_emb_dim],
-            param_attr=fluid.ParamAttr(name=word_emb_param_name,
-                                       initializer=fluid.initializer.Normal(
-                                           0., src_emb_dim**-0.5)))
+            param_attr=fluid.ParamAttr(
+                name=word_emb_param_name,
+                initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
+            ),
+        )
 
     src_word_emb = layers.scale(x=src_word_emb, scale=src_emb_dim**0.5)
     src_pos_enc = layers.embedding(
@@ -1149,76 +1310,109 @@ def prepare_encoder(src_word,
         param_attr=fluid.ParamAttr(
             name=pos_enc_param_name,
             trainable=False,
-            initializer=fluid.initializer.ConstantInitializer(0.001)))
+            initializer=fluid.initializer.ConstantInitializer(0.001),
+        ),
+    )
     src_pos_enc.stop_gradient = True
     enc_input = src_word_emb + src_pos_enc
-    return layers.dropout(enc_input,
-                          dropout_prob=dropout_rate,
-                          seed=ModelHyperParams.dropout_seed,
-                          is_test=False) if dropout_rate else enc_input
+    return (
+        layers.dropout(
+            enc_input,
+            dropout_prob=dropout_rate,
+            seed=ModelHyperParams.dropout_seed,
+            is_test=False,
+        )
+        if dropout_rate
+        else enc_input
+    )
 
 
-prepare_encoder = partial(prepare_encoder,
-                          pos_enc_param_name=pos_enc_param_names[0])
-prepare_decoder = partial(prepare_encoder,
-                          pos_enc_param_name=pos_enc_param_names[1])
+prepare_encoder = partial(
+    prepare_encoder, pos_enc_param_name=pos_enc_param_names[0]
+)
+prepare_decoder = partial(
+    prepare_encoder, pos_enc_param_name=pos_enc_param_names[1]
+)
 
 
-def encoder_layer(enc_input,
-                  attn_bias,
-                  n_head,
-                  d_key,
-                  d_value,
-                  d_model,
-                  d_inner_hid,
-                  dropout_rate=0.):
+def encoder_layer(
+    enc_input,
+    attn_bias,
+    n_head,
+    d_key,
+    d_value,
+    d_model,
+    d_inner_hid,
+    dropout_rate=0.0,
+):
     """The encoder layers that can be stacked to form a deep encoder.
     This module consits of a multi-head (self) attention followed by
     position-wise feed-forward networks and both the two components companied
     with the post_process_layer to add residual connection, layer normalization
     and droput.
     """
-    attn_output = multi_head_attention(enc_input, enc_input, enc_input,
-                                       attn_bias, d_key, d_value, d_model,
-                                       n_head, dropout_rate)
-    attn_output = post_process_layer(enc_input, attn_output, "dan",
-                                     dropout_rate)
+    attn_output = multi_head_attention(
+        enc_input,
+        enc_input,
+        enc_input,
+        attn_bias,
+        d_key,
+        d_value,
+        d_model,
+        n_head,
+        dropout_rate,
+    )
+    attn_output = post_process_layer(
+        enc_input, attn_output, "dan", dropout_rate
+    )
     ffd_output = positionwise_feed_forward(attn_output, d_inner_hid, d_model)
     return post_process_layer(attn_output, ffd_output, "dan", dropout_rate)
 
 
-def encoder(enc_input,
-            attn_bias,
-            n_layer,
-            n_head,
-            d_key,
-            d_value,
-            d_model,
-            d_inner_hid,
-            dropout_rate=0.):
+def encoder(
+    enc_input,
+    attn_bias,
+    n_layer,
+    n_head,
+    d_key,
+    d_value,
+    d_model,
+    d_inner_hid,
+    dropout_rate=0.0,
+):
     """
     The encoder is composed of a stack of identical layers returned by calling
     encoder_layer.
     """
     for i in range(n_layer):
-        enc_output = encoder_layer(enc_input, attn_bias, n_head, d_key, d_value,
-                                   d_model, d_inner_hid, dropout_rate)
+        enc_output = encoder_layer(
+            enc_input,
+            attn_bias,
+            n_head,
+            d_key,
+            d_value,
+            d_model,
+            d_inner_hid,
+            dropout_rate,
+        )
         enc_input = enc_output
     return enc_output
 
 
-def decoder_layer(dec_input,
-                  enc_output,
-                  slf_attn_bias,
-                  dec_enc_attn_bias,
-                  n_head,
-                  d_key,
-                  d_value,
-                  d_model,
-                  d_inner_hid,
-                  dropout_rate=0.,
-                  cache=None):
-    """ The layer to be stacked in decoder part.
+def decoder_layer(
+    dec_input,
+    enc_output,
+    slf_attn_bias,
+    dec_enc_attn_bias,
+    n_head,
+    d_key,
+    d_value,
+    d_model,
+    d_inner_hid,
+    dropout_rate=0.0,
+    cache=None,
+):
+    """The layer to be stacked in decoder part.
     The structure of this module is similar to that in the encoder part except
     a multi-head attention is added to implement encoder-decoder attention.
     """
@@ -1271,18 +1465,20 @@ def decoder_layer(dec_input,
     return dec_output
 
 
-def decoder(dec_input,
-            enc_output,
-            dec_slf_attn_bias,
-            dec_enc_attn_bias,
-            n_layer,
-            n_head,
-            d_key,
-            d_value,
-            d_model,
-            d_inner_hid,
-            dropout_rate=0.,
-            caches=None):
+def decoder(
+    dec_input,
+    enc_output,
+    dec_slf_attn_bias,
+    dec_enc_attn_bias,
+    n_layer,
+    n_head,
+    d_key,
+    d_value,
+    d_model,
+    d_inner_hid,
+    dropout_rate=0.0,
+    caches=None,
+):
     """
     The decoder is composed of a stack of identical decoder_layer layers.
     """
@@ -1291,17 +1487,19 @@ def decoder(dec_input,
         if caches is not None:
             cache = caches[i]
 
-        dec_output = decoder_layer(dec_input,
-                                   enc_output,
-                                   dec_slf_attn_bias,
-                                   dec_enc_attn_bias,
-                                   n_head,
-                                   d_key,
-                                   d_value,
-                                   d_model,
-                                   d_inner_hid,
-                                   dropout_rate,
-                                   cache=cache)
+        dec_output = decoder_layer(
+            dec_input,
+            enc_output,
+            dec_slf_attn_bias,
+            dec_enc_attn_bias,
+            n_head,
+            d_key,
+            d_value,
+            d_model,
+            d_inner_hid,
+            dropout_rate,
+            cache=cache,
+        )
         dec_input = dec_output
     return dec_output
 
@@ -1312,12 +1510,15 @@ def make_all_inputs(input_fields):
     """
     inputs = []
     for input_field in input_fields:
-        input_var = layers.data(name=input_field,
-                                shape=input_descs[input_field][0],
-                                dtype=input_descs[input_field][1],
-                                lod_level=input_descs[input_field][2]
-                                if len(input_descs[input_field]) == 3 else 0,
-                                append_batch_size=False)
+        input_var = layers.data(
+            name=input_field,
+            shape=input_descs[input_field][0],
+            dtype=input_descs[input_field][1],
+            lod_level=input_descs[input_field][2]
+            if len(input_descs[input_field]) == 3
+            else 0,
+            append_batch_size=False,
+        )
         inputs.append(input_var)
     return inputs
 
@@ -1337,9 +1538,9 @@ def transformer(
     label_smooth_eps,
 ):
     if weight_sharing:
-        assert src_vocab_size == src_vocab_size, (
-            "Vocabularies in source and target should be same for weight sharing."
-        )
+        assert (
+            src_vocab_size == src_vocab_size
+        ), "Vocabularies in source and target should be same for weight sharing."
     enc_inputs = make_all_inputs(encoder_data_input_fields)
 
     enc_output = wrap_encoder(
@@ -1377,14 +1578,16 @@ def transformer(
     # cancel padding index in calculating the loss.
     label, weights = make_all_inputs(label_data_input_fields)
     if label_smooth_eps:
-        label = layers.label_smooth(label=layers.one_hot(input=label,
-                                                         depth=trg_vocab_size),
-                                    epsilon=label_smooth_eps)
+        label = layers.label_smooth(
+            label=layers.one_hot(input=label, depth=trg_vocab_size),
+            epsilon=label_smooth_eps,
+        )
 
     cost = layers.softmax_with_cross_entropy(
         logits=layers.reshape(predict, shape=[-1, trg_vocab_size]),
         label=label,
-        soft_label=True if label_smooth_eps else False)
+        soft_label=True if label_smooth_eps else False,
+    )
     weighted_cost = cost * weights
     sum_cost = layers.reduce_sum(weighted_cost)
     token_num = layers.reduce_sum(weights)
@@ -1393,95 +1596,122 @@ def transformer(
     return sum_cost, avg_cost, predict, token_num
 
 
-def wrap_encoder(src_vocab_size,
-                 max_length,
-                 n_layer,
-                 n_head,
-                 d_key,
-                 d_value,
-                 d_model,
-                 d_inner_hid,
-                 dropout_rate,
-                 weight_sharing,
-                 enc_inputs=None):
+def wrap_encoder(
+    src_vocab_size,
+    max_length,
+    n_layer,
+    n_head,
+    d_key,
+    d_value,
+    d_model,
+    d_inner_hid,
+    dropout_rate,
+    weight_sharing,
+    enc_inputs=None,
+):
     """
     The wrapper assembles together all needed layers for the encoder.
     """
     if enc_inputs is None:
         # This is used to implement independent encoder program in inference.
-        src_word, src_pos, src_slf_attn_bias = \
-            make_all_inputs(encoder_data_input_fields)
+        src_word, src_pos, src_slf_attn_bias = make_all_inputs(
+            encoder_data_input_fields
+        )
     else:
-        src_word, src_pos, src_slf_attn_bias = \
-            enc_inputs
-    enc_input = prepare_encoder(src_word,
-                                src_pos,
-                                src_vocab_size,
-                                d_model,
-                                max_length,
-                                dropout_rate,
-                                word_emb_param_name=word_emb_param_names[0])
-    enc_output = encoder(enc_input, src_slf_attn_bias, n_layer, n_head, d_key,
-                         d_value, d_model, d_inner_hid, dropout_rate)
+        src_word, src_pos, src_slf_attn_bias = enc_inputs
+    enc_input = prepare_encoder(
+        src_word,
+        src_pos,
+        src_vocab_size,
+        d_model,
+        max_length,
+        dropout_rate,
+        word_emb_param_name=word_emb_param_names[0],
+    )
+    enc_output = encoder(
+        enc_input,
+        src_slf_attn_bias,
+        n_layer,
+        n_head,
+        d_key,
+        d_value,
+        d_model,
+        d_inner_hid,
+        dropout_rate,
+    )
     return enc_output
 
 
-def wrap_decoder(trg_vocab_size,
-                 max_length,
-                 n_layer,
-                 n_head,
-                 d_key,
-                 d_value,
-                 d_model,
-                 d_inner_hid,
-                 dropout_rate,
-                 weight_sharing,
-                 dec_inputs=None,
-                 enc_output=None,
-                 caches=None):
+def wrap_decoder(
+    trg_vocab_size,
+    max_length,
+    n_layer,
+    n_head,
+    d_key,
+    d_value,
+    d_model,
+    d_inner_hid,
+    dropout_rate,
+    weight_sharing,
+    dec_inputs=None,
+    enc_output=None,
+    caches=None,
+):
     """
     The wrapper assembles together all needed layers for the decoder.
     """
     if dec_inputs is None:
         # This is used to implement independent decoder program in inference.
-        trg_word, trg_pos, trg_slf_attn_bias, trg_src_attn_bias, \
-        enc_output = make_all_inputs(
-            decoder_data_input_fields)
+        (
+            trg_word,
+            trg_pos,
+            trg_slf_attn_bias,
+            trg_src_attn_bias,
+            enc_output,
+        ) = make_all_inputs(decoder_data_input_fields)
     else:
         trg_word, trg_pos, trg_slf_attn_bias, trg_src_attn_bias = dec_inputs
 
-    dec_input = prepare_decoder(trg_word,
-                                trg_pos,
-                                trg_vocab_size,
-                                d_model,
-                                max_length,
-                                dropout_rate,
-                                word_emb_param_name=word_emb_param_names[0]
-                                if weight_sharing else word_emb_param_names[1])
-    dec_output = decoder(dec_input,
-                         enc_output,
-                         trg_slf_attn_bias,
-                         trg_src_attn_bias,
-                         n_layer,
-                         n_head,
-                         d_key,
-                         d_value,
-                         d_model,
-                         d_inner_hid,
-                         dropout_rate,
-                         caches=caches)
+    dec_input = prepare_decoder(
+        trg_word,
+        trg_pos,
+        trg_vocab_size,
+        d_model,
+        max_length,
+        dropout_rate,
+        word_emb_param_name=word_emb_param_names[0]
+        if weight_sharing
+        else word_emb_param_names[1],
+    )
+    dec_output = decoder(
+        dec_input,
+        enc_output,
+        trg_slf_attn_bias,
+        trg_src_attn_bias,
+        n_layer,
+        n_head,
+        d_key,
+        d_value,
+        d_model,
+        d_inner_hid,
+        dropout_rate,
+        caches=caches,
+    )
     # Return logits for training and probs for inference.
     if weight_sharing:
-        predict = layers.matmul(x=dec_output,
-                                y=fluid.framework._get_var(
-                                    word_emb_param_names[0]),
-                                transpose_y=True)
+        predict = layers.matmul(
+            x=dec_output,
+            y=fluid.framework._get_var(word_emb_param_names[0]),
+            transpose_y=True,
+        )
     else:
-        predict = layers.fc(input=dec_output,
-                            size=trg_vocab_size,
-                            num_flatten_dims=2,
-                            param_attr=const_para_attr,
-                            bias_attr=const_bias_attr)
+        predict = layers.fc(
+            input=dec_output,
+            size=trg_vocab_size,
+            num_flatten_dims=2,
+            param_attr=const_para_attr,
+            bias_attr=const_bias_attr,
+        )
     if dec_inputs is None:
         predict = layers.softmax(predict)
     return predict
@@ -1507,86 +1737,108 @@ def fast_decode(
     Use beam search to decode. Caches will be used to store states of history
     steps which can make the decoding faster.
     """
-    enc_output = wrap_encoder(src_vocab_size, max_in_len, n_layer, n_head,
-                              d_key, d_value, d_model, d_inner_hid,
-                              dropout_rate, weight_sharing)
-    start_tokens, init_scores, trg_src_attn_bias = \
-        make_all_inputs(fast_decoder_data_input_fields )
+    enc_output = wrap_encoder(
+        src_vocab_size,
+        max_in_len,
+        n_layer,
+        n_head,
+        d_key,
+        d_value,
+        d_model,
+        d_inner_hid,
+        dropout_rate,
+        weight_sharing,
+    )
+    start_tokens, init_scores, trg_src_attn_bias = make_all_inputs(
+        fast_decoder_data_input_fields
+    )
 
     def beam_search():
-        max_len = layers.fill_constant(shape=[1],
-                                       dtype=start_tokens.dtype,
-                                       value=max_out_len)
-        step_idx = layers.fill_constant(shape=[1],
-                                        dtype=start_tokens.dtype,
-                                        value=0)
+        max_len = layers.fill_constant(
+            shape=[1], dtype=start_tokens.dtype, value=max_out_len
+        )
+        step_idx = layers.fill_constant(
+            shape=[1], dtype=start_tokens.dtype, value=0
+        )
         cond = layers.less_than(x=step_idx, y=max_len)
         while_op = layers.While(cond)
         # array states will be stored for each step.
-        ids = layers.array_write(layers.reshape(start_tokens, (-1, 1)),
-                                 step_idx)
+        ids = layers.array_write(
+            layers.reshape(start_tokens, (-1, 1)), step_idx
+        )
         scores = layers.array_write(init_scores, step_idx)
         # cell states will be overwrited at each step.
         # caches contains states of history steps to reduce redundant
         # computation in decoder.
-        caches = [{
-            "k":
-            layers.fill_constant_batch_size_like(input=start_tokens,
-                                                 shape=[-1, 0, d_model],
-                                                 dtype=enc_output.dtype,
-                                                 value=0),
-            "v":
-            layers.fill_constant_batch_size_like(input=start_tokens,
-                                                 shape=[-1, 0, d_model],
-                                                 dtype=enc_output.dtype,
-                                                 value=0)
-        } for i in range(n_layer)]
+        caches = [
+            {
+                "k": layers.fill_constant_batch_size_like(
+                    input=start_tokens,
+                    shape=[-1, 0, d_model],
+                    dtype=enc_output.dtype,
+                    value=0,
+                ),
+                "v": layers.fill_constant_batch_size_like(
+                    input=start_tokens,
+                    shape=[-1, 0, d_model],
+                    dtype=enc_output.dtype,
+                    value=0,
+                ),
+            }
+            for i in range(n_layer)
+        ]
         with while_op.block():
             pre_ids = layers.array_read(array=ids, i=step_idx)
             pre_ids = layers.reshape(pre_ids, (-1, 1, 1))
             pre_scores = layers.array_read(array=scores, i=step_idx)
             # sequence_expand can gather sequences according to lod thus can be
             # used in beam search to sift states corresponding to selected ids.
-            pre_src_attn_bias = layers.sequence_expand(x=trg_src_attn_bias,
-                                                       y=pre_scores)
+            pre_src_attn_bias = layers.sequence_expand(
+                x=trg_src_attn_bias, y=pre_scores
+            )
             pre_enc_output = layers.sequence_expand(x=enc_output, y=pre_scores)
-            pre_caches = [{
-                "k":
-                layers.sequence_expand(x=cache["k"], y=pre_scores),
-                "v":
-                layers.sequence_expand(x=cache["v"], y=pre_scores),
-            } for cache in caches]
+            pre_caches = [
+                {
+                    "k": layers.sequence_expand(x=cache["k"], y=pre_scores),
+                    "v": layers.sequence_expand(x=cache["v"], y=pre_scores),
+                }
+                for cache in caches
+            ]
             pre_pos = layers.elementwise_mul(
                 x=layers.fill_constant_batch_size_like(
-                    input=
-                    pre_enc_output,  # can't use pre_ids here since it has lod
+                    input=pre_enc_output,  # can't use pre_ids here since it has lod
                     value=1,
                     shape=[-1, 1, 1],
-                    dtype=pre_ids.dtype),
+                    dtype=pre_ids.dtype,
+                ),
                 y=layers.increment(x=step_idx, value=1.0, in_place=False),
-                axis=0)
-            logits = wrap_decoder(trg_vocab_size,
-                                  max_in_len,
-                                  n_layer,
-                                  n_head,
-                                  d_key,
-                                  d_value,
-                                  d_model,
-                                  d_inner_hid,
-                                  dropout_rate,
-                                  weight_sharing,
-                                  dec_inputs=(pre_ids, pre_pos, None,
-                                              pre_src_attn_bias),
-                                  enc_output=pre_enc_output,
-                                  caches=pre_caches)
+                axis=0,
+            )
+            logits = wrap_decoder(
+                trg_vocab_size,
+                max_in_len,
+                n_layer,
+                n_head,
+                d_key,
+                d_value,
+                d_model,
+                d_inner_hid,
+                dropout_rate,
+                weight_sharing,
+                dec_inputs=(pre_ids, pre_pos, None, pre_src_attn_bias),
+                enc_output=pre_enc_output,
+                caches=pre_caches,
+            )
             logits = layers.reshape(logits, (-1, trg_vocab_size))
 
             topk_scores, topk_indices = layers.topk(
-                input=layers.softmax(logits), k=beam_size)
-            accu_scores = layers.elementwise_add(x=layers.log(topk_scores),
-                                                 y=layers.reshape(pre_scores,
-                                                                  shape=[-1]),
-                                                 axis=0)
+                input=layers.softmax(logits), k=beam_size
+            )
+            accu_scores = layers.elementwise_add(
+                x=layers.log(topk_scores),
+                y=layers.reshape(pre_scores, shape=[-1]),
+                axis=0,
+            )
             # beam_search op uses lod to distinguish branches.
             topk_indices = layers.lod_reset(topk_indices, pre_ids)
             selected_ids, selected_scores = layers.beam_search(
@@ -1595,7 +1847,8 @@ def fast_decode(
                 ids=topk_indices,
                 scores=accu_scores,
                 beam_size=beam_size,
-                end_id=eos_idx)
+                end_id=eos_idx,
+            )
 
             layers.increment(x=step_idx, value=1.0, in_place=True)
             # update states
@@ -1611,7 +1864,8 @@ def fast_decode(
             layers.logical_and(x=length_cond, y=finish_cond, out=cond)
 
         finished_ids, finished_scores = layers.beam_search_decode(
-            ids, scores, beam_size=beam_size, end_id=eos_idx)
+            ids, scores, beam_size=beam_size, end_id=eos_idx
+        )
         return finished_ids, finished_scores
 
     finished_ids, finished_scores = beam_search()
@@ -1620,16 +1874,25 @@ def fast_decode(
 
 def get_model(is_dist, is_async):
     sum_cost, avg_cost, predict, token_num = transformer(
-        ModelHyperParams.src_vocab_size, ModelHyperParams.trg_vocab_size,
-        ModelHyperParams.max_length + 1, ModelHyperParams.n_layer,
-        ModelHyperParams.n_head, ModelHyperParams.d_key,
-        ModelHyperParams.d_value, ModelHyperParams.d_model,
-        ModelHyperParams.d_inner_hid, ModelHyperParams.dropout,
-        ModelHyperParams.weight_sharing, TrainTaskConfig.label_smooth_eps)
+        ModelHyperParams.src_vocab_size,
+        ModelHyperParams.trg_vocab_size,
+        ModelHyperParams.max_length + 1,
+        ModelHyperParams.n_layer,
+        ModelHyperParams.n_head,
+        ModelHyperParams.d_key,
+        ModelHyperParams.d_value,
+        ModelHyperParams.d_model,
+        ModelHyperParams.d_inner_hid,
+        ModelHyperParams.dropout,
+        ModelHyperParams.weight_sharing,
+        TrainTaskConfig.label_smooth_eps,
+    )
 
-    local_lr_scheduler = LearningRateScheduler(ModelHyperParams.d_model,
-                                               TrainTaskConfig.warmup_steps,
-                                               TrainTaskConfig.learning_rate)
+    local_lr_scheduler = LearningRateScheduler(
+        ModelHyperParams.d_model,
+        TrainTaskConfig.warmup_steps,
+        TrainTaskConfig.learning_rate,
+    )
     # Context to do validation.
     test_program = fluid.default_main_program().clone(for_test=True)
 
@@ -1638,24 +1901,33 @@ def get_model(is_dist, is_async):
             learning_rate=local_lr_scheduler.learning_rate,
             beta1=TrainTaskConfig.beta1,
             beta2=TrainTaskConfig.beta2,
-            epsilon=TrainTaskConfig.eps)
+            epsilon=TrainTaskConfig.eps,
+        )
         optimizer.minimize(sum_cost)
     elif is_async:
         optimizer = fluid.optimizer.SGD(0.003)
         optimizer.minimize(sum_cost)
     else:
-        lr_decay = fluid.layers\
-         .learning_rate_scheduler\
-         .noam_decay(ModelHyperParams.d_model,
-            TrainTaskConfig.warmup_steps)
+        lr_decay = fluid.layers.learning_rate_scheduler.noam_decay(
+            ModelHyperParams.d_model, TrainTaskConfig.warmup_steps
+        )
 
-        optimizer = fluid.optimizer.Adam(learning_rate=lr_decay,
-                                         beta1=TrainTaskConfig.beta1,
-                                         beta2=TrainTaskConfig.beta2,
-                                         epsilon=TrainTaskConfig.eps)
+        optimizer = fluid.optimizer.Adam(
+            learning_rate=lr_decay,
+            beta1=TrainTaskConfig.beta1,
+            beta2=TrainTaskConfig.beta2,
+            epsilon=TrainTaskConfig.eps,
+        )
         optimizer.minimize(sum_cost)
 
-    return sum_cost, avg_cost, predict, token_num, local_lr_scheduler, test_program
+    return (
+        sum_cost,
+        avg_cost,
+        predict,
+        token_num,
+        local_lr_scheduler,
+        test_program,
+    )
 
 
 def update_args():
@@ -1663,24 +1935,33 @@ def update_args():
     trg_dict = DataReader.load_dict(TrainTaskConfig.trg_vocab_fpath)
     dict_args = [
         "src_vocab_size",
-        str(len(src_dict)), "trg_vocab_size",
-        str(len(trg_dict)), "bos_idx",
-        str(src_dict[TrainTaskConfig.special_token[0]]), "eos_idx",
-        str(src_dict[TrainTaskConfig.special_token[1]]), "unk_idx",
-        str(src_dict[TrainTaskConfig.special_token[2]])
+        str(len(src_dict)),
+        "trg_vocab_size",
+        str(len(trg_dict)),
+        "bos_idx",
+        str(src_dict[TrainTaskConfig.special_token[0]]),
+        "eos_idx",
+        str(src_dict[TrainTaskConfig.special_token[1]]),
+        "unk_idx",
+        str(src_dict[TrainTaskConfig.special_token[2]]),
     ]
     merge_cfg_from_list(dict_args, [TrainTaskConfig, ModelHyperParams])
 
 
 class DistTransformer2x2(TestDistRunnerBase):
-
     def run_pserver(self, args):
         get_model(True, not args.sync_mode)
-        t = self.get_transpiler(args.trainer_id, fluid.default_main_program(),
-                                args.endpoints, args.trainers, args.sync_mode)
+        t = self.get_transpiler(
+            args.trainer_id,
+            fluid.default_main_program(),
+            args.endpoints,
+            args.trainers,
+            args.sync_mode,
+        )
         pserver_prog = t.get_pserver_program(args.current_endpoint)
-        startup_prog = t.get_startup_program(args.current_endpoint,
-                                             pserver_prog)
+        startup_prog = t.get_startup_program(
+            args.current_endpoint, pserver_prog
+        )
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -1689,18 +1970,31 @@ class DistTransformer2x2(TestDistRunnerBase):
 
     def run_trainer(self, args):
         TrainTaskConfig.use_gpu = args.use_cuda
-        sum_cost, avg_cost, predict, token_num, local_lr_scheduler, test_program = get_model(
-            args.is_dist, not args.sync_mode)
+        (
+            sum_cost,
+            avg_cost,
+            predict,
+            token_num,
+            local_lr_scheduler,
+            test_program,
+        ) = get_model(args.is_dist, not args.sync_mode)
 
         if args.is_dist:
-            t = self.get_transpiler(args.trainer_id,
-                                    fluid.default_main_program(),
-                                    args.endpoints, args.trainers,
-                                    args.sync_mode)
+            t = self.get_transpiler(
+                args.trainer_id,
+                fluid.default_main_program(),
+                args.endpoints,
+                args.trainers,
+                args.sync_mode,
+            )
             trainer_prog = t.get_trainer_program()
             TrainTaskConfig.batch_size = 10
-            TrainTaskConfig.train_file_pattern = TrainTaskConfig.data_path + "train.tok.clean.bpe.32000.en-de.train_{}".format(
-                args.trainer_id)
+            TrainTaskConfig.train_file_pattern = (
+                TrainTaskConfig.data_path
+                + "train.tok.clean.bpe.32000.en-de.train_{}".format(
+                    args.trainer_id
+                )
+            )
         else:
             TrainTaskConfig.batch_size = 20
             trainer_prog = fluid.default_main_program()
@@ -1714,8 +2008,17 @@ class DistTransformer2x2(TestDistRunnerBase):
 
         TrainTaskConfig.local = not args.is_dist
 
-        train_loop(startup_exe, trainer_prog, 1, sum_cost, avg_cost,
-                   local_lr_scheduler, token_num, predict, test_program)
+        train_loop(
+            startup_exe,
+            trainer_prog,
+            1,
+            sum_cost,
+            avg_cost,
+            local_lr_scheduler,
+            token_num,
+            predict,
+            test_program,
+        )
 
 
 if __name__ == "__main__":

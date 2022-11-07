@@ -1,4 +1,4 @@
-This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddle/Paddle/) codebase, to see a full list, please use the source control tool git. PaddlePaddle community encourges every Paddle codebase author include his/her GitHub account and fullname here.
+This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddle/Paddle/) codebase, to see a full list, please use the source control tool git. PaddlePaddle community encourages every Paddle codebase author include his/her GitHub account and fullname here.
 
 
 | Github account | name |
@@ -31,6 +31,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | jacquesqiao | Long-Fei Qiao |
 | [jakpiase](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jakub Piasecki |
 | [jczaja](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jacek Czaja |
+| jiahy0825 | Hongyu Jia |
 | JiayiFeng | Jia-Yi Feng |
 | kbinias | Krzysztof Binias |
 | kexinzhao | Ke-Xin Zhao |
@@ -83,6 +84,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | xushaoyong | Shao-Yong Xu |
 | Yancey1989 | Xu Yan |
 | zhaopu7 | Pu Zhao |
+| zhiqiu | Qiu-Liang Chen |
 | zhouxiao-coder | Xiao Zhou |
 | Zrachel | Rui-Qing Zhang |
 | jeng1220 | Bai-Cheng(Ryan) Jeng (NVIDIA) |

@@ -19,7 +19,6 @@ import unittest
 
 
 class TestFetchVar(unittest.TestCase):
-
     def set_input(self):
         self.val = np.array([1, 3, 5]).astype(np.int32)
 
@@ -35,7 +34,6 @@ class TestFetchVar(unittest.TestCase):
 
 
 class TestFetchNullVar(TestFetchVar):
-
     def set_input(self):
         self.val = np.array([]).astype(np.int32)
 

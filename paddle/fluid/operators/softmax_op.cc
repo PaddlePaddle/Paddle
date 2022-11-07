@@ -19,11 +19,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
-
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
@@ -40,7 +35,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE_EQ(
@@ -53,24 +48,6 @@ class SoftmaxOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
               "float16 can only be used on GPU/NPU/XPU/MLU and custom place"));
     }
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::CanCUDNNBeUsed(ctx)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     layout_,
-                                     framework::LibraryType::kCUDNN);
-    }
-#endif
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
   }
 };
@@ -93,6 +70,11 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
+    AddAttr<bool>(
+        "use_cudnn",
+        "(bool, default false) Only used in cudnn kernel, need install cudnn")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Softmax Operator.
 
@@ -138,7 +120,7 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     if (input_data_type == framework::proto::VarType::FP16) {
@@ -150,23 +132,6 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "float16 can only be used on GPU/NPU/XPU/MLU and custom place"));
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::CanCUDNNBeUsed(ctx)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     layout_,
-                                     framework::LibraryType::kCUDNN);
-    }
-#endif
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
   }
 };

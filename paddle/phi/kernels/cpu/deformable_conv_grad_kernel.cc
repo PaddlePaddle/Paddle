@@ -97,14 +97,14 @@ inline void ModulatedDeformableCol2imCPUKernel(
                                            width);
 
           *(grad_im + cur_bottom_grad_pos) =
-              *(grad_im + cur_bottom_grad_pos) + (weight * cur_top_grad);
+              *(grad_im + cur_bottom_grad_pos) + weight * cur_top_grad;
         }
       }
     }
   }
 }
 
-template <typename T, typename MT, typename Context>
+template <typename T, typename Context>
 void ModulatedDeformableCol2im(const Context& dev_ctx,
                                const T* data_col,
                                const T* data_offset,
@@ -116,7 +116,7 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
                                const std::vector<int>& stride,
                                const std::vector<int>& dilation,
                                const int deformable_group,
-                               MT* grad_im) {
+                               T* grad_im) {
   int channel_per_deformable_group = im_shape[0] / deformable_group;
   int num_kernels = col_shape[0] * col_shape[1] * col_shape[2] * col_shape[3];
 
@@ -222,22 +222,22 @@ void ModulatedDeformableCol2imCoordCPUKernel(
       if (inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width) {
         inv_h = inv_w = -2;
       } else {
-        mval += data_col_ptr[col_pos] * funcs::DmcnIm2colBilinear<T, T>(
-                                            data_im_ptr + cnt * height * width,
-                                            width,
-                                            height,
-                                            width,
-                                            inv_h,
-                                            inv_w);
+        mval += data_col_ptr[col_pos] *
+                funcs::DmcnIm2colBilinear(data_im_ptr + cnt * height * width,
+                                          width,
+                                          height,
+                                          width,
+                                          inv_h,
+                                          inv_w);
       }
       const T weight =
-          DmcnGetCoordinateWeight<T, T>(inv_h,
-                                        inv_w,
-                                        height,
-                                        width,
-                                        data_im_ptr + cnt * height * width,
-                                        width,
-                                        bp_dir);
+          DmcnGetCoordinateWeight(inv_h,
+                                  inv_w,
+                                  height,
+                                  width,
+                                  data_im_ptr + cnt * height * width,
+                                  width,
+                                  bp_dir);
       if (data_mask_ptr) {
         const int data_mask_hw_ptr =
             (((i * kernel_w + j) * height_col + h_out) * width_col + w_out);

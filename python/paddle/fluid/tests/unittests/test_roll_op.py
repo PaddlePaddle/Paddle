@@ -21,7 +21,6 @@ from paddle.fluid import Program, program_guard
 
 
 class TestRollOp(OpTest):
-
     def setUp(self):
         self.python_api = paddle.roll
         self.op_type = "roll"
@@ -29,8 +28,9 @@ class TestRollOp(OpTest):
         self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
         self.attrs = {'shifts': self.shifts, 'axis': self.axis}
         self.outputs = {
-            'Out':
-            np.roll(self.inputs['X'], self.attrs['shifts'], self.attrs['axis'])
+            'Out': np.roll(
+                self.inputs['X'], self.attrs['shifts'], self.attrs['axis']
+            )
         }
 
     def init_dtype_type(self):
@@ -47,7 +47,6 @@ class TestRollOp(OpTest):
 
 
 class TestRollOpCase2(TestRollOp):
-
     def init_dtype_type(self):
         self.dtype = np.float32
         self.x_shape = (100, 10, 5)
@@ -56,10 +55,10 @@ class TestRollOpCase2(TestRollOp):
 
 
 class TestRollAPI(unittest.TestCase):
-
     def input_data(self):
-        self.data_x = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0],
-                                [7.0, 8.0, 9.0]])
+        self.data_x = np.array(
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
+        )
 
     def test_roll_op_api(self):
         self.input_data()
@@ -70,11 +69,12 @@ class TestRollAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[-1, 3])
             z = paddle.roll(x, shifts=1)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': self.data_x},
-                           fetch_list=[z.name],
-                           return_numpy=False)
-            expect_out = np.array([[9.0, 1.0, 2.0], [3.0, 4.0, 5.0],
-                                   [6.0, 7.0, 8.0]])
+            (res,) = exe.run(
+                feed={'x': self.data_x}, fetch_list=[z.name], return_numpy=False
+            )
+            expect_out = np.array(
+                [[9.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]
+            )
             np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
@@ -82,11 +82,12 @@ class TestRollAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[-1, 3])
             z = paddle.roll(x, shifts=1, axis=0)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': self.data_x},
-                           fetch_list=[z.name],
-                           return_numpy=False)
-        expect_out = np.array([[7.0, 8.0, 9.0], [1.0, 2.0, 3.0],
-                               [4.0, 5.0, 6.0]])
+            (res,) = exe.run(
+                feed={'x': self.data_x}, fetch_list=[z.name], return_numpy=False
+            )
+        expect_out = np.array(
+            [[7.0, 8.0, 9.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
+        )
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
@@ -96,8 +97,9 @@ class TestRollAPI(unittest.TestCase):
             x = fluid.dygraph.to_variable(self.data_x)
             z = paddle.roll(x, shifts=1)
             np_z = z.numpy()
-        expect_out = np.array([[9.0, 1.0, 2.0], [3.0, 4.0, 5.0],
-                               [6.0, 7.0, 8.0]])
+        expect_out = np.array(
+            [[9.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]
+        )
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
@@ -105,8 +107,9 @@ class TestRollAPI(unittest.TestCase):
             x = fluid.dygraph.to_variable(self.data_x)
             z = paddle.roll(x, shifts=1, axis=0)
             np_z = z.numpy()
-        expect_out = np.array([[7.0, 8.0, 9.0], [1.0, 2.0, 3.0],
-                               [4.0, 5.0, 6.0]])
+        expect_out = np.array(
+            [[7.0, 8.0, 9.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
+        )
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
     def test_roll_op_false(self):
@@ -117,9 +120,11 @@ class TestRollAPI(unittest.TestCase):
                 x = fluid.layers.data(name='x', shape=[-1, 3])
                 z = paddle.roll(x, shifts=1, axis=10)
                 exe = fluid.Executor(fluid.CPUPlace())
-                res, = exe.run(feed={'x': self.data_x},
-                               fetch_list=[z.name],
-                               return_numpy=False)
+                (res,) = exe.run(
+                    feed={'x': self.data_x},
+                    fetch_list=[z.name],
+                    return_numpy=False,
+                )
 
         self.assertRaises(ValueError, test_axis_out_range)
 

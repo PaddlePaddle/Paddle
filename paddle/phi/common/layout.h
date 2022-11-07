@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/ext/exception.h"
-namespace paddle {
-namespace experimental {
+
+namespace phi {
 
 // Note: The original design of paddle DataLayout is confusing.
 // It contains two levels of "layout", one is the data layout
@@ -66,13 +66,6 @@ enum class DataLayout {
   kNDHWC = NDHWC,
   kNCDHW = NCDHW,
 };
-
-}  // namespace experimental
-
-// In order to be compatible with the fluid implementation
-namespace framework {
-
-using DataLayout = paddle::experimental::DataLayout;
 
 inline DataLayout StringToDataLayout(const std::string& str) {
   std::string s(str);
@@ -127,18 +120,16 @@ inline std::string DataLayoutToString(const DataLayout& layout) {
       PD_THROW("Unknown Data Layout type ", static_cast<int>(layout), ".");
   }
 }
-}  // namespace framework
-
-namespace experimental {
 
 inline std::ostream& operator<<(std::ostream& os, DataLayout layout) {
-  os << framework::DataLayoutToString(layout);
+  os << DataLayoutToString(layout);
   return os;
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace phi
 
-namespace phi {
-using DataLayout = paddle::experimental::DataLayout;
-}
+namespace paddle {
+// In order to be compatible with the original custom operator Tensor interface
+using DataLayout = phi::DataLayout;
+
+}  // namespace paddle

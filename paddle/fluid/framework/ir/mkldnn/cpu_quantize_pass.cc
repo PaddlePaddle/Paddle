@@ -229,6 +229,7 @@ void CPUQuantizePass::DequantizeOutput(Graph* g,
                     std::vector<std::string>({dequantize_in_node->Name()}));
   deq_desc.SetOutput("Output", std::vector<std::string>({output->Name()}));
   deq_desc.SetAttr("Scale", scale);
+  deq_desc.SetAttr("is_negative_input", !is_unsigned);
   auto dequantize_op = g->CreateOpNode(&deq_desc);  // OpDesc will be copied.
 
   // update op's output
@@ -288,7 +289,7 @@ bool CPUQuantizePass::AreScalesPresentForNodes(
   return present;
 }
 
-std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataByName(
+std::pair<bool, phi::DenseTensor> CPUQuantizePass::GetScaleDataByName(
     const std::string& name) const {
   if (var_quant_scales_->empty()) {
     auto& scales = Get<VarQuantScale>("quant_var_scales");
@@ -297,16 +298,18 @@ std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataByName(
   return var_quant_scales_->at(name);
 }
 
-std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataForNode(
+std::pair<bool, phi::DenseTensor> CPUQuantizePass::GetScaleDataForNode(
     const Node* node) const {
   return GetScaleDataByName(node->Name());
 }
 
-LoDTensor CPUQuantizePass::GetScaleTensorByName(const std::string& name) const {
+phi::DenseTensor CPUQuantizePass::GetScaleTensorByName(
+    const std::string& name) const {
   return GetScaleDataByName(name).second;
 }
 
-LoDTensor CPUQuantizePass::GetScaleTensorForNode(const Node* node) const {
+phi::DenseTensor CPUQuantizePass::GetScaleTensorForNode(
+    const Node* node) const {
   return GetScaleDataForNode(node).second;
 }
 
@@ -332,20 +335,8 @@ bool CPUQuantizePass::IsOpQuantized(const Node* node) const {
 }
 
 void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
-  std::unordered_map<std::string, std::vector<float>> info_map{};
-  GetInfoFromTheFirstOp(graph, "has_quant_info", "var_quant_scales", &info_map);
-
-  for (auto iter = info_map.begin(); iter != info_map.end(); iter++) {
-    LoDTensor tensor;
-    const int size = static_cast<int>(iter->second.size());
-    auto* data = tensor.mutable_data<double>({size}, platform::CPUPlace());
-    for (int i = 0; i < size; i++) {
-      data[i] = static_cast<double>(iter->second[i]);
-    }
-
-    auto pair = std::make_pair(false, tensor);
-    var_quant_scales_->insert(std::make_pair(iter->first, pair));
-  }
+  GetInfoFromTheFirstOp(
+      graph, "has_quant_info", "var_quant_scales", var_quant_scales_);
 }
 
 void CPUQuantizePass::QuantizeConv(Graph* graph,
@@ -422,7 +413,16 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     auto filter_scale_tensor = GetScaleTensorForNode(conv_filter);
     EigenVectorArrayMap eigen_tensor{filter_scale_tensor.data<double>(),
                                      filter_scale_tensor.numel()};
-    eigen_tensor *= static_cast<double>(S8_MAX);
+
+    // If the scale value of a weight is already multiplied by S8_MAX, it does
+    // not need to be multiplied again
+    if (std::find(change_weight_->begin(),
+                  change_weight_->end(),
+                  conv_filter->Name()) == change_weight_->end()) {
+      eigen_tensor *= static_cast<double>(S8_MAX);
+      change_weight_->push_back(conv_filter->Name());
+    }
+
     std::vector<float> filter_scale{
         filter_scale_tensor.data<double>(),
         filter_scale_tensor.data<double>() + filter_scale_tensor.numel()};
@@ -593,6 +593,20 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
       return;
     }
 
+    bool are_all_inputs_unsigned{true};
+    // if all inputs were unsigned, then the output was set to unsigned
+    // during the scale calculation step
+    auto inputs = concat_op->inputs;
+    for (size_t i = 0; i < inputs.size(); i++) {
+      if (AreScalesPresentForVarNames({inputs[i]->Name()})) {
+        auto scale_data = GetScaleDataByName(inputs[i]->Name());
+        if (scale_data.first == false) {
+          are_all_inputs_unsigned = false;
+          break;
+        }
+      }
+    }
+
     GET_IR_NODE_FROM_SUBGRAPH(concat_out, concat_out, concat_pattern);
 
     if (!AreScalesPresentForNodes({concat_out})) {
@@ -601,17 +615,12 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
       return;
     }
 
-    // if all inputs were unsigned, then the output was set to unsigned
-    // during the scale calculation step
-    bool are_all_inputs_unsigned{false};
-    auto output_scale =
-        GetScaleValueForNode(concat_out, &are_all_inputs_unsigned);
+    auto output_scale = GetScaleValueForNode(concat_out);
 
     QuantizeInputs(g, concat_op, "X", are_all_inputs_unsigned);
 
     DequantizeOutput(
         g, concat_op, concat_out, "Out", output_scale, are_all_inputs_unsigned);
-
     ++quantize_concat_count;
   };
 
@@ -692,6 +701,13 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph,
     if (!IsOpDequantized(prev_op) && !IsOpQuantized(immutable_out)) {
       MarkAndLogCannotQuantizeOp(immutable_op,
                                  "No other quantizable operators nearby");
+      return;
+    }
+
+    // skip if the dtype of immutable_in is not float32
+    auto dtype = immutable_in->Var()->GetDataType();
+    if (dtype != proto::VarType::FP32) {
+      MarkAndLogCannotQuantizeOp(immutable_op, "The input dtype is not float.");
       return;
     }
 
@@ -1057,7 +1073,7 @@ void CPUQuantizePass::QuantizeMultiGru(Graph* graph) const {
       auto* w_scale_node = g->CreateVarNode(&scale_var_desc);
 
       auto* w_scale_tensor_dst =
-          scope->Var(w_scale_node->Name())->GetMutable<LoDTensor>();
+          scope->Var(w_scale_node->Name())->GetMutable<phi::DenseTensor>();
       w_scale_tensor_dst->Resize(scale_tensor_src.dims());
       auto* dst_data =
           w_scale_tensor_dst->mutable_data<float>(platform::CPUPlace());
@@ -1166,7 +1182,6 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeImmutable(graph, "reshape2", "X");
   QuantizeImmutable(graph, "transpose2", "X");
   QuantizeImmutable(graph, "slice", "Input");
-  QuantizeImmutable(graph, "shape", "Input");
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");
   QuantizeElementwise(graph, "elementwise_add");

@@ -30,7 +30,6 @@ def dequantize_max_abs(x, scale, max_range):
 
 
 class TestDequantizeMaxAbsOp(OpTest):
-
     def set_args(self):
         self.num_bits = 8
         self.max_range = math.pow(2, self.num_bits - 1) - 1
@@ -45,7 +44,7 @@ class TestDequantizeMaxAbsOp(OpTest):
 
         self.inputs = {
             'X': np.array(yq).astype(self.data_type),
-            'Scale': np.array(scale).astype('float32')
+            'Scale': np.array(scale).astype('float32'),
         }
         self.attrs = {'max_range': self.max_range}
         self.outputs = {'Out': ydq}
@@ -55,7 +54,6 @@ class TestDequantizeMaxAbsOp(OpTest):
 
 
 class TestDequantizeMaxAbsOp5Bits(TestDequantizeMaxAbsOp):
-
     def set_args(self):
         self.num_bits = 5
         self.max_range = math.pow(2, self.num_bits - 1) - 1
@@ -63,7 +61,6 @@ class TestDequantizeMaxAbsOp5Bits(TestDequantizeMaxAbsOp):
 
 
 class TestDequantizeMaxAbsOpInt16(TestDequantizeMaxAbsOp):
-
     def set_args(self):
         self.num_bits = 16
         self.max_range = math.pow(2, self.num_bits - 1) - 1

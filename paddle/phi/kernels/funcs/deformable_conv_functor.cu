@@ -14,9 +14,6 @@
 
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 namespace funcs {
@@ -54,8 +51,6 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
     T* data_col) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (size_t i = index; i < nthreads; i += offset) {
     const int w_col = i % width_col;
     const int h_col = (i / width_col) % height_col;
@@ -90,22 +85,22 @@ __global__ void ModulatedDeformableIm2colGpuKernel(
             ((2 * (i * kernel_w + j) + 1) * height_col + h_col) * width_col +
             w_col;
 
-        const MT offset_h = static_cast<MT>(data_offset_ptr[data_offset_h_ptr]);
-        const MT offset_w = static_cast<MT>(data_offset_ptr[data_offset_w_ptr]);
-        MT val = static_cast<MT>(0);
-        const MT h_im = h_in + i * dilation_h + offset_h;
-        const MT w_im = w_in + j * dilation_w + offset_w;
+        const T offset_h = data_offset_ptr[data_offset_h_ptr];
+        const T offset_w = data_offset_ptr[data_offset_w_ptr];
+        T val = static_cast<T>(0);
+        const T h_im = h_in + i * dilation_h + offset_h;
+        const T w_im = w_in + j * dilation_w + offset_w;
         if (h_im > -1 && w_im > -1 && h_im < height && w_im < width) {
-          val = DmcnIm2colBilinear<T, MT>(
-              data_im_ptr, width, height, width, h_im, w_im);
+          val =
+              DmcnIm2colBilinear(data_im_ptr, width, height, width, h_im, w_im);
         }
+        *data_col_ptr = val;
         if (data_mask_ptr) {
           const int data_mask_hw_ptr =
               ((i * kernel_w + j) * height_col + h_col) * width_col + w_col;
-          const MT mask = static_cast<MT>(data_mask_ptr[data_mask_hw_ptr]);
-          val *= mask;
+          const T mask = data_mask_ptr[data_mask_hw_ptr];
+          *data_col_ptr *= mask;
         }
-        *data_col_ptr = static_cast<T>(val);
         data_col_ptr += batch_size * height_col * width_col;
       }
     }
@@ -168,20 +163,6 @@ template void ModulatedDeformableIm2col(
     const std::vector<int>& dilations,
     const int deformable_groups,
     float* data_col);
-
-template void ModulatedDeformableIm2col(
-    const phi::GPUContext& dev_ctx,
-    const phi::dtype::float16* data_im,
-    const phi::dtype::float16* data_offset,
-    const phi::dtype::float16* data_mask,
-    const std::vector<int64_t>& im_shape,
-    const std::vector<int64_t>& col_shape,
-    const std::vector<int64_t>& filter_shape,
-    const std::vector<int>& paddings,
-    const std::vector<int>& strides,
-    const std::vector<int>& dilations,
-    const int deformable_groups,
-    phi::dtype::float16* data_col);
 
 template void ModulatedDeformableIm2col(
     const phi::GPUContext& dev_ctx,

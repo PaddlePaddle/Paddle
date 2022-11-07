@@ -124,15 +124,14 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
     const int groups = ctx.Attr<int>("groups");
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
     const std::string data_format = ctx.Attr<std::string>("data_format");
-    const framework::DataLayout data_layout =
-        framework::StringToDataLayout(data_format);
+    const phi::DataLayout data_layout = phi::StringToDataLayout(data_format);
 
     auto in_dims = input->dims();
     auto filter_dims = filter->dims();
     // auto out_grad_dims = output_grad->dims();
     // const int batch_size = static_cast<int>(input->dims()[0]);
 
-    const bool channel_last = (data_layout == framework::DataLayout::kNHWC);
+    const bool channel_last = (data_layout == phi::DataLayout::kNHWC);
 
     framework::DDim in_data_dims;
     if (channel_last) {

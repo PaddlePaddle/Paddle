@@ -138,8 +138,7 @@ class GroupNormNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* scale = ctx.Input<phi::DenseTensor>("Scale");
     auto* bias = ctx.Input<phi::DenseTensor>("Bias");
@@ -212,8 +211,7 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* var = ctx.Input<phi::DenseTensor>("Variance");
