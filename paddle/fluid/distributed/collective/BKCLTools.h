@@ -111,57 +111,6 @@ class XPUEventManager {
   }
 };
 
-class BKCLCommManager {
- public:
-  explicit BKCLCommManager(BKCLContext_t bkclComm) : bkcl_comm_(bkclComm) {}
-
-  BKCLCommManager() : BKCLCommManager(nullptr) {}
-
-  ~BKCLCommManager() noexcept {
-    std::unique_lock<std::mutex> lock(mutex_);
-    if (bkcl_comm_) {
-      bkcl_destroy_context(bkcl_comm_);
-    }
-  }
-
-  static std::shared_ptr<BKCLCommManager> Create(int num_ranks,
-                                                 int rank,
-                                                 BKCLUniqueId comm_id) {
-    auto bkcl_manager = std::make_shared<BKCLCommManager>();
-    BKCLCHECK(
-        bkcl_init_rank(&(bkcl_manager->bkcl_comm_), rank, num_ranks, &comm_id));
-
-    bkcl_manager->bkcl_id_ = comm_id;
-    bkcl_manager->rank_ = rank;
-    return bkcl_manager;
-  }
-
-  BKCLUniqueId GetBkclId() const {
-    std::unique_lock<std::mutex> lock(mutex_);
-    return bkcl_id_;
-  }
-
-  BKCLContext_t GetBkclComm() const {
-    std::unique_lock<std::mutex> lock(mutex_);
-    return bkcl_comm_;
-  }
-
-  BKCLCommManager(const BKCLCommManager&) = delete;
-  BKCLCommManager& operator=(const BKCLCommManager&) = delete;
-  BKCLCommManager& operator=(BKCLCommManager&& other) = delete;
-
-  BKCLCommManager(BKCLCommManager&& other) {
-    std::unique_lock<std::mutex> lock(other.mutex_);
-    std::swap(bkcl_comm_, other.bkcl_comm_);
-  }
-
- protected:
-  BKCLContext_t bkcl_comm_;
-  BKCLUniqueId bkcl_id_;
-  int rank_;
-  mutable std::mutex mutex_;
-};
-
 BKCLOp ToBKCLRedType(ReduceOp reduction);
 std::string SerializeBKCLUniqueId(const BKCLUniqueId& bkclId);
 
