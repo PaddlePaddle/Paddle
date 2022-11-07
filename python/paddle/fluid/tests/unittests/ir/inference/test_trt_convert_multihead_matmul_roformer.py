@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import unittest
 import numpy as np
