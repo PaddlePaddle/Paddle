@@ -351,12 +351,6 @@ void PowDoubleGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(
       ddout,
       errors::NotFound("The output DenseTensor ddout can not be nullptr"));
-  if (dx) {
-    dev_ctx.template Alloc<T>(dx);
-  }
-  if (ddout) {
-    dev_ctx.template Alloc<T>(ddout);
-  }
   float exponent = factor.to<float>();
   if (exponent == 1) {
     *dx = phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0));
