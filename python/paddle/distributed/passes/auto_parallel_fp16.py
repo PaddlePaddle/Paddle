@@ -764,33 +764,67 @@ class FP16Pass(AMPPass):
                     with main_program._optimized_guard([]):
                         block = main_program.global_block()
 
-                        all_infs = paddle.fluid.layers.concat(found_infs)
+                        # all_infs = paddle.fluid.layers.concat(found_infs)
+                        all_infs = block.create_var(
+                            name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                                ".".join(['concat', 'tmp'])
+                            ),
+                            dtype=found_infs[0].dtype,
+                            shape=None,
+                            lod_level=found_infs[0].lod_level,
+                            type=found_infs[0].type,
+                            persistable=False,
+                            stop_gradient=False,
+                        )
+                        concat_op = block.append_op(
+                            type='concat',
+                            inputs={'X': found_infs},
+                            outputs={'Out': [all_infs]},
+                            attrs={'axis': 0},
+                        )
                         set_var_dist_attr(
                             self.dist_context,
                             all_infs,
                             [-1],
                             world_process_group.ranks,
                         )
-                        new_op = block.ops[-1]
-                        assert new_op.type == "concat"
                         _set_op_dist_attr_with_ranks(
-                            new_op,
+                            concat_op,
                             world_process_group.ranks,
                             block,
                             self.dist_context,
                         )
 
-                        found_inf = paddle.fluid.layers.reduce_any(all_infs)
+                        # found_inf = paddle.fluid.layers.reduce_any(all_infs)
+                        found_inf = block.create_var(
+                            name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                                ".".join(['reduce_any', 'tmp'])
+                            ),
+                            dtype=all_infs.dtype,
+                            shape=None,
+                            lod_level=all_infs.lod_level,
+                            type=all_infs.type,
+                            persistable=False,
+                            stop_gradient=False,
+                        )
+                        reduce_any_op = block.append_op(
+                            type='reduce_any',
+                            inputs={'X': all_infs},
+                            outputs={'Out': found_inf},
+                            attrs={
+                                'dim': [0],
+                                'keep_dim': False,
+                                'reduce_all': True,
+                            },
+                        )
                         set_var_dist_attr(
                             self.dist_context,
                             found_inf,
                             [-1],
                             world_process_group.ranks,
                         )
-                        new_op = block.ops[-1]
-                        assert new_op.type == "reduce_any"
                         _set_op_dist_attr_with_ranks(
-                            new_op,
+                            reduce_any_op,
                             world_process_group.ranks,
                             block,
                             self.dist_context,
