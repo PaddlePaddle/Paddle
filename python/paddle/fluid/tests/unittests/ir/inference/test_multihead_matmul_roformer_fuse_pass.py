@@ -52,8 +52,6 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
                 "sin_input": [1, 12, 128, 64],
             },
         )
-        # gpu
-        # config = self.create_inference_config(use_gpu=True)
         yield config, ["multihead_matmul_roformer", "matmul"], (1e-2, 1e-3)
 
     def sample_program_config(self, draw):

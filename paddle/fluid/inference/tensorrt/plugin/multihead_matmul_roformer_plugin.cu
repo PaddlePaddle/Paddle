@@ -24,7 +24,6 @@
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-//#include "paddle/fluid/inference/tensorrt/plugin/common/common.cuh"
 
 namespace paddle {
 namespace inference {
