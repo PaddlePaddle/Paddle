@@ -80,7 +80,7 @@ def convert_dtype(dtype):
             'complex64',
             'complex128',
         ]:
-            return str(dtype)
+            return dtype
         # NOTE(zhangbo): Now numpy does not support bfloat, and paddle use uint16 to represent bfloat16, and there binaries are consistent.
         if dtype in ['bfloat16']:
             return 'uint16'
