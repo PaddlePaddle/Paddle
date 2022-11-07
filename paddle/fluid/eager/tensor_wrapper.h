@@ -140,10 +140,12 @@ class TensorWrapper {
     if (packed_value_ && unpack_hook_) {
       auto tensor_unpacked =
           (*unpack_hook_)(reinterpret_cast<void*>(packed_value_));
-      auto src_dense_tensor =
-          static_cast<phi::DenseTensor*>(tensor_unpacked.impl().get());
-      static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get())
-          ->ResetHolder(src_dense_tensor->MoveMemoryHolder());
+      if (tensor_unpacked.initialized()) {
+        auto src_dense_tensor =
+            static_cast<phi::DenseTensor*>(tensor_unpacked.impl().get());
+        static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get())
+            ->ResetHolder(src_dense_tensor->MoveMemoryHolder());
+      }
     } else {
 #endif
       check_inplace_version();
