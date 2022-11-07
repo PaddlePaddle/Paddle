@@ -75,12 +75,12 @@ KernelSignature PowDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("FactorTensor")) {
     return KernelSignature("pow_double_grad",
-                           {"X", "DOut", "DDx"},
+                           {"X", "DOut", "DDX"},
                            {"FactorTensor"},
-                           {"Dx", "DDout"});
+                           {"DX", "DDOut"});
   } else {
     return KernelSignature(
-        "pow_double_grad", {"X", "DOut", "DDx"}, {"factor"}, {"Dx", "DDout"});
+        "pow_double_grad", {"X", "DOut", "DDX"}, {"factor"}, {"DX", "DDOut"});
   }
 }
 }  // namespace phi

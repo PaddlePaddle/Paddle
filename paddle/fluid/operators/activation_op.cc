@@ -450,9 +450,9 @@ class PowDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("pow_double_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
-    op->SetInput("DDx", this->OutputGrad(framework ::GradVarName("X")));
-    op->SetOutput("Dx", this->InputGrad("X"));
-    op->SetOutput("DDout", this->InputGrad(framework::GradVarName("Out")));
+    op->SetInput("DDX", this->OutputGrad(framework ::GradVarName("X")));
+    op->SetOutput("DX", this->InputGrad("X"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
     op->SetInput("FactorTensor", this->Input("FactorTensor"));
     op->SetAttrMap(this->Attrs());
   }
