@@ -72,9 +72,9 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
       std::string gelu_act_type =
           PADDLE_GET_CONST(bool, act_op->GetAttr("approximate")) ? "gelu_tanh"
                                                                  : "gelu_erf";
-      fc_op->SetAttr("activation_type", gelu_act_type);
+      fc_op->SetAttr("fuse_activation", gelu_act_type);
     } else {
-      fc_op->SetAttr("activation_type", act_type);
+      fc_op->SetAttr("fuse_activation", act_type);
     }
 
     fc_op->SetAttr("use_mkldnn", true);
