@@ -139,6 +139,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
   PyLayerObject* ctx = reinterpret_cast<PyLayerObject*>(
       PyObject_CallFunctionObjArgs(backward_function, nullptr));
   if (!ctx) {
+    PADDLE_THROW(paddle::platform::errors::External(
+        pybind11::detail::error_string().c_str()));
     return nullptr;
   }
   VLOG(6) << "PyLayer construct PyLayerContext finish...";
@@ -257,6 +259,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
   auto outputs = PyObject_Call(forward_fn, forward_args, kwargs);
   egr::Controller::Instance().SetHasGrad(trace_backward);
   if (!outputs) {
+    PADDLE_THROW(paddle::platform::errors::External(
+        pybind11::detail::error_string().c_str()));
     Py_XDECREF(forward_args);
     Py_XDECREF(kwargs_value_list);
     Py_XDECREF(backward_function);
