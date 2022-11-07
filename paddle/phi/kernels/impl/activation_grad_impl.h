@@ -361,9 +361,9 @@ void PowDoubleGradKernel(const Context& dev_ctx,
     *dx = phi::Scale<T, Context>(
         dev_ctx, dx_tmp2, exponent * (exponent - 1), 0.0, true);
   }
-  DenseTensor ddout_tmp1 = phi::Multiply<T, Context>(
+  DenseTensor ddout_tmp = phi::Multiply<T, Context>(
       dev_ctx, ddx, phi::Pow<T, Context>(dev_ctx, x, exponent - 1));
-  *ddout = phi::Scale<T, Context>(dev_ctx, ddout_tmp1, exponent, 0.0, true);
+  *ddout = phi::Scale<T, Context>(dev_ctx, ddout_tmp, exponent, 0.0, true);
 }
 
 template <typename T, typename Context>
