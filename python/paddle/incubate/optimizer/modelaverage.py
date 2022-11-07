@@ -342,8 +342,7 @@ class ModelAverage(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                inp = paddle.to_tensor(np.random.random([1, 10]).astype('float32'))
+                inp = paddle.rand([1, 10], dtype="float32")
                 linear = paddle.nn.Linear(10, 1)
                 out = linear(inp)
                 loss = paddle.mean(out)
@@ -378,8 +377,7 @@ class ModelAverage(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                inp = paddle.to_tensor(np.random.random([1, 10]).astype('float32'))
+                inp = paddle.rand([1, 10], dtype="float32")
                 linear = paddle.nn.Linear(10, 1)
                 out = linear(inp)
                 loss = paddle.mean(out)
@@ -425,8 +423,7 @@ class ModelAverage(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                inp = paddle.to_tensor(np.random.random([1, 10]).astype('float32'))
+                inp = paddle.rand([1, 10], dtype="float32")
                 linear = paddle.nn.Linear(10, 1)
                 out = linear(inp)
                 loss = paddle.mean(out)
@@ -500,8 +497,7 @@ class ModelAverage(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                inp = paddle.to_tensor(np.random.random([1, 10]).astype('float32'))
+                inp = paddle.rand([1, 10], dtype="float32")
                 linear = paddle.nn.Linear(10, 1)
                 out = linear(inp)
                 loss = paddle.mean(out)

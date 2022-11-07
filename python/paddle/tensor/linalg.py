@@ -314,38 +314,53 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            shape=[2, 3, 4]
-            np_input = np.arange(24).astype('float32') - 12
-            np_input = np_input.reshape(shape)
-            x = paddle.to_tensor(np_input)
-            #[[[-12. -11. -10.  -9.] [ -8.  -7.  -6.  -5.] [ -4.  -3.  -2.  -1.]]
-            # [[  0.   1.   2.   3.] [  4.   5.   6.   7.] [  8.   9.  10.  11.]]]
+            x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
+            # x: Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #          [[[-12., -11., -10., -9. ],
+            #            [-8. , -7. , -6. , -5. ],
+            #            [-4. , -3. , -2. , -1. ]],
+
+            #           [[ 0. ,  1. ,  2. ,  3. ],
+            #            [ 4. ,  5. ,  6. ,  7. ],
+            #            [ 8. ,  9. ,  10.,  11.]]])
 
             # compute frobenius norm along last two dimensions.
             out_fro = paddle.linalg.norm(x, p='fro', axis=[0,1])
-            # out_fro.numpy() [17.435596 16.911535 16.7332   16.911535]
+            # out_fro: Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                 [17.43559647, 16.91153526, 16.73320007, 16.91153526])
 
             # compute 2-order vector norm along last dimension.
             out_pnorm = paddle.linalg.norm(x, p=2, axis=-1)
-            #out_pnorm.numpy(): [[21.118711  13.190906   5.477226]
-            #                    [ 3.7416575 11.224972  19.131126]]
+            # out_pnorm: Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                [[21.11871147, 13.19090557, 5.47722578 ],
+            #                 [3.74165750 , 11.22497177, 19.13112640]])
 
             # compute 2-order  norm along [0,1] dimension.
             out_pnorm = paddle.linalg.norm(x, p=2, axis=[0,1])
-            #out_pnorm.numpy(): [17.435596 16.911535 16.7332   16.911535]
+            # out_pnorm: Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                  [17.43559647, 16.91153526, 16.73320007, 16.91153526])
 
             # compute inf-order  norm
-            out_pnorm = paddle.linalg.norm(x, p=np.inf)
-            #out_pnorm.numpy()  = [12.]
-            out_pnorm = paddle.linalg.norm(x, p=np.inf, axis=0)
-            #out_pnorm.numpy(): [[12. 11. 10. 9.] [8. 7. 6. 7.] [8. 9. 10. 11.]]
+            out_pnorm = paddle.linalg.norm(x, p=float("inf"))
+            # out_pnorm  = Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                    [12.])
+
+            out_pnorm = paddle.linalg.norm(x, p=float("inf"), axis=0)
+            # out_pnorm: Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                 [[12., 11., 10., 9. ],
+            #                  [8. , 7. , 6. , 7. ],
+            #                  [8. , 9. , 10., 11.]])
 
             # compute -inf-order  norm
-            out_pnorm = paddle.linalg.norm(x, p=-np.inf)
-            #out_pnorm.numpy(): [0.]
-            out_pnorm = paddle.linalg.norm(x, p=-np.inf, axis=0)
-            #out_pnorm.numpy(): [[0. 1. 2. 3.] [4. 5. 6. 5.] [4. 3. 2. 1.]]
+            out_pnorm = paddle.linalg.norm(x, p=-float("inf"))
+            # out_pnorm: Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                  [0.])
+
+            out_pnorm = paddle.linalg.norm(x, p=-float("inf"), axis=0)
+            # out_pnorm: Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                  [[0., 1., 2., 3.],
+            #                  [4., 5., 6., 5.],
+            #                  [4., 3., 2., 1.]])
     """
 
     def frobenius_norm(input, dim=None, keepdim=False, name=None):
@@ -699,10 +714,9 @@ def dist(x, y, p=2, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[3, 3],[3, 3]]), "float32")
-            y = paddle.to_tensor(np.array([[3, 3],[3, 1]]), "float32")
+            x = paddle.to_tensor([[3, 3],[3, 3]], dtype="float32")
+            y = paddle.to_tensor([[3, 3],[3, 1]], dtype="float32")
             out = paddle.dist(x, y, 0)
             print(out) # out = [1.]
 
@@ -754,69 +768,82 @@ def cond(x, p=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             x = paddle.to_tensor([[1., 0, -1], [0, 1, 0], [1, 0, 1]])
 
             # compute conditional number when p is None
             out = paddle.linalg.cond(x)
-            # out.numpy() [1.4142135]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.41421342])
 
             # compute conditional number when order of the norm is 'fro'
             out_fro = paddle.linalg.cond(x, p='fro')
-            # out_fro.numpy() [3.1622777]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [3.16227770])
 
             # compute conditional number when order of the norm is 'nuc'
             out_nuc = paddle.linalg.cond(x, p='nuc')
-            # out_nuc.numpy() [9.2426405]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [9.24263859])
 
             # compute conditional number when order of the norm is 1
             out_1 = paddle.linalg.cond(x, p=1)
-            # out_1.numpy() [2.]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [2.])
 
             # compute conditional number when order of the norm is -1
             out_minus_1 = paddle.linalg.cond(x, p=-1)
-            # out_minus_1.numpy() [1.]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.])
 
             # compute conditional number when order of the norm is 2
             out_2 = paddle.linalg.cond(x, p=2)
-            # out_2.numpy() [1.4142135]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.41421342])
 
             # compute conditional number when order of the norm is -1
             out_minus_2 = paddle.linalg.cond(x, p=-2)
-            # out_minus_2.numpy() [0.70710677]
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.70710683])
 
             # compute conditional number when order of the norm is inf
-            out_inf = paddle.linalg.cond(x, p=np.inf)
-            # out_inf.numpy() [2.]
+            out_inf = paddle.linalg.cond(x, p=float("inf"))
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [2.])
 
             # compute conditional number when order of the norm is -inf
-            out_minus_inf = paddle.linalg.cond(x, p=-np.inf)
-            # out_minus_inf.numpy() [1.]
+            out_minus_inf = paddle.linalg.cond(x, p=-float("inf"))
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.])
 
-            a = paddle.to_tensor(np.random.randn(2, 4, 4).astype('float32'))
-            # a.numpy()
-            # [[[ 0.14063153 -0.996288    0.7996131  -0.02571543]
-            #   [-0.16303636  1.5534962  -0.49919784 -0.04402903]
-            #   [-1.1341571  -0.6022629   0.5445269   0.29154757]
-            #   [-0.16816919 -0.30972657  1.7521842  -0.5402487 ]]
-            #  [[-0.58081484  0.12402827  0.7229862  -0.55046535]
-            #   [-0.15178485 -1.1604939   0.75810957  0.30971205]
-            #   [-0.9669573   1.0940945  -0.27363303 -0.35416734]
-            #   [-1.216529    2.0018666  -0.7773689  -0.17556527]]]
+            a = paddle.randn([2, 4, 4])
+            # Tensor(shape=[2, 4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[-0.06784091, -0.07095790,  1.31792855, -0.58959651],
+            #          [ 0.20818676, -0.85640615, -0.89998871, -1.47439921],
+            #          [-0.49132481,  0.42250812, -0.77383220, -2.19794774],
+            #          [-0.33551720, -1.70003879, -1.09795380, -0.63737559]],
+
+            #         [[ 1.12026262, -0.16119350, -1.21157813,  2.74383283],
+            #          [-0.15999718,  0.18798758, -0.69392562,  1.35720372],
+            #          [-0.53013402, -2.26304483,  1.40843511, -1.02288902],
+            #          [ 0.69533503,  2.05261683, -0.02251151, -1.43127477]]])
+
             a_cond_fro = paddle.linalg.cond(a, p='fro')
-            # a_cond_fro.numpy()  [31.572273 28.120834]
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [8.86691189 , 75.23817444])
 
-            b = paddle.to_tensor(np.random.randn(2, 3, 4).astype('float64'))
-            # b.numpy()
-            # [[[ 1.61707487  0.46829144  0.38130416  0.82546736]
-            #   [-1.72710298  0.08866375 -0.62518804  0.16128892]
-            #   [-0.02822879 -1.67764516  0.11141444  0.3220113 ]]
-            #  [[ 0.22524372  0.62474921 -0.85503233 -1.03960523]
-            #   [-0.76620689  0.56673047  0.85064753 -0.45158196]
-            #   [ 1.47595418  2.23646462  1.5701758   0.10497519]]]
+            b = paddle.randn([2, 3, 4])
+            # Tensor(shape=[2, 3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[-0.43754861,  1.80796063, -0.78729683, -1.82264030],
+            #          [-0.27670753,  0.06620564,  0.29072434, -0.31155765],
+            #          [ 0.34123746, -0.05444612,  0.05001324, -1.46877074]],
+
+            #         [[-0.64331555, -1.51103854, -1.26277697, -0.68024760],
+            #          [ 2.59375715, -1.06665540,  0.96575671, -0.73330832],
+            #          [-0.47064447, -0.23945692, -0.95150250, -1.07125998]]])
             b_cond_2 = paddle.linalg.cond(b, p=2)
-            # b_cond_2.numpy()  [3.30064451 2.51976252]
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [6.64228773, 3.89068866])
 
     """
 
@@ -1160,14 +1187,18 @@ def dot(x, y, name=None):
     .. code-block:: python
 
         import paddle
-        import numpy as np
 
-        x_data = np.random.uniform(0.1, 1, [10]).astype(np.float32)
-        y_data = np.random.uniform(1, 3, [10]).astype(np.float32)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
+        # 1-D Tensor * 1-D Tensor
+        x = paddle.to_tensor([1, 2, 3])
+        y = paddle.to_tensor([4, 5, 6])
         z = paddle.dot(x, y)
-        print(z)
+        print(z)  # [32]
+
+        # 2-D Tensor * 2-D Tensor
+        x = paddle.to_tensor([[1, 2, 3], [2, 4, 6]])
+        y = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+        z = paddle.dot(x, y)
+        print(z)  # [[32], [64]]
 
     """
     if in_dygraph_mode():
@@ -1494,18 +1525,13 @@ def cholesky(x, upper=False, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            a = np.random.rand(3, 3)
-            a_t = np.transpose(a, [1, 0])
-            x_data = np.matmul(a, a_t) + 1e-03
-            x = paddle.to_tensor(x_data)
+            a = paddle.rand([3, 3], dtype="float32")
+            a_t = paddle.transpose(a, [1, 0])
+            x = paddle.matmul(a, a_t) + 1e-03
+
             out = paddle.linalg.cholesky(x, upper=False)
             print(out)
-            # [[1.190523   0.         0.        ]
-            #  [0.9906703  0.27676893 0.        ]
-            #  [1.25450498 0.05600871 0.06400121]]
-
     """
     if in_dygraph_mode():
         return _C_ops.cholesky(x, upper)
@@ -2583,28 +2609,19 @@ def multi_dot(x, name=None):
     .. code-block:: python
 
         import paddle
-        import numpy as np
-
         # A * B
-        A_data = np.random.random([3, 4]).astype(np.float32)
-        B_data = np.random.random([4, 5]).astype(np.float32)
-        A = paddle.to_tensor(A_data)
-        B = paddle.to_tensor(B_data)
+        A = paddle.rand([3, 4])
+        B = paddle.rand([4, 5])
         out = paddle.linalg.multi_dot([A, B])
-        print(out.numpy().shape)
+        print(out.shape)
         # [3, 5]
-
         # A * B * C
-        A_data = np.random.random([10, 5]).astype(np.float32)
-        B_data = np.random.random([5, 8]).astype(np.float32)
-        C_data = np.random.random([8, 7]).astype(np.float32)
-        A = paddle.to_tensor(A_data)
-        B = paddle.to_tensor(B_data)
-        C = paddle.to_tensor(C_data)
+        A = paddle.rand([10, 5])
+        B = paddle.rand([5, 8])
+        C = paddle.rand([8, 7])
         out = paddle.linalg.multi_dot([A, B, C])
-        print(out.numpy().shape)
+        print(out.shape)
         # [10, 7]
-
     """
     if _in_legacy_dygraph():
         return _legacy_C_ops.multi_dot(x)
@@ -3099,47 +3116,51 @@ def triangular_solve(
     x, y, upper=True, transpose=False, unitriangular=False, name=None
 ):
     r"""
-    Computes the solution of a system of equations with a triangular coefficient matrix `x` and
-    multiple right-hand sides `y` .
+        Computes the solution of a system of equations with a triangular coefficient matrix `x` and
+        multiple right-hand sides `y` .
 
-    Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs
-    is also batches.
+        Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs
+        is also batches.
 
-    Args:
-        x (Tensor): The input triangular coefficient matrix. Its shape should be `[*, M, M]`, where `*` is zero or
-            more batch dimensions. Its data type should be float32 or float64.
-        y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
-            zero or more batch dimensions. Its data type should be float32 or float64.
-        upper (bool, optional): Whether to solve the upper-triangular system of equations (default) or the lower-triangular
-            system of equations. Default: True.
-        transpose (bool, optional): whether `x` should be transposed before calculation. Default: False.
-        unitriangular (bool, optional): whether `x` is unit triangular. If True, the diagonal elements of `x` are assumed
-            to be 1 and not referenced from `x` . Default: False.
-        name(str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        Args:
+            x (Tensor): The input triangular coefficient matrix. Its shape should be `[*, M, M]`, where `*` is zero or
+                more batch dimensions. Its data type should be float32 or float64.
+            y (Tensor): Multiple right-hand sides of system of equations. Its shape should be `[*, M, K]`, where `*` is
+                zero or more batch dimensions. Its data type should be float32 or float64.
+            upper (bool, optional): Whether to solve the upper-triangular system of equations (default) or the lower-triangular
+                system of equations. Default: True.
+            transpose (bool, optional): whether `x` should be transposed before calculation. Default: False.
+            unitriangular (bool, optional): whether `x` is unit triangular. If True, the diagonal elements of `x` are assumed
+                to be 1 and not referenced from `x` . Default: False.
+            name(str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
 
-    Returns:
-        Tensor: The solution of the system of equations. Its data type should be the same as that of `x`.
+        Returns:
+            Tensor: The solution of the system of equations. Its data type should be the same as that of `x`.
 
-    Examples:
-    .. code-block:: python
+        Examples:
+        .. code-block:: python
 
-        # a square system of linear equations:
-        # x1 +   x2  +   x3 = 0
-        #      2*x2  +   x3 = -9
-        #               -x3 = 5
+            # a square system of linear equations:
+            # x1 +   x2  +   x3 = 0
+            #      2*x2  +   x3 = -9
+            #               -x3 = 5
 
-        import paddle
-        import numpy as np
+    <<<<<<< HEAD
+            import paddle
+            import numpy as np
+    =======
+                import paddle
+    >>>>>>> 912be4f897 (fix numpy issue in codeblock examples for operators under python/paddle/tensor folder (#46765))
 
-        x = paddle.to_tensor([[1, 1, 1],
-                              [0, 2, 1],
-                              [0, 0,-1]], dtype="float64")
-        y = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
-        out = paddle.linalg.triangular_solve(x, y, upper=True)
+            x = paddle.to_tensor([[1, 1, 1],
+                                  [0, 2, 1],
+                                  [0, 0,-1]], dtype="float64")
+            y = paddle.to_tensor([[0], [-9], [5]], dtype="float64")
+            out = paddle.linalg.triangular_solve(x, y, upper=True)
 
-        print(out)
-        # [7, -2, -5]
+            print(out)
+            # [7, -2, -5]
     """
     if in_dygraph_mode():
         return _C_ops.triangular_solve(x, y, upper, transpose, unitriangular)
@@ -3246,14 +3267,13 @@ def eigvalsh(x, UPLO='L', name=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x_data = np.array([[1, -2j], [2j, 5]])
-            x = paddle.to_tensor(x_data)
+            x = paddle.to_tensor([[1, -2j], [2j, 5]])
             out_value = paddle.eigvalsh(x, UPLO='L')
             print(out_value)
-            #[0.17157288, 5.82842712]
+            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.17157286, 5.82842731])
     """
     if in_dygraph_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)

@@ -1346,12 +1346,9 @@ def flip(x, axis, name=None):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
           image_shape=(3, 2, 2)
-          x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
-          x = x.astype('float32')
-          img = paddle.to_tensor(x)
+          img = paddle.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
           tmp = paddle.flip(img, [0,1])
           print(tmp) # [[[10,11],[8, 9]], [[6, 7],[4, 5]], [[2, 3],[0, 1]]]
 
@@ -2279,21 +2276,33 @@ def unique_consecutive(
 
             x = paddle.to_tensor([1, 1, 2, 2, 3, 1, 1, 2])
             output = paddle.unique_consecutive(x) #
-            np_output = output.numpy() # [1 2 3 1 2]
+            print(output)
+            # Tensor(shape=[5], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [1, 2, 3, 1, 2])
+
             _, inverse, counts = paddle.unique_consecutive(x, return_inverse=True, return_counts=True)
-            np_inverse = inverse.numpy() # [0 0 1 1 2 3 3 4]
-            np_counts = inverse.numpy() # [2 2 1 2 1]
+            print(inverse)
+            # Tensor(shape=[8], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [0, 0, 1, 1, 2, 3, 3, 4])
+            print(counts)
+            # Tensor(shape=[5], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [2, 2, 1, 2, 1])
 
             x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
             output = paddle.unique_consecutive(x, axis=0) #
-            np_output = output.numpy() # [2 1 3 0 1 2 1 3 2 1 3]
+            print(output)
+            # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [[2, 1, 3],
+            #         [3, 0, 1],
+            #         [2, 1, 3]])
 
             x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
             output = paddle.unique_consecutive(x, axis=0) #
-            np_output = output.numpy()
-            # [[2 1 3]
-            #  [3 0 1]
-            #  [2 1 3]]
+            print(output)
+            # Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [[2, 1, 3],
+            #         [3, 0, 1],
+            #         [2, 1, 3]])
     """
 
     if axis is None:
@@ -2414,18 +2423,27 @@ def unique(
             unique = paddle.unique(x)
             np_unique = unique.numpy() # [1 2 3 5]
             _, indices, inverse, counts = paddle.unique(x, return_index=True, return_inverse=True, return_counts=True)
-            np_indices = indices.numpy() # [3 0 1 4]
-            np_inverse = inverse.numpy() # [1 2 2 0 3 2]
-            np_counts = counts.numpy() # [1 1 3 1]
+            print(indices)
+            # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [3, 0, 1, 4])
+            print(inverse)
+            # Tensor(shape=[6], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [1, 2, 2, 0, 3, 2])
+            print(counts)
+            # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [1, 1, 3, 1])
 
             x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3]])
             unique = paddle.unique(x)
-            np_unique = unique.numpy() # [0 1 2 3]
+            print(unique)
+            # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [0, 1, 2, 3])
 
             unique = paddle.unique(x, axis=0)
-            np_unique = unique.numpy() 
-            # [[2 1 3]
-            #  [3 0 1]]
+            print(unique)
+            # Tensor(shape=[2, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [[2, 1, 3],
+            #         [3, 0, 1]])
     """
     if axis is None:
         axis = []
@@ -3035,12 +3053,10 @@ def scatter_nd(index, updates, shape, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            index_data = np.array([[1, 1],
-                                   [0, 1],
-                                   [1, 3]]).astype(np.int64)
-            index = paddle.to_tensor(index_data)
+            index = paddle.to_tensor([[1, 1],
+                                    [0, 1],
+                                    [1, 3]], dtype="int64")
             updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
             shape = [3, 5, 9, 10]
 
@@ -3064,15 +3080,12 @@ def chunk(x, chunks, axis=0, name=None):
     Returns:
         list(Tensor): The list of segmented Tensors.
 
-    Example:
+    Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            # x is a Tensor which shape is [3, 9, 5]
-            x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.to_tensor(x_np)
+            x = paddle.rand([3, 9, 5])
 
             out0, out1, out2 = paddle.chunk(x, chunks=3, axis=1)
             # out0.shape [3, 3, 5]
@@ -3115,19 +3128,22 @@ def tile(x, repeat_times, name=None):
 
             data = paddle.to_tensor([1, 2, 3], dtype='int32')
             out = paddle.tile(data, repeat_times=[2, 1])
-            np_out = out.numpy()
-            # [[1, 2, 3]
-            #  [1, 2, 3]]
+            print(out)
+            # Tensor(shape=[2, 3], dtype=int32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1, 2, 3],
+            #         [1, 2, 3]])
 
             out = paddle.tile(data, repeat_times=(2, 2))
-            np_out = out.numpy()
-            # [[1, 2, 3, 1, 2, 3]
-            #  [1, 2, 3, 1, 2, 3]]
+            print(out)
+            # Tensor(shape=[2, 6], dtype=int32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1, 2, 3, 1, 2, 3],
+            #         [1, 2, 3, 1, 2, 3]])
 
             repeat_times = paddle.to_tensor([1, 2], dtype='int32')
             out = paddle.tile(data, repeat_times=repeat_times)
-            np_out = out.numpy()
-            # [[1, 2, 3, 1, 2, 3]]
+            print(out)
+            # Tensor(shape=[1, 6], dtype=int32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1, 2, 3, 1, 2, 3]])
     """
     if in_dygraph_mode():
         if isinstance(repeat_times, core.eager.Tensor):
@@ -3227,8 +3243,10 @@ def expand_as(x, y, name=None):
             data_x = paddle.to_tensor([1, 2, 3], 'int32')
             data_y = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], 'int32')
             out = paddle.expand_as(data_x, data_y)
-            np_out = out.numpy()
-            # [[1, 2, 3], [1, 2, 3]]
+            print(out)
+            # Tensor(shape=[2, 3], dtype=int32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1, 2, 3],
+            #         [1, 2, 3]])
     """
     if in_dygraph_mode():
         return _C_ops.expand_as(x, None, y.shape)
@@ -4238,10 +4256,11 @@ def as_complex(x, name=None):
             import paddle
             x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
             y = paddle.as_complex(x)
-            print(y.numpy())
+            print(y)
 
-            # [[ 0. +1.j  2. +3.j  4. +5.j]
-            #  [ 6. +7.j  8. +9.j 10.+11.j]]
+            # Tensor(shape=[2, 3], dtype=complex64, place=Place(gpu:0), stop_gradient=True,
+            #        [[1j      , (2+3j)  , (4+5j)  ],
+            #         [(6+7j)  , (8+9j)  , (10+11j)]])
     """
     if in_dygraph_mode():
         return _C_ops.as_complex(x)
@@ -4285,15 +4304,16 @@ def as_real(x, name=None):
             x = paddle.arange(12, dtype=paddle.float32).reshape([2, 3, 2])
             y = paddle.as_complex(x)
             z = paddle.as_real(y)
-            print(z.numpy())
+            print(z)
 
-            # [[[ 0.  1.]
-            #   [ 2.  3.]
-            #   [ 4.  5.]]
+            # Tensor(shape=[2, 3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[0. , 1. ],
+            #          [2. , 3. ],
+            #          [4. , 5. ]],
 
-            #  [[ 6.  7.]
-            #   [ 8.  9.]
-            #   [10. 11.]]]
+            #         [[6. , 7. ],
+            #          [8. , 9. ],
+            #          [10., 11.]]])
     """
     if in_dygraph_mode():
         return _C_ops.as_real(x)
@@ -4752,10 +4772,11 @@ def index_add(x, index, axis, value, name=None):
             index = paddle.to_tensor([0, 2], dtype="int32")
             value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]], dtype="float32")
             outplace_res = paddle.index_add(input_tensor, index, 0, value)
-            print(outplace_res.numpy())
-            # [[2 2 2]
-            #  [1 1 1]
-            #  [2 2 2]]
+            print(outplace_res)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[2., 2., 2.],
+            #         [1., 1., 1.],
+            #         [2., 2., 2.]])
     """
     _index_add_params_check(x, index, axis, value)
 
@@ -4813,10 +4834,11 @@ def index_add_(x, index, axis, value, name=None):
             index = paddle.to_tensor([0, 2], dtype="int32")
             value = paddle.to_tensor([[1, 1], [1, 1], [1, 1]], dtype="float32")
             inplace_res = paddle.index_add_(input_tensor, index, 1, value)
-            print(inplace_res.numpy())
-            # [[2, 1, 2]
-            #  [2, 1, 2]
-            #  [2, 1, 2]]
+            print(inplace_res)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[2., 1., 2.],
+            #         [2., 1., 2.],
+            #         [2., 1., 2.]])
     """
 
     _index_add_params_check(x, index, axis, value)
