@@ -1215,6 +1215,19 @@ struct Flatten2Matmul : public PatternBase {
   PATTERN_DECL_NODE(matmul_out);
 };
 
+// MulMatmulMatmulV2 ops
+// Forward pass for mul_matmul_matmul_v2 to matmul.
+struct MulMatmulMatmulV2 : public PatternBase {
+  MulMatmulMatmulV2(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "mul_matmul_matmul_v2") {}
+
+  void operator()(const std::unordered_set<std::string>& ops_type);
+  PATTERN_DECL_NODE(ops_x);
+  PATTERN_DECL_NODE(ops_y);
+  PATTERN_DECL_NODE(ops);
+  PATTERN_DECL_NODE(ops_out);
+};
+
 // Concat op
 // Forward pass for concat.
 // concat_out is a result of the operator.

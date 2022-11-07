@@ -2,9 +2,8 @@
 list(
   APPEND
   CONVERT_FILES
-  matmul_op.cc
+  matrix_multiply.cc
   conv2d_op.cc
-  fc_op.cc
   pool2d_op.cc
   elementwise_op.cc
   batch_norm_op.cc

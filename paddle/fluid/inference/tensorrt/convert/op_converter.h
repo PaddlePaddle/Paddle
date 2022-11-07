@@ -54,19 +54,6 @@ class OpConverter {
 
     OpConverter* it{nullptr};
 
-    if (op_desc.Type() == "mul") {
-      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
-                        1UL,
-                        platform::errors::InvalidArgument(
-                            "The input op mul's Input(\"Y\")."
-                            "size() should equal to 1, but reveceid "
-                            "Input(\"Y\").size() = %u.",
-                            op_desc.Input("Y").size()));
-      std::string Y = op_desc.Input("Y")[0];
-      if (parameters.count(Y)) {
-        it = Registry<OpConverter>::Global().Lookup("fc");
-      }
-    }
     if (op_desc.Type().find("elementwise") != std::string::npos) {
       static std::unordered_set<std::string> add_tensor_op_set{
           "add", "mul", "sub", "div", "max", "min", "pow"};
