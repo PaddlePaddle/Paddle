@@ -221,7 +221,7 @@ if(APPLE)
       -Werror=tautological-constant-out-of-range-compare
       -Werror=literal-conversion
       -Werror=pragma-pack
-      -lm)
+      -ll)
 endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)
