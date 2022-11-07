@@ -97,7 +97,7 @@ void InitGpuProperties(Place place,
       (*driver_version / 1000) * 10 + (*driver_version % 100) / 10;
   auto compile_cuda_version =
       (CUDA_VERSION / 1000) * 10 + (CUDA_VERSION % 100) / 10;
-#if (defined _LINUX)
+#if defined(__linux__)
   PADDLE_ENFORCE_EQ(
       local_cuda_version / 10,
       compile_cuda_version / 10,
