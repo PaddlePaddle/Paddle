@@ -36,7 +36,7 @@ void* PackHook::operator()(const paddle::experimental::Tensor& tensor) {
   auto args = PyTuple_New(1);
   PyTuple_SET_ITEM(args, 0, paddle::pybind::ToPyObject(tensor));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
-  PADDLE_ENFORCE_NOT_NULL(res,
+  PADDLE_ENFORCE_NOT_NULL(ret,
                           paddle::platform::errors::External(
                               pybind11::detail::error_string().c_str()));
   Py_XDECREF(args);
@@ -52,7 +52,7 @@ void* PackHook::operator()(void* py_tensor) {
   Py_INCREF(reinterpret_cast<PyObject*>(py_tensor));
   PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(py_tensor));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
-  PADDLE_ENFORCE_NOT_NULL(res,
+  PADDLE_ENFORCE_NOT_NULL(ret,
                           paddle::platform::errors::External(
                               pybind11::detail::error_string().c_str()));
   Py_XDECREF(args);
@@ -75,7 +75,7 @@ paddle::experimental::Tensor UnPackHook::operator()(void* packed_value) {
   Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
   PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
-  PADDLE_ENFORCE_NOT_NULL(res,
+  PADDLE_ENFORCE_NOT_NULL(ret,
                           paddle::platform::errors::External(
                               pybind11::detail::error_string().c_str()));
   Py_XDECREF(args);
@@ -100,7 +100,7 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
   Py_INCREF(reinterpret_cast<PyObject*>(packed_value));
   PyTuple_SET_ITEM(args, 0, reinterpret_cast<PyObject*>(packed_value));
   PyObject* ret = PyObject_Call(hook_, args, nullptr);
-  PADDLE_ENFORCE_NOT_NULL(res,
+  PADDLE_ENFORCE_NOT_NULL(ret,
                           paddle::platform::errors::External(
                               pybind11::detail::error_string().c_str()));
   Py_XDECREF(args);
