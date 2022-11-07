@@ -125,7 +125,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         }
         reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
         reshape_before_fc_layer->setName(
-            ("shuffle_before_multihead_mamul(Output: " + output_name + ")")
+            ("shuffle_before_multihead_matmul(Output: " + output_name + ")")
                 .c_str());
 
         // add layer fc
@@ -161,7 +161,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
         }
         fc_layer->setName(
-            ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
+            ("multihead_matmul_fc(Output: " + output_name + ")").c_str());
 
         // no need to add shuffle after fc, just change it in
         // QkvToContextPluginDynamic
@@ -182,7 +182,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           with_fp16 = true;
         }
         plugin::DynamicPluginTensorRT* plugin =
-            new plugin::RoformerMultiheadMatmulPlugin(
+            new plugin::MultiheadMatmulRoformerPlugin(
                 hidden_in, head_number, head_size, scale, with_fp16);
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 4, plugin);
       }
@@ -194,7 +194,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           "the shape information to run the dynamic shape mode."));
     }
     RreplenishLayerAndOutput(
-        layer, "multihead_matmul", {output_name}, test_mode);
+        layer, "multihead_matmul_roformer", {output_name}, test_mode);
   }
 };
 

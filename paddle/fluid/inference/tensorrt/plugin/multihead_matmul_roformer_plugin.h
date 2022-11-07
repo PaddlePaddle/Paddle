@@ -27,9 +27,9 @@ namespace tensorrt {
 namespace plugin {
 
 #if IS_TRT_VERSION_GE(6000)
-class RoformerMultiheadMatmulPlugin : public DynamicPluginTensorRT {
+class MultiheadMatmulRoformerPlugin : public DynamicPluginTensorRT {
  public:
-  explicit RoformerMultiheadMatmulPlugin(
+  explicit MultiheadMatmulRoformerPlugin(
       int hidden, int head_number, int head_size, float scale, bool with_fp16)
       : hidden_(hidden),
         head_number_(head_number),
@@ -38,7 +38,7 @@ class RoformerMultiheadMatmulPlugin : public DynamicPluginTensorRT {
     with_fp16_ = with_fp16;
   }
 
-  RoformerMultiheadMatmulPlugin(void const* serial_data, size_t serial_length) {
+  MultiheadMatmulRoformerPlugin(void const* serial_data, size_t serial_length) {
     DeserializeValue(&serial_data, &serial_length, &hidden_);
     DeserializeValue(&serial_data, &serial_length, &head_number_);
     DeserializeValue(&serial_data, &serial_length, &head_size_);
@@ -46,12 +46,12 @@ class RoformerMultiheadMatmulPlugin : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new RoformerMultiheadMatmulPlugin(
+    return new MultiheadMatmulRoformerPlugin(
         hidden_, head_number_, head_size_, scale_, with_fp16_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
-    return "roformer_multihead_matmul_plugin";
+    return "multihead_matmul_roformer_plugin";
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
   int initialize() TRT_NOEXCEPT override;
@@ -113,11 +113,11 @@ class RoformerMultiheadMatmulPlugin : public DynamicPluginTensorRT {
   float scale_;
 };
 
-class RoformerMultiheadMatmulPluginCreator : public nvinfer1::IPluginCreator {
+class MultiheadMatmulRoformerPluginCreator : public nvinfer1::IPluginCreator {
  public:
-  RoformerMultiheadMatmulPluginCreator() {}
+  MultiheadMatmulRoformerPluginCreator() {}
   const char* getPluginName() const TRT_NOEXCEPT override {
-    return "roformer_multihead_matmul_plugin";
+    return "multihead_matmul_roformer_plugin";
   }
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
@@ -136,7 +136,7 @@ class RoformerMultiheadMatmulPluginCreator : public nvinfer1::IPluginCreator {
                                          const void* serial_data,
                                          size_t serial_length)
       TRT_NOEXCEPT override {
-    auto plugin = new RoformerMultiheadMatmulPlugin(serial_data, serial_length);
+    auto plugin = new MultiheadMatmulRoformerPlugin(serial_data, serial_length);
     return plugin;
   }
 
@@ -154,7 +154,7 @@ class RoformerMultiheadMatmulPluginCreator : public nvinfer1::IPluginCreator {
   nvinfer1::PluginFieldCollection field_collection_;
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
-REGISTER_TRT_PLUGIN_V2(RoformerMultiheadMatmulPluginCreator);
+REGISTER_TRT_PLUGIN_V2(MultiheadMatmulRoformerPluginCreator);
 #endif
 
 }  // namespace plugin

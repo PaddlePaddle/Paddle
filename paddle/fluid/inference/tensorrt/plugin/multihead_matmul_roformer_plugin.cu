@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/tensorrt/plugin/roformer_multihead_matmul_plugin.h"
 #include <stdio.h>
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
@@ -20,6 +19,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/inference/tensorrt/plugin/roformer_multihead_matmul_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -189,9 +189,9 @@ inline void TransposeQKV_v2(const int batch,
   }
 }
 
-int RoformerMultiheadMatmulPlugin::initialize() TRT_NOEXCEPT { return 0; }
+int MultiheadMatmulRoformerPlugin::initialize() TRT_NOEXCEPT { return 0; }
 
-nvinfer1::DimsExprs RoformerMultiheadMatmulPlugin::getOutputDimensions(
+nvinfer1::DimsExprs MultiheadMatmulRoformerPlugin::getOutputDimensions(
     int output_index,
     const nvinfer1::DimsExprs *inputs,
     int nb_inputs,
@@ -221,7 +221,7 @@ nvinfer1::DimsExprs RoformerMultiheadMatmulPlugin::getOutputDimensions(
   return ret;
 }
 
-bool RoformerMultiheadMatmulPlugin::supportsFormatCombination(
+bool MultiheadMatmulRoformerPlugin::supportsFormatCombination(
     int pos,
     const nvinfer1::PluginTensorDesc *in_out,
     int nb_inputs,
@@ -265,7 +265,7 @@ bool RoformerMultiheadMatmulPlugin::supportsFormatCombination(
   return in.type == prev.type && in.format == prev.format;
 }
 
-nvinfer1::DataType RoformerMultiheadMatmulPlugin::getOutputDataType(
+nvinfer1::DataType MultiheadMatmulRoformerPlugin::getOutputDataType(
     int index,
     const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
@@ -298,11 +298,11 @@ __global__ void RotrayKernel(const T *inputact,
                              const int lastdim) {
   const int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index >= nElement) return;
-  T _1 = input1[index] * inputact[index];
+  T left_elemul_out = input1[index] * inputact[index];
   int col = index % lastdim;
   int half_lastdim = lastdim / 2;
-  const int new_index = index - col + (col + half_lastdim) % lastdim;
-  output[index] = _1 + intput2[index] * inputact[new_index];
+  const int right_index = index - col + (col + half_lastdim) % lastdim;
+  output[index] = left_elemul_out + intput2[index] * inputact[right_index];
 }
 
 inline int round_up(int seq_len, int multiple = 32) {
@@ -326,7 +326,7 @@ __global__ void broadcast(const T *src,
   }
 }
 
-int RoformerMultiheadMatmulPlugin::enqueue(
+int MultiheadMatmulRoformerPlugin::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc,
     const void *const *inputs,
