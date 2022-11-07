@@ -50,16 +50,13 @@ def _process_path(path):
 
 
 class DistributedSaver:
-
     def __init__(self):
         self._logger = get_logger(logging.INFO)
 
     def save(self, path, serial_program, dist_main_program, dist_context):
-
         def _save_state(program, path, mode="param"):
             state = {
-                k: np.array(v)
-                for k, v in program.state_dict(mode).items()
+                k: np.array(v) for k, v in program.state_dict(mode).items()
             }
             with open(path, "wb") as f:
                 pickle.dump(state, f)
@@ -105,8 +102,9 @@ class DistributedSaver:
         def _load_file(filename, dirname, suffix="pdparams"):
             file_list = []
             for file in os.listdir(dirname):
-                if check_filename('{}(.*)_dist(.*).{}'.format(filename, suffix),
-                                  file):
+                if check_filename(
+                    '{}(.*)_dist(.*).{}'.format(filename, suffix), file
+                ):
                     file_list.append(os.path.join(dirname, file))
             file_list.sort()
             return file_list
@@ -134,14 +132,16 @@ class DistributedSaver:
 
         # load path.pdparam and path.pdopt
         param_state_dict = _load_state(filename, dirname)
-        opt_state_dict = _load_state(filename, dirname,
-                                     "pdopt") if load_optimizer else {}
+        opt_state_dict = (
+            _load_state(filename, dirname, "pdopt") if load_optimizer else {}
+        )
         state_dict = dict(param_state_dict, **opt_state_dict)
 
         # load path.pdattr
         dist_attr_file_list = _load_file(filename, dirname, "pdattr")
         self._logger.info(
-            "Load distributed attribute file: {}".format(dist_attr_file_list))
+            "Load distributed attribute file: {}".format(dist_attr_file_list)
+        )
         dist_attr = {}
         for dist_attr_file in dist_attr_file_list:
             with open(dist_attr_file, 'rb') as f:
@@ -206,11 +206,13 @@ class DistributedSaver:
         # NOTE: `paddle.static.save_inference_model` does not support subblock.
         dist_filename = filename + "_dist" + str(rank_id)
         dist_path = os.path.join(dirname, dist_filename)
-        paddle.static.save_inference_model(dist_path,
-                                           dist_feed_vars,
-                                           dist_fetch_vars,
-                                           exe,
-                                           program=dist_main_prog)
+        paddle.static.save_inference_model(
+            dist_path,
+            dist_feed_vars,
+            dist_fetch_vars,
+            exe,
+            program=dist_main_prog,
+        )
 
     def _save_rank_mapping(self, dirname):
         path = os.path.join(dirname, 'rank_mapping.csv')

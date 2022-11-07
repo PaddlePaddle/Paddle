@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -40,11 +39,11 @@ class TestBase(IPUOpTest):
         data2 = np.random.uniform(size=[20])
         self.feed_fp32 = {
             'x': data1.astype(np.float32),
-            'y': data2.astype(np.float32)
+            'y': data2.astype(np.float32),
         }
         self.feed_fp16 = {
             'x': data1.astype(np.float16),
-            'y': data2.astype(np.float16)
+            'y': data2.astype(np.float16),
         }
 
     def set_feed_attr(self):
@@ -58,12 +57,16 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype=self.feed_dtype[0])
-        y = paddle.static.data(name=self.feed_list[1],
-                               shape=self.feed_shape[1],
-                               dtype=self.feed_dtype[1])
+        x = paddle.static.data(
+            name=self.feed_list[0],
+            shape=self.feed_shape[0],
+            dtype=self.feed_dtype[0],
+        )
+        y = paddle.static.data(
+            name=self.feed_list[1],
+            shape=self.feed_shape[1],
+            dtype=self.feed_dtype[1],
+        )
         r1, r2 = paddle.meshgrid(x, y)
         self.fetch_list = [r1.name, r2.name]
 
@@ -81,7 +84,6 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_feed(self):
         data1 = np.random.uniform(size=[10])
         data2 = np.random.uniform(size=[20])
@@ -89,41 +91,46 @@ class TestCase1(TestBase):
         self.feed_fp32 = {
             'x': data1.astype(np.float32),
             'y': data2.astype(np.float32),
-            'z': data3.astype(np.float32)
+            'z': data3.astype(np.float32),
         }
         self.feed_fp16 = {
             'x': data1.astype(np.float16),
             'y': data2.astype(np.float16),
-            'z': data3.astype(np.float16)
+            'z': data3.astype(np.float16),
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype=self.feed_dtype[0])
-        y = paddle.static.data(name=self.feed_list[1],
-                               shape=self.feed_shape[1],
-                               dtype=self.feed_dtype[1])
-        z = paddle.static.data(name=self.feed_list[2],
-                               shape=self.feed_shape[2],
-                               dtype=self.feed_dtype[2])
+        x = paddle.static.data(
+            name=self.feed_list[0],
+            shape=self.feed_shape[0],
+            dtype=self.feed_dtype[0],
+        )
+        y = paddle.static.data(
+            name=self.feed_list[1],
+            shape=self.feed_shape[1],
+            dtype=self.feed_dtype[1],
+        )
+        z = paddle.static.data(
+            name=self.feed_list[2],
+            shape=self.feed_shape[2],
+            dtype=self.feed_dtype[2],
+        )
         r1, r2, r3 = paddle.meshgrid(x, y, z)
         self.fetch_list = [r1.name, r2.name, r3.name]
 
 
 class TestCase2(TestBase):
-
     def set_feed(self):
         data1 = np.random.uniform(size=[100])
         data2 = np.random.uniform(size=[200])
         self.feed_fp32 = {
             'x': data1.astype(np.int32),
-            'y': data2.astype(np.int32)
+            'y': data2.astype(np.int32),
         }
         self.feed_fp16 = {
             'x': data1.astype(np.int32),
-            'y': data2.astype(np.int32)
+            'y': data2.astype(np.int32),
         }
 
 

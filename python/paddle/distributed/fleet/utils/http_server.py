@@ -35,9 +35,9 @@ def get_logger(name, level, fmt):
     return logger
 
 
-_http_server_logger = get_logger(__name__,
-                                 logging.INFO,
-                                 fmt='%(asctime)s-%(levelname)s: %(message)s')
+_http_server_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
@@ -135,7 +135,7 @@ class KVHTTPServer(HTTPServer, object):
 
     def __init__(self, port, handler):
         """Init."""
-        super(KVHTTPServer, self).__init__(('', port), handler)
+        super().__init__(('', port), handler)
         self.delete_kv_lock = threading.Lock()
         self.delete_kv = {}
         self.kv_lock = threading.Lock()
@@ -167,7 +167,8 @@ class KVServer:
         start server until user calls stop to let it quit.
         """
         self.listen_thread = threading.Thread(
-            target=lambda: self.http_server.serve_forever())
+            target=lambda: self.http_server.serve_forever()
+        )
         self.listen_thread.start()
 
     def stop(self):

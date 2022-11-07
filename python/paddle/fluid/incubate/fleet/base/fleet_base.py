@@ -21,7 +21,9 @@ from paddle.optimizer import SGD as SGD_v2
 
 from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.distributed.fleet.base.role_maker import RoleMakerBase
-from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
+from paddle.fluid.contrib.mixed_precision.decorator import (
+    OptimizerWithMixedPrecision,
+)
 from . import mode
 
 __all__ = ['Fleet', 'DistributedOptimizer']
@@ -38,6 +40,7 @@ class Fleet(object):
     Returns:
         None
     """
+
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, mode):
@@ -179,7 +182,7 @@ class Fleet(object):
         trainer_files = [[]] * trainers
         begin = 0
         for i in range(trainers):
-            trainer_files[i] = files[begin:begin + blocks[i]]
+            trainer_files[i] = files[begin : begin + blocks[i]]
             begin += blocks[i]
 
         return trainer_files[trainer_id]
@@ -199,10 +202,14 @@ class Fleet(object):
         self._executor = Executor(fluid.CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
-            from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase as RoleMakerBaseIncubate
+            from paddle.fluid.incubate.fleet.base.role_maker import (
+                RoleMakerBase as RoleMakerBaseIncubate,
+            )
+
             if role_maker and not isinstance(role_maker, RoleMakerBaseIncubate):
                 raise TypeError(
-                    "role_maker must be an instance of RoleMakerBase")
+                    "role_maker must be an instance of RoleMakerBase"
+                )
 
         self._role_maker = role_maker
         self._role_maker.generate_role()
@@ -245,13 +252,15 @@ class Fleet(object):
         pass
 
     @abc.abstractmethod
-    def save_inference_model(self,
-                             executor,
-                             dirname,
-                             feeded_var_names,
-                             target_vars,
-                             main_program=None,
-                             export_for_deployment=True):
+    def save_inference_model(
+        self,
+        executor,
+        dirname,
+        feeded_var_names,
+        target_vars,
+        main_program=None,
+        export_for_deployment=True,
+    ):
         pass
 
     @abc.abstractmethod
@@ -277,24 +286,29 @@ class DistributedOptimizer(object):
         None
 
     """
+
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, optimizer, strategy=None):
-        if not isinstance(optimizer, SGD.__bases__) \
-                and not isinstance(optimizer, OptimizerWithMixedPrecision) \
-                and not isinstance(optimizer, SGD_v2.__base__):
+        if (
+            not isinstance(optimizer, SGD.__bases__)
+            and not isinstance(optimizer, OptimizerWithMixedPrecision)
+            and not isinstance(optimizer, SGD_v2.__base__)
+        ):
             raise TypeError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer
         self._strategy = strategy
 
     @abc.abstractmethod
-    def backward(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None,
-                 callbacks=None):
+    def backward(
+        self,
+        loss,
+        startup_program=None,
+        parameter_list=None,
+        no_grad_set=None,
+        callbacks=None,
+    ):
         """
         First part of `minimize`, do auto-diff to append backward ops for
         the current program.
@@ -341,12 +355,14 @@ class DistributedOptimizer(object):
         pass
 
     @abc.abstractmethod
-    def minimize(self,
-                 losses,
-                 scopes=None,
-                 startup_programs=None,
-                 parameter_list=None,
-                 no_grad_set=None):
+    def minimize(
+        self,
+        losses,
+        scopes=None,
+        startup_programs=None,
+        parameter_list=None,
+        no_grad_set=None,
+    ):
         """
         Add operations to minimize `loss` by updating `parameter_list`.
 

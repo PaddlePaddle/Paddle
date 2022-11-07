@@ -20,14 +20,16 @@ import numpy as np
 
 # use dot <CPU, ANY, INT8> as test case.
 class TestCustomKernelDot(unittest.TestCase):
-
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
 
         # --inplace to place output so file to current dir
-        cmd = 'cd {} && {} custom_kernel_dot_setup.py build_ext --inplace'.format(
-            cur_dir, sys.executable)
+        cmd = (
+            'cd {} && {} custom_kernel_dot_setup.py build_ext --inplace'.format(
+                cur_dir, sys.executable
+            )
+        )
         os.system(cmd)
 
     def test_custom_kernel_dot_run(self):
@@ -37,6 +39,7 @@ class TestCustomKernelDot(unittest.TestCase):
         result = np.sum(x_data * y_data, axis=1).reshape([2, 1])
 
         import paddle
+
         paddle.set_device('cpu')
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
@@ -46,18 +49,20 @@ class TestCustomKernelDot(unittest.TestCase):
             out.numpy(),
             result,
             err_msg='custom kernel dot out: {},\n numpy dot out: {}'.format(
-                out.numpy(), result))
+                out.numpy(), result
+            ),
+        )
 
 
 class TestCustomKernelDotC(unittest.TestCase):
-
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
 
         # --inplace to place output so file to current dir
         cmd = 'cd {} && {} custom_kernel_dot_c_setup.py build_ext --inplace'.format(
-            cur_dir, sys.executable)
+            cur_dir, sys.executable
+        )
         os.system(cmd)
 
     def test_custom_kernel_dot_run(self):
@@ -67,6 +72,7 @@ class TestCustomKernelDotC(unittest.TestCase):
         result = np.sum(x_data * y_data, axis=1).reshape([2, 1])
 
         import paddle
+
         paddle.set_device('cpu')
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
@@ -76,7 +82,9 @@ class TestCustomKernelDotC(unittest.TestCase):
             out.numpy(),
             result,
             err_msg='custom kernel dot out: {},\n numpy dot out: {}'.format(
-                out.numpy(), result))
+                out.numpy(), result
+            ),
+        )
 
 
 if __name__ == '__main__':

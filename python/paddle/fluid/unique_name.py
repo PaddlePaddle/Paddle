@@ -121,6 +121,7 @@ def generate(key):
 # in order to keep name consistency.
 def generate_with_ignorable_key(key):
     from .framework import _non_static_mode, _dygraph_tracer
+
     if _non_static_mode():
         return _dygraph_tracer()._generate_unique_name()
 

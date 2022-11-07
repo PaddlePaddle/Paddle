@@ -122,7 +122,8 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
         if frame_length > x.shape[axis]:
             raise ValueError(
                 f'Attribute frame_length should be less equal than sequence length, '
-                f'but got ({frame_length}) > ({x.shape[axis]}).')
+                f'but got ({frame_length}) > ({x.shape[axis]}).'
+            )
 
     op_type = 'frame'
 
@@ -130,25 +131,33 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
         return _C_ops.frame(x, frame_length, hop_length, axis)
 
     if _in_legacy_dygraph():
-        attrs = ('frame_length', frame_length, 'hop_length', hop_length, 'axis',
-                 axis)
+        attrs = (
+            'frame_length',
+            frame_length,
+            'hop_length',
+            hop_length,
+            'axis',
+            axis,
+        )
         op = getattr(_legacy_C_ops, op_type)
         out = op(x, *attrs)
     else:
         check_variable_and_dtype(
-            x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'],
-            op_type)
+            x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], op_type
+        )
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype=dtype)
-        helper.append_op(type=op_type,
-                         inputs={'X': x},
-                         attrs={
-                             'frame_length': frame_length,
-                             'hop_length': hop_length,
-                             'axis': axis
-                         },
-                         outputs={'Out': out})
+        helper.append_op(
+            type=op_type,
+            inputs={'X': x},
+            attrs={
+                'frame_length': frame_length,
+                'hop_length': hop_length,
+                'axis': axis,
+            },
+            outputs={'Out': out},
+        )
     return out
 
 
@@ -223,31 +232,32 @@ def overlap_add(x, hop_length, axis=-1, name=None):
         out = op(x, *attrs)
     else:
         check_variable_and_dtype(
-            x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'],
-            op_type)
+            x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], op_type
+        )
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype=dtype)
-        helper.append_op(type=op_type,
-                         inputs={'X': x},
-                         attrs={
-                             'hop_length': hop_length,
-                             'axis': axis
-                         },
-                         outputs={'Out': out})
+        helper.append_op(
+            type=op_type,
+            inputs={'X': x},
+            attrs={'hop_length': hop_length, 'axis': axis},
+            outputs={'Out': out},
+        )
     return out
 
 
-def stft(x,
-         n_fft,
-         hop_length=None,
-         win_length=None,
-         window=None,
-         center=True,
-         pad_mode='reflect',
-         normalized=False,
-         onesided=True,
-         name=None):
+def stft(
+    x,
+    n_fft,
+    hop_length=None,
+    win_length=None,
+    window=None,
+    center=True,
+    pad_mode='reflect',
+    normalized=False,
+    onesided=True,
+    name=None,
+):
     r"""
     Short-time Fourier transform (STFT).
 
@@ -310,13 +320,15 @@ def stft(x,
                     paddle.randn([8, 48000], dtype=paddle.float64)*1j  # [8, 48000] complex128
             y1 = stft(x, n_fft=512, center=False, onesided=False)  # [8, 512, 372]
     """
-    check_variable_and_dtype(x, 'x',
-                             ['float32', 'float64', 'complex64', 'complex128'],
-                             'stft')
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'stft'
+    )
 
     x_rank = len(x.shape)
-    assert x_rank in [1, 2], \
-        f'x should be a 1D or 2D real tensor, but got rank of x is {x_rank}'
+    assert x_rank in [
+        1,
+        2,
+    ], f'x should be a 1D or 2D real tensor, but got rank of x is {x_rank}'
 
     if x_rank == 1:  # (batch, seq_length)
         x = x.unsqueeze(0)
@@ -324,69 +336,77 @@ def stft(x,
     if hop_length is None:
         hop_length = int(n_fft // 4)
 
-    assert hop_length > 0, \
-        f'hop_length should be > 0, but got {hop_length}.'
+    assert hop_length > 0, f'hop_length should be > 0, but got {hop_length}.'
 
     if win_length is None:
         win_length = n_fft
 
     if _non_static_mode():
-        assert 0 < n_fft <= x.shape[-1], \
-            f'n_fft should be in (0, seq_length({x.shape[-1]})], but got {n_fft}.'
+        assert (
+            0 < n_fft <= x.shape[-1]
+        ), f'n_fft should be in (0, seq_length({x.shape[-1]})], but got {n_fft}.'
 
-    assert 0 < win_length <= n_fft, \
-        f'win_length should be in (0, n_fft({n_fft})], but got {win_length}.'
+    assert (
+        0 < win_length <= n_fft
+    ), f'win_length should be in (0, n_fft({n_fft})], but got {win_length}.'
 
     if window is not None:
-        assert len(window.shape) == 1 and len(window) == win_length, \
-            f'expected a 1D window tensor of size equal to win_length({win_length}), but got window with shape {window.shape}.'
+        assert (
+            len(window.shape) == 1 and len(window) == win_length
+        ), f'expected a 1D window tensor of size equal to win_length({win_length}), but got window with shape {window.shape}.'
     else:
-        window = paddle.ones(shape=(win_length, ), dtype=x.dtype)
+        window = paddle.ones(shape=(win_length,), dtype=x.dtype)
 
     if win_length < n_fft:
         pad_left = (n_fft - win_length) // 2
         pad_right = n_fft - win_length - pad_left
-        window = paddle.nn.functional.pad(window,
-                                          pad=[pad_left, pad_right],
-                                          mode='constant')
+        window = paddle.nn.functional.pad(
+            window, pad=[pad_left, pad_right], mode='constant'
+        )
 
     if center:
-        assert pad_mode in ['constant', 'reflect'], \
-            'pad_mode should be "reflect" or "constant", but got "{}".'.format(pad_mode)
+        assert pad_mode in [
+            'constant',
+            'reflect',
+        ], 'pad_mode should be "reflect" or "constant", but got "{}".'.format(
+            pad_mode
+        )
 
         pad_length = n_fft // 2
         # FIXME: Input `x` can be a complex tensor but pad does not supprt complex input.
-        x = paddle.nn.functional.pad(x.unsqueeze(-1),
-                                     pad=[pad_length, pad_length],
-                                     mode=pad_mode,
-                                     data_format="NLC").squeeze(-1)
+        x = paddle.nn.functional.pad(
+            x.unsqueeze(-1),
+            pad=[pad_length, pad_length],
+            mode=pad_mode,
+            data_format="NLC",
+        ).squeeze(-1)
 
     x_frames = frame(x=x, frame_length=n_fft, hop_length=hop_length, axis=-1)
     x_frames = x_frames.transpose(
-        perm=[0, 2,
-              1])  # switch n_fft to last dim, egs: (batch, num_frames, n_fft)
+        perm=[0, 2, 1]
+    )  # switch n_fft to last dim, egs: (batch, num_frames, n_fft)
     x_frames = paddle.multiply(x_frames, window)
 
     norm = 'ortho' if normalized else 'backward'
     if is_complex(x_frames):
-        assert not onesided, \
-            'onesided should be False when input or window is a complex Tensor.'
+        assert (
+            not onesided
+        ), 'onesided should be False when input or window is a complex Tensor.'
 
     if not is_complex(x):
-        out = fft_r2c(x=x_frames,
-                      n=None,
-                      axis=-1,
-                      norm=norm,
-                      forward=True,
-                      onesided=onesided,
-                      name=name)
+        out = fft_r2c(
+            x=x_frames,
+            n=None,
+            axis=-1,
+            norm=norm,
+            forward=True,
+            onesided=onesided,
+            name=name,
+        )
     else:
-        out = fft_c2c(x=x_frames,
-                      n=None,
-                      axis=-1,
-                      norm=norm,
-                      forward=True,
-                      name=name)
+        out = fft_c2c(
+            x=x_frames, n=None, axis=-1, norm=norm, forward=True, name=name
+        )
 
     out = out.transpose(perm=[0, 2, 1])  # (batch, n_fft, num_frames)
 
@@ -396,17 +416,19 @@ def stft(x,
     return out
 
 
-def istft(x,
-          n_fft,
-          hop_length=None,
-          win_length=None,
-          window=None,
-          center=True,
-          normalized=False,
-          onesided=True,
-          length=None,
-          return_complex=False,
-          name=None):
+def istft(
+    x,
+    n_fft,
+    hop_length=None,
+    win_length=None,
+    window=None,
+    center=True,
+    normalized=False,
+    onesided=True,
+    length=None,
+    return_complex=False,
+    name=None,
+):
     r"""
     Inverse short-time Fourier transform (ISTFT).
 
@@ -482,8 +504,12 @@ def istft(x,
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'istft')
 
     x_rank = len(x.shape)
-    assert x_rank in [2, 3], \
-        'x should be a 2D or 3D complex tensor, but got rank of x is {}'.format(x_rank)
+    assert x_rank in [
+        2,
+        3,
+    ], 'x should be a 2D or 3D complex tensor, but got rank of x is {}'.format(
+        x_rank
+    )
 
     if x_rank == 2:  # (batch, n_fft, n_frames)
         x = x.unsqueeze(0)
@@ -495,83 +521,107 @@ def istft(x,
         win_length = n_fft
 
     # Assure no gaps between frames.
-    assert 0 < hop_length <= win_length, \
-        'hop_length should be in (0, win_length({})], but got {}.'.format(win_length, hop_length)
+    assert (
+        0 < hop_length <= win_length
+    ), 'hop_length should be in (0, win_length({})], but got {}.'.format(
+        win_length, hop_length
+    )
 
-    assert 0 < win_length <= n_fft, \
-        'win_length should be in (0, n_fft({})], but got {}.'.format(n_fft, win_length)
+    assert (
+        0 < win_length <= n_fft
+    ), 'win_length should be in (0, n_fft({})], but got {}.'.format(
+        n_fft, win_length
+    )
 
     n_frames = x.shape[-1]
     fft_size = x.shape[-2]
 
     if _non_static_mode():
         if onesided:
-            assert (fft_size == n_fft // 2 + 1), \
-                'fft_size should be equal to n_fft // 2 + 1({}) when onesided is True, but got {}.'.format(n_fft // 2 + 1, fft_size)
+            assert (
+                fft_size == n_fft // 2 + 1
+            ), 'fft_size should be equal to n_fft // 2 + 1({}) when onesided is True, but got {}.'.format(
+                n_fft // 2 + 1, fft_size
+            )
         else:
-            assert (fft_size == n_fft), \
-                'fft_size should be equal to n_fft({}) when onesided is False, but got {}.'.format(n_fft, fft_size)
+            assert (
+                fft_size == n_fft
+            ), 'fft_size should be equal to n_fft({}) when onesided is False, but got {}.'.format(
+                n_fft, fft_size
+            )
 
     if window is not None:
-        assert len(window.shape) == 1 and len(window) == win_length, \
-            'expected a 1D window tensor of size equal to win_length({}), but got window with shape {}.'.format(win_length, window.shape)
+        assert (
+            len(window.shape) == 1 and len(window) == win_length
+        ), 'expected a 1D window tensor of size equal to win_length({}), but got window with shape {}.'.format(
+            win_length, window.shape
+        )
     else:
-        window_dtype = paddle.float32 if x.dtype in [
-            paddle.float32, paddle.complex64
-        ] else paddle.float64
-        window = paddle.ones(shape=(win_length, ), dtype=window_dtype)
+        window_dtype = (
+            paddle.float32
+            if x.dtype in [paddle.float32, paddle.complex64]
+            else paddle.float64
+        )
+        window = paddle.ones(shape=(win_length,), dtype=window_dtype)
 
     if win_length < n_fft:
         pad_left = (n_fft - win_length) // 2
         pad_right = n_fft - win_length - pad_left
         # FIXME: Input `window` can be a complex tensor but pad does not supprt complex input.
-        window = paddle.nn.functional.pad(window,
-                                          pad=[pad_left, pad_right],
-                                          mode='constant')
+        window = paddle.nn.functional.pad(
+            window, pad=[pad_left, pad_right], mode='constant'
+        )
 
     x = x.transpose(
-        perm=[0, 2,
-              1])  # switch n_fft to last dim, egs: (batch, num_frames, n_fft)
+        perm=[0, 2, 1]
+    )  # switch n_fft to last dim, egs: (batch, num_frames, n_fft)
     norm = 'ortho' if normalized else 'backward'
 
     if return_complex:
-        assert not onesided, \
-            'onesided should be False when input(output of istft) or window is a complex Tensor.'
+        assert (
+            not onesided
+        ), 'onesided should be False when input(output of istft) or window is a complex Tensor.'
 
         out = fft_c2c(x=x, n=None, axis=-1, norm=norm, forward=False, name=None)
     else:
-        assert not is_complex(window), \
-            'Data type of window should not be complex when return_complex is False.'
+        assert not is_complex(
+            window
+        ), 'Data type of window should not be complex when return_complex is False.'
 
         if onesided is False:
-            x = x[:, :, :n_fft // 2 + 1]
+            x = x[:, :, : n_fft // 2 + 1]
         out = fft_c2r(x=x, n=None, axis=-1, norm=norm, forward=False, name=None)
 
     out = paddle.multiply(out, window).transpose(
-        perm=[0, 2, 1])  # (batch, n_fft, num_frames)
-    out = overlap_add(x=out, hop_length=hop_length,
-                      axis=-1)  # (batch, seq_length)
+        perm=[0, 2, 1]
+    )  # (batch, n_fft, num_frames)
+    out = overlap_add(
+        x=out, hop_length=hop_length, axis=-1
+    )  # (batch, seq_length)
 
     window_envelop = overlap_add(
         x=paddle.tile(
             x=paddle.multiply(window, window).unsqueeze(0),
-            repeat_times=[n_frames,
-                          1]).transpose(perm=[1, 0]),  # (n_fft, num_frames)
+            repeat_times=[n_frames, 1],
+        ).transpose(
+            perm=[1, 0]
+        ),  # (n_fft, num_frames)
         hop_length=hop_length,
-        axis=-1)  # (seq_length, )
+        axis=-1,
+    )  # (seq_length, )
 
     if length is None:
         if center:
-            out = out[:, (n_fft // 2):-(n_fft // 2)]
-            window_envelop = window_envelop[(n_fft // 2):-(n_fft // 2)]
+            out = out[:, (n_fft // 2) : -(n_fft // 2)]
+            window_envelop = window_envelop[(n_fft // 2) : -(n_fft // 2)]
     else:
         if center:
             start = n_fft // 2
         else:
             start = 0
 
-        out = out[:, start:start + length]
-        window_envelop = window_envelop[start:start + length]
+        out = out[:, start : start + length]
+        window_envelop = window_envelop[start : start + length]
 
     # Check whether the Nonzero Overlap Add (NOLA) constraint is met.
     if _non_static_mode() and window_envelop.abs().min().item() < 1e-11:

@@ -119,7 +119,7 @@ class UniqueOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "Input tensor. It should be a 1-D tensor when Attr(is_sorted)"
-             " is fasle or a N-D tensor when Attr(is_sorted) is true.");
+             " is false or a N-D tensor when Attr(is_sorted) is true.");
     AddAttr<int>("dtype", "data type for output index");
     AddOutput("Out", "A unique subsequence for input tensor.");
     AddOutput("Index",

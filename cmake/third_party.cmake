@@ -505,4 +505,19 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
+if(WITH_GPU
+   AND NOT WITH_ARM
+   AND NOT WIN32
+   AND NOT APPLE)
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
+    include(external/cutlass) # download, build, install cusparselt
+    list(APPEND third_party_deps extern_cutlass)
+  endif()
+endif()
+
+if(WITH_CUDNN_FRONTEND)
+  include(external/cudnn-frontend) # download cudnn-frontend
+  list(APPEND third_party_deps extern_cudnn_frontend)
+endif()
+
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

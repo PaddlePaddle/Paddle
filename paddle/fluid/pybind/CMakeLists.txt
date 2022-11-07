@@ -22,7 +22,6 @@ set(PYBIND_DEPS
     analysis_predictor
     imperative_profiler
     imperative_flag
-    save_load_util
     dlpack_tensor
     device_context
     gloo_wrapper
@@ -295,6 +294,10 @@ if(WITH_PYTHON)
 
   if(WITH_CNCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
+  endif()
+
+  if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+    list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
   endif()
 
   add_executable(op_function_generator op_function_generator.cc)
@@ -617,10 +620,19 @@ if(WITH_PYTHON)
   if(WIN32)
     set(SHARD_LIB_NAME libpaddle)
   endif()
+  set_property(GLOBAL PROPERTY PADDLE_LIB_NAME ${SHARD_LIB_NAME})
   cc_library(
     ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
+  # TODO(zhiqiu): some symbols not exported even setting the following
+  # property. Need to find a better way.
+
+  # if(WIN32)
+  #   set_property(TARGET ${SHARD_LIB_NAME}
+  #                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  # endif()
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_dependencies(${SHARD_LIB_NAME} legacy_eager_codegen)
@@ -642,4 +654,6 @@ if(WITH_PYTHON)
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
   add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
+
+  target_link_libraries(${SHARD_LIB_NAME} ${PYTHON_LIBRARIES})
 endif()

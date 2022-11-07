@@ -24,10 +24,12 @@ paddle.enable_static()
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_dir',
-                        type=str,
-                        default="",
-                        help='Directory of the inference models.')
+    parser.add_argument(
+        '--model_dir',
+        type=str,
+        default="",
+        help='Directory of the inference models.',
+    )
     return parser.parse_args()
 
 
@@ -58,7 +60,7 @@ if __name__ == '__main__':
     args = parse_args()
     for root, dirs, files in os.walk(args.model_dir, topdown=True):
         for name in files:
-            if (re.match(r'.*pdmodel', name)):
+            if re.match(r'.*pdmodel', name):
                 ops_set = get_model_ops(os.path.join(root, name))
     phi_set = get_model_phi_kernels(ops_set)
     ops = ";".join(ops_set)

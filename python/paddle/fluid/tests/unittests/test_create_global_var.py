@@ -19,7 +19,6 @@ from paddle.fluid import Program, program_guard
 
 
 class TestCreateGlobalVarError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
 

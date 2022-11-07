@@ -15,12 +15,15 @@
 import paddle
 import unittest
 from paddle.fluid import core
-from paddle.device.cuda import device_count, memory_allocated, max_memory_allocated
+from paddle.device.cuda import (
+    device_count,
+    memory_allocated,
+    max_memory_allocated,
+)
 from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMaxMemoryAllocated(unittest.TestCase):
-
     def func_test_max_memory_allocated(self, device=None):
         if core.is_compiled_with_cuda():
             alloc_time = 100
@@ -29,13 +32,15 @@ class TestMaxMemoryAllocated(unittest.TestCase):
             for i in range(alloc_time):
                 shape = paddle.randint(max_alloc_size)
                 tensor = paddle.zeros(shape)
-                peak_memory_allocated_size = max(peak_memory_allocated_size,
-                                                 memory_allocated(device))
+                peak_memory_allocated_size = max(
+                    peak_memory_allocated_size, memory_allocated(device)
+                )
                 del shape
                 del tensor
 
-            self.assertEqual(peak_memory_allocated_size,
-                             max_memory_allocated(device))
+            self.assertEqual(
+                peak_memory_allocated_size, max_memory_allocated(device)
+            )
 
     def test_max_memory_allocated(self):
         with _test_eager_guard():
@@ -60,7 +65,11 @@ class TestMaxMemoryAllocated(unittest.TestCase):
         if core.is_compiled_with_cuda():
             wrong_device = [
                 core.CPUPlace(),
-                device_count() + 1, -2, 0.5, "gpu1", "npu"
+                device_count() + 1,
+                -2,
+                0.5,
+                "gpu1",
+                "npu",
             ]
             for device in wrong_device:
                 with self.assertRaises(BaseException):
