@@ -195,7 +195,7 @@ static void SetInMemDescWithSqueeze2FuseSupport(
           x_vec_dims[i],
           1,
           platform::errors::InvalidArgument(
-              "Squeeze2 input '%d' dim should be equal to one, but get '%d'.",
+              "Squeeze2 input dim %d should be equal to one, but get %d.",
               i,
               x_vec_dims[i]));
       continue;
