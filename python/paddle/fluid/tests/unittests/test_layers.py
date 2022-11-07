@@ -86,7 +86,7 @@ class TestLayer(LayerTest):
     def test_custom_layer_with_kwargs(self):
         class CustomLayer(fluid.Layer):
             def __init__(self, input_size, linear1_size=4):
-                super(CustomLayer, self).__init__()
+                super().__init__()
                 self.linear1 = nn.Linear(
                     input_size, linear1_size, bias_attr=False
                 )
@@ -455,182 +455,6 @@ class TestLayer(LayerTest):
 
         np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
         np.testing.assert_allclose(static_ret, dy_eager_ret_value, rtol=1e-05)
-
-    def test_conv2d(self):
-        with self.static_graph():
-            images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
-            ret = layers.conv2d(input=images, num_filters=3, filter_size=[2, 2])
-            static_ret = self.get_static_graph_result(
-                feed={'pixel': np.ones([2, 3, 5, 5], dtype='float32')},
-                fetch_list=[ret],
-            )[0]
-
-        with self.static_graph():
-            images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D(
-                num_channels=3, num_filters=3, filter_size=[2, 2]
-            )
-            ret = conv2d(images)
-            static_ret2 = self.get_static_graph_result(
-                feed={'pixel': np.ones([2, 3, 5, 5], dtype='float32')},
-                fetch_list=[ret],
-            )[0]
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                images = np.ones([2, 3, 5, 5], dtype='float32')
-                conv2d = nn.Conv2D(
-                    num_channels=3, num_filters=3, filter_size=[2, 2]
-                )
-                dy_eager_ret = conv2d(base.to_variable(images))
-                dy_eager_ret_value = dy_eager_ret.numpy()
-
-            images = np.ones([2, 3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D(
-                num_channels=3, num_filters=3, filter_size=[2, 2]
-            )
-            dy_ret = conv2d(base.to_variable(images))
-            dy_ret_value = dy_ret.numpy()
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                images = np.ones([2, 3, 5, 5], dtype='float32')
-                conv2d = nn.Conv2D(
-                    num_channels=3,
-                    num_filters=3,
-                    filter_size=[2, 2],
-                    bias_attr=False,
-                )
-                dy_ret = conv2d(base.to_variable(images))
-                self.assertTrue(conv2d.bias is None)
-
-            images = np.ones([2, 3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D(
-                num_channels=3,
-                num_filters=3,
-                filter_size=[2, 2],
-                bias_attr=False,
-            )
-            dy_ret = conv2d(base.to_variable(images))
-            self.assertTrue(conv2d.bias is None)
-
-        with self.static_graph():
-            # the input of Conv2D must be Variable.
-            def test_Variable():
-                images = np.ones([2, 3, 5, 5], dtype='float32')
-                conv2d = nn.Conv2D(
-                    num_channels=3, num_filters=3, filter_size=[2, 2]
-                )
-                conv2d_ret1 = conv2d(images)
-
-            self.assertRaises(TypeError, test_Variable)
-
-            # the input dtype of Conv2D must be float16 or float32 or float64
-            # float16 only can be set on GPU place
-            def test_type():
-                images = layers.data(
-                    name='pixel', shape=[3, 5, 5], dtype='int32'
-                )
-                conv2d = nn.Conv2D(
-                    num_channels=3, num_filters=3, filter_size=[2, 2]
-                )
-                conv2d_ret2 = conv2d(images)
-
-            self.assertRaises(TypeError, test_type)
-
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, dy_eager_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(static_ret, static_ret2, rtol=1e-05)
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                images = np.ones([2, 3, 5, 5], dtype='float32')
-                custom_weight = np.random.randn(3, 3, 2, 2).astype("float32")
-                weight_attr = fluid.ParamAttr(
-                    initializer=fluid.initializer.NumpyArrayInitializer(
-                        custom_weight
-                    )
-                )
-                conv2d1 = nn.Conv2D(
-                    num_channels=3, num_filters=3, filter_size=[2, 2]
-                )
-                conv2d2 = nn.Conv2D(
-                    num_channels=3,
-                    num_filters=3,
-                    filter_size=[2, 2],
-                    param_attr=weight_attr,
-                )
-                dy_ret1 = conv2d1(base.to_variable(images))
-                dy_ret2 = conv2d2(base.to_variable(images))
-                self.assertFalse(
-                    np.array_equal(dy_ret1.numpy(), dy_ret2.numpy())
-                )
-
-                conv2d1_weight_np = conv2d1.weight.numpy()
-                conv2d1_bias = conv2d1.bias
-                self.assertFalse(
-                    np.array_equal(conv2d1_weight_np, conv2d2.weight.numpy())
-                )
-                conv2d2.weight.set_value(conv2d1_weight_np)
-                np.testing.assert_array_equal(
-                    conv2d1_weight_np, conv2d2.weight.numpy()
-                )
-                conv2d2.bias.set_value(conv2d1_bias)
-                dy_ret1 = conv2d1(base.to_variable(images))
-                dy_ret2 = conv2d2(base.to_variable(images))
-                np.testing.assert_array_equal(dy_ret1.numpy(), dy_ret2.numpy())
-
-                conv2d2.weight = conv2d1.weight
-                conv2d2.bias = conv2d1.bias
-                np.testing.assert_array_equal(
-                    conv2d1.weight.numpy(), conv2d2.weight.numpy()
-                )
-                np.testing.assert_array_equal(
-                    conv2d1.bias.numpy(), conv2d2.bias.numpy()
-                )
-
-            images = np.ones([2, 3, 5, 5], dtype='float32')
-            custom_weight = np.random.randn(3, 3, 2, 2).astype("float32")
-            weight_attr = fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
-                    custom_weight
-                )
-            )
-            conv2d1 = nn.Conv2D(
-                num_channels=3, num_filters=3, filter_size=[2, 2]
-            )
-            conv2d2 = nn.Conv2D(
-                num_channels=3,
-                num_filters=3,
-                filter_size=[2, 2],
-                param_attr=weight_attr,
-            )
-            dy_ret1 = conv2d1(base.to_variable(images))
-            dy_ret2 = conv2d2(base.to_variable(images))
-            self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
-
-            conv2d1_weight_np = conv2d1.weight.numpy()
-            conv2d1_bias = conv2d1.bias
-            self.assertFalse(
-                np.array_equal(conv2d1_weight_np, conv2d2.weight.numpy())
-            )
-            conv2d2.weight.set_value(conv2d1_weight_np)
-            np.testing.assert_array_equal(
-                conv2d1_weight_np, conv2d2.weight.numpy()
-            )
-            conv2d2.bias.set_value(conv2d1_bias)
-            dy_ret1 = conv2d1(base.to_variable(images))
-            dy_ret2 = conv2d2(base.to_variable(images))
-            np.testing.assert_array_equal(dy_ret1.numpy(), dy_ret2.numpy())
-
-            conv2d2.weight = conv2d1.weight
-            conv2d2.bias = conv2d1.bias
-            np.testing.assert_array_equal(
-                conv2d1.weight.numpy(), conv2d2.weight.numpy()
-            )
-            np.testing.assert_array_equal(
-                conv2d1.bias.numpy(), conv2d2.bias.numpy()
-            )
 
     def test_gru_unit(self):
         lod = [[2, 4, 3]]
@@ -4359,8 +4183,8 @@ class TestBook(LayerTest):
             crf_decode = layers.crf_decoding(
                 input=emission, param_attr=ParamAttr(name="crfw")
             )
-            self.assertFalse(crf is None)
-            self.assertFalse(crf_decode is None)
+            self.assertIsNotNone(crf)
+            self.assertIsNotNone(crf_decode)
             return layers.chunk_eval(
                 input=crf_decode,
                 label=label,
@@ -4386,8 +4210,8 @@ class TestBook(LayerTest):
             crf_decode = layers.crf_decoding(
                 input=emission, length=length, param_attr=ParamAttr(name="crfw")
             )
-            self.assertFalse(crf is None)
-            self.assertFalse(crf_decode is None)
+            self.assertIsNotNone(crf)
+            self.assertIsNotNone(crf_decode)
             return layers.chunk_eval(
                 input=crf_decode,
                 label=label,
@@ -4797,57 +4621,6 @@ class TestBook(LayerTest):
             self.assertIsNotNone(out)
         print(str(program))
 
-    def test_deformable_conv(self):
-        with self.static_graph():
-            input = layers.data(
-                name='input',
-                append_batch_size=False,
-                shape=[2, 3, 32, 32],
-                dtype="float32",
-            )
-            offset = layers.data(
-                name='offset',
-                append_batch_size=False,
-                shape=[2, 18, 32, 32],
-                dtype="float32",
-            )
-            mask = layers.data(
-                name='mask',
-                append_batch_size=False,
-                shape=[2, 9, 32, 32],
-                dtype="float32",
-            )
-            out = layers.deformable_conv(
-                input=input,
-                offset=offset,
-                mask=mask,
-                num_filters=2,
-                filter_size=3,
-                padding=1,
-            )
-            return out
-
-    def test_deformable_conv2(self):
-        with self.static_graph():
-            input = fluid.data(
-                name='input', shape=[None, 3, None, None], dtype="float32"
-            )
-            offset = fluid.data(
-                name='offset', shape=[None, 18, None, None], dtype="float32"
-            )
-            mask = fluid.data(
-                name='mask', shape=[None, 9, None, None], dtype="float32"
-            )
-            out = layers.deformable_conv(
-                input=input,
-                offset=offset,
-                mask=mask,
-                num_filters=2,
-                filter_size=3,
-                padding=1,
-            )
-            return out
-
     def test_unfold(self):
         with self.static_graph():
             x = layers.data(name='x', shape=[3, 20, 20], dtype='float32')
@@ -4899,33 +4672,6 @@ class TestBook(LayerTest):
                 trans_std=0.1,
             )
         return out
-
-    def test_deformable_conv_v1(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = layers.data(
-                name='input',
-                append_batch_size=False,
-                shape=[2, 3, 32, 32],
-                dtype="float32",
-            )
-            offset = layers.data(
-                name='offset',
-                append_batch_size=False,
-                shape=[2, 18, 32, 32],
-                dtype="float32",
-            )
-            out = layers.deformable_conv(
-                input=input,
-                offset=offset,
-                mask=None,
-                num_filters=2,
-                filter_size=3,
-                padding=1,
-                modulated=False,
-            )
-            return out
 
     def test_retinanet_target_assign(self):
         with program_guard(
@@ -5169,7 +4915,7 @@ class TestMetricsDetectionMap(unittest.TestCase):
 
 class ExampleNet(paddle.nn.Layer):
     def __init__(self):
-        super(ExampleNet, self).__init__()
+        super().__init__()
         self.weight = self.create_parameter(
             shape=[1, 1], attr=paddle.ParamAttr(trainable=False)
         )
@@ -5205,7 +4951,7 @@ class TestLayerTrainingAttribute(unittest.TestCase):
 
 class MyLayer(paddle.nn.Layer):
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
         self._linear = paddle.nn.Linear(1, 1)
         self._dropout = paddle.nn.Dropout(p=0.5)
 
@@ -5217,7 +4963,7 @@ class MyLayer(paddle.nn.Layer):
 
 class MySuperLayer(paddle.nn.Layer):
     def __init__(self):
-        super(MySuperLayer, self).__init__()
+        super().__init__()
         self._mylayer = MyLayer()
 
     def forward(self, input):

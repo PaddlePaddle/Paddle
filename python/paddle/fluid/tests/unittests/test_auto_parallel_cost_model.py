@@ -49,7 +49,7 @@ class MLPLayer(nn.Layer):
         initializer_range=0.02,
         is_distributed=True,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(

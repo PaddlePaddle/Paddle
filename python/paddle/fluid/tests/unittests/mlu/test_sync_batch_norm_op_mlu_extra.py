@@ -85,7 +85,7 @@ class TestConvertSyncBatchNormCast1(unittest.TestCase):
 
         class Net(nn.Layer):
             def __init__(self):
-                super(Net, self).__init__()
+                super().__init__()
                 self.conv1 = nn.Conv2D(3, 5, 3)
                 self.bn = []
                 bn = self.add_sublayer('bn', nn.BatchNorm2D(5))
@@ -116,7 +116,7 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
 
             class SyBNNet(paddle.nn.Layer):
                 def __init__(self, in_ch=3, out_ch=3, dirate=1):
-                    super(SyBNNet, self).__init__()
+                    super().__init__()
                     self.bn_s1 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
                         paddle.nn.BatchNorm3D(
                             out_ch,
@@ -136,7 +136,7 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
 
             class BNNet(paddle.nn.Layer):
                 def __init__(self, in_ch=3, out_ch=3, dirate=1):
-                    super(BNNet, self).__init__()
+                    super().__init__()
                     self.bn_s1 = paddle.nn.BatchNorm3D(
                         out_ch,
                         weight_attr=paddle.ParamAttr(

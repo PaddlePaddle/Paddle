@@ -406,7 +406,7 @@ class TestStridedSliceOp_starts_Tensor(OpTest):
         self.outputs = {'Out': self.output}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
+            # 'starts': self.starts,
             'ends': self.ends,
             'strides': self.strides,
             'infer_flags': self.infer_flags,
@@ -442,7 +442,7 @@ class TestStridedSliceOp_ends_Tensor(OpTest):
         self.attrs = {
             'axes': self.axes,
             'starts': self.starts,
-            #'ends': self.ends,
+            # 'ends': self.ends,
             'strides': self.strides,
             'infer_flags': self.infer_flags,
         }
@@ -483,8 +483,8 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
         self.outputs = {'Out': self.output}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
-            #'ends': self.ends,
+            # 'starts': self.starts,
+            # 'ends': self.ends,
             'strides': self.strides,
             'infer_flags': self.infer_flags,
         }
@@ -520,7 +520,7 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            #'strides': self.strides,
+            # 'strides': self.strides,
             'infer_flags': self.infer_flags,
         }
 
@@ -640,7 +640,7 @@ class TestStridedSliceAPI(unittest.TestCase):
 
 class ArrayLayer(paddle.nn.Layer):
     def __init__(self, input_size=224, output_size=10, array_size=1):
-        super(ArrayLayer, self).__init__()
+        super().__init__()
         self.input_size = input_size
         self.output_size = output_size
         self.array_size = array_size
@@ -764,7 +764,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
                 class Simple(paddle.nn.Layer):
                     def __init__(self):
-                        super(Simple, self).__init__()
+                        super().__init__()
 
                     def forward(self, inps):
                         tensor_array = None

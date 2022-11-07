@@ -187,12 +187,12 @@ class TestPyLayer(unittest.TestCase):
         for dtype in dtypes:
             input1 = paddle.randn([2, 3])
             input1.stop_gradient = False
-            self.assertTrue(input1.grad is None)
+            self.assertIsNone(input1.grad)
 
             z = tanh.apply(input1, dtype)
             z = paddle.cast(z, "float32")
             z.sum().backward()
-            self.assertTrue(input1.grad is not None)
+            self.assertIsNotNone(input1.grad)
 
     def test_pylayer_dtype(self):
         with _test_eager_guard():
@@ -283,7 +283,7 @@ class TestPyLayer(unittest.TestCase):
         input1 = paddle.randn([2, 3]).astype("float64")
         z = tanh.apply(input1, paddle.tanh, paddle.square)
         z.mean().backward()
-        self.assertTrue(z.grad is None)
+        self.assertIsNone(z.grad)
 
     def test_pylayer_nograd(self):
         with _test_eager_guard():
@@ -458,7 +458,7 @@ class TestPyLayer(unittest.TestCase):
 
         class Layer(paddle.nn.Layer):
             def __init__(self):
-                super(Layer, self).__init__()
+                super().__init__()
 
             def forward(self, data):
                 data = data**2
@@ -472,7 +472,7 @@ class TestPyLayer(unittest.TestCase):
             layer = Layer()
             z = layer(data)
             z.backward()
-            self.assertTrue(data.grad is not None)
+            self.assertIsNotNone(data.grad)
 
     def test_pylayer_inplace(self):
         with _test_eager_guard():
@@ -495,7 +495,7 @@ class TestPyLayer(unittest.TestCase):
 
             class Layer(paddle.nn.Layer):
                 def __init__(self):
-                    super(Layer, self).__init__()
+                    super().__init__()
 
                 def forward(self, data):
                     var_b = data**2
@@ -532,7 +532,7 @@ class TestPyLayer(unittest.TestCase):
 
             class Layer(paddle.nn.Layer):
                 def __init__(self):
-                    super(Layer, self).__init__()
+                    super().__init__()
 
                 def forward(self, data):
                     var_b = data**2
@@ -547,7 +547,7 @@ class TestPyLayer(unittest.TestCase):
                 layer = Layer()
                 z = layer(data)
                 z.backward()
-                self.assertTrue(data.grad is not None)
+                self.assertIsNotNone(data.grad)
 
     def test_pylayer_inplace_backward_success_2(self):
         with _test_eager_guard():
@@ -565,7 +565,7 @@ class TestPyLayer(unittest.TestCase):
 
             class Layer(paddle.nn.Layer):
                 def __init__(self):
-                    super(Layer, self).__init__()
+                    super().__init__()
 
                 def forward(self, data):
                     var_b = data**2
@@ -580,7 +580,7 @@ class TestPyLayer(unittest.TestCase):
                 layer = Layer()
                 z = layer(data)
                 z.backward()
-                self.assertTrue(data.grad is not None)
+                self.assertIsNotNone(data.grad)
 
     def func_test_pylayer_inplace_and_leaf_exception(self):
         class cus_pylayer_op(
@@ -596,7 +596,7 @@ class TestPyLayer(unittest.TestCase):
 
         class Layer(paddle.nn.Layer):
             def __init__(self):
-                super(Layer, self).__init__()
+                super().__init__()
 
             def forward(self, data):
                 z = cus_pylayer_op.apply(data)
@@ -630,7 +630,7 @@ class TestPyLayer(unittest.TestCase):
                     temp.stop_gradient = False
                     z = paddle.tanh(temp)
                     z.backward()
-                    self.assertTrue(temp.grad is not None)
+                    self.assertIsNotNone(temp.grad)
                     return paddle.to_tensor(temp.grad)
 
         for i in range(2):

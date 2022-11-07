@@ -274,13 +274,15 @@ struct PD_INFER_DECL AnalysisConfig {
   ///       file will be used and autotune will not be performed again.
   /// \param precision Calculation accuracy of multi_encoder
   /// \param adaptive_seqlen Is the input of multi_encoder variable length
+  /// \param enable_multi_stream Whether to enable the multi stream of xpu.
   ///
   void EnableXpu(int l3_workspace_size = 0xfffc00,
                  bool locked = false,
                  bool autotune = true,
                  const std::string& autotune_file = "",
                  const std::string& precision = "int16",
-                 bool adaptive_seqlen = false);
+                 bool adaptive_seqlen = false,
+                 bool enable_multi_stream = false);
 
   ///
   /// \brief configs of IPU
@@ -365,7 +367,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param device_id device_id the custom device to use (default is 0).
   ///
-  void EnableCustomDevice(const std::string& device_type, int device_id);
+  void EnableCustomDevice(const std::string& device_type, int device_id = 0);
   ///
   /// \brief Turn on ONNXRuntime.
   ///
@@ -1102,6 +1104,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string xpu_autotune_file_;
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
+  bool xpu_enable_multi_stream_;
 
   // NNAdapter related
   LiteNNAdapterConfig nnadapter_config_;

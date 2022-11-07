@@ -46,12 +46,12 @@ class TestElementwiseAddOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def check_eager(self):
-        return self.use_mkldnn == False and self.axis == -1
+        return not self.use_mkldnn and self.axis == -1
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output(
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
             check_eager=self.check_eager(),
         )
 
@@ -62,7 +62,7 @@ class TestElementwiseAddOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
             check_eager=self.check_eager(),
         )
 
@@ -74,7 +74,7 @@ class TestElementwiseAddOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
             check_eager=self.check_eager(),
         )
 
@@ -86,7 +86,7 @@ class TestElementwiseAddOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            check_dygraph=(self.use_mkldnn == False),
+            check_dygraph=(not self.use_mkldnn),
             check_eager=self.check_eager(),
         )
 
@@ -102,6 +102,27 @@ class TestElementwiseAddOp(OpTest):
         self.axis = -1
 
 
+class TestElementwiseAddOp_ZeroDim1(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestElementwiseAddOp_ZeroDim2(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestElementwiseAddOp_ZeroDim3(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
@@ -115,7 +136,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(
-                    place, atol=1e-3, check_dygraph=(self.use_mkldnn == False)
+                    place, atol=1e-3, check_dygraph=(not self.use_mkldnn)
                 )
 
 

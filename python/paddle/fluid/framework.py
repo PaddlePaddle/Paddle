@@ -2612,7 +2612,7 @@ class Variable(metaclass=VariableMetaClass):
         """Get the names of all attributes defined."""
         return self.desc.attr_names()
 
-    def _get_attr(self, name):
+    def attr(self, name):
         """
         Get the attribute by name.
 
@@ -2880,7 +2880,8 @@ class Operator(object):
                     )
                 if 'force_cpu' in op_attrs:
                     if (
-                        type == 'less_than' and op_attrs['force_cpu'] != None
+                        type == 'less_than'
+                        and op_attrs['force_cpu'] is not None
                     ) or op_attrs['force_cpu'] != False:
                         warnings.warn(
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
@@ -4534,7 +4535,7 @@ class IrVarNode(IrNode):
         assert (
             isinstance(node, core.Node) and node.is_var()
         ), 'node must be the instance of core.Node and it must be a variable node.'
-        super(IrVarNode, self).__init__(node)
+        super().__init__(node)
         self.node = node
 
     def set_shape(self, shape):
@@ -4633,7 +4634,7 @@ class IrOpNode(IrNode):
         assert (
             isinstance(node, core.Node) and node.is_op()
         ), 'node must be the instance of core.Node and it must be a operator node.'
-        super(IrOpNode, self).__init__(node)
+        super().__init__(node)
         self.node = node
 
     def rename_input(self, old_input_name, new_input_name):
@@ -5777,10 +5778,10 @@ class Program(object):
 
             .. code-block:: python
 
-                import six
+                import paddle
 
                 def print_prog(prog):
-                    for name, value in sorted(six.iteritems(prog.block(0).vars)):
+                    for name, value in sorted(prog.block(0).vars.items()):
                         print(value)
                     for op in prog.block(0).ops:
                         print("op type is {}".format(op.type))
@@ -6100,7 +6101,7 @@ class Program(object):
             for j in range(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
-                    op._set_attr('is_test', True)
+                    op._set_bool_attr('is_test', True)
                 if op.type() == "batch_norm":
                     # Remove the output ReserveSpace of batch_norm if exists.
                     op.remove_output("ReserveSpace")
@@ -6986,7 +6987,7 @@ class ParamBase(core.VarBase):
 
         name = kwargs.get('name', unique_name.generate('_param_base'))
 
-        super(ParamBase, self).__init__(
+        super().__init__(
             dtype if dtype else core.VarDesc.VarType.FP32,
             list(shape) if shape else [],
             name,
@@ -7041,7 +7042,7 @@ class ParamBase(core.VarBase):
                 #         [-0.54217887,  0.48439729,  0.34082305]])
         """
         return "Parameter containing:\n{tensor}".format(
-            tensor=super(ParamBase, self).__str__()
+            tensor=super().__str__()
         )
 
     def __deepcopy__(self, memo):
@@ -7137,7 +7138,7 @@ class EagerParamBase(_core_eager_eagertensor):
         if isinstance(shape, core.eager.Tensor):
             shape = shape.numpy()
 
-        super(EagerParamBase, self).__init__(
+        super().__init__(
             dtype if dtype else core.VarDesc.VarType.FP32,
             list(shape) if shape else [],
             name,
@@ -7216,7 +7217,7 @@ class EagerParamBase(_core_eager_eagertensor):
                 #         [-0.54217887,  0.48439729,  0.34082305]])
         """
         return "Parameter containing:\n{tensor}".format(
-            tensor=super(EagerParamBase, self).__str__()
+            tensor=super().__str__()
         )
 
     def __deepcopy__(self, memo):

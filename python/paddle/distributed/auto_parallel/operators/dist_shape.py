@@ -22,7 +22,7 @@ from ..utils import is_dim_shard
 
 class DistributedShape(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedShape, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedShape("shape"))
@@ -30,7 +30,7 @@ register_distributed_operator_impl_container(DistributedShape("shape"))
 
 class DistributedShapeImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedShapeImpl, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 

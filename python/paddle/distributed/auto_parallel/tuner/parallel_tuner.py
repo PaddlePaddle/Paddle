@@ -268,7 +268,7 @@ class ParallelTuner:
             return
 
         for idx, dim in enumerate(dims_list):
-            if visited[idx] == False:
+            if not visited[idx]:
                 dims_mapping[start] = dim
                 visited[idx] = True
                 self._generate_dims_mapping_candidates_helper(

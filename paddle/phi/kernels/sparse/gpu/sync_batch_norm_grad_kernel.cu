@@ -37,7 +37,6 @@ void SyncBatchNormCooGradKernel(
     bool is_test,
     bool use_global_stats,
     bool trainable_statistics,
-    bool fuse_with_relu,
     SparseCooTensor* x_grad,
     DenseTensor* scale_grad,
     DenseTensor* bias_grad) {
@@ -58,7 +57,6 @@ void SyncBatchNormCooGradKernel(
                                            is_test,
                                            use_global_stats,
                                            trainable_statistics,
-                                           fuse_with_relu,
                                            x_grad->mutable_values(),
                                            scale_grad,
                                            bias_grad);

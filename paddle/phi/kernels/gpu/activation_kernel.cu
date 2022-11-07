@@ -122,7 +122,10 @@ DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Swish, CudaSwishFunctor, beta)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CudaCELUFunctor, alpha)
 
-DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, CudaBReluFunctor, t_min, t_max)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh,
+                                     CudaHardTanhFunctor,
+                                     t_min,
+                                     t_max)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Stanh, CudaSTanhFunctor, scale_a, scale_b)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus,
                                      CudaSoftplusFunctor,
@@ -193,7 +196,7 @@ PD_REGISTER_ACTIVATION_KERNEL(asinh, AsinhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(acosh, AcoshKernel)
 PD_REGISTER_ACTIVATION_KERNEL(atanh, AtanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
-PD_REGISTER_ACTIVATION_KERNEL(brelu, BReluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hard_tanh, HardTanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
@@ -239,7 +242,7 @@ PD_REGISTER_KERNEL(square,
                    phi::dtype::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
-PD_REGISTER_ACTIVATION_KERNEL(soft_shrink, SoftShrinkKernel)
+PD_REGISTER_ACTIVATION_KERNEL(softshrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(silu, SiluKernel)

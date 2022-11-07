@@ -742,6 +742,7 @@ class IdxHelper<N, uint32_t> {
   __device__ __forceinline__ uint32_t GetStride(int idx) const {
     return stride_[idx];
   }
+
   __device__ __forceinline__ void GetIndexFromOffset(uint32_t offset,
                                                      uint32_t* index) const {
     uint32_t remaining = offset;

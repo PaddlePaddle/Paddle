@@ -156,6 +156,7 @@ class FP16State(object):
             list
         )  # {forward_op_id: [(output_name, input_name, out_dtype, in_dtype, slot_name), ]}
         self.is_train = False
+        self.out_var_op_deps = {}
 
     def _is_fp16_op(self, op_id):
         return self._op_fp16_dict.get(op_id, None)
@@ -169,6 +170,14 @@ class FP16State(object):
         # assume all backward block are behind forward blocks
         for block in self.program.blocks:
             for op in block.ops:
+                for name in op.output_arg_names:
+                    if name not in self.out_var_op_deps:
+                        self.out_var_op_deps[name] = [op.desc.original_id()]
+                    else:
+                        self.out_var_op_deps[name].extend(
+                            [op.desc.original_id()]
+                        )
+
                 self._mark_op(op)
 
         # set forward tensor dtype
@@ -192,6 +201,18 @@ class FP16State(object):
             if op.type == "assign" and "array_" in op.input_arg_names[0]:
                 self._op_fp16_dict[op.desc.original_id()] = False
                 return
+            # If assign op is inplace-operation, assign op exec mode should be same with the created op of output_var.
+            if op.type == "assign":
+                out_name = op.output_arg_names[0]
+                if len(self.out_var_op_deps[out_name]) > 1:
+                    if not self._op_fp16_dict[
+                        self.out_var_op_deps[out_name][0]
+                    ]:
+                        self._op_fp16_dict[op.desc.original_id()] = False
+                    else:
+                        self._op_fp16_dict[op.desc.original_id()] = True
+                    return
+
             if _need_keep_fp32(
                 op, self.amp_list.unsupported_list, self.use_fp16_guard
             ):
@@ -235,10 +256,7 @@ class FP16State(object):
         for op in block.ops:
             if is_forward_op(op):
                 # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
-                if (
-                    self._is_fp16_op(op.desc.original_id()) == True
-                    or op.type == "cast"
-                ):
+                if self._is_fp16_op(op.desc.original_id()) or op.type == "cast":
                     for in_name in op.input_names:
                         if _keep_fp32_input(op, in_name):
                             continue
@@ -255,7 +273,7 @@ class FP16State(object):
                             self.set_var_to_fp16(out_var_name, block)
                     set_op_dtype_to_fp16(op)
                 # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
-                elif self._is_fp16_op(op.desc.original_id()) == False:
+                elif not self._is_fp16_op(op.desc.original_id()):
                     for out_var_name in op.output_arg_names:
                         out_var = block.vars.get(out_var_name)
                         if out_var is None or out_var.type not in _valid_types:
@@ -263,7 +281,7 @@ class FP16State(object):
                         if out_var.dtype == core.VarDesc.VarType.FP16:
                             out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
             elif is_backward_op(op):
-                if self._is_fp16_op(op.desc.original_id()) == True:
+                if self._is_fp16_op(op.desc.original_id()):
                     for out_name in op.output_names:
                         if _keep_fp32_output(op, out_name):
                             continue
@@ -271,7 +289,7 @@ class FP16State(object):
                             self.set_var_to_fp16(out_var_name, block)
                     set_op_dtype_to_fp16(op)
                 # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
-                elif self._is_fp16_op(op.desc.original_id()) == False:
+                elif not self._is_fp16_op(op.desc.original_id()):
                     for out_var_name in op.output_arg_names:
                         out_var = block.vars.get(out_var_name)
                         if out_var is None or out_var.type not in _valid_types:
@@ -290,7 +308,7 @@ class FP16State(object):
                 idx += 1
                 continue
             elif is_forward_op(op):
-                if self._is_fp16_op(op.desc.original_id()) == False:
+                if not self._is_fp16_op(op.desc.original_id()):
                     num_cast_ops = self._insert_forward_cast_ops(
                         op,
                         idx,
@@ -299,7 +317,7 @@ class FP16State(object):
                         core.VarDesc.VarType.FP32,
                         self.dist_context,
                     )
-                elif self._is_fp16_op(op.desc.original_id()) == True:
+                elif self._is_fp16_op(op.desc.original_id()):
                     num_cast_ops = self._insert_forward_cast_ops(
                         op,
                         idx,
@@ -310,7 +328,7 @@ class FP16State(object):
                     )
             elif is_backward_op(op):
                 if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
-                    if self._is_fp16_op(op.desc.original_id()) == False:
+                    if not self._is_fp16_op(op.desc.original_id()):
                         num_cast_ops = self._insert_backward_cast_ops(
                             op,
                             idx,
@@ -319,7 +337,7 @@ class FP16State(object):
                             core.VarDesc.VarType.FP32,
                             self.dist_context,
                         )
-                    elif self._is_fp16_op(op.desc.original_id()) == True:
+                    elif self._is_fp16_op(op.desc.original_id()):
                         num_cast_ops = self._insert_backward_cast_ops(
                             op,
                             idx,
@@ -702,7 +720,7 @@ def cast_startup_program():
 @register_pass("auto_parallel_fp16")
 class FP16Pass(AMPPass):
     def __init__(self):
-        super(FP16Pass, self).__init__()
+        super().__init__()
 
     # NOTE: why FP16Pass can override apply_single_impl instead of
     # apply_impl? AMP is an optimization pass for serial program,

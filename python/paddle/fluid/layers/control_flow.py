@@ -207,7 +207,7 @@ def select_input_with_buildin_type(inputs, mask, name):
         inputs = [to_static_variable(false_var), to_static_variable(true_var)]
         warnings.warn(
             "Return results from different branches in cond are not same type: "
-            "false_var returned by fasle_fn is '{}' and true_var of true_fn is "
+            "false_var returned by false_fn is '{}' and true_var of true_fn is "
             "'{}'".format(type(false_var), type(true_var))
         )
     elif (
@@ -230,7 +230,7 @@ def select_input_with_buildin_type(inputs, mask, name):
     else:
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
-            "returned by fasle_fn is '{}' and true_var of true_fn is '{}'".format(
+            "returned by false_fn is '{}' and true_var of true_fn is '{}'".format(
                 type(false_var), type(true_var)
             )
         )
@@ -569,21 +569,19 @@ class BlockGuardWithCompletion(BlockGuard):
     def __init__(self, rnn):
         if not isinstance(rnn, StaticRNN):
             raise TypeError("BlockGuardWithCompletion takes a StaticRNN")
-        super(BlockGuardWithCompletion, self).__init__(rnn.helper.main_program)
+        super().__init__(rnn.helper.main_program)
         self.rnn = rnn
 
     def __enter__(self):
         self.rnn.status = StaticRNN.IN_RNN_BLOCK
-        return super(BlockGuardWithCompletion, self).__enter__()
+        return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return False
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
         self.rnn._complete_op()
-        return super(BlockGuardWithCompletion, self).__exit__(
-            exc_type, exc_val, exc_tb
-        )
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
 class StaticRNNMemoryLink(object):
@@ -1104,19 +1102,19 @@ class WhileGuard(BlockGuard):
     def __init__(self, while_op):
         if not isinstance(while_op, While):
             raise TypeError("WhileGuard takes a while op")
-        super(WhileGuard, self).__init__(while_op.helper.main_program)
+        super().__init__(while_op.helper.main_program)
         self.while_op = while_op
 
     def __enter__(self):
         self.while_op.status = While.IN_WHILE_BLOCK
-        return super(WhileGuard, self).__enter__()
+        return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
         self.while_op._complete()
-        return super(WhileGuard, self).__exit__(exc_type, exc_val, exc_tb)
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
 def get_inputs_outputs_in_block(
@@ -1953,7 +1951,7 @@ def less_than(x, y, force_cpu=None, cond=None, name=None):
     )
     if cond is not None:
         check_type(cond, "cond", Variable, "less_than")
-    if force_cpu != None:
+    if force_cpu is not None:
         check_type(force_cpu, "force_cpu", bool, "less_than")
 
     helper = LayerHelper("less_than", **locals())
@@ -2454,17 +2452,15 @@ class ConditionalBlockGuard(BlockGuard):
 
     def __init__(self, block):
         check_type(block, "block", ConditionalBlock, "ConditionalBlockGuard")
-        super(ConditionalBlockGuard, self).__init__(block.helper.main_program)
+        super().__init__(block.helper.main_program)
         self.block = block
 
     def __enter__(self):
-        return super(ConditionalBlockGuard, self).__enter__()
+        return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.block.complete()
-        return super(ConditionalBlockGuard, self).__exit__(
-            exc_type, exc_val, exc_tb
-        )
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
 class ConditionalBlock(object):
@@ -2835,7 +2831,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             "true_fn returns non-None while false_fn returns None"
         )
 
-    # Merge ture and false output if they are not None
+    # Merge true and false output if they are not None
     if return_names is None:
         is_dy2staic = False
         return_names = ["no name"] * len(_to_sequence_except_dict(true_output))
