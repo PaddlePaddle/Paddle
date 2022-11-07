@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,12 +18,6 @@
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-
-namespace paddle {
-namespace framework {
-class Scope;
-}  // namespace framework
-}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -604,7 +598,6 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    // GET_IR_NODE_FROM_SUBGRAPH(dropout_out, dropout_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(input0, input0, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(input_cos, input_cos, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(input_sin, input_sin, multihead_pattern);

@@ -1,18 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,9 +27,9 @@ namespace tensorrt {
 namespace plugin {
 
 #if IS_TRT_VERSION_GE(6000)
-class RoformerNovarlenPlugin : public DynamicPluginTensorRT {
+class RoformerMultiheadMatmulPlugin : public DynamicPluginTensorRT {
  public:
-  explicit RoformerNovarlenPlugin(
+  explicit RoformerMultiheadMatmulPlugin(
       int hidden, int head_number, int head_size, float scale, bool with_fp16)
       : hidden_(hidden),
         head_number_(head_number),
@@ -52,7 +38,7 @@ class RoformerNovarlenPlugin : public DynamicPluginTensorRT {
     with_fp16_ = with_fp16;
   }
 
-  RoformerNovarlenPlugin(void const* serial_data, size_t serial_length) {
+  RoformerMultiheadMatmulPlugin(void const* serial_data, size_t serial_length) {
     DeserializeValue(&serial_data, &serial_length, &hidden_);
     DeserializeValue(&serial_data, &serial_length, &head_number_);
     DeserializeValue(&serial_data, &serial_length, &head_size_);
@@ -60,12 +46,12 @@ class RoformerNovarlenPlugin : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new RoformerNovarlenPlugin(
+    return new RoformerMultiheadMatmulPlugin(
         hidden_, head_number_, head_size_, scale_, with_fp16_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
-    return "roformer_novarlen_plugin";
+    return "roformer_multihead_matmul_plugin";
   }
   int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
   int initialize() TRT_NOEXCEPT override;
@@ -127,11 +113,11 @@ class RoformerNovarlenPlugin : public DynamicPluginTensorRT {
   float scale_;
 };
 
-class RoformerNovarlenPluginCreator : public nvinfer1::IPluginCreator {
+class RoformerMultiheadMatmulPluginCreator : public nvinfer1::IPluginCreator {
  public:
-  RoformerNovarlenPluginCreator() {}
+  RoformerMultiheadMatmulPluginCreator() {}
   const char* getPluginName() const TRT_NOEXCEPT override {
-    return "roformer_novarlen_plugin";
+    return "roformer_multihead_matmul_plugin";
   }
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
@@ -150,7 +136,7 @@ class RoformerNovarlenPluginCreator : public nvinfer1::IPluginCreator {
                                          const void* serial_data,
                                          size_t serial_length)
       TRT_NOEXCEPT override {
-    auto plugin = new RoformerNovarlenPlugin(serial_data, serial_length);
+    auto plugin = new RoformerMultiheadMatmulPlugin(serial_data, serial_length);
     return plugin;
   }
 
@@ -168,7 +154,7 @@ class RoformerNovarlenPluginCreator : public nvinfer1::IPluginCreator {
   nvinfer1::PluginFieldCollection field_collection_;
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
-REGISTER_TRT_PLUGIN_V2(RoformerNovarlenPluginCreator);
+REGISTER_TRT_PLUGIN_V2(RoformerMultiheadMatmulPluginCreator);
 #endif
 
 }  // namespace plugin

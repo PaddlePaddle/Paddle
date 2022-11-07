@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,8 +13,7 @@ the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/roformer_novarlen_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/roformer_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/roformer_multihead_matmul_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -183,7 +182,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           with_fp16 = true;
         }
         plugin::DynamicPluginTensorRT* plugin =
-            new plugin::RoformerNovarlenPlugin(
+            new plugin::RoformerMultiheadMatmulPlugin(
                 hidden_in, head_number, head_size, scale, with_fp16);
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 4, plugin);
       }
