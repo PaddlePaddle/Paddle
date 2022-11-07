@@ -97,6 +97,19 @@ void InitGpuProperties(Place place,
       (*driver_version / 1000) * 10 + (*driver_version % 100) / 10;
   auto compile_cuda_version =
       (CUDA_VERSION / 1000) * 10 + (CUDA_VERSION % 100) / 10;
+#if (defined _LINUX)
+  PADDLE_ENFORCE_EQ(
+      local_cuda_version / 10,
+      compile_cuda_version / 10,
+      phi::errors::InvalidArgument(
+          "The installed Paddle is compiled with CUDA %d,"
+          "but CUDA version in your machine is %d. "
+          "which will cause serious incompatible bug. "
+          "Please recompile or reinstall Paddle with compatible CUDA "
+          "version.",
+          compile_cuda_version / 10,
+          local_cuda_version / 10));
+#endif
   if (local_cuda_version < compile_cuda_version) {
     LOG_FIRST_N(WARNING, 1)
         << "WARNING: device: " << static_cast<int>(place.device)
@@ -108,20 +121,6 @@ void InitGpuProperties(Place place,
         << "Please recompile or reinstall Paddle with compatible CUDA "
            "version.";
   }
-
-  auto local_cudnn_version = cudnn_dso_ver / 1000;
-  auto compile_cudnn_version = CUDNN_VERSION / 1000;
-  PADDLE_ENFORCE_EQ(
-      compile_cudnn_version,
-      local_cudnn_version,
-      phi::errors::InvalidArgument(
-          "The installed Paddle is compiled with CUDNN "
-          "%d, but CUDNN version in your machine is %d. "
-          "which will cause serious incompatible bug. "
-          "Please recompile or reinstall Paddle with compatible CUDNN "
-          "version.",
-          compile_cudnn_version,
-          local_cudnn_version));
 #endif
 }
 
