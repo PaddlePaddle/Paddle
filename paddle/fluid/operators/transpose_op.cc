@@ -44,7 +44,7 @@ class TransposeOp : public framework::OperatorWithKernel {
                       axis_size,
                       platform::errors::InvalidArgument(
                           "The input tensor's dimension "
-                          "should be equal to the axis's size. "
+                          "should be equal to or greater than the axis's size. "
                           "But received input tensor's dimension is %d, "
                           "axis's size is %d",
                           x_rank,

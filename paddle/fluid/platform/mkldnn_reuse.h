@@ -195,7 +195,9 @@ static void SetInMemDescWithSqueeze2FuseSupport(
           x_vec_dims[i],
           1,
           platform::errors::InvalidArgument(
-              "Squeeze2 '%d' dim should be one, but '%d'", i, x_vec_dims[i]));
+              "Squeeze2 input '%d' dim should be equal to one, but get '%d'.",
+              i,
+              x_vec_dims[i]));
       continue;
     }
     squeezed_op_tz[j++] = x_vec_dims[i];
