@@ -22,7 +22,7 @@ class Identity(nn.Layer):
     '''a layer to replace bn or relu layers'''
 
     def __init__(self, *args, **kwargs):
-        super(Identity, self).__init__()
+        super().__init__()
 
     def forward(self, input):
         return input

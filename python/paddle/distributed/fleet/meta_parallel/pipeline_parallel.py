@@ -34,7 +34,7 @@ class PipelineParallel(MetaParallelBase):
             raise TypeError(
                 "The Layer should be a derived class of PipelineLayer."
             )
-        super(PipelineParallel, self).__init__(layers, hcg, strategy)
+        super().__init__(layers, hcg, strategy)
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
         self.use_sharding_parallel = (
@@ -462,9 +462,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
     # pipeline parallel with interleave scheduler
 
     def __init__(self, layers, hcg, strategy):
-        super(PipelineParallelWithInterleave, self).__init__(
-            layers=layers, hcg=hcg, strategy=strategy
-        )
+        super().__init__(layers=layers, hcg=hcg, strategy=strategy)
         assert layers.get_num_virtual_stages() > 1
         assert (
             framework.in_dygraph_mode()

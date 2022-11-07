@@ -803,8 +803,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
       if (resize_inputs.find("OutSize") != resize_inputs.end()) {
-        if (desc.Input("OutSize").size() >= 1) {
-          VLOG(3) << "The Paddle-TRT doesn't support the OutSize for op_type "
+        if (!with_dynamic_shape) {
+          VLOG(3) << "Static shape don't support the OutSize for op_type "
                   << op_type;
           return false;
         }
@@ -2274,7 +2274,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logsigmoid",
       "preln_layernorm_shift_partition",
       "lookup_table",
-      "lookup_table_v2",
+      // "lookup_table_v2",
       "expand_v2"};
 
   std::unordered_set<std::string> teller_set{
@@ -2397,7 +2397,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_layernorm_shift_partition",
       "merge_layernorm",
       "lookup_table",
-      "lookup_table_v2",
+      // "lookup_table_v2",
       "expand_v2"};
 };
 

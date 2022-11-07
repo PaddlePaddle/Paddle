@@ -24,7 +24,7 @@ import paddle.fluid.core as core
 
 class SimpleNet(nn.Layer):
     def __init__(self, in_size, out_size):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.linear1 = nn.Linear(in_size, in_size)
         self.linear2 = nn.Linear(in_size, out_size)
 
@@ -42,7 +42,7 @@ class SimpleNet(nn.Layer):
 
 class SimpleNetForStatic(nn.Layer):
     def __init__(self, in_size, out_size):
-        super(SimpleNetForStatic, self).__init__()
+        super().__init__()
         self.linear1 = nn.Linear(in_size, in_size)
         self.linear2 = nn.Linear(in_size, out_size)
 

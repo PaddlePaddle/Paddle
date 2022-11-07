@@ -60,7 +60,7 @@ class Distribution(object):
             else tuple(event_shape)
         )
 
-        super(Distribution, self).__init__()
+        super().__init__()
 
     @property
     def batch_shape(self):

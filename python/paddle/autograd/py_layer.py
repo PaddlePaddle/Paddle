@@ -201,7 +201,7 @@ class LayerMeta(type):
             name + '_backward', (PyLayerBackward,), {"_forward_cls": cls}
         )
 
-        return super(LayerMeta, cls).__init__(name, bases, attrs)
+        return super().__init__(name, bases, attrs)
 
 
 class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
@@ -552,7 +552,7 @@ class EagerPyLayerMeta(type):
             name + '_backward', (EagerPyLayerBackward,), {"_forward_cls": cls}
         )
 
-        return super(EagerPyLayerMeta, cls).__init__(name, bases, attrs)
+        return super().__init__(name, bases, attrs)
 
 
 class EagerPyLayer(

@@ -13,21 +13,68 @@
 # limitations under the License.
 
 import paddle.fluid.framework as framework
-from paddle.distributed.communication.group import _get_global_group
+import paddle.fluid.data_feeder as data_feeder
+import paddle.fluid.layer_helper as layer_helper
+from paddle.distributed.communication.group import (
+    _get_global_group,
+    _warn_cur_rank_not_in_group,
+    _get_or_throw_group_rank,
+)
 from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp
 
 
-def _reduce_in_dygraph(tensor, dst, op, group, sync_op, use_calc_stream):
+def _reduce_in_dygraph(
+    tensor, dst_rank_in_group, op, group, sync_op, use_calc_stream
+):
     op_type = _get_reduce_op(op, "reduce")
-    group = _get_global_group() if group is None else group
     if use_calc_stream:
-        return group.process_group.reduce_on_calc_stream(tensor, dst, op_type)
+        return group.process_group.reduce_on_calc_stream(
+            tensor, dst_rank_in_group, op_type
+        )
 
-    task = group.process_group.reduce(tensor, dst, op_type, sync_op)
+    task = group.process_group.reduce(
+        tensor, dst_rank_in_group, op_type, sync_op
+    )
     if sync_op:
         task.wait()
 
     return task
+
+
+def _reduce_in_static_mode(
+    tensor, dst_rank_in_group, op, group, sync_op, use_calc_stream
+):
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+        ],
+        'reduce',
+    )
+
+    op_type = _get_reduce_op(op, "reduce")
+    ring_id = 0 if group is None else group.id
+
+    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': sync_op,
+            'root_id': dst_rank_in_group,
+        },
+    )
+    return None
 
 
 def reduce(
@@ -77,10 +124,8 @@ def reduce(
             # [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
             # [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
     """
-    if group is not None and not group.is_member():
-        raise RuntimeError(
-            "The group should not be None and all ranks which invoke this operation should be the member of this group."
-        )
+    if _warn_cur_rank_not_in_group(group):
+        return
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
@@ -88,10 +133,13 @@ def reduce(
         )
 
     if framework.in_dygraph_mode():
+        group = _get_global_group() if group is None else group
+        dst_rank_in_group = _get_or_throw_group_rank(dst, group)
         return _reduce_in_dygraph(
+            tensor, dst_rank_in_group, op, group, sync_op, use_calc_stream
+        )
+    else:
+        assert group is None, "Group can not be used in static mode for now."
+        return _reduce_in_static_mode(
             tensor, dst, op, group, sync_op, use_calc_stream
         )
-
-    raise RuntimeError(
-        "paddle.distributed.stream.reduce is only supported in dygraph mode now."
-    )

@@ -81,6 +81,14 @@ void ReluDoubleGradKernel(const Context& dev_ctx,
                           DenseTensor* ddout);
 
 template <typename T, typename Context>
+void SinDoubleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         DenseTensor* dx,
+                         DenseTensor* ddout);
+
+template <typename T, typename Context>
 void TanhDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
                           const DenseTensor& dout,

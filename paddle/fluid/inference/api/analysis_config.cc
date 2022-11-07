@@ -160,14 +160,17 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
 }
 
 void AnalysisConfig::EnableNpu(int device_id) {
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL)
   use_npu_ = true;
   npu_device_id_ = device_id;
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  use_custom_device_ = true;
+  custom_device_id_ = device_id;
+  custom_device_type_ = "npu";
 #else
   LOG(ERROR) << "Please compile with npu to EnableNpu()";
   use_npu_ = false;
 #endif
-
   Update();
 }
 
