@@ -1,12 +1,9 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -1159,14 +1156,14 @@ template <typename T, int VecSize, bool ComputeBias>
 __global__ void add_fusedQKV_bias_transpose_split_kernel(
     T *q_buf,
     T *kv_buf,
-    const T *QKV,
+    const T *qkv,
     const T *qkv_bias,
     const int32_t elem_cnt,
-    const int32_t batch_size,
-    const int32_t seq_len,
-    const int32_t token_num,
-    const int32_t head_num,
-    const int32_t size_per_head) {
+    const int batch_size,
+    const int seq_len,
+    const int token_num,
+    const int head_num,
+    const int size_per_head) {
   const int32_t offset = batch_size * seq_len * head_num * size_per_head;
   const int32_t hidden_size = head_num * size_per_head;
   const int32_t fused_hidden_size = 3 * hidden_size;
@@ -1179,7 +1176,7 @@ __global__ void add_fusedQKV_bias_transpose_split_kernel(
                step = gridDim.x * blockDim.x * VecSize;
        linear_index < elem_cnt;
        linear_index += step) {
-    phi::Load<T, VecSize>(&QKV[linear_index], &src_vec);
+    phi::Load<T, VecSize>(&qkv[linear_index], &src_vec);
     int32_t bias_idx = linear_index % fused_hidden_size;
     if (ComputeBias) {
       phi::Load<T, VecSize>(&qkv_bias[bias_idx], &bias_vec);
@@ -1189,10 +1186,12 @@ __global__ void add_fusedQKV_bias_transpose_split_kernel(
       }
     }
     const int32_t token_idx = linear_index / fused_hidden_size;
+    // const int32_t token_padded_idx = token_idx + (padding_offset == nullptr ?
+    // 0 : padding_offset[token_idx]);
     const int32_t target_batch_id = token_idx / seq_len;
     const int32_t seq_id = token_idx % seq_len;
 
-    // equal to:
+    // maybe can optimize here. Done
     // const int qkv_id  = (linear_index % fused_hidden_size) / hidden_size;
     const int32_t qkv_id = bias_idx / hidden_size;
     const int32_t head_id = (linear_index % hidden_size) / size_per_head;
