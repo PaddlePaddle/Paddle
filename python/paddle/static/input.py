@@ -120,7 +120,7 @@ def data(name, shape, dtype=None, lod_level=0):
         )
 
 
-class InputSpec(object):
+class InputSpec:
     """
     InputSpec describes the signature information of the model input, such as ``shape`` , ``dtype`` , ``name`` .
 

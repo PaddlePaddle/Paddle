@@ -472,7 +472,7 @@ class LexNet(fluid.dygraph.Layer):
         return avg_cost, crf_decode
 
 
-class Args(object):
+class Args:
     epoch = 1
     batch_size = 4
     vocab_size = 100

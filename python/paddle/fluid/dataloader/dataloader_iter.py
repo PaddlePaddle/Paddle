@@ -90,7 +90,7 @@ def _clear_loader():
 CleanupFuncRegistrar.register(_clear_loader)
 
 
-class _DataLoaderIterBase(object):
+class _DataLoaderIterBase:
     """
     Iterator implement of DataLoader, will load and feed mini-batch
     data by setting in given dataloader.

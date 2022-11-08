@@ -135,7 +135,7 @@ def Singleton(cls):
 
 
 @Singleton
-class CompileTimeStrategy(object):
+class CompileTimeStrategy:
     def __init__(self, main_program, startup_program, strategy, role_maker):
         self.min_block_size = 81920
 

@@ -35,7 +35,7 @@ class CostNodeType(Enum):
     NOP = 5
 
 
-class Cost(object):
+class Cost:
     def __init__(self):
         self.runtime = None
         self.static_mem = None
@@ -49,7 +49,7 @@ class CostModelMode(Enum):
     MIXED = 3
 
 
-class CostNode(object):
+class CostNode:
     def __init__(self, node, node_type, id=None):
         self.id = id
         self.node = node
@@ -172,7 +172,7 @@ class CompOpCostNode(CostNode):
             self.cost = 0.0
 
 
-class PipeEvent(object):
+class PipeEvent:
     def __init__(self, stage_id, event_name, duration, start_time=-1):
         self.stage_id = stage_id
         self.name = event_name
@@ -181,7 +181,7 @@ class PipeEvent(object):
         self.e_time = -1
 
 
-class CostModel(object):
+class CostModel:
     def __init__(
         self,
         mode=CostModelMode.BENCHMARKING,

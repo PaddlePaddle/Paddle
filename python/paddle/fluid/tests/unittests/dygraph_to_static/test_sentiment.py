@@ -293,7 +293,7 @@ def fake_data_reader(class_num, vocab_size, batch_size, padding_size):
     return reader
 
 
-class Args(object):
+class Args:
     epoch = 1
     batch_size = 4
     class_num = 2

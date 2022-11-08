@@ -49,7 +49,7 @@ def load_variable_data(scope, var_name):
     return np.array(var_node.get_tensor())
 
 
-class QuantizeTranspilerV2(object):
+class QuantizeTranspilerV2:
     def __init__(
         self,
         weight_bits=8,
