@@ -14,30 +14,28 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
-namespace paddle {
-namespace platform {
-class XPUDeviceContext;
-}
-}  // namespace paddle
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 
 namespace phi {
 namespace funcs {
 
-#ifdef PADDLE_WITH_XPU
+using XPUDeviceGuard = phi::backends::xpu::XPUDeviceGuard;
+
 /*
  * All tensors' dimension should be the same and the values of
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class ConcatFunctor<paddle::platform::XPUDeviceContext, T> {
+class ConcatFunctor<XPUContext, T> {
  public:
-  void operator()(const paddle::platform::XPUDeviceContext& context,
+  void operator()(const XPUContext& context,
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
                   phi::DenseTensor* output) {
     using XPUType = typename XPUTypeTrait<T>::Type;
     int dev_id = context.GetPlace().GetDeviceId();
-    platform::XPUDeviceGuard guard(dev_id);
+    XPUDeviceGuard guard(dev_id);
 
     int num = input.size();
     auto input_dims = input[0].dims();
@@ -72,7 +70,7 @@ class ConcatFunctor<paddle::platform::XPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         r,
         XPU_SUCCESS,
-        platform::errors::External(
+        paddle::platform::errors::External(
             "XPU API return wrong value[%d %s], please check whether "
             "Baidu Kunlun Card is properly installed.",
             r,
@@ -81,16 +79,16 @@ class ConcatFunctor<paddle::platform::XPUDeviceContext, T> {
 };
 
 template <typename T>
-class SplitFunctor<paddle::platform::XPUDeviceContext, T> {
+class SplitFunctor<XPUContext, T> {
  public:
-  void operator()(const paddle::platform::XPUDeviceContext& context,
+  void operator()(const XPUContext& context,
                   const phi::DenseTensor& input,
                   const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
                   std::vector<phi::DenseTensor*>* outputs) {
     using XPUType = typename XPUTypeTrait<T>::Type;
     int dev_id = context.GetPlace().GetDeviceId();
-    platform::XPUDeviceGuard guard(dev_id);
+    XPUDeviceGuard guard(dev_id);
 
     auto& ins = ref_inputs;
 
@@ -131,21 +129,20 @@ class SplitFunctor<paddle::platform::XPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         r,
         XPU_SUCCESS,
-        platform::errors::External(
+        paddle::platform::errors::External(
             "XPU API return wrong value[%d %s], please check whether "
             "Baidu Kunlun Card is properly installed.",
             r,
             XPUAPIErrorMsg[r]));
   }
 };
-#endif
 
-#define DEFINE_XPU_FUNCTOR(type)                                          \
-  template class ConcatFunctor<paddle::platform::XPUDeviceContext, type>; \
-  template class SplitFunctor<paddle::platform::XPUDeviceContext, type>;
+#define DEFINE_XPU_FUNCTOR(type)                  \
+  template class ConcatFunctor<XPUContext, type>; \
+  template class SplitFunctor<XPUContext, type>;
 
 DEFINE_XPU_FUNCTOR(float)
-DEFINE_XPU_FUNCTOR(platform::float16)
+DEFINE_XPU_FUNCTOR(phi::dtype::float16)
 
 }  // namespace funcs
 }  // namespace phi
