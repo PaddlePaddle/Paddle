@@ -27,7 +27,6 @@ def get_random_images_and_labels(image_shape, label_shape):
 
 
 class TestDygraphDataLoaderWithException(unittest.TestCase):
-
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
@@ -36,8 +35,9 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
 
     def func_test_not_capacity(self):
         with fluid.dygraph.guard():
-            with self.assertRaisesRegexp(ValueError,
-                                         "Please give value to capacity."):
+            with self.assertRaisesRegexp(
+                ValueError, "Please give value to capacity."
+            ):
                 fluid.io.DataLoader.from_generator()
 
     def test_not_capacity(self):
@@ -46,9 +46,7 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
         self.func_test_not_capacity()
 
     def func_test_single_process_with_thread_expection(self):
-
         def error_sample_genarator(batch_num):
-
             def __reader__():
                 for _ in range(batch_num):
                     yield [[[1, 2], [1]]]
@@ -56,11 +54,12 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
             return __reader__
 
         with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
-                                                        iterable=False,
-                                                        use_multiprocess=False)
-            loader.set_batch_generator(error_sample_genarator(self.batch_num),
-                                       places=fluid.CPUPlace())
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, iterable=False, use_multiprocess=False
+            )
+            loader.set_batch_generator(
+                error_sample_genarator(self.batch_num), places=fluid.CPUPlace()
+            )
             exception = None
             try:
                 for _ in loader():
@@ -76,9 +75,7 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
         self.func_test_single_process_with_thread_expection()
 
     def func_test_multi_process_with_process_expection(self):
-
         def error_sample_genarator(batch_num):
-
             def __reader__():
                 for _ in range(batch_num):
                     yield [[[1, 2], [1]]]
@@ -86,10 +83,12 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
             return __reader__
 
         with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
-                                                        use_multiprocess=True)
-            loader.set_batch_generator(error_sample_genarator(self.batch_num),
-                                       places=fluid.CPUPlace())
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, use_multiprocess=True
+            )
+            loader.set_batch_generator(
+                error_sample_genarator(self.batch_num), places=fluid.CPUPlace()
+            )
             exception = None
             try:
                 for _ in loader():
@@ -104,24 +103,25 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
         self.func_test_multi_process_with_process_expection()
 
     def func_test_multi_process_with_get_timeout(self):
-
         def slow_batch_generator_creator(batch_size, batch_num):
-
             def __reader__():
                 for _ in range(batch_num):
                     time.sleep(80)
                     batch_image, batch_label = get_random_images_and_labels(
-                        [batch_size, 784], [batch_size, 1])
+                        [batch_size, 784], [batch_size, 1]
+                    )
                     yield batch_image, batch_label
 
             return __reader__
 
         with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
-                                                        use_multiprocess=True)
-            loader.set_batch_generator(slow_batch_generator_creator(
-                self.batch_size, self.batch_num),
-                                       places=fluid.CPUPlace())
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, use_multiprocess=True
+            )
+            loader.set_batch_generator(
+                slow_batch_generator_creator(self.batch_size, self.batch_num),
+                places=fluid.CPUPlace(),
+            )
             exception = None
             try:
                 for _ in range(self.epoch_num):

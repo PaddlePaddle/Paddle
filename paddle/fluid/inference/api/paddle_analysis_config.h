@@ -274,13 +274,15 @@ struct PD_INFER_DECL AnalysisConfig {
   ///       file will be used and autotune will not be performed again.
   /// \param precision Calculation accuracy of multi_encoder
   /// \param adaptive_seqlen Is the input of multi_encoder variable length
+  /// \param enable_multi_stream Whether to enable the multi stream of xpu.
   ///
   void EnableXpu(int l3_workspace_size = 0xfffc00,
                  bool locked = false,
                  bool autotune = true,
                  const std::string& autotune_file = "",
                  const std::string& precision = "int16",
-                 bool adaptive_seqlen = false);
+                 bool adaptive_seqlen = false,
+                 bool enable_multi_stream = false);
 
   ///
   /// \brief configs of IPU
@@ -365,7 +367,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param device_id device_id the custom device to use (default is 0).
   ///
-  void EnableCustomDevice(const std::string& device_type, int device_id);
+  void EnableCustomDevice(const std::string& device_type, int device_id = 0);
   ///
   /// \brief Turn on ONNXRuntime.
   ///
@@ -965,6 +967,10 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_SetBlackListOpsForMixedModel(
       const std::unordered_set<std::string>& black_list);
 
+  void SetApplyOptim(bool value) { apply_optim_ = value; }
+
+  void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
+
  protected:
   // Update the config.
   void Update();
@@ -1098,6 +1104,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string xpu_autotune_file_;
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
+  bool xpu_enable_multi_stream_;
 
   // NNAdapter related
   LiteNNAdapterConfig nnadapter_config_;
@@ -1127,7 +1134,8 @@ struct PD_INFER_DECL AnalysisConfig {
       "fusion_gru",
       "fusion_lstm",
       "multi_gru",
-      "slice"};
+      "slice",
+      "split"};
 
   // ipu related.
   bool use_ipu_{false};
@@ -1167,6 +1175,13 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // fleet exe related
   DistConfig dist_config_{};
+
+  // jit engine related
+  // NOTE(Aureliue84): In case of Predictor in JITLayer, program is from outer
+  // which means Predictor should apply optimization by calling
+  // PrepareProgram(). So we add this flag to control the process.
+  bool apply_optim_{false};
+  bool skip_load_params_{false};
 };
 
 }  // namespace paddle

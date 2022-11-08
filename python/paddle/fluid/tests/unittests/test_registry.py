@@ -21,7 +21,6 @@ from decorator_helper import prog_scope
 
 
 class TestRegistry(unittest.TestCase):
-
     @prog_scope()
     def test_registry_layer(self):
         x = fluid.layers.data(name='X', shape=[10, 10], dtype='float32')

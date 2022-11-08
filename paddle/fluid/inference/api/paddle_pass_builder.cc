@@ -106,12 +106,14 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "delete_c_identity_op_pass",            //
       "trt_multihead_matmul_fuse_pass_v2",    //
       "trt_multihead_matmul_fuse_pass_v3",    //
+      "constant_folding_pass",                //
       "vit_attention_fuse_pass",              //
       "trt_skip_layernorm_fuse_pass",         //
       "preln_skip_layernorm_fuse_pass",       //
       "layernorm_shift_partition_fuse_pass",  //
       "merge_layernorm_fuse_pass",            //
       "preln_residual_bias_fuse_pass",        //
+      "preln_layernorm_x_fuse_pass",          //
       // "set_transformer_input_convert_pass",       //
       "conv_bn_fuse_pass",                           //
       "unsqueeze2_eltwise_fuse_pass",                //
@@ -127,9 +129,8 @@ const std::vector<std::string> kTRTSubgraphPasses({
       // "yolo_box_fuse_pass",      //
       "dense_fc_to_sparse_pass",                //
       "dense_multihead_matmul_to_sparse_pass",  //
-      "constant_folding_pass",
-      "tensorrt_subgraph_pass",  //
-      "conv_bn_fuse_pass",       //
+      "tensorrt_subgraph_pass",                 //
+      "conv_bn_fuse_pass",                      //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
@@ -169,6 +170,12 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "conv_elementwise_add2_act_fuse_pass",
     "conv_elementwise_add_fuse_pass",
     "multihead_matmul_fuse_pass_v2",
+    "fused_multi_transformer_encoder_pass",
+    "fused_multi_transformer_decoder_pass",
+    "fused_multi_transformer_encoder_fuse_qkv_pass",
+    "fused_multi_transformer_decoder_fuse_qkv_pass",
+    "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",
+    "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",
     "gpu_cpu_map_matmul_v2_to_mul_pass",
     "gpu_cpu_map_matmul_v2_to_matmul_pass",
     "fc_fuse_pass",
@@ -193,22 +200,28 @@ const std::vector<std::string> kTrtLowerPrecisionPasses{
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     //   "identity_scale_op_clean_pass",             //
-    "is_test_pass",                               //
-        "simplify_with_basic_ops_pass",           //
-        "conv_bn_fuse_pass",                      //
-        "conv_eltwiseadd_bn_fuse_pass",           //
-        "embedding_eltwise_layernorm_fuse_pass",  //
-        "multihead_matmul_fuse_pass_v2",          //
-        "gpu_cpu_squeeze2_matmul_fuse_pass",      //
-        "gpu_cpu_reshape2_matmul_fuse_pass",      //
-        "gpu_cpu_flatten2_matmul_fuse_pass",      //
-        "gpu_cpu_map_matmul_v2_to_mul_pass",      //
-        "gpu_cpu_map_matmul_v2_to_matmul_pass",   //
-        "matmul_scale_fuse_pass",                 //
-        "multihead_matmul_fuse_pass_v3",          //
-        "gpu_cpu_map_matmul_to_mul_pass",         //
-        "fc_fuse_pass",                           //
-        "fc_elementwise_layernorm_fuse_pass",     //
+    "is_test_pass",                                                     //
+        "simplify_with_basic_ops_pass",                                 //
+        "conv_bn_fuse_pass",                                            //
+        "conv_eltwiseadd_bn_fuse_pass",                                 //
+        "embedding_eltwise_layernorm_fuse_pass",                        //
+        "multihead_matmul_fuse_pass_v2",                                //
+        "fused_multi_transformer_encoder_pass",                         //
+        "fused_multi_transformer_decoder_pass",                         //
+        "fused_multi_transformer_encoder_fuse_qkv_pass",                //
+        "fused_multi_transformer_decoder_fuse_qkv_pass",                //
+        "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",  //
+        "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",  //
+        "gpu_cpu_squeeze2_matmul_fuse_pass",                            //
+        "gpu_cpu_reshape2_matmul_fuse_pass",                            //
+        "gpu_cpu_flatten2_matmul_fuse_pass",                            //
+        "gpu_cpu_map_matmul_v2_to_mul_pass",                            //
+        "gpu_cpu_map_matmul_v2_to_matmul_pass",                         //
+        "matmul_scale_fuse_pass",                                       //
+        "multihead_matmul_fuse_pass_v3",                                //
+        "gpu_cpu_map_matmul_to_mul_pass",                               //
+        "fc_fuse_pass",                                                 //
+        "fc_elementwise_layernorm_fuse_pass",                           //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
@@ -301,6 +314,7 @@ void CpuPassStrategy::EnableMKLDNN() {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
     for (auto &pass : std::vector<std::string>({
+             "squeeze2_transpose2_onednn_fuse_pass",
              "depthwise_conv_mkldnn_pass",    //
              "conv_bn_fuse_pass",             // Execute BN passes again to
              "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
@@ -326,6 +340,9 @@ void CpuPassStrategy::EnableMKLDNN() {
              "softplus_activation_mkldnn_fuse_pass",  //
              "shuffle_channel_mkldnn_detect_pass",    //
              "elt_act_mkldnn_fuse_pass",              //
+             "operator_scale_onednn_fuse_pass",       //
+             "operator_unsqueeze2_onednn_fuse_pass",  //
+             "operator_reshape2_onednn_fuse_pass",    //
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
              // "mkldnn_inplace_pass",  // This pass should be activated after
@@ -376,6 +393,8 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("quant_dequant_mkldnn_pass");
     passes_.push_back("mkldnn_placement_pass");
     passes_.push_back("simplify_with_basic_ops_pass");
+    passes_.push_back("constant_folding_pass");
+    passes_.push_back("squeeze2_transpose2_onednn_fuse_pass");
     passes_.push_back("layer_norm_fuse_pass");
     passes_.push_back("attention_lstm_fuse_pass");
     passes_.push_back("seqconv_eltadd_relu_fuse_pass");
@@ -418,6 +437,9 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("scale_matmul_fuse_pass");
     passes_.push_back("reshape_transpose_matmul_mkldnn_fuse_pass");
     passes_.push_back("matmul_elementwise_add_mkldnn_fuse_pass");
+    passes_.push_back("operator_scale_onednn_fuse_pass");
+    passes_.push_back("operator_unsqueeze2_onednn_fuse_pass");
+    passes_.push_back("operator_reshape2_onednn_fuse_pass");
     passes_.push_back("cpu_quantize_placement_pass");
     passes_.push_back("cpu_quantize_pass");
     passes_.push_back("cpu_quantize_squash_pass");

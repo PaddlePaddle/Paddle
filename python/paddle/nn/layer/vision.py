@@ -61,22 +61,25 @@ class PixelShuffle(Layer):
     """
 
     def __init__(self, upscale_factor, data_format="NCHW", name=None):
-        super(PixelShuffle, self).__init__()
+        super().__init__()
 
         if not isinstance(upscale_factor, int):
             raise TypeError("upscale factor must be int type")
 
         if data_format not in ["NCHW", "NHWC"]:
-            raise ValueError("Data format should be 'NCHW' or 'NHWC'."
-                             "But recevie data format: {}".format(data_format))
+            raise ValueError(
+                "Data format should be 'NCHW' or 'NHWC'."
+                "But recevie data format: {}".format(data_format)
+            )
 
         self._upscale_factor = upscale_factor
         self._data_format = data_format
         self._name = name
 
     def forward(self, x):
-        return functional.pixel_shuffle(x, self._upscale_factor,
-                                        self._data_format, self._name)
+        return functional.pixel_shuffle(
+            x, self._upscale_factor, self._data_format, self._name
+        )
 
     def extra_repr(self):
         main_str = 'upscale_factor={}'.format(self._upscale_factor)
@@ -121,7 +124,7 @@ class PixelUnshuffle(Layer):
     """
 
     def __init__(self, downscale_factor, data_format="NCHW", name=None):
-        super(PixelUnshuffle, self).__init__()
+        super().__init__()
 
         if not isinstance(downscale_factor, int):
             raise TypeError("Downscale factor must be int type")
@@ -130,16 +133,19 @@ class PixelUnshuffle(Layer):
             raise ValueError("Downscale factor must be positive")
 
         if data_format not in ["NCHW", "NHWC"]:
-            raise ValueError("Data format should be 'NCHW' or 'NHWC'."
-                             "But recevie data format: {}".format(data_format))
+            raise ValueError(
+                "Data format should be 'NCHW' or 'NHWC'."
+                "But recevie data format: {}".format(data_format)
+            )
 
         self._downscale_factor = downscale_factor
         self._data_format = data_format
         self._name = name
 
     def forward(self, x):
-        return functional.pixel_unshuffle(x, self._downscale_factor,
-                                          self._data_format, self._name)
+        return functional.pixel_unshuffle(
+            x, self._downscale_factor, self._data_format, self._name
+        )
 
     def extra_repr(self):
         main_str = 'downscale_factor={}'.format(self._downscale_factor)
@@ -193,7 +199,7 @@ class ChannelShuffle(Layer):
     """
 
     def __init__(self, groups, data_format="NCHW", name=None):
-        super(ChannelShuffle, self).__init__()
+        super().__init__()
 
         if not isinstance(groups, int):
             raise TypeError("groups must be int type")
@@ -202,16 +208,19 @@ class ChannelShuffle(Layer):
             raise ValueError("groups must be positive")
 
         if data_format not in ["NCHW", "NHWC"]:
-            raise ValueError("Data format should be 'NCHW' or 'NHWC'."
-                             "But recevie data format: {}".format(data_format))
+            raise ValueError(
+                "Data format should be 'NCHW' or 'NHWC'."
+                "But recevie data format: {}".format(data_format)
+            )
 
         self._groups = groups
         self._data_format = data_format
         self._name = name
 
     def forward(self, x):
-        return functional.channel_shuffle(x, self._groups, self._data_format,
-                                          self._name)
+        return functional.channel_shuffle(
+            x, self._groups, self._data_format, self._name
+        )
 
     def extra_repr(self):
         main_str = 'groups={}'.format(self._groups)

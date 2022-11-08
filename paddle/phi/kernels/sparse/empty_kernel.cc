@@ -31,6 +31,7 @@ void EmptyLikeCooKernel(const Context& dev_ctx,
   const DenseTensor& x_values = x.values();
   DenseTensor* out_values = out->mutable_values();
   out_values->Resize(x_values.dims());
+  out->set_meta(x.meta());
   dev_ctx.template Alloc<T>(out_values);
 }
 
@@ -44,6 +45,7 @@ void EmptyLikeCsrKernel(const Context& dev_ctx,
   const DenseTensor& x_values = x.values();
   DenseTensor* out_values = out->mutable_values();
   out_values->Resize(x_values.dims());
+  out->set_meta(x.meta());
   dev_ctx.template Alloc<T>(out_values);
 }
 

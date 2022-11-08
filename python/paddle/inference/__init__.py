@@ -20,6 +20,7 @@ from ..fluid.inference import Tensor  # noqa: F401
 from ..fluid.inference import Predictor  # noqa: F401
 from ..fluid.inference import create_predictor  # noqa: F401
 from ..fluid.inference import get_version  # noqa: F401
+from ..fluid.inference import _get_phi_kernel_name
 from ..fluid.inference import get_trt_compile_version  # noqa: F401
 from ..fluid.inference import get_trt_runtime_version  # noqa: F401
 from ..fluid.inference import convert_to_mixed_precision  # noqa: F401

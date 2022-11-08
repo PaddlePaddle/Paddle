@@ -23,7 +23,11 @@ from paddle.fluid import core
 
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -39,7 +43,6 @@ def huber_loss_forward(val, delta):
 # 1.动态生成不同参数的测试case，wrapper类中必须实现dynamic_create_class方法
 # self.use_dynamic_create_class置为True
 class XPUTestArgsortOp1(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'argsort'
         self.use_dynamic_create_class = True
@@ -49,14 +52,14 @@ class XPUTestArgsortOp1(XPUOpTestWrapper):
         classes = []
         for descending in [True, False]:
             for axis in [0, 1, 2, -1, -2]:
-                class_name = 'XPUTestArgsortOp_axis_' + str(axis) + '_' + str(
-                    descending)
+                class_name = (
+                    'XPUTestArgsortOp_axis_' + str(axis) + '_' + str(descending)
+                )
                 attr_dict = {'init_axis': axis, 'init_descending': descending}
                 classes.append([class_name, attr_dict])
         return base_class, classes
 
     class TestArgsortOp(XPUOpTest):
-
         def setUp(self):
             self.op_type = "argsort"
             self.place = paddle.XPUPlace(0)
@@ -65,16 +68,18 @@ class XPUTestArgsortOp1(XPUOpTestWrapper):
 
             self.input_shape = (2, 2, 2, 3, 3)
             self.axis = -1 if not hasattr(self, 'init_axis') else self.init_axis
-            self.descending = False if not hasattr(
-                self, 'init_descending') else self.init_descending
+            self.descending = (
+                False
+                if not hasattr(self, 'init_descending')
+                else self.init_descending
+            )
 
             if self.in_type == np.float32:
                 self.x = np.random.random(self.input_shape).astype(self.dtype)
             else:
-                self.x = np.random.randint(low=-1000,
-                                           high=1000,
-                                           size=self.input_shape).astype(
-                                               self.dtype)
+                self.x = np.random.randint(
+                    low=-1000, high=1000, size=self.input_shape
+                ).astype(self.dtype)
             self.inputs = {"X": self.x}
             self.attrs = {"axis": self.axis, "descending": self.descending}
             self.get_output()
@@ -84,13 +89,15 @@ class XPUTestArgsortOp1(XPUOpTestWrapper):
             if self.descending:
                 self.indices = np.flip(
                     np.argsort(self.x, kind='heapsort', axis=self.axis),
-                    self.axis)
+                    self.axis,
+                )
                 self.sorted_x = np.flip(
-                    np.sort(self.x, kind='heapsort', axis=self.axis), self.axis)
+                    np.sort(self.x, kind='heapsort', axis=self.axis), self.axis
+                )
             else:
-                self.indices = np.argsort(self.x,
-                                          kind='heapsort',
-                                          axis=self.axis)
+                self.indices = np.argsort(
+                    self.x, kind='heapsort', axis=self.axis
+                )
                 self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis)
 
         def test_check_output(self):
@@ -99,13 +106,11 @@ class XPUTestArgsortOp1(XPUOpTestWrapper):
 
 # 2. 为不同参数的测试case定义一个测试类，self.use_dynamic_create_class需要置为False
 class XPUTestArgsortOp2(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'argsort'
         self.use_dynamic_create_class = False
 
     class TestArgsortOp(XPUOpTest):
-
         def setUp(self):
             self.op_type = "argsort"
             self.place = paddle.XPUPlace(0)
@@ -119,10 +124,9 @@ class XPUTestArgsortOp2(XPUOpTestWrapper):
             if self.in_type == np.float32:
                 self.x = np.random.random(self.input_shape).astype(self.dtype)
             else:
-                self.x = np.random.randint(low=-1000,
-                                           high=1000,
-                                           size=self.input_shape).astype(
-                                               self.dtype)
+                self.x = np.random.randint(
+                    low=-1000, high=1000, size=self.input_shape
+                ).astype(self.dtype)
             self.inputs = {"X": self.x}
             self.attrs = {"axis": self.axis, "descending": self.descending}
             self.get_output()
@@ -132,13 +136,15 @@ class XPUTestArgsortOp2(XPUOpTestWrapper):
             if self.descending:
                 self.indices = np.flip(
                     np.argsort(self.x, kind='heapsort', axis=self.axis),
-                    self.axis)
+                    self.axis,
+                )
                 self.sorted_x = np.flip(
-                    np.sort(self.x, kind='heapsort', axis=self.axis), self.axis)
+                    np.sort(self.x, kind='heapsort', axis=self.axis), self.axis
+                )
             else:
-                self.indices = np.argsort(self.x,
-                                          kind='heapsort',
-                                          axis=self.axis)
+                self.indices = np.argsort(
+                    self.x, kind='heapsort', axis=self.axis
+                )
                 self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis)
 
         def init_inputshape(self):
@@ -157,57 +163,46 @@ class XPUTestArgsortOp2(XPUOpTestWrapper):
             self.descending = False
 
     class TestArgsortOpAxis0XPU(TestArgsortOp):
-
         def init_axis(self):
             self.axis = 0
 
     class TestArgsortOpAxis1XPU(TestArgsortOp):
-
         def init_axis(self):
             self.axis = 1
 
     class TestArgsortOpAxis2XPU(TestArgsortOp):
-
         def init_axis(self):
             self.axis = 2
 
     class TestArgsortOpAxisNeg1XPU(TestArgsortOp):
-
         def init_axis(self):
             self.axis = -1
 
     class TestArgsortOpAxisNeg2XPU(TestArgsortOp):
-
         def init_axis(self):
             self.axis = -2
 
     class TestArgsortOpDescendingAxisXPU(TestArgsortOp):
-
         def init_direction(self):
             self.descending = True
 
     class TestArgsortOpDescendingAxis0XPU(TestArgsortOpAxis0XPU):
-
         def init_direction(self):
             self.descending = True
 
     class TestArgsortOpDescendingAxis1XPU(TestArgsortOpAxis1XPU):
-
         def init_direction(self):
             self.descending = True
 
     class TestArgsortOpDescendingAxis2XPU(TestArgsortOpAxis2XPU):
-
         def init_direction(self):
             self.descending = True
 
     class TestArgsortOpDescendingAxisNeg1XPU(TestArgsortOpAxisNeg1XPU):
-
         def init_direction(self):
             self.descending = True
 
     class TestArgsortOpDescendingAxisNeg2XPU(TestArgsortOpAxisNeg2XPU):
-
         def init_direction(self):
             self.descending = True
 
@@ -219,13 +214,11 @@ for stype in support_types:
 
 
 class XPUTestHuberLossOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'huber_loss'
         self.use_dynamic_create_class = False
 
     class TestHuberLossOp(XPUOpTest):
-
         def setUp(self):
             self.op_type = 'huber_loss'
             self.place = paddle.XPUPlace(0)
@@ -237,11 +230,11 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
 
         def set_inputs(self):
             shape = self.set_shape()
-            x = np.random.uniform(0, 1., shape).astype(self.dtype)
-            y = np.random.uniform(0, 1., shape).astype(self.dtype)
+            x = np.random.uniform(0, 1.0, shape).astype(self.dtype)
+            y = np.random.uniform(0, 1.0, shape).astype(self.dtype)
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y)
+                'Y': OpTest.np_dtype_to_fluid_dtype(y),
             }
 
         def set_attrs(self):
@@ -251,8 +244,9 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
             delta = self.attrs['delta']
             shape = self.set_shape()
             residual = self.inputs['Y'] - self.inputs['X']
-            loss = np.vectorize(huber_loss_forward)(residual,
-                                                    delta).astype(self.dtype)
+            loss = np.vectorize(huber_loss_forward)(residual, delta).astype(
+                self.dtype
+            )
             self.outputs = {'Residual': residual, 'Out': loss.reshape(shape)}
 
         def set_shape(self):
@@ -265,27 +259,24 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
         def test_check_grad_ingore_x(self):
-            self.check_grad_with_place(self.place, ['Y'],
-                                       'Out',
-                                       no_grad_set=set("residual"))
+            self.check_grad_with_place(
+                self.place, ['Y'], 'Out', no_grad_set=set("residual")
+            )
 
         def test_check_grad_ingore_y(self):
-            self.check_grad_with_place(self.place, ['X'],
-                                       'Out',
-                                       no_grad_set=set('residual'))
+            self.check_grad_with_place(
+                self.place, ['X'], 'Out', no_grad_set=set('residual')
+            )
 
     class TestHuberLossOp1(TestHuberLossOp):
-
         def set_shape(self):
-            return (640)
+            return 640
 
     class TestHuberLossOp2(TestHuberLossOp):
-
         def set_shape(self):
             return (10, 10)
 
     class TestHuberLossOp3(TestHuberLossOp):
-
         def set_shape(self):
             return (10, 10, 1)
 
@@ -293,10 +284,12 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
 support_types = get_xpu_op_support_types('huber_loss')
 for stype in support_types:
     create_test_class(globals(), XPUTestHuberLossOp, stype)
-    create_test_class(globals(),
-                      XPUTestHuberLossOp,
-                      stype,
-                      ignore_device_version=[core.XPUVersion.XPU1])
+    create_test_class(
+        globals(),
+        XPUTestHuberLossOp,
+        stype,
+        ignore_device_version=[core.XPUVersion.XPU1],
+    )
 
 if __name__ == '__main__':
     unittest.main()

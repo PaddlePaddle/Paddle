@@ -69,6 +69,9 @@ void SetOp(ProgramDesc* prog,
   } else if (type == "slice") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
+  } else if (type == "split") {
+    op->SetInput("X", {inputs[0]});
+    op->SetOutput("Out", {outputs});
   } else if (type == "dropout") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
@@ -131,7 +134,7 @@ void InitTensorHolder(Scope* scope,
                       const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
-  auto tensor = x->GetMutable<LoDTensor>();
+  auto tensor = x->GetMutable<phi::DenseTensor>();
   tensor->mutable_data(
       place, framework::TransToPhiDataType(proto::VarType::FP32), 1);
 }
@@ -151,7 +154,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
   for (auto& v : variable_names) {
     if (v.compare(var_without_scale) == 0) continue;
     InitTensorHolder(&scope, place, v.c_str());
-    LoDTensor tensor;
+    phi::DenseTensor tensor;
     tensor.Resize({1});
     auto* ptr = tensor.mutable_data<double>(place);
     ptr[0] = SCALE;
@@ -556,8 +559,12 @@ void TestImmutableOpWithManyOutputs(const std::string tested_op) {
            SCALE * S8_MAX);
 }
 
-const std::vector<std::string> immutables = {
-    "reshape2", "transpose2", "slice", "nearest_interp", "nearest_interp_v2"};
+const std::vector<std::string> immutables = {"reshape2",
+                                             "transpose2",
+                                             "slice",
+                                             "nearest_interp",
+                                             "nearest_interp_v2",
+                                             "split"};
 
 class TestImmutables : public testing::TestWithParam<std::string> {};
 

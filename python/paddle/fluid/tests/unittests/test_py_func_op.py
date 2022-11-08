@@ -17,7 +17,6 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler
 import paddle
 import unittest
-import six
 import numpy as np
 
 dev_cnt = 2
@@ -52,7 +51,7 @@ def cross_entropy(logits, labels):
     M = logits.shape[0]
     N = logits.shape[1]
     ret = np.ndarray([M, 1]).astype(logits.dtype)
-    for idx in six.moves.range(M):
+    for idx in range(M):
         ret[idx][0] = -np.log(logits[idx][labels[idx][0]])
     return ret
 
@@ -64,9 +63,10 @@ def cross_entropy_grad(logits, labels, bwd_dout):
     M = logits.shape[0]
     N = logits.shape[1]
     dlogits = np.zeros([M, N]).astype(logits.dtype)
-    for idx in six.moves.range(M):
-        dlogits[idx][labels[idx]
-                     [0]] = -bwd_dout[idx] / logits[idx][labels[idx][0]]
+    for idx in range(M):
+        dlogits[idx][labels[idx][0]] = (
+            -bwd_dout[idx] / logits[idx][labels[idx][0]]
+        )
     return dlogits, None
 
 
@@ -76,66 +76,95 @@ def simple_fc_net(img, label, use_py_func_op):
         hidden = fluid.layers.fc(
             hidden,
             size=200,
-            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=1.0)))
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=1.0)
+            ),
+        )
         if not use_py_func_op:
             hidden = fluid.layers.tanh(hidden)
         else:
-            new_hidden = fluid.default_main_program().current_block(
-            ).create_var(name='hidden_{}'.format(idx),
-                         dtype='float32',
-                         shape=hidden.shape)
-            hidden = fluid.layers.py_func(func=tanh,
-                                          x=hidden,
-                                          out=new_hidden,
-                                          backward_func=tanh_grad,
-                                          skip_vars_in_backward_input=hidden)
+            new_hidden = (
+                fluid.default_main_program()
+                .current_block()
+                .create_var(
+                    name='hidden_{}'.format(idx),
+                    dtype='float32',
+                    shape=hidden.shape,
+                )
+            )
+            hidden = fluid.layers.py_func(
+                func=tanh,
+                x=hidden,
+                out=new_hidden,
+                backward_func=tanh_grad,
+                skip_vars_in_backward_input=hidden,
+            )
 
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     if not use_py_func_op:
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
     else:
-        loss = fluid.default_main_program().current_block().create_var(
-            name='loss', dtype='float32', shape=[-1, 1])
-        loss = fluid.layers.py_func(func=cross_entropy,
-                                    x=[prediction, label],
-                                    out=loss,
-                                    backward_func=cross_entropy_grad,
-                                    skip_vars_in_backward_input=loss)
+        loss = (
+            fluid.default_main_program()
+            .current_block()
+            .create_var(name='loss', dtype='float32', shape=[-1, 1])
+        )
+        loss = fluid.layers.py_func(
+            func=cross_entropy,
+            x=[prediction, label],
+            out=loss,
+            backward_func=cross_entropy_grad,
+            skip_vars_in_backward_input=loss,
+        )
 
-        dummy_var = fluid.default_main_program().current_block().create_var(
-            name='test_tmp_var', dtype='float32', shape=[1])
-        fluid.layers.py_func(func=dummy_func_with_no_input,
-                             x=None,
-                             out=dummy_var)
+        dummy_var = (
+            fluid.default_main_program()
+            .current_block()
+            .create_var(name='test_tmp_var', dtype='float32', shape=[1])
+        )
+        fluid.layers.py_func(
+            func=dummy_func_with_no_input, x=None, out=dummy_var
+        )
         loss += dummy_var
         fluid.layers.py_func(func=dummy_func_with_no_output, x=loss, out=None)
 
-        loss_out = fluid.default_main_program().current_block().create_var(
-            dtype='float32', shape=[-1, 1])
-        dummy_var_out = fluid.default_main_program().current_block().create_var(
-            dtype='float32', shape=[1])
-        fluid.layers.py_func(func=dummy_func_with_multi_input_output,
-                             x=(loss, dummy_var),
-                             out=(loss_out, dummy_var_out))
-        assert loss == loss_out and dummy_var == dummy_var_out, \
-            "py_func failed with multi input and output"
+        loss_out = (
+            fluid.default_main_program()
+            .current_block()
+            .create_var(dtype='float32', shape=[-1, 1])
+        )
+        dummy_var_out = (
+            fluid.default_main_program()
+            .current_block()
+            .create_var(dtype='float32', shape=[1])
+        )
+        fluid.layers.py_func(
+            func=dummy_func_with_multi_input_output,
+            x=(loss, dummy_var),
+            out=(loss_out, dummy_var_out),
+        )
+        assert (
+            loss == loss_out and dummy_var == dummy_var_out
+        ), "py_func failed with multi input and output"
 
-        fluid.layers.py_func(func=dummy_func_with_multi_input_output,
-                             x=[loss, dummy_var],
-                             out=[loss_out, dummy_var_out])
-        assert loss == loss_out and dummy_var == dummy_var_out, \
-            "py_func failed with multi input and output"
+        fluid.layers.py_func(
+            func=dummy_func_with_multi_input_output,
+            x=[loss, dummy_var],
+            out=[loss_out, dummy_var_out],
+        )
+        assert (
+            loss == loss_out and dummy_var == dummy_var_out
+        ), "py_func failed with multi input and output"
 
     loss = paddle.mean(loss)
     return loss
 
 
 def reader():
-    for _ in six.moves.range(dev_cnt * 100):
-        yield np.random.random([784]), np.random.random_integers(size=[1],
-                                                                 low=0,
-                                                                 high=9)
+    for _ in range(dev_cnt * 100):
+        yield np.random.random([784]), np.random.random_integers(
+            size=[1], low=0, high=9
+        )
 
 
 def test_main(use_cuda, use_py_func_op, use_parallel_executor):
@@ -163,24 +192,24 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
 
             if use_parallel_executor:
                 train_cp = compiler.CompiledProgram(
-                    fluid.default_main_program())
+                    fluid.default_main_program()
+                )
                 train_cp = train_cp.with_data_parallel(loss_name=loss.name)
                 fetch_list = [loss.name]
             else:
                 fetch_list = [loss]
 
             ret = []
-            for epoch_id in six.moves.range(2):
+            for epoch_id in range(2):
                 for d in r():
-                    L, = exe.run(train_cp,
-                                 feed=feeder.feed(d),
-                                 fetch_list=fetch_list)
+                    (L,) = exe.run(
+                        train_cp, feed=feeder.feed(d), fetch_list=fetch_list
+                    )
                     ret.append(L)
             return np.array(ret)
 
 
 class TestPyFuncOpUseExecutor(unittest.TestCase):
-
     def setUp(self):
         self.use_parallel_executor = False
 
@@ -188,18 +217,18 @@ class TestPyFuncOpUseExecutor(unittest.TestCase):
         for use_cuda in [True, False]:
             losses = []
             for use_py_func_op in [True, False]:
-                L = test_main(use_cuda, use_py_func_op,
-                              self.use_parallel_executor)
+                L = test_main(
+                    use_cuda, use_py_func_op, self.use_parallel_executor
+                )
                 if L is not None:
                     losses.append(L)
 
-                for idx in six.moves.range(len(losses) - 1):
+                for idx in range(len(losses) - 1):
                     max_diff = np.max(np.abs(losses[idx] - losses[0]))
                     self.assertAlmostEqual(max_diff, 0, delta=1e-3)
 
 
 class TestPyFuncOpUseParallelExecutor(TestPyFuncOpUseExecutor):
-
     def setUp(self):
         self.use_parallel_executor = True
 

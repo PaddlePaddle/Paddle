@@ -26,7 +26,6 @@ paddle.enable_static()
 
 
 class TestAllocContinuousSpace(OpTest):
-
     def setUp(self):
         self.op_type = "coalesce_tensor"
         self.dtype, self.fluid_dtype = self.init_dtype()
@@ -36,7 +35,8 @@ class TestAllocContinuousSpace(OpTest):
         self.set_constant = attrs["set_constant"]
         self.Inputs = self.init_input()
         self.Outputs, self.FusedOutput = self.init_output(
-            self.Inputs, self.set_constant, self.constant)
+            self.Inputs, self.set_constant, self.constant
+        )
         self.inputs = {'Input': self.Inputs}
         self.attrs = attrs
         self.outputs = {'Output': self.Outputs, 'FusedOutput': self.FusedOutput}
@@ -59,7 +59,7 @@ class TestAllocContinuousSpace(OpTest):
             "copy_data": True,
             "set_constant": False,
             "constant": 0.0,
-            "dtype": self.fluid_dtype
+            "dtype": self.fluid_dtype,
         }
 
     def init_output(self, input_list, set_constant, constant):
@@ -76,32 +76,36 @@ class TestAllocContinuousSpace(OpTest):
         coalesce_tensor_var = np.concatenate([input for input in inputs])
         if set_constant:
             coalesce_tensor_var = np.ones((len(coalesce_tensor_var))) * constant
-            outputs = [(out[0],
-                        np.ones(out[1].shape).astype(self.dtype) * constant)
-                       for out in outputs]
+            outputs = [
+                (out[0], np.ones(out[1].shape).astype(self.dtype) * constant)
+                for out in outputs
+            ]
         return outputs, coalesce_tensor_var
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.device.MLUPlace(0),
-                                     no_check_set=["FusedOutput"],
-                                     atol=1e-5)
+        self.check_output_with_place(
+            place=paddle.device.MLUPlace(0),
+            no_check_set=["FusedOutput"],
+            atol=1e-5,
+        )
 
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
-
     def init_attr(self):
         return {
             "copy_data": False,
             "set_constant": True,
             "constant": 5,
             "dtype": self.fluid_dtype,
-            "user_defined_size_of_dtype": 2
+            "user_defined_size_of_dtype": 2,
         }
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.device.MLUPlace(0),
-                                     no_check_set=["FusedOutput"],
-                                     atol=1e-5)
+        self.check_output_with_place(
+            place=paddle.device.MLUPlace(0),
+            no_check_set=["FusedOutput"],
+            atol=1e-5,
+        )
 
 
 if __name__ == '__main__':

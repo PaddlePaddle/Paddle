@@ -30,24 +30,28 @@ def adaptive_end_index(index, input_size, output_size):
     return int(np.ceil((index + 1) * input_size / output_size))
 
 
-def avg_pool1D_forward_naive(x,
-                             ksize,
-                             strides,
-                             paddings,
-                             global_pool=0,
-                             ceil_mode=False,
-                             exclusive=False,
-                             adaptive=False,
-                             data_type=np.float64):
+def avg_pool1D_forward_naive(
+    x,
+    ksize,
+    strides,
+    paddings,
+    global_pool=0,
+    ceil_mode=False,
+    exclusive=False,
+    adaptive=False,
+    data_type=np.float64,
+):
     N, C, L = x.shape
     if global_pool == 1:
         ksize = [L]
     if adaptive:
         L_out = ksize[0]
     else:
-        L_out = (L - ksize[0] + 2 * paddings[0] + strides[0] -
-                 1) // strides[0] + 1 if ceil_mode else (
-                     L - ksize[0] + 2 * paddings[0]) // strides[0] + 1
+        L_out = (
+            (L - ksize[0] + 2 * paddings[0] + strides[0] - 1) // strides[0] + 1
+            if ceil_mode
+            else (L - ksize[0] + 2 * paddings[0]) // strides[0] + 1
+        )
 
     out = np.zeros((N, C, L_out))
     for i in range(L_out):
@@ -59,19 +63,21 @@ def avg_pool1D_forward_naive(x,
             r_end = np.min((i * strides[0] + ksize[0] - paddings[0], L))
         x_masked = x[:, :, r_start:r_end]
 
-        field_size = (r_end - r_start) \
-            if (exclusive or adaptive) else (ksize[0])
+        field_size = (
+            (r_end - r_start) if (exclusive or adaptive) else (ksize[0])
+        )
         if data_type == np.int8 or data_type == np.uint8:
-            out[:, :, i] = (np.rint(np.sum(x_masked, axis=(2, 3)) /
-                                    field_size)).astype(data_type)
+            out[:, :, i] = (
+                np.rint(np.sum(x_masked, axis=(2, 3)) / field_size)
+            ).astype(data_type)
         else:
-            out[:, :,
-                i] = (np.sum(x_masked, axis=(2)) / field_size).astype(data_type)
+            out[:, :, i] = (np.sum(x_masked, axis=(2)) / field_size).astype(
+                data_type
+            )
     return out
 
 
 class TestPool1D_API(unittest.TestCase):
-
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -83,22 +89,21 @@ class TestPool1D_API(unittest.TestCase):
             input_np = np.random.random([2, 3, 32]).astype("float32")
             input = fluid.dygraph.to_variable(input_np)
             result = F.adaptive_avg_pool1d(input, output_size=16)
-            result_np = avg_pool1D_forward_naive(input_np,
-                                                 ksize=[16],
-                                                 strides=[0],
-                                                 paddings=[0],
-                                                 adaptive=True)
+            result_np = avg_pool1D_forward_naive(
+                input_np, ksize=[16], strides=[0], paddings=[0], adaptive=True
+            )
 
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             ada_max_pool1d_dg = paddle.nn.layer.AdaptiveAvgPool1D(
-                output_size=16)
+                output_size=16
+            )
             result = ada_max_pool1d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
-            result = paddle.nn.functional.common.interpolate(input,
-                                                             mode="area",
-                                                             size=16)
+            result = paddle.nn.functional.common.interpolate(
+                input, mode="area", size=16
+            )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_adaptive_avg_static_results(self, place):
@@ -107,16 +112,16 @@ class TestPool1D_API(unittest.TestCase):
             result = F.adaptive_avg_pool1d(input, output_size=16)
 
             input_np = np.random.random([2, 3, 32]).astype("float32")
-            result_np = avg_pool1D_forward_naive(input_np,
-                                                 ksize=[16],
-                                                 strides=[2],
-                                                 paddings=[0],
-                                                 adaptive=True)
+            result_np = avg_pool1D_forward_naive(
+                input_np, ksize=[16], strides=[2], paddings=[0], adaptive=True
+            )
 
             exe = fluid.Executor(place)
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={"input": input_np},
-                              fetch_list=[result])
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def test_adaptive_avg_pool1d(self):

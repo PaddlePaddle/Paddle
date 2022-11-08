@@ -24,35 +24,32 @@ paddle.enable_static()
 
 
 def create_feeds():
-    user_input = fluid.layers.data(name="item_id",
-                                   shape=[1],
-                                   dtype="int64",
-                                   lod_level=1)
+    user_input = fluid.layers.data(
+        name="item_id", shape=[1], dtype="int64", lod_level=1
+    )
 
-    item = fluid.layers.data(name="unit_id",
-                             shape=[1],
-                             dtype="int64",
-                             lod_level=1)
+    item = fluid.layers.data(
+        name="unit_id", shape=[1], dtype="int64", lod_level=1
+    )
 
-    label = fluid.layers.data(name="label",
-                              shape=[1],
-                              dtype="int64",
-                              lod_level=1)
-    labels = fluid.layers.data(name="labels",
-                               shape=[1],
-                               dtype="int64",
-                               lod_level=1)
+    label = fluid.layers.data(
+        name="label", shape=[1], dtype="int64", lod_level=1
+    )
+    labels = fluid.layers.data(
+        name="labels", shape=[1], dtype="int64", lod_level=1
+    )
 
     feed_list = [user_input, item, label, labels]
     return feed_list
 
 
 class TestTreeIndex(unittest.TestCase):
-
     def test_tree_index(self):
         path = download(
             "https://paddlerec.bj.bcebos.com/tree-based/data/mini_tree.pb",
-            "tree_index_unittest", "e2ba4561c2e9432b532df40546390efa")
+            "tree_index_unittest",
+            "e2ba4561c2e9432b532df40546390efa",
+        )
         '''
         path = download(
             "https://paddlerec.bj.bcebos.com/tree-based/data/mini_tree.pb",
@@ -72,7 +69,8 @@ class TestTreeIndex(unittest.TestCase):
         for i in range(tree.height()):
             layer_node_codes.append(tree.get_layer_codes(i))
             layer_node_ids.append(
-                [node.id() for node in tree.get_nodes(layer_node_codes[-1])])
+                [node.id() for node in tree.get_nodes(layer_node_codes[-1])]
+            )
 
         all_leaf_ids = [node.id() for node in tree.get_all_leafs()]
         self.assertEqual(sum(all_leaf_ids), sum(layer_node_ids[-1]))
@@ -97,8 +95,9 @@ class TestTreeIndex(unittest.TestCase):
         self.assertEqual(pi_relation[all_leaf_ids[0]], ancestor_codes[0])
 
         # get_travel_path
-        travel_path_codes = tree.get_travel_path(travel_codes[0],
-                                                 travel_codes[-1])
+        travel_path_codes = tree.get_travel_path(
+            travel_codes[0], travel_codes[-1]
+        )
         travel_path_ids = [
             node.id() for node in tree.get_nodes(travel_path_codes)
         ]
@@ -113,7 +112,6 @@ class TestTreeIndex(unittest.TestCase):
 
 
 class TestIndexSampler(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -123,14 +121,17 @@ class TestIndexSampler(unittest.TestCase):
     def test_layerwise_sampler(self):
         path = download(
             "https://paddlerec.bj.bcebos.com/tree-based/data/mini_tree.pb",
-            "tree_index_unittest", "e2ba4561c2e9432b532df40546390efa")
+            "tree_index_unittest",
+            "e2ba4561c2e9432b532df40546390efa",
+        )
 
         tdm_layer_counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        #tree = TreeIndex("demo", path)
-        file_name = os.path.join(self.temp_dir.name,
-                                 "test_in_memory_dataset_tdm_sample_run.txt")
+        # tree = TreeIndex("demo", path)
+        file_name = os.path.join(
+            self.temp_dir.name, "test_in_memory_dataset_tdm_sample_run.txt"
+        )
         with open(file_name, "w") as f:
-            #data = "29 d 29 d 29 29 29 29 29 29 29 29 29 29 29 29\n"
+            # data = "29 d 29 d 29 29 29 29 29 29 29 29 29 29 29 29\n"
             data = "1 1 1 15 15 15\n"
             data += "1 1 1 15 15 15\n"
             f.write(data)
@@ -142,26 +143,30 @@ class TestIndexSampler(unittest.TestCase):
             slots_vars.append(var)
 
         dataset = paddle.distributed.InMemoryDataset()
-        dataset.init(batch_size=1,
-                     pipe_command="cat",
-                     download_cmd="cat",
-                     use_var=slots_vars)
+        dataset.init(
+            batch_size=1,
+            pipe_command="cat",
+            download_cmd="cat",
+            use_var=slots_vars,
+        )
         dataset.set_filelist([file_name])
-        #dataset.update_settings(pipe_command="cat")
-        #dataset._init_distributed_settings(
+        # dataset.update_settings(pipe_command="cat")
+        # dataset._init_distributed_settings(
         #    parse_ins_id=True,
         #    parse_content=True,
         #    fea_eval=True,
         #    candidate_size=10000)
 
         dataset.load_into_memory()
-        dataset.tdm_sample('demo',
-                           tree_path=path,
-                           tdm_layer_counts=tdm_layer_counts,
-                           start_sample_layer=1,
-                           with_hierachy=False,
-                           seed=0,
-                           id_slot=2)
+        dataset.tdm_sample(
+            'demo',
+            tree_path=path,
+            tdm_layer_counts=tdm_layer_counts,
+            start_sample_layer=1,
+            with_hierachy=False,
+            seed=0,
+            id_slot=2,
+        )
         self.assertTrue(dataset.get_shuffle_data_size() == 8)
 
 

@@ -64,10 +64,9 @@ def run_rpc_sync_master_working(
     )
     if dist.get_rank() == 0:
         for i in range(1, dist.get_rank()):
-            res = dist.rpc.rpc_sync(worker_name(i),
-                                    fn,
-                                    args=args,
-                                    kwargs=kwargs)
+            res = dist.rpc.rpc_sync(
+                worker_name(i), fn, args=args, kwargs=kwargs
+            )
             queue.put(res)
     dist.rpc.shutdown()
 
@@ -109,16 +108,14 @@ def run_rpc_async_master_working(
     )
     if dist.get_rank() == 0:
         for i in range(1, dist.get_rank()):
-            res = dist.rpc.rpc_async(worker_name(i),
-                                     fn,
-                                     args=args,
-                                     kwargs=kwargs)
+            res = dist.rpc.rpc_async(
+                worker_name(i), fn, args=args, kwargs=kwargs
+            )
             queue.put(res.wait())
     dist.rpc.shutdown()
 
 
 class RpcTestBase(unittest.TestCase):
-
     def setUp(self):
         self._port_set = set()
         print("RPC setUp...")
@@ -129,10 +126,10 @@ class RpcTestBase(unittest.TestCase):
         print("RPC tearDown...")
 
     def _find_free_port(self):
-
         def __free_port():
-            with closing(socket.socket(socket.AF_INET,
-                                       socket.SOCK_STREAM)) as s:
+            with closing(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            ) as s:
                 s.bind(("", 0))
                 return s.getsockname()[1]
 
@@ -162,7 +159,8 @@ class RpcTestBase(unittest.TestCase):
                             fn_args,
                             fn_kwargs,
                         ),
-                    ))
+                    )
+                )
             else:
                 self.processes.append(
                     Process(
@@ -176,13 +174,13 @@ class RpcTestBase(unittest.TestCase):
                             fn_args,
                             fn_kwargs,
                         ),
-                    ))
+                    )
+                )
         [p.start() for p in self.processes]
         return queues
 
 
 class RpcLaunchTestBase(unittest.TestCase):
-
     def setUp(self):
         self._port_set = set()
         print("Launch RPC setUp...")
@@ -192,10 +190,10 @@ class RpcLaunchTestBase(unittest.TestCase):
         print("Launch RPC tearDown...")
 
     def _find_free_port(self):
-
         def __free_port():
-            with closing(socket.socket(socket.AF_INET,
-                                       socket.SOCK_STREAM)) as s:
+            with closing(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            ) as s:
                 s.bind(("", 0))
                 return s.getsockname()[1]
 
@@ -221,8 +219,8 @@ class RpcLaunchTestBase(unittest.TestCase):
         for i in range(nnodes * nproc_per_node):
             a = np.random.random((10, 100)).astype(np.float32)
             b = np.random.random((10, 100)).astype(np.float32)
-            mmap_data1[i * 10:(i + 1) * 10, :] = a
-            mmap_data2[i * 10:(i + 1) * 10, :] = b
+            mmap_data1[i * 10 : (i + 1) * 10, :] = a
+            mmap_data2[i * 10 : (i + 1) * 10, :] = b
         return mmap_data1, mmap_data2
 
     def remove_data(self):
@@ -234,8 +232,15 @@ class RpcLaunchTestBase(unittest.TestCase):
         log_dir = "log"
         tr_cmd = "python -m paddle.distributed.launch --master {} --rank {} --nnodes {} --nproc_per_node {} --run_mode rpc {} --log_dir {}"
         cmds = [
-            tr_cmd.format(master_endpoint, rank, nnodes, nproc_per_node,
-                          model_file, log_dir) for rank in range(nnodes)
+            tr_cmd.format(
+                master_endpoint,
+                rank,
+                nnodes,
+                nproc_per_node,
+                model_file,
+                log_dir,
+            )
+            for rank in range(nnodes)
         ]
         processes = [subprocess.Popen(cmd.strip().split()) for cmd in cmds]
         [proc.communicate() for proc in processes]
