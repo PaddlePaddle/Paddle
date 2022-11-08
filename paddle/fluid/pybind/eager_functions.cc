@@ -200,11 +200,10 @@ PyObject* eager_api_get_all_grads(PyObject* self,
   for (auto& tensor : tensor_list) {
     VLOG(6) << "Get grad for tensor: " << tensor.name();
     auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
-    if (meta->StopGradient()) {
+    if (!meta || meta->StopGradient()) {
       ret.emplace_back(paddle::experimental::Tensor());
       continue;
     }
-    VLOG(6) << meta << " initialized: " << meta->Grad().initialized();
     if (meta && meta->Grad().initialized()) {
       ret.emplace_back(meta->Grad());
     } else {
@@ -226,7 +225,6 @@ PyObject* eager_api_get_grads_lists(PyObject* self,
   for (auto& tensor : tensor_list) {
     VLOG(6) << "Get grad for tensor: " << tensor.name();
     auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
-    VLOG(6) << meta << " initialized: " << meta->Grad().initialized();
     if (meta && meta->Grad().initialized()) {
       auto& grad = meta->Grad();
       switch (grad.dtype()) {
