@@ -58,7 +58,7 @@ class Type(enum.Enum):
         return _type in (cls.BIJECTION, cls.INJECTION)
 
 
-class Transform(object):
+class Transform:
     r"""Base class for the transformations of random variables.
 
     ``Transform`` can be used to represent any differentiable and injective

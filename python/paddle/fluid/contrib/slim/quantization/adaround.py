@@ -51,7 +51,7 @@ def compute_soft_rounding_np(alpha_v):
     )
 
 
-class AdaRoundLoss(object):
+class AdaRoundLoss:
     def __init__(self, reg_param=0.01, default_beta_range=(20, 2)):
         self.default_reg_param = reg_param
         self.default_beta_range = default_beta_range
@@ -111,7 +111,7 @@ class AdaRoundLoss(object):
         return beta
 
 
-class AdaRound(object):
+class AdaRound:
     def __init__(
         self,
         scale,

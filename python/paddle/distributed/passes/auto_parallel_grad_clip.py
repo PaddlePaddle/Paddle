@@ -143,7 +143,7 @@ def _is_about_global_norm(
     return rank_id in complete_param_ranks
 
 
-class ClipHelper(object):
+class ClipHelper:
     def __init__(self, params_grads, rank_id, block, dist_context):
         params, _ = zip(*params_grads)
         self.params = list(params)

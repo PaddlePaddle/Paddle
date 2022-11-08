@@ -37,7 +37,7 @@ from paddle.fluid.io import (
 paddle.enable_static()
 
 
-class InferModel(object):
+class InferModel:
     def __init__(self, list):
         self.program = list[0]
         self.feed_var_names = list[1]

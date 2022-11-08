@@ -22,7 +22,7 @@ from paddle.distributed.fleet.meta_optimizers.sharding.fp16_helper import (
 __all__ = []
 
 
-class Shard(object):
+class Shard:
     def __init__(
         self,
     ):
@@ -155,7 +155,7 @@ class Shard(object):
         return grads_in_shard
 
 
-class ProgramSegment(object):
+class ProgramSegment:
     def __init__(self, block):
         self._block = block
         self._allreduce_vars = []

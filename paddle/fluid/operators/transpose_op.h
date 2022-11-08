@@ -85,7 +85,7 @@ constexpr int kShareCol = (kTileSize + 1);
 template <typename T>
 struct DimsSimplifier {
  public:
-  explicit DimsSimplifier(const size_t rank,
+  explicit DimsSimplifier(const int rank,
                           const int64_t numel,
                           const std::vector<int32_t>& perm,
                           const std::vector<int64_t>& dims)
@@ -115,7 +115,7 @@ struct DimsSimplifier {
   std::vector<int64_t> src_dims_;
   std::vector<int64_t> dst_dims_;
 
-  void SimplifyPermAndDims(const size_t rank,
+  void SimplifyPermAndDims(const int rank,
                            const std::vector<int64_t>& in_dims,
                            const std::vector<int32_t>& perm) {
     int start_perm_idx = 0;
@@ -166,14 +166,16 @@ struct DimsSimplifier {
     // Acquire simplified perm with help of combined dims
     // and original perm, finally simplified perm is [1, 0]
     int perm_idx = 0;
+    bool is_sequential = true;
     for (auto i = 0; i < rank; ++i) {
       const int mapped = valid_map[perm[i]];
       if (mapped >= 0) {
         perm_[perm_idx] = mapped;
+        is_sequential &= (mapped == perm_idx);
         perm_idx += 1;
       }
     }
-    rank_ = valid_dim_idx;
+    rank_ = is_sequential ? 1 : valid_dim_idx;
   }
 };
 
@@ -187,7 +189,6 @@ struct PermTypeClassifier {
                               const T* src,
                               T* dst) {
     if (rank == 1) {
-      vec_size_ = 1;
       type_ = PermuteType::kCopy;
     } else {
       const int dst_vec_size = phi::GetVectorizedSize<T>(dst);

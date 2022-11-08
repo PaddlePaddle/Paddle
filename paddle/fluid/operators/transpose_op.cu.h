@@ -642,6 +642,7 @@ struct SwapDim0And2InTranspose {
 
 template <typename T>
 inline void PermuteWithEigen(const phi::GPUContext& ctx,
+                             const int& rank,
                              phi::DenseTensor* in,
                              phi::DenseTensor* out,
                              const DimsSimplifier<T>& simplifier) {
@@ -665,6 +666,7 @@ inline void PermuteWithEigen(const phi::GPUContext& ctx,
 
 template <typename T, typename IndexType = int>
 inline void TransposeSimple(const phi::GPUContext& ctx,
+                            const int& rank,
                             phi::DenseTensor* in,
                             phi::DenseTensor* out,
                             const DimsSimplifier<T>& simplifier) {
@@ -674,7 +676,8 @@ inline void TransposeSimple(const phi::GPUContext& ctx,
   auto in_data = in->data<T>();
   auto out_data = out->data<T>();
 
-  if (simplifier.GetRank() == 2 && new_perm[0] == 1 && new_perm[1] == 0) {
+  if ((simplifier.GetRank() == 2 && new_perm[0] == 1) &&
+      (new_dims[0] > new_dims[1])) {
     // Add the first dimension size as 1.
     new_dims.insert(new_dims.begin(), 1);
     SwapDim1And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
@@ -685,19 +688,20 @@ inline void TransposeSimple(const phi::GPUContext& ctx,
     // But it depends on data size. If span is not large, coalescing may work.
     SwapDim0And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
   } else {
-    PermuteWithEigen<T>(ctx, in, out, simplifier);
+    PermuteWithEigen<T>(ctx, rank, in, out, simplifier);
   }
 }
 
 template <typename T>
 inline void TransposeWithSimple(const phi::GPUContext& ctx,
+                                const int& rank,
                                 phi::DenseTensor* in,
                                 phi::DenseTensor* out,
                                 const DimsSimplifier<T>& simplifier) {
   if (simplifier.GetCount() < std::numeric_limits<int>::max()) {
-    TransposeSimple<T>(ctx, in, out, simplifier);
+    TransposeSimple<T>(ctx, rank, in, out, simplifier);
   } else {
-    TransposeSimple<T, int64_t>(ctx, in, out, simplifier);
+    TransposeSimple<T, int64_t>(ctx, rank, in, out, simplifier);
   }
 }
 
@@ -712,6 +716,7 @@ class IdxHelper {
   }
 
   __device__ __forceinline__ T GetStride(int idx) const { return stride_[idx]; }
+
   __device__ __forceinline__ void GetIndexFromOffset(T offset, T* index) const {
     T remaining = offset;
 #pragma unroll
@@ -847,7 +852,6 @@ __global__ void GeneralPermuteKernel(PermuteParams<Rank, IndexT> params,
                                      T* dst) {
   using VecT = phi::AlignedVector<T, VecSize>;
   VecT* vec_dst = reinterpret_cast<VecT*>(dst);
-
   IndexT src_index[VecSize][Rank];
   IndexT dst_index[VecSize][Rank];
 
@@ -1251,6 +1255,7 @@ struct PermuteDispatch {
 
 template <typename T>
 inline void PermuteAndTranspose(const phi::GPUContext& ctx,
+                                const int& rank,
                                 phi::DenseTensor* in,
                                 phi::DenseTensor* out,
                                 const DimsSimplifier<T>& simplifier) {
@@ -1296,8 +1301,9 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                               const phi::DenseTensor& in,
                               const std::vector<int32_t>& perm,
                               phi::DenseTensor* out) {
+  const int rank = perm.size();
   auto simplifier = DimsSimplifier<T>(
-      perm.size(), in.numel(), perm, phi::vectorize<int64_t>(in.dims()));
+      rank, in.numel(), perm, phi::vectorize<int64_t>(in.dims()));
   auto* tuner = phi::autotune::MakeTransposeTuner<T>(TransposeWithSimple<T>);
   tuner->AddCallBack(PermuteWithEigen<T>);
   tuner->AddCallBack(PermuteAndTranspose<T>);
@@ -1311,6 +1317,7 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
              phi::autotune::AlgorithmType::kTranspose,
              key,
              ctx,
+             rank,
              const_cast<phi::DenseTensor*>(&in),
              out,
              simplifier);

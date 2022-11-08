@@ -98,7 +98,7 @@ def append_backward_new(
     return params_and_grads
 
 
-class Optimizer(object):
+class Optimizer:
     r"""Optimizer Base class.
 
     Define the common interface of an optimizer.

@@ -214,7 +214,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
         return y
 
 
-class FakeDataReader(object):
+class FakeDataReader:
     def __init__(self, mode, cfg):
         self.format = cfg.MODEL.format
         self.num_classes = cfg.MODEL.num_classes

@@ -64,7 +64,7 @@ def get_argparse():
     return parser.parse_args()
 
 
-class CspReporter(object):
+class CspReporter:
     def __init__(self, args):
         self._args = args
         print(self._args)

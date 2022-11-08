@@ -39,7 +39,7 @@ __all__ = [  # noqa
 ]
 
 
-class LRScheduler(object):
+class LRScheduler:
     """
 
     LRScheduler Base class. Define the common interface of a learning rate scheduler.
