@@ -30,13 +30,11 @@ void PReluKernel(const Context& dev_ctx,
   bool is_test = dev_ctx.HasDnnAttr("is_test")
                      ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
                      : false;
-  std::string unique_name = dev_ctx.GetInputsName("X")[0];
   funcs::PReluOneDNNHandler<T> handler(dev_ctx,
                                        dev_ctx.GetEngine(),
                                        dev_ctx.GetPlace(),
                                        x,
                                        alpha,
-                                       unique_name,
                                        mode,
                                        data_format,
                                        is_test);
