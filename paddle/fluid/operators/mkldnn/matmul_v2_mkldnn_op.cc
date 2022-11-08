@@ -388,11 +388,10 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
   if (IsOutputFused(ctx) && !phi::funcs::is_int8<T_out>()) {
     auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
     auto permuted_md = dst_memory_p->get_desc().permute_axes(axis);
-    out->set_mem_desc(
-        permuted_md.reshape(phi::vectorize<int64_t>(out->dims())));
+    out->set_mem_desc(permuted_md.reshape(vectorize<int64_t>(out->dims())));
   } else {
     out->set_mem_desc(
-        dst_memory_p->get_desc().reshape(phi::vectorize<int64_t>(out->dims())));
+        dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
   }
 }
 
@@ -429,7 +428,6 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     auto x_dims = vectorize(GetDimForInput(ctx, "X"));
     auto y_dims = vectorize(GetDimForInput(ctx, "Y"));
-    auto out_dims = vectorize(out->dims());
 
     int ndims = std::max(x_dims.size(), y_dims.size());
     ndims = std::max(ndims, 3);
@@ -437,8 +435,7 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
     std::vector<int64_t> x_bd_dims(ndims, 1);
     std::vector<int64_t> y_bd_dims(ndims, 1);
 
-    CalculateMatrixDims(
-        ctx, x_dims, y_dims, &x_bd_dims, &y_bd_dims, &out_dims, out);
+    CalculateMatrixDims(ctx, x_dims, y_dims, &x_bd_dims, &y_bd_dims, out);
 
     if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
       ExecuteMatMulV2<T, float>(ctx,
@@ -489,7 +486,6 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
                            const std::vector<int64_t> &y_dims,
                            std::vector<int64_t> *x_bd_dims,
                            std::vector<int64_t> *y_bd_dims,
-                           std::vector<int64_t> *out_dims,
                            Tensor *out) const {
     if (x_dims.size() == 1) {
       (*x_bd_dims)[(*x_bd_dims).size() - 1] = x_dims[0];
@@ -513,6 +509,7 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
     }
 
     if (!IsOutputFused(ctx) && x_dims.size() > 2 && y_dims.size() > 2) {
+      auto out_dims = vectorize(out->dims());
       for (size_t i = 0; i < (*x_bd_dims).size() - 2; ++i) {
         PADDLE_ENFORCE_EQ(
             (*x_bd_dims)[i] == (*y_bd_dims)[i] || (*x_bd_dims)[i] == 1 ||
@@ -526,9 +523,9 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
                 (*x_bd_dims)[i],
                 i,
                 (*y_bd_dims)[i]));
-        (*out_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
+        (out_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
       }
-      out->Resize(phi::make_ddim((*out_dims)));
+      out->Resize(phi::make_ddim((out_dims)));
     }
   }
 };
@@ -636,7 +633,7 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
                                    &dx_tmp,
                                    dx,
                                    x_dims,
-                                   phi::vectorize(x->dims()));
+                                   vectorize(x->dims()));
     } else {
       *dx = std::move(dx_tmp);
     }
@@ -647,7 +644,7 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
                                    &dy_tmp,
                                    dy,
                                    y_dims,
-                                   phi::vectorize(y->dims()));
+                                   vectorize(y->dims()));
     } else {
       *dy = std::move(dy_tmp);
     }
