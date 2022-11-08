@@ -175,29 +175,15 @@ def yolo_loss(
     Returns:
         Tensor: A 1-D tensor with shape [N], the value of yolov3 loss
 
-    Raises:
-        TypeError: Input x of yolov3_loss must be Tensor
-        TypeError: Input gtbox of yolov3_loss must be Tensor
-        TypeError: Input gtlabel of yolov3_loss must be Tensor
-        TypeError: Input gtscore of yolov3_loss must be None or Tensor
-        TypeError: Attr anchors of yolov3_loss must be list or tuple
-        TypeError: Attr class_num of yolov3_loss must be an integer
-        TypeError: Attr ignore_thresh of yolov3_loss must be a float number
-        TypeError: Attr use_label_smooth of yolov3_loss must be a bool value
-
     Examples:
       .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          x = np.random.random([2, 14, 8, 8]).astype('float32')
-          gt_box = np.random.random([2, 10, 4]).astype('float32')
-          gt_label = np.random.random([2, 10]).astype('int32')
+          x = paddle.rand([2, 14, 8, 8]).astype('float32')
+          gt_box = paddle.rand([2, 10, 4]).astype('float32')
+          gt_label = paddle.rand([2, 10]).astype('int32')
 
-          x = paddle.to_tensor(x)
-          gt_box = paddle.to_tensor(gt_box)
-          gt_label = paddle.to_tensor(gt_label)
 
           loss = paddle.vision.ops.yolo_loss(x,
                                              gt_box=gt_box,
@@ -401,24 +387,14 @@ def yolo_box(
         and a 3-D tensor with shape [N, M, :attr:`class_num`], the classification 
         scores of boxes.
 
-    Raises:
-        TypeError: Input x of yolov_box must be Tensor
-        TypeError: Attr anchors of yolo box must be list or tuple
-        TypeError: Attr class_num of yolo box must be an integer
-        TypeError: Attr conf_thresh of yolo box must be a float number
-
     Examples:
 
     .. code-block:: python
 
         import paddle
-        import numpy as np
 
-        x = np.random.random([2, 14, 8, 8]).astype('float32')
-        img_size = np.ones((2, 2)).astype('int32')
-
-        x = paddle.to_tensor(x)
-        img_size = paddle.to_tensor(img_size)
+        x = paddle.rand([2, 14, 8, 8]).astype('float32')
+        img_size = paddle.ones((2, 2)).astype('int32')
 
         boxes, scores = paddle.vision.ops.yolo_box(x,
                                                    img_size=img_size,
@@ -965,9 +941,7 @@ def deform_conv2d(
     Returns:
         Tensor: The tensor variable storing the deformable convolution \
                   result. A Tensor with type float32, float64.
-    Raises:
-        ValueError: If the shapes of input, filter_size, stride, padding and
-                    groups mismatch.
+
     Examples:
         .. code-block:: python
 
@@ -2139,33 +2113,36 @@ def nms(
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            boxes = np.random.rand(4, 4).astype('float32')
+            boxes = paddle.rand([4, 4]).astype('float32')
             boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
             boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
-            # [[0.06287421 0.5809351  0.3443958  0.8713329 ]
-            #  [0.0749094  0.9713205  0.99241287 1.2799143 ]
-            #  [0.46246734 0.6753201  1.346266   1.3821303 ]
-            #  [0.8984796  0.5619834  1.1254641  1.0201943 ]]
+            print(boxes)
+            # Tensor(shape=[4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.64811575, 0.89756244, 0.86473107, 1.48552322],
+            #         [0.48085716, 0.84799081, 0.54517937, 0.86396021],
+            #         [0.62646860, 0.72901905, 1.17392159, 1.69691563],
+            #         [0.89729202, 0.46281594, 1.88733089, 0.98588502]])
 
-            out =  paddle.vision.ops.nms(paddle.to_tensor(boxes), 0.1)
-            # [0, 1, 3, 0]
+            out = paddle.vision.ops.nms(boxes, 0.1)
+            print(out)
+            # Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [0, 1, 3])
 
-            scores = np.random.rand(4).astype('float32')
-            # [0.98015213 0.3156527  0.8199343  0.874901 ]
+            scores = paddle.to_tensor([0.6, 0.7, 0.4, 0.233])
 
             categories = [0, 1, 2, 3]
-            category_idxs = np.random.choice(categories, 4)
-            # [2 0 0 3]
+            category_idxs = paddle.to_tensor([2, 0, 0, 3], dtype="int64")
 
-            out =  paddle.vision.ops.nms(paddle.to_tensor(boxes),
-                                                    0.1,
-                                                    paddle.to_tensor(scores),
-                                                    paddle.to_tensor(category_idxs),
-                                                    categories,
-                                                    4)
-            # [0, 3, 2]
+            out = paddle.vision.ops.nms(boxes,
+                                        0.1,
+                                        paddle.to_tensor(scores),
+                                        paddle.to_tensor(category_idxs),
+                                        categories,
+                                        4)
+            print(out)
+            # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [1, 0, 2, 3])
     """
 
     def _nms(boxes, iou_threshold):

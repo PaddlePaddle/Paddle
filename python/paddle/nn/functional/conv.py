@@ -379,43 +379,27 @@ def conv1d(
         A tensor representing the conv1d, whose data type is the
         same with input.
 
-    Raises:
-        ValueError: If the channel dimension of the input is less than or equal to zero.
-        ValueError: If `data_format` is not "NCL" or "NLC".
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0
-            or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 3-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 1.
-        ShapeError: If the number of input channels is not equal to filter's channels * groups.
-        ShapeError: If the number of output channels is not be divided by groups.
-
     Examples:
         .. code-block:: python
 
           import paddle
           import paddle.nn.functional as F
-          import numpy as np
-          x = np.array([[[4, 8, 1, 9],
-            [7, 2, 0, 9],
-            [6, 9, 2, 6]]]).astype(np.float32)
-          w=np.array(
-          [[[9, 3, 4],
-            [0, 0, 7],
-            [2, 5, 6]],
-           [[0, 3, 4],
-            [2, 9, 7],
-            [5, 6, 8]]]).astype(np.float32)
 
-          x_var = paddle.to_tensor(x)
-          w_var = paddle.to_tensor(w)
-          y_var = F.conv1d(x_var, w_var)
-          y_np = y_var.numpy()
-          print(y_np)
+          x = paddle.to_tensor([[[4, 8, 1, 9],
+                                 [7, 2, 0, 9],
+                                 [6, 9, 2, 6]]], dtype="float32")
+          w = paddle.to_tensor([[[9, 3, 4],
+                                 [0, 0, 7],
+                                 [2, 5, 6]],
+                                [[0, 3, 4],
+                                 [2, 9, 7],
+                                 [5, 6, 8]]], dtype="float32")
 
-          # [[[133. 238.]
-          #   [160. 211.]]]
+          y = F.conv1d(x, w)
+          print(y)
+          # Tensor(shape=[1, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+          #        [[[133., 238.],
+          #          [160., 211.]]])
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:
@@ -676,18 +660,6 @@ def conv2d(
     Returns:
         A Tensor representing the conv2d result, whose data type is the same with input. 
 
-    Raises:
-        ValueError: If `data_format` is not "NCHW" or "NHWC".
-        ValueError: If the channel dimension of the input is less than or equal to zero.
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
-            or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 4-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels * groups.
-        ShapeError: If the number of output channels is not be divided by groups.
-
     Examples:
         .. code-block:: python
 
@@ -933,40 +905,23 @@ def conv1d_transpose(
         when data_format is `"NCL"` and (num_batches, length, channels) when data_format is
         `"NLC"`.
 
-    Raises:
-        ValueError: If `data_format` is a string, but not "NCL" or "NLC".
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
-            or the element corresponding to the input's channel is not 0.
-        ValueError: If `output_size` and filter_size are None at the same time.
-        ValueError: If `output_padding` is greater than `stride`.
-        ShapeError: If the input is not 3-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 1.
-        ShapeError: If the number of input channels is not equal to filter's channels.
-        ShapeError: If the size of `output_size` is not equal to that of `stride`.
-
     Examples:
         .. code-block:: python
 
-
-
           import paddle
           import paddle.nn.functional as F
-          import numpy as np
-          
+
           # shape: (1, 2, 4)
-          x=np.array([[[4, 0, 9, 7],
-                       [8, 0, 9, 2,]]]).astype(np.float32)
+          x = paddle.to_tensor([[[4, 0, 9, 7],
+                                [8, 0, 9, 2,]]], dtype="float32")
           # shape: (2, 1, 2)
-          w=np.array([[[7, 0]],
-                      [[4, 2]]]).astype(np.float32)
-          x_var = paddle.to_tensor(x)
-          w_var = paddle.to_tensor(w)
-          y_var = F.conv1d_transpose(x_var, w_var)
-          print(y_var)
-          
-          # [[[60. 16. 99. 75.  4.]]]
+          w = paddle.to_tensor([[[7, 0]],
+                                [[4, 2]]], dtype="float32")
+
+          y = F.conv1d_transpose(x, w)
+          print(y)
+          # Tensor(shape=[1, 1, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+          #        [[[60., 16., 99., 75., 4. ]]])
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:
@@ -1262,18 +1217,6 @@ def conv2d_transpose(
         data type is the same with input and shape is (num_batches, channels, out_h, 
         out_w) or (num_batches, out_h, out_w, channels). The tensor variable storing 
         transposed convolution result.
-
-    Raises:
-        ValueError: If `data_format` is not "NCHW" or "NHWC".
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
-            or the element corresponding to the input's channel is not 0.
-        ValueError: If `output_size` and kernel_size are None at the same time.
-        ShapeError: If the input is not 4-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels.
-        ShapeError: If the size of `output_size` is not equal to that of `stride`.
 
     Examples:
         .. code-block:: python
@@ -1778,18 +1721,6 @@ def conv3d_transpose(
         out_w) or (num_batches, out_d, out_h, out_w, channels). If act is None, the tensor 
         variable storing the transposed convolution result, and if act is not None, the tensor 
         variable storing transposed convolution and non-linearity activation result.
-
-    Raises:
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a list/tuple, but the element corresponding to the input's batch size is not 0 
-            or the element corresponding to the input's channel is not 0.
-        ValueError: If `output_size` and kernel_size are None at the same time.
-        ShapeError: If the input is not 5-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels.
-        ShapeError: If the size of `output_size` is not equal to that of `stride`.
 
     Examples:
        .. code-block:: python

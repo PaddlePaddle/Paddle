@@ -36,7 +36,7 @@ __all__ = []
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     r"""
-    This op normalizes ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
+    Normalize ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
 
     .. math::
 
@@ -50,7 +50,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
     Parameters:
         x (Tensor): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
-        p (float|int, optional): The exponent value in the norm formulation. Default: 2
+        p (float|int, optional): The exponent value in the norm formulation. Default: 2.
         axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension.
         epsilon (float, optional): Small float added to denominator to avoid dividing by zero. Default is 1e-12.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -62,27 +62,28 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
             import paddle.nn.functional as F
 
             paddle.disable_static()
-            x = np.arange(6, dtype=np.float32).reshape(2,3)
-            x = paddle.to_tensor(x)
+            x = paddle.arange(6, dtype="float32").reshape([2,3])
             y = F.normalize(x)
-            print(y.numpy())
-            # [[0.         0.4472136  0.8944272 ]
-            # [0.42426404 0.5656854  0.7071067 ]]
+            print(y)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.        , 0.44721359, 0.89442718],
+            #         [0.42426404, 0.56568539, 0.70710671]])
 
             y = F.normalize(x, p=1.5)
-            print(y.numpy())
-            # [[0.         0.40862012 0.81724024]
-            # [0.35684016 0.4757869  0.5947336 ]]
+            print(y)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.        , 0.40862012, 0.81724024],
+            #         [0.35684016, 0.47578689, 0.59473360]])
 
             y = F.normalize(x, axis=0)
-            print(y.numpy())
-            # [[0.         0.24253564 0.37139067]
-            # [1.         0.97014254 0.9284767 ]]
+            print(y)
+            # Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.        , 0.24253564, 0.37139067],
+            #         [1.        , 0.97014254, 0.92847669]])
     """
     if in_dygraph_mode():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
@@ -169,22 +170,31 @@ def batch_norm(
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          x = np.random.seed(123)
-          x = np.random.random(size=(2, 1, 2, 3)).astype('float32')
-          running_mean = np.random.random(size=1).astype('float32')
-          running_variance = np.random.random(size=1).astype('float32')
-          weight_data = np.random.random(size=1).astype('float32')
-          bias_data = np.random.random(size=1).astype('float32')
-          x = paddle.to_tensor(x)
-          rm = paddle.to_tensor(running_mean)
-          rv = paddle.to_tensor(running_variance)
-          w = paddle.to_tensor(weight_data)
-          b = paddle.to_tensor(bias_data)
-          batch_norm_out = paddle.nn.functional.batch_norm(x, rm, rv, w, b)
-          print(batch_norm_out)
+            x = paddle.arange(12, dtype="float32").reshape([2, 1, 2, 3])
+            print(x)
+            # Tensor(shape=[2, 1, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[[0. , 1. , 2. ],
+            #           [3. , 4. , 5. ]]],
+
+            #         [[[6. , 7. , 8. ],
+            #           [9. , 10., 11.]]]])
+
+            running_mean = paddle.to_tensor([0], dtype="float32")
+            running_variance = paddle.to_tensor([1], dtype="float32")
+            weight = paddle.to_tensor([2], dtype="float32")
+            bias = paddle.to_tensor([1], dtype="float32")
+
+            batch_norm_out = paddle.nn.functional.batch_norm(x, running_mean,
+                                                        running_variance, weight, bias)
+            print(batch_norm_out)
+            # Tensor(shape=[2, 1, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[[[1.         , 2.99998999 , 4.99997997 ],
+            #           [6.99996948 , 8.99995995 , 10.99994946]]],
+
+            #         [[[12.99993896, 14.99992943, 16.99991989],
+            #           [18.99990845, 20.99989891, 22.99988937]]]])
     """
     assert len(x.shape) >= 2, "input dim must be larger than 1"
 
@@ -347,11 +357,8 @@ def layer_norm(
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
+          x = paddle.rand((2, 2, 2, 3))
           layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
           print(layer_norm_out)
     """
@@ -458,14 +465,14 @@ def instance_norm(
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
-        running_mean(Tensor): running mean. Default None.
-        running_var(Tensor): running variance. Default None.
+        running_mean(Tensor, optional): running mean. Default None.
+        running_var(Tensor, optional): running variance. Default None.
         weight(Tensor, optional): The weight tensor of instance_norm. Default: None.
         bias(Tensor, optional): The bias tensor of instance_norm. Default: None.
         eps(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        use_input_stats(bool): Default True.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Default "NCHW".
+        use_input_stats(bool, optional): Default True.
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Defalut "NCHW".
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Returns:
@@ -476,11 +483,8 @@ def instance_norm(
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
+          x = paddle.rand((2, 2, 2, 3))
           instance_norm_out = paddle.nn.functional.instance_norm(x)
 
           print(instance_norm_out)

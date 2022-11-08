@@ -252,16 +252,14 @@ def fluid_softmax_with_cross_entropy(
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            data = np.random.rand(128).astype("float32")
-            label = np.random.rand(1).astype("int64")
-            data = paddle.to_tensor(data)
-            label = paddle.to_tensor(label)
-            linear = paddle.nn.Linear(128, 100)
-            x = linear(data)
-            out = paddle.nn.functional.softmax_with_cross_entropy(logits=x, label=label)
+            logits = paddle.to_tensor([0.4, 0.6, 0.9])
+            label = paddle.randint(high=2, shape=[1], dtype="int64")
+
+            out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             print(out)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.15328646])
     """
     if _non_static_mode():
         if core.is_compiled_with_npu():
@@ -941,15 +939,18 @@ def hsigmoid_loss(
     """
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
     and speed up the model training, especially the training of language model.
+
     Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
     For each class(word), there's a unique path from root to itself, hsigmoid calculate the cost for each non-leaf node on
     the path, and sum them to get a total cost.
-    Comparing to softmax, the OP can reduce the computational complexity from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
+
+    Comparing to softmax, hsigmoid can reduce the computational complexity from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
     represents the number of classes or the size of word dict.
 
-    The OP supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
-    Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_. For the custom
-    tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
+    The API supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
+    Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_.
+
+    For the custom tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
 
     1. Using a custom word dict to build a binary tree, each leaf node should be an word in the word dict.
     2. Creating a dict map word_id -> path that from the word to the root node, we call it path_table.
@@ -1104,17 +1105,17 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
 
     .. math::
 
-         loss(x,y) = \frac{1}{n}\sum_{i}z_i
+        loss(x,y) = \frac{1}{n}\sum_{i}z_i
 
 
-    where z_i is given by:
+    where :math:`z_i` is given by:
 
     .. math::
 
         \mathop{z_i} = \left\{\begin{array}{rcl}
-        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\
-        delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
-        \end{array} \right.
+                0.5(x_i - y_i)^2 & & {if |x_i - y_i| < \delta} \\
+                \delta * |x_i - y_i| - 0.5 * \delta^2 & & {otherwise}
+            \end{array} \right.
 
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64. Shape is
@@ -1128,12 +1129,11 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-        delta (float, optional): Specifies the hyperparameter delta to be used.
+        delta (float, optional): Specifies the hyperparameter :math:`\delta` to be used.
             The value determines how large the errors need to be to use L1. Errors
             smaller than delta are minimized with L2. Parameter is ignored for
             negative/zero values. Default = 1.0
-        name (str, optional): Name for the operation (optional, default is
-            None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, The tensor variable storing the smooth_l1_loss of input and label.
@@ -1142,14 +1142,12 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(3,3).astype("float32")
-            label_data = np.random.rand(3,3).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.rand([3, 3]).astype('float32')
+            label = paddle.rand([3, 3]).astype('float32')
             output = paddle.nn.functional.smooth_l1_loss(input, label)
             print(output)
+            # [0.068004]
     """
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
@@ -1312,7 +1310,7 @@ def margin_ranking_loss(
 
 def l1_loss(input, label, reduction='mean', name=None):
     r"""
-    This operator computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
+    Computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
 
     If `reduction` set to ``'none'``, the loss is:
 
@@ -1343,8 +1341,8 @@ def l1_loss(input, label, reduction='mean', name=None):
 
     Returns:
         Tensor, the L1 Loss of Tensor ``input`` and ``label``.
-            If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
-            If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+        If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
+        If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
         .. code-block:: python
@@ -1538,7 +1536,7 @@ def nll_loss(
 
 def kl_div(input, label, reduction='mean', name=None):
     r"""
-    This operator calculates the Kullback-Leibler divergence loss
+    Calculate the Kullback-Leibler divergence loss
     between Input(X) and Input(Target). Notes that Input(X) is the
     log-probability and Input(Target) is the probability.
 
@@ -1583,31 +1581,26 @@ def kl_div(input, label, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn.functional as F
 
             shape = (5, 20)
-            input = np.random.uniform(-10, 10, shape).astype('float32')
-            target = np.random.uniform(-10, 10, shape).astype('float32')
+            x = paddle.uniform(shape, min=-10, max=10).astype('float32')
+            target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='batchmean')
+            pred_loss = F.kl_div(x, target, reduction='batchmean')
             # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='mean')
+            pred_loss = F.kl_div(x, target, reduction='mean')
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='sum')
+            pred_loss = F.kl_div(x, target, reduction='sum')
             # shape=[1]
 
             # 'none' reduction, loss shape is same with input shape
-            pred_loss = F.kl_div(paddle.to_tensor(input),
-                                 paddle.to_tensor(target), reduction='none')
+            pred_loss = F.kl_div(x, target, reduction='none')
             # shape=[5, 20]
 
     """
@@ -1778,7 +1771,6 @@ def ctc_loss(
 
             # declarative mode
             import paddle.nn.functional as F
-            import numpy as np
             import paddle
 
             # length of the longest logit sequence
@@ -1790,8 +1782,7 @@ def ctc_loss(
             # class num
             class_num = 3
 
-            np.random.seed(1)
-            log_probs = np.array([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
+            log_probs = paddle.to_tensor([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
                                     [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
 
                                     [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
@@ -1804,30 +1795,30 @@ def ctc_loss(
                                     [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
 
                                     [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
-                                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]]).astype("float32")
-            labels = np.array([[1, 2, 2],
-                            [1, 2, 2]]).astype("int32")
-            input_lengths = np.array([5, 5]).astype("int64")
-            label_lengths = np.array([3, 3]).astype("int64")
-
-            log_probs = paddle.to_tensor(log_probs)
-            labels = paddle.to_tensor(labels)
-            input_lengths = paddle.to_tensor(input_lengths)
-            label_lengths = paddle.to_tensor(label_lengths)
+                                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]],
+                                    dtype="float32")
+            labels = paddle.to_tensor([[1, 2, 2],
+                                    [1, 2, 2]], dtype="int32")
+            input_lengths = paddle.to_tensor([5, 5], dtype="int64")
+            label_lengths = paddle.to_tensor([3, 3], dtype="int64")
 
             loss = F.ctc_loss(log_probs, labels,
                 input_lengths,
                 label_lengths,
                 blank=0,
                 reduction='none')
-            print(loss)  #[3.9179852 2.9076521]
+            print(loss)
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [3.91798496, 2.90765190])
 
             loss = F.ctc_loss(log_probs, labels,
                 input_lengths,
                 label_lengths,
                 blank=0,
                 reduction='mean')
-            print(loss)  #[1.1376063]
+            print(loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.13760614])
 
     """
 
@@ -1866,9 +1857,7 @@ def margin_cross_entropy(
 
     .. hint::
         The API supports single GPU and multi GPU, and don't supports CPU.
-
         For data parallel mode, set ``group=False``.
-
         For model parallel mode, set ``group=None`` or the group instance return by paddle.distributed.new_group.
         And logits.shape[-1] can be different at each rank.
 
@@ -1880,7 +1869,7 @@ def margin_cross_entropy(
         margin2 (float, optional): m2 of margin loss, default value is `0.5`.
         margin3 (float, optional): m3 of margin loss, default value is `0.0`.
         scale (float, optional): s of margin loss, default value is `64.0`.
-        group (Group, optional): The group instance return by paddle.distributed.new_group 
+        group (Group, optional): The group instance return by paddle.distributed.new_group
             or ``None`` for global default group or ``False`` for data parallel (do not communication cross ranks).
             Default is ``None``.
         return_softmax (bool, optional): Whether return softmax probability. Default value is `False`.
@@ -1891,12 +1880,12 @@ def margin_cross_entropy(
                     Default value is `'mean'`.
 
     Returns:
-        ``Tensor`` or Tuple of two ``Tensor`` : Return the cross entropy loss if \
-            `return_softmax` is False, otherwise the tuple \
-            (loss, softmax), softmax is shard_softmax when \
-            using model parallel, otherwise softmax is in \
-            the same shape with input logits. If ``reduction == None``, \
-            the shape of loss is ``[N, 1]``, otherwise the shape is ``[1]``.
+        Tensor|tuple[Tensor, Tensor], return the cross entropy loss if
+            `return_softmax` is False, otherwise the tuple (loss, softmax),
+            softmax is shard_softmax when using model parallel, otherwise
+            softmax is in the same shape with input logits. If
+            ``reduction == None``, the shape of loss is ``[N, 1]``, otherwise
+            the shape is ``[1]``.
 
     Examples:
 
@@ -1936,7 +1925,7 @@ def margin_cross_entropy(
         print(label)
         print(loss)
         print(softmax)
-        
+
         #Tensor(shape=[2, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #       [[ 0.85204151, -0.55557678,  0.04994566,  0.71986042],
         #        [-0.20198586, -0.35270476, -0.55182702,  0.09749021]])
@@ -1997,7 +1986,7 @@ def margin_cross_entropy(
         print(loss)
         print(softmax)
 
-        # python -m paddle.distributed.launch --gpus=0,1 test_margin_cross_entropy.py 
+        # python -m paddle.distributed.launch --gpus=0,1 test_margin_cross_entropy.py
         ## for rank0 input
         #Tensor(shape=[4, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #       [[ 0.32888934,  0.02408748, -0.02763289,  0.18173063],
@@ -2265,16 +2254,14 @@ def softmax_with_cross_entropy(
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            data = np.random.rand(128).astype("float32")
-            label = np.random.rand(1).astype("int64")
-            data = paddle.to_tensor(data)
-            label = paddle.to_tensor(label)
-            linear = paddle.nn.Linear(128, 100)
-            x = linear(data)
-            out = paddle.nn.functional.softmax_with_cross_entropy(logits=x, label=label)
+            logits = paddle.to_tensor([0.4, 0.6, 0.9], dtype="float32")
+            label = paddle.to_tensor([1], dtype="int64")
+
+            out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             print(out)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.15328646])
     """
     return fluid_softmax_with_cross_entropy(
         logits,
@@ -3251,6 +3238,19 @@ def multi_label_soft_margin_loss(
     input, label, weight=None, reduction="mean", name=None
 ):
     r"""
+    Calculate a multi-class multi-classification
+    hinge loss (margin-based loss) between input :math:`x` (a 2D mini-batch `Tensor`)
+    and output :math:`y` (which is a 2D `Tensor` of target class indices).
+    For each sample in the mini-batch:
+
+    .. math::
+        \text{loss}(x, y) = \sum_{ij}\frac{\max(0, 1 - (x[y[j]] - x[i]))}{\text{x.size}(0)}
+
+    where :math:`x \in \left\{0, \; \cdots , \; \text{x.size}(0) - 1\right\}`, \
+    :math:`y \in \left\{0, \; \cdots , \; \text{y.size}(0) - 1\right\}`, \
+    :math:`0 \leq y[j] \leq \text{x.size}(0)-1`, \
+    and :math:`i \neq y[j]` for all :math:`i` and :math:`j`.
+    :math:`y` and :math:`x` must have the same size.
 
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
@@ -3344,7 +3344,7 @@ def multi_label_soft_margin_loss(
 
 def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
     r"""
-    This operator calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
+    Calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
     This is usually used for measuring whether two inputs are similar or dissimilar, e.g. using the L1 pairwise distance as :math:`x`,
     and is typically used for learning nonlinear embeddings or semi-supervised learning.
 
@@ -3869,18 +3869,26 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             input = paddle.to_tensor([[0.5, 0.6, 0.7],[0.3, 0.5, 0.2]], 'float32')
             label = paddle.to_tensor([[1.0, -1.0, 1.0],[-1.0, 1.0, 1.0]], 'float32')
             output = paddle.nn.functional.soft_margin_loss(input, label)
+            print(output)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.64022040])
 
-            input_np = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
-            label_np = np.random.randint(0, 2, size=(5, 5)).astype(np.int64)
-            label_np[label_np==0]=-1
-            input = paddle.to_tensor(input_np)
-            label = paddle.to_tensor(label_np)
+            input = paddle.uniform(shape=(5, 5), dtype="float32", min=0.1, max=0.8)
+            label = paddle.randint(0, 2, shape=(5, 5), dtype="int64")
+            label[label==0]=-1
+
             output = paddle.nn.functional.soft_margin_loss(input, label, reduction='none')
+            print(output)
+            # Tensor(shape=[5, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1.09917796, 0.52613139, 0.56263304, 0.82736146, 0.38776723],
+            #         [1.07179427, 1.11924267, 0.49877715, 1.10026348, 0.46184641],
+            #         [0.84367639, 0.74795729, 0.44629076, 0.55123353, 0.77659678],
+            #         [0.39465919, 0.76651484, 0.54485321, 0.76609844, 0.77166790],
+            #         [0.51283568, 0.84757161, 0.78913331, 1.05268764, 0.45318675]])
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(

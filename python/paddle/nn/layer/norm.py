@@ -117,7 +117,7 @@ class _InstanceNormBase(Layer):
 
 class InstanceNorm1D(_InstanceNormBase):
     r"""
-    Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
+    Create a callable object of `InstanceNorm1D`. Applies Instance Normalization over a 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCL `[batch, in_channels, length]`
 
@@ -133,8 +133,7 @@ class InstanceNorm1D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    Note:
-        `H` means height of feature map, `W` means width of feature map.
+Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -168,11 +167,8 @@ class InstanceNorm1D(_InstanceNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.rand((2, 2, 3))
           instance_norm = paddle.nn.InstanceNorm1D(2)
           instance_norm_out = instance_norm(x)
 
@@ -191,7 +187,7 @@ class InstanceNorm1D(_InstanceNormBase):
 
 class InstanceNorm2D(_InstanceNormBase):
     r"""
-    Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
+    Create a callable object of `InstanceNorm2D`. Applies Instance Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
 
@@ -208,8 +204,7 @@ class InstanceNorm2D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    Note:
-        `H` means height of feature map, `W` means width of feature map.
+Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -242,11 +237,8 @@ class InstanceNorm2D(_InstanceNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.rand((2, 2, 2, 3))
           instance_norm = paddle.nn.InstanceNorm2D(2)
           instance_norm_out = instance_norm(x)
 
@@ -262,7 +254,7 @@ class InstanceNorm2D(_InstanceNormBase):
 
 class InstanceNorm3D(_InstanceNormBase):
     r"""
-    Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
+    Create a callable object of `InstanceNorm3D`. Applies Instance Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Instance Normalization: The Missing Ingredient for Fast Stylization .
 
     DataLayout: NCHW `[batch, in_channels, D, in_height, in_width]`
 
@@ -279,8 +271,7 @@ class InstanceNorm3D(_InstanceNormBase):
         \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
         y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    Note:
-        `H` means height of feature map, `W` means width of feature map.
+Where `H` means height of feature map, `W` means width of feature map.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -313,11 +304,8 @@ class InstanceNorm3D(_InstanceNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.rand((2, 2, 2, 2, 3))
           instance_norm = paddle.nn.InstanceNorm3D(2)
           instance_norm_out = instance_norm(x)
 
@@ -362,17 +350,13 @@ class GroupNorm(Layer):
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            import paddle
 
-          paddle.disable_static()
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 6, 2, 2)).astype('float32')
-          x = paddle.to_tensor(x_data)
-          group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
-          group_norm_out = group_norm(x)
+            x = paddle.arange(48, dtype="float32").reshape((2, 6, 2, 2))
+            group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
+            group_norm_out = group_norm(x)
 
-          print(group_norm_out.numpy())
+            print(group_norm_out)
     """
 
     def __init__(
@@ -498,11 +482,7 @@ class GroupNorm(Layer):
 
 class LayerNorm(Layer):
     r"""
-    :alias_main: paddle.nn.LayerNorm
-        :alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
-        :old_api: paddle.fluid.dygraph.LayerNorm
-
-    This interface is used to construct a callable object of the ``LayerNorm`` class.
+    Construct a callable object of the ``LayerNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
     Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
@@ -550,12 +530,9 @@ class LayerNorm(Layer):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
-          layer_norm = paddle.nn.LayerNorm(x_data.shape[1:])
+          x = paddle.rand((2, 2, 2, 3))
+          layer_norm = paddle.nn.LayerNorm(x.shape[1:])
           layer_norm_out = layer_norm(x)
 
           print(layer_norm_out)
@@ -823,11 +800,8 @@ class BatchNorm1D(_BatchNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.rand((2, 1, 3))
           batch_norm = paddle.nn.BatchNorm1D(1)
           batch_norm_out = batch_norm(x)
 
@@ -938,11 +912,8 @@ class BatchNorm2D(_BatchNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.rand((2, 1, 2, 3))
           batch_norm = paddle.nn.BatchNorm2D(1)
           batch_norm_out = batch_norm(x)
 
@@ -1027,11 +998,8 @@ class BatchNorm3D(_BatchNormBase):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 1, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data) 
+          x = paddle.rand((2, 1, 2, 2, 3))
           batch_norm = paddle.nn.BatchNorm3D(1)
           batch_norm_out = batch_norm(x)
 
@@ -1150,18 +1118,23 @@ class SyncBatchNorm(_BatchNormBase):
     Examples:
         .. code-block:: python
 
+          # required: gpu
+
           import paddle
           import paddle.nn as nn
-          import numpy as np
 
-          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-          x = paddle.to_tensor(x)
+          x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
 
           if paddle.is_compiled_with_cuda():
               sync_batch_norm = nn.SyncBatchNorm(2)
               hidden1 = sync_batch_norm(x)
               print(hidden1)
-              # [[[[0.26824948, 1.0936325],[0.26824948, -1.6301316]],[[ 0.8095662, -0.665287],[-1.2744656, 1.1301866 ]]]]
+              # Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+              #        [[[[ 0.26824948,  1.09363246],
+              #           [ 0.26824948, -1.63013160]],
+
+              #          [[ 0.80956620, -0.66528702],
+              #           [-1.27446556,  1.13018656]]]])
     """
 
     def __init__(

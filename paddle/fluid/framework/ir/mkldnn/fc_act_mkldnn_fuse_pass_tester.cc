@@ -78,9 +78,9 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluTanh) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("gelu_tanh"), 0);
     }
   }
@@ -113,9 +113,9 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluErf) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("gelu_erf"), 0);
     }
   }
@@ -146,9 +146,9 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluAuto) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("gelu"), 0);
     }
   }
@@ -179,9 +179,9 @@ TEST(FuseFCActOneDNNPass, FuseWithTanh) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("tanh"), 0);
     }
   }
@@ -213,9 +213,9 @@ TEST(FuseFCActOneDNNPass, FuseWithSigmoid) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("sigmoid"), 0);
     }
   }
@@ -246,9 +246,9 @@ TEST(FuseFCActOneDNNPass, FuseWithMish) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("mish"), 0);
     }
   }
@@ -280,9 +280,9 @@ TEST(FuseFCActOneDNNPass, FuseWithHardSwish) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("hard_swish"), 0);
     }
   }

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <string>
-
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -23,14 +21,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class FuseFCActOneDNNPass : public FusePassBase {
+class FuseOperatorReshape2OneDNNPass : public FusePassBase {
  public:
-  virtual ~FuseFCActOneDNNPass() {}
+  virtual ~FuseOperatorReshape2OneDNNPass() {}
 
  protected:
   void ApplyImpl(Graph *graph) const override;
-
-  void FuseFCAct(Graph *graph, const std::string &act_types) const;
+  void FuseReshape2(Graph *graph,
+                    const std::string &op_type,
+                    int num_of_outputs) const;
 };
 
 }  // namespace ir
