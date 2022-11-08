@@ -23,7 +23,7 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
 
 class Net(paddle.nn.Layer):
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
         self.sub = SubNet()
 
     def forward(self, x):
@@ -40,7 +40,7 @@ class Net(paddle.nn.Layer):
 
 class SubNet(paddle.nn.Layer):
     def __init__(self):
-        super(SubNet, self).__init__()
+        super().__init__()
 
     def forward(self, x, flag=True):
         if flag:

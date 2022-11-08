@@ -53,7 +53,7 @@ def is_optimizer_op(op):
     ) & int(OpRole.Optimize)
 
 
-class CollectiveHelper(object):
+class CollectiveHelper:
     def __init__(self, role_maker, nrings=1, wait_port=True):
         self.nrings = nrings
         self.wait_port = wait_port

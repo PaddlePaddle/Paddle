@@ -14,7 +14,10 @@
 
 import paddle
 import paddle.fluid.framework as framework
-from paddle.distributed.communication.group import _get_global_group
+from paddle.distributed.communication.group import (
+    _get_global_group,
+    _warn_cur_rank_not_in_group,
+)
 from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp
 
 
@@ -49,7 +52,6 @@ def _reduce_scatter_tensor_in_dygraph(
     caller="reduce_scatter",
 ):
     op_type = _get_reduce_op(op, caller)
-    group = _get_global_group() if group is None else group
 
     _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
 
@@ -71,7 +73,6 @@ def _reduce_scatter_in_dygraph(
     tensor, tensor_list, op, group, sync_op, use_calc_stream
 ):
     op_type = _get_reduce_op(op, "reduce_scatter")
-    group = _get_global_group() if group is None else group
 
     _check_tensor_list_shape(tensor_list, tensor.shape, group.nranks)
 
@@ -104,7 +105,7 @@ def reduce_scatter(
     Args:
         tensor (Tensor): The output tensor on each rank. The result will overwrite this tenor after communication. Support
             float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
-        tensor_list (List[Tensor]]): The input to scatter.
+        tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The input to scatter.
             If it is a tensor, it should be correctly-sized. If it is a list, it should contain correctly-sized tensors.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The reduction used. If none is given, use ReduceOp.SUM as default.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
@@ -137,10 +138,8 @@ def reduce_scatter(
             # [4, 6]  (2 GPUs, out for rank 0)
             # [8, 10] (2 GPUs, out for rank 1)
     """
-    if group is not None and not group.is_member():
-        raise RuntimeError(
-            "The group should not be None and all ranks which invoke this operation should be the member of this group."
-        )
+    if _warn_cur_rank_not_in_group(group):
+        return
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
@@ -148,6 +147,7 @@ def reduce_scatter(
         )
 
     if framework.in_dygraph_mode():
+        group = _get_global_group() if group is None else group
         if paddle.is_tensor(tensor_or_tensor_list):
             return _reduce_scatter_tensor_in_dygraph(
                 tensor,
@@ -220,10 +220,8 @@ def _reduce_scatter_base(
             # [1, 2, 3] (2 GPUs, out for rank 0)
             # [4, 5, 6] (2 GPUs, out for rank 1)
     """
-    if group is not None and not group.is_member():
-        raise RuntimeError(
-            "The group should not be None and all ranks which invoke this operation should be the member of this group."
-        )
+    if _warn_cur_rank_not_in_group(group):
+        return
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
@@ -231,6 +229,7 @@ def _reduce_scatter_base(
         )
 
     if framework.in_dygraph_mode():
+        group = _get_global_group() if group is None else group
         return _reduce_scatter_tensor_in_dygraph(
             out_tensor,
             in_tensor,

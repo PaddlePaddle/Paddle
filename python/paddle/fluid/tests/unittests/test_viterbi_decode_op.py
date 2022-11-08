@@ -18,7 +18,7 @@ import paddle
 paddle.enable_static()
 
 
-class Decoder(object):
+class Decoder:
     def __init__(self, transitions, use_tag=True):
         self.transitions = transitions
         self.use_tag = use_tag

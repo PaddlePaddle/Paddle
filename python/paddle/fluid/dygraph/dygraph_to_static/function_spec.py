@@ -30,7 +30,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.io import TranslatedLayer
 
 
-class FunctionSpec(object):
+class FunctionSpec:
     """
     Wrapper class for a function for class method.
     """

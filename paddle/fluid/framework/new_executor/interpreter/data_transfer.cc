@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -132,6 +133,12 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   auto* dev_ctx = pool.Get(place_);
   auto exec_ctx = ExecutionContext(*op, Scope(), *dev_ctx, runtime_context);
   auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(exec_ctx);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (op_with_kernel->CanCUDNNBeUsed(exec_ctx,
+                                     expected_kernel_key.data_type_)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+  }
+#endif
 
   VLOG(6) << "expected_kernel_key " << expected_kernel_key << "\n";
   VLOG(6) << "op_with_kernel Type() " << op_with_kernel->Type() << "\n";

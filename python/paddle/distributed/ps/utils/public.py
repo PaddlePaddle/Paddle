@@ -88,7 +88,7 @@ class DistributedMode:
     NU = 5
 
 
-class TrainerRuntimeConfig(object):
+class TrainerRuntimeConfig:
     def __init__(self, valid_strategy):
         self.mode = None
         num_threads = os.getenv("CPU_NUM", "1")
@@ -671,7 +671,7 @@ def find_heter_ops(program, default_device="cpu"):
             # Todo: need update this method
             # op._set_attr('op_device', current_heter_device)
             return True
-        elif op_device == None or op_device == default_device:
+        elif op_device is None or op_device == default_device:
             op._set_attr('op_device', default_device)
             return False
         return False
@@ -1744,7 +1744,7 @@ def create_backward_block(
                 ):
                     is_skip = True
                     break
-            if is_skip == True:
+            if is_skip:
                 continue
         block_append_op(program, origin_program, heter_block, op)
 

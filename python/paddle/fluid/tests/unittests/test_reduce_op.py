@@ -37,6 +37,21 @@ class TestSumOp(OpTest):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
+class TestSumOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.python_api = paddle.sum
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random([]).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=None)}
+        self.attrs = {'dim': [], 'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+
 class TestSumOp_fp16(OpTest):
     def setUp(self):
         self.python_api = paddle.sum
@@ -202,6 +217,22 @@ class TestMaxOp(OpTest):
         self.check_output(check_eager=True)
 
 
+class TestMaxOp_ZeroDim(OpTest):
+    """Remove Max with subgradient from gradient check to confirm the success of CI."""
+
+    def setUp(self):
+        self.op_type = "reduce_max"
+        self.python_api = paddle.max
+        self.inputs = {'X': np.random.random([]).astype("float64")}
+        self.attrs = {'dim': []}
+        self.outputs = {
+            'Out': self.inputs['X'].max(axis=tuple(self.attrs['dim']))
+        }
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework."
@@ -214,6 +245,22 @@ class TestMinOp(OpTest):
         self.python_api = paddle.min
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'dim': [2]}
+        self.outputs = {
+            'Out': self.inputs['X'].min(axis=tuple(self.attrs['dim']))
+        }
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
+class TestMinOp_ZeroDim(OpTest):
+    """Remove Min with subgradient from gradient check to confirm the success of CI."""
+
+    def setUp(self):
+        self.op_type = "reduce_min"
+        self.python_api = paddle.min
+        self.inputs = {'X': np.random.random([]).astype("float64")}
+        self.attrs = {'dim': []}
         self.outputs = {
             'Out': self.inputs['X'].min(axis=tuple(self.attrs['dim']))
         }
@@ -282,6 +329,21 @@ class TestProdOp(OpTest):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
+class TestProdOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.python_api = paddle.prod
+        self.op_type = "reduce_prod"
+        self.inputs = {'X': np.random.random([]).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].prod()}
+        self.attrs = {'dim': [], 'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+
 class TestProd6DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
@@ -341,6 +403,18 @@ class TestAllOp(OpTest):
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].all()}
         self.attrs = {'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
+class TestAllOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.python_api = paddle.all
+        self.op_type = "reduce_all"
+        self.inputs = {'X': np.random.randint(0, 2, []).astype("bool")}
+        self.outputs = {'Out': self.inputs['X'].all()}
+        self.attrs = {'dim': [], 'reduce_all': True}
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -444,6 +518,18 @@ class TestAnyOp(OpTest):
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].any()}
         self.attrs = {'reduce_all': True}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
+class TestAnyOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.python_api = paddle.any
+        self.op_type = "reduce_any"
+        self.inputs = {'X': np.random.randint(0, 2, []).astype("bool")}
+        self.outputs = {'Out': self.inputs['X'].any()}
+        self.attrs = {'dim': [], 'reduce_all': True}
 
     def test_check_output(self):
         self.check_output(check_eager=True)

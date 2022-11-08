@@ -376,7 +376,7 @@ Please use '.. code-block:: python' to format the sample code."""
         # None - no sample code found;
         # False - it need other special equipment or environment.
         # so, the following conditional statements are intentionally arranged.
-        if matched == True:
+        if matched:
             tfname = os.path.join(
                 SAMPLECODE_TEMPDIR,
                 '{}_example{}'.format(
@@ -395,7 +395,7 @@ Please use '.. code-block:: python' to format the sample code."""
                 )
             )
             SUMMARY_INFO['skiptest'].append("{}-{}".format(name, cb['id']))
-        elif matched == False:
+        elif not matched:
             logger.info(
                 '{}\' code block (name:{}, id:{}) required({}) not match capacity({}).'.format(
                     name,
@@ -547,7 +547,7 @@ def get_full_api():
     """
     get all the apis
     """
-    global API_DIFF_SPEC_FN  ## readonly
+    global API_DIFF_SPEC_FN  # readonly
     from print_signatures import get_all_api_from_modulelist
 
     member_dict = get_all_api_from_modulelist()
@@ -559,7 +559,7 @@ def get_full_api_by_walk():
     """
     get all the apis
     """
-    global API_DIFF_SPEC_FN  ## readonly
+    global API_DIFF_SPEC_FN  # readonly
     from print_signatures import get_all_api
 
     apilist = get_all_api()
@@ -571,7 +571,7 @@ def get_full_api_from_pr_spec():
     """
     get all the apis
     """
-    global API_PR_SPEC_FN, API_DIFF_SPEC_FN  ## readonly
+    global API_PR_SPEC_FN, API_DIFF_SPEC_FN  # readonly
     pr_api = get_api_md5(API_PR_SPEC_FN)
     if len(pr_api):
         with open(API_DIFF_SPEC_FN, 'w') as f:
@@ -584,7 +584,7 @@ def get_incrementapi():
     '''
     this function will get the apis that difference between API_DEV.spec and API_PR.spec.
     '''
-    global API_DEV_SPEC_FN, API_PR_SPEC_FN, API_DIFF_SPEC_FN  ## readonly
+    global API_DEV_SPEC_FN, API_PR_SPEC_FN, API_DIFF_SPEC_FN  # readonly
     dev_api = get_api_md5(API_DEV_SPEC_FN)
     pr_api = get_api_md5(API_PR_SPEC_FN)
     with open(API_DIFF_SPEC_FN, 'w') as f:

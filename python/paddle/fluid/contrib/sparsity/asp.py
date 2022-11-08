@@ -59,7 +59,7 @@ def set_excluded_layers(param_names, main_program=None):
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self.conv1 = paddle.nn.Conv2D(
                             in_channels=3, out_channels=4, kernel_size=3, padding=2)
                         self.linear1 = paddle.nn.Linear(4624, 100)
@@ -89,7 +89,7 @@ def set_excluded_layers(param_names, main_program=None):
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self.conv1 = paddle.nn.Conv2D(
                             in_channels=3, out_channels=4, kernel_size=3, padding=2)
                         self.linear1 = paddle.nn.Linear(4624, 100)
@@ -146,7 +146,7 @@ def reset_excluded_layers(main_program=None):
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self.conv1 = paddle.nn.Conv2D(
                             in_channels=3, out_channels=4, kernel_size=3, padding=2)
                         self.linear1 = paddle.nn.Linear(4624, 100)
@@ -179,7 +179,7 @@ def reset_excluded_layers(main_program=None):
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self.conv1 = paddle.nn.Conv2D(
                             in_channels=3, out_channels=4, kernel_size=3, padding=2)
                         self.linear1 = paddle.nn.Linear(4624, 100)
@@ -237,7 +237,7 @@ def decorate(optimizer):
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self.conv1 = paddle.nn.Conv2D(
                             in_channels=3, out_channels=4, kernel_size=3, padding=2)
                         self.linear1 = paddle.nn.Linear(4624, 32)
@@ -271,7 +271,7 @@ def decorate(optimizer):
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self.conv1 = paddle.nn.Conv2D(
                             in_channels=3, out_channels=4, kernel_size=3, padding=2)
                         self.linear1 = paddle.nn.Linear(4624, 100)
@@ -322,7 +322,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
         m (int, optional): m of `n:m` sparse pattern. Default is 4.
         mask_algo (string, optional): The function name to generate spase mask. Default is `mask_1d`.
                                       The vaild inputs should be one of 'mask_1d', 'mask_2d_greedy' and 'mask_2d_best'.
-        with_mask (bool, optional): To prune mask Variables related to parameters or not. Ture is purning also, False is not. Default is True.
+        with_mask (bool, optional): To prune mask Variables related to parameters or not. True is purning also, False is not. Default is True.
     Returns:
         dictionary: A dictionary with key: `parameter name` (string) and value: its corresponding mask Variable.
     Examples:
@@ -335,7 +335,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self.conv1 = paddle.nn.Conv2D(
                             in_channels=3, out_channels=4, kernel_size=3, padding=2)
                         self.linear1 = paddle.nn.Linear(4624, 32)
@@ -388,7 +388,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
 
                 class MyLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(MyLayer, self).__init__()
+                        super().__init__()
                         self.conv1 = paddle.nn.Conv2D(
                             in_channels=3, out_channels=4, kernel_size=3, padding=2)
                         self.linear1 = paddle.nn.Linear(4624, 32)
@@ -478,7 +478,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
     )
 
 
-class ProgramASPInfo(object):
+class ProgramASPInfo:
     r"""
     ProgramASPInfo is a container to keep ASP relevant information of Pragrom. It contains three inner-variables:
     1. __mask_vars (Dictionary): Key is parameter's name and vaule is its corresponding sparse mask Variable object, which is created by `ASPHelper.create_mask_variables`.
@@ -516,7 +516,7 @@ class ProgramASPInfo(object):
         return self.__excluded_layers
 
 
-class ASPHelper(object):
+class ASPHelper:
     r"""
     ASPHelper is a collection of Auto SParsity (ASP) functions to enable
 
@@ -917,7 +917,7 @@ class ASPHelper(object):
                 )
 
 
-class OptimizerWithSparsityGuarantee(object):
+class OptimizerWithSparsityGuarantee:
     r"""
     OptimizerWithSparsityGuarantee is a wrapper to decorate `minimize` function of given optimizer by `_minimize` of ASPHelper.
     The decorated `minimize` function would do three things (exactly same as `ASPHelper._minimize`):

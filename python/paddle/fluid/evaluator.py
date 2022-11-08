@@ -41,7 +41,7 @@ def _clone_var_(block, var):
     )
 
 
-class Evaluator(object):
+class Evaluator:
     """
     Warning: better to use the fluid.metrics.* things, more
     flexible support via pure Python and Operator, and decoupled
@@ -168,7 +168,7 @@ class ChunkEvaluator(Evaluator):
         num_chunk_types,
         excluded_chunk_types=None,
     ):
-        super(ChunkEvaluator, self).__init__("chunk_eval")
+        super().__init__("chunk_eval")
         main_program = self.helper.main_program
         if main_program.current_block().idx != 0:
             raise ValueError("You can only invoke Evaluator in root block")
@@ -276,7 +276,7 @@ class EditDistance(Evaluator):
     """
 
     def __init__(self, input, label, ignored_tokens=None, **kwargs):
-        super(EditDistance, self).__init__("edit_distance", **kwargs)
+        super().__init__("edit_distance", **kwargs)
         main_program = self.helper.main_program
         if main_program.current_block().idx != 0:
             raise ValueError("You can only invoke Evaluator in root block")
@@ -404,7 +404,7 @@ class DetectionMAP(Evaluator):
         evaluate_difficult=True,
         ap_version='integral',
     ):
-        super(DetectionMAP, self).__init__("map_eval")
+        super().__init__("map_eval")
 
         gt_label = layers.cast(x=gt_label, dtype=gt_box.dtype)
         if gt_difficult:

@@ -353,7 +353,7 @@ def _generate_extension_name(sources):
     return '_'.join(file_prefix)
 
 
-class BuildExtension(build_ext, object):
+class BuildExtension(build_ext):
     """
     Inherited from setuptools.command.build_ext to customize how to apply
     compilation process with share library.
@@ -376,24 +376,24 @@ class BuildExtension(build_ext, object):
         """
         Attributes is initialized with following oreder:
 
-            1. super(self).__init__()
+            1. super().__init__()
             2. initialize_options(self)
             3. the reset of current __init__()
             4. finalize_options(self)
 
         So, it is recommended to set attribute value in `finalize_options`.
         """
-        super(BuildExtension, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.no_python_abi_suffix = kwargs.get("no_python_abi_suffix", True)
         self.output_dir = kwargs.get("output_dir", None)
         # whether containing cuda source file in Extensions
         self.contain_cuda_file = False
 
     def initialize_options(self):
-        super(BuildExtension, self).initialize_options()
+        super().initialize_options()
 
     def finalize_options(self):
-        super(BuildExtension, self).finalize_options()
+        super().finalize_options()
         # NOTE(Aurelius84): Set location of compiled shared library.
         # Carefully to modify this because `setup.py build/install`
         # and `load` interface rely on this attribute.
@@ -644,7 +644,7 @@ class BuildExtension(build_ext, object):
 
     def get_ext_filename(self, fullname):
         # for example: custommed_extension.cpython-37m-x86_64-linux-gnu.so
-        ext_name = super(BuildExtension, self).get_ext_filename(fullname)
+        ext_name = super().get_ext_filename(fullname)
         split_str = '.'
         name_items = ext_name.split(split_str)
         if self.no_python_abi_suffix:
@@ -724,7 +724,7 @@ class BuildExtension(build_ext, object):
                 )
 
 
-class EasyInstallCommand(easy_install, object):
+class EasyInstallCommand(easy_install):
     """
     Extend easy_intall Command to control the behavior of naming shared library
     file.
@@ -734,11 +734,11 @@ class EasyInstallCommand(easy_install, object):
     """
 
     def __init__(self, *args, **kwargs):
-        super(EasyInstallCommand, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     # NOTE(Aurelius84): Add args and kwargs to make compatible with PY2/PY3
     def run(self, *args, **kwargs):
-        super(EasyInstallCommand, self).run(*args, **kwargs)
+        super().run(*args, **kwargs)
         # NOTE: To avoid failing import .so file instead of
         # python file because they have same name, we rename
         # .so shared library to another name.
@@ -759,7 +759,7 @@ class EasyInstallCommand(easy_install, object):
                 assert os.path.exists(new_so_path)
 
 
-class BuildCommand(build, object):
+class BuildCommand(build):
     """
     Extend build Command to control the behavior of specifying `build_base` root directory.
 
@@ -784,14 +784,14 @@ class BuildCommand(build, object):
         # Note: shall put before super()
         self._specified_build_base = kwargs.get('build_base', None)
 
-        super(BuildCommand, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def initialize_options(self):
         """
         build_base is root directory for all sub-command, such as
         build_lib, build_temp. See `distutils.command.build` for details.
         """
-        super(BuildCommand, self).initialize_options()
+        super().initialize_options()
         if self._specified_build_base is not None:
             self.build_base = self._specified_build_base
 

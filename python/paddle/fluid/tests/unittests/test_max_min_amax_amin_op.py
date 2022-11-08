@@ -136,6 +136,15 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
     # test two minimum or maximum elements
 
 
+class TestMaxMinAmaxAminAPI_ZeroDim(TestMaxMinAmaxAminAPI):
+    def init_case(self):
+        self.x_np = np.array(0.5)
+        self.shape = []
+        self.dtype = 'float64'
+        self.axis = None
+        self.keepdim = False
+
+
 class TestMaxMinAmaxAminAPI2(TestMaxMinAmaxAminAPI):
     def init_case(self):
         self.x_np = np.array([[0.2, 0.3, 0.9, 0.9], [0.1, 0.1, 0.6, 0.7]])

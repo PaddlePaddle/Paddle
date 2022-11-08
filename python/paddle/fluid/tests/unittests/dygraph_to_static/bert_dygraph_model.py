@@ -30,7 +30,7 @@ class PositionwiseFeedForwardLayer(Layer):
         param_initializer=None,
         name="",
     ):
-        super(PositionwiseFeedForwardLayer, self).__init__()
+        super().__init__()
 
         self._i2h = Linear(
             input_dim=d_model,
@@ -81,7 +81,7 @@ class EncoderSubLayer(Layer):
         name="",
     ):
 
-        super(EncoderSubLayer, self).__init__()
+        super().__init__()
         self.name = name
         self._preprocess_cmd = preprocess_cmd
         self._postprocess_cmd = postprocess_cmd
@@ -145,7 +145,7 @@ class EncoderLayer(Layer):
         name="",
     ):
 
-        super(EncoderLayer, self).__init__()
+        super().__init__()
         self._preprocess_cmd = preprocess_cmd
         self._encoder_sublayers = list()
         self._prepostprocess_dropout = prepostprocess_dropout
@@ -187,7 +187,7 @@ class EncoderLayer(Layer):
 
 class BertModelLayer(Layer):
     def __init__(self, config, return_pooled_out=True, use_fp16=False):
-        super(BertModelLayer, self).__init__()
+        super().__init__()
 
         self._emb_size = config['hidden_size']
         self._n_layer = config['num_hidden_layers']
@@ -310,7 +310,7 @@ class PretrainModelLayer(Layer):
         weight_sharing=False,
         use_fp16=False,
     ):
-        super(PretrainModelLayer, self).__init__()
+        super().__init__()
         self.config = config
         self._voc_size = config['vocab_size']
         self._emb_size = config['hidden_size']

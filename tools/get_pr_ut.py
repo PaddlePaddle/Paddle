@@ -30,7 +30,7 @@ PADDLE_ROOT = PADDLE_ROOT.replace('//', '/')
 ssl._create_default_https_context = ssl._create_unverified_context
 
 
-class PRChecker(object):
+class PRChecker:
     """PR Checker."""
 
     def __init__(self):
@@ -278,21 +278,23 @@ class PRChecker(object):
                 all_counts = line.split()[-1]
         return int(all_counts)
 
-    def file_is_unnit_test(self, filename):
+    def file_is_unnit_test(self, unittest_path):
         # get all testcases by ctest-N
-        all_ut_file = '%s/build/all_ut_file' % PADDLE_ROOT
-        os.system(
-            "cd %s/build && ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > %s"
-            % (PADDLE_ROOT, all_ut_file)
-        )
+        all_ut_file = PADDLE_ROOT + 'build/all_ut_list'
+        # all_ut_file = '%s/build/all_ut_file' % PADDLE_ROOT
+        print("PADDLE_ROOT:", PADDLE_ROOT)
+        print("all_ut_file path:", all_ut_file)
+        build_path = PADDLE_ROOT + 'build/'
+        print("build_path:", build_path)
+        (unittest_directory, unittest_name) = os.path.split(unittest_path)
         # determine whether filename is in all_ut_case
         with open(all_ut_file, 'r') as f:
-            (filepath, tempfilename) = os.path.split(filename)
-            for f_file in f:
-                if f_file.strip('\n') == tempfilename.split(".")[0]:
+            all_unittests = f.readlines()
+            for test in all_unittests:
+                test = test.replace('\n', '').strip()
+                if test == unittest_name.split(".")[0]:
                     return True
-            else:
-                return False
+        return False
 
     def get_pr_ut(self):
         """Get unit tests in pull request."""
@@ -303,7 +305,7 @@ class PRChecker(object):
         file_ut_map = None
 
         ret = self.__urlretrieve(
-            'https://paddle-docker-tar.bj.bcebos.com/pre_test/ut_file_map.json',
+            'https://paddle-docker-tar.bj.bcebos.com/tmp_test/ut_file_map.json',
             'ut_file_map.json',
         )
         if not ret:
@@ -326,9 +328,7 @@ class PRChecker(object):
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
             elif filename.startswith(PADDLE_ROOT + 'paddle/'):
-                if filename.startswith(
-                    (PADDLE_ROOT + 'paddle/infrt', PADDLE_ROOT + 'paddle/utils')
-                ):
+                if filename.startswith((PADDLE_ROOT + 'paddle/infrt')):
                     filterFiles.append(filename)
                 elif filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
                     if filename.startswith(
@@ -340,6 +340,13 @@ class PRChecker(object):
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
+                elif (
+                    ('/xpu/' in filename.lower())
+                    or ('/npu/' in filename.lower())
+                    or ('/mlu/' in filename.lower())
+                    or ('/ipu/' in filename.lower())
+                ):
+                    filterFiles.append(filename)
                 else:
                     file_list.append(filename)
             else:
@@ -347,14 +354,14 @@ class PRChecker(object):
                     file_list.append(filename)
                 else:
                     isWhiteFile = self.get_is_white_file(filename)
-                    if isWhiteFile == False:
+                    if not isWhiteFile:
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
         if len(file_list) == 0:
             ut_list.append('filterfiles_placeholder')
             ret = self.__urlretrieve(
-                'https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta',
+                'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
                 'prec_delta',
             )
             if ret:
@@ -403,19 +410,19 @@ class PRChecker(object):
                         # determine whether the new added file is a member of added_ut
                         if file_dict[f] in ['added']:
                             f_judge_in_added_ut = False
-                            with open(
-                                '{}/added_ut'.format(PADDLE_ROOT)
-                            ) as utfile:
-                                (filepath, tempfilename) = os.path.split(
-                                    f_judge
-                                )
-                                for f_file in utfile:
-                                    if (
-                                        f_file.strip('\n')
-                                        == tempfilename.split(".")[0]
-                                    ):
+                            path = PADDLE_ROOT + 'added_ut'
+                            print("PADDLE_ROOT:", PADDLE_ROOT)
+                            print("adde_ut path:", path)
+                            (unittest_directory, unittest_name) = os.path.split(
+                                f_judge
+                            )
+                            with open(path, 'r') as f:
+                                added_unittests = f.readlines()
+                                for test in added_unittests:
+                                    test = test.replace('\n', '').strip()
+                                    if test == unittest_name.split(".")[0]:
                                         f_judge_in_added_ut = True
-                            if f_judge_in_added_ut == True:
+                            if f_judge_in_added_ut:
                                 print(
                                     "Adding new unit tests not hit mapFiles: %s"
                                     % f_judge
@@ -460,13 +467,14 @@ class PRChecker(object):
             else:
                 if ut_list:
                     ret = self.__urlretrieve(
-                        'https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta',
+                        'https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta',
                         'prec_delta',
                     )
                     if ret:
                         with open('prec_delta') as delta:
                             for ut in delta:
-                                ut_list.append(ut.rstrip('\r\n'))
+                                if ut not in ut_list:
+                                    ut_list.append(ut.rstrip('\r\n'))
                     else:
                         print('PREC download prec_delta failed')
                         exit(1)
