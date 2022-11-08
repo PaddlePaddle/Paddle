@@ -21,7 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class AutoPruneLayer0(fluid.Layer):
     def __init__(self, input_size):
-        super(AutoPruneLayer0, self).__init__()
+        super().__init__()
         self.linear1 = fluid.dygraph.Linear(
             input_size,
             5,
@@ -45,7 +45,7 @@ class AutoPruneLayer0(fluid.Layer):
 
 class AutoPruneLayer1(fluid.Layer):
     def __init__(self, input_size):
-        super(AutoPruneLayer1, self).__init__()
+        super().__init__()
         self.linear1 = fluid.dygraph.Linear(
             input_size,
             5,
@@ -70,7 +70,7 @@ class AutoPruneLayer1(fluid.Layer):
 
 class AutoPruneLayer2(fluid.Layer):
     def __init__(self, input_size):
-        super(AutoPruneLayer2, self).__init__()
+        super().__init__()
         self.linear = fluid.dygraph.Linear(input_size, 10, act=None)
         self.linear2 = fluid.dygraph.Linear(1, 1, act=None)
 
@@ -87,7 +87,7 @@ class AutoPruneLayer2(fluid.Layer):
 
 class AutoPruneLayer3(fluid.Layer):
     def __init__(self, input_size):
-        super(AutoPruneLayer3, self).__init__()
+        super().__init__()
         self.linear = fluid.dygraph.Linear(input_size, 20, act=None)
 
     def forward(self, x, label, test_num):
@@ -106,7 +106,7 @@ class AutoPruneLayer3(fluid.Layer):
 
 class MyLayer(fluid.Layer):
     def __init__(self, input_size, vocab_size, size, dtype="float32"):
-        super(MyLayer, self).__init__(dtype=dtype)
+        super().__init__(dtype=dtype)
         self.embed0 = fluid.Embedding(size=(vocab_size, size))
         self.embed1 = fluid.Embedding(size=(vocab_size, size))
         self.linear_0 = fluid.Linear(input_size, size, dtype=dtype)
@@ -128,7 +128,7 @@ class MyLayer(fluid.Layer):
 
 class MyLayer2(fluid.Layer):
     def __init__(self, input_size, vocab_size, size, dtype="float32"):
-        super(MyLayer2, self).__init__(dtype=dtype)
+        super().__init__(dtype=dtype)
         self.embed0 = fluid.Embedding(size=(vocab_size, size))
         self.embed1 = fluid.Embedding(size=(vocab_size, size))
         self.linear_0 = fluid.Linear(input_size, size, dtype=dtype)
@@ -162,8 +162,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v2 = fluid.dygraph.to_variable(value2)
             loss = case1(v1, v2)
             loss.backward()
-            self.assertTrue(case1.linear2.weight._grad_ivar() is not None)
-            self.assertTrue(case1.linear1.weight._grad_ivar() is not None)
+            self.assertIsNotNone(case1.linear2.weight._grad_ivar())
+            self.assertIsNotNone(case1.linear1.weight._grad_ivar())
 
     def test_auto_prune(self):
         with _test_eager_guard():
@@ -180,8 +180,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             loss = case2(v1, v2)
 
             loss.backward()
-            self.assertTrue(case2.linear2.weight._grad_ivar() is None)
-            self.assertTrue(case2.linear1.weight._grad_ivar() is not None)
+            self.assertIsNone(case2.linear2.weight._grad_ivar())
+            self.assertIsNotNone(case2.linear1.weight._grad_ivar())
 
     def test_auto_prune2(self):
         with _test_eager_guard():
@@ -198,7 +198,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v2 = fluid.dygraph.to_variable(value2)
             loss, part2 = case3(v1, v2, 1)
             loss.backward()
-            self.assertTrue(case3.linear.weight._grad_ivar() is not None)
+            self.assertIsNotNone(case3.linear.weight._grad_ivar())
             self.assertTrue((part2.gradient() == 0).all())
 
     def test_auto_prune3(self):
@@ -217,7 +217,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v2 = fluid.dygraph.to_variable(value2)
             loss, part2 = case4(v1, v2, 1)
             part2.backward()
-            self.assertTrue(case4.linear.weight._grad_ivar() is not None)
+            self.assertIsNotNone(case4.linear.weight._grad_ivar())
             self.assertTrue((part2.gradient() == 1).all())
 
     def test_auto_prune4(self):
@@ -236,7 +236,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v2 = fluid.dygraph.to_variable(value2)
             loss, part1, part2 = case4(v1, v2, 2)
             part1.backward()
-            self.assertTrue(case4.linear.weight._grad_ivar() is not None)
+            self.assertIsNotNone(case4.linear.weight._grad_ivar())
             self.assertTrue((part2.gradient() == 0).all())
 
     def test_auto_prune5(self):
@@ -261,8 +261,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out1.stop_gradient = True
             out = fluid.layers.concat(input=[out1, out2, c], axis=1)
             out.backward()
-            self.assertTrue(linear.weight.gradient() is None)
-            self.assertTrue(out1.gradient() is None)
+            self.assertIsNone(linear.weight.gradient())
+            self.assertIsNone(out1.gradient())
 
     def test_auto_prune6(self):
         with _test_eager_guard():
@@ -284,8 +284,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out1.stop_gradient = True
             out = fluid.layers.concat(input=[out1, out2, c], axis=1)
             out.backward()
-            self.assertTrue(linear.weight.gradient() is None)
-            self.assertTrue(out1.gradient() is None)
+            self.assertIsNone(linear.weight.gradient())
+            self.assertIsNone(out1.gradient())
 
     def test_auto_prune7(self):
         with _test_eager_guard():
@@ -377,8 +377,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             # TODO(jiabin): In Eager Mode we don't actually need sort_sum_gradient, this test should be removed when we don't support fluid anymore.
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             out.backward()
-            self.assertTrue(linear.weight.gradient() is None)
-            self.assertTrue(out1.gradient() is None)
+            self.assertIsNone(linear.weight.gradient())
+            self.assertIsNone(out1.gradient())
 
     def test_auto_prune10(self):
         with _test_eager_guard():
@@ -449,8 +449,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             case3 = AutoPruneLayer2(input_size=784)
             loss = case3(v1, v2)
             loss.backward()
-            self.assertTrue(case3.linear2.weight._grad_ivar() is None)
-            self.assertTrue(case3.linear.weight._grad_ivar() is not None)
+            self.assertIsNone(case3.linear2.weight._grad_ivar())
+            self.assertIsNotNone(case3.linear.weight._grad_ivar())
 
     def test_case2_prune_no_grad_branch(self):
         with _test_eager_guard():
@@ -468,7 +468,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out = fluid.layers.one_hot(input=label, depth=100)
             loss = paddle.mean(out)
             loss.backward()
-            self.assertTrue(linear.weight._grad_ivar() is None)
+            self.assertIsNone(linear.weight._grad_ivar())
 
     def test_case3_prune_no_grad_branch2(self):
         with _test_eager_guard():
@@ -480,7 +480,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out = fluid.layers.gaussian_random(shape=[20, 30])
             loss = paddle.mean(out)
             loss.backward()
-            self.assertTrue(out._grad_ivar() is None)
+            self.assertIsNone(out._grad_ivar())
 
     def test_case4_with_no_grad_op_maker(self):
         with _test_eager_guard():

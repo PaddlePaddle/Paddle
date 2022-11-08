@@ -71,6 +71,11 @@ if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} phi ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
+  # message("${fluid_modules}")
+  # message("PHI_MODULES ${phi_modules}")
+  # message("${phi_kernels}")
+  # message("${STATIC_INFERENCE_API}")
+  # message("${utils_modules}")
   create_static_lib(paddle_inference ${fluid_modules} ${phi_modules}
                     ${phi_kernels} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()

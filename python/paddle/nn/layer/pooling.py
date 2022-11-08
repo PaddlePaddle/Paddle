@@ -67,9 +67,8 @@ class AvgPool1D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+            data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
             AvgPool1D = nn.AvgPool1D(kernel_size=2, stride=2, padding=0)
             pool_out = AvgPool1D(data)
             # pool_out shape: [1, 3, 16]
@@ -85,7 +84,7 @@ class AvgPool1D(Layer):
         ceil_mode=False,
         name=None,
     ):
-        super(AvgPool1D, self).__init__()
+        super().__init__()
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
@@ -172,10 +171,9 @@ class AvgPool2D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
             # max pool2d
-            input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+            input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
             AvgPool2D = nn.AvgPool2D(kernel_size=2,
                                 stride=2, padding=0)
             output = AvgPool2D(input)
@@ -194,7 +192,7 @@ class AvgPool2D(Layer):
         data_format="NCHW",
         name=None,
     ):
-        super(AvgPool2D, self).__init__()
+        super().__init__()
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -270,10 +268,9 @@ class AvgPool3D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
             # avg pool3d
-            input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
+            input = paddle.uniform([1, 2, 3, 32, 32], dtype="float32", min=-1, max=1)
             AvgPool3D = nn.AvgPool3D(kernel_size=2,
                                    stride=2, padding=0)
             output = AvgPool3D(input)
@@ -292,7 +289,7 @@ class AvgPool3D(Layer):
         data_format="NCDHW",
         name=None,
     ):
-        super(AvgPool3D, self).__init__()
+        super().__init__()
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -369,9 +366,8 @@ class MaxPool1D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+            data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
             MaxPool1D = nn.MaxPool1D(kernel_size=2, stride=2, padding=0)
             pool_out = MaxPool1D(data)
             # pool_out shape: [1, 3, 16]
@@ -391,7 +387,7 @@ class MaxPool1D(Layer):
         ceil_mode=False,
         name=None,
     ):
-        super(MaxPool1D, self).__init__()
+        super().__init__()
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
@@ -475,10 +471,9 @@ class MaxPool2D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
             # max pool2d
-            input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
+            input = paddle.uniform([1, 3, 32, 32], dtype="float32", min=-1, max=1)
             MaxPool2D = nn.MaxPool2D(kernel_size=2,
                                    stride=2, padding=0)
             output = MaxPool2D(input)
@@ -500,7 +495,7 @@ class MaxPool2D(Layer):
         data_format="NCHW",
         name=None,
     ):
-        super(MaxPool2D, self).__init__()
+        super().__init__()
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -573,10 +568,9 @@ class MaxPool3D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
             # max pool3d
-            input = paddle.to_tensor(np.random.uniform(-1, 1, [1, 2, 3, 32, 32]).astype(np.float32))
+            input = paddle.uniform([1, 2, 3, 32, 32], dtype="float32", min=-1, max=1)
             MaxPool3D = nn.MaxPool3D(kernel_size=2,
                                    stride=2, padding=0)
             output = MaxPool3D(input)
@@ -598,7 +592,7 @@ class MaxPool3D(Layer):
         data_format="NCDHW",
         name=None,
     ):
-        super(MaxPool3D, self).__init__()
+        super().__init__()
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -668,16 +662,15 @@ class AdaptiveAvgPool1D(Layer):
             #
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+            data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
             AdaptiveAvgPool1D = nn.AdaptiveAvgPool1D(output_size=16)
             pool_out = AdaptiveAvgPool1D(data)
             # pool_out shape: [1, 3, 16]
     """
 
     def __init__(self, output_size, name=None):
-        super(AdaptiveAvgPool1D, self).__init__()
+        super().__init__()
         self.output_size = output_size
         self.name = name
 
@@ -747,18 +740,16 @@ class AdaptiveAvgPool2D(Layer):
             #             output[:, :, i, j] = avg(input[:, :, hstart: hend, wstart: wend])
             #
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(2, 3, 32, 32)
-            x = paddle.to_tensor(input_data)
-            # x.shape is [2, 3, 32, 32]
+            x = paddle.rand([2, 3, 32, 32])
+
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=3)
             pool_out = adaptive_avg_pool(x = x)
             # pool_out.shape is [2, 3, 3, 3]
     """
 
     def __init__(self, output_size, data_format="NCHW", name=None):
-        super(AdaptiveAvgPool2D, self).__init__()
+        super().__init__()
         self._output_size = output_size
         self._data_format = data_format
         self._name = name
@@ -841,18 +832,16 @@ class AdaptiveAvgPool3D(Layer):
             #                 output[:, :, i, j, k] =
             #                     avg(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(2, 3, 8, 32, 32)
-            x = paddle.to_tensor(input_data)
-            # x.shape is [2, 3, 8, 32, 32]
+            x = paddle.rand([2, 3, 8, 32, 32])
+
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(output_size=3)
             pool_out = adaptive_avg_pool(x = x)
             # pool_out = [2, 3, 3, 3, 3]
     """
 
     def __init__(self, output_size, data_format="NCDHW", name=None):
-        super(AdaptiveAvgPool3D, self).__init__()
+        super().__init__()
         self._output_size = output_size
         self._data_format = data_format
         self._name = name
@@ -921,9 +910,8 @@ class AdaptiveMaxPool1D(Layer):
             #
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32]).astype(np.float32))
+            data = paddle.uniform([1, 3, 32], dtype="float32", min=-1, max=1)
             AdaptiveMaxPool1D = nn.AdaptiveMaxPool1D(output_size=16)
             pool_out = AdaptiveMaxPool1D(data)
             # pool_out shape: [1, 3, 16]
@@ -936,7 +924,7 @@ class AdaptiveMaxPool1D(Layer):
     """
 
     def __init__(self, output_size, return_mask=False, name=None):
-        super(AdaptiveMaxPool1D, self).__init__()
+        super().__init__()
         self.output_size = output_size
         self.return_mask = return_mask
         self.name = name
@@ -1007,16 +995,15 @@ class AdaptiveMaxPool2D(Layer):
             #             output[:, :, i, j] = max(input[:, :, hstart: hend, wstart: wend])
             #
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(2, 3, 32, 32)
-            x = paddle.to_tensor(input_data)
+            x = paddle.rand([2, 3, 32, 32])
+
             adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=3, return_mask=True)
             pool_out, indices = adaptive_max_pool(x = x)
     """
 
     def __init__(self, output_size, return_mask=False, name=None):
-        super(AdaptiveMaxPool2D, self).__init__()
+        super().__init__()
         self._output_size = output_size
         self._return_mask = return_mask
         self._name = name
@@ -1097,10 +1084,8 @@ class AdaptiveMaxPool3D(Layer):
             #                 output[:, :, i, j, k] =
             #                     max(input[:, :, dstart:dend, hstart: hend, wstart: wend])
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(2, 3, 8, 32, 32)
-            x = paddle.to_tensor(input_data)
+            x = paddle.rand([2, 3, 8, 32, 32])
             pool = paddle.nn.AdaptiveMaxPool3D(output_size=4)
             out = pool(x)
             # out shape: [2, 3, 4, 4, 4]
@@ -1111,7 +1096,7 @@ class AdaptiveMaxPool3D(Layer):
     """
 
     def __init__(self, output_size, return_mask=False, name=None):
-        super(AdaptiveMaxPool3D, self).__init__()
+        super().__init__()
         self._output_size = output_size
         self._return_mask = return_mask
         self._name = name
@@ -1171,7 +1156,6 @@ class MaxUnPool1D(Layer):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
             data = paddle.rand(shape=[1, 3, 16])
             pool_out, indices = F.max_pool1d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
@@ -1191,7 +1175,7 @@ class MaxUnPool1D(Layer):
         output_size=None,
         name=None,
     ):
-        super(MaxUnPool1D, self).__init__()
+        super().__init__()
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -1279,7 +1263,7 @@ class MaxUnPool2D(Layer):
         output_size=None,
         name=None,
     ):
-        super(MaxUnPool2D, self).__init__()
+        super().__init__()
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding
@@ -1351,7 +1335,6 @@ class MaxUnPool3D(Layer):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
             data = paddle.rand(shape=[1, 1, 4, 4, 6])
             pool_out, indices = F.max_pool3d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
@@ -1371,7 +1354,7 @@ class MaxUnPool3D(Layer):
         output_size=None,
         name=None,
     ):
-        super(MaxUnPool3D, self).__init__()
+        super().__init__()
         self.ksize = kernel_size
         self.stride = stride
         self.padding = padding

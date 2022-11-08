@@ -14,7 +14,6 @@
 
 from . import core
 import sys
-import six
 import numpy as np
 import threading
 import paddle
@@ -143,10 +142,10 @@ def _reader_process_loop(batch_reader, data_queue):
         # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
         pass
     except:
-        six.reraise(*sys.exc_info())
+        raise
 
 
-class DataLoaderBase(object):
+class DataLoaderBase:
     def __init__(self):
         self._places = None
 
@@ -182,7 +181,7 @@ class DataLoaderBase(object):
         return arr
 
 
-class AuToTune(object):
+class AuToTune:
     def __init__(self, loader):
         self.loader = loader
         self.max_num_worker = multiprocessing.cpu_count() / 2
@@ -319,7 +318,7 @@ class AuToTune(object):
         return best_workers
 
 
-class DataLoader(object):
+class DataLoader:
     """
     DataLoader prodives an iterator which iterates given dataset
     once by the batch_sampler.
@@ -456,7 +455,7 @@ class DataLoader(object):
 
             class SimpleNet(nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
                     self.fc = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                 def forward(self, image, label=None):
@@ -869,7 +868,7 @@ class DataLoader(object):
 
                 class LinearNet(nn.Layer):
                     def __init__(self):
-                        super(LinearNet, self).__init__()
+                        super().__init__()
                         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                     @paddle.jit.to_static
@@ -1202,7 +1201,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 return self._reader.read_next_var_list()
         except StopIteration:
             self._reset()
-            six.reraise(*sys.exc_info())
+            raise
 
     def _exit_thread_expectedly(self):
         self._thread_done_event.set()
@@ -1232,7 +1231,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 # start trying to get data from queue. At this time, the child thread needs
                 # to wait slightly longer
                 tensor_list = self._data_queue.get(timeout=QUEUE_GET_TIMEOUT)
-            except:
+            except Exception as e:
                 # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
                 # the queue.Empty exception will occur here, but other exceptions will also
                 # occur, such as mmap failure. If it is not handled here, it will hang.
@@ -1240,7 +1239,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 logging.error(
                     "DataLoader reader thread failed to read data from the multiprocessing.Queue."
                 )
-                six.reraise(*sys.exc_info())
+                raise e
 
             if not self._thread_done_event.is_set():
                 if tensor_list is not None:
@@ -1250,9 +1249,9 @@ class DygraphGeneratorLoader(DataLoaderBase):
                             array.append(tensor)
                         if not self._blocking_queue.push(array):
                             self._blocking_queue.close()
-                    except:
+                    except Exception as e:
                         self._exit_thread_unexpectedly()
-                        six.reraise(*sys.exc_info())
+                        raise e
                 else:
                     self._exit_thread_expectedly()
 
@@ -1278,13 +1277,13 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
             self._blocking_queue.close()
             self._thread = None
-        except Exception:
+        except Exception as e:
             self._blocking_queue.kill()
             self._thread = None
             logging.warning(
                 "DygraphDataLoader reader thread raised an exception."
             )
-            six.reraise(*sys.exc_info())
+            raise e
 
     def set_sample_generator(
         self, reader, batch_size, drop_last=True, places=None
@@ -1510,7 +1509,7 @@ class GeneratorLoader(DataLoaderBase):
         except StopIteration:
             self._queue.close()
             self._reset()
-            six.reraise(*sys.exc_info())
+            raise
 
     def start(self):
         assert (
@@ -1551,11 +1550,11 @@ class GeneratorLoader(DataLoaderBase):
 
                 self._queue.close()
                 self._thread = None
-            except Exception as ex:
+            except Exception as e:
                 self._queue.kill()
                 self._thread = None
                 logging.warning('Your reader has raised an exception!')
-                six.reraise(*sys.exc_info())
+                raise e
 
         self._thread = threading.Thread(
             target=__thread_main__, args=(_current_expected_place(),)

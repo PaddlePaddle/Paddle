@@ -291,7 +291,7 @@ class MoELayer(nn.Layer):
 
         class ExpertLayer(Layer):
             def __init__(self, d_model, d_hidden, name=None,rank=0, windex = 0, num_expert=1):
-                super(ExpertLayer, self).__init__()
+                super().__init__()
                 self.htoh4 = nn.Linear(d_model, d_hidden)
                 self.h4toh = nn.Linear(d_hidden, d_model)
 
@@ -329,7 +329,7 @@ class MoELayer(nn.Layer):
         recompute_interval=0,
         recompute_ctx=None,
     ):
-        super(MoELayer, self).__init__()
+        super().__init__()
 
         self.recompute_ctx = recompute_ctx
 

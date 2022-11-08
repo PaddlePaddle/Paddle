@@ -10,14 +10,29 @@ exclude: |
         python/paddle/fluid/tests/unittests/mlu/.+
     )$
 repos:
+# Common hooks
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.1.0
+    hooks:
+    -   id: check-added-large-files
+    -   id: check-merge-conflict
+    -   id: check-symlinks
+    -   id: detect-private-key
+    -   id: end-of-file-fixer
+    -   id: sort-simple-yaml
+        files: (ops|backward|op_[a-z_]+)\.yaml$
+    -   id: trailing-whitespace
+        files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake|yaml|yml|hook)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists\.txt)$
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
     rev: v1.1.14
     hooks:
     -   id: remove-crlf
     -   id: remove-tabs
+        name: Tabs remover (C++)
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
         args: [--whitespaces-count, '2']
     -   id: remove-tabs
+        name: Tabs remover (Python)
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
         args: [--whitespaces-count, '4']
         # Exclude the fluid directory but keep the fluid/tests directory.
@@ -28,6 +43,18 @@ repos:
                 python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py|
                 python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py
             )$
+-   repo: local
+    hooks:
+    -   id: copyright_checker
+        name: copyright_checker
+        entry: python ./tools/codestyle/copyright.hook
+        language: system
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|sh)$
+        exclude: |
+            (?x)^(
+                paddle/utils/.*
+            )$
+# For Python files
 -   repo: https://github.com/psf/black.git
     rev: 22.8.0
     hooks:
@@ -37,18 +64,25 @@ repos:
     rev: 4.0.1
     hooks:
     -   id: flake8
--   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.1.0
+-   repo: https://github.com/PyCQA/autoflake
+    rev: v1.7.7
     hooks:
-    -   id: check-added-large-files
-    -   id: check-merge-conflict
-    -   id: check-symlinks
-    -   id: detect-private-key
-    -   id: end-of-file-fixer
-    -   id: sort-simple-yaml
-        files: (op|backward|op_[a-z_]+)\.yaml$
-    -   id: trailing-whitespace
-        files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake|yaml|yml|hook)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists\.txt)$
+    -   id: autoflake
+        args:
+            - --in-place
+            - --remove-all-unused-imports
+            - --ignore-pass-after-docstring
+            - --ignore-init-module-imports
+            - --exclude=python/paddle/fluid/[!t]**,python/paddle/fluid/tra**
+-   repo: local
+    hooks:
+    -   id: pylint-doc-string
+        name: pylint
+        description: Check python docstring style using docstring_checker.
+        entry: bash ./tools/codestyle/pylint_pre_commit.hook
+        language: system
+        files: \.(py)$
+# For C++ files
 -   repo: local
     hooks:
     -   id: clang-format
@@ -69,25 +103,7 @@ repos:
             - --extensions=c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
             - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
             - --quiet
--   repo: local
-    hooks:
-    -   id: pylint-doc-string
-        name: pylint
-        description: Check python docstring style using docstring_checker.
-        entry: bash ./tools/codestyle/pylint_pre_commit.hook
-        language: system
-        files: \.(py)$
--   repo: local
-    hooks:
-    -   id: copyright_checker
-        name: copyright_checker
-        entry: python ./tools/codestyle/copyright.hook
-        language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|sh)$
-        exclude: |
-            (?x)^(
-                paddle/utils/.*
-            )$
+# For CMake files
 -   repo: local
     hooks:
     -   id: auto-generate-cmakelists
@@ -105,7 +121,6 @@ repos:
             (?x)^(
                 paddle/fluid/operators/CMakeLists.txt
             )$
-
 -   repo: https://github.com/cmake-lint/cmake-lint
     rev: 1.4.2
     hooks:

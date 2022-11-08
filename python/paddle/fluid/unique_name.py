@@ -18,7 +18,7 @@ from .wrapped_decorator import signature_safe_contextmanager
 __all__ = ['generate', 'switch', 'guard']
 
 
-class UniqueNameGenerator(object):
+class UniqueNameGenerator:
     """
     Generate unique name with prefix.
 
@@ -47,7 +47,7 @@ class UniqueNameGenerator(object):
         return self.prefix + "_".join([key, str(tmp)])
 
 
-class DygraphParameterNameChecker(object):
+class DygraphParameterNameChecker:
     """
     Check whether the name of parameter is used.
     """

@@ -107,7 +107,7 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
             if compile_version >= valid_version:
                 return 1, 2
             else:
-                if attrs[0]['approximate'] == True:
+                if attrs[0]['approximate']:
                     return 0, 3
                 else:
                     return 1, 2

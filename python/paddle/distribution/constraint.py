@@ -14,7 +14,7 @@
 import paddle
 
 
-class Constraint(object):
+class Constraint:
     """Constraint condition for random variable."""
 
     def __call__(self, value):
@@ -30,7 +30,7 @@ class Range(Constraint):
     def __init__(self, lower, upper):
         self._lower = lower
         self._upper = upper
-        super(Range, self).__init__()
+        super().__init__()
 
     def __call__(self, value):
         return self._lower <= value <= self._upper

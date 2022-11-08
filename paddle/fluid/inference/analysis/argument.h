@@ -150,6 +150,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
   DECL_ARGUMENT_FIELD(enable_analysis_optim, EnableAnalysisOptim, bool);
 
+  // For JITLayer
+  DECL_ARGUMENT_FIELD(skip_load_params, SkipLoadParams, bool);
+
   // The overall graph to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);
   // The overall Scope to work on.
@@ -285,6 +288,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
   DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
   DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
+  DECL_ARGUMENT_FIELD(xpu_enable_multi_stream, XpuEnableMultiStream, bool);
 
   DECL_ARGUMENT_FIELD(use_nnadapter, UseNNAdapter, bool);
   DECL_ARGUMENT_FIELD(nnadapter_model_cache_dir,

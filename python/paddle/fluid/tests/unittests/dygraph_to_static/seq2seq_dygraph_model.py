@@ -44,7 +44,7 @@ class BasicLSTMUnit(Layer):
         forget_bias=1.0,
         dtype='float32',
     ):
-        super(BasicLSTMUnit, self).__init__(dtype)
+        super().__init__(dtype)
 
         self._hiden_size = hidden_size
         self._param_attr = param_attr
@@ -102,7 +102,7 @@ class BaseModel(fluid.dygraph.Layer):
         beam_max_step_num=2,
         mode='train',
     ):
-        super(BaseModel, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.src_vocab_size = src_vocab_size
         self.tar_vocab_size = tar_vocab_size
@@ -246,7 +246,7 @@ class BaseModel(fluid.dygraph.Layer):
                 enc_new_hidden, enc_new_cell = self.enc_units[i](
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     enc_step_input = fluid.layers.dropout(
                         enc_new_hidden,
                         dropout_prob=self.dropout,
@@ -278,7 +278,7 @@ class BaseModel(fluid.dygraph.Layer):
                 )
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     step_input = fluid.layers.dropout(
                         new_hidden,
                         dropout_prob=self.dropout,
@@ -346,7 +346,7 @@ class BaseModel(fluid.dygraph.Layer):
                 enc_new_hidden, enc_new_cell = self.enc_units[i](
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     enc_step_input = fluid.layers.dropout(
                         enc_new_hidden,
                         dropout_prob=self.dropout,
@@ -418,7 +418,7 @@ class BaseModel(fluid.dygraph.Layer):
                 )
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     step_input = fluid.layers.dropout(
                         new_hidden,
                         dropout_prob=self.dropout,
@@ -525,7 +525,7 @@ class AttentionModel(fluid.dygraph.Layer):
         beam_max_step_num=2,
         mode='train',
     ):
-        super(AttentionModel, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.src_vocab_size = src_vocab_size
         self.tar_vocab_size = tar_vocab_size
@@ -760,7 +760,7 @@ class AttentionModel(fluid.dygraph.Layer):
                 enc_new_hidden, enc_new_cell = self.enc_units[i](
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     enc_step_input = fluid.layers.dropout(
                         enc_new_hidden,
                         dropout_prob=self.dropout,
@@ -803,7 +803,7 @@ class AttentionModel(fluid.dygraph.Layer):
                 )
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     step_input = fluid.layers.dropout(
                         new_hidden,
                         dropout_prob=self.dropout,

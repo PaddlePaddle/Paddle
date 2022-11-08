@@ -84,7 +84,7 @@ class BasicGRUUnit(Layer):
         activation=None,
         dtype='float32',
     ):
-        super(BasicGRUUnit, self).__init__(name_scope, dtype)
+        super().__init__(name_scope, dtype)
         # reserve old school _full_name and _helper for static graph save load
         self._full_name = unique_name.generate(
             name_scope + "/" + self.__class__.__name__
@@ -375,7 +375,7 @@ def basic_gru(
                 rnn.step_output(new_hidden)
 
                 step_input = new_hidden
-                if dropout_prob != None and dropout_prob > 0.0:
+                if dropout_prob is not None and dropout_prob > 0.0:
                     step_input = layers.dropout(
                         step_input,
                         dropout_prob=dropout_prob,
@@ -677,7 +677,7 @@ def basic_lstm(
                 rnn.step_output(new_cell)
 
                 step_input = new_hidden
-                if dropout_prob != None and dropout_prob > 0.0:
+                if dropout_prob is not None and dropout_prob > 0.0:
                     step_input = layers.dropout(
                         step_input,
                         dropout_prob=dropout_prob,
@@ -834,7 +834,7 @@ class BasicLSTMUnit(Layer):
         forget_bias=1.0,
         dtype='float32',
     ):
-        super(BasicLSTMUnit, self).__init__(name_scope, dtype)
+        super().__init__(name_scope, dtype)
         # reserve old school _full_name and _helper for static graph save load
         self._full_name = unique_name.generate(
             name_scope + "/" + self.__class__.__name__

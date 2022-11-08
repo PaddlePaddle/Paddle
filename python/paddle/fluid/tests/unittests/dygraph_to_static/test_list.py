@@ -320,7 +320,7 @@ class TestListInForLoopWithSubscript(TestListWithoutControlFlow):
 
 class ListWithCondNet(paddle.nn.Layer):
     def __init__(self):
-        super(ListWithCondNet, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static
     def forward(self, x, index):
