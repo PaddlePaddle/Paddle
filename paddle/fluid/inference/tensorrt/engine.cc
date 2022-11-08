@@ -128,7 +128,6 @@ void TensorRTEngine::Execute(int batch_size,
                 predictor_id_per_thread,
                 phi::GPUPlace(device_id_),
                 phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-    LOG(INFO) << "predictor " << predictor_id_per_thread << " setDeviceMemory " << context_memory;
     infer_context->setDeviceMemory(context_memory);
   }
   if (!with_dynamic_shape()) {
