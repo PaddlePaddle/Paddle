@@ -41,18 +41,17 @@ class SliceOpConverter : public OpConverter {
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
     std::vector<int> decrease_axises =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
-    auto* shape_tensor = Shape(input);
     auto input_dims = input->getDimensions();
-    nvinfer1::Dims trt_start_dims;
-    trt_start_dims.nbDims = input_dims.nbDims;
-    memset(trt_start_dims.d, 0, sizeof(int32_t) * input_dims.nbDims);
-    nvinfer1::Dims trt_size_dims = trt_start_dims;
-    nvinfer1::Dims trt_step_dims = trt_start_dims;
-    for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
-
     nvinfer1::ILayer* layer = nullptr;
 
     if (engine_->with_dynamic_shape()) {
+      auto* shape_tensor = Shape(input);
+      nvinfer1::Dims trt_start_dims;
+      trt_start_dims.nbDims = input_dims.nbDims;
+      memset(trt_start_dims.d, 0, sizeof(int32_t) * input_dims.nbDims);
+      nvinfer1::Dims trt_size_dims = trt_start_dims;
+      nvinfer1::Dims trt_step_dims = trt_start_dims;
+      for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
       nvinfer1::ITensor* start_tensor = nullptr;
       nvinfer1::ITensor* end_tensor = nullptr;
 
@@ -80,10 +79,13 @@ class SliceOpConverter : public OpConverter {
         for (size_t i = 0; i < axes.size(); i++) {  // same as starts.size()
           if (starts[i] < 0) {
             starts_tensor[axes[i]] =
-                Sum(Add1DConstantLayer(starts[i]),
-                    GetEleTensorOfShape(shape_tensor, axes[i]));
+                Max(Sum(Add1DConstantLayer(starts[i]),
+                        GetEleTensorOfShape(shape_tensor, axes[i])),
+                    Add1DConstantLayer(0));
           } else {
-            starts_tensor[axes[i]] = Add1DConstantLayer(starts[i]);
+            starts_tensor[axes[i]] =
+                Min(Add1DConstantLayer(starts[i]),
+                    GetEleTensorOfShape(shape_tensor, axes[i]));
           }
         }
       }
@@ -106,10 +108,13 @@ class SliceOpConverter : public OpConverter {
         for (size_t i = 0; i < axes.size(); i++) {  // same as ends.size()
           if (ends[i] < 0) {
             ends_tensor[axes[i]] =
-                Sum(Add1DConstantLayer(ends[i]),
-                    GetEleTensorOfShape(shape_tensor, axes[i]));
+                Max(Sum(Add1DConstantLayer(ends[i]),
+                        GetEleTensorOfShape(shape_tensor, axes[i])),
+                    Add1DConstantLayer(0));
           } else {
-            ends_tensor[axes[i]] = Add1DConstantLayer(ends[i]);
+            ends_tensor[axes[i]] =
+                Min(Add1DConstantLayer(ends[i]),
+                    GetEleTensorOfShape(shape_tensor, axes[i]));
           }
         }
       }
