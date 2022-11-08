@@ -536,76 +536,7 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
 template <typename T>
 class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
  public:
-  void Compute(const ExecutionContext &ctx) const override { RunKernel(ctx); }
-
- private:
-  void CalculateGradMatrixDims(const ExecutionContext &ctx,
-                               Tensor *dx_tmp,
-                               Tensor *dy_tmp,
-                               const std::vector<int64_t> &dx_dims,
-                               const std::vector<int64_t> &dy_dims,
-                               std::vector<int64_t> *dx_bd_dims,
-                               std::vector<int64_t> *dy_bd_dims) const {
-    for (size_t i = 0; i < dx_dims.size() - 2; ++i) {
-      if (dx_dims[i] != dy_dims[i]) {
-        if (dx_dims[i] == 1) {
-          (*dx_bd_dims)[i] = dy_dims[i];
-        } else {
-          (*dy_bd_dims)[i] = dx_dims[i];
-        }
-      }
-    }
-
-    dx_tmp->Resize(phi::make_ddim((*dx_bd_dims)));
-    dx_tmp->mutable_data<T>(ctx.GetPlace());
-    dy_tmp->Resize(phi::make_ddim((*dy_bd_dims)));
-    dy_tmp->mutable_data<T>(ctx.GetPlace());
-  }
-
-  void ReduceSumForMatmulGradOutput(
-      const ExecutionContext &ctx,
-      const MKLDNNDeviceContext &dev_ctx,
-      const dnnl::engine onednn_engine,
-      const Tensor *dx_tmp,
-      Tensor *dx,
-      const std::vector<int64_t> &dx_dims,
-      const std::vector<int64_t> &squeezed_dims) const {
-    paddle::platform::ReductionMKLDNNHandler<T> handler(
-        dnnl::algorithm::reduction_sum,
-        0.0f,
-        0.0f,
-        onednn_engine,
-        ctx.GetPlace(),
-        dx_tmp,
-        dx,
-        dx_dims);
-
-    auto src_memory_p = handler.AcquireSrcMemory(dx_tmp);
-    auto dst_memory_p = handler.AcquireDstMemory(dx);
-
-    std::unordered_map<int, dnnl::memory> reduction_args = {
-        {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
-
-    auto &astream = MKLDNNDeviceContext::tls().get_stream();
-    auto reduction_p = handler.AcquireForwardPrimitive();
-
-    reduction_p->execute(astream, reduction_args);
-    astream.wait();
-
-    dx->set_mem_desc(dst_memory_p->get_desc().reshape(squeezed_dims));
-  }
-
-  std::vector<int64_t> ExtendDimsWithOnes(const std::vector<int64_t> &dims,
-                                          int new_size) const {
-    std::vector<int64_t> new_dims(new_size, 1);
-    for (size_t i = 0; i < dims.size(); ++i) {
-      new_dims[new_size - dims.size() + i] = dims[i];
-    }
-
-    return new_dims;
-  }
-
-  void RunKernel(const ExecutionContext &ctx) const {
+  void Compute(const ExecutionContext &ctx) const override {
     const auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto &onednn_engine = dev_ctx.GetEngine();
 
@@ -726,6 +657,73 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
   }
 
  private:
+  void CalculateGradMatrixDims(const ExecutionContext &ctx,
+                               Tensor *dx_tmp,
+                               Tensor *dy_tmp,
+                               const std::vector<int64_t> &dx_dims,
+                               const std::vector<int64_t> &dy_dims,
+                               std::vector<int64_t> *dx_bd_dims,
+                               std::vector<int64_t> *dy_bd_dims) const {
+    for (size_t i = 0; i < dx_dims.size() - 2; ++i) {
+      if (dx_dims[i] != dy_dims[i]) {
+        if (dx_dims[i] == 1) {
+          (*dx_bd_dims)[i] = dy_dims[i];
+        } else {
+          (*dy_bd_dims)[i] = dx_dims[i];
+        }
+      }
+    }
+
+    dx_tmp->Resize(phi::make_ddim((*dx_bd_dims)));
+    dx_tmp->mutable_data<T>(ctx.GetPlace());
+    dy_tmp->Resize(phi::make_ddim((*dy_bd_dims)));
+    dy_tmp->mutable_data<T>(ctx.GetPlace());
+  }
+
+  void ReduceSumForMatmulGradOutput(
+      const ExecutionContext &ctx,
+      const MKLDNNDeviceContext &dev_ctx,
+      const dnnl::engine onednn_engine,
+      const Tensor *dx_tmp,
+      Tensor *dx,
+      const std::vector<int64_t> &dx_dims,
+      const std::vector<int64_t> &squeezed_dims) const {
+    paddle::platform::ReductionMKLDNNHandler<T> handler(
+        dnnl::algorithm::reduction_sum,
+        0.0f,
+        0.0f,
+        onednn_engine,
+        ctx.GetPlace(),
+        dx_tmp,
+        dx,
+        dx_dims);
+
+    auto src_memory_p = handler.AcquireSrcMemory(dx_tmp);
+    auto dst_memory_p = handler.AcquireDstMemory(dx);
+
+    std::unordered_map<int, dnnl::memory> reduction_args = {
+        {DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}};
+
+    auto &astream = MKLDNNDeviceContext::tls().get_stream();
+    auto reduction_p = handler.AcquireForwardPrimitive();
+
+    reduction_p->execute(astream, reduction_args);
+    astream.wait();
+
+    dx->set_mem_desc(dst_memory_p->get_desc().reshape(squeezed_dims));
+  }
+
+  std::vector<int64_t> ExtendDimsWithOnes(const std::vector<int64_t> &dims,
+                                          int new_size) const {
+    std::vector<int64_t> new_dims(new_size, 1);
+    for (size_t i = 0; i < dims.size(); ++i) {
+      new_dims[new_size - dims.size() + i] = dims[i];
+    }
+
+    return new_dims;
+  }
+
+ private:
   paddle::operators::MatMulGradMKLDNNKernel<T> matmul_v1_grad_mkldnn_kernel;
 };
 }  // anonymous namespace
@@ -744,68 +742,7 @@ void MatMulGradMKLDNNKernel<T>::Compute(const ExecutionContext &ctx) const {
             "head_number=1. But received `head_number` is %d",
             ctx.Attr<int>("head_number")));
   }
-  RunKernel(ctx);
-}
 
-template <typename T>
-void MatMulGradMKLDNNKernel<T>::ExecuteMatMulGrad(
-    const ExecutionContext &ctx,
-    const MKLDNNDeviceContext &dev_ctx,
-    const dnnl::engine &engine,
-    Tensor *x,
-    bool trans_x,
-    bool is_fold_init_dims_x,
-    Tensor *y,
-    bool trans_y,
-    bool is_fold_init_dims_y,
-    Tensor *out) const {
-  // gradient is calculated in a different way when broadcasting is used
-  bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
-                      out->dims().size() == 2;
-
-  Tensor x_combined, y_combined;
-  if (!need_combine) {
-    x_combined = *x;
-    y_combined = *y;
-  } else {
-    x_combined = is_fold_init_dims_x ? FoldOuterDims(*x)
-                                     : FoldFirstAndLastDims<T>(dev_ctx, x);
-    y_combined = is_fold_init_dims_y ? FoldOuterDims(*y)
-                                     : FoldFirstAndLastDims<T>(dev_ctx, y);
-  }
-
-  float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
-
-  MatMulMKLDNNHandler<T, T, T> handler(engine,
-                                       ctx.GetPlace(),
-                                       &x_combined,
-                                       trans_x,
-                                       &y_combined,
-                                       trans_y,
-                                       out,
-                                       alpha);
-
-  const auto src_memory_p = handler.AcquireSrcMemory(&x_combined);
-  const auto weights_memory_p = handler.AcquireWeightsMemory(&y_combined);
-  const auto dst_memory_p = handler.AcquireDstMemory(out);
-
-  auto matmul_p = handler.AcquireForwardPrimitive();
-
-  std::unordered_map<int, dnnl::memory> matmul_args = {
-      {DNNL_ARG_SRC, *src_memory_p},
-      {DNNL_ARG_WEIGHTS, *weights_memory_p},
-      {DNNL_ARG_DST, *dst_memory_p}};
-
-  auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
-  matmul_p->execute(astream, matmul_args);
-  astream.wait();
-
-  out->set_mem_desc(
-      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
-}
-
-template <typename T>
-void MatMulGradMKLDNNKernel<T>::RunKernel(const ExecutionContext &ctx) const {
   const auto &dev_ctx =
       ctx.template device_context<platform::MKLDNNDeviceContext>();
   const auto &onednn_engine = dev_ctx.GetEngine();
@@ -873,6 +810,63 @@ void MatMulGradMKLDNNKernel<T>::RunKernel(const ExecutionContext &ctx) const {
       dy->set_mem_desc(y.mem_desc());
     }
   }
+}
+
+template <typename T>
+void MatMulGradMKLDNNKernel<T>::ExecuteMatMulGrad(
+    const ExecutionContext &ctx,
+    const MKLDNNDeviceContext &dev_ctx,
+    const dnnl::engine &engine,
+    Tensor *x,
+    bool trans_x,
+    bool is_fold_init_dims_x,
+    Tensor *y,
+    bool trans_y,
+    bool is_fold_init_dims_y,
+    Tensor *out) const {
+  // gradient is calculated in a different way when broadcasting is used
+  bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
+                      out->dims().size() == 2;
+
+  Tensor x_combined, y_combined;
+  if (!need_combine) {
+    x_combined = *x;
+    y_combined = *y;
+  } else {
+    x_combined = is_fold_init_dims_x ? FoldOuterDims(*x)
+                                     : FoldFirstAndLastDims<T>(dev_ctx, x);
+    y_combined = is_fold_init_dims_y ? FoldOuterDims(*y)
+                                     : FoldFirstAndLastDims<T>(dev_ctx, y);
+  }
+
+  float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
+
+  MatMulMKLDNNHandler<T, T, T> handler(engine,
+                                       ctx.GetPlace(),
+                                       &x_combined,
+                                       trans_x,
+                                       &y_combined,
+                                       trans_y,
+                                       out,
+                                       alpha);
+
+  const auto src_memory_p = handler.AcquireSrcMemory(&x_combined);
+  const auto weights_memory_p = handler.AcquireWeightsMemory(&y_combined);
+  const auto dst_memory_p = handler.AcquireDstMemory(out);
+
+  auto matmul_p = handler.AcquireForwardPrimitive();
+
+  std::unordered_map<int, dnnl::memory> matmul_args = {
+      {DNNL_ARG_SRC, *src_memory_p},
+      {DNNL_ARG_WEIGHTS, *weights_memory_p},
+      {DNNL_ARG_DST, *dst_memory_p}};
+
+  auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
+  matmul_p->execute(astream, matmul_args);
+  astream.wait();
+
+  out->set_mem_desc(
+      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
 }
 
 template class MatMulGradMKLDNNKernel<float>;
