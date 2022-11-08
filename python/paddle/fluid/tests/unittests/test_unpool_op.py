@@ -18,7 +18,7 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, program_guard, core
 
 from test_attribute_var import UnittestBase
 
@@ -225,11 +225,12 @@ class TestUnpoolOpException(unittest.TestCase):
             r"The dimensions of Input\(X\) must equal to",
             indices_size_error,
         )
-        self.assertRaisesRegex(
-            ValueError,
-            r"index should less than output",
-            indices_value_error,
-        )
+        if not core.is_compiled_with_cuda():
+            self.assertRaisesRegex(
+                ValueError,
+                r"index should less than output",
+                indices_value_error,
+            )
         self.assertRaisesRegex(
             ValueError,
             r"Attr\(data_format\) should be 'NCHW'",
