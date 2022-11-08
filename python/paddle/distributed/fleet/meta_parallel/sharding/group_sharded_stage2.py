@@ -617,12 +617,38 @@ class GroupShardedStage2(nn.Layer):
             )
         return rank_buffer_size
 
+    def _dp_allreduce(self):
+        # do dp allreduce here for gradient merge.
+        if self._dp_group and self._dp_group.nranks > 1:
+            for dtype in sorted(self._grad_storages.keys()):
+                if self._rank in self._grad_storages[dtype].keys():
+                    assert self._grad_storages[dtype][
+                        self._rank
+                    ].buffer._is_initialized(), (
+                        "grad_storages must be initialized when dp allreduce!"
+                    )
+                    dist.all_reduce(
+                        tensor=self._grad_storages[dtype][self._rank].buffer,
+                        group=self._dp_group,
+                        sync_op=True,
+                    )
+            for param in sorted(self._trainable_params, key=lambda p: p.name):
+                if (
+                    param.name in self._param_grads
+                    and param.grad._is_initialized()
+                ):
+                    assert (
+                        self._trainable_param2rank[param.name] == self._rank
+                    ), "params must belong to itself rank when dp allreduce!"
+                    dist.all_reduce(
+                        tensor=param.grad,
+                        group=self._dp_group,
+                        sync_op=True,
+                    )
+
     def _redefine_opt_step(self):
         grad_func = self._grad_scale
-        grad_storage_list = self._grad_storage_list
-        param_grads = self._param_grads
-        use_grad_storage = self._use_grad_storage
-        trainable_params = self._trainable_params
+        dp_allreduce_func = self._dp_allreduce
 
         for opt in self._sharding_optimizers:
             opt_step = opt.step
@@ -633,24 +659,7 @@ class GroupShardedStage2(nn.Layer):
                     assert self._comm_task is not None
                     self._comm_task.wait()
 
-                # do dp allreduce here for gradient merge.
-                if self._dp_group and self._dp_group.nranks > 1:
-                    if use_grad_storage:
-                        for grad_storage in grad_storage_list:
-                            if grad_storage.buffer._is_initialized():
-                                dist.all_reduce(
-                                    tensor=grad_storage.buffer,
-                                    group=self._dp_group,
-                                    sync_op=True,
-                                )
-                    for param in trainable_params:
-                        if param.name in param_grads and param.grad is not None:
-                            dist.all_reduce(
-                                tensor=param.grad,
-                                group=self._dp_group,
-                                sync_op=True,
-                            )
-
+                dp_allreduce_func()
                 grad_func()
                 opt_step()
 
