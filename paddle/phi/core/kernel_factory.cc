@@ -116,11 +116,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   if (use_gpudnn && kernel_key.backend() == Backend::GPU) {
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, kernel_key.layout(), kernel_key.dtype()});
-    if (kernel_iter == iter->second.end() &&
-        kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
-      kernel_iter = iter->second.find(
-          {Backend::GPUDNN, DataLayout::ALL_LAYOUT, kernel_key.dtype()});
-    }
     if (kernel_iter != iter->second.end()) {
       return {kernel_iter->second, false};
     }
@@ -129,13 +124,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   }
 #endif
   auto kernel_iter = iter->second.find(kernel_key);
-  // TODO(chenweihang): polish refind impl here
-  if (kernel_iter == iter->second.end() &&
-      kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
-    phi::KernelKey any_layout_kernel_key(
-        kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
-    kernel_iter = iter->second.find(any_layout_kernel_key);
-  }
 
   PADDLE_ENFORCE_NE(
       kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU,
@@ -157,12 +145,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     phi::KernelKey cpu_kernel_key(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
     kernel_iter = iter->second.find(cpu_kernel_key);
-    if (kernel_iter == iter->second.end() &&
-        kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
-      phi::KernelKey any_layout_kernel_key(
-          phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
-      kernel_iter = iter->second.find(any_layout_kernel_key);
-    }
 
     PADDLE_ENFORCE_NE(
         kernel_iter,

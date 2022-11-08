@@ -56,10 +56,13 @@ struct KernelKeySet {
 
   // TODO(chenweihang): iterate all kernelkey for kernel selection
   phi::KernelKey GetHighestPriorityKernelKey() {
-    return phi::KernelKey(static_cast<Backend>(32 - detail::CountLeadingZeros(
-                                                        backend_set.bitset())),
-                          layout,
-                          dtype);
+    Backend backend_key = static_cast<Backend>(
+        32 - detail::CountLeadingZeros(backend_set.bitset()));
+    DataLayout layout_key = layout;
+    if (backend_key != Backend::ONEDNN && layout_key != DataLayout::ONEDNN) {
+      layout_key = DataLayout::ALL_LAYOUT;
+    }
+    return phi::KernelKey(backend_key, layout_key, dtype);
   }
 };
 
