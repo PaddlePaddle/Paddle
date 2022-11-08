@@ -25,7 +25,9 @@ namespace allocation {
 bool CPUAllocator::IsAllocThreadSafe() const { return true; }
 
 void CPUAllocator::FreeImpl(phi::Allocation *allocation) {
+  VLOG(1) << "######## allocation : " << allocation;
   void *p = allocation->ptr();
+  VLOG(1) << "######## p : " << p;
 #ifdef _WIN32
   _aligned_free(p);
 #else

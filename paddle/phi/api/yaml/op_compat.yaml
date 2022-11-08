@@ -59,6 +59,18 @@
     out : Out
     indices : Indices
 
+- op : as_complex
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : as_real
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : asin
   inputs :
     x : X
@@ -272,6 +284,12 @@
   outputs :
     out : Out
 
+- op : diag_embed
+  inputs :
+    input : Input
+  outputs :
+    out : Out
+
 - op : diagonal
   inputs :
     x : Input
@@ -316,6 +334,26 @@
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
 
+- op : eig
+  inputs :
+    x : X
+  outputs :
+    out_w : Eigenvalues
+    out_v : Eigenvectors
+
+- op : eigh
+  inputs :
+    x : X
+  outputs :
+    out_w : Eigenvalues
+    out_v : Eigenvectors
+
+- op : eigvals
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : elementwise_pow
   backward : elementwise_pow_grad
   extra :
@@ -337,6 +375,12 @@
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
              'str[] table_names = {}']
+
+- op : equal_all
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : erf
   inputs :
