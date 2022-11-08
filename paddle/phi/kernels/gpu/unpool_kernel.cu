@@ -33,11 +33,23 @@ __global__ void KernelUnpool2dMax(const int nthreads,
                                   T* output_data,
                                   const int output_height,
                                   const int output_width) {
+  int output_feasize = output_height * output_width;
   CUDA_KERNEL_LOOP(linearIndex, nthreads) {
     int c = (linearIndex / input_width / input_height) % channels;
     int n = linearIndex / input_width / input_height / channels;
     output_data += (n * channels + c) * output_height * output_width;
     int maxind = indices_data[linearIndex];
+    PADDLE_ENFORCE_LT(
+        maxind,
+        output_feasize,
+        phi::errors::InvalidArgument(
+            "index should less than output tensor height * output tensor "
+            "width. Expected %ld < %ld, but got "
+            "%ld >= %ld. Please check input value.",
+            maxind,
+            output_feasize,
+            maxind,
+            output_feasize));
     output_data[maxind] = input_data[linearIndex];
   }
 }
@@ -54,12 +66,25 @@ __global__ void KernelUnpool3dMax(const int nthreads,
                                   const int output_depth,
                                   const int output_height,
                                   const int output_width) {
+  int output_feasize = output_depth * output_height * output_width;
   CUDA_KERNEL_LOOP(linearIndex, nthreads) {
     int c = (linearIndex / input_depth / input_width / input_height) % channels;
     int n = linearIndex / input_depth / input_width / input_height / channels;
     output_data +=
         (n * channels + c) * output_depth * output_height * output_width;
     int maxind = indices_data[linearIndex];
+    PADDLE_ENFORCE_LT(
+        maxind,
+        output_feasize,
+        phi::errors::InvalidArgument(
+            "index should less than output tensor depth * output tensor "
+            "height "
+            "* output tensor width. Expected %ld < %ld, but got "
+            "%ld >= %ld. Please check input value.",
+            maxind,
+            output_feasize,
+            maxind,
+            output_feasize));
     output_data[maxind] = input_data[linearIndex];
   }
 }
