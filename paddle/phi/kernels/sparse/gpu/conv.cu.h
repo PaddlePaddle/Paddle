@@ -36,19 +36,6 @@ namespace sparse {
 
 using Dims4D = phi::funcs::sparse::Dims4D;
 
-inline __device__ bool SetBits(const int value, int* ptr) {
-  const int index = value >> 5;
-  const int mask = 1 << (value & 31);
-  const int old = atomicOr(ptr + index, mask);
-  return (mask & old) != 0;
-}
-
-inline __device__ bool TestBits(const int value, const int* ptr) {
-  const int index = value >> 5;
-  const int mask = 1 << (value & 31);
-  return (mask & ptr[index]) != 0;
-}
-
 // Vectorize load and store global memory
 // In the scene of 3D point cloud, the slice_size 4,8,16,32,64 are commonly
 // used.
@@ -195,7 +182,7 @@ __global__ void UniqueKernel(const IntT* in_indexs,
   if (i < rulebook_len) {
     // atomicOr only support int
     int index = static_cast<int>(in_indexs[i]);
-    const bool flag = SetBits(index, index_flags);
+    const bool flag = phi::funcs::sparse::SetBits(index, index_flags);
     if (!flag) {
       int j = atomicAdd(&count, 1);
       cache[j] = index;
@@ -322,7 +309,7 @@ __global__ void GetOutIndexTable1(const IntT* indices,
     IntT in_y = indices[i + 2 * non_zero_num];
     IntT in_x = indices[i + 3 * non_zero_num];
     IntT index = PointToIndex(batch, in_x, in_y, in_z, dims);
-    SetBits(index, index_flags);
+    phi::funcs::sparse::SetBits(index, index_flags);
     out_index_table[index] = i;
   }
 }
@@ -432,7 +419,8 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
             T out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
             out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
                 batch, out_x, out_y, out_z, out_dims);
-            const bool flag = TestBits(out_index, index_flags);
+            const bool flag =
+                phi::funcs::sparse::TestBits(out_index, index_flags);
             if (flag) {
               int real_out_index = out_index_table[out_index];
               in_i = i;
