@@ -644,18 +644,44 @@ class Adam(Optimizer):
         lr_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
 
         if isinstance(parameters_and_grads, list):
-            params = [pair[0] for pair in parameters_and_grads]
-            fp32_grads, fp16_grads = core.eager.get_two_grads_lists(params)
-            for index, grad in enumerate(fp32_grads):
-                if grad is not None:
-                    grad_dict['FP32_LODTensor'].append(grad)
-                    lr = self._create_param_lr((params[index], grad))
-                    lr_dict['FP32_LODTensor'].append(lr)
-            for index, grad in enumerate(fp16_grads):
-                if grad is not None:
-                    grad_dict['FP16_LODTensor'].append(grad)
-                    lr = self._create_param_lr((params[index], grad))
-                    lr_dict['FP16_LODTensor'].append(lr)
+            if framework.in_dygraph_mode():
+                params = [pair[0] for pair in parameters_and_grads]
+                fp32_grads, fp16_grads = core.eager.get_two_grads_lists(params)
+                for index, grad in enumerate(fp32_grads):
+                    if grad is not None:
+                        grad_dict['FP32_LODTensor'].append(grad)
+                        lr = self._create_param_lr((params[index], grad))
+                        lr_dict['FP32_LODTensor'].append(lr)
+                for index, grad in enumerate(fp16_grads):
+                    if grad is not None:
+                        grad_dict['FP16_LODTensor'].append(grad)
+                        lr = self._create_param_lr((params[index], grad))
+                        lr_dict['FP16_LODTensor'].append(lr)
+            else:
+                for param_and_grad in parameters_and_grads:
+                    if param_and_grad[1] is None:
+                        continue
+                    if param_and_grad[0].stop_gradient is False:
+                        if (
+                            param_and_grad[0].dtype == paddle.float32
+                            and param_and_grad[1].type
+                            == core.VarDesc.VarType.LOD_TENSOR
+                        ):
+                            grad_dict['FP32_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP32_LODTensor'].append(lr)
+                        elif (
+                            param_and_grad[0].dtype == paddle.float16
+                            and param_and_grad[1].type
+                            == core.VarDesc.VarType.LOD_TENSOR
+                        ):
+                            grad_dict['FP16_LODTensor'].append(
+                                param_and_grad[1]
+                            )
+                            lr = self._create_param_lr(param_and_grad)
+                            lr_dict['FP16_LODTensor'].append(lr)
         else:
             for param_and_grad in parameters_and_grads['params']:
                 if param_and_grad[1] is None:
