@@ -243,6 +243,15 @@
     data_type : x
   backward : dot_grad
 
+- op : eig
+  args: (Tensor x)
+  output: Tensor(out_w), Tensor(out_v)
+  infer_meta:
+    func: EigInferMeta
+  kernel:
+    func: eig
+  backward: eig_grad
+
 - op : eigh
   args : (Tensor x, str UPLO)
   output : Tensor(out_w), Tensor(out_v)
@@ -678,12 +687,3 @@
   kernel :
     func : trunc
   backward : trunc_grad
-
-- op: eig
-  args: (Tensor x)
-  output: Tensor(out_w), Tensor(out_v)
-  infer_meta:
-    func: EigInferMeta
-  kernel:
-    func: eig
-  backward: eig_grad
