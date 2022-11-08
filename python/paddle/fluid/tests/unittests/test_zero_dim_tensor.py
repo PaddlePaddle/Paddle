@@ -233,13 +233,6 @@ binary_api_list = [
     {'func': paddle.subtract, 'cls_method': '__sub__'},
     {'func': paddle.multiply, 'cls_method': '__mul__'},
     {'func': paddle.divide, 'cls_method': '__div__'},
-    {'func': paddle.subtract, 'cls_method': '__sub__'},
-    {'func': paddle.pow, 'cls_method': '__pow__'},
-    {'func': paddle.add, 'cls_method': '__add__'},
-    {'func': paddle.subtract, 'cls_method': '__sub__'},
-    {'func': paddle.multiply, 'cls_method': '__mul__'},
-    {'func': paddle.divide, 'cls_method': '__div__'},
-    {'func': paddle.subtract, 'cls_method': '__sub__'},
     {'func': paddle.pow, 'cls_method': '__pow__'},
 ]
 
@@ -256,6 +249,12 @@ binary_api_list_without_grad = [
     paddle.logical_and,
     paddle.logical_or,
     paddle.logical_xor,
+]
+
+binary_int_api_list_without_grad = [
+    paddle.bitwise_and,
+    paddle.bitwise_or,
+    paddle.bitwise_xor,
 ]
 
 
@@ -278,7 +277,6 @@ class TestBinaryAPI(unittest.TestCase):
                 out = api(x, y)
 
             self.assertEqual(out.shape, [])
-
             if api not in binary_api_list_without_grad:
                 out.backward()
                 self.assertEqual(x.grad.shape, [])
@@ -298,7 +296,6 @@ class TestBinaryAPI(unittest.TestCase):
                 out = api(x, y)
 
             self.assertEqual(out.shape, [2, 3, 4])
-
             if api not in binary_api_list_without_grad:
                 out.backward()
                 self.assertEqual(x.grad.shape, [2, 3, 4])
@@ -318,7 +315,6 @@ class TestBinaryAPI(unittest.TestCase):
                 out = api(x, y)
 
             self.assertEqual(out.shape, [2, 3, 4])
-
             if api not in binary_api_list_without_grad:
                 out.backward()
                 self.assertEqual(x.grad.shape, [])
@@ -333,11 +329,30 @@ class TestBinaryAPI(unittest.TestCase):
                 out = getattr(paddle.Tensor, api['cls_method'])(x, y)
                 self.assertEqual(out.shape, [])
 
+        for api in binary_int_api_list_without_grad:
+            # 1) x/y is 0D
+            x = paddle.randint(-10, 10, [])
+            y = paddle.randint(-10, 10, [])
+            out = api(x, y)
+            self.assertEqual(out.shape, [])
+
+            # 2) x is not 0D , y is 0D
+            x = paddle.randint(-10, 10, [3, 5])
+            y = paddle.randint(-10, 10, [])
+            out = api(x, y)
+            self.assertEqual(out.shape, [3, 5])
+
+            # 3) x is 0D , y is not 0D
+            x = paddle.randint(-10, 10, [])
+            y = paddle.randint(-10, 10, [3, 5])
+            out = api(x, y)
+            self.assertEqual(out.shape, [3, 5])
+
         paddle.enable_static()
 
     def test_static_unary(self):
         paddle.enable_static()
-        for api in binary_api_list:
+        for api in binary_api_list + binary_api_list_without_grad:
             main_prog = fluid.Program()
             with fluid.program_guard(main_prog, fluid.Program()):
                 # 1) x/y is 0D
@@ -355,17 +370,12 @@ class TestBinaryAPI(unittest.TestCase):
                     out = api(x, y)
                 fluid.backward.append_backward(out)
 
-                # append_backward always set grad shape to [1]
-                prog = paddle.static.default_main_program()
-                block = prog.global_block()
-
                 # Test compile shape
                 self.assertEqual(out.shape, ())
-
                 exe = fluid.Executor()
-                result = exe.run(main_prog, fetch_list=[x, y, out])
+                out_np = exe.run(main_prog, fetch_list=[out])[0]
                 # Test runtime shape
-                self.assertEqual(result[2].shape, ())
+                self.assertEqual(out_np.shape, ())
 
                 # 2) x is 0D , y is scalar
                 x = paddle.rand([])
@@ -376,6 +386,27 @@ class TestBinaryAPI(unittest.TestCase):
                         x, y
                     )
                     self.assertEqual(out.shape, ())
+
+        for api in binary_int_api_list_without_grad:
+            main_prog = fluid.Program()
+            with fluid.program_guard(main_prog, fluid.Program()):
+                # 1) x/y is 0D
+                x = paddle.randint(-10, 10, [])
+                y = paddle.randint(-10, 10, [])
+                out = api(x, y)
+                self.assertEqual(out.shape, ())
+
+                # 2) x is not 0D , y is 0D
+                x = paddle.randint(-10, 10, [3, 5])
+                y = paddle.randint(-10, 10, [])
+                out = api(x, y)
+                self.assertEqual(out.shape, (3, 5))
+
+                # 3) x is 0D , y is not 0D
+                x = paddle.randint(-10, 10, [])
+                y = paddle.randint(-10, 10, [3, 5])
+                out = api(x, y)
+                self.assertEqual(out.shape, (3, 5))
 
         paddle.disable_static()
 
