@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
 
 import paddle
@@ -301,7 +302,6 @@ class TestListInWhileLoopWithStack(TestListInWhileLoop):
 
 
 class TestTensorArraySlice(TestListInWhileLoop):
-
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [test_tensor_array_slice]
 
