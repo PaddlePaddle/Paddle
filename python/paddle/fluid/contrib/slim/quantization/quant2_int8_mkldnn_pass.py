@@ -111,7 +111,6 @@ class Quant2Int8MkldnnPass:
         # graph = self._update_relu_output_scales(graph)
         graph = self._propagate_scales(graph)
         graph = self._quantize_fp32_graph(graph)
-        graph = self._final_optimizations(graph)
         graph = self._cleanup(graph)
         return graph
 
@@ -122,7 +121,6 @@ class Quant2Int8MkldnnPass:
 
         self._reset_pass_idx_and_group('fp32')
         graph = self._optimize_fp32_graph(graph)
-        graph = self._final_optimizations(graph)
         graph = self._cleanup(graph)
         return graph
 
@@ -519,11 +517,6 @@ class Quant2Int8MkldnnPass:
             )
         self._remove_unused_var_nodes(graph)
         self._pass_idx += 1
-        return graph
-
-    def _final_optimizations(self, graph):
-        # make some MKL-DNN ops working inplace
-        graph = self._apply_pass(graph, 'mkldnn_inplace_pass')
         return graph
 
     def _cleanup(self, graph):

@@ -343,11 +343,6 @@ void CpuPassStrategy::EnableMKLDNN() {
              "operator_scale_onednn_fuse_pass",       //
              "operator_unsqueeze2_onednn_fuse_pass",  //
              "operator_reshape2_onednn_fuse_pass",    //
-             // TODO(intel): Please fix the bug on windows.
-             // https://github.com/PaddlePaddle/Paddle/issues/29710
-             // "mkldnn_inplace_pass",  // This pass should be activated after
-             // fuses. Disabled by default due to
-             // little gain and lots of problems
          })) {
       passes_.push_back(pass);
     }
@@ -445,7 +440,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("cpu_quantize_squash_pass");
     passes_.push_back("int8_scale_calculation_mkldnn_pass");
     passes_.push_back("params_quantization_mkldnn_pass");
-    passes_.push_back("mkldnn_inplace_pass");
     passes_.push_back("runtime_context_cache_pass");
   }
   use_mkldnn_int8_ = true;
