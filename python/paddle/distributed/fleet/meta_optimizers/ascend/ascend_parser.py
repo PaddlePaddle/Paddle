@@ -101,7 +101,7 @@ global_cnt = -1
 global_input_cnt = -1
 
 
-class AscendHelper(object):
+class AscendHelper:
     def __init__(self):
         self.dtype2ge_map = {
             0: core.GEDataType.DT_BOOL,
@@ -136,7 +136,7 @@ class AscendHelper(object):
         return self.dtype2np_map[index]
 
 
-class AscendParserFactory(object):
+class AscendParserFactory:
     def __init__(self, graph, var2geop):
         self.graph = graph
         self.var2geop = var2geop
@@ -149,7 +149,7 @@ class AscendParserFactory(object):
             raise ValueError("parser class %s does not exist" % parser_class)
 
 
-class AscendParserBase(object):
+class AscendParserBase:
     def __init__(self, graph, var2geop):
         self.graph = graph
         self.var2geop = var2geop

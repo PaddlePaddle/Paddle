@@ -57,7 +57,7 @@ def lazy_import_fleet(layer_name_map, fake_quant_input_layers):
     return layer_name_map, fake_quant_input_layers
 
 
-class ImperativeQuantAware(object):
+class ImperativeQuantAware:
     """
     Applying quantization aware training (QAT) to the dgraph model.
     """
@@ -304,7 +304,7 @@ class ImperativeQuantAware(object):
         )
 
 
-class ImperativeQuantizeInputs(object):
+class ImperativeQuantizeInputs:
     """
     Based on the input params, add the quant_dequant computational
     logic both for activation inputs and weight inputs.
@@ -448,7 +448,7 @@ class ImperativeQuantizeInputs(object):
         return quant_layers.__dict__[quant_layer_name](layer, **self._kwargs)
 
 
-class ImperativeQuantizeOutputs(object):
+class ImperativeQuantizeOutputs:
     """
     Calculate the output scales for target layers.
     """

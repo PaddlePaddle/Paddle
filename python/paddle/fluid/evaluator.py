@@ -41,7 +41,7 @@ def _clone_var_(block, var):
     )
 
 
-class Evaluator(object):
+class Evaluator:
     """
     Warning: better to use the fluid.metrics.* things, more
     flexible support via pure Python and Operator, and decoupled

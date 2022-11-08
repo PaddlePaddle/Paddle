@@ -35,7 +35,7 @@ class Role:
     COORDINATOR = 5
 
 
-class Gloo(object):
+class Gloo:
     """
     Gloo is a universal class for barrier and collective communication
     """
@@ -383,7 +383,7 @@ class Gloo(object):
         return output
 
 
-class RoleMakerBase(object):
+class RoleMakerBase:
     """
     RoleMakerBase is a base class for assigning a role to current process
     in distributed training.

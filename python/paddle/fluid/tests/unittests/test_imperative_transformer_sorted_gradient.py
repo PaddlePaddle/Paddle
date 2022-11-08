@@ -29,7 +29,7 @@ from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 
 # Copy from models
-class TrainTaskConfig(object):
+class TrainTaskConfig:
     # support both CPU and GPU now.
     use_gpu = True
     # the epoch number to train.
@@ -65,7 +65,7 @@ class TrainTaskConfig(object):
     save_freq = 10000
 
 
-class InferTaskConfig(object):
+class InferTaskConfig:
     use_gpu = True
     # the number of examples in one run for sequence generation.
     batch_size = 10
@@ -82,7 +82,7 @@ class InferTaskConfig(object):
     model_path = "trained_models/pass_1.infer.model"
 
 
-class ModelHyperParams(object):
+class ModelHyperParams:
     # These following five vocabularies related configurations will be set
     # automatically according to the passed vocabulary path and special tokens.
     # size of source word dictionary.

@@ -90,7 +90,7 @@ def _clear_loader():
 CleanupFuncRegistrar.register(_clear_loader)
 
 
-class _DataLoaderIterBase(object):
+class _DataLoaderIterBase:
     """
     Iterator implement of DataLoader, will load and feed mini-batch
     data by setting in given dataloader.
@@ -353,10 +353,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                     self._thread.join()
 
             self._thread = None
-
-    # python2 compatibility
-    def next(self):
-        return self.__next__()
 
     def _try_shutdown_all(self):
         if not self._shutdown:
@@ -853,10 +849,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         finally:
             if in_profiler_mode():
                 trace_event.end()
-
-    # python2 compatibility
-    def next(self):
-        return self.__next__()
 
     def _on_output_batch(self):
         for _ in range(len(self._places)):

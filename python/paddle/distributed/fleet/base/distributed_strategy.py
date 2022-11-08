@@ -65,7 +65,7 @@ def check_configs_key(msg, config, field_name):
         assert key in key_list, "key:{} not in {}".format(key, field_name)
 
 
-class DistributedJobInfo(object):
+class DistributedJobInfo:
     """
     DistributedJobInfo will serialize all distributed training information
     Just for inner use: 1) debug 2) replicate experiments
@@ -106,7 +106,7 @@ ReduceStrategyFluid = paddle.fluid.BuildStrategy.ReduceStrategy
 ReduceStrategyFleet = int
 
 
-class DistributedStrategy(object):
+class DistributedStrategy:
     __lock_attr = False
 
     def __init__(self):

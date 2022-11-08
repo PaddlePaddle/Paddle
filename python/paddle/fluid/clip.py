@@ -92,7 +92,7 @@ def _squared_l2_norm(x):
     return out
 
 
-class BaseErrorClipAttr(object):
+class BaseErrorClipAttr:
     def __str__(self):
         raise NotImplementedError()
 
@@ -177,7 +177,7 @@ def error_clip_callback(block, context):
             error_clip._append_clip_op(block, grad_n)
 
 
-class ClipGradBase(object):
+class ClipGradBase:
     def __init__(self):
         super().__init__()
 

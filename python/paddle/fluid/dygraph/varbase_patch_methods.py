@@ -44,7 +44,7 @@ from paddle import _C_ops, _legacy_C_ops
 _grad_scalar = None
 
 
-class TensorHookRemoveHelper(object):
+class TensorHookRemoveHelper:
     """
     A helper class that for removing Tensor gradient's hook.
     NOTE(wuweilong):the operation weakref.ref(tensor) will cause some unexpected errors in eager mode.

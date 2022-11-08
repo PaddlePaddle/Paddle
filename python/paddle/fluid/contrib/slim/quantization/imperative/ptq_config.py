@@ -22,7 +22,7 @@ from .ptq_quantizer import *
 __all__ = ['PTQConfig', 'default_ptq_config']
 
 
-class PTQConfig(object):
+class PTQConfig:
     """
     The PTQ config shows how to quantize the inputs and outputs.
     """

@@ -167,9 +167,66 @@ static void SetOutMemDescWithLogicalLayoutFusesSupport(
     SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
   } else if (ctx.HasAttr("fused_reshape2_shape")) {
     SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
+  } else if (ctx.HasAttr("fused_squeeze2_axes")) {
+    out->set_mem_desc(out_md);
+    out->Resize(phi::make_ddim(out_md.dims()));
   } else {
     out->set_mem_desc(out_md);
   }
+}
+
+static void SetInMemDescWithSqueeze2FuseSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* in,
+    const dnnl::memory::desc& in_md) {
+  const std::vector<int> fused_squeeze2_axes =
+      ctx.Attr<std::vector<int>>("fused_squeeze2_axes");
+  const std::set<int64_t> squeeze2_axes_set(fused_squeeze2_axes.begin(),
+                                            fused_squeeze2_axes.end());
+  const std::vector<int64_t>& x_vec_dims = in_md.dims();
+  std::vector<int64_t> squeezed_op_tz(
+      x_vec_dims.size() - fused_squeeze2_axes.size(), 0);
+
+  int j = 0;
+  for (size_t i = 0; i < x_vec_dims.size(); ++i) {
+    if (squeeze2_axes_set.count(i) ||
+        squeeze2_axes_set.count(i - x_vec_dims.size())) {
+      PADDLE_ENFORCE_EQ(
+          x_vec_dims[i],
+          1,
+          platform::errors::InvalidArgument(
+              "Squeeze2 input dim %d should be equal to one, but get %d.",
+              i,
+              x_vec_dims[i]));
+      continue;
+    }
+    squeezed_op_tz[j++] = x_vec_dims[i];
+  }
+
+  in->set_mem_desc(in_md.reshape(squeezed_op_tz));
+  in->Resize(phi::make_ddim(squeezed_op_tz));
+}
+
+static void SetInMemDescWithLogicalLayoutFusesSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* in,
+    const dnnl::memory::desc& in_md) {
+  if (ctx.HasAttr("fused_squeeze2_axes")) {
+    SetInMemDescWithSqueeze2FuseSupport(ctx, in, in_md);
+  } else {
+    in->set_mem_desc(in_md);
+    in->Resize(phi::make_ddim(in_md.dims()));
+  }
+}
+
+template <typename T>
+constexpr bool IsInt8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}
+
+template <typename T>
+constexpr bool IsBfloat16() {
+  return std::is_same<T, paddle::platform::bfloat16>::value;
 }
 
 template <typename XT, typename YT, typename OT>
