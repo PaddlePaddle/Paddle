@@ -2021,7 +2021,7 @@ struct AddSupportInt8 : public PatternBase {
   in_var->outputs.clear();         \
   in_var->outputs.push_back(op);   \
   op->inputs.push_back(in_var);
-  
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
