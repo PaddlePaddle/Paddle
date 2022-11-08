@@ -178,6 +178,12 @@ class TestUnpoolOpOutput(TestUnpoolOp):
 
 
 class TestUnpoolOpException(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def tearDown(self):
+        paddle.enable_static()
+
     def test_exception(self):
         def indices_size_error():
             data = paddle.rand(shape=[1, 1, 3, 3])
@@ -225,12 +231,6 @@ class TestUnpoolOpException(unittest.TestCase):
             r"The dimensions of Input\(X\) must equal to",
             indices_size_error,
         )
-        # Test start
-        place = paddle.to_tensor([1]).place
-        print(
-            f"==> core.is_compiled_with_cuda: {core.is_compiled_with_cuda()}, place: {place}"
-        )
-        # Test end
         if not core.is_compiled_with_cuda():
             self.assertRaisesRegex(
                 ValueError,
