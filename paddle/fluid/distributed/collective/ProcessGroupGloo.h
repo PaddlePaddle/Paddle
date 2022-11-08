@@ -26,8 +26,6 @@
 #include "paddle/fluid/distributed/store/store.h"
 #include "paddle/fluid/distributed/store/tcp_store.h"
 
-constexpr const char* GLOO_BACKEND_NAME = "GLOO";
-
 namespace paddle {
 namespace distributed {
 
@@ -111,9 +109,22 @@ class ProcessGroupGloo : public ProcessGroup {
   ~ProcessGroupGloo() = default;
 
   std::shared_ptr<ProcessGroup::Task> Broadcast(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const BroadcastOptions& opts,
+      bool sync_op) override;
+
+  // TODO(sunyilun): methods below will be removed later
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<phi::DenseTensor>& inputs,
       std::vector<phi::DenseTensor>& outputs,
       const BroadcastOptions& = BroadcastOptions()) override;
+
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      std::vector<phi::DenseTensor>& inputs,
+      std::vector<phi::DenseTensor>& outputs,
+      const BroadcastOptions& opts,
+      bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& inputs,
@@ -136,7 +147,19 @@ class ProcessGroupGloo : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
+      const ReduceOptions& opts,
+      bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Reduce(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
       const ReduceOptions& opts) override;
+
+  std::shared_ptr<ProcessGroup::Task> Scatter(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      const ScatterOptions&,
+      bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> Scatter(
       std::vector<phi::DenseTensor>& in_tensors,
@@ -146,9 +169,7 @@ class ProcessGroupGloo : public ProcessGroup {
   std::shared_ptr<::gloo::Context> get_context() { return _context; }
   uint64_t next_tag() { return _tag++; }
 
-  const std::string GetBackendName() const override {
-    return GLOO_BACKEND_NAME;
-  }
+  std::string GetBackendName() const override { return "GLOO"; }
 
   const phi::DeviceContext& GetDeviceContext(
       const Place& place) const override {

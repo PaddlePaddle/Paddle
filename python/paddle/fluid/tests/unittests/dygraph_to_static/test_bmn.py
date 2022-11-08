@@ -111,7 +111,7 @@ class Conv1D(fluid.dygraph.Layer):
         groups=1,
         act="relu",
     ):
-        super(Conv1D, self).__init__()
+        super().__init__()
         fan_in = num_channels * size_k * 1
         k = 1.0 / math.sqrt(fan_in)
         param_attr = ParamAttr(
@@ -123,15 +123,14 @@ class Conv1D(fluid.dygraph.Layer):
             initializer=fluid.initializer.Uniform(low=-k, high=k),
         )
 
-        self._conv2d = fluid.dygraph.Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=(1, size_k),
+        self._conv2d = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=(1, size_k),
             stride=1,
             padding=(0, padding),
             groups=groups,
-            act=act,
-            param_attr=param_attr,
+            weight_attr=param_attr,
             bias_attr=bias_attr,
         )
 
@@ -144,7 +143,7 @@ class Conv1D(fluid.dygraph.Layer):
 
 class BMN(fluid.dygraph.Layer):
     def __init__(self, cfg):
-        super(BMN, self).__init__()
+        super().__init__()
 
         self.tscale = cfg.tscale
         self.dscale = cfg.dscale
@@ -230,63 +229,59 @@ class BMN(fluid.dygraph.Layer):
             bias_attr=ParamAttr(name="PEM_3d1_b"),
         )
 
-        self.p_conv2d1 = fluid.dygraph.Conv2D(
-            num_channels=512,
-            num_filters=self.hidden_dim_2d,
-            filter_size=1,
+        self.p_conv2d1 = paddle.nn.Conv2D(
+            in_channels=512,
+            out_channels=self.hidden_dim_2d,
+            kernel_size=1,
             stride=1,
             padding=0,
-            act="relu",
-            param_attr=ParamAttr(name="PEM_2d1_w"),
+            weight_attr=ParamAttr(name="PEM_2d1_w"),
             bias_attr=ParamAttr(name="PEM_2d1_b"),
         )
-        self.p_conv2d2 = fluid.dygraph.Conv2D(
-            num_channels=128,
-            num_filters=self.hidden_dim_2d,
-            filter_size=3,
+        self.p_conv2d2 = paddle.nn.Conv2D(
+            in_channels=128,
+            out_channels=self.hidden_dim_2d,
+            kernel_size=3,
             stride=1,
             padding=1,
-            act="relu",
-            param_attr=ParamAttr(name="PEM_2d2_w"),
+            weight_attr=ParamAttr(name="PEM_2d2_w"),
             bias_attr=ParamAttr(name="PEM_2d2_b"),
         )
-        self.p_conv2d3 = fluid.dygraph.Conv2D(
-            num_channels=128,
-            num_filters=self.hidden_dim_2d,
-            filter_size=3,
+        self.p_conv2d3 = paddle.nn.Conv2D(
+            in_channels=128,
+            out_channels=self.hidden_dim_2d,
+            kernel_size=3,
             stride=1,
             padding=1,
-            act="relu",
-            param_attr=ParamAttr(name="PEM_2d3_w"),
+            weight_attr=ParamAttr(name="PEM_2d3_w"),
             bias_attr=ParamAttr(name="PEM_2d3_b"),
         )
-        self.p_conv2d4 = fluid.dygraph.Conv2D(
-            num_channels=128,
-            num_filters=2,
-            filter_size=1,
+        self.p_conv2d4 = paddle.nn.Conv2D(
+            in_channels=128,
+            out_channels=2,
+            kernel_size=1,
             stride=1,
             padding=0,
-            act="sigmoid",
-            param_attr=ParamAttr(name="PEM_2d4_w"),
+            weight_attr=ParamAttr(name="PEM_2d4_w"),
             bias_attr=ParamAttr(name="PEM_2d4_b"),
         )
 
     @to_static
     def forward(self, x):
         # Base Module
-        x = self.b_conv1(x)
-        x = self.b_conv2(x)
+        x = paddle.nn.functional.relu(self.b_conv1(x))
+        x = paddle.nn.functional.relu(self.b_conv2(x))
 
         # TEM
-        xs = self.ts_conv1(x)
-        xs = self.ts_conv2(xs)
+        xs = paddle.nn.functional.relu(self.ts_conv1(x))
+        xs = paddle.nn.functional.relu(self.ts_conv2(xs))
         xs = fluid.layers.squeeze(xs, axes=[1])
-        xe = self.te_conv1(x)
-        xe = self.te_conv2(xe)
+        xe = paddle.nn.functional.relu(self.te_conv1(x))
+        xe = paddle.nn.functional.relu(self.te_conv2(xe))
         xe = fluid.layers.squeeze(xe, axes=[1])
 
         # PEM
-        xp = self.p_conv1(x)
+        xp = paddle.nn.functional.relu(self.p_conv1(x))
         # BM layer
         xp = fluid.layers.matmul(xp, self.sample_mask)
         xp = fluid.layers.reshape(
@@ -295,10 +290,10 @@ class BMN(fluid.dygraph.Layer):
 
         xp = self.p_conv3d1(xp)
         xp = fluid.layers.squeeze(xp, axes=[2])
-        xp = self.p_conv2d1(xp)
-        xp = self.p_conv2d2(xp)
-        xp = self.p_conv2d3(xp)
-        xp = self.p_conv2d4(xp)
+        xp = paddle.nn.functional.relu(self.p_conv2d1(xp))
+        xp = paddle.nn.functional.relu(self.p_conv2d2(xp))
+        xp = paddle.nn.functional.relu(self.p_conv2d3(xp))
+        xp = paddle.nn.functional.sigmoid(self.p_conv2d4(xp))
         return xp, xs, xe
 
 
@@ -452,7 +447,7 @@ def bmn_loss_func(
     return loss, tem_loss, pem_reg_loss, pem_cls_loss
 
 
-class Args(object):
+class Args:
     epoch = 1
     batch_size = 4
     learning_rate = 0.1

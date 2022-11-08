@@ -67,9 +67,9 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         return
 
 
-class KVServer(HTTPServer, object):
+class KVServer(HTTPServer):
     def __init__(self, port):
-        super(KVServer, self).__init__(('', port), KVHandler)
+        super().__init__(('', port), KVHandler)
         self.kv_lock = threading.Lock()
         self.kv = {'/healthy': b'ok'}
         self.port = port

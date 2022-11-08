@@ -41,7 +41,7 @@ def detach_variable(inputs):
 
 def check_recompute_necessary(inputs):
     if not any(
-        input_.stop_gradient == False
+        not input_.stop_gradient
         for input_ in inputs
         if isinstance(input_, (core.eager.Tensor, paddle.Tensor))
     ):
@@ -439,7 +439,7 @@ def recompute(function, *args, **kwargs):
                 def __init__(self, input_size=10,
                             recompute_blocks=[1, 3],
                             recompute_kwargs={}):
-                    super(Naive_fc_net, self).__init__()
+                    super().__init__()
                     self.recompute_blocks = recompute_blocks
                     self.recompute_kwargs = recompute_kwargs
                     self.runfunc0 = get_fc_block(0, input_size, is_last=False)

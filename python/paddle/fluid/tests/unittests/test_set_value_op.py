@@ -976,7 +976,7 @@ class TestError(TestSetValueBase):
 
 class Model(paddle.nn.Layer):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv = paddle.nn.Conv2D(12, 12, 3)
 
     def forward(self, x, y):

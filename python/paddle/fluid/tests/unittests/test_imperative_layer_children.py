@@ -24,7 +24,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class LeNetDygraph(fluid.dygraph.Layer):
     def __init__(self):
-        super(LeNetDygraph, self).__init__()
+        super().__init__()
         self.features = nn.Sequential(
             nn.Conv2D(1, 6, 3, stride=1, padding=1),
             nn.ReLU(),

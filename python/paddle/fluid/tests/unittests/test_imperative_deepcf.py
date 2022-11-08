@@ -29,7 +29,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class DMF(fluid.Layer):
     def __init__(self):
-        super(DMF, self).__init__()
+        super().__init__()
         self._user_latent = Linear(1000, 256)
         self._item_latent = Linear(100, 256)
 
@@ -70,7 +70,7 @@ class DMF(fluid.Layer):
 
 class MLP(fluid.Layer):
     def __init__(self):
-        super(MLP, self).__init__()
+        super().__init__()
         self._user_latent = Linear(1000, 256)
         self._item_latent = Linear(100, 256)
         self._match_layers = []
@@ -100,7 +100,7 @@ class MLP(fluid.Layer):
 
 class DeepCF(fluid.Layer):
     def __init__(self, num_users, num_items, matrix):
-        super(DeepCF, self).__init__()
+        super().__init__()
         self._num_users = num_users
         self._num_items = num_items
         self._rating_matrix = self.create_parameter(

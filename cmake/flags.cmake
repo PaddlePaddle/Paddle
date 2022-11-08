@@ -149,18 +149,22 @@ if(NOT WIN32)
       -Wno-unused-parameter
       -Wno-unused-function
       -Wno-error=literal-suffix
-      -Wno-error=unused-local-typedefs
       -Wno-error=ignored-attributes # Warnings in Eigen, gcc 6.3
       -Wno-error=terminate # Warning in PADDLE_ENFORCE
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
-      -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
+      -Wno-error=maybe-uninitialized # Warning in Paddle-Lite
       ${fsanitize})
 
   if(WITH_IPU)
     set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare # Warnings in Popart
                      -Wno-non-virtual-dtor # Warnings in Popart
     )
+  endif()
+
+  if(WITH_CUDNN_FRONTEND)
+    # flags from https://github.com/NVIDIA/cudnn-frontend/blob/v0.7.1/CMakeLists.txt
+    set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare -Wno-non-virtual-dtor)
   endif()
 
   if(WITH_ASCEND_CL AND WITH_ARM_BRPC)

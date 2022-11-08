@@ -22,7 +22,7 @@ from ..utils import compute_compatible_and_update_dim_mapping
 
 class DistributedAssign(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedAssign, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedAssign("assign"))
@@ -30,7 +30,7 @@ register_distributed_operator_impl_container(DistributedAssign("assign"))
 
 class DistributedAssignImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedAssignImpl, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 

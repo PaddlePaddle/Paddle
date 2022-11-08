@@ -36,7 +36,7 @@ _logger = get_logger(
 )
 
 
-class ImperativePTQ(object):
+class ImperativePTQ:
     """
     Static post training quantization.
     """
@@ -51,7 +51,7 @@ class ImperativePTQ(object):
                 In default, the weight_quantizer is PerChannelAbsmaxQuantizer
                 and the activation_quantizer is KLQuantizer.
         """
-        super(ImperativePTQ, self).__init__()
+        super().__init__()
 
         assert isinstance(quant_config, ptq_config.PTQConfig)
 
@@ -140,15 +140,11 @@ class ImperativePTQ(object):
         assert isinstance(
             model, paddle.nn.Layer
         ), "The model must be the instance of paddle.nn.Layer."
-        is_postprocess = config.get('postprocess', True)
-        config.pop('postprocess', None)
 
         # Convert and save dygraph quantized model
         self._convert(model)
 
         paddle.jit.save(layer=model, path=path, input_spec=input_spec, **config)
-        if not is_postprocess:
-            return
 
         # Load inference program
         is_dynamic_mode = False

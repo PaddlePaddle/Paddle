@@ -218,7 +218,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
         else:
             count[-1] += 1
 
-    if rhs != None:
+    if rhs is not None:
         validate_rhs(rhs, labels, n_bcast_dims)
         g_labels_out = rhs.replace('...', '.' * n_bcast_dims)
     else:
@@ -726,14 +726,6 @@ def preprocess(equation, *operands):
     assert not (
         '...' in lhs and '...' not in rhs
     ), 'Invalid equation: missing ellipsis in output labels.'
-
-    assert not (
-        len(list(filter(has_duplicated_labels, lhs.split(',')))) > 0
-    ), 'Duplicate labels are not supported.'
-
-    assert not has_duplicated_labels(
-        rhs
-    ), 'Invalid equation: duplicate output labels are found.'
 
     return lhs, rhs, labels
 

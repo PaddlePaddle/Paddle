@@ -37,7 +37,7 @@ class SimpleReturnLayer(nn.Layer):
 
 class AddAttrLayer(nn.Layer):
     def __init__(self):
-        super(AddAttrLayer, self).__init__()
+        super().__init__()
         self.attr = None
 
     def forward(self, x):
@@ -47,7 +47,7 @@ class AddAttrLayer(nn.Layer):
 
 class IsInstanceLayer(nn.Layer):
     def __init__(self, layer):
-        super(IsInstanceLayer, self).__init__()
+        super().__init__()
         self.layer = layer
 
     @paddle.jit.to_static
@@ -60,7 +60,7 @@ class IsInstanceLayer(nn.Layer):
 
 class SequentialLayer(nn.Layer):
     def __init__(self, layers):
-        super(SequentialLayer, self).__init__()
+        super().__init__()
         self.layers = nn.LayerList(layers)
 
     @paddle.jit.to_static

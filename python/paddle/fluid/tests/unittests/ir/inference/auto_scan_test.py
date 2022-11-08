@@ -83,7 +83,7 @@ class AutoScanTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         np.random.seed(1024)
         paddle.enable_static()
-        super(AutoScanTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.ignore_cases = []
         abs_dir = os.path.abspath(os.path.dirname(__file__))
         self.cache_dir = os.path.join(
@@ -229,7 +229,7 @@ class AutoScanTest(unittest.TestCase):
 
 class MkldnnAutoScanTest(AutoScanTest):
     def __init__(self, *args, **kwargs):
-        super(MkldnnAutoScanTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def run_test(self, quant=False, *args, **kwargs):
         status = True
@@ -325,7 +325,7 @@ class MkldnnAutoScanTest(AutoScanTest):
 
 class PassAutoScanTest(AutoScanTest):
     def __init__(self, *args, **kwargs):
-        super(PassAutoScanTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.passes = []
 
     def check_op_version(self):
@@ -620,7 +620,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
             self.disable_trt_plugin_fp16 = disable_trt_plugin_fp16
 
     def __init__(self, *args, **kwargs):
-        super(TrtLayerAutoScanTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.trt_param = self.TensorRTParam(
             workspace_size=1024,
             max_batch_size=4,

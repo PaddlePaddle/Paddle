@@ -22,7 +22,7 @@ class TestUtilsLazyImport(unittest.TestCase):
 
     def func_test_lazy_import(self):
         paddle = try_import('paddle')
-        self.assertTrue(paddle.__version__ is not None)
+        self.assertIsNotNone(paddle.__version__)
 
         with self.assertRaises(ImportError) as context:
             paddle2 = try_import('paddle2')

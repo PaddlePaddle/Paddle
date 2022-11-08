@@ -17,7 +17,7 @@ from . import framework
 __all__ = ["LazyGuard"]
 
 
-class LazyInitHelper(object):
+class LazyInitHelper:
     """
     A Helper Context to trigger switching mode between dygraph and static mode,
     and holds the startup program resource.
@@ -88,7 +88,7 @@ def lazy_init_helper():
     return _lazy_init_helper
 
 
-class LazyGuard(object):
+class LazyGuard:
     """
     LazyGuard is a wrapper interface for nn.Layer, it forwards the construct
     process of user defined Layer. Meanwhile, it provides necessary API to

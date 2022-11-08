@@ -51,6 +51,7 @@ void AddNKernel(const Context& dev_ctx,
                    ptrs,
                    reinterpret_cast<XPUType*>(out->data<T>()),
                    out->numel());
+
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "sum");
 }
 

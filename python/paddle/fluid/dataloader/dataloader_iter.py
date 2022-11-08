@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import six
 import sys
 import time
 import signal
@@ -91,7 +90,7 @@ def _clear_loader():
 CleanupFuncRegistrar.register(_clear_loader)
 
 
-class _DataLoaderIterBase(object):
+class _DataLoaderIterBase:
     """
     Iterator implement of DataLoader, will load and feed mini-batch
     data by setting in given dataloader.
@@ -168,7 +167,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     """
 
     def __init__(self, loader):
-        super(_DataLoaderIterSingleProcess, self).__init__(loader)
+        super().__init__(loader)
 
         self._dataset_fetcher = _DatasetKind.create_fetcher(
             self._dataset_kind,
@@ -284,9 +283,9 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 except:
                     self._exit_thread_expectedly()
 
-            except:
+            except Exception as e:
                 self._exit_thread_unexpectedly()
-                six.reraise(*sys.exc_info())
+                raise e
 
         self._exit_thread_expectedly()
 
@@ -334,7 +333,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         except StopIteration:
             self._reader.shutdown()
             self._try_shutdown_all()
-            six.reraise(*sys.exc_info())
+            raise
         finally:
             if in_profiler_mode():
                 trace_event.end()
@@ -354,10 +353,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                     self._thread.join()
 
             self._thread = None
-
-    # python2 compatibility
-    def next(self):
-        return self.__next__()
 
     def _try_shutdown_all(self):
         if not self._shutdown:
@@ -380,7 +375,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
 class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
     def __init__(self, loader):
-        super(_DataLoaderIterMultiProcess, self).__init__(loader)
+        super().__init__(loader)
 
         self._persistent_workers = loader._persistent_workers
         self._resume_worker_cnt = 0
@@ -629,7 +624,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                             self._blocking_queue.close()
                     except Exception as e:
                         self._exit_thread_unexpectedly()
-                        six.reraise(*sys.exc_info())
+                        raise e
                     finally:
                         self._rcvd_idx += 1
 
@@ -715,7 +710,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     "DataLoader reader thread failed({}) to read data from "
                     "workers' result queue.".format(e)
                 )
-                six.reraise(*sys.exc_info())
+                raise e
             else:
                 if self._dataset_kind == _DatasetKind.ITER and isinstance(
                     data, _IterableDatasetStopIteration
@@ -850,14 +845,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             if not self._persistent_workers:
                 self._reader.shutdown()
                 self._try_shutdown_all()
-            six.reraise(*sys.exc_info())
+            raise
         finally:
             if in_profiler_mode():
                 trace_event.end()
-
-    # python2 compatibility
-    def next(self):
-        return self.__next__()
 
     def _on_output_batch(self):
         for _ in range(len(self._places)):

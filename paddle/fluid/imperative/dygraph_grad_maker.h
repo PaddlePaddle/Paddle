@@ -209,7 +209,7 @@ class GradOpBaseMakerBase {
   const NameVarBaseMap& var_base_map_in_;
   const NameVarBaseMap& var_base_map_out_;
   const framework::AttributeMap& attrs_;
-  const framework::AttributeMap* default_attrs_;
+  const framework::AttributeMap* default_attrs_ = nullptr;
   const std::map<std::string, std::string>& inplace_map_;
 };
 
