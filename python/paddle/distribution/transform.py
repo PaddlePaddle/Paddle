@@ -919,7 +919,7 @@ class ReshapeTransform(Transform):
             raise ValueError(
                 f"Expected length of 'shape' is not less than {len(self._in_event_shape)}, but got {len(shape)}"
             )
-        if list(shape[-len(self._in_event_shape) :]) != list(
+        if tuple(shape[-len(self._in_event_shape) :]) != tuple(
             self._in_event_shape
         ):
             raise ValueError(
@@ -934,7 +934,7 @@ class ReshapeTransform(Transform):
             raise ValueError(
                 f"Expected 'shape' length is not less than {len(self._out_event_shape)}, but got {len(shape)}"
             )
-        if list(shape[-len(self._out_event_shape) :]) != list(
+        if tuple(shape[-len(self._out_event_shape) :]) != tuple(
             self._out_event_shape
         ):
             raise ValueError(
