@@ -46,7 +46,7 @@ class FSShellCmdAborted(ExecuteError):
     pass
 
 
-class FS(object):
+class FS:
     @abc.abstractmethod
     def ls_dir(self, fs_path):
         raise NotImplementedError

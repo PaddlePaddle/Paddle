@@ -355,7 +355,7 @@ def if_with_and_or_4(x, y=None):
 
 
 def if_with_class_var(x, y=None):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 1
             self.b = 2

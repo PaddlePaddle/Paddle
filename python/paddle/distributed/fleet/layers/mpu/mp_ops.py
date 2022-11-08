@@ -62,7 +62,7 @@ def _c_identity(tensor, group=None):
             @staticmethod
             def backward(ctx, dy):
                 op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
-                group.process_group.allreduce_on_calc_stream(dy, op_type)
+                group.process_group.all_reduce_on_calc_stream(dy, op_type)
                 return dy
 
         return c_identity_eager.apply(tensor)
@@ -255,7 +255,7 @@ def _mp_allreduce(
 
                 if use_calc_stream:
                     op_type = _get_reduce_op(op, "_mp_allreduce")
-                    group.process_group.allreduce_on_calc_stream(
+                    group.process_group.all_reduce_on_calc_stream(
                         tensor, op_type
                     )
                     return tensor

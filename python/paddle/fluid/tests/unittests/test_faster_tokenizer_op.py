@@ -127,7 +127,7 @@ class FasterTokenizer(nn.Layer):
         return input_ids, seg_ids
 
 
-class Predictor(object):
+class Predictor:
     def __init__(self, model_dir):
         model_file = os.path.join(model_dir, "inference.pdmodel")
         params_file = os.path.join(model_dir, "inference.pdiparams")

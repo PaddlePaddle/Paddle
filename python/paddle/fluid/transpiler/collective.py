@@ -31,7 +31,7 @@ __all__ = ['GradAllReduce', 'LocalSGD', 'MultiThread']
 OpRole = core.op_proto_and_checker_maker.OpRole
 
 
-class Collective(object):
+class Collective:
     ''' '''
 
     def __init__(self, nrings):

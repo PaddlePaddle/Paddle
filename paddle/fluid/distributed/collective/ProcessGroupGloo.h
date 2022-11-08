@@ -108,6 +108,18 @@ class ProcessGroupGloo : public ProcessGroup {
 
   ~ProcessGroupGloo() = default;
 
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const BroadcastOptions& opts,
+      bool sync_op) override;
+
+  // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<phi::DenseTensor>& inputs,
       std::vector<phi::DenseTensor>& outputs,
@@ -136,6 +148,11 @@ class ProcessGroupGloo : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<phi::DenseTensor>& in_tensors,

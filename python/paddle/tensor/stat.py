@@ -159,7 +159,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     )
     n = n.astype(dtype)
     if unbiased:
-        one_const = paddle.ones([1], x.dtype)
+        one_const = paddle.ones([], x.dtype)
         n = where(n > one_const, n - 1.0, one_const)
     out /= n
     return out

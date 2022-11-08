@@ -25,11 +25,10 @@ from paddle.distributed.communication.group import (
 def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
     op_type = _get_reduce_op(op, "allreduce")
 
-    group = _get_global_group() if group is None else group
     if use_calc_stream:
-        return group.process_group.allreduce_on_calc_stream(tensor, op_type)
+        return group.process_group.all_reduce_on_calc_stream(tensor, op_type)
 
-    task = group.process_group.allreduce(tensor, op_type, sync_op)
+    task = group.process_group.all_reduce(tensor, op_type, sync_op)
     if sync_op:
         task.wait()
 
@@ -119,6 +118,7 @@ def all_reduce(
         )
 
     if framework.in_dygraph_mode():
+        group = _get_global_group() if group is None else group
         return _all_reduce_in_dygraph(
             tensor, op, group, sync_op, use_calc_stream
         )

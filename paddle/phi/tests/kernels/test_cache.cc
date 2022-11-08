@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/autotune/cache.h"
-
 #include <gtest/gtest.h>
 
 #include <cmath>
 #include <functional>
+
+#include "paddle/phi/kernels/autotune/cache.h"
 
 #include "glog/logging.h"
 

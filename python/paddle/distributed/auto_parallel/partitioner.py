@@ -32,7 +32,7 @@ __not_shape_var_type__ = [
 ]
 
 
-class Partitioner(object):
+class Partitioner:
     """
     warning:: Partitioner is experimental and subject to change.
 
