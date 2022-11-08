@@ -102,7 +102,7 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
     const VariableNameMap& var_name_map,
     VariableScope* var_scope,
     Scope* local_scope,
-    bool allow_var_not_in_program = false,
+    bool find_var_recursively = false,
     bool allow_var_not_in_scope = false);
 
 }  // namespace interpreter

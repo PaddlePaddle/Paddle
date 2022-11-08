@@ -371,7 +371,7 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
     const VariableNameMap& var_name_map,
     VariableScope* var_scope,
     Scope* local_scope,
-    bool allow_var_not_in_program,
+    bool find_var_recursively,
     bool allow_var_not_in_scope) {
   VariableValueMap name2var;
   VariableIdMap name2id;
