@@ -789,7 +789,7 @@ class Transformer(Layer):
         )
         predict_ids = []
         parent_ids = []
-        ### initialize states of beam search ###
+        # initialize states of beam search ###
         log_probs = to_variable(
             np.array(
                 [[0.0] + [-inf] * (beam_size - 1)] * batch_size, dtype="float32"
