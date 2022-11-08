@@ -31,7 +31,7 @@ __all__ = []
 
 class ParameterServerRuntime(RuntimeBase):
     def __init__(self):
-        super(ParameterServerRuntime, self).__init__()
+        super().__init__()
         self._communicator = None
 
     def _set_basic_info(self, context):
@@ -82,7 +82,7 @@ class ParameterServerRuntime(RuntimeBase):
     def _load_sparse_params(
         self, executor, dirname, varnames, main_program=None
     ):
-        assert vars != None
+        assert vars is not None
         check_vars = []
         load_prog = Program()
         load_block = load_prog.global_block()

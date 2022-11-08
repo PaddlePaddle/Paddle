@@ -47,6 +47,10 @@ if(NOT WIN32)
   endif()
 endif()
 
+if(UNIX AND NOT APPLE)
+  list(APPEND ALLOCATOR_DEPS rt)
+endif()
+
 if(WITH_ASCEND_CL)
   list(APPEND ALLOCATOR_SRCS npu_allocator.cc npu_pinned_allocator.cc)
   list(APPEND ALLOCATOR_DEPS npu_info)

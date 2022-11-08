@@ -36,8 +36,8 @@ def cross_entropy_loss_1d(
     C = input_shape[1]
     out = np.zeros_like(label).astype(np.float64)
     total_weight = 0
-    ###1. compute softmax cross_entropy (with weight)
-    ###   Note: only support hard labels.
+    # 1. compute softmax cross_entropy (with weight)
+    #    Note: only support hard labels.
     for i in range(N):
         cur_target = label[i]
         if cur_target == ignore_index:
@@ -47,7 +47,7 @@ def cross_entropy_loss_1d(
         total_weight += cur_weight
         out[i] = -log_softmax_out[i][cur_target] * cur_weight
 
-    ###2. deal with reduction
+    # 2. deal with reduction
     if reduction == 'sum':
         return np.sum(out), np.array([total_weight]).astype('float64')
     elif reduction == 'mean':
@@ -179,7 +179,7 @@ class CrossEntropyLoss(unittest.TestCase):
             'float32' if fluid.core.is_compiled_with_rocm() else 'float64'
         )
 
-    ###test for deprecated softmax_with_cross_entropy
+    # test for deprecated softmax_with_cross_entropy
     def test_softmax_with_cross_entropy(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -240,8 +240,8 @@ class CrossEntropyLoss(unittest.TestCase):
         )
         np.testing.assert_allclose(paddle_loss_ce.numpy(), expected, rtol=1e-05)
 
-    ###soft_label test start
-    ###soft_label test 1
+    # soft_label test start
+    # soft_label test 1
     def test_cross_entropy_loss_soft_1d(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -329,7 +329,7 @@ class CrossEntropyLoss(unittest.TestCase):
         np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
-    ###soft_label test 2
+    # soft_label test 2
     def test_cross_entropy_loss_soft_1d_weight(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -427,7 +427,7 @@ class CrossEntropyLoss(unittest.TestCase):
         np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
-    ###soft_label test 3
+    # soft_label test 3
     def test_cross_entropy_loss_soft_1d_mean(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -511,7 +511,7 @@ class CrossEntropyLoss(unittest.TestCase):
         np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
-    ###soft_label test 4
+    # soft_label test 4
     def test_cross_entropy_loss_soft_1d_weight_mean(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -599,7 +599,7 @@ class CrossEntropyLoss(unittest.TestCase):
         np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
-    ###soft_label test 5
+    # soft_label test 5
     def test_cross_entropy_loss_soft_2d(self):
         def inner_cross_entropy_loss_soft_2d(soft_label):
             self.numeric_stable_mode = False
@@ -704,7 +704,7 @@ class CrossEntropyLoss(unittest.TestCase):
         inner_cross_entropy_loss_soft_2d(True)
         inner_cross_entropy_loss_soft_2d(False)
 
-    ###soft_label test 6
+    # soft_label test 6
     def test_cross_entropy_loss_soft_2d_weight_mean(self):
         self.numeric_stable_mode = False
         self.soft_label = True
@@ -801,7 +801,7 @@ class CrossEntropyLoss(unittest.TestCase):
         np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
-    ###soft_label test end
+    # soft_label test end
 
     def test_cross_entropy_loss_1d_with_mean_ignore(self):
         input_np = np.random.random([2, 4]).astype(self.dtype)

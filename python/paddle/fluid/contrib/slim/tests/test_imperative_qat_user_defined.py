@@ -23,7 +23,6 @@ from paddle.optimizer import Adam
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.nn import Sequential
-from paddle.fluid.dygraph import Conv2D
 from paddle.fluid.dygraph import Pool2D
 from paddle.fluid.dygraph import Linear
 from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
@@ -39,7 +38,7 @@ _logger = get_logger(
 
 class PACT(nn.Layer):
     def __init__(self, init_value=20):
-        super(PACT, self).__init__()
+        super().__init__()
         alpha_attr = paddle.ParamAttr(
             name=self.full_name() + ".pact",
             initializer=paddle.nn.initializer.Constant(value=init_value),
@@ -57,7 +56,7 @@ class PACT(nn.Layer):
 
 class CustomQAT(nn.Layer):
     def __init__(self):
-        super(CustomQAT, self).__init__()
+        super().__init__()
         attr = paddle.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=1.0)
         )
@@ -111,7 +110,7 @@ class CustomQAT(nn.Layer):
 
 class ModelForConv2dT(nn.Layer):
     def __init__(self, num_classes=10):
-        super(ModelForConv2dT, self).__init__()
+        super().__init__()
         self.features = nn.Conv2DTranspose(4, 6, (3, 3))
         self.fc = Linear(input_dim=600, output_dim=num_classes)
 
@@ -124,20 +123,20 @@ class ModelForConv2dT(nn.Layer):
 
 class ImperativeLenet(paddle.nn.Layer):
     def __init__(self, num_classes=10, classifier_activation='softmax'):
-        super(ImperativeLenet, self).__init__()
+        super().__init__()
         self.features = Sequential(
-            Conv2D(
-                num_channels=1,
-                num_filters=6,
-                filter_size=3,
+            paddle.nn.Conv2D(
+                in_channels=1,
+                out_channels=6,
+                kernel_size=3,
                 stride=1,
                 padding=1,
             ),
             Pool2D(pool_size=2, pool_type='max', pool_stride=2),
-            Conv2D(
-                num_channels=6,
-                num_filters=16,
-                filter_size=5,
+            paddle.nn.Conv2D(
+                in_channels=6,
+                out_channels=16,
+                kernel_size=5,
                 stride=1,
                 padding=0,
             ),

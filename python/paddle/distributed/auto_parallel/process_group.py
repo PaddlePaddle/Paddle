@@ -61,7 +61,7 @@ def new_process_group(ranks, group_id=None):
     num_groups = len(_g_process_group_map)
     # Note: our process group may interfere with the original implementation
     # so the created group id should start from the original _new_ring_id()
-    if group_id == None:
+    if group_id is None:
         group_id = _new_ring_id() + num_groups + 1
 
     new_pg = ProcessGroup(group_id, ranks)

@@ -117,7 +117,7 @@ class Movielens(Dataset):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
 
                 def forward(self, category, title, rating):
                     return paddle.sum(category), paddle.sum(title), paddle.sum(rating)

@@ -174,15 +174,11 @@ def yolo_loss(
       .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          x = np.random.random([2, 14, 8, 8]).astype('float32')
-          gt_box = np.random.random([2, 10, 4]).astype('float32')
-          gt_label = np.random.random([2, 10]).astype('int32')
+          x = paddle.rand([2, 14, 8, 8]).astype('float32')
+          gt_box = paddle.rand([2, 10, 4]).astype('float32')
+          gt_label = paddle.rand([2, 10]).astype('int32')
 
-          x = paddle.to_tensor(x)
-          gt_box = paddle.to_tensor(gt_box)
-          gt_label = paddle.to_tensor(gt_label)
 
           loss = paddle.vision.ops.yolo_loss(x,
                                              gt_box=gt_box,
@@ -391,13 +387,9 @@ def yolo_box(
     .. code-block:: python
 
         import paddle
-        import numpy as np
 
-        x = np.random.random([2, 14, 8, 8]).astype('float32')
-        img_size = np.ones((2, 2)).astype('int32')
-
-        x = paddle.to_tensor(x)
-        img_size = paddle.to_tensor(img_size)
+        x = paddle.rand([2, 14, 8, 8]).astype('float32')
+        img_size = paddle.ones((2, 2)).astype('int32')
 
         boxes, scores = paddle.vision.ops.yolo_box(x,
                                                    img_size=img_size,
@@ -583,7 +575,7 @@ def prior_box(
 
     if in_dygraph_mode():
         step_w, step_h = steps
-        if max_sizes == None:
+        if max_sizes is None:
             max_sizes = []
         box, var = _C_ops.prior_box(
             input,
@@ -1240,7 +1232,7 @@ class DeformConv2D(Layer):
         weight_attr=None,
         bias_attr=None,
     ):
-        super(DeformConv2D, self).__init__()
+        super().__init__()
         assert (
             weight_attr is not False
         ), "weight_attr should not be False in Conv."
@@ -1672,7 +1664,7 @@ class PSRoIPool(Layer):
     """
 
     def __init__(self, output_size, spatial_scale=1.0):
-        super(PSRoIPool, self).__init__()
+        super().__init__()
         self.output_size = output_size
         self.spatial_scale = spatial_scale
 
@@ -1805,7 +1797,7 @@ class RoIPool(Layer):
     """
 
     def __init__(self, output_size, spatial_scale=1.0):
-        super(RoIPool, self).__init__()
+        super().__init__()
         self._output_size = output_size
         self._spatial_scale = spatial_scale
 
@@ -1997,7 +1989,7 @@ class RoIAlign(Layer):
     """
 
     def __init__(self, output_size, spatial_scale=1.0):
-        super(RoIAlign, self).__init__()
+        super().__init__()
         self._output_size = output_size
         self._spatial_scale = spatial_scale
 
@@ -2118,33 +2110,36 @@ def nms(
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            boxes = np.random.rand(4, 4).astype('float32')
+            boxes = paddle.rand([4, 4]).astype('float32')
             boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
             boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
-            # [[0.06287421 0.5809351  0.3443958  0.8713329 ]
-            #  [0.0749094  0.9713205  0.99241287 1.2799143 ]
-            #  [0.46246734 0.6753201  1.346266   1.3821303 ]
-            #  [0.8984796  0.5619834  1.1254641  1.0201943 ]]
+            print(boxes)
+            # Tensor(shape=[4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.64811575, 0.89756244, 0.86473107, 1.48552322],
+            #         [0.48085716, 0.84799081, 0.54517937, 0.86396021],
+            #         [0.62646860, 0.72901905, 1.17392159, 1.69691563],
+            #         [0.89729202, 0.46281594, 1.88733089, 0.98588502]])
 
-            out =  paddle.vision.ops.nms(paddle.to_tensor(boxes), 0.1)
-            # [0, 1, 3, 0]
+            out = paddle.vision.ops.nms(boxes, 0.1)
+            print(out)
+            # Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [0, 1, 3])
 
-            scores = np.random.rand(4).astype('float32')
-            # [0.98015213 0.3156527  0.8199343  0.874901 ]
+            scores = paddle.to_tensor([0.6, 0.7, 0.4, 0.233])
 
             categories = [0, 1, 2, 3]
-            category_idxs = np.random.choice(categories, 4)
-            # [2 0 0 3]
+            category_idxs = paddle.to_tensor([2, 0, 0, 3], dtype="int64")
 
-            out =  paddle.vision.ops.nms(paddle.to_tensor(boxes),
-                                                    0.1,
-                                                    paddle.to_tensor(scores),
-                                                    paddle.to_tensor(category_idxs),
-                                                    categories,
-                                                    4)
-            # [0, 3, 2]
+            out = paddle.vision.ops.nms(boxes,
+                                        0.1,
+                                        paddle.to_tensor(scores),
+                                        paddle.to_tensor(category_idxs),
+                                        categories,
+                                        4)
+            print(out)
+            # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+            #        [1, 0, 2, 3])
     """
 
     def _nms(boxes, iou_threshold):

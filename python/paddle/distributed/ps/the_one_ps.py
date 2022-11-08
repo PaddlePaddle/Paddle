@@ -129,7 +129,7 @@ class Service:
 
 class GpuService(Service):
     def __init__(self):
-        super(GpuService, self).__init__()
+        super().__init__()
 
     def _set(self, service_proto):
         service_proto.server_class = 'PsLocalServer'
@@ -285,7 +285,7 @@ class Accessor:
 
 class CommonAccessor(Accessor):
     def __init__(self):
-        super(CommonAccessor, self).__init__()
+        super().__init__()
         self.table_name = ''
         self.entry = 'none'
         self.attrs = []
@@ -633,7 +633,7 @@ class Table:
 
 class BarrierTable(Table):
     def __init__(self, context, idx):
-        super(BarrierTable, self).__init__()
+        super().__init__()
         self.type = None
         self.shard_num = 256
         self.accessor.accessor_class = 'CommMergeAccessor'
@@ -668,7 +668,7 @@ class BarrierTable(Table):
 
 class TensorTable(Table):
     def __init__(self, idx, tensor_dict, role_maker):
-        super(TensorTable, self).__init__()
+        super().__init__()
         self.idx = idx
         self.tensor_dict = tensor_dict
         self.role_maker = role_maker
@@ -691,7 +691,7 @@ class TensorTable(Table):
 
 class SparseTable(Table):
     def __init__(self, context, send_ctx):
-        super(SparseTable, self).__init__()
+        super().__init__()
         self.context = context
         self.ctx = send_ctx
         self.type = None
@@ -800,7 +800,7 @@ class SparseTable(Table):
 
 class GeoSparseTable(SparseTable):
     def __init__(self, context, send_ctx):
-        super(GeoSparseTable, self).__init__(context, send_ctx)
+        super().__init__(context, send_ctx)
         self.table_class = "MemorySparseGeoTable"
         if self.context['ps_mode'] != DistributedMode.GEO:
             raise ValueError("not geo sparse table!")
@@ -835,7 +835,7 @@ class GeoSparseTable(SparseTable):
 
 class DenseTable(Table):
     def __init__(self, context, send_ctx):
-        super(DenseTable, self).__init__()
+        super().__init__()
         self.context = context
         self.ctx = send_ctx
         self.accessor = Accessor()
@@ -879,7 +879,7 @@ class Server:
 
 class DownpourServer(Server):
     def __init__(self):
-        super(DownpourServer, self).__init__()
+        super().__init__()
 
     def _set(self):
         pass
@@ -895,7 +895,7 @@ class Worker:
 
 class DownpourWorker(Worker):
     def __init__(self):
-        super(DownpourWorker, self).__init__()
+        super().__init__()
 
     def _set(self):
         pass
@@ -1032,7 +1032,7 @@ class PsDescBuilder(object):
 
 class TheOnePSRuntime(RuntimeBase):
     def __init__(self):
-        super(TheOnePSRuntime, self).__init__()
+        super().__init__()
         self._communicator = None
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()
@@ -1326,7 +1326,7 @@ class TheOnePSRuntime(RuntimeBase):
                 )  # --> HeterClient::GetInstance
 
     def _init_coordinator(self, scopes=None):
-        if self._coordinator == None:
+        if self._coordinator is None:
             self._coordinator = Coordinator(self.string_hosts)
 
         print(">>> curr node ip: {}".format(self.coordinator_hosts[0]))
@@ -1336,7 +1336,7 @@ class TheOnePSRuntime(RuntimeBase):
         )
 
     def _make_fl_strategy(self):
-        if self._coordinator == None:
+        if self._coordinator is None:
             assert "Coordinator py object is null!"
         else:
             self._coordinator.make_fl_strategy()
@@ -1401,7 +1401,7 @@ class TheOnePSRuntime(RuntimeBase):
         self._worker.stop_worker()
         if self.is_heter_ps_mode:
             assert (
-                self._heter_client != None
+                self._heter_client is not None
             ), "heter client should not be None in heterps mode"
             self._heter_client.stop()
 

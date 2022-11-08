@@ -180,7 +180,7 @@ class Cluster(object):
         for pod in self.pods:
             ep = "{}:{}".format(pod.addr, pod.port)
             assert (
-                pod.port != None and pod.addr != None
+                pod.port is not None and pod.addr is not None
             ), "{} not a valid endpoint".format(ep)
             r.append(ep)
 

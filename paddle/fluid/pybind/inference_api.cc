@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pybind/inference_api.h"
 
+#include <pybind11/functional.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 
@@ -661,6 +662,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_xpu_device_id",
            &AnalysisConfig::SetXpuDeviceId,
            py::arg("device_id") = 0)
+      .def("enable_custom_device",
+           &AnalysisConfig::EnableCustomDevice,
+           py::arg("device_type"),
+           py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
       .def("enable_ipu",
            &AnalysisConfig::EnableIpu,
@@ -946,7 +951,9 @@ void BindPaddleInferPredictor(py::module *m) {
 #endif
       .def("try_shrink_memory", &paddle_infer::Predictor::TryShrinkMemory)
       .def("clear_intermediate_tensor",
-           &paddle_infer::Predictor::ClearIntermediateTensor);
+           &paddle_infer::Predictor::ClearIntermediateTensor)
+      .def("register_output_hook",
+           &paddle_infer::Predictor::RegisterOutputHook);
 }
 
 void BindZeroCopyTensor(py::module *m) {

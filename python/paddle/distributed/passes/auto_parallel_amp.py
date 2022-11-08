@@ -618,7 +618,7 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
 @register_pass("auto_parallel_amp")
 class AMPPass(PassBase):
     def __init__(self):
-        super(AMPPass, self).__init__()
+        super().__init__()
         self.set_attr("loss", None)
         self.set_attr("dist_context", None)
         self.set_attr("custom_white_list", None)
