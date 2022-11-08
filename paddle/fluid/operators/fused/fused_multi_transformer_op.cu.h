@@ -1191,7 +1191,7 @@ __global__ void add_fusedQKV_bias_transpose_split_kernel(
     const int32_t target_batch_id = token_idx / seq_len;
     const int32_t seq_id = token_idx % seq_len;
 
-    // maybe can optimize here. Done
+    // equal to:
     // const int qkv_id  = (linear_index % fused_hidden_size) / hidden_size;
     const int32_t qkv_id = bias_idx / hidden_size;
     const int32_t head_id = (linear_index % hidden_size) / size_per_head;

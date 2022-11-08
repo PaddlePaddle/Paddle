@@ -59,8 +59,15 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
-    auto qkv_compute = AttnMatMul<T>(
-        dev_ctx, false, trans_qkvw, bsz_seq, output_size, input_size, false);
+    // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we set
+    // compute_bias as false.
+    auto qkv_compute = AttnMatMul<T>(dev_ctx,
+                                     false,
+                                     trans_qkvw,
+                                     bsz_seq,
+                                     output_size,
+                                     input_size,
+                                     /*compute_bias=*/false);
 
     Tensor qkv_out;
     qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
