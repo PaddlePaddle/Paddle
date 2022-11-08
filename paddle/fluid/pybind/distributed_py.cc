@@ -59,6 +59,8 @@ limitations under the License. */
 #include "paddle/fluid/distributed/store/tcp_store.h"
 #endif
 
+#include "paddle/phi/kernels/sync_batch_norm_kernel.h"
+
 namespace py = pybind11;
 
 namespace paddle {
@@ -89,6 +91,9 @@ using GlooOptions = paddle::distributed::ProcessGroupGloo::GlooOptions;
 #endif
 
 static std::string GLOO_SOCKET_IFNAME_ENV = "GLOO_SOCKET_IFNAME";  // NOLINT
+
+static UNUSED void *use_ccl_comm_func =
+    phi::detail::GetCCLComm(phi::CPUPlace());
 
 void BindDistributed(py::module *m) {
   py::enum_<distributed::ReduceOp>(*m, "ReduceOp")
