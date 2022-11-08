@@ -25,7 +25,7 @@ def _get_pass_config(strategy, pass_name):
     return config
 
 
-class TuningConfig(object):
+class TuningConfig:
     """
     A uniform config wrap:
     distributed strategy: the user defined configuration for optimization pass

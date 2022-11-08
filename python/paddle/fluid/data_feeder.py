@@ -210,7 +210,7 @@ def check_shape(
         check_dtype(shape.dtype, 'shape', expected_tensor_dtype, op_name)
 
 
-class DataToLoDTensorConverter(object):
+class DataToLoDTensorConverter:
     def __init__(self, place, lod_level, shape, dtype):
         self.place = place
         self.lod_level = lod_level
@@ -269,7 +269,7 @@ class DataToLoDTensorConverter(object):
         return t
 
 
-class BatchedTensorProvider(object):
+class BatchedTensorProvider:
     def __init__(self, feed_list, place, batch_size, generator, drop_last):
         self.place = place
         self.batch_size = batch_size
@@ -308,7 +308,7 @@ class BatchedTensorProvider(object):
             [c._reset() for c in self.converters]
 
 
-class DataFeeder(object):
+class DataFeeder:
     """
     :api_attr: Static Graph
 

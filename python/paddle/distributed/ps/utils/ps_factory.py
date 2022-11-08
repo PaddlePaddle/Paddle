@@ -27,7 +27,7 @@ __all__ = [
 ]
 
 
-class PsProgramBuilderFactory(object):
+class PsProgramBuilderFactory:
     def __init__(self):
         pass
 

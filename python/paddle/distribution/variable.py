@@ -15,7 +15,7 @@
 from paddle.distribution import constraint
 
 
-class Variable(object):
+class Variable:
     """Random variable of probability distribution.
 
     Args:

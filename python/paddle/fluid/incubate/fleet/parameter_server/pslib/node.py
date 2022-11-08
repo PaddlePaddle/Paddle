@@ -18,7 +18,7 @@ from . import ps_pb2 as pslib
 from functools import reduce
 
 
-class Server(object):
+class Server:
     """
     A Server basic class
     it's a base class, does not have implementation
@@ -28,7 +28,7 @@ class Server(object):
         pass
 
 
-class Worker(object):
+class Worker:
     """
     A Worker basic class.
     it's a base class, does not have implementation

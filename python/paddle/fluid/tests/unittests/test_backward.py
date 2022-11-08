@@ -20,7 +20,7 @@ import paddle
 import numpy as np
 
 
-class BackwardNet(object):
+class BackwardNet:
     """
     Abstract Base Class.
     All Net inherited this Class should implement two functions:

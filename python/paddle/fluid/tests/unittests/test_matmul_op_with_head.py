@@ -111,7 +111,7 @@ def reference_matmul_mul_head(
 
 
 # Generator for multiple head
-class GeneratorMulHead(object):
+class GeneratorMulHead:
     def setUp(self):
         self.op_type = "matmul"
         X = np.random.random(self.shape_X).astype("float32")
@@ -232,7 +232,7 @@ def generate_compatible_shapes_mul_head2(
 
 
 # Generator for multiple head, case 2 when width of X is not same as height of Y
-class GeneratorMulHead2(object):
+class GeneratorMulHead2:
     def setUp(self):
         self.op_type = "matmul"
 

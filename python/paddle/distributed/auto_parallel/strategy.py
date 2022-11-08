@@ -16,7 +16,7 @@ import copy
 from . import constants
 
 
-class BaseConfig(object):
+class BaseConfig:
     def __init__(self, category, config_dict=None):
         self._category = category
         self._config_dict = None

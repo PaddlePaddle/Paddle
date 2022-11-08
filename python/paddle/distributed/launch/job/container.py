@@ -20,7 +20,7 @@ import os
 import sys
 
 
-class Container(object):
+class Container:
     '''
     TODO(kuizhiqing) A container can be run by process/thread or just a callable function
     '''

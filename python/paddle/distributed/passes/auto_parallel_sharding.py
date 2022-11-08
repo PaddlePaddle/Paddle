@@ -850,7 +850,7 @@ def shard_parameters(params, group_size):
     return mapping
 
 
-class ShardingInfo(object):
+class ShardingInfo:
     def __init__(self, group, rank, params_grads):
         self.group = group
         self.params_grads = dict([(p.name, (p, g)) for p, g in params_grads])

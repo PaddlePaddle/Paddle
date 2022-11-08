@@ -17,7 +17,7 @@ import paddle
 __all__ = ['PTQRegistry']
 
 
-class LayerInfo(object):
+class LayerInfo:
     """
     Store the argnames of the inputs and outputs.
     """
@@ -63,7 +63,7 @@ QUANT_LAYERS_INFO = [
 SIMULATED_LAYERS = [paddle.nn.Conv2D, paddle.nn.Linear]
 
 
-class PTQRegistry(object):
+class PTQRegistry:
     """
     Register the supported layers for PTQ and provide layers info.
     """
