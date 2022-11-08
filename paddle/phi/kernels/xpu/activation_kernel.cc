@@ -451,9 +451,6 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(hard_swish_raw, XPU, ALL_LAYOUT, HardSwishRawKernel, float) {
-}
-
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
