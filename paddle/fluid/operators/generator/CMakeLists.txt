@@ -11,6 +11,10 @@ set(sparse_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_ops.yaml)
 set(sparse_bw_op_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_backward.yaml)
 
+if(NOT PYTHONINTERP_FOUND)
+  find_package(PythonInterp REQUIRED)
+endif()
+
 # install extra dependencies
 if(${PYTHON_VERSION_STRING} VERSION_LESS "3.6.2")
   execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml
