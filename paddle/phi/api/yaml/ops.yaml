@@ -199,7 +199,7 @@
   backward : diag_grad
 
 - op : diag_embed
-  args : (Tensor input, int offset, int dim1, int dim2)
+  args : (Tensor input, int offset = 0, int dim1 = -2, int dim2 = -1)
   output : Tensor(out)
   infer_meta :
     func : DiagEmbedInferMeta
@@ -253,7 +253,7 @@
   backward: eig_grad
 
 - op : eigh
-  args : (Tensor x, str UPLO)
+  args : (Tensor x, str UPLO = "L")
   output : Tensor(out_w), Tensor(out_v)
   infer_meta :
     func : EighInferMeta

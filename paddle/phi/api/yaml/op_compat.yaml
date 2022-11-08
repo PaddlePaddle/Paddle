@@ -1,3 +1,14 @@
+# All the configuration in this file are only for existing operators,
+# which cannot be modified in principle. There's no need to configure
+# this file for new operator.
+#
+# This file is used for two purposes:
+# 1. Configure the mapping relationship of parameter names of operator
+#    between the operators in ops.yaml and the old operators defined
+#    in fluid.
+# 2. Save the extra parameters in the OpMaker of operators temporarily,
+#    which will be removed in the future.
+
 # - op : rnn
 #   backward : rnn_grad
 #   extra :
