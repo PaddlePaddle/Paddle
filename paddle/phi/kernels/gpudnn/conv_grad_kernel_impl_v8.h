@@ -131,10 +131,7 @@ void CudnnConvBwdDataV8(DenseTensor* dy_tensor,
     } catch (phi::enforce::EnforceNotMet& e) {
     }
   }
-
-  PADDLE_ENFORCE_EQ(
-      true,
-      false,
+  PADDLE_THROW(
       phi::errors::InvalidArgument("[CUDNN Frontend API] No valid plan could "
                                    "be found to execute conv backward data."));
 }
@@ -235,11 +232,9 @@ void CudnnConvBwdFilterV8(DenseTensor* x_tensor,
     }
   }
 
-  PADDLE_ENFORCE_EQ(true,
-                    false,
-                    phi::errors::InvalidArgument(
-                        "[CUDNN Frontend API] No valid plan could "
-                        "be found to execute conv backward filter."));
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "[CUDNN Frontend API] No valid plan could "
+      "be found to execute conv backward filter."));
 }
 
 template <typename T, typename Context>

@@ -54,48 +54,42 @@ class CudnnFrontendConvHelper {
     return out_array;
   }
 
-  static void GenerateStrides(const int64_t* dimA,
-                              int64_t* strideA,
-                              int nbDims,
-                              cudnnTensorFormat_t filter_format) {
+  static std::vector<int64_t> GenerateStrides(
+      const std::vector<int64_t>& dim, cudnnTensorFormat_t filter_format) {
     // ref:
     // https://github.com/NVIDIA/cudnn-frontend/blob/main/samples/helpers.cpp
     // For INT8x4 and INT8x32 we still compute standard strides here to input
     // into the cuDNN functions. We will manually scale by resizeFactor in the
     // cpu ref.
+    size_t nb_dims = dim.size();
+    std::vector<int64_t> stride(nb_dims);
     if (filter_format == CUDNN_TENSOR_NCHW) {
-      strideA[nbDims - 1] = 1;
-      for (int64_t d = nbDims - 2; d >= 0; d--) {
-        strideA[d] = strideA[d + 1] * dimA[d + 1];
+      stride[nb_dims - 1] = 1;
+      for (int64_t d = nb_dims - 2; d >= 0; d--) {
+        stride[d] = stride[d + 1] * dim[d + 1];
       }
     } else {
       // Here we assume that the format is CUDNN_TENSOR_NHWC
-      strideA[1] = 1;
-      strideA[nbDims - 1] = strideA[1] * dimA[1];
-      for (int64_t d = nbDims - 2; d >= 2; d--) {
-        strideA[d] = strideA[d + 1] * dimA[d + 1];
+      stride[1] = 1;
+      stride[nb_dims - 1] = stride[1] * dim[1];
+      for (int64_t d = nb_dims - 2; d >= 2; d--) {
+        stride[d] = stride[d + 1] * dim[d + 1];
       }
-      strideA[0] = strideA[2] * dimA[2];
+      stride[0] = stride[2] * dim[2];
     }
+    return stride;
   }
 
   static cudnn_frontend::Tensor GetTensorDescriptor(
       const phi::DenseTensor* tensor,
       int64_t id,
       cudnnTensorFormat_t layout_format) {
-    auto dims = phi::vectorize<int>(tensor->dims());
-    std::vector<int64_t> transformed_dims;
+    auto transformed_dims = phi::vectorize<int64_t>(tensor->dims());
     if (layout_format == CUDNN_TENSOR_NHWC) {
-      transformed_dims =
-          GetInt64Array(paddle::platform::TransformDimOrder(dims));
-    } else {
-      transformed_dims = GetInt64Array(dims);
+      transformed_dims = paddle::platform::TransformDimOrder(transformed_dims);
     }
-    std::vector<int64_t> strides(dims.size());
-    GenerateStrides(transformed_dims.data(),
-                    strides.data(),
-                    transformed_dims.size(),
-                    layout_format);
+    std::vector<int64_t> strides =
+        GenerateStrides(transformed_dims, layout_format);
     return cudnn_frontend::TensorBuilder()
         .setDim(transformed_dims.size(), transformed_dims.data())
         .setStrides(strides.size(), strides.data())

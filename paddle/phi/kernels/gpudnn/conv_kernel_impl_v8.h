@@ -134,9 +134,7 @@ void CudnnConvFwdV8(const DenseTensor* input_tensor,
     } catch (phi::enforce::EnforceNotMet& e) {
     }
   }
-  PADDLE_ENFORCE_EQ(
-      true,
-      false,
+  PADDLE_THROW(
       phi::errors::InvalidArgument("[CUDNN Frontend API] No valid plan could "
                                    "be found to execute conv."));
 }

@@ -22,7 +22,7 @@
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
 
-DECLARE_int64(cudnn_exhaustive_search_times);
+DECLARE_int32(cudnn_cache_saturation_count);
 
 namespace phi {
 namespace autotune {
@@ -32,8 +32,7 @@ class CudnnFrontendPlanCache {
   CudnnFrontendPlanCache() : cache_mutex_(new std::mutex()) {
     map_.clear();
     tracker_.clear();
-    search_times_ = FLAGS_cudnn_exhaustive_search_times;
-    saturation_count_ = search_times_ <= 1 ? 1 : search_times_;
+    saturation_count_ = FLAGS_cudnn_cache_saturation_count;
   }
 
   int64_t Size() const { return map_.size(); }
@@ -124,7 +123,6 @@ class CudnnFrontendPlanCache {
   std::map<cudnn_frontend::feature_vector_t,
            cudnn_frontend::ManagedOpaqueDescriptor>
       map_;
-  int search_times_;
   std::shared_ptr<std::mutex> cache_mutex_;
   int saturation_count_;
 
