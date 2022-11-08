@@ -2179,7 +2179,7 @@ EOF
 set +x
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
-        test_cases=$(ctest -N -V | grep "_xpu" )        # cases list which would be run exclusively
+        test_cases=$(ctest -N -V -LE "(RUN_TYPE=DIST_KUNLUN)" | grep "_xpu" )        # cases list which would be run exclusively
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
