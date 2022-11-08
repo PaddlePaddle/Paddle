@@ -259,13 +259,13 @@ def _update_input_info(inputs):
     return shapes, dtypes
 
 
-class StaticGraphAdapter:
+class StaticGraphAdapter(object):
     """
     Model traning/inference with a static graph.
     """
 
     def __init__(self, model):
-        super().__init__()
+        super(StaticGraphAdapter, self).__init__()
         self.model = model
         # with `_build_once` gone, parameters are now created in `__init__`
         # so we need to keep track of the parameters already created
@@ -734,9 +734,9 @@ class StaticGraphAdapter:
         self._compiled_progs[mode] = compiled_prog
 
 
-class DynamicGraphAdapter:
+class DynamicGraphAdapter(object):
     def __init__(self, model):
-        super().__init__()
+        super(DynamicGraphAdapter, self).__init__()
         self.model = model
         self._nranks = ParallelEnv().nranks
         self._local_rank = ParallelEnv().local_rank
@@ -1006,7 +1006,7 @@ class DynamicGraphAdapter:
             self.model._scaler = None
 
 
-class Model:
+class Model(object):
     """
 
     An Model object is network with training and inference features.
@@ -1149,6 +1149,7 @@ class Model:
 
     def train_batch(self, inputs, labels=None, update=True):
         """
+
         Run one training step on one batch of data. And using `update` indicates
         whether optimizer update gradients computing by this batch.
 
@@ -1194,6 +1195,7 @@ class Model:
                 loss = model.train_batch([data], [label])
                 print(loss)
                 # [array([2.192784], dtype=float32)]
+
         """
         loss = self._adapter.train_batch(inputs, labels, update)
         if fluid._non_static_mode() and self._input_info is None:
@@ -1203,6 +1205,7 @@ class Model:
     @no_grad()
     def eval_batch(self, inputs, labels=None):
         """
+
         Run one evaluating step on a batch of data.
 
         Args:
@@ -1246,6 +1249,7 @@ class Model:
                 loss, acc = model.eval_batch([data], [label])
                 print(loss, acc)
                 # [array([2.8825705], dtype=float32)] [0.0]
+
         """
         loss = self._adapter.eval_batch(inputs, labels)
         if fluid._non_static_mode() and self._input_info is None:
@@ -1255,6 +1259,7 @@ class Model:
     @no_grad()
     def predict_batch(self, inputs):
         """
+
         Run one predicting step on a batch of data.
 
         Args:
@@ -1293,6 +1298,7 @@ class Model:
                 # [array([[0.08189095, 0.16740078, 0.06889386, 0.05085445, 0.10729759,
                 #          0.02217775, 0.14518553, 0.1591538 , 0.01808308, 0.17906217]],
                 #          dtype=float32)]
+
         """
         loss = self._adapter.predict_batch(inputs)
         if fluid._non_static_mode() and self._input_info is None:
@@ -1301,6 +1307,7 @@ class Model:
 
     def save(self, path, training=True):
         """
+
         This function saves parameters, optimizer information or model and
         paramters only for inference to path. It depends on the parameter
         `training`.
@@ -1336,7 +1343,7 @@ class Model:
 
                 class Mnist(nn.Layer):
                     def __init__(self):
-                        super().__init__()
+                        super(Mnist, self).__init__()
                         self.net = nn.Sequential(
                             nn.Flatten(1),
                             nn.Linear(784, 200),
@@ -1368,6 +1375,7 @@ class Model:
                 model.fit(data, epochs=1, batch_size=32, verbose=0)
                 model.save('checkpoint/test')  # save for training
                 model.save('inference_model', False)  # save for inference
+
         """
 
         if ParallelEnv().local_rank == 0:
@@ -1378,6 +1386,7 @@ class Model:
 
     def load(self, path, skip_mismatch=False, reset_optimizer=False):
         """
+
         Load from files storing the model states and optimizer states. The file
         for optimizer states is not necessary if no need to restore the optimizer.
 
@@ -1425,6 +1434,7 @@ class Model:
 
                 model.save('checkpoint/test')
                 model.load('checkpoint/test')
+
         """
 
         def _load_state_from_path(path):
@@ -1495,6 +1505,7 @@ class Model:
 
     def parameters(self, *args, **kwargs):
         """
+
         Returns a list of parameters of the model.
 
         Returns:
@@ -1517,6 +1528,7 @@ class Model:
                     nn.Linear(200, 10)), input)
 
                 params = model.parameters()
+
         """
         return self._adapter.parameters()
 
@@ -1613,6 +1625,7 @@ class Model:
         self, optimizer=None, loss=None, metrics=None, amp_configs=None
     ):
         """
+
         Configures the model before runing.
 
         Args:
@@ -1644,6 +1657,7 @@ class Model:
 
         Returns:
             None
+
         """
         self._place = _get_device()
         if isinstance(self._place, fluid.CUDAPlace):
@@ -1703,6 +1717,7 @@ class Model:
         num_iters=None,
     ):
         """
+
         Trains the model for a fixed number of epochs. If `eval_data` is set,
         evaluation will be done at the end of each epoch.
 
@@ -1757,7 +1772,7 @@ class Model:
                How to make a batch is done internally.
 
             .. code-block:: python
-              :name: code-example1
+              :name: code-example3
 
                 import paddle
                 import paddle.vision.transforms as T
@@ -1793,12 +1808,11 @@ class Model:
                             batch_size=64,
                             save_dir='mnist_checkpoint')
 
-
             2. An example use DataLoader, batch size and shuffle is set in
                DataLoader.
 
             .. code-block:: python
-              :name: code-example2
+              :name: code-example4
 
                 import paddle
                 import paddle.vision.transforms as T
@@ -1835,7 +1849,7 @@ class Model:
                             val_loader,
                             epochs=2,
                             save_dir='mnist_checkpoint')
-
+                            
         """
         assert train_data is not None, "train_data must be given!"
 
@@ -1960,7 +1974,8 @@ class Model:
                 If None, evaluate on whole input dataset, otherwise, evaluate `num_iters` times.
                 Default: None.
         Returns:
-            dict, Result of metric. The key is the names of Metric, value is a scalar or numpy.array.
+            dict: Result of metric. The key is the names of Metric,
+                value is a scalar or numpy.array.
 
         Examples:
 
@@ -1984,7 +1999,6 @@ class Model:
                 result = model.evaluate(val_dataset, batch_size=64)
                 print(result)
                 # {'acc': 0.0699}
-
         """
 
         if eval_data is not None and isinstance(eval_data, Dataset):
@@ -2069,7 +2083,7 @@ class Model:
             callbacks(Callback, optional): A Callback instance, Default: None.
 
         Returns:
-            list, output of models.
+            list: output of models.
 
         Examples:
 
@@ -2081,7 +2095,7 @@ class Model:
 
                 class MnistDataset(paddle.vision.datasets.MNIST):
                     def __init__(self, mode, return_label=True):
-                        super().__init__(mode=mode)
+                        super(MnistDataset, self).__init__(mode=mode)
                         self.return_label = return_label
 
                     def __getitem__(self, idx):
@@ -2306,8 +2320,7 @@ class Model:
         return logs
 
     def summary(self, input_size=None, dtype=None):
-        """
-        Prints a string summary of the network.
+        """Prints a string summary of the network.
 
         Args:
             input_size (tuple|InputSpec|list[tuple|InputSpec], optional): size of input tensor.
