@@ -72,7 +72,7 @@ class QuantConfig(object):
             for _element in group:
                 self.add_group(_element, activation=activation, weight=weight)
 
-    def add_qat_layer_mapping(self, source: Layer, target: Layer):
+    def add_qat_layer_mapping(self, source: type, target: type):
         assert isinstance(source, type) and issubclass(
             source, paddle.nn.Layer
         ), "The source layer to be placed should be a subclass of paddle.nn.Layer"
@@ -81,7 +81,7 @@ class QuantConfig(object):
         ), "The target layer should be a subclass of paddle.nn.qat.Layer"
         self._qat_layer_mapping[source] = target
 
-    def add_costum_leaf(self, layer: Layer):
+    def add_costum_leaf(self, layer: type):
         self._costum_leaves.append(layer)
 
     @property
@@ -107,13 +107,13 @@ class QuantConfig(object):
         )
 
     def is_default_leaf(self, layer: Layer):
-        return layer in DEFAULT_LEAVES
+        return type(layer) in DEFAULT_LEAVES
 
     def is_real_leaf(self, layer: Layer):
         return layer._sub_layers is None or len(layer._sub_layers) == 0
 
     def is_custom_leaf(self, layer: Layer):
-        return layer in self.costum_leaves
+        return type(layer) in self.costum_leaves
 
     def get_observer(self, layer):
         _config = self.get_config_by_layer(layer)

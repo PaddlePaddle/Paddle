@@ -15,7 +15,11 @@
 from .lsq import ActLSQPlusQuanter, WeightLSQPlusQuanter
 from .abs_max import FakeQuanterWithAbsMaxObserver
 from .quanter import BaseQuanter
+from .qdrop_quanter import QDropFakeQuanter
+from .soft_rounding import SoftRoundingFakeQuanter
 
 __all__ = ["ActLSQPlusQuanter", "ActLSQPlusQuanter"]
 __all__ += ["FakeQuanterWithAbsMaxObserver"]
 __all__ += ["BaseQuanter"]
+__all__ += ["QDropFakeQuanter"]
+__all__ += ["SoftRoundingFakeQuanter"]
