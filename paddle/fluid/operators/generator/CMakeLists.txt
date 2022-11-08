@@ -202,10 +202,6 @@ set(op_compat_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 set(ops_extra_info_file
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.cc)
 
-if(NOT PYTHONINTERP_FOUND)
-  find_package(PythonInterp REQUIRED)
-endif()
-
 # generate ops extra info
 execute_process(
   COMMAND ${PYTHON_EXECUTABLE} ${ops_extra_info_gen_file} --op_compat_yaml_path
