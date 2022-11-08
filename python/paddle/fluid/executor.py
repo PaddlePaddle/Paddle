@@ -620,7 +620,7 @@ def _as_lodtensor(data, place, dtype=None):
     return tensor
 
 
-class FetchHandler(object):
+class FetchHandler:
     def __init__(self, var_dict=None, period_secs=60):
         assert var_dict is not None
         self.var_dict = var_dict
@@ -648,7 +648,7 @@ handler = FetchHandlerExample(var_dict=var_dict)
         )
 
 
-class _StandaloneExecutor(object):
+class _StandaloneExecutor:
     def __init__(self, place, main_program, scope):
         self._place = core.Place()
         self._place.set_place(place)
@@ -736,8 +736,8 @@ class _StandaloneExecutor(object):
         return res
 
 
-class _ExecutorCache(object):
-    class _CachedData(object):
+class _ExecutorCache:
+    class _CachedData:
         def __init__(
             self,
             program,
@@ -908,7 +908,7 @@ class _ExecutorCache(object):
         return new_program, new_exe
 
 
-class Executor(object):
+class Executor:
     """
     :api_attr: Static Graph
 

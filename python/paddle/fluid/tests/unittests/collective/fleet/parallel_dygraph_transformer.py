@@ -36,7 +36,7 @@ Note(chenweihang): To compare loss of single-card and multi-card
 """
 
 
-class TrainTaskConfig(object):
+class TrainTaskConfig:
     """
     TrainTaskConfig
     """
@@ -61,7 +61,7 @@ class TrainTaskConfig(object):
     label_smooth_eps = 0.1
 
 
-class ModelHyperParams(object):
+class ModelHyperParams:
     # These following five vocabularies related configurations will be set
     # automatically according to the passed vocabulary path and special tokens.
     # size of source word dictionary.

@@ -206,13 +206,13 @@ void TensorAdd(const VarType& src, VarType* dst) {
 #endif
   }
 
-#define TENSOR_ADD_EIGEN(T)                                           \
-  auto cpu_ctx = static_cast<phi::CPUContext*>(                       \
-      platform::DeviceContextPool::Instance().Get(place));            \
-  auto in = paddle::framework::EigenVector<T>::Flatten(src_tensor);   \
-  auto out = paddle::framework::EigenVector<T>::Flatten(*dst_tensor); \
-  auto& p = *(cpu_ctx->eigen_device());                               \
-  out.device(p) = out + in;                                           \
+#define TENSOR_ADD_EIGEN(T)                                \
+  auto cpu_ctx = static_cast<phi::CPUContext*>(            \
+      platform::DeviceContextPool::Instance().Get(place)); \
+  auto in = phi::EigenVector<T>::Flatten(src_tensor);      \
+  auto out = phi::EigenVector<T>::Flatten(*dst_tensor);    \
+  auto& p = *(cpu_ctx->eigen_device());                    \
+  out.device(p) = out + in;                                \
   return;
 
   if (platform::is_cpu_place(place)) {

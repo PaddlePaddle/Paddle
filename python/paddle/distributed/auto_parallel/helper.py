@@ -192,7 +192,7 @@ class BuildInfo:
         self.states = defaultdict(bool)
 
 
-class ProgramHelper(object):
+class ProgramHelper:
     """
     A Helper class for Engine to provides different Program IR according specified 'mode'.
     """

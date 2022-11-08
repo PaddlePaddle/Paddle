@@ -353,7 +353,7 @@ def _generate_extension_name(sources):
     return '_'.join(file_prefix)
 
 
-class BuildExtension(build_ext, object):
+class BuildExtension(build_ext):
     """
     Inherited from setuptools.command.build_ext to customize how to apply
     compilation process with share library.
@@ -724,7 +724,7 @@ class BuildExtension(build_ext, object):
                 )
 
 
-class EasyInstallCommand(easy_install, object):
+class EasyInstallCommand(easy_install):
     """
     Extend easy_intall Command to control the behavior of naming shared library
     file.
@@ -759,7 +759,7 @@ class EasyInstallCommand(easy_install, object):
                 assert os.path.exists(new_so_path)
 
 
-class BuildCommand(build, object):
+class BuildCommand(build):
     """
     Extend build Command to control the behavior of specifying `build_base` root directory.
 

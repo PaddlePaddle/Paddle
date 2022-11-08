@@ -98,7 +98,7 @@ xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
 
 
-class XPUOpTestWrapper(object):
+class XPUOpTestWrapper:
     def create_classes(self):
         base_class = None
         classes = []

@@ -172,7 +172,7 @@ class BlockGuardServ(BlockGuard):
         return super().__exit__(exc_type, exc_val, exc_tb)
 
 
-class ListenAndServ(object):
+class ListenAndServ:
     """
     **ListenAndServ Layer**
 

@@ -31,7 +31,7 @@ from paddle.fluid.transpiler.distribute_transpiler import (
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 
-class TrainerRuntimeConfig(object):
+class TrainerRuntimeConfig:
     def __init__(self):
         self.mode = None
         num_threads = os.getenv("CPU_NUM", "1")
@@ -160,7 +160,7 @@ class TrainerRuntimeConfig(object):
         return self.display(self.get_communicator_flags())
 
 
-class PSLibRuntimeConfig(object):
+class PSLibRuntimeConfig:
     def __init__(self):
         self.runtime_configs = {}
 
@@ -168,7 +168,7 @@ class PSLibRuntimeConfig(object):
         return self.runtime_configs
 
 
-class DistributedStrategy(object):
+class DistributedStrategy:
     def __init__(self):
         self._program_config = DistributeTranspilerConfig()
         self._trainer_runtime_config = TrainerRuntimeConfig()
@@ -456,7 +456,7 @@ class GeoStrategy(DistributedStrategy):
         self._build_strategy.async_mode = True
 
 
-class StrategyFactory(object):
+class StrategyFactory:
     def __init_(self):
         pass
 

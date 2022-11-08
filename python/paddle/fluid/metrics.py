@@ -55,7 +55,7 @@ def _is_number_or_matrix_(var):
     return _is_number_(var) or isinstance(var, np.ndarray)
 
 
-class MetricBase(object):
+class MetricBase:
     """
     In many cases, we usually have to split the test data into mini-batches for evaluating
     deep neural networks, therefore we need to collect the evaluation results of each
@@ -818,7 +818,7 @@ class Auc(MetricBase):
         )
 
 
-class DetectionMAP(object):
+class DetectionMAP:
     """
     Calculate the detection mean average precision (mAP).
 

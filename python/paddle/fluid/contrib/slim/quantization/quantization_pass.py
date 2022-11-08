@@ -107,7 +107,7 @@ def _check_grandchild_op_node(op_node, grandchild_op_name):
     return False
 
 
-class QuantizationTransformPass(object):
+class QuantizationTransformPass:
     """
     Quantize the ops that have weights. Add quant and dequant ops for
     the quantized ops's inputs.
@@ -1068,7 +1068,7 @@ class QuantizationTransformPass(object):
         return is_skip
 
 
-class QuantizationFreezePass(object):
+class QuantizationFreezePass:
     def __init__(
         self,
         scope,
@@ -1444,7 +1444,7 @@ class QuantizationFreezePass(object):
         )
 
 
-class ConvertToInt8Pass(object):
+class ConvertToInt8Pass:
     def __init__(self, scope, place, quantizable_op_type=None):
         """
         Convert the weights into int8_t type.
@@ -1537,7 +1537,7 @@ class ConvertToInt8Pass(object):
         graph.safe_remove_nodes(all_unused_vars)
 
 
-class TransformForMobilePass(object):
+class TransformForMobilePass:
     def __init__(self):
         """
         This pass is used to convert the frozen graph for paddle-mobile execution.
@@ -1579,7 +1579,7 @@ class TransformForMobilePass(object):
         return graph
 
 
-class OutScaleForTrainingPass(object):
+class OutScaleForTrainingPass:
     def __init__(
         self,
         scope=None,
@@ -1745,7 +1745,7 @@ class OutScaleForTrainingPass(object):
         return "%s@scale" % (var_name)
 
 
-class OutScaleForInferencePass(object):
+class OutScaleForInferencePass:
     def __init__(self, scope=None):
         """
         This pass is used for setting output scales of some operators.
@@ -1815,7 +1815,7 @@ class OutScaleForInferencePass(object):
         return "%s@scale" % (var_name)
 
 
-class AddQuantDequantPass(object):
+class AddQuantDequantPass:
     """
     Quantize the ops that do not have weights, and add quant_dequant op for the
     quantized ops's inputs.
@@ -2087,7 +2087,7 @@ class AddQuantDequantPass(object):
         return quant_var_node, scale_out_node
 
 
-class InsertQuantizeLinear(object):
+class InsertQuantizeLinear:
     """
     Insert quantize_linear and dequantize_linear op before ops.
 
@@ -2664,7 +2664,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         return graph
 
 
-class AddQuantDequantPassV2(object):
+class AddQuantDequantPassV2:
     """
     Quantize the ops that do not have weights, and add quant_linear and dequant_linear
     op for the quantized ops's inputs. It is used in the new format of quantization.
@@ -2850,7 +2850,7 @@ class AddQuantDequantPassV2(object):
         return graph
 
 
-class ReplaceFakeQuantDequantPass(object):
+class ReplaceFakeQuantDequantPass:
     """
     replace quant-dequant ops with quantize_linear and dequantize_linear ops.
     """
@@ -2987,7 +2987,7 @@ class ReplaceFakeQuantDequantPass(object):
         return "%s@zero_point" % (var_name)
 
 
-class QuantWeightPass(object):
+class QuantWeightPass:
     """
     quant weights and remove weights input quantize_linear node. for example:
     `weight -> quant -> dequant -> conv2d` will be frozen into `weight -> dequant -> conv2d`,
@@ -3129,7 +3129,7 @@ class QuantWeightPass(object):
         tensor.set(array, self._place)
 
 
-class AddQuantDequantForInferencePass(object):
+class AddQuantDequantForInferencePass:
     """
     When export quant model, it will traverse to find the output of each op, and then insert the quant/dequant op after it.
     """

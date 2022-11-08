@@ -20,7 +20,7 @@ import random
 import time
 
 
-class PodSepc(object):
+class PodSepc:
     def __init__(self):
         self._name = ''.join(
             random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6)
