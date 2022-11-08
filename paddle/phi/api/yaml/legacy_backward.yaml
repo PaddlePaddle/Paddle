@@ -1364,6 +1364,17 @@
     param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
     use_gpudnn : use_gpudnn
 
+- backward_op : pow_double_grad
+  forward : pow_grad(Tensor x, Tensor grad_out, Scalar y) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, Scalar y)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param: [x, x]
+  kernel :
+    func : pow_double_grad
+  inplace : (grad_x_grad -> x_grad)
+
 - backward_op : pow_grad
   forward : pow(Tensor x, Scalar y) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, Scalar y=-1)
@@ -1373,6 +1384,7 @@
     param: [x]
   kernel :
     func : pow_grad
+  backward: pow_double_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : prelu_grad
