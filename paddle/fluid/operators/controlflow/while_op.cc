@@ -48,9 +48,9 @@ static std::string GetSkipEagerDeletionVarsDebugString(
 }
 
 static void BuildScopeForWhileOp(
-    const paddle::framework::InterpreterCore &interpreter_core,
-    const paddle::framework::BlockDesc &block,
-    paddle::framework::Scope *scope) {
+    const framework::InterpreterCore &interpreter_core,
+    const framework::BlockDesc &block,
+    framework::Scope *scope) {
   for (auto &var_desc : block.AllVars()) {
     auto var_name = var_desc->Name();
     if (var_name == framework::kEmptyVarName) {
@@ -80,6 +80,37 @@ static void BuildScopeForWhileOp(
             << "Initialize Transfer Added Variable "
             << data_transfer_added_vars[i].first;
   }
+}
+
+static void TransferVariablePlace(const framework::Scope *scope,
+                                  const std::string &var_name,
+                                  const phi::Place &dst_place) {
+  framework::Variable *var = scope->FindVar(var_name);
+  if (var == nullptr) {
+    VLOG(4) << "[TransferVariablePlace]"
+            << "lost in_var: " << var_name;
+    return;
+  }
+  if (var->Type() != framework::proto::VarType::LOD_TENSOR) {
+    VLOG(10) << "[TransferVariablePlace]" << var_name << " type changed:"
+             << framework::TransToPhiDataType(
+                    framework::ToVarType(var->Type()));
+    return;
+  }
+  phi::DenseTensor *t = var->GetMutable<phi::DenseTensor>();
+  if (t->place() == dst_place) {
+    VLOG(10) << "[TransferVariablePlace]"
+             << "no need transfer: " << var_name;
+    return;
+  }
+
+  phi::DenseTensor *new_t = new phi::DenseTensor;
+  framework::TensorCopy(*t, dst_place, new_t);
+  t->set_meta(new_t->meta());
+  t->ResetHolder(new_t->Holder());
+
+  VLOG(4) << "[TransferVariablePlace]" << var_name
+          << " place: " << new_t->place();
 }
 
 }  // namespace
@@ -171,6 +202,25 @@ class WhileOp : public framework::OperatorBase {
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
 
+    std::map<std::string, phi::Place> input_var_original_places;
+    for (const auto &in_name : Inputs(kX)) {
+      framework::Variable *var = scope.FindVar(in_name);
+      if (var == nullptr) {
+        VLOG(4) << "[while op]"
+                << "input not found:" << in_name;
+      }
+
+      if (var->Type() == framework::proto::VarType::LOD_TENSOR) {
+        input_var_original_places[in_name] =
+            (var->Get<phi::DenseTensor>()).place();
+      } else {
+        VLOG(10) << "[while op]"
+                 << "skip input " << in_name << " type:"
+                 << framework::TransToPhiDataType(
+                        framework::ToVarType(var->Type()));
+      }
+    }
+
     if (FLAGS_control_flow_use_new_executor) {
       if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
         std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
@@ -221,6 +271,14 @@ class WhileOp : public framework::OperatorBase {
         } else {
           executor->RunPreparedContext(
               ctx.get(), &current_scope, false, true, true);
+        }
+
+        // restore inputs place
+        for (const auto &n : input_var_original_places) {
+          const std::string &in_name = n.first;
+          const phi::Place &original_place = n.second;
+          // input vars exist in `scope` not `current_scope`
+          TransferVariablePlace(&scope, in_name, original_place);
         }
 
         for (auto &var_rename : rename_vars) {
