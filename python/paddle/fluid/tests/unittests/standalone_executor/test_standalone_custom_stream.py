@@ -22,9 +22,6 @@ paddle.enable_static()
 
 
 class TestCustomStream(unittest.TestCase):
-    def setUp(self):
-        self.steps = 3
-
     """
     fill_constant(cpu)     gaussian_random
       |     |      |              |
@@ -42,6 +39,9 @@ class TestCustomStream(unittest.TestCase):
                         |
                   reduce_mean(s2)
     """
+
+    def setUp(self):
+        self.steps = 3
 
     def set_custom_stream(self, prog):
         op_index_for_stream1 = [2, 4, 9]
