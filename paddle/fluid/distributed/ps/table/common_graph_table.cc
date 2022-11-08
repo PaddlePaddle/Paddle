@@ -24,6 +24,7 @@
 #include "gflags/gflags.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
@@ -32,6 +33,8 @@
 
 DECLARE_bool(graph_load_in_parallel);
 DECLARE_bool(graph_get_neighbor_id);
+DECLARE_int32(gpugraph_storage_mode);
+DECLARE_uint64(gpugraph_slot_feasign_max_num);
 
 namespace paddle {
 namespace distributed {
@@ -54,32 +57,38 @@ int32_t GraphTable::Load_to_ssd(const std::string &path,
 }
 
 paddle::framework::GpuPsCommGraphFea GraphTable::make_gpu_ps_graph_fea(
-    std::vector<uint64_t> &node_ids, int slot_num) {
-  std::vector<std::vector<uint64_t>> bags(task_pool_size_);
-  for (int i = 0; i < task_pool_size_; i++) {
-    auto predsize = node_ids.size() / task_pool_size_;
+    int gpu_id, std::vector<uint64_t> &node_ids, int slot_num) {
+  size_t shard_num = 64;
+  std::vector<std::vector<uint64_t>> bags(shard_num);
+  std::vector<uint64_t> feature_array[shard_num];
+  std::vector<uint8_t> slot_id_array[shard_num];
+  std::vector<uint64_t> node_id_array[shard_num];
+  std::vector<paddle::framework::GpuPsFeaInfo> node_fea_info_array[shard_num];
+  for (size_t i = 0; i < shard_num; i++) {
+    auto predsize = node_ids.size() / shard_num;
     bags[i].reserve(predsize * 1.2);
+    feature_array[i].reserve(predsize * 1.2 * slot_num);
+    slot_id_array[i].reserve(predsize * 1.2 * slot_num);
+    node_id_array[i].reserve(predsize * 1.2);
+    node_fea_info_array[i].reserve(predsize * 1.2);
   }
 
   for (auto x : node_ids) {
-    int location = x % shard_num % task_pool_size_;
+    int location = x % shard_num;
     bags[location].push_back(x);
   }
 
   std::vector<std::future<int>> tasks;
-  std::vector<uint64_t> feature_array[task_pool_size_];
-  std::vector<uint8_t> slot_id_array[task_pool_size_];
-  std::vector<uint64_t> node_id_array[task_pool_size_];
-  std::vector<paddle::framework::GpuPsFeaInfo>
-      node_fea_info_array[task_pool_size_];
-  slot_feature_num_map_.resize(slot_num);
-  for (int k = 0; k < slot_num; ++k) {
-    slot_feature_num_map_[k] = 0;
+  if (slot_feature_num_map_.size() == 0) {
+    slot_feature_num_map_.resize(slot_num);
+    for (int k = 0; k < slot_num; ++k) {
+      slot_feature_num_map_[k] = 0;
+    }
   }
 
   for (size_t i = 0; i < bags.size(); i++) {
     if (bags[i].size() > 0) {
-      tasks.push_back(_shards_task_pool[i]->enqueue([&, i, this]() -> int {
+      tasks.push_back(_cpu_worker_pool[gpu_id]->enqueue([&, i, this]() -> int {
         uint64_t node_id;
         paddle::framework::GpuPsFeaInfo x;
         std::vector<uint64_t> feature_ids;
@@ -96,19 +105,11 @@ paddle::framework::GpuPsCommGraphFea GraphTable::make_gpu_ps_graph_fea(
             x.feature_offset = feature_array[i].size();
             int total_feature_size = 0;
             for (int k = 0; k < slot_num; ++k) {
-              v->get_feature_ids(k, &feature_ids);
-              int feature_ids_size = feature_ids.size();
+              auto feature_ids_size = v->get_feature_ids(k, feature_array[i], slot_id_array[i]);
               if (slot_feature_num_map_[k] < feature_ids_size) {
                 slot_feature_num_map_[k] = feature_ids_size;
               }
               total_feature_size += feature_ids_size;
-              if (!feature_ids.empty()) {
-                feature_array[i].insert(feature_array[i].end(),
-                                        feature_ids.begin(),
-                                        feature_ids.end());
-                slot_id_array[i].insert(
-                    slot_id_array[i].end(), feature_ids_size, k);
-              }
             }
             x.feature_size = total_feature_size;
             node_fea_info_array[i].push_back(x);
@@ -127,32 +128,40 @@ paddle::framework::GpuPsCommGraphFea GraphTable::make_gpu_ps_graph_fea(
   }
   VLOG(0) << "slot_feature_num_map: " << ss.str();
 
+  tasks.clear();
+
   paddle::framework::GpuPsCommGraphFea res;
   uint64_t tot_len = 0;
-  for (int i = 0; i < task_pool_size_; i++) {
+  for (size_t i = 0; i < shard_num; i++) {
     tot_len += feature_array[i].size();
   }
   VLOG(0) << "Loaded feature table on cpu, feature_list_size[" << tot_len
           << "] node_ids_size[" << node_ids.size() << "]";
   res.init_on_cpu(tot_len, (unsigned int)node_ids.size(), slot_num);
   unsigned int offset = 0, ind = 0;
-  for (int i = 0; i < task_pool_size_; i++) {
-    for (int j = 0; j < (int)node_id_array[i].size(); j++) {
-      res.node_list[ind] = node_id_array[i][j];
-      res.fea_info_list[ind] = node_fea_info_array[i][j];
-      res.fea_info_list[ind++].feature_offset += offset;
-    }
-    for (size_t j = 0; j < feature_array[i].size(); j++) {
-      res.feature_list[offset + j] = feature_array[i][j];
-      res.slot_id_list[offset + j] = slot_id_array[i][j];
-    }
+  for (size_t i = 0; i < shard_num; i++) {
+    tasks.push_back(_cpu_worker_pool[gpu_id]->enqueue([&, i, ind, offset, this]() -> int {
+      auto start = ind;
+      for (int j = 0; j < (int)node_id_array[i].size(); j++) {
+        res.node_list[start] = node_id_array[i][j];
+        res.fea_info_list[start] = node_fea_info_array[i][j];
+        res.fea_info_list[start++].feature_offset += offset;
+      }
+      for (size_t j = 0; j < feature_array[i].size(); j++) {
+        res.feature_list[offset + j] = feature_array[i][j];
+        res.slot_id_list[offset + j] = slot_id_array[i][j];
+      }
+      return 0;
+    }));
     offset += feature_array[i].size();
+    ind += node_id_array[i].size();
   }
+  for (int i = 0; i < (int)tasks.size(); i++) tasks[i].get();
   return res;
 }
 
 paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph(
-    int idx, std::vector<uint64_t> ids) {
+    int idx, const std::vector<uint64_t> & ids) {
   std::vector<std::vector<uint64_t>> bags(task_pool_size_);
   for (int i = 0; i < task_pool_size_; i++) {
     auto predsize = ids.size() / task_pool_size_;
@@ -327,7 +336,7 @@ int64_t GraphTable::load_graph_to_memory_from_ssd(int idx,
           std::string str;
           if (_db->get(i, ch, sizeof(int) * 2 + sizeof(uint64_t), str) == 0) {
             count[i] += (int64_t)str.size();
-            for (size_t j = 0; j < (int)str.size(); j += sizeof(uint64_t)) {
+            for (size_t j = 0; j < str.size(); j += sizeof(uint64_t)) {
               uint64_t id = *(uint64_t *)(str.c_str() + j);
               add_comm_edge(idx, v, id);
             }
@@ -397,7 +406,7 @@ void GraphTable::make_partitions(int idx, int64_t byte_size, int device_len) {
         score[i] = 0;
       }
     }
-    for (size_t j = 0; j < (int)value.size(); j += sizeof(uint64_t)) {
+    for (size_t j = 0; j < value.size(); j += sizeof(uint64_t)) {
       uint64_t v = *((uint64_t *)(value.c_str() + j));
       int index = -1;
       if (id_map.find(v) != id_map.end()) {
@@ -488,6 +497,116 @@ void GraphTable::clear_graph(int idx) {
     edge_shards[idx].push_back(new GraphShard());
   }
 }
+
+void GraphTable::release_graph() {
+  // Before releasing graph, prepare for sampling ids and embedding keys.
+  build_graph_type_keys();
+
+  if (FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
+    build_graph_total_keys();
+  }
+  // clear graph
+  if (FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::MEM_EMB_FEATURE_AND_GPU_GRAPH
+          || FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::SSD_EMB_AND_MEM_FEATURE_GPU_GRAPH) {
+    clear_edge_shard();
+  }
+  else {
+    clear_graph();
+  }
+}
+
+void GraphTable::release_graph_edge() {
+  if (FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
+    build_graph_total_keys();
+  }
+  clear_edge_shard();
+}
+
+void GraphTable::release_graph_node() {
+  build_graph_type_keys();
+  if (FLAGS_gpugraph_storage_mode != paddle::framework::GpuGraphStorageMode::MEM_EMB_FEATURE_AND_GPU_GRAPH
+           && FLAGS_gpugraph_storage_mode != paddle::framework::GpuGraphStorageMode::SSD_EMB_AND_MEM_FEATURE_GPU_GRAPH) {
+    clear_feature_shard();
+  }
+  else {
+    merge_feature_shard();
+    feature_shrink_to_fit();
+  }
+}
+
+void GraphTable::clear_edge_shard() {
+  VLOG(0) << "begin clear edge shard";
+  std::vector<std::future<int>> tasks;
+  for (auto &type_shards : edge_shards) {
+    for (auto &shard : type_shards) {
+      tasks.push_back(
+        load_node_edge_task_pool->enqueue([&shard, this]() -> int {
+          delete shard;
+          return 0;
+      }));
+    }
+  }
+  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get(); 
+  for (auto &shards : edge_shards) shards.clear();
+  edge_shards.clear();
+  VLOG(0) << "finish clear edge shard"; 
+}
+
+void GraphTable::clear_feature_shard() {
+  VLOG(0) << "begin clear feature shard";
+  std::vector<std::future<int>> tasks;
+  for (auto &type_shards : feature_shards) {
+    for (auto &shard : type_shards) {
+      tasks.push_back(
+        load_node_edge_task_pool->enqueue([&shard, this]() -> int {
+          delete shard;
+          return 0;
+      }));
+    }
+  }
+  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+  for (auto &shards : feature_shards) shards.clear();
+  feature_shards.clear();
+  VLOG(0) << "finish clear feature shard";
+}
+
+void GraphTable::feature_shrink_to_fit() {
+  std::vector<std::future<int>> tasks;
+  for (auto &type_shards : feature_shards) {
+      for (auto &shard : type_shards) {
+        tasks.push_back(
+          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
+             shard->shrink_to_fit();
+             return 0;
+        }));
+      }
+  }
+  for(size_t i = 0; i < tasks.size(); i++) tasks[i].get(); 
+}
+
+void GraphTable::merge_feature_shard() {
+  VLOG(0) << "begin merge_feature_shard";
+  std::vector<std::future<int>> tasks;
+  for (size_t i = 0; i < feature_shards[0].size(); i++) {
+    tasks.push_back(
+      load_node_edge_task_pool->enqueue([i, this]() -> int {
+        for (size_t j = 1; j < feature_shards.size(); j++) {
+          feature_shards[0][i]->merge_shard(feature_shards[j][i]);
+        }
+        return 0;
+    }));
+  }
+  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+  feature_shards.resize(1);
+}
+
+void GraphTable::clear_graph() {
+  VLOG(0) << "begin clear_graph";
+  clear_edge_shard();
+  clear_feature_shard();
+  VLOG(0) << "finish clear_graph";
+}
+
 int32_t GraphTable::load_next_partition(int idx) {
   if (next_partition >= (int)partitions[idx].size()) {
     VLOG(0) << "partition iteration is done";
@@ -554,7 +673,7 @@ int32_t GraphTable::dump_edges_to_ssd(int idx) {
           std::vector<Node *> &v = shards[i]->get_bucket();
           for (size_t j = 0; j < v.size(); j++) {
             std::vector<uint64_t> s;
-            for (size_t k = 0; k < (int)v[j]->get_neighbor_size(); k++) {
+            for (size_t k = 0; k < v[j]->get_neighbor_size(); k++) {
               s.push_back(v[j]->get_neighbor_id(k));
             }
             cost += v[j]->get_neighbor_size() * sizeof(uint64_t);
@@ -1053,21 +1172,7 @@ Node *GraphShard::find_node(uint64_t id) {
   return iter == node_location.end() ? nullptr : bucket[iter->second];
 }
 
-GraphTable::~GraphTable() {
-  for (int i = 0; i < (int)edge_shards.size(); i++) {
-    for (auto p : edge_shards[i]) {
-      delete p;
-    }
-    edge_shards[i].clear();
-  }
-
-  for (int i = 0; i < (int)feature_shards.size(); i++) {
-    for (auto p : feature_shards[i]) {
-      delete p;
-    }
-    feature_shards[i].clear();
-  }
-}
+GraphTable::~GraphTable() { clear_graph(); }
 
 int32_t GraphTable::Load(const std::string &path, const std::string &param) {
   bool load_edge = (param[0] == 'e');
@@ -1095,21 +1200,112 @@ std::string GraphTable::get_inverse_etype(std::string &etype) {
   return res;
 }
 
-int32_t GraphTable::parse_type_to_typepath(std::string &type2files,
-                                           std::string graph_data_local_path,
-                                           std::vector<std::string> &res_type,
-                                           std::unordered_map<std::string, std::string> &res_type2path) {
-  auto type2files_split = paddle::string::split_string<std::string>(type2files, ",");
+int32_t GraphTable::parse_type_to_typepath(
+    std::string &type2files,
+    std::string graph_data_local_path,
+    std::vector<std::string> &res_type,
+    std::unordered_map<std::string, std::string> &res_type2path) {
+  auto type2files_split =
+      paddle::string::split_string<std::string>(type2files, ",");
   if (type2files_split.size() == 0) {
     return -1;
   }
   for (auto one_type2file : type2files_split) {
-    auto one_type2file_split = paddle::string::split_string<std::string>(one_type2file, ":");
+    auto one_type2file_split =
+        paddle::string::split_string<std::string>(one_type2file, ":");
     auto type = one_type2file_split[0];
     auto type_dir = one_type2file_split[1];
     res_type.push_back(type);
     res_type2path[type] = graph_data_local_path + "/" + type_dir;
   }
+  return 0;
+}
+
+int32_t GraphTable::parse_edge_and_load(std::string etype2files,
+                                       std::string graph_data_local_path,
+                                       int part_num,
+                                       bool reverse) {
+   std::vector<std::string> etypes;
+   std::unordered_map<std::string, std::string> edge_to_edgedir;
+   int res = parse_type_to_typepath(
+       etype2files, graph_data_local_path, etypes, edge_to_edgedir);
+   if (res != 0) {
+     VLOG(0) << "parse edge type and edgedir failed!";
+     return -1;
+   }
+   VLOG(0) << "etypes size: " << etypes.size();
+   VLOG(0) << "whether reverse: " << reverse;
+   is_load_reverse_edge = reverse;
+   std::string delim = ";";
+   size_t total_len = etypes.size();
+   
+   std::vector<std::future<int>> tasks;
+   for (size_t i = 0; i < total_len; i++) { 
+     tasks.push_back(
+         _shards_task_pool[i % task_pool_size_]->enqueue([&, i, this]() -> int {
+           std::string etype_path = edge_to_edgedir[etypes[i]];
+           auto etype_path_list = paddle::framework::localfs_list(etype_path);
+           std::string etype_path_str;
+           if (part_num > 0 && part_num < (int)etype_path_list.size()) {
+             std::vector<std::string> sub_etype_path_list(
+                etype_path_list.begin(), etype_path_list.begin() + part_num);
+             etype_path_str =
+                paddle::string::join_strings(sub_etype_path_list, delim);
+           } else {
+             etype_path_str =
+                paddle::string::join_strings(etype_path_list, delim);
+           }
+           this->load_edges(etype_path_str, false, etypes[i]);
+           if (reverse) {
+             std::string r_etype = get_inverse_etype(etypes[i]);
+             this->load_edges(etype_path_str, true, r_etype);
+           }
+           return 0;
+     }));
+   }
+   for (int i = 0; i < (int)tasks.size(); i++) tasks[i].get();
+   return 0; 
+}
+
+int32_t GraphTable::parse_node_and_load(std::string ntype2files,
+                                       std::string graph_data_local_path,
+                                       int part_num) {
+  std::vector<std::string> ntypes;
+  std::unordered_map<std::string, std::string> node_to_nodedir;
+  int res = parse_type_to_typepath(
+       ntype2files, graph_data_local_path, ntypes, node_to_nodedir);
+  if (res != 0) {
+    VLOG(0) << "parse node type and nodedir failed!";
+    return -1;
+  }
+  if (ntypes.size() == 0) {
+    VLOG(0) << "node_type not specified, nothing will be loaded ";
+    return 0;
+  }
+
+  std::string delim = ";";
+  std::vector<std::string> type_npath_strs;
+  for (size_t i = 0; i <ntypes.size(); i++) {
+    std::string npath = node_to_nodedir[ntypes[i]];
+    auto npath_list = paddle::framework::localfs_list(npath);
+    std::string type_npath_str;
+    if (part_num > 0 && part_num < (int)npath_list.size()) {
+      std::vector<std::string> sub_npath_list(
+        npath_list.begin(), npath_list.begin() + part_num);
+      type_npath_str = paddle::string::join_strings(sub_npath_list, delim);
+    } else {
+      type_npath_str = paddle::string::join_strings(npath_list, delim);
+    }
+    type_npath_strs.push_back(type_npath_str);
+  }
+  std::string npath_str = paddle::string::join_strings(type_npath_strs, delim);
+  if (FLAGS_graph_load_in_parallel) {
+    this->load_nodes(npath_str, "");
+  } else {
+    for (size_t j = 0; j < ntypes.size(); j++) {
+      this->load_nodes(npath_str, ntypes[j]);
+    }
+  } 
   return 0;
 }
 
@@ -1120,14 +1316,16 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype2files,
                                             bool reverse) {
   std::vector<std::string> etypes;
   std::unordered_map<std::string, std::string> edge_to_edgedir;
-  int res = parse_type_to_typepath(etype2files, graph_data_local_path, etypes, edge_to_edgedir);
+  int res = parse_type_to_typepath(
+      etype2files, graph_data_local_path, etypes, edge_to_edgedir);
   if (res != 0) {
     VLOG(0) << "parse edge type and edgedir failed!";
     return -1;
   }
   std::vector<std::string> ntypes;
   std::unordered_map<std::string, std::string> node_to_nodedir;
-  res = parse_type_to_typepath(ntype2files, graph_data_local_path, ntypes, node_to_nodedir);
+  res = parse_type_to_typepath(
+      ntype2files, graph_data_local_path, ntypes, node_to_nodedir);
   if (res != 0) {
     VLOG(0) << "parse node type and nodedir failed!";
     return -1;
@@ -1177,7 +1375,6 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype2files,
               VLOG(0) << "node_type not specified, nothing will be loaded ";
               return 0;
             }
-
             if (FLAGS_graph_load_in_parallel) {
               this->load_nodes(npath_str, "");
             } else {
@@ -1461,7 +1658,6 @@ int32_t GraphTable::load_edges(const std::string &path,
                                const std::string &edge_type) {
 #ifdef PADDLE_WITH_HETERPS
   if (search_level == 2) total_memory_cost = 0;
-  const uint64_t fixed_load_edges = 1000000;
 #endif
   int idx = 0;
   if (edge_type == "") {
@@ -1483,7 +1679,7 @@ int32_t GraphTable::load_edges(const std::string &path,
   VLOG(0) << "Begin GraphTable::load_edges() edge_type[" << edge_type << "]";
   if (FLAGS_graph_load_in_parallel) {
     std::vector<std::future<std::pair<uint64_t, uint64_t>>> tasks;
-    for (int i = 0; i < paths.size(); i++) {
+    for (size_t i = 0; i < paths.size(); i++) {
       tasks.push_back(load_node_edge_task_pool->enqueue(
           [&, i, idx, this]() -> std::pair<uint64_t, uint64_t> {
             return parse_edge_file(paths[i], idx, reverse_edge);
@@ -1866,8 +2062,7 @@ int GraphTable::parse_feature(int idx,
   thread_local std::vector<paddle::string::str_ptr> fea_fields;
   fea_fields.clear();
   c = feature_separator_.at(0);
-  paddle::string::split_string_ptr(fields[1].ptr, fields[1].len, c, &fea_fields);
-
+  paddle::string::split_string_ptr(fields[1].ptr, fields[1].len, c, &fea_fields, FLAGS_gpugraph_slot_feasign_max_num);
   std::string name = fields[0].to_string();
   auto it = feat_id_map[idx].find(name);
   if (it != feat_id_map[idx].end()) {
@@ -1947,8 +2142,8 @@ int GraphTable::get_all_id(int type_id,
   MergeShardVector shard_merge(output, slice_num);
   auto &search_shards = type_id == 0 ? edge_shards : feature_shards;
   std::vector<std::future<size_t>> tasks;
-  for (int idx = 0; idx < search_shards.size(); idx++) {
-    for (int j = 0; j < search_shards[idx].size(); j++) {
+  for (size_t idx = 0; idx < search_shards.size(); idx++) {
+    for (size_t j = 0; j < search_shards[idx].size(); j++) {
       tasks.push_back(_shards_task_pool[j % task_pool_size_]->enqueue(
           [&search_shards, idx, j, slice_num, &shard_merge]() -> size_t {
             std::vector<std::vector<uint64_t>> shard_keys;
@@ -1971,8 +2166,8 @@ int GraphTable::get_all_neighbor_id(
   MergeShardVector shard_merge(output, slice_num);
   auto &search_shards = type_id == 0 ? edge_shards : feature_shards;
   std::vector<std::future<size_t>> tasks;
-  for (int idx = 0; idx < search_shards.size(); idx++) {
-    for (int j = 0; j < search_shards[idx].size(); j++) {
+  for (size_t idx = 0; idx < search_shards.size(); idx++) {
+    for (size_t j = 0; j < search_shards[idx].size(); j++) {
       tasks.push_back(_shards_task_pool[j % task_pool_size_]->enqueue(
           [&search_shards, idx, j, slice_num, &shard_merge]() -> size_t {
             std::vector<std::vector<uint64_t>> shard_keys;
@@ -2024,7 +2219,7 @@ int GraphTable::get_all_neighbor_id(
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
   std::vector<std::future<size_t>> tasks;
   VLOG(3) << "begin task, task_pool_size_[" << task_pool_size_ << "]";
-  for (int i = 0; i < search_shards.size(); i++) {
+  for (size_t i = 0; i < search_shards.size(); i++) {
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
         [&search_shards, i, slice_num, &shard_merge]() -> size_t {
           std::vector<std::vector<uint64_t>> shard_keys;
@@ -2050,7 +2245,7 @@ int GraphTable::get_all_feature_ids(
   MergeShardVector shard_merge(output, slice_num);
   auto &search_shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
   std::vector<std::future<size_t>> tasks;
-  for (int i = 0; i < search_shards.size(); i++) {
+  for (size_t i = 0; i < search_shards.size(); i++) {
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
         [&search_shards, i, slice_num, &shard_merge]() -> size_t {
           std::vector<std::vector<uint64_t>> shard_keys;
@@ -2229,7 +2424,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   feat_name.resize(node_types.size());
   feat_shape.resize(node_types.size());
   feat_dtype.resize(node_types.size());
-  VLOG(0) << "got " << node_types.size() << "node types in total";
+  VLOG(0) << "got " << node_types.size() << " node types in total";
   for (int k = 0; k < node_types.size(); k++) {
     feature_to_id[node_types[k]] = k;
     auto node_type = node_types[k];
@@ -2287,6 +2482,51 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   }
 
   return 0;
+}
+
+void GraphTable::init_worker_poll(int gpu_num) {
+  _cpu_worker_pool.resize(gpu_num);
+  for (int i = 0; i < gpu_num; i++) {
+    _cpu_worker_pool[i].reset(new ::ThreadPool(16));
+  }
+}
+
+void GraphTable::build_graph_total_keys() {
+  VLOG(0) << "begin insert edge to graph_total_keys";
+  // build node embedding id
+  std::vector<std::vector<uint64_t>> keys;
+  this->get_node_embedding_ids(1, &keys);
+  graph_total_keys_.insert(
+      graph_total_keys_.end(), keys[0].begin(), keys[0].end());
+
+  VLOG(0) << "finish insert edge to graph_total_keys";
+}
+
+void GraphTable::build_graph_type_keys() {
+  VLOG(0) << "begin build_graph_type_keys";
+  graph_type_keys_.clear();
+  graph_type_keys_.resize(this->feature_to_id.size());
+
+  int cnt = 0;
+  for (auto &it : this->feature_to_id) {
+    auto node_idx = it.second;
+    std::vector<std::vector<uint64_t>> keys;
+    this->get_all_id(1, node_idx, 1, &keys);
+    type_to_index_[node_idx] = cnt;
+    graph_type_keys_[cnt++] = std::move(keys[0]);
+  }
+  VLOG(0) << "finish build_graph_type_keys";
+
+  VLOG(0) << "begin insert feature into graph_total_keys";
+  // build feature embedding id
+  for (auto &it : this->feature_to_id) {
+    auto node_idx = it.second;
+    std::vector<std::vector<uint64_t>> keys;
+    this->get_all_feature_ids(1, node_idx, 1, &keys);
+    graph_total_keys_.insert(
+        graph_total_keys_.end(), keys[0].begin(), keys[0].end());
+  }
+  VLOG(0) << "finish insert feature into graph_total_keys";
 }
 
 }  // namespace distributed

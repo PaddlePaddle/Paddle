@@ -292,7 +292,8 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
   thread_local std::ostringstream os;
   os.clear();
   os.str("");
-  os << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4];
+  os << common_feature_value.UnseenDays(const_cast<float*>(v)) << " " << v[1]
+     << " " << v[2] << " " << v[3] << " " << v[4];
   //    << v[5] << " " << v[6];
   for (int i = common_feature_value.EmbedG2SumIndex();
        i < common_feature_value.EmbedxG2SumIndex();
@@ -318,6 +319,19 @@ int CtrDymfAccessor::ParseFromString(const std::string& str, float* value) {
   auto ret = paddle::string::str_to_float(str.data(), value);
   CHECK(ret >= 7) << "expect more than 7 real:" << ret;
   return ret;
+}
+
+bool CtrDymfAccessor::SaveMemCache(float* value,
+                                   int param,
+                                   double global_cache_threshold,
+                                   uint16_t pass_id) {
+  auto base_threshold = _config.ctr_accessor_param().base_threshold();
+  return common_feature_value.Show(value) > global_cache_threshold ||
+         common_feature_value.PassId(value) >= pass_id;
+}
+
+void CtrDymfAccessor::UpdatePassId(float* value, uint16_t pass_id) {
+  common_feature_value.PassId(value) = pass_id;
 }
 
 }  // namespace distributed

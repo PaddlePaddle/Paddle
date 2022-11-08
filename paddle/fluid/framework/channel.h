@@ -353,7 +353,7 @@ class ChannelReader {
     }
     if (cursor_ >= buffer_.size()) {
       cursor_ = 0;
-      if (channel_->read(buffer_) == 0) {
+      if (channel_->Read(buffer_) == 0) {
         failed_ = true;
         return *this;
       }

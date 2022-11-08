@@ -151,6 +151,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   bool train_mode = device_reader_->IsTrainMode();
   timeline.Start();
   uint64_t total_inst = 0;
+  device_reader_->InitGraphTrainResource();
   while (1) {
     cur_batch = device_reader_->Next();
     if (FLAGS_enable_exit_when_partial_worker && train_mode) {
@@ -268,6 +269,7 @@ void HogwildWorker::TrainFiles() {
 #endif
   // while ((cur_batch = device_reader_->Next()) > 0) {
   bool train_mode = device_reader_->IsTrainMode();
+  device_reader_->InitGraphTrainResource();
   while (1) {
     cur_batch = device_reader_->Next();
     if (FLAGS_enable_exit_when_partial_worker && train_mode) {

@@ -422,6 +422,9 @@ if(WITH_PSCORE)
 
   include(external/rocksdb) # download, build, install rocksdb
   list(APPEND third_party_deps extern_rocksdb)
+
+  include(external/jemalloc) # download, build, install jemalloc
+  list(APPEND third_party_deps extern_jemalloc)
 endif()
 
 if(WITH_XBYAK)

@@ -388,6 +388,7 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
         self.trainer_num = -1
+        self.pass_id = 0
 
     @deprecated(since="2.0.0",
                 update_to="paddle.distributed.InMemoryDataset._set_feed_type")
@@ -1082,7 +1083,24 @@ class InMemoryDataset(DatasetBase):
             "gpu_graph_training", True)
         self.proto_desc.graph_config.sage_mode = config.get("sage_mode", False)
         self.proto_desc.graph_config.samples = config.get("samples", "")
+        self.proto_desc.graph_config.train_table_cap = config.get(
+            "train_table_cap", 800000)
+        self.proto_desc.graph_config.infer_table_cap = config.get(
+            "infer_table_cap", 800000)
         self.dataset.set_gpu_graph_mode(True)
+
+    def set_pass_id(self, pass_id):
+        """
+        set_pass_id
+        """
+        self.pass_id = pass_id
+        self.dataset.set_pass_id(pass_id)
+
+    def get_pass_id(self):
+        """
+        get_pass_id
+        """
+        return self.pass_id
 
 
 class QueueDataset(DatasetBase):

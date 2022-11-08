@@ -88,3 +88,4 @@ set_state_dict = fleet.set_state_dict
 shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
 distributed_scaler = fleet.distributed_scaler
+save_cache_table = fleet.save_cache_table

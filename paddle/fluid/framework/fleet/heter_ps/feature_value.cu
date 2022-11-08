@@ -60,11 +60,11 @@ __global__ void PullDedupCopy(const size_t N,
                               const int64_t* slot_lens,
                               uint64_t max_val_size,
                               const int* slot_dims,
-                              const int hidden,
+                              const size_t hidden,
                               const int* key2slot,
                               const uint32_t* restore_idx,
                               TAccess accessor) {
-  CUDA_KERNEL_LOOP(idx, N) {
+  CUDA_KERNEL_LOOP_TYPE(idx, N, size_t) {
     int i = idx / hidden;
     int off = idx % hidden;
 
@@ -158,7 +158,7 @@ __global__ void PushMergeCopyAtomic(const size_t N,
                                     const uint32_t* d_restore_idx,
                                     size_t grad_value_size,
                                     TAccess accessor) {
-  CUDA_KERNEL_LOOP(idx, N) {
+  CUDA_KERNEL_LOOP_TYPE(idx, N, size_t) {
     int i = idx / hidden;
     int off = idx % hidden;
     // filter 0 keys
@@ -224,7 +224,7 @@ __global__ void PushMergeCopy(const size_t N,
                               const uint32_t* d_sort_cnt,
                               size_t grad_value_size,
                               TAccess accessor) {
-  CUDA_KERNEL_LOOP(idx, N) {
+  CUDA_KERNEL_LOOP_TYPE(idx, N, size_t) {
     int i = idx / hidden;
     int off = idx % hidden;
     // filter 0 keys

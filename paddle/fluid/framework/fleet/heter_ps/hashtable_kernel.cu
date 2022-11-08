@@ -34,11 +34,39 @@ struct ReplaceOp {
 template <typename Table>
 __global__ void insert_kernel(Table* table,
                               const typename Table::key_type* const keys,
+                              size_t len,
+                              uint64_t* global_num) {
+  ReplaceOp<typename Table::mapped_type> op;
+  thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
+
+  __shared__ uint64_t local_num;
+
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (threadIdx.x == 0) {
+    local_num = 0;
+  }
+  __syncthreads();
+
+  if (i < len) {
+    kv.first = keys[i];
+    kv.second = 1;  // fake value
+    auto it = table->insert(kv, op, &local_num);
+    assert(it != table->end() && "error: insert fails: table is full");
+  }
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    atomicAdd(global_num, local_num);
+  }
+}
+
+template <typename Table>
+__global__ void insert_kernel(Table* table,
+                              const typename Table::key_type* const keys,
                               const typename Table::mapped_type* const vals,
                               size_t len) {
   ReplaceOp<typename Table::mapped_type> op;
   thrust::pair<typename Table::key_type, typename Table::mapped_type> kv;
-
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     kv.first = keys[i];
@@ -139,6 +167,41 @@ __global__ void dy_mf_update_kernel(Table* table,
   }
 }
 
+template <typename Table>
+__global__ void get_keys_kernel(Table* table,
+                                typename Table::key_type* d_out,
+                                uint64_t* global_cursor,
+                                uint64_t unused_key) {
+  extern __shared__ typename Table::key_type local_key[];
+  __shared__ uint64_t local_num;
+  __shared__ uint64_t global_num;
+
+  size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (threadIdx.x == 0) {
+    local_num = 0;
+  }
+  __syncthreads();
+  uint64_t len = table->size();
+  if (idx < len) {
+    typename Table::value_type val = *(table->data() + idx);
+    if (val.first != unused_key) {
+      uint64_t dst = atomicAdd(&local_num, 1);
+      local_key[dst] = val.first;
+    }
+  }
+
+  __syncthreads();
+
+  if (threadIdx.x == 0) {
+    global_num = atomicAdd(global_cursor, local_num);
+  }
+  __syncthreads();
+
+  if (threadIdx.x < local_num) {
+    d_out[global_num + threadIdx.x] = local_key[threadIdx.x];
+  }
+}
+
 template <typename KeyType, typename ValType>
 HashTable<KeyType, ValType>::HashTable(size_t capacity) {
   container_ = new TableContainer<KeyType, ValType>(capacity);
@@ -214,6 +277,20 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
 template <typename KeyType, typename ValType>
 template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
+                                         size_t len,
+                                         uint64_t* global_num,
+                                         StreamType stream) {
+  if (len == 0) {
+    return;
+  }
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+      container_, d_keys, len, global_num);
+}
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
                                          const ValType* d_vals,
                                          size_t len,
                                          StreamType stream) {
@@ -224,6 +301,20 @@ void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
   insert_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
       container_, d_keys, d_vals, len);
 }
+
+template <typename KeyType, typename ValType>
+template <typename StreamType>
+void HashTable<KeyType, ValType>::get_keys(KeyType* d_out,
+                                           uint64_t* global_cursor,
+                                           StreamType stream) {
+  size_t len = container_->size();
+  const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
+  KeyType unuse_key = std::numeric_limits<KeyType>::max();
+  size_t shared_mem_size = sizeof(KeyType) * BLOCK_SIZE_;
+  get_keys_kernel<<<grid_size, BLOCK_SIZE_, shared_mem_size, stream>>>(
+      container_, d_out, global_cursor, unuse_key);
+}
+
 
 template <typename KeyType, typename ValType>
 template <typename StreamType>
@@ -434,6 +525,17 @@ template void HashTable<long, unsigned int>::insert<cudaStream_t>(
     const long* d_keys,
     const unsigned int* d_vals,
     size_t len,
+    cudaStream_t stream);
+
+template void HashTable<unsigned long, unsigned long>::get_keys<cudaStream_t>(
+                unsigned long* d_out,
+                unsigned long* global_cursor,
+                cudaStream_t stream);
+
+template void HashTable<unsigned long, unsigned long>::insert<cudaStream_t>(
+    const unsigned long* d_keys,
+    unsigned long len,
+    uint64_t* global_num,
     cudaStream_t stream);
 
 template void HashTable<unsigned long, unsigned long>::insert<cudaStream_t>(

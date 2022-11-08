@@ -113,12 +113,22 @@ class GpuPsGraphTable
         }
       }
     }
+    device_mutex_.resize(gpu_num);
+    for (int i = 0; i < gpu_num; i++) {
+      device_mutex_[i] = new std::mutex();
+    }
   }
-  ~GpuPsGraphTable() {}
+  ~GpuPsGraphTable() {
+    for (size_t i = 0; i < device_mutex_.size(); ++i) {
+      delete device_mutex_[i];
+    }
+    device_mutex_.clear();
+  }
   void build_graph_on_single_gpu(const GpuPsCommGraph &g, int gpu_id, int idx);
   void build_graph_fea_on_single_gpu(const GpuPsCommGraphFea &g, int gpu_id);
   void clear_graph_info(int gpu_id, int index);
   void clear_graph_info(int index);
+  void reset_feature_info(int gpu_id, size_t capacity, size_t feature_size);
   void clear_feature_info(int gpu_id, int index);
   void clear_feature_info(int index);
   void build_graph_from_cpu(const std::vector<GpuPsCommGraph> &cpu_node_list,
@@ -169,7 +179,10 @@ class GpuPsGraphTable
                                                int* actual_sample_size,
                                                int edge_type_len,
                                                int len);
-  int init_cpu_table(const paddle::distributed::GraphParameter &graph);
+  int init_cpu_table(const paddle::distributed::GraphParameter &graph, int gpu_num = 8);
+  gpuStream_t get_local_stream(int gpu_id) {
+    return resource_->local_stream(gpu_id, 0);
+  }
 
   int gpu_num;
   int graph_table_num_, feature_table_num_;
@@ -181,6 +194,7 @@ class GpuPsGraphTable
   std::shared_ptr<paddle::distributed::GraphTable> cpu_graph_table_;
   std::shared_ptr<pthread_rwlock_t> rw_lock;
   mutable std::mutex mutex_;
+  std::vector<std::mutex *> device_mutex_;
   std::condition_variable cv_;
   int cpu_table_status;
 };

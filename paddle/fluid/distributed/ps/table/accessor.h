@@ -162,6 +162,15 @@ class ValueAccessor {
     return 0;
   }
 
+  virtual bool SaveMemCache(float* value,
+                            int param,
+                            double global_cache_threshold,
+                            uint16_t pass_id) {
+    return true;
+  }
+
+  virtual void UpdatePassId(float* value, uint16_t pass_id) {}
+
   virtual float GetField(float* value, const std::string& name) { return 0.0; }
 #define DEFINE_GET_INDEX(class, field) \
   virtual int get_##field##_index() override { return class ::field##_index(); }

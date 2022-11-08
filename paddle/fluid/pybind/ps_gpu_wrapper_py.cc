@@ -64,6 +64,9 @@ void BindPSGPUWrapper(py::module* m) {
       .def("begin_pass",
            &framework::PSGPUWrapper::BeginPass,
            py::call_guard<py::gil_scoped_release>())
+      .def("dump_to_mem",
+           &framework::PSGPUWrapper::DumpToMem,
+           py::call_guard<py::gil_scoped_release>())
       .def("load_into_memory",
            &framework::PSGPUWrapper::LoadIntoMemory,
            py::call_guard<py::gil_scoped_release>())

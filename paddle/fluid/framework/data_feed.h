@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+    /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -60,6 +60,8 @@ class Scope;
 class Variable;
 class NeighborSampleResult;
 class NodeQueryResult;
+template <typename KeyType, typename ValType>
+class HashTable;
 }  // namespace framework
 }  // namespace paddle
 
@@ -878,6 +880,9 @@ struct BufState {
 
   int GetNextBatch() {
     cursor += len;
+    if (row_num - cursor < 0) {
+      return 0;
+    }
     int tmp_len = cursor + batch_size > row_num ? row_num - cursor : batch_size;
     if (tmp_len == 0) {
       return 0;
@@ -895,11 +900,14 @@ class GraphDataGenerator {
   GraphDataGenerator(){};
   virtual ~GraphDataGenerator(){};
   void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc);
-  void AllocResource(const paddle::platform::Place& place,
-                     std::vector<LoDTensor*> feed_vec);
+  void AllocResource(int thread_id, std::vector<LoDTensor*> feed_vec);
+  void AllocTrainResource(int thread_id);
+  void SetFeedVec(std::vector<LoDTensor*> feed_vec);
   int AcquireInstance(BufState* state);
   int GenerateBatch();
-  int FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk);
+  int FillWalkBuf();
+  int FillInferBuf();
+  void DoWalk();
   int FillFeatureBuf(uint64_t* d_walk, uint64_t* d_feature, size_t key_num);
   int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
                      std::shared_ptr<phi::Allocation> d_feature);
@@ -911,34 +919,44 @@ class GraphDataGenerator {
                    int step,
                    int* len_per_row);
   int FillInsBuf();
+  int FillIdShowClkTensor(int total_instance,
+                          bool gpu_graph_training,
+                          size_t cursor = 0);
+  int FillGraphSlotFeature(int total_instance, bool gpu_graph_training);
+  int MakeInsPair();
+  int GetPathNum() { return total_row_; }
+  void ResetPathNum() {total_row_ = 0; }
+  void ResetEpochFinish() {epoch_finish_ = false; }
+  void ClearSampleState();
   void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
-    type_to_index_[type] = h_device_keys_.size();
-    h_device_keys_.push_back(device_keys);
+    // type_to_index_[type] = h_device_keys_.size();
+    // h_device_keys_.push_back(device_keys);
   }
+
   std::vector<std::shared_ptr<phi::Allocation>> SampleNeighbors(
-      int64_t* uniq_nodes, int len, int sample_size,
-      std::vector<int>& edges_split_num, int64_t* neighbor_len);
-
+          int64_t* uniq_nodes, int len, int sample_size,
+          std::vector<int>& edges_split_num, int64_t* neighbor_len);
   std::shared_ptr<phi::Allocation> GetReindexResult(
-      int64_t* reindex_src_data, const int64_t* center_nodes,
-      int* final_nodes_len, int node_len, int64_t neighbor_len);
-
+          int64_t* reindex_src_data, const int64_t* center_nodes,
+          int* final_nodes_len, int node_len, int64_t neighbor_len);
   std::shared_ptr<phi::Allocation> GenerateSampleGraph(
-      uint64_t* node_ids, int len, int* uniq_len, phi::DenseTensor* inverse);
+          uint64_t* node_ids, int len, int* uniq_len, phi::DenseTensor* inverse);
+  int InsertTable(const unsigned long* d_keys,
+          unsigned long len,
+          std::shared_ptr<phi::Allocation> d_uniq_node_num);
+  std::vector<uint64_t>& GetHostVec() { return host_vec_; }
+  bool get_epoch_finish() {return epoch_finish_; }
+  void clear_gpu_mem();
 
  protected:
+  HashTable<uint64_t, uint64_t>* table_;
   int walk_degree_;
   int walk_len_;
   int window_;
   int once_sample_startid_len_;
   int gpuid_;
-  // start ids
-  // int64_t* device_keys_;
-  // size_t device_key_size_;
-  std::vector<std::vector<uint64_t>*> h_device_keys_;
-  std::unordered_map<int, int> type_to_index_;
-  // point to device_keys_
   size_t cursor_;
+  int thread_id_;
   size_t jump_rows_;
   int edge_to_id_len_;
   int uniq_instance_;
@@ -947,7 +965,8 @@ class GraphDataGenerator {
   int64_t* show_tensor_ptr_;
   int64_t* clk_tensor_ptr_;
 
-  cudaStream_t stream_;
+  cudaStream_t train_stream_;
+  cudaStream_t sample_stream_;
   paddle::platform::Place place_;
   std::vector<LoDTensor*> feed_vec_;
   std::vector<size_t> offset_;
@@ -955,22 +974,20 @@ class GraphDataGenerator {
   std::vector<std::shared_ptr<phi::Allocation>> d_device_keys_;
 
   std::shared_ptr<phi::Allocation> d_walk_;
+  std::shared_ptr<phi::Allocation> d_feature_list_;
   std::shared_ptr<phi::Allocation> d_feature_;
   std::shared_ptr<phi::Allocation> d_len_per_row_;
   std::shared_ptr<phi::Allocation> d_random_row_;
+  std::shared_ptr<phi::Allocation> d_uniq_node_num_;
   std::shared_ptr<phi::Allocation> d_slot_feature_num_map_;
   std::shared_ptr<phi::Allocation> d_actual_slot_id_map_;
   std::shared_ptr<phi::Allocation> d_fea_offset_map_;
-  //
+
   std::vector<std::shared_ptr<phi::Allocation>> d_sampleidx2rows_;
   int cur_sampleidx2row_;
   // record the keys to call graph_neighbor_sample
   std::shared_ptr<phi::Allocation> d_sample_keys_;
   int sample_keys_len_;
-
-  std::set<int> finish_node_type_;
-  std::unordered_map<int, size_t> node_type_start_;
-  std::vector<int> infer_node_type_start_;
 
   std::shared_ptr<phi::Allocation> d_ins_buf_;
   std::shared_ptr<phi::Allocation> d_feature_buf_;
@@ -994,11 +1011,17 @@ class GraphDataGenerator {
   int fea_num_per_node_;
   int shuffle_seed_;
   int debug_mode_;
-  std::vector<int> first_node_type_;
-  std::vector<std::vector<int>> meta_path_;
   bool gpu_graph_training_;
   bool sage_mode_;
   std::vector<int> samples_;
+  bool epoch_finish_;
+  std::vector<uint64_t> host_vec_;
+  std::vector<uint64_t> h_device_keys_len_;
+  uint64_t train_table_cap_;
+  uint64_t infer_table_cap_;
+  int total_row_;
+  size_t infer_node_start_;
+  size_t infer_node_end_;
 };
 
 class DataFeed {
@@ -1063,11 +1086,30 @@ class DataFeed {
   virtual void SetParseLogKey(bool parse_logkey) {}
   virtual void SetEnablePvMerge(bool enable_pv_merge) {}
   virtual void SetCurrentPhase(int current_phase) {}
+  virtual void InitGraphResource() {}
+  virtual void InitGraphTrainResource() {}
   virtual void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     gpu_graph_data_generator_.SetDeviceKeys(device_keys, type);
 #endif
   }
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  virtual const std::vector<uint64_t>& GetHostVec() {
+    return gpu_graph_data_generator_.GetHostVec();
+  }
+#endif
+
+  virtual void clear_gpu_mem() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    gpu_graph_data_generator_.clear_gpu_mem();
+#endif
+  }
+  virtual bool get_epoch_finish() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    return gpu_graph_data_generator_.get_epoch_finish();
+#endif
+  }
+
   virtual void SetGpuGraphMode(int gpu_graph_mode) {
     gpu_graph_mode_ = gpu_graph_mode;
   }
@@ -1084,10 +1126,39 @@ class DataFeed {
     return ins_content_vec_;
   }
   virtual int GetCurBatchSize() { return batch_size_; }
+  virtual int GetGraphPathNum() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    return gpu_graph_data_generator_.GetPathNum();
+#else
+    return 0;
+#endif
+  }
+  virtual void ResetPathNum() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    gpu_graph_data_generator_.ResetPathNum();
+#endif
+  }
+  
+  virtual void ClearSampleState() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    gpu_graph_data_generator_.ClearSampleState();
+#endif
+  }
+
+  virtual void ResetEpochFinish() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+    gpu_graph_data_generator_.ResetEpochFinish();
+#endif
+}
+
   virtual bool IsTrainMode() { return train_mode_; }
   virtual void LoadIntoMemory() {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(LoadIntoMemory) is not implemented."));
+  }
+  virtual void DoWalk() {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This function(DoWalk) is not implemented."));
   }
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
@@ -1663,6 +1734,8 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   //                                    CustomParser* parser) {}
   virtual void PutToFeedVec(const std::vector<SlotRecord>& ins_vec) {}
 
+  virtual void InitGraphResource(void);
+  virtual void InitGraphTrainResource(void);
   virtual void LoadIntoMemoryByCommand(void);
   virtual void LoadIntoMemoryByLib(void);
   virtual void LoadIntoMemoryByLine(void);
@@ -1697,6 +1770,8 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
                      const int float_slot_size,
                      const UsedSlotGpuType* used_slots);
 #endif
+  virtual void DoWalk();
+
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;
   int float_use_slot_size_ = 0;
