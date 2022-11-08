@@ -214,6 +214,8 @@ message OperatorSupplementEventProto {
   // call stack
   required string callstack = 7;
 
+  required uint64 op_id = 8;
+
   message Attr {
     required string name = 1;
     required AttrType type = 2;
@@ -227,7 +229,7 @@ message OperatorSupplementEventProto {
     optional bool support_tensor = 7 [ default = false];
   }
 
-  repeated Attr attributes = 8;
+  repeated Attr attributes = 9;
 }
 
 message CudaRuntimeTraceEventProto {

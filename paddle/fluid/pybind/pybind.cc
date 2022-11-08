@@ -2249,6 +2249,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("callstack", &paddle::platform::HostPythonNode::callstack)
       .def_readwrite("attributes",
                      &paddle::platform::HostPythonNode::attributes)
+      .def_readwrite("op_id", &paddle::platform::HostPythonNode::op_id)
       .def_readwrite("children_node",
                      &paddle::platform::HostPythonNode::children_node_ptrs)
       .def_readwrite("runtime_node",

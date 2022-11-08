@@ -131,6 +131,7 @@ void ProcessOperatorSupplementEvents(
       event.dtypes = dtypes;
       event.callstack = result_string.str();
       event.attributes = evt.attributes;
+      event.op_id = evt.op_id;
       event.process_id = op_supplement_events.process_id;
       event.thread_id = tid;
       collector->AddOperatorSupplementEvent(std::move(event));

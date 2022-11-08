@@ -84,7 +84,7 @@ TEST(NodeTreesTest, LogMe_case0) {
   dtypes[std::string("X")].push_back(std::string("float32"));
   AttributeMap attrs;
   op_supplement_events.push_back(OperatorSupplementEvent(
-      11600, "op1", input_shapes, dtypes, "op1()", attrs, 10, 10));
+      11600, "op1", input_shapes, dtypes, "op1()", attrs, 0, 10, 10));
   runtime_events.push_back(RuntimeTraceEvent(
       std::string("cudalaunch1"), 15000, 17000, 10, 10, 1, 0));
   runtime_events.push_back(RuntimeTraceEvent(
@@ -305,6 +305,7 @@ TEST(NodeTreesTest, HandleTrees_case0) {
       std::map<std::string, std::vector<std::string>>(),
       "op1()",
       attrs,
+      0,
       10,
       10));
   runtime_events.push_back(RuntimeTraceEvent(

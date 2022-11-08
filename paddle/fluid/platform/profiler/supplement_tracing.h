@@ -43,7 +43,8 @@ class RecordOpInfoSupplement {
   explicit RecordOpInfoSupplement(const std::string& type,
                                   const framework::AttributeMap& attrs,
                                   const framework::InferShapeContext& shape_ctx,
-                                  const framework::RuntimeContext& ctx);
+                                  const framework::RuntimeContext& ctx,
+                                  uint64_t op_id);
   /**
    * @param type:  Operator type name.
    * @param attrs: Attribute map of op.

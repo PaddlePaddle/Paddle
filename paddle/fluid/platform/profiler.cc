@@ -257,7 +257,8 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
     const std::string &type,
     const framework::AttributeMap &attrs,
     const framework::InferShapeContext &shape_ctx,
-    const framework::RuntimeContext &ctx) {
+    const framework::RuntimeContext &ctx,
+    uint64_t op_id) {
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
@@ -272,7 +273,7 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   }
 
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      PosixInNsec(), type, input_shapes, dtypes, attrs);
+      PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
 }
 
 RecordOpInfoSupplement::RecordOpInfoSupplement(
@@ -297,8 +298,9 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
       dtypes[input_name] = shape_ctx.GetInputsVarType(input_name);
     }
   }
+  uint64_t op_id = 0;
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      PosixInNsec(), type, input_shapes, dtypes, attrs);
+      PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
 }
 
 RecordOpInfoSupplement::RecordOpInfoSupplement(
@@ -313,8 +315,9 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   }
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
   framework::AttributeMap attrs;
+  uint64_t op_id = 0;
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      PosixInNsec(), type, input_shapes, dtypes, attrs);
+      PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
 }
 
 bool RecordEvent::IsEnabled() {

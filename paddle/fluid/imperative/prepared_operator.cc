@@ -594,7 +594,7 @@ static void PreparedOpRunImpl(
     op.Info().infer_shape_(&infer_shape_ctx);
     record_event.End();
     platform::RecordOpInfoSupplement(
-        op.Type(), op.Attrs(), infer_shape_ctx, ctx);
+        op.Type(), op.Attrs(), infer_shape_ctx, ctx, op.Id());
   }
 
   {
