@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/skip_layernorm_fuse_pass.h"
+#include "paddle/fluid/framework/ir/trt_skip_layernorm_mixed_precision_pass.h"
 
 #include <string>
 
@@ -32,8 +32,8 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-struct SkipLayerNorm : public PatternBase {
-  SkipLayerNorm(PDPattern *pattern, const std::string &name_scope)
+struct TrtSkipLayerNormMixedPrecision : public PatternBase {
+  TrtSkipLayerNormMixedPrecision(PDPattern *pattern, const std::string &name_scope)
       : PatternBase(pattern, name_scope, "skip_layernorm") {}
 
   PDNode *operator()(PDNode *x, PDNode *y);
@@ -52,8 +52,7 @@ struct SkipLayerNorm : public PatternBase {
   PATTERN_DECL_NODE(layer_norm_variance);
 };
 
-PDNode *SkipLayerNorm::operator()(PDNode *x, PDNode *y) {
-  LOG(ERROR) << 1;
+PDNode *TrtSkipLayerNormMixedPrecision::operator()(PDNode *x, PDNode *y) {
   // Create nodes for elementwise add op.
   x->assert_is_op_input("elementwise_add", "X");
   y->assert_is_op_input("elementwise_add", "Y");
@@ -102,26 +101,27 @@ PDNode *SkipLayerNorm::operator()(PDNode *x, PDNode *y) {
 
 }  // namespace patterns
 
-void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
-  LOG(ERROR) << 1;
+void TrtSkipLayerNormMixedPrecisionPass::ApplyImpl(ir::Graph *graph) const {
+  //LOG(ERROR << 1);
+  std::cout << "test mixed precision" << std::endl;
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
-  FusePassBase::Init("skip_layernorm_fuse", graph);
+  FusePassBase::Init("skip_layernorm_mixed_precision", graph);
   int found_subgraph_count = 0;
 
   GraphPatternDetector gpd;
   auto *x = gpd.mutable_pattern()
-                ->NewNode("skip_layernorm_fuse/x")
+                ->NewNode("skip_layernorm_mixed_precision/x")
                 ->AsInput()
                 ->assert_is_op_input("elementwise_add", "X")
                 ->assert_var_not_persistable();
   auto *y = gpd.mutable_pattern()
-                ->NewNode("skip_layernorm_fuse/y")
+                ->NewNode("skip_layernorm_mixed_precision/y")
                 ->AsInput()
                 ->assert_is_op_input("elementwise_add", "Y")
                 ->assert_var_not_persistable();
-  patterns::SkipLayerNorm fused_pattern(gpd.mutable_pattern(),
-                                        "skip_layernorm_fuse");
+  patterns::TrtSkipLayerNormMixedPrecision fused_pattern(gpd.mutable_pattern(),
+                                           "skip_layernorm_mixed_precision");
   fused_pattern(x, y);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -136,7 +136,7 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
       return;
     }
 
-    VLOG(4) << "handle SkipLayerNorm fuse";
+    VLOG(4) << "handle TrtSkipLayerNorm mixed precision";
     GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
@@ -150,27 +150,44 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     std::unordered_set<const Node *> del_node_set;
 
-    // Create an SkipLayerNorm op node
-    OpDesc new_desc;
+    // Create an TrtSkipLayerNorm op node
+    OpDesc new_desc(elementwise->Op()->Block());
     new_desc.SetType("skip_layernorm");
+
+    std::string in_str = "(";
+    std::string outer_pre_str = "";
+    for (const auto& input : elementwise->Op()->InputNames()) {
+      in_str.append(outer_pre_str + input + "=[");
+      std::string inner_pre_str = "";
+      for (const auto& arg : elementwise->Op()->Input(input)) {
+        in_str.append(inner_pre_str + arg);
+        inner_pre_str = " ,";
+      }
+      outer_pre_str = " ,";
+      in_str.append("]");
+    }
+
+    //const auto& input_names = elementwise->Op()->InputNames();
+    std::cout << "element wise input names: " << elementwise->Op()->InputNames()[0] << std::endl;
+    
+    std::cout << "element wise input names: " << in_str << std::endl;
+    std::string input_name1 = elementwise->Op()->InputNames()[0];
+    std::cout << "1" << std::endl;
+    auto input_op = elementwise->Op()->Block()->FindVarRecursive(input_name1);
+    std::count << input_op->GetShape()[0] << std::endl;
+    std::cout << "1" << std::endl;
+    int input_op_type = static_cast<int>(input_op[0].GetType());
+    std::cout << "1" << std::endl;
+    std::cout << input_op_type << std::endl;
+    //std::cout << "element wise input names: " << static_cast<int>(input_op.GetType()) << std::endl;
+
+//    const auto& input_op = elementwise->Op()->Input();
 
     // inputs
     new_desc.SetInput("X", {subgraph.at(x)->Name()});
     new_desc.SetInput("Y", {subgraph.at(y)->Name()});
     new_desc.SetInput("Scale", {layer_norm_scale->Name()});
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
-    
-    //if (elementwise->Op()->HasAttr("Scale_x")) {
-    //  new_desc.SetAttr("Scale_x", elementwise->Op()->GetAttr("Scale_x"));
-    //}
-   
-    //if (elementwise->Op()->HasAttr("Scale_y")) {
-    //  new_desc.SetAttr("Scale_y", elementwise->Op()->GetAttr("Scale_y"));
-    //}
-
-    //if (elementwise->Op()->HasAttr("Input_scale")) {
-    //    new_desc.SetAttr("Input_scale", elementwise->Op()->GetAttr("Input_scale"));
-    //}
 
     if (layer_norm->Op()->HasAttr("out_threshold")) {
       new_desc.SetAttr("enable_int8", true);
@@ -205,6 +222,33 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   };
 
   gpd(graph, handler);
+  if (found_subgraph_count > 0) {
+    bool use_varseqlen = Get<bool>("use_varseqlen");
+    std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
+    std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
+
+    if (use_varseqlen && pos_id != "" && mask_id != "") {
+      if ((graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
+           graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) &&
+          graph->Has(framework::ir::kMultiheadMatmulPass)) {
+        VLOG(3) << "start varseqlen trt_skip_layernorm_mixed_precision_pass";
+      } else {
+        PADDLE_THROW(platform::errors::Fatal(
+            "Use transformer'varseqlen need "
+            "trt_embedding_eltwise_layernorm_fuse_pass, "
+            "trt_multihead_matmul_fuse_pass. please use no_varseqlen"));
+      }
+    } else if (!use_varseqlen && pos_id == "" && mask_id == "") {
+      VLOG(3) << "start no_varseqlen trt_skip_layernorm_mixed_precision_pass";
+    } else {
+      PADDLE_THROW(
+          platform::errors::Fatal("Use transformer'varseqlen need config: "
+                                  "use_varseqlen, set pos_id, set "
+                                  "mask_id. Or not use varseqlen, do not set "
+                                  "pos_id, set mask_id. Please "
+                                  "reconfig"));
+    }
+  }
   AddStatis(found_subgraph_count);
 }
 
@@ -212,9 +256,9 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(skip_layernorm_fuse_pass,
-              paddle::framework::ir::SkipLayerNormFusePass);
-REGISTER_PASS_CAPABILITY(skip_layernorm_fuse_pass)
+REGISTER_PASS(trt_skip_layernorm_mixed_precision_pass,
+              paddle::framework::ir::TrtSkipLayerNormMixedPrecisionPass);
+REGISTER_PASS_CAPABILITY(trt_skip_layernorm_mixed_precision_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("elementwise_add", 1)

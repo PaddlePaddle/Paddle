@@ -32,6 +32,9 @@ class SkipLayerNormOpConverter : public OpConverter {
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
+    LOG(ERROR) << 1;    
+    //std::cout << "intpu1 type line36 = fp32: " << (input1->getType() == nvinfer1::DataType::kFLOAT) << std::endl;
+    //std::cout << "intpu2 type line37 = fp32: " << (input2->getType() == nvinfer1::DataType::kFLOAT) << std::endl;
     std::vector<nvinfer1::ITensor*> inputs;
     inputs.push_back(input1);
     inputs.push_back(input2);
@@ -43,59 +46,101 @@ class SkipLayerNormOpConverter : public OpConverter {
                           engine_->tensorrt_transformer_posid() != "" &&
                           engine_->tensorrt_transformer_maskid() != "";
     if (flag_varseqlen) {
+      LOG(ERROR) << 1;
       auto GetWeight =
           [&](const std::string& arg_name) -> TensorRTEngine::Weight {
         std::string var_name = op_desc.Input(arg_name).front();
         auto* temp_var = scope.FindVar(var_name);
-        auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
+        auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
         auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
         return weight;
       };
 
       auto bias_weight = GetWeight("Bias").get();
       auto scale_weight = GetWeight("Scale").get();
-
+      
       if (engine_->with_interleaved()) {
+        LOG(ERROR) << 1;
         VLOG(4)
             << "fused skip_layernorm op: use_varseqlen and with_interleaved";
         if (!enable_int8) {
           PADDLE_THROW(
               platform::errors::Fatal("use with_interleaved must be int8."));
         }
-        auto creator = GetPluginRegistry()->getPluginCreator(
-            "CustomSkipLayerNormPluginDynamic", "3");
-        PADDLE_ENFORCE_NE(
-            creator,
-            nullptr,
-            platform::errors::InvalidArgument(
-                "fail to get creator of CustomSkipLayerNormPluginDynamic"));
-        const std::vector<nvinfer1::PluginField> fields{
-            {"beta",
-             bias_weight.values,
-             GetPluginFieldType(bias_weight.type),
-             static_cast<int32_t>(bias_weight.count)},
-            { "gamma",
-              scale_weight.values,
-              GetPluginFieldType(scale_weight.type),
-              static_cast<int32_t>(scale_weight.count) }};
-        nvinfer1::PluginFieldCollection* pluginPtr =
-            static_cast<nvinfer1::PluginFieldCollection*>(
-                malloc(sizeof(*pluginPtr) +
-                       fields.size() * sizeof(nvinfer1::PluginField)));
-        pluginPtr->nbFields = static_cast<int>(fields.size());
-        pluginPtr->fields = fields.data();
+        //if (enable_int8) {
+          //float X_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("X_scale")) * 127;
+          //float Y_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Y_scale")) * 127;
+          //float X_scale = 1.0 * 127;
+          //float Y_scale = 1.0 * 127;
+          //LOG(ERROR) << "X_scale: " << X_scale;
+          //LOG(ERROR) << "Y_scale: " << Y_scale;
+          //engine_->SetTensorDynamicRange(input1, X_scale);
+          //engine_->SetTensorDynamicRange(input2, Y_scale);
+        //}
+        
+        //std::cout << "x scale: " << op_desc.HasAttr("Scale_x") << std::endl;
+        //std::cout << "y scale: " << op_desc.HasAttr("Scale_y") << std::endl; 
+        //std::cout << "input scale: " << op_desc.HasAttr("Input_scale") << std::endl;
+        if (op_desc.HasAttr("Scale_x") && op_desc.HasAttr("Scale_y")) {
+        //std::cout << "input1 type: " << static_cast<int>(input1->getType()) << std::endl;
+        //std::cout << "input2 type: " << static_cast<int>(input2->getType()) << std::endl;
+        //std::cout << "intpu1 type = fp32: " << (input1->getType() == nvinfer1::DataType::kFLOAT) << std::endl;
+        //std::cout << "intpu2 type = fp32: " << (input2->getType() == nvinfer1::DataType::kFLOAT) << std::endl;
+          auto creator = GetPluginRegistry()->getPluginCreator(
+              "CustomSkipLayerNormPluginDynamic", "3");
+          PADDLE_ENFORCE_NE(
+              creator,
+             nullptr,
+              platform::errors::InvalidArgument(
+                  "fail to get creator of CustomSkipLayerNormPluginDynamic"));
+          const std::vector<nvinfer1::PluginField> fields{
+              {"beta",
+               bias_weight.values,
+               GetPluginFieldType(bias_weight.type),
+               static_cast<int32_t>(bias_weight.count)},
+              {"gamma",
+               scale_weight.values,
+               GetPluginFieldType(scale_weight.type),
+               static_cast<int32_t>(scale_weight.count) }};
+          nvinfer1::PluginFieldCollection* pluginPtr =
+              static_cast<nvinfer1::PluginFieldCollection*>(
+                  malloc(sizeof(*pluginPtr) +
+                         fields.size() * sizeof(nvinfer1::PluginField)));
+          pluginPtr->nbFields = static_cast<int>(fields.size());
+          pluginPtr->fields = fields.data();
 
-        auto pluginObj = creator->createPlugin(
-            "CustomSkipLayerNormPluginDynamic", pluginPtr);
-        auto plugin_layer = engine_->network()->addPluginV2(
-            inputs.data(), inputs.size(), *pluginObj);
+          auto pluginObj = creator->createPlugin(
+              "CustomSkipLayerNormPluginDynamic", pluginPtr);
+          auto plugin_layer = engine_->network()->addPluginV2(
+              inputs.data(), inputs.size(), *pluginObj);
 
-        PADDLE_ENFORCE_NE(
-            plugin_layer,
-            nullptr,
-            platform::errors::InvalidArgument(
-                "fail to add CustomSkipLayerNormPluginDynamic layer"));
-        layer = plugin_layer;
+          PADDLE_ENFORCE_NE(
+              plugin_layer,
+              nullptr,
+              platform::errors::InvalidArgument(
+                  "fail to add CustomSkipLayerNormPluginDynamic layer"));
+          layer = plugin_layer;
+        } else if (!op_desc.HasAttr("Scale_x") && !op_desc.HasAttr("Scale_y")) {
+//          std::cout << "half + int8" << std::endl;
+//          float Y_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Scale_y")) * 127;
+//          float Y_scale = 1.0 * 127;
+//          LOG(ERROR) << "Y_scale: " << Y_scale;
+//          engine_->SetTensorDynamicRange(input2, Y_scale);
+          float eps = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
+
+          plugin::SkipLayerNormPluginDynamicInt8* plugin =
+              new plugin::SkipLayerNormPluginDynamicInt8(
+                  const_cast<void*>(
+                      static_cast<const void*>(bias_weight.values)),
+                  const_cast<void*>(
+                      static_cast<const void*>(scale_weight.values)),
+                  bias_weight.count,
+                  scale_weight.count,
+                  eps);
+          layer = engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
+          float out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
+        }
       } else {
         auto creator = GetPluginRegistry()->getPluginCreator(
             "CustomSkipLayerNormPluginDynamic", "2");
@@ -154,7 +199,7 @@ class SkipLayerNormOpConverter : public OpConverter {
           [&](const std::string& arg_name) -> TensorRTEngine::Weight {
         std::string var_name = op_desc.Input(arg_name).front();
         auto* temp_var = scope.FindVar(var_name);
-        auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
+        auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
         auto weight = engine_->GetFp16TrtWeight(var_name, *temp_tensor);
         return weight;
       };
@@ -163,7 +208,7 @@ class SkipLayerNormOpConverter : public OpConverter {
           [&](const std::string& arg_name) -> TensorRTEngine::Weight {
         std::string var_name = op_desc.Input(arg_name).front();
         auto* temp_var = scope.FindVar(var_name);
-        auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
+        auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
         auto weight = engine_->GetFp32TrtWeight(var_name, *temp_tensor);
         return weight;
       };

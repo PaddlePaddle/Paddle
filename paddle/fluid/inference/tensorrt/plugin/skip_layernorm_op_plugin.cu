@@ -211,6 +211,151 @@ int SkipLayerNormPluginDynamic::enqueue(
   return cudaGetLastError() != cudaSuccess;
 }
 
+template <typename T>
+void SkipLayerNormPluginDynamicInt8Impl<T>::shareGPUData(
+    const SkipLayerNormPluginDynamicImplBase *anthor) {
+  auto *ptr = dynamic_cast<const SkipLayerNormPluginDynamicInt8Impl<T> *>(anthor);
+  if (!ptr->is_initialized_) {
+    return;
+  }
+  scale_gpu_ = ptr->scale_gpu_;
+  bias_gpu_ = ptr->bias_gpu_;
+}
+
+template <typename T>
+int SkipLayerNormPluginDynamicInt8Impl<T>::initialize() {
+  if (is_initialized_) {
+    return 0;
+  }
+  if (bias_) {
+    cudaMalloc(&bias_gpu_, sizeof(T) * bias_size_);
+    cudaMemcpy(
+        bias_gpu_, bias_, bias_size_ * sizeof(T), cudaMemcpyHostToDevice);
+  }
+  if (scale_) {
+    cudaMalloc(&scale_gpu_, sizeof(T) * scale_size_);
+    cudaMemcpy(
+        scale_gpu_, scale_, scale_size_ * sizeof(T), cudaMemcpyHostToDevice);
+  }
+
+  is_initialized_ = true;
+  return 0;
+}
+
+template <typename T>
+void SkipLayerNormPluginDynamicInt8Impl<T>::terminate() {
+  if (bias_gpu_) {
+    cudaFree(bias_gpu_);
+    bias_gpu_ = nullptr;
+  }
+
+  if (scale_gpu_) {
+    cudaFree(scale_gpu_);
+    scale_gpu_ = nullptr;
+  }
+}
+
+int SkipLayerNormPluginDynamicInt8::initialize() TRT_NOEXCEPT {
+  impl_->initialize();
+  return 0;
+}
+
+void SkipLayerNormPluginDynamicInt8::terminate() TRT_NOEXCEPT {
+  impl_->terminate();
+}
+
+nvinfer1::DimsExprs SkipLayerNormPluginDynamicInt8::getOutputDimensions(
+    int output_index,
+    const nvinfer1::DimsExprs *inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
+  return inputs[0];
+}
+
+bool SkipLayerNormPluginDynamicInt8::supportsFormatCombination(
+    int pos,
+    const nvinfer1::PluginTensorDesc *in_out,
+    int nb_inputs,
+    int nb_outputs) TRT_NOEXCEPT {
+  PADDLE_ENFORCE_NOT_NULL(
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of swish plugin shoule not be nullptr."));
+  PADDLE_ENFORCE_EQ(nb_outputs,
+                    1,
+                    platform::errors::InvalidArgument(
+                        "The SkipLayerNorm's output should be one"
+                        "but it's (%d) outputs.",
+                        nb_outputs));
+  PADDLE_ENFORCE_LT(
+      pos,
+      nb_inputs + nb_outputs,
+      platform::errors::InvalidArgument("The pos(%d) should be less than the "
+                                        "num(%d) of the input and the output.",
+                                        pos,
+                                        nb_inputs + nb_outputs));
+
+  const nvinfer1::PluginTensorDesc &desc = in_out[pos];
+  if (pos == 0) {
+    //std::cout << "pos1 type: " << static_cast<int>(desc.type) << std::endl;
+    return (desc.type == nvinfer1::DataType::kHALF) &&
+           (desc.format == nvinfer1::TensorFormat::kCHW32);
+  }
+  if (pos == 1 || pos == 2) {
+    //std::cout << "pos2 type: " << static_cast<int>(desc.type) << std::endl;
+    return (desc.type == nvinfer1::DataType::kINT8) &&
+           (desc.format == nvinfer1::TensorFormat::kCHW32);
+  }
+  return desc.format == nvinfer1::TensorFormat::kCHW32;
+}
+
+nvinfer1::DataType SkipLayerNormPluginDynamicInt8::getOutputDataType(
+    int index,
+    const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
+  PADDLE_ENFORCE_EQ(index,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The SkipLayerNorm Plugin only has one output, so the "
+                        "index value should be 0, but get %d.",
+                        index));
+  return input_types[0];
+}
+
+template<typename T>
+int SkipLayerNormPluginDynamicInt8Impl<T>::enqueue(
+    const nvinfer1::PluginTensorDesc *input_desc,
+    const nvinfer1::PluginTensorDesc *output_desc,
+    const void *const *inputs,
+    void *const *outputs,
+    void *workspace,
+    cudaStream_t stream) TRT_NOEXCEPT {
+  auto input1_dims = input_desc[0].dims;
+  const int32_t ld = input1_dims.d[1];
+  const int32_t total = input1_dims.d[2];
+  const float input1_scale = input_desc[0].scale;
+  const float input2_scale = input_desc[1].scale;
+  const float output_scale = 1.F / output_desc[0].scale;
+  const T *input1 = reinterpret_cast<const T *>(inputs[0]);
+  const int8_t *input2 = reinterpret_cast<const int8_t *>(inputs[1]);
+  int8_t *output = reinterpret_cast<int8_t *>(outputs[0]);
+  operators::math::SkipLayerNormFunctorInt8 skip_layer_norm_func;
+  skip_layer_norm_func(
+      stream, ld, total, input1, input2, bias_gpu_, scale_gpu_, output, input1_scale, input2_scale, output_scale);
+  return cudaGetLastError() != cudaSuccess;
+}
+
+int SkipLayerNormPluginDynamicInt8::enqueue(
+    const nvinfer1::PluginTensorDesc *input_desc,
+    const nvinfer1::PluginTensorDesc *output_desc,
+    const void *const *inputs,
+    void *const *outputs,
+    void *workspace,
+    cudaStream_t stream) TRT_NOEXCEPT {
+  impl_->enqueue(input_desc, output_desc, inputs, outputs, workspace, stream);
+  return cudaGetLastError() != cudaSuccess;
+}
+
 #endif
 
 }  // namespace plugin

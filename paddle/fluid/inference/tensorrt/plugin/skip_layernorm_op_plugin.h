@@ -86,6 +86,45 @@ class SkipLayerNormPluginDynamicImpl
   bool is_initialized_{false};
 };
 
+template <typename T>
+class SkipLayerNormPluginDynamicInt8Impl
+    : public SkipLayerNormPluginDynamicImplBase {
+ public:
+  explicit SkipLayerNormPluginDynamicInt8Impl(
+      T* bias, T* scale, int bias_size, int scale_size, const float eps)
+      : bias_(bias),
+        scale_(scale),
+        bias_size_(bias_size),
+        scale_size_(scale_size),
+        eps_(eps) {}
+
+  ~SkipLayerNormPluginDynamicInt8Impl() {}
+
+  int initialize();
+  void terminate();
+  int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
+              const nvinfer1::PluginTensorDesc* outputDesc,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT;
+  void shareGPUData(const SkipLayerNormPluginDynamicImplBase* anthor);
+
+ private:
+  T* bias_{nullptr};
+  T* scale_{nullptr};
+
+  // data on devices
+  T* bias_gpu_{nullptr};
+  T* scale_gpu_{nullptr};
+
+  int bias_size_;
+  int scale_size_;
+  float eps_;
+
+  bool is_initialized_{false};
+};
+
 class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit SkipLayerNormPluginDynamic(void* bias,
@@ -303,6 +342,167 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
   }
 };
 
+class SkipLayerNormPluginDynamicInt8 : public DynamicPluginTensorRT {
+ public:
+  explicit SkipLayerNormPluginDynamicInt8(void* bias,
+                                          void* scale,
+                                          int bias_size,
+                                          int scale_size,
+                                          float eps)
+      : bias_(bias),
+        scale_(scale),
+        bias_size_(bias_size),
+        scale_size_(scale_size),
+        eps_(eps),
+        own_host_buff_(false) {
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
+    VLOG(1) << "TRT Plugin DataType selected. SkipLayerNorm-->fp16";
+    //instantiateImpl<half>();
+    instantiateInt8Impl<half>();
+#else
+    PADDLE_THROW(platform::errors::Fatal(
+        "The Ernie(Bert) tensorRT plugin should be "
+        "complied with CUDA version >= 10.0 when running with fp16. "
+#endif
+  }
+
+  SkipLayerNormPluginDynamicInt8(void const* serial_data, size_t serial_length) 
+     : own_host_buff_(true) {
+    DeserializeValue(&serial_data, &serial_length, &bias_size_);
+    DeserializeValue(&serial_data, &serial_length, &scale_size_);
+    DeserializeValue(&serial_data, &serial_length, &eps_);
+
+    if (bias_size_) {
+      bias_ = new half[bias_size_];
+      memcpy(bias_, serial_data, sizeof(half) * bias_size_);
+    }
+    reinterpret_cast<char const*&>(serial_data) += bias_size_ * sizeof(half);
+    serial_length -= bias_size_ * sizeof(half);
+
+    if (scale_size_) {
+      scale_ = new half[scale_size_];
+      memcpy(scale_, serial_data, sizeof(half) * scale_size_);
+    }
+    reinterpret_cast<char const*&>(serial_data) += scale_size_ * sizeof(half);
+    serial_length -= scale_size_ * sizeof(half);
+    //}
+
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
+    //instantiateImpl<half>();
+    instantiateInt8Impl<half>();
+#else
+    PADDLE_THROW(platform::errors::Fatal(
+        "The Ernie(Bert) tensorRT plugin should be "
+        "complied with CUDA version >= 10.0 when running with fp16. "
+#endif
+  }
+
+  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
+    auto ptr = new SkipLayerNormPluginDynamicInt8(
+        bias_, scale_, bias_size_, scale_size_, eps_);
+    ptr->shareGPUData(this);
+    return ptr;
+  }
+
+  const char* getPluginType() const TRT_NOEXCEPT override {
+    return "skip_layernorm_int8_plugin";
+  }
+  int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
+  int initialize() TRT_NOEXCEPT override;
+  void terminate() TRT_NOEXCEPT override;
+
+  size_t getSerializationSize() const TRT_NOEXCEPT override {
+    size_t sum_num = 0;
+
+    sum_num += (bias_size_ + scale_size_) * sizeof(half);
+    sum_num += SerializedSize(bias_size_);
+    sum_num += SerializedSize(scale_size_);
+    sum_num += SerializedSize(eps_);
+
+    return sum_num;
+  }
+
+  void serialize(void* buffer) const TRT_NOEXCEPT override {
+    SerializeValue(&buffer, bias_size_);
+    SerializeValue(&buffer, scale_size_);
+    SerializeValue(&buffer, eps_);
+    for (int i = 0; i < bias_size_; ++i) {
+      SerializeValue(&buffer, reinterpret_cast<half*>(bias_)[i]);
+    }
+
+    for (int i = 0; i < scale_size_; ++i) {
+      SerializeValue(&buffer, reinterpret_cast<half*>(scale_)[i]);
+    }
+  }
+
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+      TRT_NOEXCEPT override;
+
+  bool supportsFormatCombination(int pos,
+                                 const nvinfer1::PluginTensorDesc* in_out,
+                                 int nb_inputs,
+                                 int nb_outputs) TRT_NOEXCEPT override;
+
+  void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
+                       int nb_inputs,
+                       const nvinfer1::DynamicPluginTensorDesc* out,
+                       int nb_outputs) TRT_NOEXCEPT override {}
+
+  size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
+                          int nb_inputs,
+                          const nvinfer1::PluginTensorDesc* outputs,
+                          int nb_outputs) const TRT_NOEXCEPT override {
+    return 0;
+  }
+
+  int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
+              const nvinfer1::PluginTensorDesc* output_desc,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* input_types,
+                                       int nb_inputs) const
+      TRT_NOEXCEPT override;
+
+  void destroy() TRT_NOEXCEPT override {
+    if (own_host_buff_) {
+      delete[] reinterpret_cast<half*>(bias_);
+      delete[] reinterpret_cast<half*>(scale_);
+    }
+    delete impl_;
+    delete this;
+  }
+
+ private:
+  void* bias_{nullptr};
+  void* scale_{nullptr};
+
+  int bias_size_;
+  int scale_size_;
+  float eps_;
+
+  bool own_host_buff_{false};
+  SkipLayerNormPluginDynamicImplBase* impl_{nullptr};
+
+  void shareGPUData(const SkipLayerNormPluginDynamicInt8* anthor) {
+    impl_->shareGPUData(anthor->impl_);
+  }
+
+  template <typename U>
+  void instantiateInt8Impl() {
+    impl_ = new SkipLayerNormPluginDynamicInt8Impl<U>(reinterpret_cast<U*>(bias_),
+                                                  reinterpret_cast<U*>(scale_),
+                                                  bias_size_,
+                                                  scale_size_,
+                                                  eps_);
+  }
+};
+
 class SkipLayerNormPluginDynamicCreator : public nvinfer1::IPluginCreator {
  public:
   SkipLayerNormPluginDynamicCreator() {}
@@ -343,8 +543,50 @@ class SkipLayerNormPluginDynamicCreator : public nvinfer1::IPluginCreator {
   nvinfer1::PluginFieldCollection field_collection_;
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
-REGISTER_TRT_PLUGIN_V2(SkipLayerNormPluginDynamicCreator);
 
+class SkipLayerNormPluginDynamicInt8Creator : public nvinfer1::IPluginCreator {
+ public:
+  SkipLayerNormPluginDynamicInt8Creator() {}
+  const char* getPluginName() const TRT_NOEXCEPT override {
+    return "skip_layernorm_int8_plugin";
+  }
+
+  const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() TRT_NOEXCEPT override {
+    return &field_collection_;
+  }
+
+  nvinfer1::IPluginV2* createPlugin(const char* name,
+                                    const nvinfer1::PluginFieldCollection* fc)
+      TRT_NOEXCEPT override {
+    return nullptr;
+  }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
+    return new SkipLayerNormPluginDynamicInt8(serial_data, serial_length);
+  }
+
+  void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override {
+    plugin_namespace_ = lib_namespace;
+  }
+
+  const char* getPluginNamespace() const TRT_NOEXCEPT override {
+    return plugin_namespace_.c_str();
+  }
+
+ private:
+  std::string plugin_namespace_;
+  std::string plugin_name_;
+  nvinfer1::PluginFieldCollection field_collection_;
+  std::vector<nvinfer1::PluginField> plugin_attributes_;
+};
+
+REGISTER_TRT_PLUGIN_V2(SkipLayerNormPluginDynamicCreator);
+REGISTER_TRT_PLUGIN_V2(SkipLayerNormPluginDynamicInt8Creator);
 #endif
 
 }  // namespace plugin

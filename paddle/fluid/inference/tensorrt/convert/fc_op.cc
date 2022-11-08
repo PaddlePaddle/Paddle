@@ -152,7 +152,7 @@ class FcOpConverter : public OpConverter {
         Y_v,
         platform::errors::NotFound(
             "Can not find %s presistale var of fc in scope.", w_name));
-    auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
+    auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
             ? PADDLE_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"))
@@ -196,12 +196,13 @@ class FcOpConverter : public OpConverter {
         // add conv layer
         float out_scale = 0;
         if (enable_int8) {
-          PADDLE_ENFORCE_EQ(
-              op_desc.HasAttr("out_threshold"),
-              true,
-              platform::errors::InvalidArgument(
-                  "must have out threshold in fc layers in int8 mode"));
-          out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          //PADDLE_ENFORCE_EQ(
+          //    op_desc.HasAttr("out_threshold"),
+          //    true,
+          //    platform::errors::InvalidArgument(
+          //        "must have out threshold in fc layers in int8 mode"));
+          //out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+          out_scale = 0;
         } else {
           out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Out"));
         }
@@ -216,7 +217,11 @@ class FcOpConverter : public OpConverter {
         fc_layer_int8->setName(
             ("fc_op_int8_conv1x1: Convolution (Output: " + output_name + ")")
                 .c_str());
-        engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0), out_scale);
+        if (out_scale != 0) {
+          engine_->SetTensorDynamicRange(fc_layer_int8->getOutput(0), out_scale);
+        } else {
+          LOG(ERROR) << "not set scale: " << output_name.c_str();
+        }
         auto* fc_after_reshape_int8 = reshape_after_fc(
             fc_layer_int8->getOutput(0), x_dim, x_num_col_dims);
         if (activation_type == "relu") {
@@ -322,7 +327,7 @@ class FcOpConverter : public OpConverter {
     TensorRTEngine::Weight bias{weight.get().type, nullptr, 0};
     if (with_bias) {
       auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
-      auto* b_t = b_v->GetMutable<phi::DenseTensor>();
+      auto* b_t = b_v->GetMutable<framework::LoDTensor>();
       bias = engine_->GetTrtWeight(op_desc.Input("Bias").front(), *b_t);
     }
 

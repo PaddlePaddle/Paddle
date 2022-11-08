@@ -100,7 +100,6 @@ class MultiHeadGPUComputeFunctor {
                   int head_size,
                   T *qkptr,
                   const T *bias_qk_ptr,
-                  bool bias_is_mask,
                   T *tptr,
                   T alpha,
                   T beta);
@@ -131,6 +130,22 @@ class SkipLayerNormFunctor {
                   T *output,
                   float eps,
                   gpuStream_t stream);
+};
+
+//template <typename T, typename T2>
+class SkipLayerNormFunctorInt8 {
+ public:
+  void operator()(gpuStream_t stream,
+                  const int32_t ld,
+                  const int32_t total,
+                  const half *input1,
+                  const int8_t *input2,
+                  const half *bias,
+                  const half *scale,
+                  int8_t *output,
+                  const float input1_scale,
+                  const float input2_scale,
+                  const float output_scale);
 };
 #endif
 
