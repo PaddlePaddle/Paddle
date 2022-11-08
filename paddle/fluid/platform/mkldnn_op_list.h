@@ -56,8 +56,30 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "flatten2",
     "flatten2_grad"};
 
+/**
+ * NOTE: [ Why using phi_mkldnn_white_list? ]
+ * This list records MKLDNN kernels that are supported in phi. The process of
+ * fully supporting MKLDNN kernels are divided into two steps:
+ * 1. Enlarge phi_mkldnn_white_list: larger phi_mkldnn_white_list means phi
+ * supports more mkldnn kernels.
+ * 2. Delete phi_mkldnn_white_list: after phi supports all mkldnn kernels, this
+ * list can be deleted safely because MKLDNN kernel selection information has
+ * already contained in phi::DenseTensorMeta.
+ */
+static const std::unordered_set<std::string> phi_mkldnn_white_list = {
+    "acosh",      "addmm", "asinh", "atanh",    "ceil",  "cos",
+    "cosh",       "elu",   "exp",   "expm1",    "gelu",  "hard_swish",
+    "leaky_relu", "log",   "log10", "log1p",    "log2",  "log_softmax",
+    "logsigmoid", "prelu", "relu",  "relu6",    "rsqrt", "sigmoid",
+    "silu",       "sin",   "sinh",  "softsign", "sqrt",  "tan",
+    "tanh_shrink"};
+
 inline bool in_mkldnn_white_list(const std::string& op_name) {
   return mkldnn_white_list.find(op_name) != mkldnn_white_list.end();
+}
+
+inline bool in_phi_mkldnn_white_list(const std::string& op_name) {
+  return phi_mkldnn_white_list.find(op_name) != phi_mkldnn_white_list.end();
 }
 
 }  // namespace platform

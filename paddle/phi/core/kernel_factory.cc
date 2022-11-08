@@ -20,6 +20,9 @@
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
+#if defined(PADDLE_WITH_MKLDNN)
+#include "paddle/fluid/platform/mkldnn_op_list.h"
+#endif
 #include "paddle/phi/core/compat/op_utils.h"
 
 DECLARE_bool(enable_api_kernel_fallback);
@@ -128,6 +131,35 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
                  << "] is not registered.";
   }
 #endif
+
+#if defined(PADDLE_WITH_MKLDNN)
+  // this op's MKLDNN kernel is not supported yet, hence search CPU kernel
+  // directly.
+  if (kernel_key.backend() == Backend::ONEDNN &&
+      !paddle::platform::in_phi_mkldnn_white_list(kernel_name)) {
+    phi::KernelKey cpu_kernel_key(
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
+    auto kernel_iter = iter->second.find(cpu_kernel_key);
+    if (kernel_iter == iter->second.end() &&
+        kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
+      phi::KernelKey any_layout_kernel_key(
+          phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
+      kernel_iter = iter->second.find(any_layout_kernel_key);
+    }
+
+    PADDLE_ENFORCE_NE(
+        kernel_iter,
+        iter->second.end(),
+        phi::errors::NotFound(
+            "The kernel with key %s of kernel `%s` is not supported in phi and"
+            " fail to fallback to CPU one.",
+            kernel_key,
+            kernel_name));
+
+    return {kernel_iter->second, false};
+  }
+#endif
+
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
   if (kernel_iter == iter->second.end() &&

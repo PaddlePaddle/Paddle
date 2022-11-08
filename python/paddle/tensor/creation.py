@@ -355,7 +355,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
         elif isinstance(data, (core.LoDTensor, core.Tensor)):
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to VarBase first
-            # Currenly, there is no copy when places are same
+            # Currently, there is no copy when places are same
             if in_dygraph_mode():
                 data = core.eager.Tensor(data)
             else:

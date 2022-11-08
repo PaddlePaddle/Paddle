@@ -2757,8 +2757,7 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
     const OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // When the op is first oneDNN op (there was some non oneDNN op
-  // previously)
-  // then we also need to rotate shape NHWC -> NCWH
+  // previously), then we also need to rotate shape NHWC -> NCWH
   if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
       (tensor.layout() != phi::DataLayout::kMKLDNN) &&
       paddle::platform::MKLDNNDeviceContext::tls()

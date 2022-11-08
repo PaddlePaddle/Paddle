@@ -125,7 +125,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 
     (*kernel_fn)(*dev_ctx, input_x, kernel_out);
-    if (kernel_result.has_fallback_cpu) {
+    if (kernel_result.has_fallback_cpu && kernel_backend != Backend::ONEDNN) {
       TransDataBackend(kernel_out, kernel_backend, kernel_out);
     }
   }

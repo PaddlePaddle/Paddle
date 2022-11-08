@@ -14,23 +14,35 @@ limitations under the License. */
 
 #include "paddle/phi/core/tensor_meta.h"
 
+#include "gflags/gflags.h"
+
+DECLARE_bool(use_mkldnn);
+
 namespace phi {
 
+DenseTensorMeta::DenseTensorMeta() { use_dnn = FLAGS_use_mkldnn; }
+
 DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
-    : dims(dims), dtype(dtype) {}
+    : dims(dims), dtype(dtype) {
+  use_dnn = FLAGS_use_mkldnn;
+}
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
                                  size_t offset)
-    : dims(dims), dtype(dtype), layout(layout), offset(offset) {}
+    : dims(dims), dtype(dtype), layout(layout), offset(offset) {
+  use_dnn = FLAGS_use_mkldnn;
+}
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
                                  const LoD& lod,
                                  size_t offset)
-    : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {}
+    : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {
+  use_dnn = FLAGS_use_mkldnn;
+}
 
 bool DenseTensorMeta::valid() const noexcept {
   bool valid{true};

@@ -45,10 +45,15 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
   if (!transform_flag.need_trans_backend()) {
     return false;
   }
+  Backend target_backend = target;
+  if (target == Backend::GPUDNN) {
+    target_backend = Backend::GPU;
+  } else if (target == Backend::ONEDNN) {
+    target_backend = Backend::CPU;
+  }
   bool ret = input.GetType() == AllocationType::GPUPINNED ||
-             (target != Backend::ALL_BACKEND &&
-              phi::TransToPhiBackend(input) !=
-                  (target != Backend::GPUDNN ? target : Backend::GPU));
+             (target_backend != Backend::ALL_BACKEND &&
+              phi::TransToPhiBackend(input) != target_backend);
   return ret;
 }
 
@@ -56,12 +61,17 @@ inline bool NeedTransformLayout(const DataLayout& input,
                                 const DataLayout& target,
                                 const paddle::platform::Place& place,
                                 const TransformFlag& transform_flag) {
-  bool ret = transform_flag.need_trans_layout() &&
-             (input != DataLayout::ALL_LAYOUT &&
-              target != DataLayout::ALL_LAYOUT && input != target);
   if (platform::is_gpu_place(place)) {
     return false;
   }
+  bool ret = (input != DataLayout::ALL_LAYOUT &&
+              target != DataLayout::ALL_LAYOUT && input != target);
+#ifdef PADDLE_WITH_MKLDNN
+  // Layout transform needed for either non-MKLDNN to MKLDNN or vice versa
+  ret |= (input != DataLayout::ONEDNN && target == DataLayout::ONEDNN);
+  ret |= (input == DataLayout::ONEDNN && target != DataLayout::ONEDNN);
+#endif
+  ret &= transform_flag.need_trans_layout();
   return ret;
 }
 

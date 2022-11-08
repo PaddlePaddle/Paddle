@@ -96,6 +96,18 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
   VLOG(10) << " x: " << print_tensor_meta(x);
   VLOG(10) << " out: " << print_tensor_meta(*out) << " " << out;
 
+  // Note: Compatible with KernelTypeForVar function in fluid: If selects MKLDNN
+  // kernel, then change src_layout to kNHWC, which means transform tensor
+  // following kNHWC->ONEDNN rule instead of tensor.layout()->ONEDNN rule. When
+  // the op is first oneDNN op (there was some non oneDNN op previously), then
+  // we also need to rotate shape NHWC -> NCWH
+  if (dst_layout == DataLayout::ONEDNN &&
+      x.layout() != phi::DataLayout::ONEDNN &&
+      OneDNNContext::tls().get_cur_paddle_data_layout() ==
+          phi::DataLayout::NHWC) {
+    src_layout = phi::DataLayout::NHWC;
+  }
+
   // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
   // data_transfer.cc
   if (!x.IsInitialized() && src_layout == DataLayout::ONEDNN &&

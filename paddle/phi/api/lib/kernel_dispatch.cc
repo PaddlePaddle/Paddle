@@ -54,14 +54,18 @@ bool HasAllocation(const phi::TensorBase& t) {
 
 BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
   if (HasAllocation(t) && t.place().GetType() != AllocationType::UNDEFINED) {
-    BackendSet backend_set(phi::TransToPhiBackend(t.place()));
-    switch (t.layout()) {
-      case DataLayout::ONEDNN:
-        backend_set = backend_set | BackendSet(Backend::ONEDNN);
-        break;
-      default:
-        // do nothing
-        break;
+    phi::Backend backend_key = phi::TransToPhiBackend(t.place());
+    BackendSet backend_set(backend_key);
+    if (phi::DenseTensor::classof(&t) &&
+        static_cast<const phi::DenseTensor&>(t).meta().use_dnn) {
+      switch (backend_key) {
+        case Backend::CPU:
+          backend_set = backend_set | BackendSet(Backend::ONEDNN);
+          break;
+        default:
+          // do nothing
+          break;
+      }
     }
     return backend_set;
   }
@@ -126,7 +130,18 @@ Backend ParseBackend(const Place& place) {
   return phi::TransToPhiBackend(place);
 }
 Backend ParseBackend(const Tensor& tensor) {
-  return phi::TransToPhiBackend(tensor.place());
+  Backend backend_key = phi::TransToPhiBackend(tensor.place());
+  if (phi::DenseTensor::classof(tensor.impl().get()) &&
+      static_cast<phi::DenseTensor*>(tensor.impl().get())->meta().use_dnn) {
+    switch (backend_key) {
+      case Backend::CPU:
+        return Backend::ONEDNN;
+      default:
+        // do nothing
+        break;
+    }
+  }
+  return backend_key;
 }
 
 Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {
