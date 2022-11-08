@@ -306,10 +306,5 @@ inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
              : key;
 }
 
-template <typename T>
-bool constexpr is_int8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
-}
-
 }  // namespace funcs
 }  // namespace phi

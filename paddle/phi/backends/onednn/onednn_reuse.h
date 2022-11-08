@@ -40,6 +40,16 @@ using memory = dnnl::memory;
 
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
+template <typename T>
+bool constexpr is_int8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}
+
+template <typename T>
+constexpr bool is_bfloat16() {
+  return std::is_same<T, phi::dtype::bfloat16>::value;
+}
+
 static void AppendActivation(const OneDNNContext& dev_ctx,
                              dnnl::post_ops& post_ops,  // NOLINT
                              float activation_scale = 1.0f) {

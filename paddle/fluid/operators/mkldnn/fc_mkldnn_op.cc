@@ -34,11 +34,6 @@ using platform::MKLDNNDeviceContext;
 using platform::MKLDNNGetDataType;
 using platform::to_void_cast;
 
-template <typename T>
-constexpr bool IsInt8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
-}
-
 struct InnerProductCache {
   dnnl::inner_product_forward inner_product_p;
   dnnl::memory src_mem;
@@ -111,7 +106,7 @@ class FCMKLDNNHandler
 
     std::vector<float> output_shift_scale;
     float scale = 1.0f;
-    if (IsInt8<T_w>()) {
+    if (phi::funcs::is_int8<T_w>()) {
       std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
       int mask = CreateMask(1, output_shift_scale.size() > 1);
       attributes.set_output_scales(mask, output_shift_scale);
@@ -244,7 +239,7 @@ class FCMKLDNNHandler
       const std::vector<float>& scale_weights) {
     const float* bias_data = bias->data<float>();
 
-    if (IsInt8<T_w>() == false) {
+    if (phi::funcs::is_int8<T_w>() == false) {
       // for BF16/FP32 bias is 1D and has no scales, so reorder is not needed
       return this->AcquireMemoryFromPrimitive(this->fwd_pd_->bias_desc(),
                                               to_void_cast<float>(bias_data));
@@ -289,7 +284,7 @@ class FCMKLDNNHandler
                                         MKLDNNGetDataType<float>(),
                                         dnnl::memory::format_tag::io);
 
-      if (IsInt8<T_w>()) {
+      if (phi::funcs::is_int8<T_w>()) {
         dnnl::primitive_attr attrs;
         int mask = CreateMask(0, scale_data.size() > 1);
         attrs.set_output_scales(mask, scale_data);
@@ -352,7 +347,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     IF_CHANGE_FC_TW_TYPENAME((std::is_same<T_in, uint8_t>::value), ([&] {
                                if (force_fp32_output) {
                                  this->RunKernel<float, T_w>(ctx);
-                               } else if (IsInt8<T_in>()) {
+                               } else if (phi::funcs::is_int8<T_in>()) {
                                  if (fuse_relu) {
                                    this->RunKernel<uint8_t, T_w>(ctx);
                                  } else {

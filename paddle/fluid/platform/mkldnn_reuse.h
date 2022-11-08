@@ -172,16 +172,6 @@ static void SetOutMemDescWithLogicalLayoutFusesSupport(
   }
 }
 
-template <typename T>
-constexpr bool IsInt8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
-}
-
-template <typename T>
-constexpr bool IsBfloat16() {
-  return std::is_same<T, paddle::platform::bfloat16>::value;
-}
-
 template <typename XT, typename YT, typename OT>
 class MatMulV2MKLDNNHandler
     : public paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul> {
@@ -258,7 +248,7 @@ class MatMulV2MKLDNNHandler
     }
 
     // TODO(jczaja): Why not for int8??
-    if (!IsInt8<OT>() && is_output_fused) {
+    if (!phi::funcs::is_int8<OT>() && is_output_fused) {
       out_strides = FakeTransposeStrides(out_ddims);
     }
 

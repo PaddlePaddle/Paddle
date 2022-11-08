@@ -76,16 +76,6 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext &dev_ctx,
   return output;
 }
 
-template <typename T>
-constexpr bool IsInt8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
-}
-
-template <typename T>
-constexpr bool IsBfloat16() {
-  return std::is_same<T, paddle::platform::bfloat16>::value;
-}
-
 // Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
 // original x_dim is returned.
 static paddle::framework::DDim RowMatrixDimsFromVector(
@@ -399,7 +389,7 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
 
   // TODO(jczaja): Explain why int8 format of dst is ABCD and do not need
   // permute
-  if (IsOutputFused(ctx) && !IsInt8<T_out>()) {
+  if (IsOutputFused(ctx) && !phi::funcs::is_int8<T_out>()) {
     auto axis = ctx.Attr<std::vector<int>>("fused_transpose_Out");
     auto permuted_md = dst_memory_p->get_desc().permute_axes(axis);
     out->set_mem_desc(
@@ -423,8 +413,8 @@ class MatMulV2MKLDNNKernel : public paddle::framework::OpKernel<T> {
               "head_number=1. But received `head_number` is %d",
               ctx.Attr<int>("head_number")));
     }
-    constexpr bool is_int8 = IsInt8<T>();
-    constexpr bool is_bfloat16 = IsBfloat16<T>();
+    constexpr bool is_int8 = phi::funcs::is_int8<T>();
+    constexpr bool is_bfloat16 = phi::funcs::is_bfloat16<T>();
     const bool force_fp32_output = ctx.HasAttr("force_fp32_output")
                                        ? ctx.Attr<bool>("force_fp32_output")
                                        : false;
