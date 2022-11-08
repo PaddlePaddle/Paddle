@@ -226,24 +226,24 @@ class TestUnpool3DOpException(unittest.TestCase):
 
         self.assertRaisesRegex(
             ValueError,
-            r"\(InvalidArgument\) The dimensions of Input\(X\) must.+",
+            r"The dimensions of Input\(X\) must equal to",
             indices_size_error,
         )
         self.assertRaisesRegex(
             ValueError,
-            r"\(InvalidArgument\) index should less than output.+",
+            r"index should less than output",
             indices_value_error,
         )
         self.assertRaisesRegex(
             ValueError,
-            r"Attr\(data_format\) should be 'NCDHW'.+",
+            r"Attr\(data_format\) should be 'NCDHW'",
             data_format_error,
         )
         self.assertRaisesRegex(
-            ValueError, r"invalid output_size.+", data_outputsize_error
+            ValueError, r"invalid output_size", data_outputsize_error
         )
         self.assertRaisesRegex(
-            ValueError, r"invalid output_size.+", data_outputsize_error2
+            ValueError, r"invalid output_size", data_outputsize_error2
         )
 
 
