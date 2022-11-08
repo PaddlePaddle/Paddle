@@ -673,8 +673,13 @@ void VariableScope::CheckExist(const std::string& name) const {
 
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
-                         const platform::DeviceContext& dev_ctx)
-    : id_(id), op_func_node_(op_func_node), dev_ctx_(dev_ctx) {
+                         const platform::DeviceContext& dev_ctx,
+                         const Priority priority)
+    : is_artificial_(op_func_node.operator_base_->Type() == "depend"),
+      id_(id),
+      op_func_node_(op_func_node),
+      dev_ctx_(dev_ctx),
+      priority_(priority) {
   PADDLE_ENFORCE_GE(id,
                     0,
                     platform::errors::PreconditionNotMet(

@@ -102,6 +102,7 @@ void InitVariablesWithRandomValue(const std::vector<std::string>& var_names,
       tmp_tensor.mutable_data<DataType>(common_ddim, platform::CPUPlace());
   for (const auto& var_name : var_names) {
     auto* tensor = scope->Var(var_name)->GetMutable<LoDTensor>();
+    tensor->mutable_data<DataType>(common_ddim, place);
     for (auto i = 0; i < tensor->numel(); ++i) {
       tmp_data[i] = static_cast<DataType>(dist(engine));
     }
@@ -121,9 +122,9 @@ void CompareOpResult(Variable* test_out, Variable* expected_out) {
   ASSERT_TRUE(expected_tensor.IsInitialized());
   ASSERT_EQ(test_tensor.dims(), expected_tensor.dims());
   const auto* test_data = test_tensor.data<DataType>();
-  const auto* excepted_data = expected_tensor.data<DataType>();
+  const auto* expected_data = expected_tensor.data<DataType>();
   for (auto i = 0; i < expected_tensor.numel(); ++i) {
-    EXPECT_EQ(test_data[i], excepted_data[i]);
+    EXPECT_EQ(test_data[i], expected_data[i]);
   }
 }
 

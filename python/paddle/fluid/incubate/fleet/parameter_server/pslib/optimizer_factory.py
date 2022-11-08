@@ -54,7 +54,7 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
-class DistributedOptimizerImplBase(object):
+class DistributedOptimizerImplBase:
     """
     DistributedOptimizerImplBase
     base class of optimizers
@@ -92,7 +92,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
     def __init__(self, optimizer):
         # todo(guru4elephant): add more optimizers here as argument
         # todo(guru4elephant): make learning_rate as a variable
-        super(DistributedAdam, self).__init__(optimizer)
+        super().__init__(optimizer)
         self._window = 1
         self.type = "downpour"
         self.data_norm_name = [
@@ -499,7 +499,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         for num in range(len(losses)):
             loss = losses[num]
             parameters = None
-            if parameter_list != None:
+            if parameter_list is not None:
                 parameters = parameter_list[num]
             prog_id = str(id(loss.block.program))
             # param_grads of program

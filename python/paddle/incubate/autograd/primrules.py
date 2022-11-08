@@ -515,7 +515,7 @@ def dropout_orig2prim(op, seed_t, x):
     ), 'Can not lower dropout into prim ops with seedtensor.'
     mask = bernoulli(shape=x.shape, dtype=x.dtype, p=op.attr('dropout_prob'))
     if op.attr('dropout_implementation') == 'upscale_in_train':
-        if op.attr('is_test') == False:
+        if not op.attr('is_test'):
             out = div(
                 mul(x, mask),
                 fill_const(1.0 - op.attr('dropout_prob'), x.shape, x.dtype),
@@ -524,7 +524,7 @@ def dropout_orig2prim(op, seed_t, x):
         else:
             return primops.cast(mask, dtype=paddle.uint8), x
     elif op.attr('dropout_implementation') == 'downgrade_in_infer':
-        if op.attr('is_test') == False:
+        if not op.attr('is_test'):
             return primops.cast(mask, dtype=paddle.uint8), mul(x, mask)
         else:
             return primops.cast(mask, dtype=paddle.uint8), mul(
@@ -605,6 +605,7 @@ def batch_norm_orig2prim(
 
 @REGISTER_ORIG2PRIM('size')
 def size_orig2prim(op, x):
+    # TODO(zhouwei): will change shape [1] to [] to support zero-dim
     return fill_const(
         functools.reduce(operator.mul, x.shape), (1,), paddle.int64
     )

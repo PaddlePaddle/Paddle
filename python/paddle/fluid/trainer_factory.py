@@ -45,7 +45,7 @@ from multiprocessing import Process, Manager
 __all__ = ["TrainerFactory", "FetchHandlerMonitor"]
 
 
-class TrainerFactory(object):
+class TrainerFactory:
     """
     Create trainer and device worker.
     If opt_info is not None, it will get configs from opt_info,
@@ -151,7 +151,7 @@ class TrainerFactory(object):
         return trainer
 
 
-class FetchHandlerMonitor(object):
+class FetchHandlerMonitor:
     """
     Defination of FetchHandlerMonitor class,
     it's for fetch handler.
@@ -192,7 +192,7 @@ class FetchHandlerMonitor(object):
                 for key in var_name_to_key:
                     var = scope.find_var(key)
                     fetch_dict[key] = var
-                    if var == None:
+                    if var is None:
                         local_logger.warning(
                             "{} value currently not available".format(
                                 var_name_to_key[key]
@@ -201,7 +201,7 @@ class FetchHandlerMonitor(object):
                 res_dict = {}
                 for key in fetch_dict:
                     user_name = var_name_to_key[key]
-                    if fetch_dict[key] == None:
+                    if fetch_dict[key] is None:
                         res_dict[user_name] = None
                         continue
                     else:

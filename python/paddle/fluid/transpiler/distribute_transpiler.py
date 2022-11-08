@@ -143,7 +143,7 @@ def slice_variable(var_list, slice_count, min_block_size):
     return blocks
 
 
-class DistributeTranspilerConfig(object):
+class DistributeTranspilerConfig:
     """
         :api_attr: Static Graph
 
@@ -248,7 +248,7 @@ class DistributeTranspilerConfig(object):
         self.__sync_mode = value
 
 
-class ServerRuntimeConfig(object):
+class ServerRuntimeConfig:
     def __init__(self):
         self._rpc_send_thread_num = int(
             os.getenv("FLAGS_rpc_send_thread_num", "12")
@@ -261,7 +261,7 @@ class ServerRuntimeConfig(object):
         )
 
 
-class DistributeTranspiler(object):
+class DistributeTranspiler:
     """
         :api_attr: Static Graph
 
@@ -692,7 +692,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         ps_dispatcher = self.config.split_method(self.pserver_endpoints)
         self.table_name = find_distributed_lookup_table(self.origin_program)
-        self.has_distributed_lookup_table = self.table_name != None
+        self.has_distributed_lookup_table = self.table_name is not None
         self.param_name_to_grad_name = dict()
         self.grad_name_to_param_name = dict()
         for param_var, grad_var in self.params_grads:

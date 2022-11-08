@@ -38,7 +38,7 @@ def _node_id(node):
 @register_pass("auto_parallel_quantization")
 class QuantizationPass(PassBase):
     def __init__(self):
-        super(QuantizationPass, self).__init__()
+        super().__init__()
         self.set_attr("dist_context", None)
         self.set_attr("params_grads", None)
 

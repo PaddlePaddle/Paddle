@@ -259,9 +259,7 @@ class Cifar100(Cifar10):
         download=True,
         backend=None,
     ):
-        super(Cifar100, self).__init__(
-            data_file, mode, transform, download, backend
-        )
+        super().__init__(data_file, mode, transform, download, backend)
 
     def _init_url_md5_flag(self):
         self.data_url = CIFAR100_URL

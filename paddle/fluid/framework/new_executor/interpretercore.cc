@@ -420,7 +420,7 @@ void InterpreterCore::BuildInplace() {
   std::set<std::string> skip_inplace_outvars;
   for (Instruction& instr : vec_instruction_) {
     OperatorBase* op = instr.OpBase();
-    if (op->Type() == "coalesce_tensor") {
+    if (op->Type() == kCoalesceTensor) {
       const std::vector<std::string>& outputs =
           op->OutputVars(/*has_intermediate=*/false);
       skip_inplace_outvars.insert(outputs.begin(), outputs.end());
@@ -528,7 +528,12 @@ void InterpreterCore::Convert(
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
+    Priority priority =
+        interpreter::IsCommunicationOp(op_func_node.operator_base_->Type())
+            ? Priority::kLowest
+            : Priority::kNormal;
+    vec_instruction_.emplace_back(
+        op_idx, std::move(op_func_node), *dev_ctx_, priority);
   }
 
   BuildOperatorDependences();
@@ -835,7 +840,7 @@ void InterpreterCore::ExecuteInstructionList(
 }
 
 void InterpreterCore::RunNextInstructions(
-    const Instruction& instr, std::queue<size_t>* reserved_next_ops) {
+    const Instruction& instr, std::deque<size_t>* reserved_next_ops) {
   platform::RecordEvent record(
       "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
   auto& next_instr = instr.NextInstructions();
@@ -848,7 +853,7 @@ void InterpreterCore::RunNextInstructions(
 
   if (instr.KernelType() == OpFuncType::kQueueAsync) {
     // move all sync_ops into other threads
-    for (auto next_id : next_instr.SyncRunIds()) {
+    for (size_t next_id : next_instr.SyncRunIds()) {
       if (IsReady(next_id)) {
         async_work_queue_->AddTask(
             vec_instruction_[next_id].KernelType(),
@@ -856,14 +861,22 @@ void InterpreterCore::RunNextInstructions(
       }
     }
     // keep all async_ops running in current thread
-    for (auto next_id : next_instr.DirectRunIds()) {
+    for (size_t next_id : next_instr.DirectRunIds()) {
       if (IsReady(next_id)) {
-        reserved_next_ops->push(next_id);
+        if (vec_instruction_[next_id].GetPriority() == Priority::kLowest) {
+          reserved_next_ops->push_back(next_id);
+        } else {
+          reserved_next_ops->push_front(next_id);
+        }
       }
     }
-    for (auto next_id : next_instr.EventRunIds()) {
+    for (size_t next_id : next_instr.EventRunIds()) {
       if (IsReady(next_id)) {
-        reserved_next_ops->push(next_id);
+        if (vec_instruction_[next_id].GetPriority() == Priority::kLowest) {
+          reserved_next_ops->push_back(next_id);
+        } else {
+          reserved_next_ops->push_front(next_id);
+        }
       }
     }
   } else {
@@ -884,8 +897,9 @@ void InterpreterCore::RunNextInstructions(
     int64_t first_op = -1;
     for (auto next_id : direct_run_ops) {
       if (IsReady(next_id)) {
-        // only keep one op running in current thread
-        if (first_op == -1) {
+        // only keep one sync op running in current thread
+        if (first_op == -1 &&
+            vec_instruction_[next_id].KernelType() == OpFuncType::kQueueSync) {
           first_op = next_id;
           continue;
         }
@@ -895,16 +909,18 @@ void InterpreterCore::RunNextInstructions(
             [this, next_id] { RunInstructionAsync(next_id); });
       }
     }
-    if (first_op != -1) reserved_next_ops->push(first_op);
+    if (first_op != -1) {
+      reserved_next_ops->push_front(first_op);
+    }
   }
 }
 
 void InterpreterCore::RunInstructionAsync(size_t instr_id) {
-  std::queue<size_t> ready_ops;
-  ready_ops.push(instr_id);
+  std::deque<size_t> ready_ops;
+  ready_ops.push_back(instr_id);
   while (!ready_ops.empty()) {
     instr_id = ready_ops.front();
-    ready_ops.pop();
+    ready_ops.pop_front();
     auto& instr_node = vec_instruction_.at(instr_id);
     VLOG(5) << __func__ << " OP id:" << instr_node.Id()
             << " name:" << instr_node.OpBase()->Type() << " type:"
@@ -920,11 +936,11 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     try {
       interpreter::WaitEvent(instr_node, place_);
 
-      RunInstruction(instr_node);
-
-      CheckGC(instr_node);
-
-      interpreter::LogDeviceMemoryStats(place_);
+      if (!instr_node.IsArtificial()) {
+        RunInstruction(instr_node);
+        CheckGC(instr_node);
+        interpreter::LogDeviceMemoryStats(place_);
+      }
 
       interpreter::RecordEvent(instr_node, place_);
     } catch (platform::EnforceNotMet& ex) {

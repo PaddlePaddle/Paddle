@@ -31,7 +31,7 @@ class ControleMode:
     RPC = "rpc"
 
 
-class ControllerBase(object):
+class ControllerBase:
     def __init__(self, ctx):
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGABRT, self.signal_handler)

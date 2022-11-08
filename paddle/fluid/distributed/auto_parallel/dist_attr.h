@@ -46,6 +46,8 @@ using framework::OpDesc;
 using framework::ProgramDesc;
 using framework::VarDesc;
 
+constexpr const char* kDefault = "default";
+
 class TensorDistAttr {
  public:
   TensorDistAttr() = default;
@@ -205,6 +207,12 @@ class OperatorDistAttr {
 
   void set_impl_idx(const int64_t& impl_idx) { impl_idx_ = impl_idx; }
 
+  const std::string& execution_stream() const { return execution_stream_; }
+
+  void set_execution_stream(const std::string& execution_stream) {
+    execution_stream_ = execution_stream;
+  }
+
   const std::map<std::string, bool>& annotated() const { return annotated_; }
 
   void set_annotated(const std::map<std::string, bool>& annotated);
@@ -262,6 +270,7 @@ class OperatorDistAttr {
   ProcessMesh process_mesh_;
   std::string impl_type_;
   int64_t impl_idx_ = -1;
+  std::string execution_stream_;
   std::map<std::string, bool> annotated_;
 };
 

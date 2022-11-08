@@ -116,9 +116,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
         ops = [op.type for op in avg_cost.block.ops]
         vars = [x.name for x in train_prog.list_vars()]
-        parameters = [
-            x.name for x in train_prog.list_vars() if x.persistable == True
-        ]
+        parameters = [x.name for x in train_prog.list_vars() if x.persistable]
         self.assertIn('@BroadCast', ''.join(vars))
         self.assertIn('cast', ops)
         self.assertIn('check_finite_and_unscale', ops)
@@ -227,9 +225,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
         ops = [op.type for op in avg_cost.block.ops]
         vars = [x.name for x in train_prog.list_vars()]
-        parameters = [
-            x.name for x in train_prog.list_vars() if x.persistable == True
-        ]
+        parameters = [x.name for x in train_prog.list_vars() if x.persistable]
 
         self.assertIn('@BroadCast', ''.join(vars))
         self.assertIn('subprog', ''.join(vars))
@@ -316,9 +312,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
         ops = [op.type for op in avg_cost.block.ops]
         vars = [x.name for x in train_prog.list_vars()]
-        parameters = [
-            x.name for x in train_prog.list_vars() if x.persistable == True
-        ]
+        parameters = [x.name for x in train_prog.list_vars() if x.persistable]
 
         self.assertIn('@BroadCast', ''.join(vars))
         self.assertIn('subprog', ''.join(vars))
@@ -445,9 +439,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
         ops = [op.type for op in avg_cost.block.ops]
         vars = [x.name for x in train_prog.list_vars()]
-        parameters = [
-            x.name for x in train_prog.list_vars() if x.persistable == True
-        ]
+        parameters = [x.name for x in train_prog.list_vars() if x.persistable]
 
         self.assertIn('@BroadCast', ''.join(vars))
         self.assertIn('cast', ops)
@@ -564,9 +556,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             startup_prog,
             regularization=regularization,
         )
-        parameters = [
-            x.name for x in train_prog.list_vars() if x.persistable == True
-        ]
+        parameters = [x.name for x in train_prog.list_vars() if x.persistable]
         ops = [op.type for op in avg_cost.block.ops]
         vars = [x.name for x in train_prog.list_vars()]
         self.assertIn('@BroadCast', ''.join(vars))
@@ -653,9 +643,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.optimizer(
             avg_cost, strategy, train_prog, startup_prog, grad_clip=clip
         )
-        parameters = [
-            x.name for x in train_prog.list_vars() if x.persistable == True
-        ]
+        parameters = [x.name for x in train_prog.list_vars() if x.persistable]
         ops = [op.type for op in avg_cost.block.ops]
         vars = [x.name for x in train_prog.list_vars()]
         self.assertIn('@BroadCast', ''.join(vars))

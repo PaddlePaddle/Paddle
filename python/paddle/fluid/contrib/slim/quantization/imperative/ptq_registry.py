@@ -17,13 +17,13 @@ import paddle
 __all__ = ['PTQRegistry']
 
 
-class LayerInfo(object):
+class LayerInfo:
     """
     Store the argnames of the inputs and outputs.
     """
 
     def __init__(self, layer, input_names, weight_names, output_names):
-        super(LayerInfo, self).__init__()
+        super().__init__()
         self.layer = layer
         self.input_names = input_names
         self.weight_names = weight_names
@@ -63,7 +63,7 @@ QUANT_LAYERS_INFO = [
 SIMULATED_LAYERS = [paddle.nn.Conv2D, paddle.nn.Linear]
 
 
-class PTQRegistry(object):
+class PTQRegistry:
     """
     Register the supported layers for PTQ and provide layers info.
     """
@@ -73,7 +73,7 @@ class PTQRegistry(object):
     is_inited = False
 
     def __init__(self):
-        super(PTQRegistry, self).__init__()
+        super().__init__()
 
     @classmethod
     def _init(cls):

@@ -39,7 +39,7 @@ class Generator(core.Generator):
         if not place:
             place = core.CPUPlace()
         if isinstance(place, core.CPUPlace):
-            super(Generator, self).__init__()
+            super().__init__()
         else:
             raise ValueError(
                 "Generator class with %s does is not supported yet, currently only support generator with CPUPlace "
