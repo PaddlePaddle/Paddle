@@ -22,7 +22,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/phi/backends/dynload/port.h"
 
 DECLARE_bool(use_mkldnn);
