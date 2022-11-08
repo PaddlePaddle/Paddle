@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -22,16 +22,15 @@ void PReluKernel(const Context& dev_ctx,
                  const std::string& data_format,
                  const std::string& mode,
                  DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType(),
-      AllocationType::CPU,
-      phi::errors::PreconditionNotMet("Operator DNNL PReLU must use CPUPlace"));
+  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
+                    AllocationType::CPU,
+                    phi::errors::PreconditionNotMet(
+                        "Operator oneDNN PReLU must use CPUPlace"));
 
   bool is_test = dev_ctx.HasDnnAttr("is_test")
                      ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
                      : false;
-  funcs::PReluOneDNNHandler<T> handler(dev_ctx,
-                                       dev_ctx.GetEngine(),
+  funcs::PReluOneDNNHandler<T> handler(dev_ctx.GetEngine(),
                                        dev_ctx.GetPlace(),
                                        x,
                                        alpha,

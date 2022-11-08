@@ -31,8 +31,7 @@ void PReluGradKernel(const Context& dev_ctx,
   bool is_test = dev_ctx.HasDnnAttr("is_test")
                      ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
                      : false;
-  funcs::PReluOneDNNHandler<T> handler(dev_ctx,
-                                       dev_ctx.GetEngine(),
+  funcs::PReluOneDNNHandler<T> handler(dev_ctx.GetEngine(),
                                        dev_ctx.GetPlace(),
                                        x,
                                        alpha,

@@ -1080,14 +1080,13 @@ class PReluOneDNNHandler
                                      dnnl::prelu_forward,
                                      dnnl::prelu_backward> {
  public:
-  PReluOneDNNHandler(const OneDNNContext& dev_ctx,
-                     const dnnl::engine engine,
+  PReluOneDNNHandler(const dnnl::engine engine,
                      Place cpu_place,
                      const DenseTensor& x,
                      const DenseTensor& weights,
                      const std::string& mode,
                      const std::string& data_format,
-                     bool is_test)
+                     const bool is_test)
       : OneDNNHandlerNoCachingT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
             engine, cpu_place) {
     auto weights_dims = phi::vectorize(weights.dims());
