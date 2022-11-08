@@ -914,7 +914,7 @@ class fsClient:
         proto.hadoop_bin = self.fs_client_param.hadoop_bin
 
 
-class PsDescBuilder(object):
+class PsDescBuilder:
     def __init__(self, context):
         self.context = context
         self.is_sync = context['is_sync']

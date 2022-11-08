@@ -565,7 +565,7 @@ class WrapDecoder(Layer):
         return logits
 
 
-class CrossEntropyCriterion(object):
+class CrossEntropyCriterion:
     def __init__(self, label_smooth_eps):
         self.label_smooth_eps = label_smooth_eps
 

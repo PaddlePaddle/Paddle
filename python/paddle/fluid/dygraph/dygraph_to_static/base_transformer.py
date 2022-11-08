@@ -200,7 +200,7 @@ class ForLoopTuplePreTransformer(BaseTransformer):
         return [assign_node]
 
 
-class ForNodeVisitor(object):
+class ForNodeVisitor:
     """
     This class parses python for statement, get transformed 3 statement components of for node
     three key statements:

@@ -91,6 +91,14 @@ class CPUQuantizePass : public FusePassBase {
                         bool is_unsigned,
                         std::string scale_attr_name = "") const;
 
+  // quantize all outputs of given name
+  void DequantizeOutputs(Graph* g,
+                         Node* op,
+                         std::string output_name,
+                         double scale_to_one,
+                         bool is_unsigned,
+                         std::string scale_attr_name = "") const;
+
   bool AreScalesPresentForVarNames(std::vector<std::string> names) const;
   bool AreScalesPresentForNodes(std::initializer_list<Node*> nodes) const;
   std::pair<bool, phi::DenseTensor> GetScaleDataByName(

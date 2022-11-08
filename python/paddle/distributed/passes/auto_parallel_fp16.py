@@ -126,7 +126,7 @@ def _keep_fp32_output(op, out_name):
     return False
 
 
-class FP16State(object):
+class FP16State:
     def __init__(
         self,
         program,

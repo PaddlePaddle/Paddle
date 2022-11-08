@@ -126,7 +126,7 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.end_headers()
 
 
-class KVHTTPServer(HTTPServer, object):
+class KVHTTPServer(HTTPServer):
     """
     it is a http server storing kv pairs.
     """

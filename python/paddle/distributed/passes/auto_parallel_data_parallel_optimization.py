@@ -572,7 +572,7 @@ class DataParallelOptimizationPass(PassBase):
             self._logger.info("individual gradient {}".format(individual_grads))
 
 
-class GradientsGroup(object):
+class GradientsGroup:
     def __init__(self, ops, max_group_size):
         self.max_group_size = max_group_size
         self.ops = ops

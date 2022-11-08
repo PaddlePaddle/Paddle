@@ -105,7 +105,7 @@ def _should_broadcast_or_not_exists(program, var_name):
     return not is_distributed
 
 
-class CompiledProgram(object):
+class CompiledProgram:
     """
     :api_attr: Static Graph
 
@@ -567,7 +567,7 @@ class CompiledProgram(object):
         return place_list
 
 
-class IpuDynamicPatcher(object):
+class IpuDynamicPatcher:
     """
     Patcher for IPU dynamic2static support.
     """
@@ -777,7 +777,7 @@ class IpuDynamicPatcher(object):
             setattr(module, key, attr)
 
 
-class IpuStrategy(object):
+class IpuStrategy:
     """
     Help users precisely control the graph building in :code:`paddle.static.IpuCompiledProgram` .
 
@@ -1237,7 +1237,7 @@ class IpuStrategy(object):
         return self.get_option('enable_fp16')
 
 
-class IpuCompiledProgram(object):
+class IpuCompiledProgram:
     """
     The IpuCompiledProgram is used to transform a program to a ipu-target program,
     such as forward graph extraction, computing graph transformation, useless scale Ops clean, etc.

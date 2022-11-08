@@ -17,7 +17,7 @@ import sys
 __all__ = []
 
 
-class DataGenerator(object):
+class DataGenerator:
     """
     DataGenerator is a general Base class for user to inherit
     A user who wants to define his/her own python processing logic

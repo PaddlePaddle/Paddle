@@ -14,7 +14,7 @@
 import paddle
 
 
-class Constraint(object):
+class Constraint:
     """Constraint condition for random variable."""
 
     def __call__(self, value):

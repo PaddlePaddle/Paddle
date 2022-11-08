@@ -41,7 +41,7 @@ def _refresh_optimizer_state():
     return {"state": OptimizerState.INIT}
 
 
-class AmpScaler(object):
+class AmpScaler:
     """
     :api_attr: imperative
 

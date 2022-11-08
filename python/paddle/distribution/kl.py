@@ -127,7 +127,7 @@ def _dispatch(cls_p, cls_q):
 
 
 @functools.total_ordering
-class _Compare(object):
+class _Compare:
     def __init__(self, *classes):
         self.classes = classes
 

@@ -334,7 +334,7 @@ def not_to_static(func=None):
     return func
 
 
-class _SaveLoadConfig(object):
+class _SaveLoadConfig:
     def __init__(self):
         self._output_spec = None
         self._model_filename = None
@@ -621,7 +621,7 @@ _save_pre_hooks_lock = threading.Lock()
 _save_pre_hooks = []
 
 
-class HookRemoveHelper(object):
+class HookRemoveHelper:
     """A HookRemoveHelper that can be used to remove hook."""
 
     def __init__(self, hook):
@@ -1496,7 +1496,7 @@ def _trace(
     return original_outputs, program, feed_names, fetch_names, parameters
 
 
-class TracedLayer(object):
+class TracedLayer:
     """
     :api_attr: imperative
 
