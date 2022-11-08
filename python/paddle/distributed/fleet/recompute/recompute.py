@@ -383,6 +383,123 @@ class RecomputeFunction(PyLayer):
             return grads
 
 
+def _recompute_without_reentrant(
+    function, preserve_rng_state=True, *args, **kwargs
+):
+    """
+    recompute without reentrant, that means use hook to implement the recompute function rather than re-entrant autograd.
+    """
+    from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+        get_rng_state_tracker,
+    )
+
+    if preserve_rng_state:
+        cur_device = paddle.get_device()
+        if 'gpu:' not in cur_device:
+            raise RuntimeError(
+                "Recompute with RNG perserve is not support current device: {}.".format(
+                    cur_device
+                )
+            )
+        fw_cuda_rng_state = paddle.get_cuda_rng_state()
+        fwd_cuda_rng_state_tracker = (
+            get_rng_state_tracker().get_states_tracker()
+        )
+    tracer = framework._dygraph_tracer()
+    is_fw_autocast = False if tracer._amp_level == core.AmpLevel.O0 else True
+    if tracer._amp_level == core.AmpLevel.O2:
+        amp_level = 'O2'
+    elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
+        amp_level = 'O1'
+    else:
+        raise ValueError("unsupported amp level: {}".format(tracer._amp_level))
+
+    if tracer._amp_dtype == 'float16':
+        amp_dtype = 'float16'
+    elif tracer._amp_dtype in ('bfloat16', 'float32'):
+        amp_dtype = 'bfloat16'
+    else:
+        raise ValueError("unsupported amp dtype: {}".format(tracer._amp_dtype))
+
+    amp_white_list, amp_black_list = tracer._get_amp_op_list()
+
+    class Intermediate_Holder:
+        pass
+
+    storage = weakref.WeakKeyDictionary()
+    holder_list = []
+
+    def pack(x):
+        res = Intermediate_Holder()
+        holder_list.append(weakref.ref(res))
+        return res
+
+    def unpack(x):
+        unpack_counter = 0
+        if len(storage) == 0:
+
+            def inner_pack(inner_x):
+                nonlocal unpack_counter
+                unpack_counter += 1
+
+                if holder_list[unpack_counter - 1]() is None:
+                    return
+
+                tmp_tensor = core.eager.Tensor(
+                    inner_x.dtype,
+                    inner_x.shape,
+                    inner_x.name + "cpy",
+                    core.VarDesc.VarType.LOD_TENSOR,
+                    inner_x.persistable,
+                )
+                inner_x._share_buffer_to(tmp_tensor)
+                storage[holder_list[unpack_counter - 1]()] = tmp_tensor
+                return
+
+            def inner_unpack(inner_x):
+                raise Exception("An unexcepted backward called on a tensor!")
+
+            if preserve_rng_state:
+                with swith_rng_state_tracker(
+                    fw_cuda_rng_state, fwd_cuda_rng_state_tracker
+                ):
+                    with paddle.set_grad_enabled(True):
+                        with paddle.amp.auto_cast(
+                            enable=is_fw_autocast,
+                            custom_white_list=amp_white_list,
+                            custom_black_list=amp_black_list,
+                            level=amp_level,
+                            dtype=amp_dtype,
+                        ):
+                            with paddle.autograd.saved_tensors_hooks(
+                                inner_pack, inner_unpack
+                            ):
+                                unused_outputs = function(*args, **kwargs)
+            else:
+                with paddle.set_grad_enabled(True), paddle.amp.auto_cast(
+                    enable=is_fw_autocast,
+                    custom_white_list=amp_white_list,
+                    custom_black_list=amp_black_list,
+                    level=amp_level,
+                    dtype=amp_dtype,
+                ), paddle.autograd.saved_tensors_hooks(
+                    inner_pack, inner_unpack
+                ):
+                    unused_outputs = function(*args, **kwargs)
+
+        if x not in storage:
+            raise Exception(
+                "Not supported to retrieve a tensor saved by autograd multiple times that is no need to recompute."
+            )
+
+        return storage[x]
+
+    with paddle.autograd.saved_tensors_hooks(pack, unpack):
+        outputs = function(*args, **kwargs)
+
+    return outputs
+
+
 def recompute(function, *args, **kwargs):
     """
     recompute intermediate activations to save then memory.
@@ -502,11 +619,20 @@ def recompute(function, *args, **kwargs):
     """
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
     preserve = kwargs.pop('preserve_rng_state', True)
+    use_reentrant = kwargs.pop('use_reentrant', True)
+
+    if kwargs and use_reentrant:
+        raise ValueError(
+            "Error, if you want to send kwargs(dict parameter) to function, please set use_reentrant=False."
+        )
 
     if framework._dygraph_tracer()._has_grad:
         check_recompute_necessary(args)
 
-    return RecomputeFunction.apply(function, preserve, *args, **kwargs)
+    if use_reentrant:
+        return RecomputeFunction.apply(function, preserve, *args)
+    else:
+        return _recompute_without_reentrant(function, preserve, *args, **kwargs)
 
 
 def recompute_sequential(ctx, functions, *args, **kwargs):
