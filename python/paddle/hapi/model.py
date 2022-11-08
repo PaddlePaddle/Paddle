@@ -259,7 +259,7 @@ def _update_input_info(inputs):
     return shapes, dtypes
 
 
-class StaticGraphAdapter(object):
+class StaticGraphAdapter:
     """
     Model traning/inference with a static graph.
     """
@@ -734,7 +734,7 @@ class StaticGraphAdapter(object):
         self._compiled_progs[mode] = compiled_prog
 
 
-class DynamicGraphAdapter(object):
+class DynamicGraphAdapter:
     def __init__(self, model):
         super().__init__()
         self.model = model
@@ -1006,7 +1006,7 @@ class DynamicGraphAdapter(object):
             self.model._scaler = None
 
 
-class Model(object):
+class Model:
     """
     An Model object is network with training and inference features.
     Dynamic graph and static graph are supported at the same time,

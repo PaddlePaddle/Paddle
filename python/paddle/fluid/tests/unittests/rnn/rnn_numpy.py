@@ -16,7 +16,7 @@ import numpy as np
 import math
 
 
-class LayerMixin(object):
+class LayerMixin:
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 

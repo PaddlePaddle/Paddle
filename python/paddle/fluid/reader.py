@@ -145,7 +145,7 @@ def _reader_process_loop(batch_reader, data_queue):
         raise
 
 
-class DataLoaderBase(object):
+class DataLoaderBase:
     def __init__(self):
         self._places = None
 
@@ -181,7 +181,7 @@ class DataLoaderBase(object):
         return arr
 
 
-class AuToTune(object):
+class AuToTune:
     def __init__(self, loader):
         self.loader = loader
         self.max_num_worker = multiprocessing.cpu_count() / 2
@@ -318,7 +318,7 @@ class AuToTune(object):
         return best_workers
 
 
-class DataLoader(object):
+class DataLoader:
     """
     DataLoader prodives an iterator which iterates given dataset
     once by the batch_sampler.

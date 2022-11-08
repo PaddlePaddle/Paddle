@@ -220,7 +220,7 @@ def recompute(op):
 _g_collections = {}
 
 
-class CollectionNames(object):
+class CollectionNames:
     FETCHES = "fetches"
     LOGGING = "logging"
 

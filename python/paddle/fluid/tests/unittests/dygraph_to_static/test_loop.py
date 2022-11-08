@@ -153,7 +153,7 @@ def while_loop_bool_op2(x):
 
 
 def while_loop_class_var(x):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 3
             self.b = 4
@@ -179,7 +179,7 @@ def loop_var_contains_property(x):
 
 
 def for_loop_class_var(max_len):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 3
             self.b = 4

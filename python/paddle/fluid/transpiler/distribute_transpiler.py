@@ -143,7 +143,7 @@ def slice_variable(var_list, slice_count, min_block_size):
     return blocks
 
 
-class DistributeTranspilerConfig(object):
+class DistributeTranspilerConfig:
     """
         :api_attr: Static Graph
 
@@ -248,7 +248,7 @@ class DistributeTranspilerConfig(object):
         self.__sync_mode = value
 
 
-class ServerRuntimeConfig(object):
+class ServerRuntimeConfig:
     def __init__(self):
         self._rpc_send_thread_num = int(
             os.getenv("FLAGS_rpc_send_thread_num", "12")
@@ -261,7 +261,7 @@ class ServerRuntimeConfig(object):
         )
 
 
-class DistributeTranspiler(object):
+class DistributeTranspiler:
     """
         :api_attr: Static Graph
 
