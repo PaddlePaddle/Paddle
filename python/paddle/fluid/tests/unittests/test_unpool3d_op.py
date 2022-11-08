@@ -230,6 +230,12 @@ class TestUnpool3DOpException(unittest.TestCase):
             r"The dimensions of Input\(X\) must equal to",
             indices_size_error,
         )
+        # Test start
+        place = paddle.to_tensor([1]).place
+        print(
+            f"==> core.is_compiled_with_cuda: {core.is_compiled_with_cuda()}, place: {place}"
+        )
+        # Test end
         if not core.is_compiled_with_cuda():
             self.assertRaisesRegex(
                 ValueError,
