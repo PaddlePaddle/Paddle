@@ -101,7 +101,7 @@ def _rebuild_tensor(cls, lodtensor, metadata):
 
 
 def _reduce_tensor(tensor):
-    lodtensor = tensor.value().get_tensor()
+    lodtensor = tensor._share_memory()
 
     if not tensor.stop_gradient and not tensor.is_leaf:
         raise RuntimeError(

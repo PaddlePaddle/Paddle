@@ -191,21 +191,23 @@ class TestMultiprocessingCpu(TestMultiprocessingBase):
         paddle.set_device("cpu")
         self._test_empty()
 
-    def test_pass_empty(self):
-        self.func_test_pass_empty()
+    # not support right now
+    # def test_pass_empty(self):
+    #     self.func_test_pass_empty()
 
 
-class TestMultiprocessingGpu(TestMultiprocessingBase):
-    @unittest.skipIf(
-        not paddle.fluid.core.is_compiled_with_cuda(),
-        "core is not compiled with CUDA",
-    )
-    def func_test_pass_tensor(self):
-        paddle.set_device("gpu")
-        self._test_sharing(mp.get_context("spawn"), "gpu")
+# not support right now
+# class TestMultiprocessingGpu(TestMultiprocessingBase):
+#     @unittest.skipIf(
+#         not paddle.fluid.core.is_compiled_with_cuda(),
+#         "core is not compiled with CUDA",
+#     )
+#     def func_test_pass_tensor(self):
+#         paddle.set_device("gpu")
+#         self._test_sharing(mp.get_context("spawn"), "gpu")
 
-    def test_pass_tensor(self):
-        self.func_test_pass_tensor()
+#     def test_pass_tensor(self):
+#         self.func_test_pass_tensor()
 
 
 if __name__ == "__main__":
