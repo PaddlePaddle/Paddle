@@ -747,6 +747,17 @@ void FleetWrapper::PrintTableStat(const uint64_t table_id) {
   }
 }
 
+void FleetWrapper::SaveCacheTable(const uint64_t table_id,
+                                  uint16_t pass_id,
+                                  size_t threshold) {
+  auto ret = worker_ptr_->SaveCacheTable(table_id, pass_id, threshold);
+  ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "save cache table stat failed";
+  }
+}
+
 void FleetWrapper::ShrinkSparseTable(int table_id, int threshold) {
   auto ret = worker_ptr_->Shrink(table_id, std::to_string(threshold));
   ret.wait();

@@ -38,7 +38,11 @@ class SSDSparseTable : public MemorySparseTable {
   int32_t Push(TableContext& context) override;
 
   int32_t PullSparse(float* pull_values, const uint64_t* keys, size_t num);
-  int32_t PullSparsePtr(char** pull_values, const uint64_t* keys, size_t num);
+  int32_t PullSparsePtr(int shard_id,
+                        char** pull_values,
+                        const uint64_t* keys,
+                        size_t num,
+                        uint16_t pass_id);
   int32_t PushSparse(const uint64_t* keys, const float* values, size_t num);
   int32_t PushSparse(const uint64_t* keys, const float** values, size_t num);
 
@@ -77,10 +81,16 @@ class SSDSparseTable : public MemorySparseTable {
                        const std::string& param);
   int64_t LocalSize();
 
+  std::pair<int64_t, int64_t> PrintTableStat() override;
+
+  int32_t CacheTable(uint16_t pass_id) override;
+
  private:
   RocksDBHandler* _db;
   int64_t _cache_tk_size;
   double _local_show_threshold{0.0};
+  std::vector<paddle::framework::Channel<std::string>> _fs_channel;
+  std::mutex _table_mutex;
 };
 
 }  // namespace distributed

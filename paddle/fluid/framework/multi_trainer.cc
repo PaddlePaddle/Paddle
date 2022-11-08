@@ -46,6 +46,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     places_.push_back(place);
   }
 #endif
+  user_define_dump_filename_ = trainer_desc.user_define_dump_filename();
   // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();

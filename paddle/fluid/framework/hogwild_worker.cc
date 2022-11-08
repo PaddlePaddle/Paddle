@@ -143,7 +143,21 @@ void HogwildWorker::TrainFilesWithProfiler() {
   int batch_cnt = 0;
   timeline.Start();
   uint64_t total_inst = 0;
-  while ((cur_batch = device_reader_->Next()) > 0) {
+  device_reader_->InitGraphTrainResource();
+  while (1) {
+    cur_batch = device_reader_->Next();
+    if (FLAGS_enable_exit_when_partial_worker && train_mode) {
+      if (cur_batch > 0) {
+        worker_num_stat_.fetch_add(1, std::memory_order_relaxed);
+      }
+      g_barrier.wait();
+      if (worker_num_stat_.load(std::memory_order_relaxed) % thread_num_ != 0) {
+        break;
+      }
+    }
+    if (cur_batch <= 0) {
+      break;
+    }
     VLOG(3) << "read a batch in thread " << thread_id_;
     timeline.Pause();
     read_time += timeline.ElapsedSec();
@@ -238,7 +252,26 @@ void HogwildWorker::TrainFiles() {
   int cur_batch;
   int batch_cnt = 0;
 
-  while ((cur_batch = device_reader_->Next()) > 0) {
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_CUDA)
+  platform::SetDeviceId(thread_id_);
+#endif
+  // while ((cur_batch = device_reader_->Next()) > 0) {
+  bool train_mode = device_reader_->IsTrainMode();
+  device_reader_->InitGraphTrainResource();
+  while (1) {
+    cur_batch = device_reader_->Next();
+    if (FLAGS_enable_exit_when_partial_worker && train_mode) {
+      if (cur_batch > 0) {
+        worker_num_stat_.fetch_add(1, std::memory_order_relaxed);
+      }
+      g_barrier.wait();
+      if (worker_num_stat_.load(std::memory_order_relaxed) % thread_num_ != 0) {
+        break;
+      }
+    }
+    if (cur_batch <= 0) {
+      break;
+    }
     for (auto &op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {

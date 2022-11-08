@@ -1127,13 +1127,22 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::split_input_to_shard(
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(dev_num, 0);
 
-  auto d_idx_tmp = memory::Alloc(place, len * sizeof(int));
+  auto d_idx_tmp =
+      memory::Alloc(place,
+                    len * sizeof(int),
+                    phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   int* d_idx_tmp_ptr = reinterpret_cast<int*>(d_idx_tmp->ptr());
 
-  auto d_shard_index = memory::Alloc(place, len * sizeof(int));
+  auto d_shard_index =
+      memory::Alloc(place,
+                    len * sizeof(int),
+                    phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   int* d_shard_index_ptr = reinterpret_cast<int*>(d_shard_index->ptr());
 
-  auto d_shard_index_tmp = memory::Alloc(place, len * sizeof(int));
+  auto d_shard_index_tmp =
+      memory::Alloc(place,
+                    len * sizeof(int),
+                    phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   int* d_shard_index_tmp_ptr = reinterpret_cast<int*>(d_shard_index_tmp->ptr());
 
   heter_comm_kernel_->fill_idx(d_idx_tmp_ptr, len, stream);
@@ -1153,7 +1162,10 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::split_input_to_shard(
                                  num_bits,
                                  stream);
 
-  auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage =
+      memory::Alloc(place,
+                    temp_storage_bytes,
+                    phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   heter_comm_kernel_->sort_pairs(d_temp_storage->ptr(),
                                  temp_storage_bytes,
                                  d_shard_index_tmp_ptr,
