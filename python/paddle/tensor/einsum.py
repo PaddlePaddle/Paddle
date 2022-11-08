@@ -861,7 +861,8 @@ def gen_einsum_op(equation, *operands):
 
 
 def einsum(equation, *operands):
-    """
+    r"""
+
     einsum(equation, *operands)
 
     The current version of this API should be used in dygraph only mode.
@@ -889,33 +890,45 @@ def einsum(equation, *operands):
 
     **The summation notation**
 
-        - The tensor dimensions are labeled using uncased English letters. E.g., `ijk`, relates to a three dimensional tensor whose dimensions are labeled i, j, and k.
-        - The equation is `,` separated into terms, each being a distinct input's dimension label string.
-        - Ellipsis `...` enables broadcasting by automatically converting the unlabeled dimensions into broadcasting dimensions.
-        - Singular labels are called free labels, duplicate are dummy labels. Dummy labeled dimensions will be reduced and removed in the output.
-        - Output labels can be explicitly specified on the right hand side of `->` or omitted. In the latter case, the output labels will be inferred from the input labels.
+        - The tensor dimensions are labeled using uncased English letters. E.g., `ijk`
+            relates to a three dimensional tensor whose dimensions are labeled i, j, and k.
+        - The equation is `,` separated into terms, each being a distinct input's
+            dimension label string.
+        - Ellipsis `...` enables broadcasting by automatically converting the unlabeled
+            dimensions into broadcasting dimensions.
+        - Singular labels are called free labels, duplicate are dummy labels. Dummy labeled
+            dimensions will be reduced and removed in the output.
+        - Output labels can be explicitly specified on the right hand side of `->` or omitted.
+            In the latter case, the output labels will be inferred from the input labels.
             - Inference of output labels
                 - Broadcasting label `...`, if present, is put on the leftmost position.
                 - Free labels are reordered alphabetically and put after `...`.
             - On explicit output labels
                 - If broadcasting is enabled, then `...` must be present.
-                - The output labels can be an empty, an indication to output as a scalar the sum over the original output.
+                - The output labels can be an empty, an indication to output as a scalar
+                    the sum over the original output.
                 - Non-input labels are invalid.
                 - Duplicate labels are invalid.
-                - For any dummy label which is present for the output, it's promoted to a free label.
-                - For any free label which is not present for the output, it's lowered to a dummy label.
+                - For any dummy label which is present for the output, it's promoted to
+                    a free label.
+                - For any free label which is not present for the output, it's lowered to
+                    a dummy label.
         - Examples
-            - '...ij, ...jk', where i and k are free labels, j is dummy. The output label string is '...ik'
+            - '...ij, ...jk', where i and k are free labels, j is dummy. The output label
+                string is '...ik'
             - 'ij -> i', where i is a free label and j is a dummy label.
             - '...ij, ...jk -> ...ijk', where i, j and k are all free labels.
-            - '...ij, ...jk -> ij', an invalid equation since `...` is not present for the output.
+            - '...ij, ...jk -> ij', an invalid equation since `...` is not present for
+                the output.
 
     **The summation rule**
 
     The summation procedure can be outlined as follows, although the actual steps taken
     may vary significantly due to implementation specific optimization.
 
-        - Step 1: preparation for broadcasting, that is, transposing and unsqueezing the input operands to have each resulting dimension identically labeled across all the input operands.
+        - Step 1: preparation for broadcasting, that is, transposing and unsqueezing
+            the input operands to have each resulting dimension identically labeled across
+            all the input operands.
         - Step 2: broadcasting multiply all the resulting operands from step 1.
         - Step 3: reducing dummy labeled dimensions.
         - Step 4: transposing the result tensor to match the output labels.
@@ -928,7 +941,8 @@ def einsum(equation, *operands):
         equation (`str`):
             The summation terms using the Einstein summation notation.
         operands (`list|Tensor`):
-            The input tensors over which to compute the Einstein summation. The number of operands should equal the number of input terms in the equation.
+            The input tensors over which to compute the Einstein summation. The number of
+            operands should equal the number of input terms in the equation.
 
     Returns:
         result (`Tensor`), the result tensor.
@@ -984,7 +998,7 @@ def einsum(equation, *operands):
             #     [0.50226176, 0.24512935, 0.39881429],
             #     [0.51476848, 0.23367381, 0.39229113]]])
 
-            #   Ellipsis transpose
+            # Ellipsis transpose
             print(paddle.einsum('...jk->...kj', A))
             # Tensor(shape=[2, 2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #   [[[0.95649719, 0.80071914, 0.49814570],
@@ -1003,7 +1017,7 @@ def einsum(equation, *operands):
             #    [[0.32043904, 0.18164253, 0.27810261],
             #     [0.50226176, 0.24512935, 0.39881429],
             #     [0.51476848, 0.23367381, 0.39229113]]])
-
+            
     """
     import os
 
