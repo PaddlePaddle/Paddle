@@ -402,7 +402,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
   CP_MEMBER(trt_engine_memory_sharing_);
-  CP_MEMBER(trt_engine_device_memory_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);

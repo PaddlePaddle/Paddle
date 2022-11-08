@@ -160,9 +160,6 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new AnalysisConfig::Precision(precision_mode));
       pass->Set("context_memory_sharing",
                 new bool(argument->trt_engine_memory_sharing()));
-      auto* device_memory = argument->trt_engine_device_memory()[0];
-      inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-              .setContextMemory(argument->predictor_id(), device_memory);
 
       bool use_static_engine = argument->tensorrt_use_static_engine();
       std::string static_path = argument->tensorrt_static_path();

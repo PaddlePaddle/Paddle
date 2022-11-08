@@ -499,6 +499,15 @@ size_t AnalysisPredictor::GetDeviceMemorySize() const {
   return 0;
 }
 
+void AnalysisPredictor::SetDeviceMemory(void* device_memory) {
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::Singleton<inference::tensorrt::TRTEngineManager>::Global().setContextMemory(predictor_id_, device_memory);
+    LOG(INFO) << "AnalysisPredictor SetDeviceMemory predictor_id: " << predictor_id_ << " device_memory: " << device_memory;
+  }
+#endif
+}
+
 const void *AnalysisPredictor::GetDeviceContexts() const {
   if (private_context_) {
     return &device_contexts_;
@@ -1129,7 +1138,6 @@ void AnalysisPredictor::PrepareArgument() {
         config_.trt_allow_build_at_runtime());
     argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);
     argument_.SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
-    argument_.SetTrtEngineDeviceMemory({config_.trt_engine_device_memory()});
   }
 
   if (config_.dlnne_enabled()) {
@@ -2402,6 +2410,10 @@ std::unique_ptr<Tensor> Predictor::GetOutputHandle(const std::string &name) {
 
 size_t Predictor::GetDeviceMemorySize() {
   return predictor_->GetDeviceMemorySize();
+}
+
+void Predictor::SetDeviceMemory(void* device_memory) {
+  return predictor_->SetDeviceMemory(device_memory);
 }
 
 bool Predictor::Run() { return predictor_->ZeroCopyRun(); }

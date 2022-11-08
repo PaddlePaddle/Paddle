@@ -247,13 +247,15 @@ static std::string GetTrtCalibTableData(const std::string &model_opt_cache_dir,
 
 static std::string GetTrtEngineSerializedPath(const std::string &model_root,
                                               const std::string &engine_key) {
-  return model_root + "/trt_serialized_" + engine_key;
+  // return model_root + "/trt_serialized_" + engine_key;
+  return engine_key;
 }
 
 static std::string GetTrtEngineSerializedData(
     const std::string &model_opt_cache_dir, const std::string &engine_key) {
-  std::string trt_serialized_path =
-      GetTrtEngineSerializedPath(model_opt_cache_dir, engine_key);
+  // std::string trt_serialized_path =
+  //     GetTrtEngineSerializedPath(model_opt_cache_dir, engine_key);
+  std::string trt_serialized_path = engine_key;
   if (FileExists(trt_serialized_path)) {
     VLOG(3) << "Trt serialized file: " << trt_serialized_path
             << "is found here";

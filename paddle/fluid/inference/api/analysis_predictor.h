@@ -205,6 +205,12 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return (size_t) TensorRT engine device memory size
   ///
   size_t GetDeviceMemorySize() const override;
+  ///
+  /// \brief set TensorRT engine device memory pointer
+  ///
+  /// \return void
+  ///
+  void SetDeviceMemory(void* device_memory) override;
 
   ///
   /// \brief Create feed fetch variables

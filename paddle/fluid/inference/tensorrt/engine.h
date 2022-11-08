@@ -852,10 +852,6 @@ class TRTEngineManager {
 
   void setContextMemory(PredictorID predictor_id, void* memory) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (external_context_memorys_.count(predictor_id) > 0) {
-      LOG(WARNING) << "re setContextMemory for predictor_id " << predictor_id;
-      return;
-    }
     external_context_memorys_[predictor_id] = memory;
   }
 

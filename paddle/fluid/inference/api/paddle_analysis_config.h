@@ -574,12 +574,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool trt_engine_memory_sharing() const;
   ///
-  /// \brief A device memory pointer for tensorrt engine to setDeviceMemory
-  ///
-  /// \return void*, device memory pointer
-  ///
-  void* trt_engine_device_memory() { return trt_engine_device_memory_; };
-  ///
   /// \brief  Get the TensorRT engine precision.
   ///
   /// \return Precision Get the TensorRT engine precision.
@@ -628,13 +622,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// runtime.
   ///
   bool trt_allow_build_at_runtime() const;
-
-  ///
-  /// \brief Set TensorRT engine context device memory
-  ///
-  void SetTrtEngineDeviceMemory(void* device_memory) {
-    trt_engine_device_memory_ = device_memory;
-  }
 
   ///
   /// \brief Set whether TensorRT engine share device memory
@@ -1088,7 +1075,6 @@ struct PD_INFER_DECL AnalysisConfig {
   // memory reuse related.
   bool enable_memory_optim_{false};
   bool trt_engine_memory_sharing_{false};
-  void* trt_engine_device_memory_{nullptr};
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;

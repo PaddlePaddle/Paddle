@@ -142,6 +142,12 @@ class PD_INFER_DECL Predictor {
   /// \return size_t
   ///
   size_t GetDeviceMemorySize();
+  ///
+  /// \brief Set the TensorRT engine device memory pointer
+  ///
+  /// \return void
+  ///
+  void SetDeviceMemory(void* device_memory);
 
   ///
   /// \brief Clone to get the new predictor. thread safe.

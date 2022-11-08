@@ -319,7 +319,6 @@ struct Argument {
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
   DECL_ARGUMENT_FIELD(trt_engine_memory_sharing, TrtEngineMemorySharing, bool);
-  DECL_ARGUMENT_FIELD(trt_engine_device_memory, TrtEngineDeviceMemory, std::vector<void*>);
 
   // Indicate which kind of sort algorithm is used for operators, the memory
   // optimization relays on the sort algorithm.

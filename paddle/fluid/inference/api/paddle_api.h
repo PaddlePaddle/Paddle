@@ -268,6 +268,11 @@ class PD_INFER_DECL PaddlePredictor {
   /// \return Return the TensorRT context device memory size
   virtual size_t GetDeviceMemorySize() const { return 0; }
 
+  /// \brief Set context device memory pointer of TensorRT engine
+  /// Be inherited by AnalysisPredictor, Only used in TensorRT mode.
+  /// \return void
+  virtual void SetDeviceMemory(void* device_memory) { return; }
+
   /// \brief Run the network with zero-copied inputs and outputs.
   /// Be inherited by AnalysisPredictor and only used in ZeroCopy scenarios.
   /// This will save the IO copy for transfering inputs and outputs to predictor
