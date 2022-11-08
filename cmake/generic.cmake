@@ -586,7 +586,7 @@ function(cc_test_old TARGET_NAME)
       cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${cc_test_ARGS})
     endif()
     if(APPLE)
-      target_link_options(${TARGET_NAME} PRIVATE -lm)
+      target_link_options(${TARGET_NAME} PRIVATE -lm -ll -ly)
     endif()
   elseif(WITH_TESTING AND NOT TEST ${TARGET_NAME})
     add_test(NAME ${TARGET_NAME} COMMAND ${CMAKE_COMMAND} -E echo CI skip
