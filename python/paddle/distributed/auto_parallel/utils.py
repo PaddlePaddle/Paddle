@@ -2129,13 +2129,17 @@ def add_dependencies_for_two_ops(
 
     depend_op = block._insert_op_without_sync(
         idx,
-        type='depend',
+        type='nop',
         inputs={
             "Dep": first_var,
             "X": second_var,
         },
         outputs={"Out": second_var},
     )
+    depend_op.desc.set_type("depend")
+    depend_op._set_attr(OP_ROLE_KEY, OpRole.Backward)
+    # self.desc.set_input(in_proto.name, in_arg_names)
+    # self.desc.set_output(out_proto.name, out_arg_names)
 
     naive_set_dist_op_attr_for_program_by_mesh(
         depend_op, op1_mesh, dist_context
