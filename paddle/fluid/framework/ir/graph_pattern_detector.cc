@@ -940,6 +940,22 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   return bn_out_var;
 }
 
+PDNode *patterns::LayerNormShiftScale::operator()() {
+  auto layer_norm_op = pattern->NewNode(layer_norm_op_repr())
+                           ->assert_is_op("layer_norm")
+                           ->AsOutput();
+
+  auto layer_norm_bias = pattern->NewNode(layer_norm_bias_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("layer_norm", "Bias");
+  auto layer_norm_scale = pattern->NewNode(layer_norm_scale_repr())
+                              ->AsInput()
+                              ->assert_is_op_input("layer_norm", "Scale");
+
+  layer_norm_op->LinksFrom({layer_norm_bias, layer_norm_scale});
+  return layer_norm_op;
+}
+
 PDNode *patterns::OperatorActivation::operator()(
     const std::string &operator_type, const std::string &activation_type) {
   auto *preceding_op =
