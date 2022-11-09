@@ -333,12 +333,6 @@ void MultiTensorAdamKernel(
     input_vector.push_back(master_params_out);
   }
 
-  const int kMaxTensorSizeMp = 24;
-  const int kMaxBlockSizeMp = 320;
-
-  const int kMaxTensorSize = 30;
-  const int kMaxBlockSize = 320;
-
   VLOG(4) << "use_adamw: " << use_adamw;
   VLOG(4) << "multi_precision: " << multi_precision;
 
@@ -346,7 +340,7 @@ void MultiTensorAdamKernel(
     __multi_precision, __is_cpu_betapow, __use_adamw, __vec_size)  \
   do {                                                             \
     constexpr int kInputNum = __multi_precision ? 5 : 4;           \
-    constexpr int kMaxTensorSize = __multi_precision ? 24 : 30;    \
+    constexpr int kMaxTensorSize = __multi_precision ? 48 : 60;    \
     constexpr int kMaxBlockSize = __multi_precision ? 320 : 320;   \
     constexpr int kBlockSize = 512;                                \
     MultiTensorAdamBetaPowInfo<T, __is_cpu_betapow> beta_pow_info( \
