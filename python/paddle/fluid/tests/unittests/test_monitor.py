@@ -15,21 +15,19 @@
 TestCases for Monitor
 """
 
-from __future__ import print_function
 import paddle
 
 paddle.enable_static()
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import numpy as np
 import os
 import unittest
 import tempfile
 
 
 class TestDatasetWithStat(unittest.TestCase):
-    """  TestCases for Dataset. """
+    """TestCases for Dataset."""
 
     def setUp(self):
         self.use_data_loader = False
@@ -55,10 +53,9 @@ class TestDatasetWithStat(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
-            var = fluid.layers.data(name=slot,
-                                    shape=[1],
-                                    dtype="int64",
-                                    lod_level=1)
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="int64", lod_level=1
+            )
             slots_vars.append(var)
 
         embs = []
@@ -80,7 +77,8 @@ class TestDatasetWithStat(unittest.TestCase):
         exe.run(fluid.default_startup_program())
         if self.use_data_loader:
             data_loader = fluid.io.DataLoader.from_dataset(
-                dataset, fluid.cpu_places(), self.drop_last)
+                dataset, fluid.cpu_places(), self.drop_last
+            )
             for i in range(self.epoch_num):
                 for data in data_loader():
                     exe.run(fluid.default_main_program(), feed=data)
@@ -88,11 +86,13 @@ class TestDatasetWithStat(unittest.TestCase):
         else:
             for i in range(self.epoch_num):
                 try:
-                    exe.train_from_dataset(fluid.default_main_program(),
-                                           dataset,
-                                           fetch_list=[embs[0], embs[1]],
-                                           fetch_info=["emb0", "emb1"],
-                                           print_period=1)
+                    exe.train_from_dataset(
+                        fluid.default_main_program(),
+                        dataset,
+                        fetch_list=[embs[0], embs[1]],
+                        fetch_info=["emb0", "emb1"],
+                        print_period=1,
+                    )
 
                 except Exception as e:
                     self.assertTrue(False)

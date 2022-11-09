@@ -24,8 +24,6 @@ namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
 
-using framework::Tensor;
-
 template <typename T>
 __global__ void Pad2DConstNCHW(const int nthreads,
                                const T* in_data,
@@ -350,9 +348,9 @@ __global__ void Pad2DGradEdgeNHWC(const int out_size,
 
 static inline void GetPaddings(int* paddings,
                                const framework::ExecutionContext& context) {
-  auto* paddings_t = context.Input<Tensor>("Paddings");
+  auto* paddings_t = context.Input<phi::DenseTensor>("Paddings");
   if (paddings_t) {
-    Tensor pads;
+    phi::DenseTensor pads;
     framework::TensorCopySync(*paddings_t, platform::CPUPlace(), &pads);
     auto pads_data = pads.data<int>();
     paddings[0] = pads_data[0];
@@ -375,10 +373,10 @@ class Pad2dCUDAKernel : public framework::OpKernel<T> {
     auto data_format = context.Attr<std::string>("data_format");
     T value = static_cast<T>(context.Attr<float>("pad_value"));
 
-    auto* x = context.Input<Tensor>("X");
+    auto* x = context.Input<phi::DenseTensor>("X");
     auto in_dims = x->dims();
     const T* in_data = x->data<T>();
-    auto* out = context.Output<Tensor>("Out");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     auto out_dims = out->dims();
     if (data_format == "NCHW") {
       out_dims[0] = in_dims[0];
@@ -501,8 +499,9 @@ class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
     GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
-    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* d_in = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* d_out =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* d_in = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto d_in_dims = d_in->dims();
     auto d_out_dims = d_out->dims();
     const T* d_out_data = d_out->data<T>();

@@ -23,8 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class NMSOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {

@@ -28,6 +28,8 @@
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #endif
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -35,7 +37,7 @@ namespace operators {
 template <typename DeviceContext>
 struct FillConstantVisitor {
   FillConstantVisitor(const DeviceContext &dev_ctx,
-                      framework::LoDTensor *tensor,
+                      phi::DenseTensor *tensor,
                       const float value,
                       framework::proto::VarType::Type dtype,
                       const framework::ExecutionContext &context)
@@ -90,7 +92,7 @@ struct FillConstantVisitor {
   }
 
   const DeviceContext &dev_ctx_;
-  framework::LoDTensor *tensor_;
+  phi::DenseTensor *tensor_;
   float value_;
   framework::proto::VarType::Type dtype_;
   const framework::ExecutionContext &context_;
@@ -102,8 +104,8 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto in_var_names = context.InputNames("Input");
     auto out_var_names = context.OutputNames("Output");
-    const auto &in_tensors = context.MultiInput<framework::LoDTensor>("Input");
-    auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
+    const auto &in_tensors = context.MultiInput<phi::DenseTensor>("Input");
+    auto out_tensors = context.MultiOutput<phi::DenseTensor>("Output");
 
     PADDLE_ENFORCE_GT(in_var_names.size(),
                       static_cast<size_t>(0),
@@ -225,7 +227,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
                        align_size);
 
     // Alloc the continuous space
-    auto fused_tensor = context.Output<framework::LoDTensor>("FusedOutput");
+    auto fused_tensor = context.Output<phi::DenseTensor>("FusedOutput");
     void *fused_tensor_ptr =
         fused_tensor->Resize(phi::make_ddim({static_cast<int64_t>(numel)}))
             .mutable_data(context.GetPlace(),
@@ -315,7 +317,7 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
 
  private:
   void GetMemSizeAndDtype(
-      const std::vector<const framework::LoDTensor *> &lod_tensors,
+      const std::vector<const phi::DenseTensor *> &lod_tensors,
       const std::vector<std::string> var_names,
       size_t *numel,
       const size_t &size_of_dtype,
@@ -412,7 +414,7 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -506,24 +508,16 @@ value.
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(coalesce_tensor,
+                            CoalesceTensorInferShapeFunctor,
+                            PD_INFER_META(phi::CoalesceTensorInferMeta));
+
 REGISTER_OPERATOR(coalesce_tensor,
                   paddle::operators::CoalesceTensorOp,
-                  paddle::operators::CoalesceTensorOpMaker);
+                  paddle::operators::CoalesceTensorOpMaker,
+                  CoalesceTensorInferShapeFunctor);
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CPU_KERNEL(coalesce_tensor,
-                       ops::CoalesceTensorOpKernel<phi::CPUContext, int>,
-                       ops::CoalesceTensorOpKernel<phi::CPUContext, float>,
-                       ops::CoalesceTensorOpKernel<phi::CPUContext, double>);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<phi::GPUContext, plat::float16>,
-    ops::CoalesceTensorOpKernel<phi::GPUContext, int>,
-    ops::CoalesceTensorOpKernel<phi::GPUContext, float>,
-    ops::CoalesceTensorOpKernel<phi::GPUContext, double>);
-#endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)
 REGISTER_OP_CUDA_KERNEL(
@@ -533,16 +527,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, int>,
     ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, float>,
     ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, double>);
-#endif
-
-#ifdef PADDLE_WITH_XPU
-REGISTER_OP_XPU_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext,
-                                plat::float16>,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::CoalesceTensorOpKernel<paddle::platform::XPUDeviceContext, double>);
 #endif
 
 #if defined(PADDLE_WITH_ASCEND_CL)

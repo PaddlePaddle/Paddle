@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import numpy as np
@@ -22,12 +20,11 @@ import paddle.fluid as fluid
 
 
 class TestIncrement(unittest.TestCase):
-
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.layers.fill_constant(shape=[1],
-                                               dtype='int64',
-                                               value=5)
+            input = fluid.layers.fill_constant(
+                shape=[1], dtype='int64', value=5
+            )
             expected_result = np.array([8], dtype='int64')
 
             output = paddle.tensor.math.increment(input, value=3)
@@ -43,7 +40,6 @@ class TestIncrement(unittest.TestCase):
 
 
 class TestInplaceApiWithDataTransform(unittest.TestCase):
-
     def test_increment(self):
         if fluid.core.is_compiled_with_cuda():
             paddle.enable_static()
@@ -52,7 +48,7 @@ class TestInplaceApiWithDataTransform(unittest.TestCase):
             with paddle.fluid.device_guard("cpu"):
                 x = paddle.increment(x)
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
-            a, = exe.run(paddle.static.default_main_program(), fetch_list=[x])
+            (a,) = exe.run(paddle.static.default_main_program(), fetch_list=[x])
             paddle.disable_static()
             self.assertEqual(a[0], 1)
 

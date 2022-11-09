@@ -12,28 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
 class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
-    """
+    r"""
         x_1_var              x_2_var
           |                     |
       transpose2            transpose2
-          |                     | 
+          |                     |
        flatten2              flatten2
           \                     /
     flatten2_out_var    flatten2_out_var
               \              /
-                   concat 
+                   concat
     """
 
     def sample_predictor_configs(self, program_config):
@@ -98,14 +94,18 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
             if draw(st.booleans()):
                 trans_axis[j], trans_axis[-1] = trans_axis[-1], trans_axis[j]
         #  Generate axis of flatten
-        flatten_axis = draw(st.integers(min_value=0,
-                                        max_value=x_shape_rank - 1))
+        flatten_axis = draw(
+            st.integers(min_value=0, max_value=x_shape_rank - 1)
+        )
         for i in range(times):
             #  Generate x_shape of transpose
             x_shape = draw(
-                st.lists(st.integers(min_value=1, max_value=10),
-                         min_size=x_shape_rank,
-                         max_size=x_shape_rank))
+                st.lists(
+                    st.integers(min_value=1, max_value=10),
+                    min_size=x_shape_rank,
+                    max_size=x_shape_rank,
+                )
+            )
 
             str_i = str(i)
             transpose_op = OpConfig(
@@ -116,7 +116,7 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
                 axis=trans_axis,
                 outputs={
                     "Out": ["trans_out" + str_i],
-                    "XShape": ["trans_shape" + str_i]
+                    "XShape": ["trans_shape" + str_i],
                 },
             )
             ops.append(transpose_op)
@@ -128,7 +128,7 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
                 axis=flatten_axis,
                 outputs={
                     "Out": ["flatten2_out" + str_i],
-                    "XShape": ["xshape" + str_i]
+                    "XShape": ["xshape" + str_i],
                 },
             )
             concat_input.append("flatten2_out" + str_i)
@@ -156,9 +156,11 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            max_examples=300,
-                            passes=["transpose_flatten_concat_fuse_pass"])
+        self.run_and_statis(
+            quant=False,
+            max_examples=300,
+            passes=["transpose_flatten_concat_fuse_pass"],
+        )
 
 
 if __name__ == "__main__":

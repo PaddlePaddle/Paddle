@@ -21,9 +21,9 @@ set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
 
 # forward api file
 set(api_gen_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_gen.py)
-set(api_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/api.yaml)
+set(api_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/ops.yaml)
 set(legacy_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_ops.yaml)
 set(api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/api.h)
 set(api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
@@ -55,7 +55,7 @@ set(dygraph_api_source_file_tmp ${dygraph_api_source_file}.tmp)
 set(sparse_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/sparse_api_gen.py)
 set(sparse_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_ops.yaml)
 set(sparse_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/sparse_api.h)
 set(sparse_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_api.cc)
@@ -66,7 +66,7 @@ set(sparse_api_source_file_tmp ${sparse_api_source_file}.tmp)
 set(sparse_bw_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/sparse_bw_api_gen.py)
 set(sparse_bw_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_bw_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_backward.yaml)
 set(sparse_bw_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/sparse_bw_api.h)
 set(sparse_bw_api_source_file
@@ -78,7 +78,7 @@ set(sparse_bw_api_source_file_tmp ${sparse_bw_api_source_file}.tmp)
 set(strings_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/strings_api_gen.py)
 set(strings_api_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/strings_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/strings_ops.yaml)
 set(strings_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/strings_api.h)
 set(strings_api_source_file
@@ -97,10 +97,9 @@ set(wrapped_infermeta_source_file
 # op extra info file
 set(ops_extra_info_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/ops_extra_info_gen.py)
-set(api_compat_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/api_compat.yaml)
+set(op_compat_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 set(ops_extra_info_file
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.h)
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.cc)
 
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
@@ -119,8 +118,13 @@ endif()
 set(parsed_api_dir ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/parsed_apis)
 set(generated_op_path
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op.cc)
+set(generated_sparse_ops_path
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_sparse_op.cc)
 set(generated_argument_mapping_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_sig.cc)
+set(generated_sparse_argument_mapping_path
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_sparse_sig.cc)
+
 message(
   "parse api yamls:
 - ${api_yaml_file}
@@ -130,17 +134,23 @@ message(
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_api_dir}
-  COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path ./api.yaml
-          --output_path ./parsed_apis/api.parsed.yaml
+  COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path ./ops.yaml
+          --output_path ./parsed_apis/ops.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
-          ./legacy_api.yaml --output_path ./parsed_apis/legacy_api.parsed.yaml
+          ./legacy_ops.yaml --output_path ./parsed_apis/legacy_ops.parsed.yaml
   COMMAND
     ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path ./backward.yaml
-    --output_path ./parsed_apis/backward_api.parsed.yaml --backward
+    --output_path ./parsed_apis/backward_ops.parsed.yaml --backward
   COMMAND
     ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
     ./legacy_backward.yaml --output_path
-    ./parsed_apis/legacy_backward_api.parsed.yaml --backward RESULTS_VARIABLE
+    ./parsed_apis/legacy_backward_ops.parsed.yaml --backward
+  COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
+          ./sparse_ops.yaml --output_path ./parsed_apis/sparse_ops.parsed.yaml
+  COMMAND
+    ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
+    ./sparse_backward.yaml --output_path
+    ./parsed_apis/sparse_backward.parsed.yaml --backward RESULTS_VARIABLE
     _results)
 foreach(_result in ${_results})
   if(${_result})
@@ -150,19 +160,25 @@ endforeach()
 
 # validation of api yamls
 message("validate api yaml:
-- ${parsed_api_dir}/api.parsed.yaml
-- ${parsed_api_dir}/backward_api.parsed.yaml")
+- ${parsed_api_dir}/ops.parsed.yaml
+- ${parsed_api_dir}/backward_ops.parsed.yaml")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
   COMMAND
     ${PYTHON_EXECUTABLE} generator/cross_validate.py --forward_yaml_paths
-    ./parsed_apis/api.parsed.yaml ./parsed_apis/legacy_api.parsed.yaml
-    --backward_yaml_paths ./parsed_apis/backward_api.parsed.yaml
-    ./parsed_apis/legacy_backward_api.parsed.yaml
-  RESULT_VARIABLE _result)
-if(${_result})
-  message(FATAL_ERROR "api validation failed, exiting.")
-endif()
+    ./parsed_apis/ops.parsed.yaml ./parsed_apis/legacy_ops.parsed.yaml
+    --backward_yaml_paths ./parsed_apis/backward_ops.parsed.yaml
+    ./parsed_apis/legacy_backward_ops.parsed.yaml
+  COMMAND
+    ${PYTHON_EXECUTABLE} generator/cross_validate.py --forward_yaml_paths
+    ./parsed_apis/sparse_ops.parsed.yaml --backward_yaml_paths
+    ./parsed_apis/sparse_backward.parsed.yaml
+  RESULT_VARIABLE _results)
+foreach(_result in ${_results})
+  if(${_result})
+    message(FATAL_ERROR "ops validation failed, exiting.")
+  endif()
+endforeach()
 
 # code generation for op, op makers, and argument mapping functions
 message(
@@ -172,16 +188,24 @@ create or remove auto-geneated argument mappings: ${generated_argument_mapping_p
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
   COMMAND
-    ${PYTHON_EXECUTABLE} generator/generate_op.py --api_yaml_path
-    ./parsed_apis/api.parsed.yaml --backward_api_yaml_path
-    ./parsed_apis/backward_api.parsed.yaml --api_version_yaml_path
-    api_version.yaml --api_compat_yaml_path api_compat.yaml --output_op_path
+    ${PYTHON_EXECUTABLE} generator/generate_op.py --ops_yaml_path
+    ./parsed_apis/ops.parsed.yaml --backward_yaml_path
+    ./parsed_apis/backward_ops.parsed.yaml --op_version_yaml_path
+    op_version.yaml --op_compat_yaml_path op_compat.yaml --output_op_path
     "${generated_op_path}.tmp" --output_arg_map_path
     "${generated_argument_mapping_path}.tmp"
-  RESULT_VARIABLE _result)
-if(${_result})
-  message(FATAL_ERROR "operator codegen failed, exiting.")
-endif()
+  COMMAND
+    ${PYTHON_EXECUTABLE} generator/generate_sparse_op.py --ops_yaml_path
+    ./parsed_apis/sparse_ops.parsed.yaml --backward_ops_yaml_path
+    ./parsed_apis/sparse_backward.parsed.yaml --output_op_path
+    "${generated_sparse_ops_path}.tmp" --output_arg_map_path
+    "${generated_sparse_argument_mapping_path}.tmp"
+  RESULT_VARIABLE _results)
+foreach(_result in ${_results})
+  if(${_result})
+    message(FATAL_ERROR "operator codegen failed, exiting.")
+  endif()
+endforeach()
 
 if(EXISTS "${generated_op_path}.tmp" AND EXISTS "${generated_op_path}")
   execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -194,6 +218,25 @@ elseif(EXISTS "${generated_op_path}.tmp")
 else()
   execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f "${generated_op_path}")
   message("remove ${generated_op_path}")
+endif()
+
+if(EXISTS "${generated_sparse_ops_path}.tmp" AND EXISTS
+                                                 "${generated_sparse_ops_path}")
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${generated_sparse_ops_path}.tmp" "${generated_sparse_ops_path}")
+  message(
+    "copy if different ${generated_sparse_ops_path}.tmp ${generated_sparse_ops_path}"
+  )
+elseif(EXISTS "${generated_sparse_ops_path}.tmp")
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E copy "${generated_sparse_ops_path}.tmp"
+            "${generated_sparse_ops_path}")
+  message("copy ${generated_sparse_ops_path}.tmp ${generated_sparse_ops_path}")
+else()
+  execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f
+                          "${generated_sparse_ops_path}")
+  message("remove ${generated_sparse_ops_path}")
 endif()
 
 if(EXISTS "${generated_argument_mapping_path}.tmp"
@@ -219,11 +262,34 @@ else()
   message("remove ${generated_argument_mapping_path}")
 endif()
 
+if(EXISTS "${generated_sparse_argument_mapping_path}.tmp"
+   AND EXISTS "${generated_sparse_argument_mapping_path}")
+  execute_process(
+    COMMAND
+      ${CMAKE_COMMAND} -E copy_if_different
+      "${generated_sparse_argument_mapping_path}.tmp"
+      "${generated_sparse_argument_mapping_path}")
+  message(
+    "copy if different ${generated_sparse_argument_mapping_path}.tmp ${generated_sparse_argument_mapping_path}"
+  )
+elseif(EXISTS "${generated_sparse_argument_mapping_path}.tmp")
+  execute_process(
+    COMMAND
+      ${CMAKE_COMMAND} -E copy "${generated_sparse_argument_mapping_path}.tmp"
+      "${generated_sparse_argument_mapping_path}")
+  message(
+    "copy ${generated_sparse_argument_mapping_path}.tmp ${generated_sparse_argument_mapping_path}"
+  )
+else()
+  execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f
+                          "${generated_sparse_argument_mapping_path}")
+  message("remove ${generated_sparse_argument_mapping_path}")
+endif()
+
 # generate ops extra info
 execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${ops_extra_info_gen_file} --api_compat_yaml_path
-    ${api_compat_yaml_file} --ops_extra_info_path ${ops_extra_info_file})
+  COMMAND ${PYTHON_EXECUTABLE} ${ops_extra_info_gen_file} --op_compat_yaml_path
+          ${op_compat_yaml_file} --ops_extra_info_path ${ops_extra_info_file})
 message("generate ${ops_extra_info_file}")
 
 # generate forward api
@@ -373,12 +439,6 @@ cc_library(
   DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils backward_infermeta
        phi_data_transform)
 cc_library(
-  sparse_api_custom_impl
-  SRCS sparse_api_custom_impl.cc
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform
-       tensor_copy)
-
-cc_library(
   phi_function_api
   SRCS ${api_source_file}
   DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform
@@ -391,6 +451,7 @@ cc_library(
        kernel_dispatch
        api_gen_utils
        backward_infermeta
+       sparse_backward_infermeta
        phi_data_transform
        phi_function_api
        api_custom_impl
@@ -398,12 +459,12 @@ cc_library(
 cc_library(
   sparse_api
   SRCS ${sparse_api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api_custom_impl)
+  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
 cc_library(
   sparse_bw_api
   SRCS ${sparse_bw_api_source_file}
   DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api
-       sparse_api_custom_impl)
+       sparse_backward_infermeta)
 cc_library(
   phi_dygraph_api
   SRCS ${dygraph_api_source_file}
@@ -426,6 +487,7 @@ cc_library(
        api_gen_utils
        kernel_dispatch
        infermeta
+       sparse_infermeta
        sparse_api
        strings_api)
 cc_library(

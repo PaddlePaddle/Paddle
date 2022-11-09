@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle
-import paddle.fluid as fluid
 
 
 class TestScaleOp(OpTest):
-
     def setUp(self):
         self.op_type = "scale"
         self.inputs = {'X': np.random.random((10, 10)).astype(np.float32)}
@@ -40,7 +36,6 @@ class TestScaleOp(OpTest):
 
 
 class TestScaleOpBiasNotAfterScale(OpTest):
-
     def setUp(self):
         self.op_type = "scale"
         self.inputs = {'X': np.random.random((10, 10)).astype(np.float32)}
@@ -48,7 +43,7 @@ class TestScaleOpBiasNotAfterScale(OpTest):
             'scale': 1.5,
             'use_mkldnn': True,
             'bias': 2.3,
-            'bias_after_scale': False
+            'bias_after_scale': False,
         }
         self.use_mkldnn = True
         self.outputs = {
@@ -63,13 +58,12 @@ class TestScaleOpBiasNotAfterScale(OpTest):
 
 
 class TestScaleOpScaleTensor(OpTest):
-
     def setUp(self):
         self.op_type = "scale"
         self.scale = -2.3
         self.inputs = {
             'X': np.random.random((10, 10)).astype(np.float32),
-            'ScaleTensor': np.array([self.scale]).astype(np.float32)
+            'ScaleTensor': np.array([self.scale]).astype(np.float32),
         }
         self.attrs = {}
         self.outputs = {'Out': self.inputs['X'] * self.scale}
@@ -82,18 +76,17 @@ class TestScaleOpScaleTensor(OpTest):
 
 
 class TestScaleOpScaleTensorNotBiasAfterScale(OpTest):
-
     def setUp(self):
         self.op_type = "scale"
         self.scale = -1.2
         self.inputs = {
             'X': np.random.random((10, 10)).astype(np.float32),
-            'ScaleTensor': np.array([self.scale]).astype(np.float32)
+            'ScaleTensor': np.array([self.scale]).astype(np.float32),
         }
         self.attrs = {'bias': -6.8, 'bias_after_scale': False}
         self.outputs = {
-            'Out':
-            (self.inputs['X'] + self.attrs['bias']) * self.inputs['ScaleTensor']
+            'Out': (self.inputs['X'] + self.attrs['bias'])
+            * self.inputs['ScaleTensor']
         }
 
     def test_check_output(self):

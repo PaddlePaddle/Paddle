@@ -24,6 +24,7 @@ namespace cub = hipcub;
 
 #include <iostream>
 
+#include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/core/ddim.h"
@@ -32,7 +33,7 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
@@ -338,16 +339,24 @@ using LayerNormScaleBiasT =
 template <typename T,
           typename U,
           int BlockDim,
-          bool ScaleBiasWithSameTypeX = false>
+          bool ScaleBiasWithSameTypeX = false,
+          typename InType = T,
+          typename OutType = T>
 __global__ void LayerNormForward(
-    const T *x,
+    const InType *x,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *bias,
-    T *y,
+    OutType *y,
     U *mean,
     U *var,
     float epsilon,
-    int64_t feature_size) {
+    int64_t feature_size,
+    const float *dequant_out_scale_data = nullptr,
+    const int quant_out_scale_offset = 0,
+    const float quant_in_scale = 1.0,
+    const int quant_round_type = 1,
+    const float quant_max_bound = 127.0,
+    const float quant_min_bound = -127.0) {
   __shared__ U mean_share;
   __shared__ U var_share;
   __shared__ U shared_mean[32];  // threadIdx.x / warpSize <= kMaxBlockDim /
@@ -370,7 +379,8 @@ __global__ void LayerNormForward(
   var_val = BlockReduceSum<U>(var_val, shared_var);
 
   if (threadIdx.x == 0) {
-    auto scale = static_cast<float>(1.) / static_cast<float>(feature_size);
+    auto scale = static_cast<U>(static_cast<float>(1.) /
+                                static_cast<float>(feature_size));
     auto tmp = mean_val * scale;
     mean[blockIdx.x] = mean_share = static_cast<U>(tmp);
     var_share = static_cast<U>(var_val * scale - mean_share * mean_share);
@@ -387,28 +397,72 @@ __global__ void LayerNormForward(
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>(static_cast<U>(scale[j]) *
-                                  (static_cast<U>(x[i]) - mean_val) * invvar +
-                              static_cast<U>(bias[j]));
+        if (std::is_same<OutType, int8_t>::value) {
+          y[i] = quant_helper(
+              static_cast<T>(static_cast<U>(scale[j]) *
+                                 (static_cast<U>(x[i]) - mean_val) * invvar +
+                             static_cast<U>(bias[j])),
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
+        } else {
+          y[i] = static_cast<OutType>(static_cast<U>(scale[j]) *
+                                          (static_cast<U>(x[i]) - mean_val) *
+                                          invvar +
+                                      static_cast<U>(bias[j]));
+        }
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>(static_cast<U>(scale[j]) *
-                              (static_cast<U>(x[i]) - mean_val) * invvar);
+        if (std::is_same<OutType, int8_t>::value) {
+          y[i] = quant_helper(
+              static_cast<T>(static_cast<U>(scale[j]) *
+                             (static_cast<U>(x[i]) - mean_val) * invvar),
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
+        } else {
+          y[i] =
+              static_cast<OutType>(static_cast<U>(scale[j]) *
+                                   (static_cast<U>(x[i]) - mean_val) * invvar);
+        }
       }
     }
   } else {  // scale == nullptr
     if (bias != nullptr) {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar +
-                              static_cast<U>(bias[j]));
+        if (std::is_same<OutType, int8_t>::value) {
+          y[i] = quant_helper(
+              static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar +
+                             static_cast<U>(bias[j])),
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
+        } else {
+          y[i] =
+              static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar +
+                                   static_cast<U>(bias[j]));
+        }
       }
     } else {
       for (int64_t i = beg_idx, j = threadIdx.x; i < end_idx;
            i += BlockDim, j += BlockDim) {
-        y[i] = static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar);
+        if (std::is_same<OutType, int8_t>::value) {
+          y[i] = quant_helper(
+              static_cast<T>((static_cast<U>(x[i]) - mean_val) * invvar),
+              quant_in_scale,
+              quant_round_type,
+              quant_max_bound,
+              quant_min_bound);
+        } else {
+          y[i] =
+              static_cast<OutType>((static_cast<U>(x[i]) - mean_val) * invvar);
+        }
       }
     }
   }
@@ -884,12 +938,12 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     const int gridx = 2 * dev_ctx.GetSMCount();
 
     // get temp space for dscale and dbias.
-    framework::Tensor dscale_temp;
+    phi::DenseTensor dscale_temp;
     dscale_temp.Resize({gridx, cols});
     dscale_temp.mutable_data<U>(dev_ctx.GetPlace());
     U *dscale_temp_ptr = dscale_temp.data<U>();
 
-    framework::Tensor dbias_temp;
+    phi::DenseTensor dbias_temp;
     dbias_temp.Resize({gridx, cols});
     dbias_temp.mutable_data<U>(dev_ctx.GetPlace());
     U *dbias_temp_ptr = dbias_temp.data<U>();
@@ -1815,10 +1869,14 @@ static void LayerNormBackward(
         constexpr int part_size = BDIMY2 * VPT;
         const dim3 blocks2((feature_size + BDIMX2 - 1) / BDIMX2, part_size, 1);
 
-        auto part_grad_gamma_ptr =
-            memory::Alloc(dev_ctx, part_size * feature_size * sizeof(U));
-        auto part_grad_beta_ptr =
-            memory::Alloc(dev_ctx, part_size * feature_size * sizeof(U));
+        auto part_grad_gamma_ptr = memory::Alloc(
+            dev_ctx.GetPlace(),
+            part_size * feature_size * sizeof(U),
+            phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+        auto part_grad_beta_ptr = memory::Alloc(
+            dev_ctx.GetPlace(),
+            part_size * feature_size * sizeof(U),
+            phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
         U *part_grad_gamma = reinterpret_cast<U *>(part_grad_gamma_ptr->ptr());
         U *part_grad_beta = reinterpret_cast<U *>(part_grad_beta_ptr->ptr());
 

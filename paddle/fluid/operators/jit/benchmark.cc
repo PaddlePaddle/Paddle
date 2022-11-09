@@ -135,7 +135,7 @@ void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
   LOG(INFO) << loginfos.str();
 }
 
-using Tensor = paddle::framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename KernelTuple, typename PlaceType>
 void BenchKernelXYZN() {
   using T = typename KernelTuple::data_type;

@@ -28,8 +28,8 @@ using phi::funcs::FlattenToString;
 using phi::funcs::ToVector;
 
 struct ParamGradInfo {
-  framework::Tensor *param_t{nullptr};
-  framework::Tensor *grad_t{nullptr};
+  phi::DenseTensor *param_t{nullptr};
+  phi::DenseTensor *grad_t{nullptr};
   size_t idx{0};
   size_t numel{0};
   size_t numel_with_padding{0};
@@ -182,7 +182,7 @@ static size_t FillAlignmentPaddingInfo(std::vector<ParamGradInfo> *infos,
 
 template <typename T>
 static T *TensorFillConstant(const phi::GPUContext &dev_ctx,
-                             framework::Tensor *tensor,
+                             phi::DenseTensor *tensor,
                              const framework::DDim &dims,
                              T value) {
   tensor->Resize(dims);
@@ -192,10 +192,10 @@ static T *TensorFillConstant(const phi::GPUContext &dev_ctx,
   return ptr;
 }
 
-static framework::Tensor CastDataForInitedTensor(const phi::GPUContext &dev_ctx,
-                                                 framework::Tensor *origin,
-                                                 framework::Tensor *fused_out,
-                                                 size_t numel_offset) {
+static phi::DenseTensor CastDataForInitedTensor(const phi::GPUContext &dev_ctx,
+                                                phi::DenseTensor *origin,
+                                                phi::DenseTensor *fused_out,
+                                                size_t numel_offset) {
   PADDLE_ENFORCE_EQ(origin->IsInitialized(),
                     true,
                     platform::errors::InvalidArgument(
@@ -224,9 +224,9 @@ static framework::Tensor CastDataForInitedTensor(const phi::GPUContext &dev_ctx,
   return sliced_tensor;
 }
 
-static framework::Tensor CopyAndShareBufferForInitedTensor(
-    framework::Tensor *origin,
-    framework::Tensor *fused_out,
+static phi::DenseTensor CopyAndShareBufferForInitedTensor(
+    phi::DenseTensor *origin,
+    phi::DenseTensor *fused_out,
     size_t numel_offset,
     gpuStream_t stream) {
   PADDLE_ENFORCE_EQ(
@@ -271,8 +271,8 @@ static framework::Tensor CopyAndShareBufferForInitedTensor(
   return sliced_tensor;
 }
 
-static void ShareBufferForNonInitedTensor(framework::Tensor *origin,
-                                          framework::Tensor *fused_out,
+static void ShareBufferForNonInitedTensor(phi::DenseTensor *origin,
+                                          phi::DenseTensor *fused_out,
                                           size_t numel_offset,
                                           const framework::DDim &dims) {
   PADDLE_ENFORCE_EQ(
@@ -295,7 +295,7 @@ static void ShareBufferForNonInitedTensor(framework::Tensor *origin,
 
 template <typename T>
 static void CopyVectorToCPUTensor(const std::vector<T> &src,
-                                  framework::Tensor *dst) {
+                                  phi::DenseTensor *dst) {
   dst->Resize({static_cast<int64_t>(src.size())});
   T *dst_ptr = dst->mutable_data<T>(platform::CPUPlace());
   const T *src_ptr = src.data();
@@ -351,9 +351,9 @@ class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
 
     // Step 1: Check Input(Param) and Output(ParamOut), Input(Grad) and
     // Output(GradOut)
-    auto params = ctx.MultiInput<framework::Tensor>("Param");
-    auto grads = ctx.MultiInput<framework::Tensor>("Grad");
-    auto master_params = ctx.MultiOutput<framework::Tensor>("MasterParamOut");
+    auto params = ctx.MultiInput<phi::DenseTensor>("Param");
+    auto grads = ctx.MultiInput<phi::DenseTensor>("Grad");
+    auto master_params = ctx.MultiOutput<phi::DenseTensor>("MasterParamOut");
     std::vector<ParamGradInfo> fp32_infos, fp16_infos;
     {
       PADDLE_ENFORCE_EQ(params.size(),
@@ -362,8 +362,8 @@ class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
                             "The parameter number and parameter gradient "
                             "number should be the same."));
 
-      auto params_out = ctx.MultiOutput<framework::Tensor>("ParamOut");
-      auto grads_out = ctx.MultiOutput<framework::Tensor>("GradOut");
+      auto params_out = ctx.MultiOutput<phi::DenseTensor>("ParamOut");
+      auto grads_out = ctx.MultiOutput<phi::DenseTensor>("GradOut");
       PADDLE_ENFORCE_EQ(
           params.size(),
           params_out.size(),
@@ -469,7 +469,7 @@ class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
     size_t fp16_wd_end_idx =
         ReorderParamGradInfoList(apply_weight_decay, &fp16_infos);
 
-    auto *param_order_t = ctx.Output<framework::Tensor>("ParamOrder");
+    auto *param_order_t = ctx.Output<phi::DenseTensor>("ParamOrder");
     auto param_num = fp32_infos.size() + fp16_infos.size();
     param_order_t->Resize({static_cast<int16_t>(param_num)});
     auto *param_order = param_order_t->mutable_data<int>(platform::CPUPlace());
@@ -535,30 +535,30 @@ class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
     // Step 3: allocate output tensor and do initialization
     float *fused_fp32_param = nullptr, *fused_fp32_grad = nullptr;
     platform::float16 *fused_fp16_param = nullptr, *fused_fp16_grad = nullptr;
-    framework::Tensor *fp32_p_t = nullptr, *fp16_p_t = nullptr,
-                      *fp32_g_t = nullptr, *fp16_g_t = nullptr;
-    std::vector<framework::Tensor *> fp16_master_params;
+    phi::DenseTensor *fp32_p_t = nullptr, *fp16_p_t = nullptr,
+                     *fp32_g_t = nullptr, *fp16_g_t = nullptr;
+    std::vector<phi::DenseTensor *> fp16_master_params;
     if (total_numel > 0) {
-      fp32_p_t = ctx.Output<framework::Tensor>("FP32FusedParam");
+      fp32_p_t = ctx.Output<phi::DenseTensor>("FP32FusedParam");
       fused_fp32_param = TensorFillConstant<float>(
           dev_ctx, fp32_p_t, {static_cast<int64_t>(total_numel)}, 0.0f);
     }
 
     if (fp32_numel > 0) {
-      fp32_g_t = ctx.Output<framework::Tensor>("FP32FusedGrad");
+      fp32_g_t = ctx.Output<phi::DenseTensor>("FP32FusedGrad");
       fused_fp32_grad = TensorFillConstant<float>(
           dev_ctx, fp32_g_t, {static_cast<int64_t>(fp32_numel)}, 0.0f);
     }
 
     if (fp16_numel > 0) {
-      fp16_p_t = ctx.Output<framework::Tensor>("FP16FusedParam");
+      fp16_p_t = ctx.Output<phi::DenseTensor>("FP16FusedParam");
       fused_fp16_param = TensorFillConstant<platform::float16>(
           dev_ctx,
           fp16_p_t,
           {static_cast<int64_t>(fp16_numel)},
           static_cast<platform::float16>(0));
 
-      fp16_g_t = ctx.Output<framework::Tensor>("FP16FusedGrad");
+      fp16_g_t = ctx.Output<phi::DenseTensor>("FP16FusedGrad");
       fused_fp16_grad = TensorFillConstant<platform::float16>(
           dev_ctx,
           fp16_g_t,
@@ -622,19 +622,19 @@ class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
 
     // Step 4: For Moment1, Moment2, Beta1Pow, Beta2Pow, just fill constant
     TensorFillConstant<float>(dev_ctx,
-                              ctx.Output<framework::Tensor>("Moment1"),
+                              ctx.Output<phi::DenseTensor>("Moment1"),
                               {static_cast<int64_t>(numel_each_device)},
                               0.0f);
     TensorFillConstant<float>(dev_ctx,
-                              ctx.Output<framework::Tensor>("Moment2"),
+                              ctx.Output<phi::DenseTensor>("Moment2"),
                               {static_cast<int64_t>(numel_each_device)},
                               0.0f);
     TensorFillConstant<float>(dev_ctx,
-                              ctx.Output<framework::Tensor>("Beta1Pow"),
+                              ctx.Output<phi::DenseTensor>("Beta1Pow"),
                               {1},
                               ctx.Attr<float>("beta1"));
     TensorFillConstant<float>(dev_ctx,
-                              ctx.Output<framework::Tensor>("Beta2Pow"),
+                              ctx.Output<phi::DenseTensor>("Beta2Pow"),
                               {1},
                               ctx.Attr<float>("beta2"));
     VLOG(10) << "Init Moment and BetaPow ends";
@@ -665,7 +665,7 @@ class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
     size_t total_local_param_num = fp32_local_param_num + fp16_local_param_num;
     VLOG(10) << "Found the sharding arguments";
 
-    auto *param_info_t = ctx.Output<framework::Tensor>("ParamInfo");
+    auto *param_info_t = ctx.Output<phi::DenseTensor>("ParamInfo");
     param_info_t->Resize({8});
     auto *param_info = param_info_t->mutable_data<int>(platform::CPUPlace());
     param_info[0] = static_cast<int>(fp32_start_idx);
@@ -760,22 +760,22 @@ class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
     }
 
     CopyVectorToCPUTensor(numel_offsets,
-                          ctx.Output<framework::Tensor>("FusedParamOffsets"));
+                          ctx.Output<phi::DenseTensor>("FusedParamOffsets"));
     CopyVectorToCPUTensor(
         fp32_partial_numel_offsets,
-        ctx.Output<framework::Tensor>("FP32ShardFusedParamOffsets"));
+        ctx.Output<phi::DenseTensor>("FP32ShardFusedParamOffsets"));
     CopyVectorToCPUTensor(
         fp16_partial_numel_offsets,
-        ctx.Output<framework::Tensor>("FP16ShardFusedParamOffsets"));
+        ctx.Output<phi::DenseTensor>("FP16ShardFusedParamOffsets"));
 
-    auto *global_scale = ctx.Output<framework::Tensor>("GlobalScale");
+    auto *global_scale = ctx.Output<phi::DenseTensor>("GlobalScale");
     if (!global_scale->IsInitialized()) {
       TensorFillConstant<float>(dev_ctx, global_scale, {1}, 1.0f);
     }
     VLOG(10) << "Init global scale ends";
 
     TensorFillConstant<int64_t>(dev_ctx,
-                                ctx.Output<framework::Tensor>("Step"),
+                                ctx.Output<phi::DenseTensor>("Step"),
                                 {1},
                                 static_cast<int64_t>(0));
 

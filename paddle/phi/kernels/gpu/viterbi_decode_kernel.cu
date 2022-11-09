@@ -92,7 +92,7 @@ struct BinaryOperation {
     std::vector<DenseTensor*> outs{output};
     paddle::operators::
         LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-            dev_ctx, ins, &outs, -1, BinaryFunctor<T>());
+            dev_ctx, ins, &outs, 0, BinaryFunctor<T>());
   }
 };
 

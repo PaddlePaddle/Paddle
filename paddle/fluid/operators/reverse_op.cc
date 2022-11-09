@@ -69,7 +69,7 @@ class ReverseOpMaker : public framework::OpProtoAndCheckerMaker {
             Out = [[11, 12, 13, 14, 15]
                    [6, 7, 8, 9, 10]
                    [1, 2, 3, 4, 5]].
-        
+
       Case 2:
         Given
             X = [[[1, 2, 3, 4]

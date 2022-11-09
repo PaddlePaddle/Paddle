@@ -17,16 +17,12 @@ from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
 class TestConvEltwiseAddFusePass(PassAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -49,21 +45,26 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
         out_channel = groups * out_channel_factor
         batch_size = draw(st.integers(min_value=1, max_value=4))
         dilations = draw(
-            st.lists(st.integers(min_value=1, max_value=2),
-                     min_size=2,
-                     max_size=2))
+            st.lists(
+                st.integers(min_value=1, max_value=2), min_size=2, max_size=2
+            )
+        )
         paddings = draw(
-            st.lists(st.integers(min_value=0, max_value=2),
-                     min_size=2,
-                     max_size=2))
+            st.lists(
+                st.integers(min_value=0, max_value=2), min_size=2, max_size=2
+            )
+        )
         strides = draw(
-            st.lists(st.integers(min_value=1, max_value=2),
-                     min_size=2,
-                     max_size=2))
+            st.lists(
+                st.integers(min_value=1, max_value=2), min_size=2, max_size=2
+            )
+        )
 
-        x_shape = [
-            batch_size, in_channel, 64, 64
-        ] if data_format == "NCHW" else [batch_size, 64, 64, in_channel]
+        x_shape = (
+            [batch_size, in_channel, 64, 64]
+            if data_format == "NCHW"
+            else [batch_size, 64, 64, in_channel]
+        )
         w_shape = [out_channel, filter_channel, filter_size, filter_size]
         scale_shape = [out_channel]
         bias_shape = [out_channel]
@@ -80,26 +81,27 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
         def generate_scale_bias():
             return np.random.random(bias_shape).astype(np.float32)
 
-        conv2d_op = OpConfig("conv2d",
-                             inputs={
-                                 "Input": ["input_data"],
-                                 "Filter": ["conv2d_weight"],
-                             },
-                             outputs={"Output": ["conv_output"]},
-                             data_format=data_format,
-                             dilations=dilations,
-                             padding_algorithm=padding_algorithm,
-                             groups=groups,
-                             paddings=paddings,
-                             strides=strides,
-                             is_test=True)
-        eltwise_op = OpConfig("elementwise_add",
-                              inputs={
-                                  "X": ["conv_output"],
-                                  "Y": ["conv2d_bias"]
-                              },
-                              outputs={"Out": ["elementwise_output"]},
-                              axis=axis)
+        conv2d_op = OpConfig(
+            "conv2d",
+            inputs={
+                "Input": ["input_data"],
+                "Filter": ["conv2d_weight"],
+            },
+            outputs={"Output": ["conv_output"]},
+            data_format=data_format,
+            dilations=dilations,
+            padding_algorithm=padding_algorithm,
+            groups=groups,
+            paddings=paddings,
+            strides=strides,
+            is_test=True,
+        )
+        eltwise_op = OpConfig(
+            "elementwise_add",
+            inputs={"X": ["conv_output"], "Y": ["conv2d_bias"]},
+            outputs={"Out": ["elementwise_output"]},
+            axis=axis,
+        )
         ops = [conv2d_op, eltwise_op]
 
         program_config = ProgramConfig(
@@ -108,12 +110,15 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
                 "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
             weights={
-                "conv2d_weight":
-                TensorConfig(data_gen=partial(generate_weight)),
-                "conv2d_bias":
-                TensorConfig(data_gen=partial(generate_scale_bias)),
+                "conv2d_weight": TensorConfig(
+                    data_gen=partial(generate_weight)
+                ),
+                "conv2d_bias": TensorConfig(
+                    data_gen=partial(generate_scale_bias)
+                ),
             },
-            outputs=["elementwise_output"])
+            outputs=["elementwise_output"],
+        )
         return program_config
 
     def sample_predictor_configs(self, program_config):
@@ -128,7 +133,8 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
             min_subgraph_size=1,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
-            use_calib_mode=False)
+            use_calib_mode=False,
+        )
         yield config, ['conv2d_fusion'], (1e-4, 1e-4)
 
     def add_ignore_pass_case(self):
@@ -140,10 +146,11 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
             return False
 
         self.add_ignore_check_case(
-            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
+            teller1,
+            IgnoreReasons.PASS_ACCURACY_ERROR,
             "The output format of conv2d is wrong when data_format attribute is NHWC, \
             it will trigger Broadcast dimension mismatch bug \
-            when data_format attribute is NHWC and axis of eltwise op is 1 for this pass."
+            when data_format attribute is NHWC and axis of eltwise op is 1 for this pass.",
         )
 
     def test(self):

@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -97,10 +97,10 @@ class CSoftmaxWithCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
 template <typename T>
 struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx) {
-    const Tensor* logits = ctx.Input<Tensor>("Logits");
-    const Tensor* labels = ctx.Input<Tensor>("Label");
-    Tensor* softmax = ctx.Output<Tensor>("Softmax");
-    Tensor* loss = ctx.Output<Tensor>("Loss");
+    const phi::DenseTensor* logits = ctx.Input<phi::DenseTensor>("Logits");
+    const phi::DenseTensor* labels = ctx.Input<phi::DenseTensor>("Label");
+    phi::DenseTensor* softmax = ctx.Output<phi::DenseTensor>("Softmax");
+    phi::DenseTensor* loss = ctx.Output<phi::DenseTensor>("Loss");
 
     const int rid = ctx.Attr<int>("ring_id");
     const int nranks = ctx.Attr<int>("nranks");
@@ -250,10 +250,10 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
 template <typename T>
 struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx) {
-    const Tensor* logits = ctx.Input<Tensor>("Logits");
-    const Tensor* labels = ctx.Input<Tensor>("Label");
-    Tensor* softmax = ctx.Output<Tensor>("Softmax");
-    Tensor* loss = ctx.Output<Tensor>("Loss");
+    const phi::DenseTensor* logits = ctx.Input<phi::DenseTensor>("Logits");
+    const phi::DenseTensor* labels = ctx.Input<phi::DenseTensor>("Label");
+    phi::DenseTensor* softmax = ctx.Output<phi::DenseTensor>("Softmax");
+    phi::DenseTensor* loss = ctx.Output<phi::DenseTensor>("Loss");
 
     const int rid = ctx.Attr<int>("ring_id");
     const int nranks = ctx.Attr<int>("nranks");
@@ -265,7 +265,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     distributed::ProcessGroup* pg = map->get(rid);
     distributed::AllreduceOptions opts;
-    opts.reduce_op = distributed::ReduceOp::SUM;
+    opts.reduce_op = distributed::ReduceOp::MAX;
 
     // allocate memory on device.
     softmax->mutable_data<T>(place);
@@ -348,6 +348,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
 
     in_out.clear();
     in_out.push_back(predicted_logits);
+    opts.reduce_op = distributed::ReduceOp::SUM;
     pg->AllReduce(in_out, in_out, opts)->Synchronize();
 
     // step 4, obtain exp(logit)
@@ -364,6 +365,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
 
     in_out.clear();
     in_out.push_back(sum_exp_logits);
+    opts.reduce_op = distributed::ReduceOp::SUM;
     pg->AllReduce(in_out, in_out, opts)->Synchronize();
 
     auto eigen_loss = math::EigenMatrix<T>::From(loss_2d);
@@ -384,12 +386,13 @@ template <typename T>
 class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* labels = context.Input<Tensor>("Label");
-    const Tensor* loss_grad =
-        context.Input<Tensor>(framework::GradVarName("Loss"));
-    Tensor* logit_grad =
-        context.Output<Tensor>(framework::GradVarName("Logits"));
-    const Tensor* softmax = context.Input<Tensor>("Softmax");
+    const phi::DenseTensor* labels = context.Input<phi::DenseTensor>("Label");
+    const phi::DenseTensor* loss_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Loss"));
+    phi::DenseTensor* logit_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
+    const phi::DenseTensor* softmax =
+        context.Input<phi::DenseTensor>("Softmax");
     const int rank = context.Attr<int>("rank");
     auto& dev_ctx = context.template device_context<phi::GPUContext>();
 

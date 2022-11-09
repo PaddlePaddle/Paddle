@@ -12,22 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import sys
 import unittest
 
-import paddle.fluid as fluid
 from test_dist_base import TestDistBase
-from spawn_runner_base import TestDistSpawnRunner
-from parallel_dygraph_sparse_embedding_over_height import TestSparseEmbeddingOverHeight
 
 flag_name = os.path.splitext(__file__)[0]
 
 
 class TestParallelDygraphSparseEmdeddingOverHeight_GLOO(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = False
         self._gloo_mode = True
@@ -38,7 +31,8 @@ class TestParallelDygraphSparseEmdeddingOverHeight_GLOO(TestDistBase):
             "parallel_dygraph_sparse_embedding_over_height.py",
             delta=1e-7,
             check_error_log=True,
-            log_name=flag_name)
+            log_name=flag_name,
+        )
 
 
 if __name__ == "__main__":

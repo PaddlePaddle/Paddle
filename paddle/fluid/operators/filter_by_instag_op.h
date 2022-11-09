@@ -29,9 +29,9 @@
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 using Vector = framework::Vector<T>;
@@ -50,7 +50,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     auto* x2 = context.Input<LoDTensor>("Ins_tag");
     // X3 is local fc tag list
     // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
-    auto* x3 = context.Input<Tensor>("Filter_tag");
+    auto* x3 = context.Input<phi::DenseTensor>("Filter_tag");
 
     std::unordered_set<int64_t> filter_tag;
     auto* x3_data = x3->data<int64_t>();

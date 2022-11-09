@@ -28,7 +28,7 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
     auto str_value = ctx.Attr<std::string>("str_value");
     auto float_value = ctx.Attr<float>("value");
 
-    auto *out_var = ctx.Output<framework::Tensor>("Out");
+    auto *out_var = ctx.Output<phi::DenseTensor>("Out");
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -65,21 +65,11 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
       tensor_value.mutable_data<T>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<T>(&tensor_value, value);
       NpuOpRunner runner;
-#if (CANN_VERSION_CODE >= 503003 && CANN_VERSION_CODE < 504000)
-      runner.SetType("FillD")
-          .AddInput(tensor_value)
-          .AddOutput(*out_var)
-          .AddAttrs(
-              {{ "dims",
-                 phi::vectorize(shape) }})
-          .Run(stream);
-#else
       runner.SetType("Fill")
           .AddInput(phi::vectorize(shape))
           .AddInput(tensor_value)
           .AddOutput(*out_var)
           .Run(stream);
-#endif
     } else {
       const auto &dev_ctx =
           ctx.template device_context<paddle::platform::NPUDeviceContext>();

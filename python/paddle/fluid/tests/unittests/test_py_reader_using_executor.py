@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -41,8 +39,11 @@ def as_tensor(np_array_or_tensor, place=None):
 
 
 def as_numpy(tensor_or_numpy):
-    return tensor_or_numpy if isinstance(
-        tensor_or_numpy, np.ndarray) else np.array(tensor_or_numpy)
+    return (
+        tensor_or_numpy
+        if isinstance(tensor_or_numpy, np.ndarray)
+        else np.array(tensor_or_numpy)
+    )
 
 
 def sample_list_to_tensor_array(sample_list):
@@ -82,13 +83,15 @@ def feed_data(feed_queue, batch_reader):
     feed_queue.close()
 
 
-def simple_fc_net(in_size,
-                  class_num,
-                  hidden_sizes,
-                  batch_size,
-                  queue_capacity,
-                  use_double_buffer=False,
-                  use_feed_list=True):
+def simple_fc_net(
+    in_size,
+    class_num,
+    hidden_sizes,
+    batch_size,
+    queue_capacity,
+    use_double_buffer=False,
+    use_feed_list=True,
+):
     in_data = fluid.layers.data(name="data", dtype='float32', shape=[in_size])
     label = fluid.layers.data(name='label', dtype='int64', shape=[1])
     if use_feed_list:
@@ -96,14 +99,16 @@ def simple_fc_net(in_size,
             capacity=queue_capacity,
             use_double_buffer=use_double_buffer,
             feed_list=[in_data, label],
-            name=unique_name.generate('py_reader_name'))
+            name=unique_name.generate('py_reader_name'),
+        )
     else:
         py_reader = fluid.layers.py_reader(
             capacity=queue_capacity,
             shapes=[in_data.shape, label.shape],
             dtypes=['float32', 'int64'],
             name=unique_name.generate('py_reader_name'),
-            use_double_buffer=use_double_buffer)
+            use_double_buffer=use_double_buffer,
+        )
 
     in_data, label = fluid.layers.read_file(py_reader)
 
@@ -115,12 +120,15 @@ def simple_fc_net(in_size,
             hidden,
             size=hidden_size,
             act='tanh',
-            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=1.0)))
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=1.0)
+            ),
+        )
 
     predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
     loss = paddle.mean(
-        fluid.layers.cross_entropy(input=predict_label, label=label))
+        fluid.layers.cross_entropy(input=predict_label, label=label)
+    )
 
     optimizer = fluid.optimizer.Adam()
     optimizer.minimize(loss)
@@ -128,7 +136,6 @@ def simple_fc_net(in_size,
 
 
 class TestPyReaderUsingExecutor(unittest.TestCase):
-
     def setUp(self):
         self.in_size = 1000
         self.hidden_sizes = [50, 30, 20]
@@ -138,39 +145,42 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
         self.queue_capacity = 50
 
     def test(self):
-        for use_cuda in ([False, True]
-                         if core.is_compiled_with_cuda() else [False]):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
             for use_parallel_executor in [False, True]:
                 for use_double_buffer in [False, True]:
                     for use_feed_list in [False, True]:
                         for use_decorate_paddle_reader in [False, True]:
                             print('Test Parameters:'),
-                            print({
-                                'use_cuda':
+                            print(
+                                {
+                                    'use_cuda': use_cuda,
+                                    'use_parallel_executor': use_parallel_executor,
+                                    'use_double_buffer': use_double_buffer,
+                                    'use_feed_list': use_feed_list,
+                                    'use_decorate_paddle_reader': use_decorate_paddle_reader,
+                                }
+                            )
+                            self.main(
                                 use_cuda,
-                                'use_parallel_executor':
                                 use_parallel_executor,
-                                'use_double_buffer':
                                 use_double_buffer,
-                                'use_feed_list':
                                 use_feed_list,
-                                'use_decorate_paddle_reader':
-                                use_decorate_paddle_reader
-                            })
-                            self.main(use_cuda, use_parallel_executor,
-                                      use_double_buffer, use_feed_list,
-                                      use_decorate_paddle_reader)
+                                use_decorate_paddle_reader,
+                            )
 
     def tensor_reader(self, use_decorate_paddle_reader):
-
         def reader():
-            for sample_id in range(self.batch_size * self.iterations *
-                                   self.batch_size_times):
+            for sample_id in range(
+                self.batch_size * self.iterations * self.batch_size_times
+            ):
                 in_data = np.random.uniform(
-                    low=0, high=1, size=(self.in_size, )).astype('float32')
-                label = np.random.random_integers(low=0,
-                                                  high=self.class_num - 1,
-                                                  size=(1, )).astype('int64')
+                    low=0, high=1, size=(self.in_size,)
+                ).astype('float32')
+                label = np.random.random_integers(
+                    low=0, high=self.class_num - 1, size=(1,)
+                ).astype('int64')
 
                 reshaped_in_data = np.reshape(in_data, [1, -1])
                 reshaped_label = np.reshape(label, [1, -1])
@@ -178,9 +188,11 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
                     self.inputs.append([reshaped_in_data, reshaped_label])
                 else:
                     self.inputs[-1][0] = np.concatenate(
-                        (self.inputs[-1][0], reshaped_in_data), axis=0)
+                        (self.inputs[-1][0], reshaped_in_data), axis=0
+                    )
                     self.inputs[-1][1] = np.concatenate(
-                        (self.inputs[-1][1], reshaped_label), axis=0)
+                        (self.inputs[-1][1], reshaped_label), axis=0
+                    )
 
                 yield in_data, label
 
@@ -189,12 +201,14 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
 
         return reader
 
-    def main(self,
-             use_cuda=True,
-             use_parallel_executor=False,
-             use_double_buffer=False,
-             use_feed_list=False,
-             use_decorate_paddle_reader=False):
+    def main(
+        self,
+        use_cuda=True,
+        use_parallel_executor=False,
+        use_double_buffer=False,
+        use_feed_list=False,
+        use_decorate_paddle_reader=False,
+    ):
         assert not use_cuda or use_cuda and core.is_compiled_with_cuda()
 
         self.use_cuda = use_cuda
@@ -207,14 +221,22 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
         main_program = fluid.Program()
 
         with fluid.program_guard(main_program, startup_program):
-            in_data, label, loss, optimizer, feed_queue, py_reader = simple_fc_net(
+            (
+                in_data,
+                label,
+                loss,
+                optimizer,
+                feed_queue,
+                py_reader,
+            ) = simple_fc_net(
                 in_size=self.in_size,
                 class_num=self.class_num,
                 hidden_sizes=self.hidden_sizes,
                 batch_size=self.batch_size,
                 queue_capacity=self.queue_capacity,
                 use_double_buffer=self.use_double_buffer,
-                use_feed_list=self.use_feed_list)
+                use_feed_list=self.use_feed_list,
+            )
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
@@ -224,12 +246,14 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
             train_cp = main_program
             if use_parallel_executor:
                 train_cp = compiler.CompiledProgram(
-                    main_program).with_data_parallel(loss_name=loss.name)
+                    main_program
+                ).with_data_parallel(loss_name=loss.name)
                 if use_cuda:
                     self.batch_size_times = core.get_cuda_device_count()
                 else:
                     self.batch_size_times = int(
-                        os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+                        os.environ.get('CPU_NUM', multiprocessing.cpu_count())
+                    )
             else:
                 self.batch_size_times = 1
 
@@ -246,15 +270,17 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
                     py_reader.decorate_sample_list_generator(batch_reader)
                 py_reader.start()
             else:
-                thread = threading.Thread(target=feed_data,
-                                          args=(feed_queue, batch_reader))
+                thread = threading.Thread(
+                    target=feed_data, args=(feed_queue, batch_reader)
+                )
                 thread.daemon = True
                 thread.start()
 
             try:
                 while True:
-                    fetches = exe.run(train_cp,
-                                      fetch_list=[in_data.name, label.name])
+                    fetches = exe.run(
+                        train_cp, fetch_list=[in_data.name, label.name]
+                    )
                     fetches = [as_numpy(fetch) for fetch in fetches]
                     self.outputs.append(fetches)
             except fluid.core.EOFException:

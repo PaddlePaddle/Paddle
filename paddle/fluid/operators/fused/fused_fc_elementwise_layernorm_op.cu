@@ -384,9 +384,9 @@ template <typename T>
 class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* w = ctx.Input<framework::Tensor>("W");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto w_dims = w->dims();
     int N = w_dims[1];
@@ -413,18 +413,18 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
               static_cast<T>(0.0),
               out_data,
               N);
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    auto* bias_0 = ctx.Input<framework::Tensor>("Bias0");
-    auto* bias_1 = ctx.Input<framework::Tensor>("Bias1");
-    auto* scale = ctx.Input<framework::Tensor>("Scale");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* bias_0 = ctx.Input<phi::DenseTensor>("Bias0");
+    auto* bias_1 = ctx.Input<phi::DenseTensor>("Bias1");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
 
     const T* y_data = y->data<T>();
     const T* bias_0_data = bias_0 ? bias_0->data<T>() : nullptr;
     const T* bias_1_data = bias_1 ? bias_1->data<T>() : nullptr;
     const T* scale_data = scale ? scale->data<T>() : nullptr;
 
-    auto* mean = ctx.Output<framework::Tensor>("Mean");
-    auto* variance = ctx.Output<framework::Tensor>("Variance");
+    auto* mean = ctx.Output<phi::DenseTensor>("Mean");
+    auto* variance = ctx.Output<phi::DenseTensor>("Variance");
 
     T* mean_data =
         mean ? dev_ctx.template Alloc<T>(mean, mean->numel() * sizeof(T))

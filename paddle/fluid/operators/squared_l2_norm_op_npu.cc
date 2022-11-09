@@ -18,14 +18,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class SquaredL2NormNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<Tensor>("X");
-    auto *out = context.Output<Tensor>("Out");
+    auto *x = context.Input<phi::DenseTensor>("X");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
     auto place = context.GetPlace();
     auto stream =
@@ -47,9 +47,11 @@ template <typename DeviceContext, typename T>
 class SquaredL2NormGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<Tensor>("X");
-    auto *x_grad = context.Output<Tensor>(framework::GradVarName("X"));
-    auto *out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto *x = context.Input<phi::DenseTensor>("X");
+    auto *x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(
         out_grad->numel(),

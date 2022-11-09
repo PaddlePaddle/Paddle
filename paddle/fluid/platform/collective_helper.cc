@@ -73,6 +73,11 @@ class NCCLCommImpl : public NCCLComm {
   std::shared_ptr<platform::CudaEventObject> comm_event_;
 };
 
+NCCLCommContext& NCCLCommContext::Instance() {
+  static NCCLCommContext comm_ctx;
+  return comm_ctx;
+}
+
 NCCLComm* NCCLCommContext::CreateComm(
     ncclUniqueId* nccl_id, int nranks, int rank, int dev_id, int ring_id) {
   PADDLE_ENFORCE_NOT_NULL(nccl_id,
@@ -251,7 +256,8 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(
             platform::CUDAPlace(dev_id)));
     dev_ctx->set_nccl_comm(comm);
   }
-
+  VLOG(4) << "add mccl comm: " << comm_map_[ring_id][dev_id].get()
+          << ", ring_id:" << ring_id << ", dev_id:" << dev_id;
   return comm_map_[ring_id][dev_id].get();
 }
 

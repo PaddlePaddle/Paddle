@@ -14,14 +14,15 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void EyeKernel(const Context& ctx,
-               int64_t num_rows,
-               int64_t num_columns,
+               const Scalar& num_rows,
+               const Scalar& num_columns,
                DataType dtype,
                DenseTensor* out);
 

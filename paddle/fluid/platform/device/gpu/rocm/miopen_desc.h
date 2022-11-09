@@ -32,7 +32,6 @@ class DenseTensor;
 
 namespace paddle {
 namespace platform {
-using framework::Tensor;
 
 template <typename T>
 inline miopenDataType_t ToCudnnDataType(const T& t) {
@@ -130,7 +129,7 @@ class TensorDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(const Tensor& tensor, const int groups = 1) {
+  void set(const phi::DenseTensor& tensor, const int groups = 1) {
     auto dims = phi::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
@@ -149,7 +148,7 @@ class TensorDescriptor {
         const_cast<int*>(strides.data())));
   }
 
-  void set(const Tensor& tensor, const miopenTensorFormat_t format) {
+  void set(const phi::DenseTensor& tensor, const miopenTensorFormat_t format) {
     const int groups = 1;
     PADDLE_ENFORCE_EQ(format,
                       MIOPEN_TENSOR_NCHW,
@@ -196,7 +195,7 @@ class FilterDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(const Tensor& tensor,
+  void set(const phi::DenseTensor& tensor,
            const miopenTensorFormat_t format,
            const int groups = 1) {
     PADDLE_ENFORCE_EQ(format,

@@ -77,8 +77,8 @@ class RnnNativeOpConverter : public OpConverter {
             std::string var1_name = op_desc.Input("WeightList")[k + 2 + start];
             auto* var0_v = scope.FindVar(var0_name);
             auto* var1_v = scope.FindVar(var1_name);
-            auto* var0_t = var0_v->GetMutable<framework::LoDTensor>();
-            auto* var1_t = var1_v->GetMutable<framework::LoDTensor>();
+            auto* var0_t = var0_v->GetMutable<phi::DenseTensor>();
+            auto* var1_t = var1_v->GetMutable<phi::DenseTensor>();
             const float* data0_ptr = reinterpret_cast<const float*>(
                 engine_->GetTrtWeight(var0_name, *var0_t).get().values);
             const float* data1_ptr = reinterpret_cast<const float*>(
@@ -99,7 +99,7 @@ class RnnNativeOpConverter : public OpConverter {
           for (int k = 0; k < 2 * K; k++) {
             std::string var_name = op_desc.Input("WeightList")[k + start];
             auto* var_v = scope.FindVar(var_name);
-            auto* var_t = var_v->GetMutable<framework::LoDTensor>();
+            auto* var_t = var_v->GetMutable<phi::DenseTensor>();
             const float* data_ptr = reinterpret_cast<const float*>(
                 engine_->GetTrtWeight(var_name, *var_t).get().values);
             weight_bias_vec.push_back(data_ptr);

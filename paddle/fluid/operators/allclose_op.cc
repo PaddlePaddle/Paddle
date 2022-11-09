@@ -47,7 +47,7 @@ class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
                   "compared as equal. Default: :math:`False` .")
         .SetDefault(false);
 
-    AddComment(R"DOC( 
+    AddComment(R"DOC(
 This operator checks if all :math:`x` and :math:`y` satisfy the condition:
 
 .. math::
@@ -110,7 +110,7 @@ REGISTER_OP_VERSION(allclose)
                       "The added input 'Atol' is not"
                       "dispensable."))
     .AddCheckpoint(
-        R"ROC(Delete two float attributes [rtol] and [atol], 
+        R"ROC(Delete two float attributes [rtol] and [atol],
         then add 2 string attributes [atol, rtol]. Don't be surprised.
         This is because float cannot represent hight-precision
         floating-point values, and our framework doesn't support

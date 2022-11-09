@@ -77,7 +77,7 @@ void benchmark_eager_matmul(const paddle::experimental::Tensor& X,
 
   size_t max_num_runs = accuracy_check ? 2 : max_num_benchmark_runs;
   for (size_t i = 0; i < max_num_runs; i++) {
-    input_tensor0 = matmul_dygraph_function(input_tensor0, Y, false, false);
+    input_tensor0 = matmul_ad_func(input_tensor0, Y, false, false);
   }
 
   std::vector<paddle::experimental::Tensor> target_tensors = {input_tensor0};
@@ -162,7 +162,7 @@ namespace imperative {
 static void FluidCheckTensorValue(const std::shared_ptr<imperative::VarBase>& X,
                                   const paddle::platform::Place& place,
                                   float value) {
-  auto* tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
   float* t_ptr = tensor->mutable_data<float>(place);
   std::vector<float> host_data(tensor->numel());
 
@@ -194,7 +194,7 @@ static void FluidCheckGradTensorValue(
     const std::shared_ptr<imperative::VarBase>& X,
     const paddle::platform::Place& place,
     float value) {
-  auto* grad_tensor = X->MutableGradVar()->GetMutable<framework::LoDTensor>();
+  auto* grad_tensor = X->MutableGradVar()->GetMutable<phi::DenseTensor>();
   float* g_ptr = grad_tensor->mutable_data<float>(place);
   std::vector<float> g_host_data(grad_tensor->numel());
 

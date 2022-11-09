@@ -47,6 +47,10 @@ class CAllReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 class CAllReduceSumOpMaker : public CAllReduceOpMaker {
  protected:
+  void ExtraMake() override {
+    AddInput("Cond", "(Tensor), whether to do all reduce or not.")
+        .AsDispensable();
+  }
   std::string GetName() const override { return "Sum"; }
 };
 

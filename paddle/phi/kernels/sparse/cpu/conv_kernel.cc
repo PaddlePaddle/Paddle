@@ -126,11 +126,8 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
   T* in_features_ptr = in_features.data<T>();
   T* out_features_ptr = out_features.data<T>();
 
-  Gather<T, IntT>(x.non_zero_elements().data<T>(),
-                  rulebook_ptr + n,
-                  n,
-                  in_channels,
-                  in_features_ptr);
+  Gather<T, IntT>(
+      x.values().data<T>(), rulebook_ptr + n, n, in_channels, in_features_ptr);
 
   // 3. call gemm for every werght
   auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);
@@ -167,7 +164,7 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
   }
 
   // 4. scatter
-  T* out_values_ptr = out->mutable_non_zero_elements()->data<T>();
+  T* out_values_ptr = out->mutable_values()->data<T>();
   memset(out_values_ptr, 0, sizeof(T) * out->nnz() * out_channels);
   Scatter<T, IntT>(
       out_features_ptr, rulebook_ptr + n * 2, n, out_channels, out_values_ptr);
@@ -186,21 +183,20 @@ void Conv3dCooKernel(const Context& dev_ctx,
                      SparseCooTensor* out,
                      DenseTensor* rulebook,
                      DenseTensor* counter) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "Conv3dCooCPUKernel", ([&] {
-        Conv3dCooCPUKernel<T, data_t>(dev_ctx,
-                                      x,
-                                      kernel,
-                                      paddings,
-                                      dilations,
-                                      strides,
-                                      groups,
-                                      subm,
-                                      key,
-                                      out,
-                                      rulebook,
-                                      counter);
-      }));
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "Conv3dCooCPUKernel", ([&] {
+                                 Conv3dCooCPUKernel<T, data_t>(dev_ctx,
+                                                               x,
+                                                               kernel,
+                                                               paddings,
+                                                               dilations,
+                                                               strides,
+                                                               groups,
+                                                               subm,
+                                                               key,
+                                                               out,
+                                                               rulebook,
+                                                               counter);
+                               }));
 }
 
 }  // namespace sparse

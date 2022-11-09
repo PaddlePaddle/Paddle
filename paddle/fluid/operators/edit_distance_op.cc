@@ -65,7 +65,7 @@ strings and their references.
 
 Edit distance, also called Levenshtein distance, measures how dissimilar two strings
 are by counting the minimum number of operations to transform one string into another.
-The operations include insertion, deletion, and substitution. 
+The operations include insertion, deletion, and substitution.
 
 For example, given hypothesis string A = "kitten" and reference B = "sitting",
 A will be transformed into B at least after two substitutions and one

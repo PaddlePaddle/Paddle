@@ -59,13 +59,14 @@ void NMSKernel(const Context& dev_ctx,
                const DenseTensor& boxes,
                float threshold,
                DenseTensor* output) {
-  auto* output_data = dev_ctx.template Alloc<int64_t>(output);
   const int64_t num_boxes = boxes.dims()[0];
   const auto blocks_per_line = CeilDivide(num_boxes, threadsPerBlock);
   dim3 block(threadsPerBlock);
   dim3 grid(blocks_per_line, blocks_per_line);
   auto mask_data = paddle::memory::Alloc(
-      dev_ctx, num_boxes * blocks_per_line * sizeof(uint64_t));
+      dev_ctx.GetPlace(),
+      num_boxes * blocks_per_line * sizeof(uint64_t),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   uint64_t* mask_dev = reinterpret_cast<uint64_t*>(mask_data->ptr());
   NMS<T><<<grid, block, 0, dev_ctx.stream()>>>(
       boxes.data<T>(), threshold, num_boxes, mask_dev);
@@ -91,11 +92,13 @@ void NMSKernel(const Context& dev_ctx,
       }
     }
   }
+  output->Resize(phi::make_ddim({last_box_num}));
+  auto* output_data = dev_ctx.template Alloc<int64_t>(output);
   paddle::memory::Copy(dev_ctx.GetPlace(),
                        output_data,
                        phi::CPUPlace(),
                        output_host,
-                       sizeof(int64_t) * num_boxes,
+                       sizeof(int64_t) * last_box_num,
                        dev_ctx.stream());
 }
 }  // namespace phi

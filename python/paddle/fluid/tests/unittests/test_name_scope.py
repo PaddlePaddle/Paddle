@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid as fluid
 
 
 class TestNameScope(unittest.TestCase):
-
     def test_name_scope(self):
         with fluid.name_scope("s1"):
             a = fluid.layers.data(name='data', shape=[1], dtype='int32')

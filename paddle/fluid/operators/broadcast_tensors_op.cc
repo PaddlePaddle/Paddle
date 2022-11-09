@@ -21,7 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using framework::DDim;
-using framework::Tensor;
 
 class BroadcastTensorsOp : public framework::OperatorWithKernel {
  public:
@@ -54,7 +53,7 @@ class BroadcastTensorsOpMaker : public framework::OpProtoAndCheckerMaker {
               "consistent with :code:`x`.")
         .AsDuplicable();
     AddComment(
-        R"DOC(This OP is used to broadcast a vector of inputs 
+        R"DOC(This OP is used to broadcast a vector of inputs
                      with Tensor or LoDTensor type, following broadcast semantics.)DOC");
   }
 };

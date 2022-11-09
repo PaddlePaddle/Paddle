@@ -38,7 +38,7 @@ class CompareReduceOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                         comment.equation));
     AddComment(string::Sprintf(R"DOC(
 It operates element-wise on X and Y, and returns the Out. X, Y is a
-N-dim tensor, which could be any type. If all element $%s$, the Out tensor 
+N-dim tensor, which could be any type. If all element $%s$, the Out tensor
 is [True], else [False]
 )DOC",
                                comment.equation));

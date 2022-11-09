@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest, randomize_probability
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import os
@@ -24,8 +21,7 @@ import tempfile
 
 
 class TestLoadOp(unittest.TestCase):
-    """ Test load operator.
-    """
+    """Test load operator."""
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -40,13 +36,17 @@ class TestLoadOp(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name='w',
                     initializer=fluid.initializer.NumpyArrayInitializer(
-                        self.ones)))
+                        self.ones
+                    ),
+                ),
+            )
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
-        fluid.io.save_persistables(exe,
-                                   dirname=os.path.join(self.temp_dir.name,
-                                                        "./model"),
-                                   main_program=main_prog)
+        fluid.io.save_persistables(
+            exe,
+            dirname=os.path.join(self.temp_dir.name, "./model"),
+            main_program=main_prog,
+        )
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -56,8 +56,9 @@ class TestLoadOp(unittest.TestCase):
         start_prog = fluid.Program()
         with fluid.program_guard(main_prog, start_prog):
             var = layers.create_tensor(dtype='float32')
-            layers.load(var,
-                        file_path=os.path.join(self.temp_dir.name, './model/w'))
+            layers.load(
+                var, file_path=os.path.join(self.temp_dir.name, './model/w')
+            )
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)

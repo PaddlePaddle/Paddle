@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle.fluid as fluid
@@ -21,25 +19,22 @@ import paddle.fluid.layers as layers
 
 
 class TestProgramToReadableCode(unittest.TestCase):
-
     def setUp(self):
         self.program = fluid.Program()
         self.block = self.program.current_block()
-        self.var = self.block.create_var(name="X",
-                                         shape=[-1, 23, 48],
-                                         dtype='float32')
-        self.param = self.block.create_parameter(name="W",
-                                                 shape=[23, 48],
-                                                 dtype='float32',
-                                                 trainable=True)
-        self.op = self.block.append_op(type="abs",
-                                       inputs={"X": [self.var]},
-                                       outputs={"Out": [self.var]})
+        self.var = self.block.create_var(
+            name="X", shape=[-1, 23, 48], dtype='float32'
+        )
+        self.param = self.block.create_parameter(
+            name="W", shape=[23, 48], dtype='float32', trainable=True
+        )
+        self.op = self.block.append_op(
+            type="abs", inputs={"X": [self.var]}, outputs={"Out": [self.var]}
+        )
         # add control flow op and sub block
         self.append_cond_op(self.program)
 
     def append_cond_op(self, program):
-
         def true_func():
             return layers.fill_constant(shape=[2, 3], dtype='int32', value=2)
 

@@ -39,15 +39,6 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -69,22 +60,17 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
                             platform::errors::InvalidArgument(
                                 "group should be larger than 0."));
         });
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-
     AddComment(R"DOC(
-		Shuffle Channel operator
-		This opearator shuffles the channels of input x.
-		It  divide the input channels in each group into several subgroups,
-		and obtain a new order by selecting element from every subgroup one by one.
+    Shuffle Channel operator
+    This opearator shuffles the channels of input x.
+    It  divide the input channels in each group into several subgroups,
+    and obtain a new order by selecting element from every subgroup one by one.
 
-		Shuffle channel operation makes it possible to build more powerful structures
-		with multiple group convolutional layers.
-		please get more information from the following paper:
-		https://arxiv.org/pdf/1707.01083.pdf
-        )DOC");
+    Shuffle channel operation makes it possible to build more powerful structures
+    with multiple group convolutional layers.
+    please get more information from the following paper:
+    https://arxiv.org/pdf/1707.01083.pdf
+    )DOC");
   }
 };
 

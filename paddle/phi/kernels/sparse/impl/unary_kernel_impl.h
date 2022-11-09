@@ -37,6 +37,7 @@ namespace sparse {
     EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);                       \
     phi::prefix##Kernel<T, Context>(                                       \
         dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
+    out->SetIndicesDict(x.GetIndicesDict());                               \
   }                                                                        \
                                                                            \
   template <typename T, typename Context>                                  \
@@ -105,6 +106,7 @@ void ScaleCooKernel(const Context& dev_ctx,
                                bias,
                                bias_after_scale,
                                out->mutable_non_zero_elements());
+  out->SetIndicesDict(x.GetIndicesDict());
 }
 
 template <typename T, typename Context>
@@ -129,11 +131,9 @@ void CastCooKernel(const Context& dev_ctx,
                    DataType index_dtype,
                    DataType value_dtype,
                    SparseCooTensor* out) {
-  out->set_dims(x.dims());
-
-  const DenseTensor& x_indices = x.non_zero_indices();
+  const DenseTensor& x_indices = x.indices();
   const DenseTensor& x_values = x.non_zero_elements();
-  DenseTensor* out_indices = out->mutable_non_zero_indices();
+  DenseTensor* out_indices = out->mutable_indices();
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
   if (index_dtype == DataType::UNDEFINED) {
@@ -157,6 +157,7 @@ void CastCooKernel(const Context& dev_ctx,
     meta.set_dtype(value_dtype);
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
+  out->SetIndicesDict(x.GetIndicesDict());
 }
 
 template <typename T, typename Context>
@@ -165,13 +166,11 @@ void CastCsrKernel(const Context& dev_ctx,
                    DataType index_dtype,
                    DataType value_dtype,
                    SparseCsrTensor* out) {
-  out->set_dims(x.dims());
-
-  const DenseTensor& x_crows = x.non_zero_crows();
-  const DenseTensor& x_cols = x.non_zero_cols();
+  const DenseTensor& x_crows = x.crows();
+  const DenseTensor& x_cols = x.cols();
   const DenseTensor& x_values = x.non_zero_elements();
-  DenseTensor* out_crows = out->mutable_non_zero_crows();
-  DenseTensor* out_cols = out->mutable_non_zero_cols();
+  DenseTensor* out_crows = out->mutable_crows();
+  DenseTensor* out_cols = out->mutable_cols();
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
   if (index_dtype == DataType::UNDEFINED) {

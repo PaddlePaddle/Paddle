@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-import six
 
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
@@ -35,10 +34,10 @@ def data(name, shape, dtype='float32', lod_level=0):
     is a placeholder that could be fed with input, such as Executor can feed
     input into the variable.
 
-    Note: 
+    Note:
         `paddle.fluid.layers.data` is deprecated. It will be removed in a
-        future version. Please use this `paddle.fluid.data`. 
-       
+        future version. Please use this `paddle.fluid.data`.
+
         The `paddle.fluid.layers.data` set shape and dtype at compile time but
         does NOT check the shape or the dtype of fed data, this
         `paddle.fluid.data` checks the shape and the dtype of data fed by
@@ -107,19 +106,21 @@ def data(name, shape, dtype='float32', lod_level=0):
     """
     helper = LayerHelper('data', **locals())
 
-    check_type(name, 'name', (six.binary_type, six.text_type), 'data')
+    check_type(name, 'name', (bytes, str), 'data')
     check_type(shape, 'shape', (list, tuple), 'data')
 
     shape = list(shape)
-    for i in six.moves.range(len(shape)):
+    for i in range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
 
-    return helper.create_global_variable(name=name,
-                                         shape=shape,
-                                         dtype=dtype,
-                                         type=core.VarDesc.VarType.LOD_TENSOR,
-                                         stop_gradient=True,
-                                         lod_level=lod_level,
-                                         is_data=True,
-                                         need_check_feed=True)
+    return helper.create_global_variable(
+        name=name,
+        shape=shape,
+        dtype=dtype,
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        stop_gradient=True,
+        lod_level=lod_level,
+        is_data=True,
+        need_check_feed=True,
+    )

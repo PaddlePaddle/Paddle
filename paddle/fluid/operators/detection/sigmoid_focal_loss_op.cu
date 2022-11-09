@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -119,10 +119,10 @@ template <typename DeviceContext, typename T>
 class GPUSigmoidFocalLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Labels = context.Input<Tensor>("Label");
-    const Tensor *FgNum = context.Input<Tensor>("FgNum");
-    Tensor *Out = context.Output<Tensor>("Out");
+    const Tensor *X = context.Input<phi::DenseTensor>("X");
+    const Tensor *Labels = context.Input<phi::DenseTensor>("Label");
+    const Tensor *FgNum = context.Input<phi::DenseTensor>("FgNum");
+    Tensor *Out = context.Output<phi::DenseTensor>("Out");
     T gamma = static_cast<T>(context.Attr<float>("gamma"));
     T alpha = static_cast<T>(context.Attr<float>("alpha"));
     auto x_dims = X->dims();
@@ -150,11 +150,12 @@ template <typename DeviceContext, typename T>
 class GPUSigmoidFocalLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Labels = context.Input<Tensor>("Label");
-    const Tensor *FgNum = context.Input<Tensor>("FgNum");
-    const Tensor *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
-    Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
+    const Tensor *X = context.Input<phi::DenseTensor>("X");
+    const Tensor *Labels = context.Input<phi::DenseTensor>("Label");
+    const Tensor *FgNum = context.Input<phi::DenseTensor>("FgNum");
+    const Tensor *dOut =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    Tensor *dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto dx_data = dX->mutable_data<T>(context.GetPlace());
     T gamma = static_cast<T>(context.Attr<float>("gamma"));
     T alpha = static_cast<T>(context.Attr<float>("alpha"));

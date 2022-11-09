@@ -24,7 +24,7 @@ namespace operators {
 
 using framework::ExecutionContext;
 using platform::MKLDNNDeviceContext;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
@@ -35,13 +35,13 @@ class MatMulGradMKLDNNKernel : public framework::OpKernel<T> {
   void ExecuteMatMulGrad(const ExecutionContext& ctx,
                          const MKLDNNDeviceContext& dev_ctx,
                          const dnnl::engine& engine,
-                         Tensor* x,
+                         phi::DenseTensor* x,
                          bool trans_x,
                          bool is_fold_init_dims_x,
-                         Tensor* y,
+                         phi::DenseTensor* y,
                          bool trans_y,
                          bool is_fold_init_dims_y,
-                         Tensor* out) const;
+                         phi::DenseTensor* out) const;
   void RunKernel(const ExecutionContext& ctx) const;
 };
 }  // namespace operators

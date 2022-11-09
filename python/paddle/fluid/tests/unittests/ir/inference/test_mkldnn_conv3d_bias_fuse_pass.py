@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
 class TestConv3dBiasMkldnnFusePass(PassAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -43,78 +38,80 @@ class TestConv3dBiasMkldnnFusePass(PassAutoScanTest):
         def generate_input1(attrs):
             if attrs[0]['data_format'] == "NCDHW":
                 return np.random.random(
-                    [attrs[2]['batch_size'], 48, 64, 32, 64]).astype(np.float32)
+                    [attrs[2]['batch_size'], 48, 64, 32, 64]
+                ).astype(np.float32)
             else:
                 return np.random.random(
-                    [attrs[2]['batch_size'], 64, 32, 64, 48]).astype(np.float32)
+                    [attrs[2]['batch_size'], 64, 32, 64, 48]
+                ).astype(np.float32)
 
         def generate_weight1():
-            return np.random.random([16, int(48 / groups), 3, 3,
-                                     3]).astype(np.float32)
+            return np.random.random([16, int(48 / groups), 3, 3, 3]).astype(
+                np.float32
+            )
 
         def generate_weight2():
             return np.random.random([16]).astype(np.float32)
 
-        attrs = [{
-            "data_format": data_format,
-            "dilations": dilations,
-            "padding_algorithm": padding_algorithm,
-            "groups": groups,
-            "paddings": paddings,
-            "strides": strides
-        }, {
-            "axis": axis
-        }, {
-            'batch_size': batch_size
-        }]
+        attrs = [
+            {
+                "data_format": data_format,
+                "dilations": dilations,
+                "padding_algorithm": padding_algorithm,
+                "groups": groups,
+                "paddings": paddings,
+                "strides": strides,
+            },
+            {"axis": axis},
+            {'batch_size': batch_size},
+        ]
 
-        ops_config = [{
-            "op_type": "conv3d",
-            "op_inputs": {
-                "Input": ["input_data1"],
-                "Filter": ["conv_weight"]
+        ops_config = [
+            {
+                "op_type": "conv3d",
+                "op_inputs": {
+                    "Input": ["input_data1"],
+                    "Filter": ["conv_weight"],
+                },
+                "op_outputs": {"Output": ["conv_output"]},
+                "op_attrs": {
+                    "data_format": attrs[0]['data_format'],
+                    "dilations": attrs[0]['dilations'],
+                    "padding_algorithm": attrs[0]['padding_algorithm'],
+                    "groups": attrs[0]['groups'],
+                    "paddings": attrs[0]['paddings'],
+                    "strides": attrs[0]['strides'],
+                    "is_test": True,
+                },
             },
-            "op_outputs": {
-                "Output": ["conv_output"]
+            {
+                "op_type": "elementwise_add",
+                "op_inputs": {
+                    "X": ["conv_output"],
+                    "Y": ["elementwise_weight"],
+                },
+                "op_outputs": {"Out": ["elementwise_output"]},
+                "op_attrs": {'axis': attrs[1]['axis']},
             },
-            "op_attrs": {
-                "data_format": attrs[0]['data_format'],
-                "dilations": attrs[0]['dilations'],
-                "padding_algorithm": attrs[0]['padding_algorithm'],
-                "groups": attrs[0]['groups'],
-                "paddings": attrs[0]['paddings'],
-                "strides": attrs[0]['strides'],
-                "is_test": True
-            }
-        }, {
-            "op_type": "elementwise_add",
-            "op_inputs": {
-                "X": ["conv_output"],
-                "Y": ["elementwise_weight"]
-            },
-            "op_outputs": {
-                "Out": ["elementwise_output"]
-            },
-            "op_attrs": {
-                'axis': attrs[1]['axis']
-            },
-        }]
+        ]
 
         ops = self.generate_op_config(ops_config)
 
         program_config = ProgramConfig(
             ops=ops,
             weights={
-                "conv_weight":
-                TensorConfig(data_gen=partial(generate_weight1)),
-                "elementwise_weight":
-                TensorConfig(data_gen=partial(generate_weight2))
+                "conv_weight": TensorConfig(data_gen=partial(generate_weight1)),
+                "elementwise_weight": TensorConfig(
+                    data_gen=partial(generate_weight2)
+                ),
             },
             inputs={
-                "input_data1":
-                TensorConfig(data_gen=partial(generate_input1, attrs))
+                "input_data1": TensorConfig(
+                    data_gen=partial(generate_input1, attrs)
+                )
             },
-            outputs=["elementwise_output"])
+            outputs=["elementwise_output"],
+        )
 
         return program_config
 

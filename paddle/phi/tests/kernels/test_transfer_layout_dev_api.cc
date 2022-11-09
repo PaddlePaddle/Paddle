@@ -40,7 +40,7 @@ TEST(DEV_API, transfer_layout) {
   DenseTensor x;
   MetaTensor meta_x(&x);
   meta_x.set_dtype(DataType::FLOAT32);
-  meta_x.set_layout(DataLayout::MKLDNN);
+  meta_x.set_layout(DataLayout::ONEDNN);
   meta_x.set_dims(make_ddim({n, c, h, w}));
 
   DenseTensor out;

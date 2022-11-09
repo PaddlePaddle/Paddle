@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -28,7 +26,6 @@ paddle.enable_static()
 
 
 class TestSeedOpFixSeed(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "seed"
@@ -44,7 +41,6 @@ class TestSeedOpFixSeed(OpTest):
 
 
 class TestSeedOpDiffSeed(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "seed"

@@ -12,24 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 import paddle
 
 paddle.enable_static()
 
 
 class TestBroadcastToError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
-                                         fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            )
             shape = [2, 2]
             self.assertRaises(TypeError, paddle.tensor.broadcast_to, x1, shape)
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
@@ -41,19 +38,19 @@ class TestBroadcastToError(unittest.TestCase):
 
 # Test python API
 class TestBroadcastToAPI(unittest.TestCase):
-
     def test_api(self):
         input = np.random.random([12, 14]).astype("float32")
-        x = fluid.layers.data(name='x',
-                              shape=[12, 14],
-                              append_batch_size=False,
-                              dtype="float32")
+        x = fluid.layers.data(
+            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
+        )
 
         positive_2 = fluid.layers.fill_constant([1], "int32", 12)
-        expand_shape = fluid.layers.data(name="expand_shape",
-                                         shape=[2],
-                                         append_batch_size=False,
-                                         dtype="int32")
+        expand_shape = fluid.layers.data(
+            name="expand_shape",
+            shape=[2],
+            append_batch_size=False,
+            dtype="int32",
+        )
 
         out_1 = paddle.broadcast_to(x, shape=[12, 14])
         out_2 = paddle.broadcast_to(x, shape=[positive_2, 14])
@@ -62,14 +59,14 @@ class TestBroadcastToAPI(unittest.TestCase):
         g0 = fluid.backward.calc_gradient(out_2, x)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
-                                      feed={
-                                          "x":
-                                          input,
-                                          "expand_shape":
-                                          np.array([12, 14]).astype("int32")
-                                      },
-                                      fetch_list=[out_1, out_2, out_3])
+        res_1, res_2, res_3 = exe.run(
+            fluid.default_main_program(),
+            feed={
+                "x": input,
+                "expand_shape": np.array([12, 14]).astype("int32"),
+            },
+            fetch_list=[out_1, out_2, out_3],
+        )
         assert np.array_equal(res_1, np.tile(input, (1, 1)))
         assert np.array_equal(res_2, np.tile(input, (1, 1)))
         assert np.array_equal(res_3, np.tile(input, (1, 1)))

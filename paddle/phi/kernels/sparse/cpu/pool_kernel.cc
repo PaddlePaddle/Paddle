@@ -50,7 +50,7 @@ void MaxPoolCooCPUKernel(const CPUContext& dev_ctx,
 
   std::vector<int> counter_per_kernel(kernel_size, 0);
 
-  const T* in_features_ptr = x.non_zero_elements().data<T>();
+  const T* in_features_ptr = x.values().data<T>();
   // 1. product rule book
   ProductRuleBook<T, CPUContext, IntT>(dev_ctx,
                                        x,
@@ -78,7 +78,7 @@ void MaxPoolCooCPUKernel(const CPUContext& dev_ctx,
   std::vector<bool> out_flags(out->nnz(), false);
 
   // 2. max pool
-  T* out_features_ptr = out->mutable_non_zero_elements()->data<T>();
+  T* out_features_ptr = out->mutable_values()->data<T>();
   phi::funcs::MaxPool<T> max_pool_functor;
   for (int i = 0; i < kernel_size; i++) {
     for (int j = 0; j < counter_ptr[i]; j++) {
@@ -110,7 +110,7 @@ void MaxPoolCooKernel(const Context& dev_ctx,
                       DenseTensor* rulebook,
                       DenseTensor* counter) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.non_zero_indices().dtype(), "MaxPoolCooCPUKernel", ([&] {
+      x.indices().dtype(), "MaxPoolCooCPUKernel", ([&] {
         MaxPoolCooCPUKernel<T, data_t>(dev_ctx,
                                        x,
                                        kernel_sizes,

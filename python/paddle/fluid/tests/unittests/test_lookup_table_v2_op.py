@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
@@ -21,13 +19,11 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
-import paddle.compat as cpt
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
 class TestStaticGraphSupportMultipleInt(unittest.TestCase):
-
     def test_main(self):
         dtypes = ['uint8', 'int8', 'int16', 'int32', 'int64']
         if paddle.in_dynamic_mode():
@@ -36,8 +32,9 @@ class TestStaticGraphSupportMultipleInt(unittest.TestCase):
         else:
             disable_static = False
         for i, dtype in enumerate(dtypes):
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(name='x', shape=[-1, 7, 30], dtype=dtype)
                 emb = paddle.nn.Embedding(10, 20)
                 y = emb(x)
@@ -47,7 +44,6 @@ class TestStaticGraphSupportMultipleInt(unittest.TestCase):
 
 
 class TestLookupTableOp(OpTest):
-
     def setUp(self):
         self.op_type = "lookup_table_v2"
         self.python_api = paddle.nn.functional.embedding
@@ -67,25 +63,21 @@ class TestLookupTableOp(OpTest):
 
 
 class TestLookupTableOpInt16(OpTest):
-
     def id_dtype(self):
         return "int16"
 
 
 class TestLookupTableOpInt8(OpTest):
-
     def id_dtype(self):
         return "int8"
 
 
 class TestLookupTableOpUInt8(OpTest):
-
     def id_dtype(self):
         return "uint8"
 
 
 class TestLookupTableOpWithTensorIds(OpTest):
-
     def setUp(self):
         self.op_type = "lookup_table_v2"
         table = np.random.random((17, 31)).astype("float64")
@@ -103,9 +95,9 @@ class TestLookupTableOpWithTensorIds(OpTest):
 @skip_check_grad_ci(
     reason="Since paddings are not trainable and fixed in forward,"
     "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
+    "test the gradient here."
+)
 class TestLookupTableOpWithPadding(TestLookupTableOp):
-
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
@@ -117,20 +109,19 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
 @skip_check_grad_ci(
     reason="Since paddings are not trainable and fixed in forward,"
     "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
+    "test the gradient here."
+)
 class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
-
     def test_check_output(self):
         ids = self.inputs['Ids']
         flatten_idx = ids.flatten()
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
-        self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
+        self.attrs = {'padding_idx': padding_idx}
         self.check_output()
 
 
 class TestLookupTableWIsSelectedRows(unittest.TestCase):
-
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
         ids_array = np.array([0, 4, 3, 5]).astype("int32")
@@ -183,13 +174,14 @@ class TestLookupTableWIsSelectedRows(unittest.TestCase):
             self.check_with_place(place)
 
 
-class TestLookupTableWithTensorIdsWIsSelectedRows(TestLookupTableWIsSelectedRows
-                                                  ):
-
+class TestLookupTableWithTensorIdsWIsSelectedRows(
+    TestLookupTableWIsSelectedRows
+):
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
-        ids_array = np.random.randint(low=0, high=6,
-                                      size=(2, 4, 3)).astype("int64")
+        ids_array = np.random.randint(low=0, high=6, size=(2, 4, 3)).astype(
+            "int64"
+        )
         ids_tensor.set(ids_array, place)
         return ids_array
 
@@ -199,7 +191,6 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(TestLookupTableWIsSelectedRows
 
 
 class TestLookupTableIsSparse(unittest.TestCase):
-
     def init_data(self):
         self.x_data = np.array([[1, 3, 0, 4, 7]]).astype("int64")
         self.y_data = np.array([[0.1, 0.3, 0, 0.4, 0.7]]).astype("float32")
@@ -217,8 +208,11 @@ class TestLookupTableIsSparse(unittest.TestCase):
                     name="emb_weight",
                     learning_rate=10,
                     initializer=fluid.initializer.NumpyArrayInitializer(
-                        self.w_data)),
-                is_sparse=is_sparse)
+                        self.w_data
+                    ),
+                ),
+                is_sparse=is_sparse,
+            )
             y = fluid.layers.reduce_sum(emb, dim=-1)
 
             loss = fluid.layers.square_error_cost(input=y, label=y_)
@@ -230,12 +224,11 @@ class TestLookupTableIsSparse(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            ret = exe.run(feed={
-                'x': self.x_data,
-                'y_': self.y_data
-            },
-                          fetch_list=['emb_weight'],
-                          return_numpy=False)
+            ret = exe.run(
+                feed={'x': self.x_data, 'y_': self.y_data},
+                fetch_list=['emb_weight'],
+                return_numpy=False,
+            )
             return np.array(ret[0])
 
     def test_w_grad(self):
@@ -245,14 +238,12 @@ class TestLookupTableIsSparse(unittest.TestCase):
         self.check_grad(w_grad, w_grad_with_sparse)
 
     def check_grad(self, w_grad1, w_grad2, tolerance=1e-6):
-        np.testing.assert_allclose(w_grad1,
-                                   w_grad2,
-                                   rtol=tolerance,
-                                   atol=tolerance)
+        np.testing.assert_allclose(
+            w_grad1, w_grad2, rtol=tolerance, atol=tolerance
+        )
 
 
 class TestLookupTableApi(unittest.TestCase):
-
     def test_api(self):
         x = fluid.layers.data(name='x', shape=[20], dtype='int64')
         emb = fluid.embedding(input=x, size=[128, 64])
@@ -262,15 +253,16 @@ class TestLookupTableApi(unittest.TestCase):
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        ret = exe.run(feed={
-            'x': x_data,
-        },
-                      fetch_list=[emb],
-                      return_numpy=False)
+        ret = exe.run(
+            feed={
+                'x': x_data,
+            },
+            fetch_list=[emb],
+            return_numpy=False,
+        )
 
 
 class TestEmbedOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.randint(0, 10, (4, 6)).astype("int64")

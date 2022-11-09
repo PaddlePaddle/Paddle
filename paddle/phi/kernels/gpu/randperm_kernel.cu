@@ -127,7 +127,10 @@ void RandpermRawKernel(
                                           end_bit < 32 ? end_bit : 32,
                                           dev_ctx.stream());
 
-  auto d_temp_storage = paddle::memory::Alloc(dev_ctx, temp_storage_bytes);
+  auto d_temp_storage = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      temp_storage_bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   cub::DeviceRadixSort::SortPairs<int, T>(d_temp_storage->ptr(),
                                           temp_storage_bytes,
                                           key.data<int>(),

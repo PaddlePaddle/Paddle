@@ -21,7 +21,6 @@ SparseCsrTensor::SparseCsrTensor() {
   this->non_zero_crows_ = crows;
   this->non_zero_cols_ = cols;
   this->non_zero_elements_ = values;
-  this->dims_ = phi::make_ddim({1, 1});
 }
 
 inline void check_shape(const DDim& dims) {
@@ -54,27 +53,30 @@ SparseCsrTensor::SparseCsrTensor(const DenseTensor& non_zero_crows,
                                  const DDim& dims)
     : non_zero_crows_(non_zero_crows),
       non_zero_cols_(non_zero_cols),
-      non_zero_elements_(non_zero_elements),
-      dims_(dims) {
+      non_zero_elements_(non_zero_elements) {
   if (non_zero_crows.initialized()) {
-    Check(non_zero_crows_, non_zero_cols_, non_zero_elements_, dims_);
+    Check(non_zero_crows_, non_zero_cols_, non_zero_elements_, dims);
   } else {
     // create a empty tensor
     check_shape(dims);
   }
+  meta_.dims = dims;
+  meta_.layout = DataLayout::NCHW;
+  meta_.dtype = non_zero_elements.dtype();
 }
 
 SparseCsrTensor::SparseCsrTensor(const SparseCsrTensor& other)
     : non_zero_crows_(other.non_zero_crows_),
       non_zero_cols_(other.non_zero_cols_),
-      non_zero_elements_(other.non_zero_elements_),
-      dims_(other.dims_) {}
+      non_zero_elements_(other.non_zero_elements_) {
+  set_meta(other.meta());
+}
 
 SparseCsrTensor& SparseCsrTensor::operator=(const SparseCsrTensor& other) {
-  this->dims_ = other.dims();
-  this->non_zero_crows_ = other.crows();
-  this->non_zero_cols_ = other.cols();
-  this->non_zero_elements_ = other.values();
+  this->non_zero_crows_ = other.non_zero_crows();
+  this->non_zero_cols_ = other.non_zero_cols();
+  this->non_zero_elements_ = other.non_zero_elements();
+  set_meta(other.meta());
   return *this;
 }
 
@@ -114,7 +116,35 @@ void SparseCsrTensor::SetMember(const DenseTensor& non_zero_crows,
   this->non_zero_crows_ = non_zero_crows;
   this->non_zero_cols_ = non_zero_cols;
   this->non_zero_elements_ = non_zero_elements;
-  this->dims_ = dims;
+  meta_.dims = dims;
 }
 
+void SparseCsrTensor::SetMember(const DenseTensor& non_zero_crows,
+                                const DenseTensor& non_zero_cols,
+                                const DenseTensor& non_zero_elements,
+                                const SparseTensorMeta& meta) {
+  Check(non_zero_crows, non_zero_cols, non_zero_elements, meta.dims);
+  this->non_zero_crows_ = non_zero_crows;
+  this->non_zero_cols_ = non_zero_cols;
+  this->non_zero_elements_ = non_zero_elements;
+  set_meta(meta);
+}
+
+void SparseCsrTensor::set_meta(SparseTensorMeta&& meta) {
+  PADDLE_ENFORCE(!meta_.valid(),
+                 phi::errors::InvalidArgument(
+                     "Only when the original attribute of Tensor is "
+                     "incomplete, can it be reset."));
+  meta_ = std::move(meta);
+}
+
+void SparseCsrTensor::set_meta(const SparseTensorMeta& meta) {
+  PADDLE_ENFORCE(
+      meta.valid(),
+      phi::errors::InvalidArgument(
+          "Input meta is invalid, please check the meta attribute."));
+  meta_.dims = meta.dims;
+  meta_.dtype = meta.dtype;
+  meta_.layout = meta.layout;
+}
 }  // namespace phi

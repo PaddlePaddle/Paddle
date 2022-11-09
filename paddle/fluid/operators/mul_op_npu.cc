@@ -25,9 +25,9 @@ template <typename DeviceContext, typename T>
 class MulNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     int x_num_col_dims = ctx.Attr<int>("x_num_col_dims");
     int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");
     auto stream =
@@ -120,11 +120,11 @@ template <typename DeviceContext, typename T>
 class MulGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     int x_num_col_dims = ctx.Attr<int>("x_num_col_dims");
     int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");
     auto stream =

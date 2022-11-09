@@ -18,13 +18,15 @@ import paddle
 import numpy as np
 from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from utils import paddle_includes, extra_cc_args, extra_nvcc_args, IS_WINDOWS, IS_MAC
+from utils import IS_MAC, extra_cc_args, extra_nvcc_args, paddle_includes
 from test_custom_relu_op_setup import custom_relu_dynamic, custom_relu_static
 from paddle.fluid.framework import _test_eager_guard
+
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\custom_relu_module_jit\\custom_relu_module_jit.pyd'.format(
-    get_build_directory())
+    get_build_directory()
+)
 if os.name == 'nt' and os.path.isfile(file):
     cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
@@ -43,16 +45,17 @@ custom_module = load(
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cc flags
     extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
-    verbose=True)
+    verbose=True,
+)
 
 
 class TestJITLoad(unittest.TestCase):
-
     def setUp(self):
         self.custom_ops = [
-            custom_module.custom_relu, custom_module.custom_relu_dup,
+            custom_module.custom_relu,
+            custom_module.custom_relu_dup,
             custom_module.custom_relu_no_x_in_backward,
-            custom_module.custom_relu_out
+            custom_module.custom_relu_out,
         ]
         self.dtypes = ['float32', 'float64']
         if paddle.is_compiled_with_cuda():
@@ -69,13 +72,16 @@ class TestJITLoad(unittest.TestCase):
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
                     out = custom_relu_static(custom_op, device, dtype, x)
-                    pd_out = custom_relu_static(custom_op, device, dtype, x,
-                                                False)
+                    pd_out = custom_relu_static(
+                        custom_op, device, dtype, x, False
+                    )
                     np.testing.assert_array_equal(
                         out,
                         pd_out,
-                        err_msg='custom op out: {},\n paddle api out: {}'.
-                        format(out, pd_out))
+                        err_msg='custom op out: {},\n paddle api out: {}'.format(
+                            out, pd_out
+                        ),
+                    )
 
     def func_dynamic(self):
         for device in self.devices:
@@ -84,20 +90,26 @@ class TestJITLoad(unittest.TestCase):
                     continue
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
-                    out, x_grad = custom_relu_dynamic(custom_op, device, dtype,
-                                                      x)
+                    out, x_grad = custom_relu_dynamic(
+                        custom_op, device, dtype, x
+                    )
                     pd_out, pd_x_grad = custom_relu_dynamic(
-                        custom_op, device, dtype, x, False)
+                        custom_op, device, dtype, x, False
+                    )
                     np.testing.assert_array_equal(
                         out,
                         pd_out,
-                        err_msg='custom op out: {},\n paddle api out: {}'.
-                        format(out, pd_out))
+                        err_msg='custom op out: {},\n paddle api out: {}'.format(
+                            out, pd_out
+                        ),
+                    )
                     np.testing.assert_array_equal(
                         x_grad,
                         pd_x_grad,
-                        err_msg='custom op x grad: {},\n paddle api x grad: {}'.
-                        format(x_grad, pd_x_grad))
+                        err_msg='custom op x grad: {},\n paddle api x grad: {}'.format(
+                            x_grad, pd_x_grad
+                        ),
+                    )
 
     def test_dynamic(self):
         with _test_eager_guard():
@@ -111,17 +123,9 @@ class TestJITLoad(unittest.TestCase):
             custom_relu_dynamic(custom_module.custom_relu, 'cpu', 'int32', x)
         except OSError as e:
             caught_exception = True
-            self.assertTrue(
-                "function \"relu_cpu_forward\" is not implemented for data type `int32`"
-                in str(e))
-            if IS_WINDOWS:
-                self.assertTrue(
-                    r"python\paddle\fluid\tests\custom_op\custom_relu_op.cc" in
-                    str(e))
-            else:
-                self.assertTrue(
-                    "python/paddle/fluid/tests/custom_op/custom_relu_op.cc" in
-                    str(e))
+            self.assertTrue("relu_cpu_forward" in str(e))
+            self.assertTrue("int32" in str(e))
+            self.assertTrue("custom_relu_op.cc" in str(e))
         self.assertTrue(caught_exception)
         caught_exception = False
         # MAC-CI don't support GPU
@@ -132,12 +136,9 @@ class TestJITLoad(unittest.TestCase):
             custom_relu_dynamic(custom_module.custom_relu, 'gpu', 'int32', x)
         except OSError as e:
             caught_exception = True
-            self.assertTrue(
-                "function \"relu_cuda_forward_kernel\" is not implemented for data type `int32`"
-                in str(e))
-            self.assertTrue(
-                "python/paddle/fluid/tests/custom_op/custom_relu_op.cu" in str(
-                    e))
+            self.assertTrue("relu_cuda_forward_kernel" in str(e))
+            self.assertTrue("int32" in str(e))
+            self.assertTrue("custom_relu_op.cu" in str(e))
         self.assertTrue(caught_exception)
 
     def test_exception(self):
@@ -152,7 +153,8 @@ class TestJITLoad(unittest.TestCase):
             extra_include_paths=paddle_includes,  # add for Coverage CI
             extra_cxx_cflags=extra_cc_args,  # test for cc flags
             extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
-            verbose=True)
+            verbose=True,
+        )
         custom_conj = custom_module.custom_conj
         self.assertIsNotNone(custom_conj)
 

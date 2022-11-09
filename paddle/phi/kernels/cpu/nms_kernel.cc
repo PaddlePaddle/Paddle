@@ -16,16 +16,17 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
 
 template <typename T>
-static void NMS(const T* boxes_data,
-                int64_t* output_data,
-                float threshold,
-                int64_t num_boxes) {
+static int64_t NMS(const T* boxes_data,
+                   int64_t* output_data,
+                   float threshold,
+                   int64_t num_boxes) {
   auto num_masks = CeilDivide(num_boxes, 64);
   std::vector<uint64_t> masks(num_masks, 0);
 
@@ -54,9 +55,13 @@ static void NMS(const T* boxes_data,
     output_data[output_data_idx++] = i;
   }
 
+  int64_t num_keep_boxes = output_data_idx;
+
   for (; output_data_idx < num_boxes; ++output_data_idx) {
     output_data[output_data_idx] = 0;
   }
+
+  return num_keep_boxes;
 }
 
 template <typename T, typename Context>
@@ -64,8 +69,15 @@ void NMSKernel(const Context& dev_ctx,
                const DenseTensor& boxes,
                float threshold,
                DenseTensor* output) {
-  auto output_data = dev_ctx.template Alloc<int64_t>(output);
-  NMS<T>(boxes.data<T>(), output_data, threshold, boxes.dims()[0]);
+  int64_t num_boxes = boxes.dims()[0];
+  DenseTensor output_tmp;
+  output_tmp.Resize(phi::make_ddim({num_boxes}));
+  auto output_tmp_data = dev_ctx.template Alloc<int64_t>(&output_tmp);
+
+  int64_t num_keep_boxes =
+      NMS<T>(boxes.data<T>(), output_tmp_data, threshold, num_boxes);
+  auto slice_out = output_tmp.Slice(0, num_keep_boxes);
+  phi::Copy(dev_ctx, slice_out, dev_ctx.GetPlace(), false, output);
 }
 
 }  // namespace phi

@@ -25,8 +25,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class MeshgridOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -34,7 +32,7 @@ class MeshgridOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto inputs = ctx.MultiInput<Tensor>("X");
+    auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto* input : inputs) {
@@ -65,7 +63,7 @@ Take: N tensors, each of which can be either scalr or 1-dimensional vector, and 
 N-dimensional grids.
 
 Args:
-  tensors (list of tensor): if the input k tensors has (N1,), (N2,),..., (Nk,), then 
+  tensors (list of tensor): if the input k tensors has (N1,), (N2,),..., (Nk,), then
   the output tensors are all of size (N1, N2, ...., Nk).
 
 Example::

@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import yaml
 import argparse
-import re
 
 from api_gen import ForwardAPI
 from sparse_api_gen import SparseAPI
@@ -43,7 +41,6 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/sparse_api_custom_impl.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
@@ -51,34 +48,47 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/infermeta/ternary.h"
 
+#include "paddle/phi/infermeta/sparse/unary.h"
+#include "paddle/phi/infermeta/sparse/binary.h"
+#include "paddle/phi/infermeta/sparse/multiary.h"
+
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 """
 
 
 def api_namespace():
-    return ("""
+    return (
+        """
 namespace paddle {
 namespace experimental {
 
-""", """
+""",
+        """
 
 }  // namespace experimental
 }  // namespace paddle
-""")
+""",
+    )
 
 
 def sparse_namespace():
-    return ("""
+    return (
+        """
 namespace sparse {
-""", """
+""",
+        """
 }  // namespace sparse
-""")
+""",
+    )
 
 
-def generate_intermediate_api(api_yaml_path, sparse_api_yaml_path,
-                              dygraph_header_file_path,
-                              dygraph_source_file_path):
+def generate_intermediate_api(
+    api_yaml_path,
+    sparse_api_yaml_path,
+    dygraph_header_file_path,
+    dygraph_source_file_path,
+):
 
     dygraph_header_file = open(dygraph_header_file_path, 'w')
     dygraph_source_file = open(dygraph_source_file_path, 'w')
@@ -131,23 +141,32 @@ def generate_intermediate_api(api_yaml_path, sparse_api_yaml_path,
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate PaddlePaddle C++ Sparse API files')
-    parser.add_argument('--api_yaml_path',
-                        nargs='+',
-                        help='path to api yaml file',
-                        default='paddle/phi/api/yaml/api.yaml')
+        description='Generate PaddlePaddle C++ Sparse API files'
+    )
+    parser.add_argument(
+        '--api_yaml_path',
+        nargs='+',
+        help='path to api yaml file',
+        default='paddle/phi/api/yaml/ops.yaml',
+    )
 
-    parser.add_argument('--sparse_api_yaml_path',
-                        help='path to sparse api yaml file',
-                        default='paddle/phi/api/yaml/sparse_api.yaml')
+    parser.add_argument(
+        '--sparse_api_yaml_path',
+        help='path to sparse api yaml file',
+        default='paddle/phi/api/yaml/sparse_ops.yaml',
+    )
 
-    parser.add_argument('--dygraph_api_header_path',
-                        help='output of generated dygraph api header code file',
-                        default='paddle/phi/api/lib/dygraph_api.h')
+    parser.add_argument(
+        '--dygraph_api_header_path',
+        help='output of generated dygraph api header code file',
+        default='paddle/phi/api/lib/dygraph_api.h',
+    )
 
-    parser.add_argument('--dygraph_api_source_path',
-                        help='output of generated dygraph api source code file',
-                        default='paddle/phi/api/lib/dygraph_api.cc')
+    parser.add_argument(
+        '--dygraph_api_source_path',
+        help='output of generated dygraph api source code file',
+        default='paddle/phi/api/lib/dygraph_api.cc',
+    )
 
     options = parser.parse_args()
 
@@ -156,9 +175,12 @@ def main():
     dygraph_header_file_path = options.dygraph_api_header_path
     dygraph_source_file_path = options.dygraph_api_source_path
 
-    generate_intermediate_api(api_yaml_path, sparse_api_yaml_path,
-                              dygraph_header_file_path,
-                              dygraph_source_file_path)
+    generate_intermediate_api(
+        api_yaml_path,
+        sparse_api_yaml_path,
+        dygraph_header_file_path,
+        dygraph_source_file_path,
+    )
 
 
 if __name__ == '__main__':

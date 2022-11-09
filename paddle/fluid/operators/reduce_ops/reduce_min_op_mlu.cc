@@ -22,8 +22,8 @@ template <typename T>
 class ReduceMinMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
+    auto* input = context.Input<phi::DenseTensor>("X");
+    auto* output = context.Output<phi::DenseTensor>("Out");
     int out_dtype = context.Attr<int>("out_dtype");
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto dims = context.Attr<std::vector<int>>("dim");
@@ -45,7 +45,7 @@ class ReduceMinMLUKernel : public framework::OpKernel<T> {
     }
 
     auto place = context.GetPlace();
-    framework::Tensor cast_out(input->type());
+    phi::DenseTensor cast_out(input->type());
     cast_out.Resize(output->dims());
     cast_out.mutable_data<T>(place);
 

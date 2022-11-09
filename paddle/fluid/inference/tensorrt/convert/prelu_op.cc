@@ -41,7 +41,7 @@ class PReluOpConverter : public OpConverter {
           PADDLE_GET_CONST(std::string, op_desc.GetAttr("data_format"));
     }
     auto* alpha_var = scope.FindVar(op_desc.Input("Alpha")[0]);
-    auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();
+    auto* alpha_tensor = alpha_var->GetMutable<phi::DenseTensor>();
 
     auto alpha_weight =
         engine_->GetFp32TrtWeight(op_desc.Input("Alpha")[0], *alpha_tensor);

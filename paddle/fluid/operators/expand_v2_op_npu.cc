@@ -19,13 +19,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class ExpandV2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<framework::Tensor>("X");
-    auto* Out = ctx.Output<framework::Tensor>("Out");
+    auto* X = ctx.Input<phi::DenseTensor>("X");
+    auto* Out = ctx.Output<phi::DenseTensor>("Out");
 
     auto in_dims = X->dims();
     auto expand_shape = get_expand_shape(ctx);
@@ -158,8 +158,8 @@ template <typename DeviceContext, typename T>
 class ExpandV2NPUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(ctx.GetPlace());
 
     auto stream =

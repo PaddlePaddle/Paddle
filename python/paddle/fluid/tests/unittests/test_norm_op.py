@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -30,7 +28,6 @@ def l2_norm(x, axis, epsilon):
 
 
 class TestNormOp(OpTest):
-
     def setUp(self):
         self.op_type = "norm"
         self.python_api = paddle.fluid.layers.l2_normalize
@@ -58,7 +55,6 @@ class TestNormOp(OpTest):
 
 
 class TestNormOp2(TestNormOp):
-
     def init_test_case(self):
         self.shape = [5, 3, 9, 7]
         self.axis = 0
@@ -66,17 +62,17 @@ class TestNormOp2(TestNormOp):
 
 
 class TestNormOp3(TestNormOp):
-
     def init_test_case(self):
         self.shape = [5, 3, 2, 7]
         self.axis = -1
         self.epsilon = 1e-8
 
 
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
-                    "however it is desirable to cover the forward pass")
+@skip_check_grad_ci(
+    reason="'check_grad' on large inputs is too slow, "
+    + "however it is desirable to cover the forward pass"
+)
 class TestNormOp4(TestNormOp):
-
     def init_test_case(self):
         self.shape = [128, 1024, 14, 14]
         self.axis = 2
@@ -86,10 +82,11 @@ class TestNormOp4(TestNormOp):
         pass
 
 
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
-                    "however it is desirable to cover the forward pass")
+@skip_check_grad_ci(
+    reason="'check_grad' on large inputs is too slow, "
+    + "however it is desirable to cover the forward pass"
+)
 class TestNormOp5(TestNormOp):
-
     def init_test_case(self):
         self.shape = [2048, 2048]
         self.axis = 1
@@ -100,7 +97,6 @@ class TestNormOp5(TestNormOp):
 
 
 class TestNormOp6(TestNormOp):
-
     def init_dtype(self):
         self.dtype = "float32"
 
@@ -108,10 +104,10 @@ class TestNormOp6(TestNormOp):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestNormOp7(TestNormOp):
-
     def init_dtype(self):
         self.dtype = "float16"
 
@@ -119,14 +115,13 @@ class TestNormOp7(TestNormOp):
         self.check_output_with_place(fluid.core.CUDAPlace(0), atol=5e-2)
 
     def test_check_grad(self):
-        self.check_grad_with_place(fluid.core.CUDAPlace(0), ['X'],
-                                   'Out',
-                                   max_relative_error=0.05)
+        self.check_grad_with_place(
+            fluid.core.CUDAPlace(0), ['X'], 'Out', max_relative_error=0.05
+        )
 
 
 @skip_check_grad_ci(reason="skip check grad for test mode.")
 class TestNormTestOp(OpTest):
-
     def setUp(self):
         self.op_type = "norm"
         self.init_test_case()
@@ -136,7 +131,7 @@ class TestNormTestOp(OpTest):
         self.attrs = {
             'epsilon': self.epsilon,
             'axis': self.axis,
-            'is_test': True
+            'is_test': True,
         }
         self.outputs = {'Out': y}
 
@@ -153,7 +148,6 @@ class TestNormTestOp(OpTest):
 
 
 class API_NormTest(unittest.TestCase):
-
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
 
@@ -166,5 +160,6 @@ class API_NormTest(unittest.TestCase):
 
 if __name__ == '__main__':
     import paddle
+
     paddle.enable_static()
     unittest.main()

@@ -41,7 +41,7 @@ static void CheckTensor(const paddle::experimental::Tensor& pre,
         "The tensor in before and after hook are not consistent"));
   }
   if (pre.initialized() && post.initialized()) {
-    VLOG(4) << paddle::framework::DataType2String(pre.dtype()) << " "
+    VLOG(7) << paddle::framework::DataType2String(pre.dtype()) << " "
             << paddle::framework::DataType2String(post.dtype());
     PADDLE_ENFORCE_EQ(
         pre.dtype(),
@@ -62,7 +62,7 @@ static void CheckTensor(const paddle::experimental::Tensor& pre,
 }
 
 GradNodeBase::GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num) {
-  VLOG(6) << "Construct GradNodeBase";
+  VLOG(7) << "Construct GradNodeBase";
   bwd_in_meta_.resize(bwd_in_slot_num);
   bwd_out_meta_.resize(bwd_out_slot_num);
 }
@@ -84,7 +84,7 @@ GradNodeBase::MutableOutputMeta() {
 
 void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
                                  size_t slot_rank) {
-  VLOG(6) << "Set GradSlotMeta for Grad Inputs";
+  VLOG(7) << "Set GradSlotMeta for Grad Inputs";
   auto* fwd_out_meta = egr::EagerUtils::nullable_autograd_meta(fwd_out);
   PADDLE_ENFORCE_LE(
       slot_rank,
@@ -104,7 +104,7 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
   }
 
   if (!fwd_out.initialized()) {
-    VLOG(6)
+    VLOG(7)
         << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
     return;
   }
@@ -123,7 +123,7 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
         static_cast<phi::SparseCsrTensor*>(fwd_out.impl().get());
     dense_tensor = csr_tensor->mutable_non_zero_elements();
   } else {
-    VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
+    VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
   }
   PADDLE_ENFORCE_NE(
@@ -145,7 +145,7 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
 void GradNodeBase::SetGradInMeta(
     const std::vector<paddle::experimental::Tensor>& fwd_out,
     size_t slot_rank) {
-  VLOG(6) << "Set GradSlotMeta for Grad Inputs";
+  VLOG(7) << "Set GradSlotMeta for Grad Inputs";
   size_t slot_size = fwd_out.size();
   PADDLE_ENFORCE_LE(
       slot_rank,
@@ -177,7 +177,7 @@ void GradNodeBase::SetGradInMeta(
     }
 
     if (!fwd_out_tensor.initialized()) {
-      VLOG(6)
+      VLOG(7)
           << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
       return;
     }
@@ -202,7 +202,7 @@ void GradNodeBase::SetGradInMeta(
         need_complex_to_real_ = true;
       }
     } else {
-      VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta "
+      VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta "
                  "with non-DenseTensor argument.";
     }
   }
@@ -260,7 +260,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
       meta.SetPlace(fwd_in.place());
     }
   } else {
-    VLOG(6) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
+    VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
   }
 }
@@ -319,7 +319,7 @@ void GradNodeBase::SetGradOutMeta(
         meta.SetPlace(fwd_in_tensor.place());
       }
     } else {
-      VLOG(6)
+      VLOG(7)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
              "non-DenseTensor argument.";
     }

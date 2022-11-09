@@ -28,6 +28,14 @@ class DenseTensorUtils {
     return &(tensor->meta_);
   }
 
+  static SparseTensorMeta* GetMutableMeta(SparseCooTensor* tensor) {
+    return &(tensor->meta_);
+  }
+
+  static SparseTensorMeta* GetMutableMeta(SparseCsrTensor* tensor) {
+    return &(tensor->meta_);
+  }
+
   static const std::shared_ptr<phi::Allocation>& GetHolder(
       const DenseTensor& tensor) {
     return tensor.holder_;

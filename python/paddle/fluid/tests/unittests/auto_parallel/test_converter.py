@@ -16,14 +16,11 @@ import tempfile
 import unittest
 import os
 import sys
-import shutil
 import subprocess
-from paddle.distributed.fleet.launch_utils import run_with_coverage
 from paddle.distributed.auto_parallel.converter import Converter
 
 
 class TestConverter(unittest.TestCase):
-
     def test_converter(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "converter.py")
@@ -34,10 +31,19 @@ class TestConverter(unittest.TestCase):
             coverage_args = []
 
         tmp_dir = tempfile.TemporaryDirectory()
-        cmd = [sys.executable, "-u"] + coverage_args + [
-            "-m", "paddle.distributed.launch", "--devices", "0,1", "--log_dir",
-            tmp_dir.name, launch_model_path
-        ]
+        cmd = (
+            [sys.executable, "-u"]
+            + coverage_args
+            + [
+                "-m",
+                "paddle.distributed.launch",
+                "--devices",
+                "0,1",
+                "--log_dir",
+                tmp_dir.name,
+                launch_model_path,
+            ]
+        )
 
         process = subprocess.Popen(cmd)
         process.wait()
@@ -59,7 +65,7 @@ class TestConverter(unittest.TestCase):
             'tmp_0': {
                 "process_shape": [1],
                 "process_group": [0],
-                "dims_mapping": [-1]
+                "dims_mapping": [-1],
             }
         }
         with self.assertRaises(TypeError):

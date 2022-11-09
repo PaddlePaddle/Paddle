@@ -30,13 +30,13 @@ static PyObject *eager_api_linear(PyObject *self,
     auto bias = GetTensorFromArgs("linear", "Bias", args, 2, true);
     tstate = PyEval_SaveThread();
     if (bias.initialized()) {
-      auto mm_out = matmul_dygraph_function(x, weight, false, false);
-      auto out = add_dygraph_function(mm_out, bias);
+      auto mm_out = matmul_ad_func(x, weight, false, false);
+      auto out = add_ad_func(mm_out, bias);
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
       return ToPyObject(out);
     } else {
-      auto mm_out = matmul_dygraph_function(x, weight, false, false);
+      auto mm_out = matmul_ad_func(x, weight, false, false);
       PyEval_RestoreThread(tstate);
       tstate = nullptr;
       return ToPyObject(mm_out);

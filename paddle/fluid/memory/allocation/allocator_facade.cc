@@ -238,7 +238,7 @@ class AllocatorFacadePrivate {
         // releate to non-default stream (i.e., the stream users pass in). The
         // default stream Allocator is built in the structure of
         // AllocatorFacadePrivate, while the non-default stream is build in a
-        // manner in GetAllocator function with 'create_if_not_found = ture'.
+        // manner in GetAllocator function with 'create_if_not_found = true'.
         // We make special treatment for the default stream for performance
         // reasons. Since most Alloc calls are for default stream in
         // application, treating it separately can avoid lots of overhead of
@@ -589,6 +589,7 @@ class AllocatorFacadePrivate {
           std::make_shared<AutoGrowthBestFitAllocator>(
               cuda_allocator,
               platform::GpuMinChunkSize(),
+              /*chunk_size=*/0,
               allow_free_idle_chunk_);
     }
 #else
@@ -637,7 +638,10 @@ class AllocatorFacadePrivate {
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-        cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+        cuda_allocator,
+        platform::GpuMinChunkSize(),
+        /*chunk_size=*/0,
+        allow_free_idle_chunk);
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
@@ -665,7 +669,10 @@ class AllocatorFacadePrivate {
     } else {
       auto cuda_allocator = CreateCUDAAllocator(p);
       allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-          cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+          cuda_allocator,
+          platform::GpuMinChunkSize(),
+          /*chunk_size=*/0,
+          allow_free_idle_chunk);
     }
 
 #else
@@ -821,6 +828,7 @@ class AllocatorFacadePrivate {
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
         custom_allocator,
         phi::DeviceManager::GetMinChunkSize(p),
+        /*chunk_size=*/0,
         allow_free_idle_chunk);
   }
 #endif

@@ -41,8 +41,8 @@ class AsComplexOpMaker : public framework::OpProtoAndCheckerMaker {
 As_complex Operator.
 
 This operator is used to return a complex tensor represented
-by an old-fashioned real tensor. The size of the last dimension of 
-the input tensor should be 2, which corresponds to 'real' and 
+by an old-fashioned real tensor. The size of the last dimension of
+the input tensor should be 2, which corresponds to 'real' and
 'complex', respectively.
 
 )DOC");
@@ -75,7 +75,7 @@ class AsRealOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 AsReal Operator.
 
-This operator is used to return an old-fashioned real tensor from a 
+This operator is used to return an old-fashioned real tensor from a
 complex tensor. The size of the last dimension of the output tensor is 2,
 which corresponds to 'real' and 'complex', respectively.
 

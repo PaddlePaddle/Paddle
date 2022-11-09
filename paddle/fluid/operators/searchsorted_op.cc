@@ -54,7 +54,7 @@ class SearchSortedOpMaker : public framework::OpProtoAndCheckerMaker {
   Searchsorted Operator.
 
   This OP is used to find the index of the corresponding sorted_sequence in the innermost dimension based on the given values.
- 
+
 )DOC");
   }
 };

@@ -56,11 +56,11 @@ inline HOSTDEVICE T RoIArea(const T* box, bool pixel_offset = true) {
  */
 template <typename T>
 inline void BoxToDelta(const int box_num,
-                       const framework::Tensor& ex_boxes,
-                       const framework::Tensor& gt_boxes,
+                       const phi::DenseTensor& ex_boxes,
+                       const phi::DenseTensor& gt_boxes,
                        const float* weights,
                        const bool normalized,
-                       framework::Tensor* box_delta) {
+                       phi::DenseTensor* box_delta) {
   auto ex_boxes_et = framework::EigenTensor<T, 2>::From(ex_boxes);
   auto gt_boxes_et = framework::EigenTensor<T, 2>::From(gt_boxes);
   auto trg = framework::EigenTensor<T, 2>::From(*box_delta);
@@ -101,9 +101,9 @@ void Gather(
 }
 
 template <typename T>
-void BboxOverlaps(const framework::Tensor& r_boxes,
-                  const framework::Tensor& c_boxes,
-                  framework::Tensor* overlaps) {
+void BboxOverlaps(const phi::DenseTensor& r_boxes,
+                  const phi::DenseTensor& c_boxes,
+                  phi::DenseTensor* overlaps) {
   auto r_boxes_et = framework::EigenTensor<T, 2>::From(r_boxes);
   auto c_boxes_et = framework::EigenTensor<T, 2>::From(c_boxes);
   auto overlaps_et = framework::EigenTensor<T, 2>::From(*overlaps);
@@ -136,7 +136,7 @@ void BboxOverlaps(const framework::Tensor& r_boxes,
 // Calculate max IoU between each box and ground-truth and
 // each row represents one box
 template <typename T>
-void MaxIoU(const framework::Tensor& iou, framework::Tensor* max_iou) {
+void MaxIoU(const phi::DenseTensor& iou, phi::DenseTensor* max_iou) {
   const T* iou_data = iou.data<T>();
   int row = iou.dims()[0];
   int col = iou.dims()[1];
@@ -148,9 +148,9 @@ void MaxIoU(const framework::Tensor& iou, framework::Tensor* max_iou) {
   }
 }
 
-static void AppendProposals(framework::Tensor* dst,
+static void AppendProposals(phi::DenseTensor* dst,
                             int64_t offset,
-                            const framework::Tensor& src) {
+                            const phi::DenseTensor& src) {
   auto* out_data = dst->data();
   auto* to_add_data = src.data();
   size_t size_of_t = framework::DataTypeSize(src.dtype());
@@ -163,9 +163,9 @@ static void AppendProposals(framework::Tensor* dst,
 
 template <class T>
 void ClipTiledBoxes(const platform::DeviceContext& ctx,
-                    const framework::Tensor& im_info,
-                    const framework::Tensor& input_boxes,
-                    framework::Tensor* out,
+                    const phi::DenseTensor& im_info,
+                    const phi::DenseTensor& input_boxes,
+                    phi::DenseTensor* out,
                     bool is_scale = true,
                     bool pixel_offset = true) {
   T* out_data = out->mutable_data<T>(ctx.GetPlace());
@@ -197,11 +197,11 @@ void ClipTiledBoxes(const platform::DeviceContext& ctx,
 // Filter the box with small area
 template <class T>
 void FilterBoxes(const platform::DeviceContext& ctx,
-                 const framework::Tensor* boxes,
+                 const phi::DenseTensor* boxes,
                  float min_size,
-                 const framework::Tensor& im_info,
+                 const phi::DenseTensor& im_info,
                  bool is_scale,
-                 framework::Tensor* keep,
+                 phi::DenseTensor* keep,
                  bool pixel_offset = true) {
   const T* im_info_data = im_info.data<T>();
   const T* boxes_data = boxes->data<T>();
@@ -238,10 +238,10 @@ void FilterBoxes(const platform::DeviceContext& ctx,
 
 template <class T>
 static void BoxCoder(const platform::DeviceContext& ctx,
-                     framework::Tensor* all_anchors,
-                     framework::Tensor* bbox_deltas,
-                     framework::Tensor* variances,
-                     framework::Tensor* proposals,
+                     phi::DenseTensor* all_anchors,
+                     phi::DenseTensor* bbox_deltas,
+                     phi::DenseTensor* variances,
+                     phi::DenseTensor* proposals,
                      const bool pixel_offset = true) {
   T* proposals_data = proposals->mutable_data<T>(ctx.GetPlace());
 

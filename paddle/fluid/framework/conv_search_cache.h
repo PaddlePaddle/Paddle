@@ -55,7 +55,8 @@ class ConvSearchCache {
   AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>* GetBackwardFilter() {
     return &backward_filter_cache_;
   }
-  AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* GetConvFusion() {
+  AlgorithmsCache<SearchFuseResult<cudnnConvolutionFwdAlgo_t>>*
+  GetConvFusion() {
     return &fusion_forward_cache_;
   }
 #endif
@@ -75,7 +76,8 @@ class ConvSearchCache {
   AlgorithmsCache<cudnnConvolutionFwdAlgo_t> forward_cache_;
   AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t> backward_data_cache_;
   AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t> backward_filter_cache_;
-  AlgorithmsCache<cudnnConvolutionFwdAlgo_t> fusion_forward_cache_;
+  AlgorithmsCache<SearchFuseResult<cudnnConvolutionFwdAlgo_t>>
+      fusion_forward_cache_;
 #endif
 };
 

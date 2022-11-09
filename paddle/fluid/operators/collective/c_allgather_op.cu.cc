@@ -30,8 +30,8 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto in = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
@@ -96,7 +96,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(c_allgather,
                         ops::CAllGatherOpCUDAKernel<float>,
                         ops::CAllGatherOpCUDAKernel<double>,
-#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000
                         ops::CAllGatherOpCUDAKernel<plat::bfloat16>,
 #endif
                         ops::CAllGatherOpCUDAKernel<int>,

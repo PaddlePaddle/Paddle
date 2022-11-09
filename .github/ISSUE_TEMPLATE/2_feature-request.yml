@@ -7,9 +7,9 @@ body:
   attributes:
     value: >
       #### 你可以在这里提出你对Paddle框架的新需求，包括但不限于：功能或模型缺失、功能不全或无法使用、精度/性能不符合预期等。
-      
+
       #### You could submit a request for a new Paddle feature here, including but not limited to: new features or models, incomplete or unusable features, accuracy/performance not as expected, etc.
-      
+
 - type: textarea
   id: description
   attributes:
@@ -20,7 +20,7 @@ body:
     value: "任务目标（请描述你正在做的项目是什么，如模型、论文、项目是什么？）; <br /> 需求场景（请描述你的项目中为什么需要用此功能）;  <br /> 功能描述（请简单描述或设计这个功能）"
   validations:
     required: true
-    
+
 - type: textarea
   id: alternatives
   attributes:
@@ -30,7 +30,7 @@ body:
       A description of any alternative solutions or features you've considered, if any.
   validations:
     required: false
-    
+
 - type: markdown
   attributes:
     value: >

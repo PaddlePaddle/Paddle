@@ -111,7 +111,7 @@ struct BeamSearchDecodeXPUFunctor {
     if (platform::is_xpu_place(step_ids[0].place())) {
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids) {
-        framework::LoDTensor out;
+        phi::DenseTensor out;
         if (step_id.numel() > 0) {
           r = CopyTensorByType(step_id, &out, 0, step_ids[0].place());
           PADDLE_ENFORCE_EQ(
@@ -129,7 +129,7 @@ struct BeamSearchDecodeXPUFunctor {
     if (platform::is_xpu_place(step_scores[0].place())) {
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores) {
-        framework::LoDTensor out;
+        phi::DenseTensor out;
         if (step_score.numel() > 0) {
           r = CopyTensorByType(step_score, &out, 0, step_scores[0].place());
           PADDLE_ENFORCE_EQ(

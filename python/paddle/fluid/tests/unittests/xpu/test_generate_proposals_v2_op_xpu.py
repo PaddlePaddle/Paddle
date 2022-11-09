@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -22,20 +20,22 @@ sys.path.append("..")
 
 import math
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
-from op_test import OpTest
 import copy
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
     """
-    Decode proposals by anchors and bbox_deltas from RPN 
+    Decode proposals by anchors and bbox_deltas from RPN
     """
     offset = 1 if pixel_offset else 0
     # proposals: xmin, ymin, xmax, ymax
@@ -53,30 +53,48 @@ def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
     pred_bbox = np.zeros_like(bbox_deltas, dtype=np.float32)
     if variances is not None:
         for i in range(bbox_deltas.shape[0]):
-            pred_bbox[i, 0] = variances[i, 0] * bbox_deltas[i, 0] * anchor_loc[
-                i, 0] + anchor_loc[i, 2]
-            pred_bbox[i, 1] = variances[i, 1] * bbox_deltas[i, 1] * anchor_loc[
-                i, 1] + anchor_loc[i, 3]
-            pred_bbox[i, 2] = math.exp(
-                min(variances[i, 2] * bbox_deltas[i, 2], math.log(
-                    1000 / 16.0))) * anchor_loc[i, 0]
-            pred_bbox[i, 3] = math.exp(
-                min(variances[i, 3] * bbox_deltas[i, 3], math.log(
-                    1000 / 16.0))) * anchor_loc[i, 1]
+            pred_bbox[i, 0] = (
+                variances[i, 0] * bbox_deltas[i, 0] * anchor_loc[i, 0]
+                + anchor_loc[i, 2]
+            )
+            pred_bbox[i, 1] = (
+                variances[i, 1] * bbox_deltas[i, 1] * anchor_loc[i, 1]
+                + anchor_loc[i, 3]
+            )
+            pred_bbox[i, 2] = (
+                math.exp(
+                    min(
+                        variances[i, 2] * bbox_deltas[i, 2],
+                        math.log(1000 / 16.0),
+                    )
+                )
+                * anchor_loc[i, 0]
+            )
+            pred_bbox[i, 3] = (
+                math.exp(
+                    min(
+                        variances[i, 3] * bbox_deltas[i, 3],
+                        math.log(1000 / 16.0),
+                    )
+                )
+                * anchor_loc[i, 1]
+            )
     else:
         for i in range(bbox_deltas.shape[0]):
-            pred_bbox[i,
-                      0] = bbox_deltas[i, 0] * anchor_loc[i, 0] + anchor_loc[i,
-                                                                             2]
-            pred_bbox[i,
-                      1] = bbox_deltas[i, 1] * anchor_loc[i, 1] + anchor_loc[i,
-                                                                             3]
-            pred_bbox[i, 2] = math.exp(
-                min(bbox_deltas[i, 2], math.log(1000 / 16.0))) * anchor_loc[i,
-                                                                            0]
-            pred_bbox[i, 3] = math.exp(
-                min(bbox_deltas[i, 3], math.log(1000 / 16.0))) * anchor_loc[i,
-                                                                            1]
+            pred_bbox[i, 0] = (
+                bbox_deltas[i, 0] * anchor_loc[i, 0] + anchor_loc[i, 2]
+            )
+            pred_bbox[i, 1] = (
+                bbox_deltas[i, 1] * anchor_loc[i, 1] + anchor_loc[i, 3]
+            )
+            pred_bbox[i, 2] = (
+                math.exp(min(bbox_deltas[i, 2], math.log(1000 / 16.0)))
+                * anchor_loc[i, 0]
+            )
+            pred_bbox[i, 3] = (
+                math.exp(min(bbox_deltas[i, 3], math.log(1000 / 16.0)))
+                * anchor_loc[i, 1]
+            )
     proposals[:, 0] = pred_bbox[:, 0] - pred_bbox[:, 2] / 2
     proposals[:, 1] = pred_bbox[:, 1] - pred_bbox[:, 3] / 2
     proposals[:, 2] = pred_bbox[:, 0] + pred_bbox[:, 2] / 2 - offset
@@ -88,43 +106,47 @@ def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
 def clip_tiled_boxes(boxes, im_shape, pixel_offset=True):
     """Clip boxes to image boundaries. im_shape is [height, width] and boxes
     has shape (N, 4 * num_tiled_boxes)."""
-    assert boxes.shape[1] % 4 == 0, \
-        'boxes.shape[1] is {:d}, but must be divisible by 4.'.format(
+    assert (
+        boxes.shape[1] % 4 == 0
+    ), 'boxes.shape[1] is {:d}, but must be divisible by 4.'.format(
         boxes.shape[1]
     )
     offset = 1 if pixel_offset else 0
     # x1 >= 0
-    boxes[:,
-          0::4] = np.maximum(np.minimum(boxes[:, 0::4], im_shape[1] - offset),
-                             0)
+    boxes[:, 0::4] = np.maximum(
+        np.minimum(boxes[:, 0::4], im_shape[1] - offset), 0
+    )
     # y1 >= 0
-    boxes[:,
-          1::4] = np.maximum(np.minimum(boxes[:, 1::4], im_shape[0] - offset),
-                             0)
+    boxes[:, 1::4] = np.maximum(
+        np.minimum(boxes[:, 1::4], im_shape[0] - offset), 0
+    )
     # x2 < im_shape[1]
-    boxes[:,
-          2::4] = np.maximum(np.minimum(boxes[:, 2::4], im_shape[1] - offset),
-                             0)
+    boxes[:, 2::4] = np.maximum(
+        np.minimum(boxes[:, 2::4], im_shape[1] - offset), 0
+    )
     # y2 < im_shape[0]
-    boxes[:,
-          3::4] = np.maximum(np.minimum(boxes[:, 3::4], im_shape[0] - offset),
-                             0)
+    boxes[:, 3::4] = np.maximum(
+        np.minimum(boxes[:, 3::4], im_shape[0] - offset), 0
+    )
     return boxes
 
 
 def filter_boxes(boxes, min_size, im_shape, pixel_offset=True):
-    """Only keep boxes with both sides >= min_size and center within the image.
-    """
+    """Only keep boxes with both sides >= min_size and center within the image."""
     # Scale min_size to match image scale
     min_size = max(min_size, 1.0)
     offset = 1 if pixel_offset else 0
     ws = boxes[:, 2] - boxes[:, 0] + offset
     hs = boxes[:, 3] - boxes[:, 1] + offset
     if pixel_offset:
-        x_ctr = boxes[:, 0] + ws / 2.
-        y_ctr = boxes[:, 1] + hs / 2.
-        keep = np.where((ws >= min_size) & (hs >= min_size)
-                        & (x_ctr < im_shape[1]) & (y_ctr < im_shape[0]))[0]
+        x_ctr = boxes[:, 0] + ws / 2.0
+        y_ctr = boxes[:, 1] + hs / 2.0
+        keep = np.where(
+            (ws >= min_size)
+            & (hs >= min_size)
+            & (x_ctr < im_shape[1])
+            & (y_ctr < im_shape[0])
+        )[0]
     else:
         keep = np.where((ws >= min_size) & (hs >= min_size))[0]
     return keep
@@ -132,7 +154,7 @@ def filter_boxes(boxes, min_size, im_shape, pixel_offset=True):
 
 def iou(box_a, box_b, pixel_offset=True):
     """
-	Apply intersection-over-union overlap between box_a and box_b
+    Apply intersection-over-union overlap between box_a and box_b
     """
     xmin_a = min(box_a[0], box_a[2])
     ymin_a = min(box_a[1], box_a[3])
@@ -186,9 +208,9 @@ def nms(boxes, scores, nms_threshold, eta=1.0, pixel_offset=True):
         for k in range(len(selected_indices)):
             if keep:
                 kept_idx = selected_indices[k]
-                overlap = iou(boxes[idx],
-                              boxes[kept_idx],
-                              pixel_offset=pixel_offset)
+                overlap = iou(
+                    boxes[idx], boxes[kept_idx], pixel_offset=pixel_offset
+                )
                 keep = True if overlap <= adaptive_threshold else False
             else:
                 break
@@ -199,9 +221,19 @@ def nms(boxes, scores, nms_threshold, eta=1.0, pixel_offset=True):
     return selected_indices
 
 
-def proposal_for_one_image(im_shape, all_anchors, variances, bbox_deltas,
-                           scores, pre_nms_topN, post_nms_topN, nms_thresh,
-                           min_size, eta, pixel_offset):
+def proposal_for_one_image(
+    im_shape,
+    all_anchors,
+    variances,
+    bbox_deltas,
+    scores,
+    pre_nms_topN,
+    post_nms_topN,
+    nms_thresh,
+    min_size,
+    eta,
+    pixel_offset,
+):
     # Transpose and reshape predicted bbox transformations to get them
     # into the same order as the anchors:
     #   - bbox deltas will be (4 * A, H, W) format from conv output
@@ -254,11 +286,13 @@ def proposal_for_one_image(im_shape, all_anchors, variances, bbox_deltas,
     # take post_nms_topN (e.g. 1000)
     # return the top proposals
     if nms_thresh > 0:
-        keep = nms(boxes=proposals,
-                   scores=scores,
-                   nms_threshold=nms_thresh,
-                   eta=eta,
-                   pixel_offset=pixel_offset)
+        keep = nms(
+            boxes=proposals,
+            scores=scores,
+            nms_threshold=nms_thresh,
+            eta=eta,
+            pixel_offset=pixel_offset,
+        )
         if post_nms_topN > 0 and post_nms_topN < len(keep):
             keep = keep[:post_nms_topN]
         proposals = proposals[keep, :]
@@ -267,9 +301,19 @@ def proposal_for_one_image(im_shape, all_anchors, variances, bbox_deltas,
     return proposals, scores
 
 
-def generate_proposals_v2_in_python(scores, bbox_deltas, im_shape, anchors,
-                                    variances, pre_nms_topN, post_nms_topN,
-                                    nms_thresh, min_size, eta, pixel_offset):
+def generate_proposals_v2_in_python(
+    scores,
+    bbox_deltas,
+    im_shape,
+    anchors,
+    variances,
+    pre_nms_topN,
+    post_nms_topN,
+    nms_thresh,
+    min_size,
+    eta,
+    pixel_offset,
+):
     all_anchors = anchors.reshape(-1, 4)
     rois = np.empty((0, 5), dtype=np.float32)
     roi_probs = np.empty((0, 1), dtype=np.float32)
@@ -280,10 +324,18 @@ def generate_proposals_v2_in_python(scores, bbox_deltas, im_shape, anchors,
     num_images = scores.shape[0]
     for img_idx in range(num_images):
         img_i_boxes, img_i_probs = proposal_for_one_image(
-            im_shape[img_idx, :], all_anchors, variances,
-            bbox_deltas[img_idx, :, :, :], scores[img_idx, :, :, :],
-            pre_nms_topN, post_nms_topN, nms_thresh, min_size, eta,
-            pixel_offset)
+            im_shape[img_idx, :],
+            all_anchors,
+            variances,
+            bbox_deltas[img_idx, :, :, :],
+            scores[img_idx, :, :, :],
+            pre_nms_topN,
+            post_nms_topN,
+            nms_thresh,
+            min_size,
+            eta,
+            pixel_offset,
+        )
         rois_num.append(img_i_probs.shape[0])
         rpn_rois.append(img_i_boxes)
         rpn_roi_probs.append(img_i_probs)
@@ -291,8 +343,9 @@ def generate_proposals_v2_in_python(scores, bbox_deltas, im_shape, anchors,
     return rpn_rois, rpn_roi_probs, rois_num
 
 
-def anchor_generator_in_python(input_feat, anchor_sizes, aspect_ratios,
-                               variances, stride, offset):
+def anchor_generator_in_python(
+    input_feat, anchor_sizes, aspect_ratios, variances, stride, offset
+):
     num_anchors = len(aspect_ratios) * len(anchor_sizes)
     layer_h = input_feat.shape[2]
     layer_w = input_feat.shape[3]
@@ -316,11 +369,12 @@ def anchor_generator_in_python(input_feat, anchor_sizes, aspect_ratios,
                     scale_h = anchor_size / stride[1]
                     w = scale_w * base_w
                     h = scale_h * base_h
-                    out_anchors[h_idx, w_idx,
-                                idx, :] = [(x_ctr - 0.5 * (w - 1)),
-                                           (y_ctr - 0.5 * (h - 1)),
-                                           (x_ctr + 0.5 * (w - 1)),
-                                           (y_ctr + 0.5 * (h - 1))]
+                    out_anchors[h_idx, w_idx, idx, :] = [
+                        (x_ctr - 0.5 * (w - 1)),
+                        (y_ctr - 0.5 * (h - 1)),
+                        (x_ctr + 0.5 * (w - 1)),
+                        (y_ctr + 0.5 * (h - 1)),
+                    ]
                     idx += 1
 
     # set the variance.
@@ -331,13 +385,11 @@ def anchor_generator_in_python(input_feat, anchor_sizes, aspect_ratios,
 
 
 class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'generate_proposals_v2'
         self.use_dynamic_create_class = False
 
     class TestGenerateProposalsV2Op(XPUOpTest):
-
         def set_data(self):
             self.init_input_shape()
             self.init_test_params()
@@ -348,7 +400,7 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
                 'BboxDeltas': self.bbox_deltas,
                 'ImShape': self.im_shape.astype(self.dtype),
                 'Anchors': self.anchors,
-                'Variances': self.variances
+                'Variances': self.variances,
             }
 
             self.attrs = {
@@ -392,7 +444,7 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
             self.post_nms_topN = 5000  # train 6000, test 1000
             self.nms_thresh = 0.7
             self.min_size = 3.0
-            self.eta = 1.
+            self.eta = 1.0
             self.pixel_offset = True
 
         def init_test_input(self):
@@ -400,30 +452,45 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
             input_channels = self.input_feat_shape[1]
             layer_h = self.input_feat_shape[2]
             layer_w = self.input_feat_shape[3]
-            input_feat = np.random.random((batch_size, input_channels, layer_h,
-                                           layer_w)).astype(self.dtype)
+            input_feat = np.random.random(
+                (batch_size, input_channels, layer_h, layer_w)
+            ).astype(self.dtype)
             self.anchors, self.variances = anchor_generator_in_python(
                 input_feat=input_feat,
-                anchor_sizes=[16., 32.],
+                anchor_sizes=[16.0, 32.0],
                 aspect_ratios=[0.5, 1.0],
                 variances=[1.0, 1.0, 1.0, 1.0],
                 stride=[16.0, 16.0],
-                offset=0.5)
+                offset=0.5,
+            )
             num_anchors = self.anchors.shape[2]
             self.scores = np.random.random(
-                (batch_size, num_anchors, layer_h, layer_w)).astype(self.dtype)
+                (batch_size, num_anchors, layer_h, layer_w)
+            ).astype(self.dtype)
             self.bbox_deltas = np.random.random(
-                (batch_size, num_anchors * 4, layer_h,
-                 layer_w)).astype(self.dtype)
+                (batch_size, num_anchors * 4, layer_h, layer_w)
+            ).astype(self.dtype)
 
         def init_test_output(self):
-            self.rpn_rois, self.rpn_roi_probs, self.rois_num = generate_proposals_v2_in_python(
-                self.scores, self.bbox_deltas, self.im_shape, self.anchors,
-                self.variances, self.pre_nms_topN, self.post_nms_topN,
-                self.nms_thresh, self.min_size, self.eta, self.pixel_offset)
+            (
+                self.rpn_rois,
+                self.rpn_roi_probs,
+                self.rois_num,
+            ) = generate_proposals_v2_in_python(
+                self.scores,
+                self.bbox_deltas,
+                self.im_shape,
+                self.anchors,
+                self.variances,
+                self.pre_nms_topN,
+                self.post_nms_topN,
+                self.nms_thresh,
+                self.min_size,
+                self.eta,
+                self.pixel_offset,
+            )
 
     class TestGenerateProposalsV2OutLodOp(TestGenerateProposalsV2Op):
-
         def set_data(self):
             self.init_input_shape()
             self.init_test_params()
@@ -434,7 +501,7 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
                 'BboxDeltas': self.bbox_deltas,
                 'ImShape': self.im_shape.astype(np.float32),
                 'Anchors': self.anchors,
-                'Variances': self.variances
+                'Variances': self.variances,
             }
 
             self.attrs = {
@@ -444,37 +511,34 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
                 'min_size': self.min_size,
                 'eta': self.eta,
                 'pixel_offset': self.pixel_offset,
-                'return_rois_num': True
+                'return_rois_num': True,
             }
 
             self.outputs = {
                 'RpnRois': (self.rpn_rois[0], [self.rois_num]),
                 'RpnRoiProbs': (self.rpn_roi_probs[0], [self.rois_num]),
-                'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32))
+                'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32)),
             }
 
     class TestGenerateProposalsV2OpNoBoxLeft(TestGenerateProposalsV2Op):
-
         def init_test_params(self):
             self.pre_nms_topN = 12000  # train 12000, test 2000
             self.post_nms_topN = 5000  # train 6000, test 1000
             self.nms_thresh = 0.7
             self.min_size = 1000.0
-            self.eta = 1.
+            self.eta = 1.0
             self.pixel_offset = True
 
     class TestGenerateProposalsV2OpNoOffset(TestGenerateProposalsV2Op):
-
         def init_test_params(self):
             self.pre_nms_topN = 12000  # train 12000, test 2000
             self.post_nms_topN = 5000  # train 6000, test 1000
             self.nms_thresh = 0.7
             self.min_size = 3.0
-            self.eta = 1.
+            self.eta = 1.0
             self.pixel_offset = False
 
     class TestGenerateProposalsV2OpMaskRcnn1XPU(TestGenerateProposalsV2Op):
-
         def init_input_shape(self):
             self.input_feat_shape = (1, 20, 48, 64)
             # Another case is [768, 1024]
@@ -485,7 +549,7 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
             self.post_nms_topN = 2000  # train 6000, test 1000
             self.nms_thresh = 0.7
             self.min_size = 0.0
-            self.eta = 1.
+            self.eta = 1.0
             self.pixel_offset = False
 
         def init_test_input(self):
@@ -493,21 +557,24 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
             input_channels = self.input_feat_shape[1]
             layer_h = self.input_feat_shape[2]
             layer_w = self.input_feat_shape[3]
-            input_feat = np.random.random((batch_size, input_channels, layer_h,
-                                           layer_w)).astype(self.dtype)
+            input_feat = np.random.random(
+                (batch_size, input_channels, layer_h, layer_w)
+            ).astype(self.dtype)
             self.anchors, self.variances = anchor_generator_in_python(
                 input_feat=input_feat,
                 anchor_sizes=[32, 64, 128, 256, 512],
                 aspect_ratios=[0.5, 1.0, 2.0],
                 variances=[1.0, 1.0, 1.0, 1.0],
                 stride=[16.0, 16.0],
-                offset=0.5)
+                offset=0.5,
+            )
             num_anchors = self.anchors.shape[2]
             self.scores = np.random.random(
-                (batch_size, num_anchors, layer_h, layer_w)).astype(self.dtype)
+                (batch_size, num_anchors, layer_h, layer_w)
+            ).astype(self.dtype)
             self.bbox_deltas = np.random.random(
-                (batch_size, num_anchors * 4, layer_h,
-                 layer_w)).astype(self.dtype)
+                (batch_size, num_anchors * 4, layer_h, layer_w)
+            ).astype(self.dtype)
             self.anchors = self.anchors.reshape(-1, 4)
             self.variances = self.variances.reshape(-1, 4)
 
@@ -523,7 +590,7 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
                 'BboxDeltas': self.bbox_deltas,
                 'ImShape': self.im_shape.astype(np.float32),
                 'Anchors': self.anchors,
-                'Variances': self.variances
+                'Variances': self.variances,
             }
 
             self.attrs = {
@@ -533,23 +600,25 @@ class XPUGenerateProposalsV2Op(XPUOpTestWrapper):
                 'min_size': self.min_size,
                 'eta': self.eta,
                 'pixel_offset': self.pixel_offset,
-                'return_rois_num': True
+                'return_rois_num': True,
             }
 
             self.outputs = {
                 'RpnRois': (self.rpn_rois[0], [self.rois_num]),
                 'RpnRoiProbs': (self.rpn_roi_probs[0], [self.rois_num]),
-                'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32))
+                'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32)),
             }
 
 
 support_types = get_xpu_op_support_types('generate_proposals_v2')
 for stype in support_types:
-    create_test_class(globals(),
-                      XPUGenerateProposalsV2Op,
-                      stype,
-                      test_grad=False,
-                      ignore_device_version=[core.XPUVersion.XPU1])
+    create_test_class(
+        globals(),
+        XPUGenerateProposalsV2Op,
+        stype,
+        test_grad=False,
+        ignore_device_version=[core.XPUVersion.XPU1],
+    )
 
 if __name__ == '__main__':
     unittest.main()

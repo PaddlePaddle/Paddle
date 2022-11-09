@@ -198,61 +198,6 @@ __device__ __forceinline__ void fastAtomicAdd(T *arr,
                                               T value) {
   CudaAtomicAdd(arr + index, value);
 }
-
-#ifdef PADDLE_WITH_CUDA
-/*
- * One thead block deals with elementwise atomicAdd for vector of len.
- * @in: [x1, x2, x3, ...]
- * @out:[y1+x1, y2+x2, y3+x3, ...]
- * */
-template <typename T,
-          typename std::enable_if<
-              !std::is_same<platform::float16, T>::value>::type * = nullptr>
-__device__ __forceinline__ void VectorizedAtomicAddPerBlock(
-    const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
-  for (int i = tid; i < len; i += threads_per_block) {
-    CudaAtomicAdd(&out[i], in[i]);
-  }
-}
-
-// Note: assume that len is even. If len is odd, call fastAtomicAdd directly.
-template <typename T,
-          typename std::enable_if<
-              std::is_same<platform::float16, T>::value>::type * = nullptr>
-__device__ __forceinline__ void VectorizedAtomicAddPerBlock(
-    const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
-#if ((CUDA_VERSION < 10000) || \
-     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
-  for (int i = tid; i < len; i += threads_per_block) {
-    CudaAtomicAdd(&out[i], in[i]);
-  }
-#else
-  int i = 0;
-  int loops = len / 2 * 2;
-
-  bool aligned_half2 =
-      (reinterpret_cast<std::uintptr_t>(out) % sizeof(__half2) == 0);
-
-  if (aligned_half2) {
-    for (i = tid * 2; i < loops; i += threads_per_block * 2) {
-      __half2 value2;
-      T value_1 = in[i];
-      T value_2 = in[i + 1];
-      value2.x = *reinterpret_cast<__half *>(&value_1);
-      value2.y = *reinterpret_cast<__half *>(&value_2);
-      atomicAdd(reinterpret_cast<__half2 *>(&out[i]), value2);
-    }
-    for (; i < len; i += threads_per_block) {
-      fastAtomicAdd(out, i, len, in[i]);
-    }
-  } else {
-    for (int i = tid; i < len; i += threads_per_block) {
-      fastAtomicAdd(out, i, len, in[i]);
-    }
-  }
-#endif
-}
-#endif
 #endif
 
 // NOTE(zhangbo): cuda do not have atomicCAS for __nv_bfloat16.
@@ -601,5 +546,61 @@ CUDA_ATOMIC_WRAPPER(Min, float16) {
 }
 #endif
 
+#ifdef PADDLE_CUDA_FP16
+#ifdef PADDLE_WITH_CUDA
+/*
+ * One thead block deals with elementwise atomicAdd for vector of len.
+ * @in: [x1, x2, x3, ...]
+ * @out:[y1+x1, y2+x2, y3+x3, ...]
+ * */
+template <typename T,
+          typename std::enable_if<
+              !std::is_same<platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void VectorizedAtomicAddPerBlock(
+    const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
+  for (int i = tid; i < len; i += threads_per_block) {
+    CudaAtomicAdd(&out[i], in[i]);
+  }
+}
+
+// Note: assume that len is even. If len is odd, call fastAtomicAdd directly.
+template <typename T,
+          typename std::enable_if<
+              std::is_same<platform::float16, T>::value>::type * = nullptr>
+__device__ __forceinline__ void VectorizedAtomicAddPerBlock(
+    const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
+#if ((CUDA_VERSION < 10000) || \
+     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
+  for (int i = tid; i < len; i += threads_per_block) {
+    CudaAtomicAdd(&out[i], in[i]);
+  }
+#else
+  int i = 0;
+  int loops = len / 2 * 2;
+
+  bool aligned_half2 =
+      (reinterpret_cast<std::uintptr_t>(out) % sizeof(__half2) == 0);
+
+  if (aligned_half2) {
+    for (i = tid * 2; i < loops; i += threads_per_block * 2) {
+      __half2 value2;
+      T value_1 = in[i];
+      T value_2 = in[i + 1];
+      value2.x = *reinterpret_cast<__half *>(&value_1);
+      value2.y = *reinterpret_cast<__half *>(&value_2);
+      atomicAdd(reinterpret_cast<__half2 *>(&out[i]), value2);
+    }
+    for (; i < len; i += threads_per_block) {
+      fastAtomicAdd(out, i, len, in[i]);
+    }
+  } else {
+    for (int i = tid; i < len; i += threads_per_block) {
+      fastAtomicAdd(out, i, len, in[i]);
+    }
+  }
+#endif
+}
+#endif
+#endif
 }  // namespace platform
 }  // namespace paddle

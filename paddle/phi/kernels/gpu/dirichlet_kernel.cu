@@ -16,10 +16,10 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
 
@@ -99,7 +99,7 @@ struct DirichletSampler<GPUContext, T> {
     gamma_sum.Resize(new_shape);
     dev_ctx.template Alloc<T>(&gamma_sum);
 
-    ReduceKernelImpl<GPUContext, T, T, funcs::SumFunctor>(
+    funcs::ReduceKernelImpl<GPUContext, T, T, funcs::SumFunctor>(
         dev_ctx,
         gamma_samples,
         &gamma_sum,

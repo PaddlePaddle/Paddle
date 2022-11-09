@@ -37,7 +37,7 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
                           "Ref and Updates must have same type"));
     return framework::OpKernelType(
         framework::TransToProtoVarType(
-            ctx.Input<framework::Tensor>("X")->type()),
+            ctx.Input<phi::DenseTensor>("X")->type()),
         ctx.device_context());
   }
 };

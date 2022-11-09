@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 
 
 class TestDistMnist2x2FP16AllReduce(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -26,6 +24,7 @@ class TestDistMnist2x2FP16AllReduce(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist_fp16_allreduce.py", delta=1e-5)
 

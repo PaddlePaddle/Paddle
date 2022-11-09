@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import unicode_literals
-from __future__ import print_function
-
 import os
-import sys
-import time
 import numpy as np
 
 os.environ[str("FLAGS_check_nan_inf")] = str("1")
@@ -26,7 +21,6 @@ os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
-import paddle.compat as cpt
 
 paddle.enable_static()
 
@@ -36,8 +30,9 @@ np.random.seed(0)
 def generator():
     batch_size = 5
     for i in range(5):
-        curr_train_x = np.random.randint(batch_size,
-                                         size=(batch_size, 3)).astype("float32")
+        curr_train_x = np.random.randint(
+            batch_size, size=(batch_size, 3)
+        ).astype("float32")
         if i >= 2:
             curr_train_x[0, :] = np.nan
             curr_train_x[-1, :] = np.inf
@@ -68,7 +63,8 @@ def net():
 
     hidden = fluid.layers.fc(input=hidden, size=3, act=None)
     cost, y_predict = fluid.layers.softmax_with_cross_entropy(
-        hidden, y, return_softmax=True)
+        hidden, y, return_softmax=True
+    )
     acc_top1 = fluid.layers.accuracy(input=y_predict, label=y, k=1)
     avg_cost = paddle.mean(cost)
 
@@ -94,14 +90,15 @@ def check(use_cuda):
             for train_data, y_label in generator():
                 outs = exe.run(
                     main,
-                    feed={
-                        'x': train_data,
-                        'y': y_label
-                    },
-                    fetch_list=[y_predict.name, avg_cost.name, acc_top1.name])
+                    feed={'x': train_data, 'y': y_label},
+                    fetch_list=[y_predict.name, avg_cost.name, acc_top1.name],
+                )
                 step += 1
-                print('iter={:.0f},cost={},acc1={}'.format(
-                    step, outs[1][0], outs[2][0]))
+                print(
+                    'iter={:.0f},cost={},acc1={}'.format(
+                        step, outs[1][0], outs[2][0]
+                    )
+                )
 
 
 if __name__ == '__main__':

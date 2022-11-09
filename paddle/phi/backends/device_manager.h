@@ -55,7 +55,8 @@ class Device final {
 
   // Event
   // ! Create an event.
-  void CreateEvent(event::Event* event, event::Event::Flag flags);
+  void CreateEvent(event::Event* event,
+                   event::Event::Flag flags = event::Event::Flag::Default);
 
   // ! Destroy an event.
   void DestroyEvent(event::Event* event);

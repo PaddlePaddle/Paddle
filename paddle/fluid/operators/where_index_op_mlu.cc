@@ -20,14 +20,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class MLUWhereIndexKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* condition = context.Input<Tensor>("Condition");
-    auto* out = context.Output<Tensor>("Out");
+    auto* condition = context.Input<phi::DenseTensor>("Condition");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     auto dims = condition->dims();
     const int rank = dims.size();
 
@@ -54,7 +54,7 @@ class MLUWhereIndexKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = context.template device_context<MLUDeviceContext>();
-    framework::Tensor out_int32 =
+    phi::DenseTensor out_int32 =
         context.AllocateTmpTensor<int32_t, MLUDeviceContext>(out->dims(),
                                                              dev_ctx);
     MLUCnnlTensorDesc out_int32_desc(out_int32);

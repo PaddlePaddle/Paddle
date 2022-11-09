@@ -33,8 +33,8 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 static constexpr int kNumCUDAThreads = 64;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -89,12 +89,12 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     int lod_size;
     auto place = dev_ctx.GetPlace();
 
-    auto multi_rois_num = ctx.MultiInput<Tensor>("MultiLevelRoIsNum");
+    auto multi_rois_num = ctx.MultiInput<phi::DenseTensor>("MultiLevelRoIsNum");
     for (size_t i = 0; i < roi_ins.size(); ++i) {
       auto roi_in = roi_ins[i];
       auto score_in = score_ins[i];
       if (multi_rois_num.size() > 0) {
-        framework::Tensor temp;
+        phi::DenseTensor temp;
         paddle::framework::TensorCopySync(
             *multi_rois_num[i], platform::CPUPlace(), &temp);
         const int* length_in = temp.data<int>();
@@ -250,7 +250,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasOutput("RoisNum")) {
-      auto* rois_num = ctx.Output<Tensor>("RoisNum");
+      auto* rois_num = ctx.Output<phi::DenseTensor>("RoisNum");
       int* rois_num_data = rois_num->mutable_data<int>({lod_size}, place);
       memory::Copy(place,
                    rois_num_data,

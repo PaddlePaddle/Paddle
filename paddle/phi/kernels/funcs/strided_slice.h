@@ -20,6 +20,7 @@
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/tensor_array.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -297,14 +298,14 @@ void StridedSliceCompute(const Context& dev_ctx,
 
 template <typename Context, typename T, size_t D>
 void StridedSliceCompute(const Context& dev_ctx,
-                         const std::vector<const DenseTensor*>& x,
+                         const TensorArray& x,
                          const std::vector<int>& axes,
                          const IntArray& starts,
                          const IntArray& ends,
                          const IntArray& strides,
                          const std::vector<int>& infer_flags,
                          const std::vector<int>& decrease_axis,
-                         std::vector<DenseTensor*> out) {
+                         TensorArray* out) {
   const int64_t size = x.size();
   auto in_dims = phi::make_ddim({size});
 
@@ -419,29 +420,29 @@ void StridedSliceCompute(const Context& dev_ctx,
           "dimension of Output should be 1, but received %d",
           out_dims_origin.size()));
 
-  out.resize(out_dims_origin[0]);
+  out->resize(out_dims_origin[0]);
   size_t const in_array_size = x.size();
-  for (size_t i = 0; i < out.size(); i++) {
+  for (size_t i = 0; i < out->size(); i++) {
     size_t in_offset =
         (starts_indices[0] % in_array_size) + i * strides_indices[0];
 
     int64_t out_offset = i;
     if (need_reverse) {
-      out_offset = out.size() - i - 1;
+      out_offset = out->size() - i - 1;
     }
 
-    auto* in_tensor = x.at(in_offset);
+    auto& in_tensor = x.at(in_offset);
     PADDLE_ENFORCE_GT(
-        in_tensor->memory_size(),
+        in_tensor.memory_size(),
         0,
         errors::PreconditionNotMet(
             "The input LoDTensorArray Input[%d] holds no memory.", in_offset));
-    auto* out_tensor = out.at(out_offset);
-    out_tensor->Resize(in_tensor->dims());
+    auto& out_tensor = out->at(out_offset);
+    out_tensor.Resize(in_tensor.dims());
 
     phi::Copy<Context>(
-        dev_ctx, *in_tensor, dev_ctx.GetPlace(), false, out_tensor);
-    out_tensor->set_lod(in_tensor->lod());
+        dev_ctx, in_tensor, dev_ctx.GetPlace(), false, &out_tensor);
+    out_tensor.set_lod(in_tensor.lod());
   }
 }
 
@@ -531,15 +532,15 @@ void StridedSliceGradCompute(const Context& dev_ctx,
 
 template <typename Context, typename T, size_t D>
 void StridedSliceGradCompute(const Context& dev_ctx,
-                             const std::vector<const DenseTensor*>& x,
-                             const std::vector<const DenseTensor*>& out_grad,
+                             const TensorArray& x,
+                             const TensorArray& out_grad,
                              const std::vector<int>& axes,
                              const IntArray& starts,
                              const IntArray& ends,
                              const IntArray& strides,
                              const std::vector<int>& infer_flags,
                              const std::vector<int>& decrease_axis,
-                             std::vector<DenseTensor*> x_grad) {
+                             TensorArray* x_grad) {
   // Note(weixin):Since the shape of `framework::GradVarName("Input")` of
   // StridedSliceGrad cannot be calculated by
   // `framework::GradVarName("Output")`, the dim of "Input" is used to
@@ -619,11 +620,11 @@ void StridedSliceGradCompute(const Context& dev_ctx,
           "the dimension of output should be 1, but received %d.",
           out_dims.size()));
 
-  auto const d_out_array_size = x_grad.size();
+  auto const d_out_array_size = x_grad->size();
 
   for (size_t j = 0; j < d_out_array_size; j++) {
-    auto& dim = x.at(j)->dims();
-    auto* d_out_tensor = x_grad.at(j);
+    auto& dim = x.at(j).dims();
+    auto& d_out_tensor = x_grad->at(j);
 
     int64_t sub = j - starts_indices[0];
 
@@ -635,26 +636,26 @@ void StridedSliceGradCompute(const Context& dev_ctx,
 
     if ((sub % strides_indices[0] == 0) && (0 <= in_offset) &&
         (static_cast<size_t>(in_offset) < out_grad.size())) {
-      auto* in_tensor = out_grad.at(in_offset);
+      auto& in_tensor = out_grad.at(in_offset);
       PADDLE_ENFORCE_GT(
-          in_tensor->memory_size(),
+          in_tensor.memory_size(),
           0,
           errors::PreconditionNotMet(
               "The input LoDTensorArray Input[%d] holds no memory.",
               in_offset));
 
       phi::Copy<Context>(
-          dev_ctx, *in_tensor, dev_ctx.GetPlace(), false, d_out_tensor);
-      d_out_tensor->set_lod(in_tensor->lod());
+          dev_ctx, in_tensor, dev_ctx.GetPlace(), false, &d_out_tensor);
+      d_out_tensor.set_lod(in_tensor.lod());
     } else {
-      d_out_tensor->Resize(dim);
+      d_out_tensor.Resize(dim);
 
-      if (!d_out_tensor->IsInitialized()) {
-        dev_ctx.template Alloc<T>(d_out_tensor);
+      if (!d_out_tensor.IsInitialized()) {
+        dev_ctx.template Alloc<T>(&d_out_tensor);
       }
 
       phi::funcs::SetConstant<Context, T> set_zero;
-      set_zero(dev_ctx, d_out_tensor, static_cast<T>(0));
+      set_zero(dev_ctx, &d_out_tensor, static_cast<T>(0));
     }
   }
 }

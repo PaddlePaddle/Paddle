@@ -26,12 +26,12 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 inline void ResizeToChannelFirst(const framework::ExecutionContext& context,
-                                 const Tensor* input,
-                                 Tensor* transformed_input) {
+                                 const phi::DenseTensor* input,
+                                 phi::DenseTensor* transformed_input) {
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     // input
@@ -68,8 +68,8 @@ inline void ResizeToChannelFirst(const framework::ExecutionContext& context,
 
 template <typename DeviceContext, typename T>
 inline void ResizeToChannelLast(const framework::ExecutionContext& context,
-                                const Tensor* input,
-                                Tensor* transformed_input) {
+                                const phi::DenseTensor* input,
+                                phi::DenseTensor* transformed_input) {
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     // input
@@ -106,8 +106,8 @@ inline void ResizeToChannelLast(const framework::ExecutionContext& context,
 
 template <typename DeviceContext, typename T>
 inline void TransToChannelFirst(const framework::ExecutionContext& context,
-                                const Tensor* input,
-                                Tensor* transformed_input) {
+                                const phi::DenseTensor* input,
+                                phi::DenseTensor* transformed_input) {
   VLOG(5) << "Why am I called?";
   int dim = input->dims().size() - 2;
   if (dim == 3) {
@@ -131,8 +131,8 @@ inline void TransToChannelFirst(const framework::ExecutionContext& context,
 
 template <typename DeviceContext, typename T>
 inline void TransToChannelLast(const framework::ExecutionContext& context,
-                               const Tensor* input,
-                               Tensor* transformed_input) {
+                               const phi::DenseTensor* input,
+                               phi::DenseTensor* transformed_input) {
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     auto& dev_ctx = context.template device_context<DeviceContext>();

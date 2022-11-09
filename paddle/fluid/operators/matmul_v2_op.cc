@@ -62,12 +62,12 @@ class MatMulV2Op : public framework::OperatorWithKernel {
                       0,
                       platform::errors::InvalidArgument(
                           "The Input(X) dims size must be greater than 0,"
-                          " but reviced dims size is 0. "));
+                          " but received dims size is 0. "));
     PADDLE_ENFORCE_GT(ndims_y,
                       0,
                       platform::errors::InvalidArgument(
                           "The Input(Y) dims size must be greater than 0,"
-                          " but reviced dims size is 0. "));
+                          " but received dims size is 0. "));
 
     bool x_broadcasted = false, y_broadcasted = false;
     if (ndims_x == 1) {
@@ -135,22 +135,13 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
+      const phi::DenseTensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
@@ -160,18 +151,14 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     } else {
 #ifdef PADDLE_WITH_MKLDNN
       // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
-      // op
-      // previously)
-      // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ ==
-           framework::DataLayout::kMKLDNN) &&
-          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+      // op previously) then we also need to rotate shape NHWC -> NCWH
+      if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+          (tensor.layout() != phi::DataLayout::kMKLDNN) &&
           paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() ==
-              framework::DataLayout::kNHWC) {
+                  .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,
                                        tensor.place(),
-                                       framework::DataLayout::kNHWC);
+                                       phi::DataLayout::kNHWC);
       }
 #endif
       return framework::OpKernelType(
@@ -194,47 +181,9 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "Set true to transpose the last two dimensions of Y before "
                   "doing multiplication")
         .SetDefault(false);
-    AddAttr<std::vector<int>>(
-        "fused_reshape_Out",
-        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
-              "it's a shape atribute of fused reshape for `Out` output.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>(
-        "fused_transpose_Out",
-        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
-              "it's a axis atribute of fused transpose for `Out` output.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_reshape_X",
-                              R"DOC(Shape of fused reshape of `X` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_reshape_Y",
-                              R"DOC(Shape of fused reshape of `Y` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_transpose_X",
-                              R"DOC(Axis of fused transpose of `X` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_transpose_Y",
-                              R"DOC(Axis of fused transpose of `Y` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
     AddComment(
-        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 
-        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)). 
+        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
+        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)).
         In addition, it also follows the broadcast rule which is similar as
         numpy.matmul.
 )DOC");
@@ -250,22 +199,13 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
+      const phi::DenseTensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(

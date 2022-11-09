@@ -37,6 +37,8 @@ static constexpr uint32_t kProfileGPUOptionBit = 1;
 static constexpr uint32_t kProfileMLUOptionBit = 2;
 static constexpr uint32_t kProfileCustomDeviceOptionBit = 3;
 
+void SynchronizeDevice();
+
 struct ProfilerOptions {
   uint32_t trace_switch = 0;  // bit 0: cpu, bit 1: gpu, bit 2: mlu
   uint32_t trace_level = FLAGS_host_trace_level;
@@ -44,6 +46,10 @@ struct ProfilerOptions {
 
 class Profiler {
  public:
+  static uint32_t
+      span_indx;  // index of profiler range, when user profiles multiple ranges
+                  // such as [2,4], [6,8], the first range is index 0.
+  static const char* version;  // profiler version.
   static std::unique_ptr<Profiler> Create(
       const ProfilerOptions& options,
       const std::vector<std::string>& custom_device_types = {});

@@ -23,13 +23,14 @@
 #include "paddle/fluid/operators/norm_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
@@ -44,6 +45,7 @@ class FusedBatchNormAddActKernel<phi::GPUContext, T>
         platform::is_gpu_place(ctx.GetPlace()),
         true,
         platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     float momentum = ctx.Attr<float>("momentum");
     std::string act_type = ctx.Attr<std::string>("act_type");
@@ -57,31 +59,34 @@ class FusedBatchNormAddActKernel<phi::GPUContext, T>
 
     // Get the size for each dimension.
     // NHWC [batch_size, in_height, in_width, in_channels]
-    const auto *x = ctx.Input<Tensor>("X");
-    const auto *z = ctx.Input<Tensor>("Z");
+    const auto *x = ctx.Input<phi::DenseTensor>("X");
+    const auto *z = ctx.Input<phi::DenseTensor>("Z");
     const auto &in_dims = x->dims();
 
-    const auto *scale = ctx.Input<Tensor>("Scale");
-    const auto *bias = ctx.Input<Tensor>("Bias");
+    const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto *bias = ctx.Input<phi::DenseTensor>("Bias");
 
-    auto *mean_out = ctx.Output<Tensor>("MeanOut");
-    auto *variance_out = ctx.Output<Tensor>("VarianceOut");
-    mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    auto *mean_out = ctx.Output<phi::DenseTensor>("MeanOut");
+    auto *variance_out = ctx.Output<phi::DenseTensor>("VarianceOut");
+    dev_ctx.Alloc<BatchNormParamType<T>>(
+        mean_out, mean_out->numel() * sizeof(BatchNormParamType<T>));
+    dev_ctx.Alloc<BatchNormParamType<T>>(
+        variance_out, variance_out->numel() * sizeof(BatchNormParamType<T>));
 
-    auto *saved_mean = ctx.Output<Tensor>("SavedMean");
-    auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
-    saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    auto *saved_mean = ctx.Output<phi::DenseTensor>("SavedMean");
+    auto *saved_variance = ctx.Output<phi::DenseTensor>("SavedVariance");
+    dev_ctx.Alloc<BatchNormParamType<T>>(
+        saved_mean, saved_mean->numel() * sizeof(BatchNormParamType<T>));
+    dev_ctx.Alloc<BatchNormParamType<T>>(
+        saved_variance,
+        saved_variance->numel() * sizeof(BatchNormParamType<T>));
 
-    auto *y = ctx.Output<Tensor>("Y");
-    y->mutable_data<T>(ctx.GetPlace());
+    auto *y = ctx.Output<phi::DenseTensor>("Y");
+    dev_ctx.Alloc<T>(y, y->numel() * sizeof(T));
 
     int N, C, H, W, D;
     const DataLayout data_layout = DataLayout::kNHWC;
     ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
-
-    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     // ------------------- cudnn descriptors ---------------------
     auto handle = dev_ctx.cudnn_handle();
@@ -119,7 +124,7 @@ class FusedBatchNormAddActKernel<phi::GPUContext, T>
     // Create reserve space and workspace for batch norm.
     // Create tensor for each batchnorm op, it will be used in the
     // backward. Thus this tensor shouldn't be temp.
-    auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+    auto *reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
     PADDLE_ENFORCE_NOT_NULL(
         reserve_space,
         platform::errors::NotFound(
@@ -149,10 +154,17 @@ class FusedBatchNormAddActKernel<phi::GPUContext, T>
             /*xDesc=*/data_desc_,
             /*sizeInBytes=*/&reserve_space_size));
 
-    reserve_space_ptr = reserve_space->mutable_data(
-        ctx.GetPlace(), x->dtype(), reserve_space_size);
-    workspace_ptr = workspace_tensor.mutable_data(
-        ctx.GetPlace(), x->dtype(), workspace_size);
+    reserve_space->Resize({static_cast<int64_t>(
+        (reserve_space_size + experimental::SizeOf(x->dtype()) - 1) /
+        experimental::SizeOf(x->dtype()))});
+    reserve_space_ptr =
+        dev_ctx.Alloc<T>(reserve_space, reserve_space->numel() * sizeof(T));
+    workspace_tensor.Resize({static_cast<int64_t>(
+        (workspace_size + experimental::SizeOf(x->dtype()) - 1) /
+        experimental::SizeOf(x->dtype()))});
+    workspace_ptr = dev_ctx.Alloc<T>(&workspace_tensor,
+                                     workspace_tensor.numel() * sizeof(T));
+
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
             handle,
@@ -170,15 +182,18 @@ class FusedBatchNormAddActKernel<phi::GPUContext, T>
             scale->template data<BatchNormParamType<T>>(),
             bias->template data<BatchNormParamType<T>>(),
             this_factor,
-            mean_out->template mutable_data<BatchNormParamType<T>>(
-                ctx.GetPlace()),
-            variance_out->template mutable_data<BatchNormParamType<T>>(
-                ctx.GetPlace()),
+            dev_ctx.template Alloc<BatchNormParamType<T>>(
+                mean_out, mean_out->numel() * sizeof(BatchNormParamType<T>)),
+            dev_ctx.template Alloc<BatchNormParamType<T>>(
+                variance_out,
+                variance_out->numel() * sizeof(BatchNormParamType<T>)),
             epsilon,
-            saved_mean->template mutable_data<BatchNormParamType<T>>(
-                ctx.GetPlace()),
-            saved_variance->template mutable_data<BatchNormParamType<T>>(
-                ctx.GetPlace()),
+            dev_ctx.template Alloc<BatchNormParamType<T>>(
+                saved_mean,
+                saved_mean->numel() * sizeof(BatchNormParamType<T>)),
+            dev_ctx.template Alloc<BatchNormParamType<T>>(
+                saved_variance,
+                saved_variance->numel() * sizeof(BatchNormParamType<T>)),
             activation_desc_,
             workspace_ptr,
             workspace_size,
@@ -205,13 +220,14 @@ class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     std::string act_type = ctx.Attr<std::string>("act_type");
 
-    const auto *x = ctx.Input<Tensor>("X");
-    const auto *y = ctx.Input<Tensor>("Y");
-    const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    const auto *scale = ctx.Input<Tensor>("Scale");
-    const auto *bias = ctx.Input<Tensor>("Bias");
-    const auto *reserve_space = ctx.Input<Tensor>("ReserveSpace");
+    const auto *x = ctx.Input<phi::DenseTensor>("X");
+    const auto *y = ctx.Input<phi::DenseTensor>("Y");
+    const auto *d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto *bias = ctx.Input<phi::DenseTensor>("Bias");
+    const auto *reserve_space = ctx.Input<phi::DenseTensor>("ReserveSpace");
 
+    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     const auto &in_dims = x->dims();
 
     int N, C, H, W, D;
@@ -219,10 +235,11 @@ class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
     ExtractNCWHD(in_dims, data_layout, &N, &C, &H, &W, &D);
 
     // init output
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *d_z = ctx.Output<Tensor>(framework::GradVarName("Z"));
-    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_z = ctx.Output<phi::DenseTensor>(framework::GradVarName("Z"));
+    auto *d_scale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto *d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     d_x->mutable_data<T>(ctx.GetPlace());
     d_z->mutable_data<T>(ctx.GetPlace());
@@ -242,8 +259,6 @@ class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
         C,
         platform::errors::PreconditionNotMet(
             "The size of scale is equal to the channel of Input(X)."));
-
-    auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
 
     std::vector<int> dims = {N, C, H, W, D};
     std::vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
@@ -272,8 +287,8 @@ class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnDeriveBNTensorDescriptor(
         bn_param_desc_, data_desc_, mode_));
 
-    const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
-    const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
+    const auto *saved_mean = ctx.Input<phi::DenseTensor>("SavedMean");
+    const auto *saved_var = ctx.Input<phi::DenseTensor>("SavedVariance");
     const auto *saved_mean_data =
         saved_mean->template data<BatchNormParamType<T>>();
     const auto *saved_var_data =

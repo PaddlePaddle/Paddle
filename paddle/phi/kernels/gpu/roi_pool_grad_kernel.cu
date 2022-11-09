@@ -120,7 +120,10 @@ void RoiPoolGradKernel(const Context& dev_ctx,
       }
     }
     int bytes = box_batch_id_list.numel() * sizeof(int);
-    auto roi_ptr = paddle::memory::Alloc(dev_ctx, bytes);
+    auto roi_ptr = paddle::memory::Alloc(
+        dev_ctx.GetPlace(),
+        bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
     paddle::memory::Copy(gplace,
                          roi_id_data,

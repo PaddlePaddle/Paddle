@@ -29,15 +29,15 @@ class TensorFormatter {
  public:
   TensorFormatter() {}
 
-  std::string Format(const framework::LoDTensor& print_tensor,
+  std::string Format(const phi::DenseTensor& print_tensor,
                      const std::string& tensor_name = "",
                      const std::string& message = "");
 
   template <typename T>
-  void FormatData(const framework::LoDTensor& print_tensor,
+  void FormatData(const phi::DenseTensor& print_tensor,
                   std::stringstream& log_stream);
 
-  void Print(const framework::LoDTensor& print_tensor,
+  void Print(const phi::DenseTensor& print_tensor,
              const std::string& tensor_name = "",
              const std::string& message = "");
 

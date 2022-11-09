@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 import contextlib
@@ -21,8 +20,10 @@ import unittest
 
 def train_simulator(test_batch_size=10):
     if test_batch_size <= 0:
-        raise ValueError("batch_size should be a positive integeral value, "
-                         "but got batch_size={}".format(test_batch_size))
+        raise ValueError(
+            "batch_size should be a positive integeral value, "
+            "but got batch_size={}".format(test_batch_size)
+        )
 
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')
     y_predict = fluid.layers.fc(input=x, size=1, act=None)
@@ -36,14 +37,16 @@ def train_simulator(test_batch_size=10):
 
     # Calculate memory usage in current network config
     lower_usage, upper_usage, unit = fluid.contrib.memory_usage(
-        fluid.default_main_program(), batch_size=test_batch_size)
+        fluid.default_main_program(), batch_size=test_batch_size
+    )
 
-    print("memory usage is about %.3f - %.3f %s" %
-          (lower_usage, upper_usage, unit))
+    print(
+        "memory usage is about %.3f - %.3f %s"
+        % (lower_usage, upper_usage, unit)
+    )
 
 
 class TestMemoryUsage(unittest.TestCase):
-
     def test_with_unit_B(self):
         with self.program_scope_guard():
             train_simulator()

@@ -46,14 +46,14 @@ struct LoDTensorToArrayFunctorImpl {
 
 struct LoDTensorToArrayFunctor
     : public std::unary_function<platform::Place, void> {
-  std::vector<const framework::Tensor *> ref_inputs_;
-  mutable std::vector<framework::Tensor *> outputs_;
-  const framework::Tensor &input_;
+  std::vector<const phi::DenseTensor *> ref_inputs_;
+  mutable std::vector<phi::DenseTensor *> outputs_;
+  const phi::DenseTensor &input_;
 
-  explicit LoDTensorToArrayFunctor(const framework::Tensor &input)
+  explicit LoDTensorToArrayFunctor(const phi::DenseTensor &input)
       : input_(input) {}
 
-  void AddOutput(framework::Tensor *t) {
+  void AddOutput(phi::DenseTensor *t) {
     outputs_.emplace_back(t);
     ref_inputs_.emplace_back(t);
   }
@@ -108,7 +108,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto &x = GET_DATA_SAFELY(
                   scope.FindVar(Input("X")), "Input", "X", "LoDTensorToArray")
-                  .Get<framework::LoDTensor>();
+                  .Get<phi::DenseTensor>();
     auto &rank_table = GET_DATA_SAFELY(scope.FindVar(Input("RankTable")),
                                        "Input",
                                        "RankTable",
@@ -152,7 +152,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
       }
     }
 
-    std::map<size_t, framework::Tensor> outputs;
+    std::map<size_t, phi::DenseTensor> outputs;
 
     for (size_t i = 0; i < max_seq_len; ++i) {
       auto &ranges = copy_ranges[i];
