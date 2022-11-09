@@ -16,6 +16,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -65,21 +66,22 @@ class FloatToMixedPass : public framework::ir::Pass {
 
  private:
   // float16 or bfloat16
-  phi::DataType half_precision_;
+  phi::DataType mixed_precision_;
 
   std::unordered_set<std::string> blacklist_;
 
+  // subgraph id -> pointer to subgraph
   mutable std::vector<framework::ir::Graph*> subgraphes_;
-
-  // all nodes in graph
-  mutable std::vector<framework::ir::Node*> all_nodes_;
+  // var name -> real var node
+  mutable std::unordered_map<std::string, framework::ir::Node*> real_vars_;
+  // subgraph id -> all nodes in subgraph
+  mutable std::vector<std::vector<framework::ir::Node*>> all_nodes_;
   // op's unique type -> the op's origin type
   mutable std::unordered_map<std::string, std::string> op_original_type_;
-  // op's unique type -> whether the op run at half precision
-  mutable std::unordered_map<std::string, bool> op_run_half_;
+  // op's unique type -> whether the op run at mixed precision
+  mutable std::unordered_map<std::string, bool> op_run_mixed_;
   // var -> the var's all input op
-  mutable std::unordered_map<std::string,
-                             std::unordered_set<framework::ir::Node*>>
+  mutable std::unordered_map<std::string, std::vector<framework::ir::Node*>>
       var_input_ops_;
 };
 
