@@ -1406,6 +1406,24 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
     ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
 
+def naive_set_dist_op_attr_for_program_by_mesh(new_op, process_mesh, ctx):
+    assert process_mesh is not None
+
+    new_op_dist_attr = OperatorDistributedAttribute()
+
+    for input_varname in new_op.desc.input_arg_names():
+        var = ctx.serial_main_prog.global_block().var(input_varname)
+        mapping = ctx.get_tensor_dist_attr_for_program(var).dims_mapping
+        new_op_dist_attr.set_input_dims_mapping(input_varname, mapping)
+    for output_varname in new_op.desc.output_arg_names():
+        var = ctx.serial_main_prog.global_block().var(output_varname)
+        mapping = ctx.get_tensor_dist_attr_for_program(var).dims_mapping
+        new_op_dist_attr.set_output_dims_mapping(output_varname, mapping)
+
+    new_op_dist_attr.process_mesh = process_mesh
+    ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
+
+
 def update_op_dims_mapping_by_default_dist_impl(dist_op):
     changed = False
     op_dist_attr = dist_op.dist_attr
@@ -2068,3 +2086,56 @@ def _copy_dist_attr_from_cpp_for_graph(dist_context):
             py_dist_attr = dist_context.get_op_dist_attr_for_graph(node)
             cpp_dist_attr = node.op().dist_attr
             _copy_op_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr)
+
+
+def add_dependencies_for_two_ops(
+    block, idx, op1, op2, dist_context, sync=False
+):
+    """
+    dependency: op1 should be run before op2
+    """
+
+    assert (
+        len(op1.output_arg_names) > 1
+    ), "first op of dependency should at least have one output."
+    assert (
+        len(op2.input_arg_names) > 1
+    ), "second op of dependency should at least have one input."
+    op1_mesh = dist_context.get_op_dist_attr_for_program(op1).process_mesh
+    op2_mesh = dist_context.get_op_dist_attr_for_program(op2).process_mesh
+    assert (
+        op1_mesh == op2_mesh
+    ), "two ops of dependency should have same mesh but got [{}] and [{}]".format(
+        str(op1_mesh), str(op2_mesh)
+    )
+
+    def _select_best_depend_var(vars):
+
+        vars_with_numels = [(var, get_var_numel(var)) for var in vars]
+        vars_with_numels.sort(key=lambda x: x[1])
+
+        return vars_with_numels[-1][0]
+
+    first_var = _select_best_depend_var(
+        [block.var(name) for name in op1.output_arg_names]
+    )
+    second_var = _select_best_depend_var(
+        [block.var(name) for name in op2.input_arg_names]
+    )
+
+    depend_op = block._insert_op_without_sync(
+        idx,
+        type='depend',
+        inputs={
+            "Dep": first_var,
+            "X": second_var,
+        },
+        outputs={"Out": second_var},
+    )
+
+    naive_set_dist_op_attr_for_program_by_mesh(
+        depend_op, op1_mesh, dist_context
+    )
+
+    if sync:
+        block._sync_with_cpp()
