@@ -42,14 +42,13 @@ class LayerNormMKLDNNHandler
   std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(
       const phi::DenseTensor* scale,
       const phi::DenseTensor* shift,
-      const framework::ExecutionContext& ctx,
-      bool is_test) {
+      const framework::ExecutionContext& ctx) {
     // OneDNN requires a single piece of memory for scale and shift data. During
     // inference both pieces of memory are merged inside
     // layer_norm_onednn_optimization_pass, but during training we have to
     // manually copy them into new memory buffer
-    if (is_test) {
-      auto* scaleshift = ctx.Input<phi::DenseTensor>("ScaleShift");
+    auto* scaleshift = ctx.Input<phi::DenseTensor>("ScaleShift");
+    if (scaleshift) {
       return this->AcquireMemoryFromPrimitive(
           this->fwd_pd_->weights_desc(),
           platform::to_void_cast(scaleshift->data<float>()));
@@ -142,7 +141,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     if (with_scaleshift) {
       std::shared_ptr<dnnl::memory> scaleshift_memory =
-          handler.AcquireScaleShiftMemory(scale, bias, ctx, is_test);
+          handler.AcquireScaleShiftMemory(scale, bias, ctx);
       args.insert({DNNL_ARG_SCALE_SHIFT, *scaleshift_memory});
     }
 
