@@ -416,7 +416,7 @@ class RecomputePass(PassBase):
 
                     ckpt_ops_dict[fwd_op_id][0] = False
                     print()
-                    print(str(ops[i - 1]))
+                    print(str(main_block.ops[rc_op.idx - 1]))
                     print(str(rc_op))
                     print()
                     if rc_op:
