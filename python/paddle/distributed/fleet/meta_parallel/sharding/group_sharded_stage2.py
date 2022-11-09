@@ -620,7 +620,7 @@ class GroupShardedStage2(nn.Layer):
     def _dp_allreduce(self):
         # do dp allreduce here for gradient merge.
         if self._dp_group and self._dp_group.nranks > 1:
-            for dtype in sorted(self._grad_storages.keys()):
+            for dtype in self._grad_storages.keys():
                 if self._rank in self._grad_storages[dtype].keys():
                     assert self._grad_storages[dtype][
                         self._rank
@@ -635,11 +635,11 @@ class GroupShardedStage2(nn.Layer):
             for param in sorted(self._trainable_params, key=lambda p: p.name):
                 if (
                     param.name in self._param_grads
-                    and param.grad._is_initialized()
+                    and self._trainable_param2rank[param.name] == self._rank
                 ):
                     assert (
-                        self._trainable_param2rank[param.name] == self._rank
-                    ), "params must belong to itself rank when dp allreduce!"
+                        param.grad._is_initialized()
+                    ), "params must be initialized when dp allreduce!"
                     dist.all_reduce(
                         tensor=param.grad,
                         group=self._dp_group,
