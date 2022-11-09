@@ -22,21 +22,15 @@ import hypothesis.strategies as st
 
 
 class TestMergeLayernormFusePass(PassAutoScanTest):
-    #       input
-    #         | [?x3136x96]
-    #       reshape2                                                            input
-    #         | [?x56x56x96]                                                      | [?x3136x96]
-    #         |--------------|--------------|--------------|                merge_layernorm
-    #   strided_slice  strided_slice  strided_slice  strided_slice    ->          | [?x784x384]
-    #         | [?x28x28x96] | [?x28x28x96] | [?x28x28x96] |         fused      output
-    #         |--------------|--------------|--------------|
-    #       concat
-    #         | [?x28x28x384]
-    #       reshape2
-    #         | [?x784x384]
-    #       layer_norm
-    #         | [?x784x384]
-    #        output
+    #
+    #     |           |                            |            |
+    # other_op1     other_op2                  other_op1    other_op2
+    #     |           |              fuse           \          /
+    #     |------elementwise_add      ->         skip_merge_layernorm
+    #             |          |                        |      |
+    #        other_op4  merge_layernorm          other_op4  other_op3
+    #                        |
+    #                   other_op3
 
     def sample_predictor_configs(self, program_config):
         # trt dynamic_shape fp32
