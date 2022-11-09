@@ -138,6 +138,64 @@ struct SinDoubleGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
+// 1st reverse grad
+// y = sin(x)
+// x --> y
+// d1x = d1y * cos(x)
+//
+// 2nd reverse grad
+// x, d1y --> d1x
+// d2x = -sin(x) * d1y * d2d1x
+// d2d1y = cos(x) * d2d1x
+//
+// 3rd reverse grad
+// x, d1y, d2d1x --> d2x, d2d1y
+// d3x = -cos(x) * d1y * d2d1x * d3d2x - sin(x) * d2d1x * d3d2d1y
+// d3d1y = -sin(x) * d2d1x * d3d2x
+// d3d2d1x = -sin(x) * d1y * d3d2x + cos(x) * d3d2d1y
+template <typename T>
+struct SinTripleGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* X,
+                  const DenseTensor* ddX,
+                  const DenseTensor* dOut,
+                  const DenseTensor* d_DDOut,
+                  const DenseTensor* d_dx_New,
+                  DenseTensor* d_d_Out,
+                  DenseTensor* d_x_New,
+                  DenseTensor* d_DDx) const {
+    auto* d = dev.eigen_device();
+    auto x = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "x", "SinTripleGrad"));
+    auto d2d1x = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "d2d1x", "SinTripleGrad"));
+    auto d1y = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dOut, "Input", "d1y", "SinTripleGrad"));
+    auto d3d2d1y = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(d_DDOut, "Input", "d3d2d1y", "SinTripleGrad"));
+    auto d3d2x = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(d_dx_New, "Input", "d3d2x", "SinTripleGrad"));
+
+    auto d3x = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(d_x_New, "Output", "d3x", "SinTripleGrad"));
+    d3x.device(*d) = -x.unaryExpr(Cosine<T>()) * d1y * d2d1x * d3d2x -
+                     x.unaryExpr(Sine<T>()) * d2d1x * d3d2d1y;
+
+    auto d3d1y = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(d_d_Out, "Output", "d3d1y", "SinTripleGrad"));
+    d3d1y.device(*d) = -x.unaryExpr(Sine<T>()) * d2d1x * d3d2x;
+
+    auto d3d2d1x = EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(d_DDx, "Output", "d3d2d1x", "SinTripleGrad"));
+    d3d2d1x.device(*d) = -x.unaryExpr(Sine<T>()) * d1y * d3d2x +
+                         x.unaryExpr(Cosine<T>()) * d3d2d1y;
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
 // reciprocal(x) = 1 / x
 template <typename T>
 struct ReciprocalFunctor : public BaseActivationFunctor<T> {

@@ -82,7 +82,7 @@ def prepare_context(strategy=None):
     return strategy
 
 
-class ParallelEnv(object):
+class ParallelEnv:
     """
     .. note::
         This API is not recommended, if you need to get rank and world_size,

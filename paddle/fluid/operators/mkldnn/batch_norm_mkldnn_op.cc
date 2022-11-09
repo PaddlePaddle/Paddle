@@ -37,38 +37,6 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
  public:
   BatchNormMKLDNNHandler(const paddle::framework::ExecutionContext &ctx,
                          const dnnl::engine mkldnn_engine,
-                         const Tensor *x,
-                         const bool global_stats,
-                         const bool test_mode)
-      : platform::MKLDNNHandlerNoCachingT<T,
-                                          dnnl::batch_normalization_forward,
-                                          dnnl::batch_normalization_backward>(
-            mkldnn_engine, ctx.GetPlace()) {
-    const float epsilon = ctx.Attr<float>("epsilon");
-    const bool fuse_with_relu = ctx.HasAttr("fuse_with_relu")
-                                    ? ctx.Attr<bool>("fuse_with_relu")
-                                    : false;
-
-    std::vector<std::string> DataLayout_error_msg = {
-        "kNHWC", "kNCHW", "kAnyLayout", "kMKLDNN"};
-
-    // Flags are added by bitwise OR operation
-    auto flags = dnnl::normalization_flags::use_scale_shift;  // 001
-    if (global_stats)
-      flags |= dnnl::normalization_flags::use_global_stats;  // 010
-    if (fuse_with_relu && test_mode)
-      flags |= dnnl::normalization_flags::fuse_norm_relu;  // 100
-
-    this->AcquireForwardPrimitiveDescriptor(
-        global_stats == true ? dnnl::prop_kind::forward_scoring
-                             : dnnl::prop_kind::forward_training,
-        x->mem_desc(),
-        epsilon,
-        flags);
-  }
-
-  BatchNormMKLDNNHandler(const paddle::framework::ExecutionContext &ctx,
-                         const dnnl::engine mkldnn_engine,
                          const Tensor *in_x,
                          const Tensor *scale,
                          const Tensor *out_grad)
@@ -158,88 +126,6 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
 };
 
 template <typename T>
-class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    const auto &mkldnn_engine = dev_ctx.GetEngine();
-
-    const bool is_test = ctx.Attr<bool>("is_test");
-    const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
-    const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
-    const bool test_mode = is_test && (!trainable_stats);
-    const bool global_stats = test_mode || use_global_stats;
-
-    const auto *x = ctx.Input<phi::DenseTensor>("X");
-    const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
-    const auto *shift = ctx.Input<phi::DenseTensor>("Bias");
-
-    auto *y = ctx.Output<phi::DenseTensor>("Y");
-    auto *batch_mean = ctx.Output<phi::DenseTensor>("SavedMean");
-    auto *batch_variance = ctx.Output<phi::DenseTensor>("SavedVariance");
-    BatchNormMKLDNNHandler<T> handler(
-        ctx, mkldnn_engine, x, global_stats, test_mode);
-
-    auto src_memory = handler.AcquireSrcMemory(x);
-    auto scaleshift_memory = handler.AcquireScaleShiftMemory(scale, shift);
-    auto dst_memory = handler.AcquireDstMemory(y);
-    auto batch_norm_p = handler.AcquireForwardPrimitive();
-
-    std::shared_ptr<memory> mean_memory;
-    std::shared_ptr<memory> variance_memory;
-
-    if (global_stats) {
-      // mean and variance are taken from input Tensor
-      const auto *mean = ctx.Input<phi::DenseTensor>("Mean");
-      const auto *variance = ctx.Input<phi::DenseTensor>("Variance");
-
-      mean_memory = handler.AcquireMeanMemory(mean);
-      variance_memory = handler.AcquireVarianceMemory(variance);
-    } else {
-      // mean and variance are calculated and saved in output Tensor
-      mean_memory = handler.AcquireMeanMemory(batch_mean);
-      variance_memory = handler.AcquireVarianceMemory(batch_variance);
-    }
-
-    y->set_mem_desc(dst_memory->get_desc());
-
-    auto &astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    batch_norm_p->execute(astream,
-                          {{DNNL_ARG_SRC, *src_memory},
-                           {DNNL_ARG_SCALE_SHIFT, *scaleshift_memory},
-                           {DNNL_ARG_MEAN, *mean_memory},
-                           {DNNL_ARG_VARIANCE, *variance_memory},
-                           {DNNL_ARG_DST, *dst_memory}});
-    astream.wait();
-
-    if (!global_stats) {
-      auto *mean_out = ctx.Output<phi::DenseTensor>("MeanOut");
-      auto *variance_out = ctx.Output<phi::DenseTensor>("VarianceOut");
-      const float momentum = ctx.Attr<float>("momentum");
-
-      const unsigned int C = phi::vectorize(scale->dims())[0];
-
-      // mkldnn only compute stats for current batch
-      // so we need compute momentum stats via Eigen lib
-      EigenVectorArrayMap<T> batch_mean_e(
-          batch_mean->mutable_data<T>(ctx.GetPlace()), C);
-      EigenVectorArrayMap<T> batch_variance_e(
-          batch_variance->mutable_data<T>(ctx.GetPlace()), C);
-
-      EigenVectorArrayMap<T> running_mean_e(
-          mean_out->mutable_data<T>(ctx.GetPlace()), C);
-      EigenVectorArrayMap<T> running_variance_e(
-          variance_out->mutable_data<T>(ctx.GetPlace()), C);
-
-      running_mean_e =
-          running_mean_e * momentum + batch_mean_e * (1. - momentum);
-      running_variance_e =
-          running_variance_e * momentum + batch_variance_e * (1. - momentum);
-    }
-  }
-};
-
-template <typename T>
 class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
@@ -308,10 +194,6 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(batch_norm,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   ops::BatchNormMKLDNNOpKernel<float>);
 REGISTER_OP_KERNEL(batch_norm_grad,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,

@@ -28,6 +28,7 @@ if(WITH_NCCL OR WITH_RCCL)
          enforce
          collective_helper
          device_context
+         ${DEVICE_EVENT_LIBS}
          dense_tensor)
   if(WITH_DISTRIBUTE AND WITH_PSCORE)
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)

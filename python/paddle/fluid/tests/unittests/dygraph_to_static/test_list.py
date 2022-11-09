@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
 
 import paddle
@@ -122,6 +123,14 @@ def test_list_append_in_while_loop_with_stack(x, iter_num):
         i += 1
     out = fluid.layers.stack(a, axis=1)
     return out
+
+
+def test_tensor_array_slice(x, iter_num):
+    a = []
+    for i in range(paddle.to_tensor(3)):
+        a.append(paddle.to_tensor(i))
+    t = a[1:3]
+    return a[2]
 
 
 # Situation 2: Test list pop
@@ -290,6 +299,11 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
 class TestListInWhileLoopWithStack(TestListInWhileLoop):
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [test_list_append_in_while_loop_with_stack]
+
+
+class TestTensorArraySlice(TestListInWhileLoop):
+    def init_dygraph_func(self):
+        self.all_dygraph_funcs = [test_tensor_array_slice]
 
 
 class TestListInForLoop(TestListInWhileLoop):

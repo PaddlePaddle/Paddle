@@ -662,6 +662,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_xpu_device_id",
            &AnalysisConfig::SetXpuDeviceId,
            py::arg("device_id") = 0)
+      .def("enable_custom_device",
+           &AnalysisConfig::EnableCustomDevice,
+           py::arg("device_type"),
+           py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
       .def("enable_ipu",
            &AnalysisConfig::EnableIpu,
@@ -805,6 +809,22 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("mkldnn_int8_enabled_op_types") =
                std::unordered_set<std::string>({}))
       .def("mkldnn_int8_enabled", &AnalysisConfig::mkldnn_int8_enabled)
+      .def("disable_mkldnn_fc_passes",
+           &AnalysisConfig::DisableMkldnnFcPasses,
+           R"DOC(
+           Disable Mkldnn FC
+           Args:
+                None.
+           Returns:
+                None.
+           Examples:
+               .. code-block:: python
+                from paddle.inference import Config
+
+                config = Config("")
+                config.enable_mkldnn()
+                config.disable_mkldnn_fc_passes()
+           )DOC")
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)

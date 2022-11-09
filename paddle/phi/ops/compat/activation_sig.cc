@@ -84,6 +84,18 @@ KernelSignature PowGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   }
 }
 
+KernelSignature PowDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("FactorTensor")) {
+    return KernelSignature("pow_double_grad",
+                           {"X", "DOut", "DDX"},
+                           {"FactorTensor"},
+                           {"DX", "DDOut"});
+  } else {
+    return KernelSignature(
+        "pow_double_grad", {"X", "DOut", "DDX"}, {"factor"}, {"DX", "DDOut"});
+  }
+}
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(brelu, hard_tanh);
@@ -101,4 +113,6 @@ PD_REGISTER_ARG_MAPPING_FN(hard_swish, phi::HardSwishOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(swish_grad, phi::SwishGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(swish, phi::SwishOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(pow_grad, phi::PowGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(pow_double_grad,
+                           phi::PowDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(pow, phi::PowOpArgumentMapping);

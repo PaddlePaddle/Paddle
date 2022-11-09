@@ -536,7 +536,7 @@ def Assert(cond, data=None, summarize=20, name=None):
     return op
 
 
-class BlockGuard(object):
+class BlockGuard:
     """
     BlockGuard class.
 
@@ -584,7 +584,7 @@ class BlockGuardWithCompletion(BlockGuard):
         return super().__exit__(exc_type, exc_val, exc_tb)
 
 
-class StaticRNNMemoryLink(object):
+class StaticRNNMemoryLink:
     """
     StaticRNNMemoryLink class.
 
@@ -607,7 +607,7 @@ class StaticRNNMemoryLink(object):
         self.mem = mem
 
 
-class StaticRNN(object):
+class StaticRNN:
     """
     :api_attr: Static Graph
 
@@ -1179,7 +1179,7 @@ def get_inputs_outputs_in_block(
     return inner_inputs, inner_outputs
 
 
-class While(object):
+class While:
     """
     :api_attr: Static Graph
 
@@ -2462,7 +2462,7 @@ class ConditionalBlockGuard(BlockGuard):
         return super().__exit__(exc_type, exc_val, exc_tb)
 
 
-class ConditionalBlock(object):
+class ConditionalBlock:
     '''
     **ConditionalBlock**
 
@@ -3172,7 +3172,7 @@ def case(pred_fn_pairs, default=None, name=None):
     return final_fn()
 
 
-class Switch(object):
+class Switch:
     """
     :api_attr: Static Graph
 
@@ -3302,7 +3302,7 @@ class Switch(object):
         return True
 
 
-class IfElseBlockGuard(object):
+class IfElseBlockGuard:
     def __init__(self, is_true, ifelse):
         if not isinstance(ifelse, IfElse):
             raise TypeError("ifelse must be an instance of IfElse class")
@@ -3339,7 +3339,7 @@ class IfElseBlockGuard(object):
         self.ie.status = IfElse.OUT_IF_ELSE_BLOCKS
 
 
-class IfElse(object):
+class IfElse:
     """
     :api_attr: Static Graph
 
@@ -3529,7 +3529,7 @@ class IfElse(object):
         return rlist
 
 
-class DynamicRNN(object):
+class DynamicRNN:
     """
     :api_attr: Static Graph
 

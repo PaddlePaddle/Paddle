@@ -23,7 +23,7 @@ if fluid.is_compiled_with_cuda():
     fluid.core.globals()['FLAGS_cudnn_deterministic'] = True
 
 
-class Config(object):
+class Config:
     def __init__(self, place, sort_sum_gradient=True):
         self.place = place
 
@@ -140,10 +140,10 @@ class Conv2DLayer(fluid.dygraph.Layer):
         relufactor=None,
     ):
         super().__init__()
-        self._conv = fluid.dygraph.Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
             bias_attr=None if use_bias else False,
@@ -506,7 +506,7 @@ def build_optimizer(layer, cfg, loss=None):
         return optimizer
 
 
-class DyGraphTrainModel(object):
+class DyGraphTrainModel:
     def __init__(self, cfg):
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
@@ -564,7 +564,7 @@ class DyGraphTrainModel(object):
         return g_loss.numpy()[0], d_loss.numpy()[0]
 
 
-class StaticGraphTrainModel(object):
+class StaticGraphTrainModel:
     def __init__(self, cfg):
         self.cfg = cfg
 

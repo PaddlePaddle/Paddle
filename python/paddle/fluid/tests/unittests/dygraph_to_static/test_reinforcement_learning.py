@@ -52,7 +52,7 @@ class Policy(Layer):
         return log_prob
 
 
-class Args(object):
+class Args:
     gamma = 0.99
     log_interval = 1
     train_step = 10
