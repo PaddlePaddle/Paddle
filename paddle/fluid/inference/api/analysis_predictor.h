@@ -102,7 +102,7 @@ class AnalysisPredictor : public PaddlePredictor {
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
     if (config_.shape_range_info_collected()) {
       config_.SwitchIrOptim(false);
-      config_.EnableMemoryOptim(false);
+      config_.EnableMemoryOptim(true);
     }
     predictor_id_ = inference::GetUniqueId();
   }
@@ -281,6 +281,8 @@ class AnalysisPredictor : public PaddlePredictor {
   /// parameter is output tensor with the var name.
   ///
   void RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) override;
+
+  void RegisterCollectShapeHook() override;
 
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass

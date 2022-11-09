@@ -71,6 +71,8 @@ class NaiveExecutor {
 
   void RegisterOutputHook(const HookFunc& hookfunc);
 
+  void RegisterCollectShapeHook(const HookFunc& collect_shape_func);
+
  private:
   void CreateOps(const ProgramDesc& desc,
                  int block_id,
@@ -83,6 +85,7 @@ class NaiveExecutor {
   Scope* scope_{nullptr};
 
   HookFunc hookfunc_{nullptr};
+  HookFunc collect_shape_func_{nullptr};
 };
 
 }  // namespace framework

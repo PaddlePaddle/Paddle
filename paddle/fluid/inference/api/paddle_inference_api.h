@@ -167,6 +167,8 @@ class PD_INFER_DECL Predictor {
   ///
   void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc);
 
+  void RegisterCollectShapeHook();
+
   ///
   /// \brief Get the execution stream on devices with a concept of stream,
   /// otherwise returns nullptr.

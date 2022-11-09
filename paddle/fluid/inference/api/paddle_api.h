@@ -300,6 +300,8 @@ class PD_INFER_DECL PaddlePredictor {
   ///
   virtual void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc) {}
 
+  virtual void RegisterCollectShapeHook() {}
+
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,
   /// and the parameters between them are shared.
