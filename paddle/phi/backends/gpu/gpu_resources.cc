@@ -99,16 +99,19 @@ void InitGpuProperties(Place place,
       (CUDA_VERSION / 1000) * 10 + (CUDA_VERSION % 100) / 10;
 #if defined(__linux__)
   PADDLE_ENFORCE_EQ(
-      local_cuda_version / 10,
-      compile_cuda_version / 10,
+      (*runtime_version / 1000 == CUDA_VERSION / 1000) ||
+          (cudnn_dso_ver / 1000 == CUDNN_VERSION / 1000),
+      true,
       phi::errors::InvalidArgument(
-          "The installed Paddle is compiled with CUDA %d,"
-          "but CUDA version in your machine is %d. "
+          "The installed Paddle is compiled with CUDA%d/cuDNN%d,"
+          "but CUDA/cuDNN version in your machine is CUDA%d/cuDNN%d. "
           "which will cause serious incompatible bug. "
-          "Please recompile or reinstall Paddle with compatible CUDA "
+          "Please recompile or reinstall Paddle with compatible CUDA/cuDNN "
           "version.",
-          compile_cuda_version / 10,
-          local_cuda_version / 10));
+          CUDA_VERSION / 1000,
+          CUDNN_VERSION / 1000,
+          *runtime_version / 1000,
+          cudnn_dso_ver / 1000));
 #endif
   if (local_cuda_version < compile_cuda_version) {
     LOG_FIRST_N(WARNING, 1)
