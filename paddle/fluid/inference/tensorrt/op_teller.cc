@@ -42,6 +42,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("group_norm");
     teller_set.insert("multiclass_nms3");
     teller_set.insert("multiclass_nms");
+    int8_teller_set.insert("multiclass_nms3");
+    int8_teller_set.insert("multiclass_nms");
 #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
@@ -1170,25 +1172,13 @@ struct SimpleOpTypeSetTeller : public Teller {
           }
         }
       }
-
-      if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
-          !desc.HasAttr("ends")) {
+      std::vector<int> axes;
+      if (!desc.HasAttr("axes")) {
         VLOG(3) << "The necessary attributes of the slice operator axes "
-                   "or starts or ends are missing.";
+                   " are missing.";
         return false;
       } else {
-        std::vector<int> axes =
-            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
-        std::vector<int> starts =
-            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("starts"));
-        std::vector<int> ends =
-            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("ends"));
-
-        if (axes.size() != starts.size() || axes.size() != ends.size()) {
-          VLOG(3) << "The shape of attributes of the slice operator axes "
-                     "or starts or ends are not equal.";
-          return false;
-        }
+        axes = PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
         if (!with_dynamic_shape) {
           for (size_t i = 0; i < axes.size(); i++) {
             if (axes[i] == 0) {
@@ -1201,14 +1191,42 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       // not support following four inputs for slice in paddle-trt
       auto slice_inputs = desc.Inputs();  // its size == 5
-      if (slice_inputs.find("StartsTensor") != slice_inputs.end()) {
-        if (desc.Input("StartsTensor").size()) {
+      if (slice_inputs.find("StartsTensor") != slice_inputs.end() &&
+          desc.Input("StartsTensor").size()) {
+        VLOG(3) << "The Slice has StartsTensor input.";
+      } else {
+        if (!desc.HasAttr("starts")) {
+          VLOG(3) << "The necessary attributes of the slice operator starts or "
+                     "StartsTensor"
+                     " are missing.";
           return false;
+        } else {
+          std::vector<int> starts =
+              PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("starts"));
+          if (axes.size() != starts.size()) {
+            VLOG(3) << "The shape of attributes of the slice operator axes "
+                       "and starts are not equal.";
+            return false;
+          }
         }
       }
-      if (slice_inputs.find("EndsTensor") != slice_inputs.end()) {
-        if (desc.Input("EndsTensor").size()) {
+      if (slice_inputs.find("EndsTensor") != slice_inputs.end() &&
+          desc.Input("EndsTensor").size()) {
+        VLOG(3) << "The Slice has EndsTensor input.";
+      } else {
+        if (!desc.HasAttr("ends")) {
+          VLOG(3) << "The necessary attributes of the slice operator ends or "
+                     "EndsTensor"
+                     " are missing.";
           return false;
+        } else {
+          std::vector<int> ends =
+              PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("ends"));
+          if (axes.size() != ends.size()) {
+            VLOG(3) << "The shape of attributes of the slice operator axes "
+                       "and ends are not equal.";
+            return false;
+          }
         }
       }
       if (slice_inputs.find("StartsTensorList") != slice_inputs.end()) {
@@ -1831,10 +1849,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
-        VLOG(3) << "clip op does not support input's dim is 1 in tensorrt.";
-        return false;
-      }
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean") {

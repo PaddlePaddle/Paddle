@@ -31,7 +31,7 @@ from .initializer import _global_weight_initializer, _global_bias_initializer
 __all__ = ['LayerHelperBase']
 
 
-class LayerHelperBase(object):
+class LayerHelperBase:
     # global dtype
     __dtype = "float32"
 

@@ -20,7 +20,7 @@ import paddle.fluid.core as core
 __all__ = []
 
 
-class DatasetBase(object):
+class DatasetBase:
     """Base dataset class."""
 
     def __init__(self):

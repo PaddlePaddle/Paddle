@@ -88,7 +88,7 @@ class DistributedMode:
     NU = 5
 
 
-class TrainerRuntimeConfig(object):
+class TrainerRuntimeConfig:
     def __init__(self, valid_strategy):
         self.mode = None
         num_threads = os.getenv("CPU_NUM", "1")

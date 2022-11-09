@@ -108,7 +108,7 @@ def load_lr_input_record(sent):
 feeding_index = {'dnn_input': 0, 'lr_input': 1, 'click': 2}
 
 
-class Dataset(object):
+class Dataset:
     def train(self):
         '''
         Load trainset.

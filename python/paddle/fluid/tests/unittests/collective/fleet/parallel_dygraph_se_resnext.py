@@ -16,7 +16,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
+from paddle.fluid.dygraph.nn import Linear, Pool2D
 from paddle.fluid.dygraph.base import to_variable
 import math
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
@@ -87,10 +87,10 @@ class ConvBNLayer(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=groups,
