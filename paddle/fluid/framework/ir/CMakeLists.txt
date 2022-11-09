@@ -177,6 +177,9 @@ if(WITH_MKLDNN)
   pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(operator_scale_onednn_fuse_pass inference DIR mkldnn)
+  pass_library(squeeze2_transpose2_onednn_fuse_pass inference DIR mkldnn)
+  pass_library(operator_unsqueeze2_onednn_fuse_pass inference DIR mkldnn)
+  pass_library(operator_reshape2_onednn_fuse_pass inference DIR mkldnn)
   pass_library(cpu_quantize_placement_pass base DIR mkldnn)
   pass_library(cpu_quantize_pass inference DIR mkldnn)
   pass_library(cpu_quantize_squash_pass inference DIR mkldnn)
@@ -396,13 +399,6 @@ if(WITH_MKLDNN)
     test_params_quantization_mkldnn_pass SRCS
     mkldnn/params_quantization_mkldnn_pass_tester.cc DEPS
     params_quantization_mkldnn_pass)
-  cc_test_old(
-    test_fc_elementwise_add_mkldnn_fuse_pass SRCS
-    mkldnn/fc_elementwise_add_mkldnn_fuse_pass_tester.cc DEPS
-    fc_elementwise_add_mkldnn_fuse_pass pass_test_util)
-  cc_test_old(
-    test_fc_act_mkldnn_fuse_pass SRCS mkldnn/fc_act_mkldnn_fuse_pass_tester.cc
-    DEPS fc_act_mkldnn_fuse_pass pass_test_util)
   cc_test_old(
     test_batch_norm_act_fuse_pass SRCS
     mkldnn/batch_norm_act_fuse_pass_tester.cc DEPS batch_norm_act_fuse_pass

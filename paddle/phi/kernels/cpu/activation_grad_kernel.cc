@@ -268,7 +268,7 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(thresholded_relu_grad,
                                    ThresholdedReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(soft_shrink_grad, SoftShrinkGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(softshrink_grad, SoftShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_shrink_grad, HardShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_shrink_grad, TanhShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(elu_grad, EluGradKernel)
@@ -336,6 +336,24 @@ PD_REGISTER_KERNEL(square_double_grad,
                    phi::dtype::float16,
                    int,
                    int64_t) {}
+PD_REGISTER_KERNEL(sin_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SinDoubleGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int,
+                   int64_t) {}
+PD_REGISTER_KERNEL(sin_triple_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SinTripleGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int,
+                   int64_t) {}
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softsign_grad, SoftsignGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_double_grad, SigmoidDoubleGradKernel)
@@ -360,6 +378,14 @@ PD_REGISTER_KERNEL(pow_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::PowGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+PD_REGISTER_KERNEL(pow_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::PowDoubleGradKernel,
                    float,
                    double,
                    int,

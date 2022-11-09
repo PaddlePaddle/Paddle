@@ -136,7 +136,7 @@ def static(
 
 class DygraphLayer(fluid.dygraph.Layer):
     def __init__(self):
-        super(DygraphLayer, self).__init__()
+        super().__init__()
         self.fc_1 = fluid.dygraph.nn.Linear(
             INPUT_SIZE,
             FC_SIZE,

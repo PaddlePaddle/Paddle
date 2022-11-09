@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .dist_save import save
+from .dist_save import save, save_for_auto_inference
 from .dist_load import load

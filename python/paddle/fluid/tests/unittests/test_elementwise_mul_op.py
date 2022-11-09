@@ -85,6 +85,27 @@ class ElementwiseMulOp(OpTest):
         pass
 
 
+class TestElementwiseMulOp_ZeroDim1(ElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+
+class TestElementwiseMulOp_ZeroDim2(ElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+
+class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+
 class TestBF16ElementwiseMulOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_mul"

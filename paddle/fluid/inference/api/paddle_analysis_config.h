@@ -367,7 +367,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param device_id device_id the custom device to use (default is 0).
   ///
-  void EnableCustomDevice(const std::string& device_type, int device_id);
+  void EnableCustomDevice(const std::string& device_type, int device_id = 0);
   ///
   /// \brief Turn on ONNXRuntime.
   ///
@@ -1134,7 +1134,8 @@ struct PD_INFER_DECL AnalysisConfig {
       "fusion_gru",
       "fusion_lstm",
       "multi_gru",
-      "slice"};
+      "slice",
+      "split"};
 
   // ipu related.
   bool use_ipu_{false};

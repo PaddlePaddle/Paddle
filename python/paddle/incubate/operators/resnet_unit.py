@@ -179,7 +179,7 @@ class ResNetUnit(Layer):
         moving_mean_z_name=None,
         moving_var_z_name=None,
     ):
-        super(ResNetUnit, self).__init__()
+        super().__init__()
         self._stride = stride
         self._stride_z = stride_z
         self._dilation = 1

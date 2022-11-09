@@ -153,13 +153,18 @@ if(NOT WIN32)
       -Wno-error=terminate # Warning in PADDLE_ENFORCE
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
-      -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
+      -Wno-error=maybe-uninitialized # Warning in Paddle-Lite
       ${fsanitize})
 
   if(WITH_IPU)
     set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare # Warnings in Popart
                      -Wno-non-virtual-dtor # Warnings in Popart
     )
+  endif()
+
+  if(WITH_CUDNN_FRONTEND)
+    # flags from https://github.com/NVIDIA/cudnn-frontend/blob/v0.7.1/CMakeLists.txt
+    set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare -Wno-non-virtual-dtor)
   endif()
 
   if(WITH_ASCEND_CL AND WITH_ARM_BRPC)
@@ -252,7 +257,9 @@ if(WITH_ROCM)
   string(REPLACE "-Werror" "-Wno-error" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 endif()
 
-if(WITH_PSCORE OR WITH_PSLIB)
+if(WITH_PSCORE
+   OR WITH_PSLIB
+   OR WITH_TENSORRT)
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_CXX_FLAGS
                  ${CMAKE_CXX_FLAGS})
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_C_FLAGS

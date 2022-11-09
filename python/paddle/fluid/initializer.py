@@ -55,7 +55,7 @@ _global_weight_initializer_ = None
 _global_bias_initializer_ = None
 
 
-class Initializer(object):
+class Initializer:
     """Base class for variable initializers
 
     Defines the common interface of variable initializers.
@@ -161,7 +161,7 @@ class ConstantInitializer(Initializer):
 
     def __init__(self, value=0.0, force_cpu=False):
         assert value is not None
-        super(ConstantInitializer, self).__init__()
+        super().__init__()
         self._value = value
         self._force_cpu = force_cpu
 
@@ -259,7 +259,7 @@ class UniformInitializer(Initializer):
         assert diag_val is not None
         if diag_num > 0 or diag_step > 0:
             assert diag_num > 0 and diag_step > 0
-        super(UniformInitializer, self).__init__()
+        super().__init__()
         self._low = low
         self._high = high
         self._seed = seed
@@ -403,7 +403,7 @@ class NormalInitializer(Initializer):
         assert loc is not None
         assert scale is not None
         assert seed is not None
-        super(NormalInitializer, self).__init__()
+        super().__init__()
         self._mean = loc
         self._std_dev = scale
         self._seed = seed
@@ -503,7 +503,7 @@ class TruncatedNormalInitializer(Initializer):
         assert loc is not None
         assert scale is not None
         assert seed is not None
-        super(TruncatedNormalInitializer, self).__init__()
+        super().__init__()
         self._mean = loc
         self._std_dev = scale
         self._seed = seed
@@ -653,7 +653,7 @@ class XavierInitializer(Initializer):
     def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=0):
         assert uniform is not None
         assert seed is not None
-        super(XavierInitializer, self).__init__()
+        super().__init__()
         self._uniform = uniform
         self._fan_in = fan_in
         self._fan_out = fan_out
@@ -870,7 +870,7 @@ class MSRAInitializer(Initializer):
         """Constructor for MSRAInitializer"""
         assert uniform is not None
         assert seed is not None
-        super(MSRAInitializer, self).__init__()
+        super().__init__()
         self._uniform = uniform
         self._fan_in = fan_in
         self._seed = seed
@@ -1077,7 +1077,7 @@ class BilinearInitializer(Initializer):
 
     def __init__(self):
         """Constructor for BilinearInitializer."""
-        super(BilinearInitializer, self).__init__()
+        super().__init__()
 
     def forward(self, var, block=None):
         """Initialize the input tensor with Bilinear initialization.
@@ -1234,7 +1234,7 @@ class NumpyArrayInitializer(Initializer):
         import numpy
 
         assert isinstance(value, numpy.ndarray)
-        super(NumpyArrayInitializer, self).__init__()
+        super().__init__()
         self._value = value
 
     def forward(self, var, block=None):
