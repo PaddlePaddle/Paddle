@@ -20,9 +20,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
 using phi::CPUContext;
+using phi::funcs::OneDNNGetDataType;
 using platform::to_void_cast;
 
 template <typename T, typename T_out = T>
@@ -73,7 +73,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
 
       // Weights for int8 kernel are of a type s8
       const auto weights_dt =
-          is_INT8 ? dnnl::memory::data_type::s8 : MKLDNNGetDataType<T>();
+          is_INT8 ? dnnl::memory::data_type::s8 : OneDNNGetDataType<T>();
 
       // oneDNN RNN dimensions
       const int64_t D = 1;  // Directions
@@ -82,17 +82,17 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
 
       // Create memory descriptors
       auto input_md = MKLDNNMemDesc(
-          {Ti, N, IC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ntc);
+          {Ti, N, IC}, OneDNNGetDataType<T>(), MKLDNNMemoryFormat::ntc);
       auto weight_x_md =
           MKLDNNMemDesc({L, D, IC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
       auto weight_h_md =
           MKLDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
       auto bias_md = MKLDNNMemDesc(
-          {L, D, G, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldgo);
+          {L, D, G, OC}, OneDNNGetDataType<float>(), MKLDNNMemoryFormat::ldgo);
       auto hidden_md = MKLDNNMemDesc(
-          {Ti, N, OC}, MKLDNNGetDataType<T_out>(), MKLDNNMemoryFormat::ntc);
+          {Ti, N, OC}, OneDNNGetDataType<T_out>(), MKLDNNMemoryFormat::ntc);
       auto h0_md = MKLDNNMemDesc(
-          {L, D, N, OC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::ldnc);
+          {L, D, N, OC}, OneDNNGetDataType<T>(), MKLDNNMemoryFormat::ldnc);
 
       // Create GRU oneDNN primitive
       const auto direction =
@@ -122,7 +122,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
 
     if (!memory_p) {
       auto user_md = MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
-                                   MKLDNNGetDataType<U>(),
+                                   OneDNNGetDataType<U>(),
                                    MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
@@ -162,7 +162,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
 
     if (!memory_p) {
       auto user_md = MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
-                                   MKLDNNGetDataType<U>(),
+                                   OneDNNGetDataType<U>(),
                                    MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 

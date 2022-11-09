@@ -18,9 +18,9 @@ using dnnl::memory;
 using paddle::framework::ExecutionContext;
 using paddle::platform::MatMulV2MKLDNNHandler;
 using paddle::platform::MKLDNNDeviceContext;
-using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::to_void_cast;
 using phi::vectorize;
+using phi::funcs::OneDNNGetDataType;
 using Tensor = phi::DenseTensor;
 using paddle::framework::GradVarName;
 using phi::make_ddim;
@@ -146,9 +146,9 @@ class MatMulMKLDNNHandler
         !trans_y ? memory::dims{N * K, N, 1} : memory::dims{N * K, 1, K};
     memory::dims out_strides = memory::dims{M * N, N, 1};
 
-    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<XT>(), x_strides);
-    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<YT>(), y_strides);
-    auto out_md = memory::desc(out_dims, MKLDNNGetDataType<OT>(), out_strides);
+    auto x_md = memory::desc(x_dims, OneDNNGetDataType<XT>(), x_strides);
+    auto y_md = memory::desc(y_dims, OneDNNGetDataType<YT>(), y_strides);
+    auto out_md = memory::desc(out_dims, OneDNNGetDataType<OT>(), out_strides);
 
     dnnl::primitive_attr attrs;
     if (scale != 1.0f) attrs.set_output_scales(0, {scale});

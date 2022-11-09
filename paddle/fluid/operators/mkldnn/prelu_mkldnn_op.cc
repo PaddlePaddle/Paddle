@@ -21,7 +21,6 @@ namespace operators {
 using dnnl::memory;
 
 using platform::MKLDNNDeviceContext;
-using platform::MKLDNNGetDataType;
 using platform::to_void_cast;
 
 namespace {
@@ -57,8 +56,9 @@ class PReluMKLDNNHandler
         }
         weights_dims = std::move(new_weights_dims);
       }
-      auto weights_md = memory::desc(
-          weights_dims, MKLDNNGetDataType<T>(), memory::format_tag::any);
+      auto weights_md = memory::desc(weights_dims,
+                                     phi::funcs::OneDNNGetDataType<T>(),
+                                     memory::format_tag::any);
 
       this->AcquireForwardPrimitiveDescriptor(
           dnnl::prop_kind::forward_training, x->mem_desc(), weights_md);

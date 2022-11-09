@@ -27,10 +27,10 @@ namespace paddle {
 namespace operators {
 
 using paddle::platform::CreateKey;
-using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
 using phi::CPUContext;
 using phi::vectorize;
+using phi::funcs::OneDNNGetDataType;
 using platform::to_void_cast;
 using Direction = dnnl::rnn_direction;
 
@@ -115,7 +115,7 @@ class MultiGRUHandler {
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
     memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(
-        dev_ctx, CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>()));
+        dev_ctx, CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
     key_ = memory_key_;
     key_.append("T").append(std::to_string(Ti_));
 
@@ -177,10 +177,10 @@ class MultiGRUHandler {
           is_int8 ? dnnl::memory::data_type::s8 : dnnl::memory::data_type::f32;
 
       auto x_md = MKLDNNMemDesc({Ti_, N_, ICs[layer]},
-                                MKLDNNGetDataType<T>(),
+                                OneDNNGetDataType<T>(),
                                 MKLDNNMemoryFormat::ntc);
       auto h0_md = MKLDNNMemDesc({L, D, N_, OCs[layer]},
-                                 MKLDNNGetDataType<T>(),
+                                 OneDNNGetDataType<T>(),
                                  MKLDNNMemoryFormat::ldnc);
       auto wx_md = MKLDNNMemDesc({L, D, ICs[layer], G, OCs[layer]},
                                  weights_dt,
@@ -189,12 +189,12 @@ class MultiGRUHandler {
                                  weights_dt,
                                  MKLDNNMemoryFormat::any);
       auto b_md = MKLDNNMemDesc({L, D, G, OCs[layer]},
-                                MKLDNNGetDataType<float>(),
+                                OneDNNGetDataType<float>(),
                                 MKLDNNMemoryFormat::ldgo);
       auto h_md =
           MKLDNNMemDesc({Ti_, N_, OCs[layer]},
-                        (layer == layers_ - 1) ? MKLDNNGetDataType<T_out>()
-                                               : MKLDNNGetDataType<T>(),
+                        (layer == layers_ - 1) ? OneDNNGetDataType<T_out>()
+                                               : OneDNNGetDataType<T>(),
                         MKLDNNMemoryFormat::ntc);
 
       auto desc = std::make_shared<dnnl::gru_forward::desc>(
@@ -227,8 +227,8 @@ class MultiGRUHandler {
       const int axis = 2;
       auto in_md =
           MKLDNNMemDesc({Ti_, N_, OCs[layer]},
-                        (layer == layers_ - 1) ? MKLDNNGetDataType<T_out>()
-                                               : MKLDNNGetDataType<T>(),
+                        (layer == layers_ - 1) ? OneDNNGetDataType<T_out>()
+                                               : OneDNNGetDataType<T>(),
                         MKLDNNMemoryFormat::ntc);
 
       std::vector<dnnl::memory::desc> src_mds{in_md, in_md};
@@ -336,7 +336,7 @@ class MultiGRUHandler {
     if (!memory_p) {
       auto user_h0_memory = dnnl::memory();
       user_h0_memory = dnnl::memory({{1, 1, N_, OCs[layer]},
-                                     MKLDNNGetDataType<float>(),
+                                     OneDNNGetDataType<float>(),
                                      MKLDNNMemoryFormat::ldnc},
                                     engine_);
       memset(
@@ -361,7 +361,7 @@ class MultiGRUHandler {
 
     if (!memory_p) {
       auto user_md = MKLDNNMemDesc({1, 1, ICs[layer], 3, OCs[layer]},
-                                   MKLDNNGetDataType<float>(),
+                                   OneDNNGetDataType<float>(),
                                    MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, engine_);
 
@@ -401,7 +401,7 @@ class MultiGRUHandler {
 
     if (!memory_p) {
       auto user_md = MKLDNNMemDesc({1, 1, OCs[layer], 3, OCs[layer]},
-                                   MKLDNNGetDataType<float>(),
+                                   OneDNNGetDataType<float>(),
                                    MKLDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, engine_);
 

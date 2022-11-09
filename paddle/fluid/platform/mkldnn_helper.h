@@ -49,11 +49,6 @@ void* to_void_cast(const Type* t) {
   return static_cast<void*>(const_cast<Type*>(t));
 }
 
-template <typename Type>
-void* to_void_reinterpret_cast(const Type* t) {
-  return reinterpret_cast<void*>(const_cast<Type*>(t));
-}
-
 template <class Type>
 using tf_desc = typename Type::desc;
 
@@ -161,33 +156,6 @@ inline void DontClearMKLDNNCache(const platform::Place& place) {
   }
 }
 
-template <typename Type>
-dnnl::memory::data_type MKLDNNGetDataType() {
-  return dnnl::memory::data_type::undef;
-}
-
-template <>
-inline dnnl::memory::data_type MKLDNNGetDataType<float>() {
-  return dnnl::memory::data_type::f32;
-}
-template <>
-inline dnnl::memory::data_type MKLDNNGetDataType<int32_t>() {
-  return dnnl::memory::data_type::s32;
-}
-template <>
-inline dnnl::memory::data_type MKLDNNGetDataType<int8_t>() {
-  return dnnl::memory::data_type::s8;
-}
-template <>
-inline dnnl::memory::data_type MKLDNNGetDataType<uint8_t>() {
-  return dnnl::memory::data_type::u8;
-}
-
-template <>
-inline dnnl::memory::data_type MKLDNNGetDataType<paddle::platform::bfloat16>() {
-  return dnnl::memory::data_type::bf16;
-}
-
 inline void Reorder(dnnl::memory src,
                     dnnl::memory dst,
                     const dnnl::engine& engine) {
@@ -199,34 +167,6 @@ inline void Reorder(dnnl::memory src,
                                        platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
-}
-
-inline dnnl::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
-  switch (tensor_rank) {
-    case 1:
-      return dnnl::memory::format_tag::a;
-    case 2:
-      return dnnl::memory::format_tag::ab;
-    case 3:
-      return dnnl::memory::format_tag::abc;
-    case 4:
-      return dnnl::memory::format_tag::abcd;
-    case 5:
-      return dnnl::memory::format_tag::abcde;
-    case 6:
-      return dnnl::memory::format_tag::abcdef;
-    case 7:
-      return dnnl::memory::format_tag::abcdefg;
-    case 8:
-      return dnnl::memory::format_tag::abcdefgh;
-    case 9:
-      return dnnl::memory::format_tag::abcdefghi;
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Paddle support tensors with rank in range <1, 9>, but received "
-          "tensor with rank: %d",
-          tensor_rank));
-  }
 }
 
 inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
@@ -404,19 +344,6 @@ inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
   }
 }
 
-// The function adjusts the vector of weight dimensions for group convolutions
-inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
-                                  const int groups) {
-  if (groups > 1) {
-    // if (is_conv3d) [o, i, d, h, w]->[g, o/g, i, d, h, w]
-    // else [o, i, h, w] -> [g, o/g, i, h, w]
-    weights_tz.push_back(0);
-    std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
-    weights_tz[0] = groups;
-    weights_tz[1] = weights_tz[1] / groups;
-  }
-}
-
 inline void RegisterModelLayout(
     std::vector<std::unique_ptr<framework::OperatorBase>>& ops,  // NOLINT
     const platform::Place& place) {
@@ -459,10 +386,6 @@ inline bool HasOpINT8DataType(const paddle::framework::OpDesc* op) {
 
 inline bool HasOpBFLOAT16DataType(const paddle::framework::OpDesc* op) {
   return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "bfloat16";
-}
-
-inline bool HasOpFLOAT32DataType(const paddle::framework::OpDesc* op) {
-  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "float32";
 }
 
 enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };

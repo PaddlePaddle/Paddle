@@ -20,9 +20,9 @@ namespace paddle {
 namespace operators {
 
 using paddle::platform::CreateKey;
-using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
 using phi::CPUContext;
+using phi::funcs::OneDNNGetDataType;
 using platform::to_void_cast;
 
 template <typename T, typename T_alg, typename T_out = T>
@@ -46,7 +46,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
             dev_ctx,
             dev_ctx.GetEngine(),
             cpu_place,
-            CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>(), Ti)),
+            CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>(), Ti)),
         N(N),
         Ti(Ti),
         IC(IC),
@@ -55,7 +55,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
     memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(
-        dev_ctx, CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>()));
+        dev_ctx, CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
 
     // Is it int8 kernel
     const bool is_INT8 = std::is_same<T, uint8_t>::value;
@@ -210,12 +210,12 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
       auto user_h0_memory = dnnl::memory();
       if (h0) {
         user_h0_memory = dnnl::memory(
-            {{1, 1, N, OC}, MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldnc},
+            {{1, 1, N, OC}, OneDNNGetDataType<U>(), MKLDNNMemoryFormat::ldnc},
             this->engine_,
             to_void_cast(h0->data<U>()));
       } else {
         user_h0_memory = dnnl::memory(
-            {{1, 1, N, OC}, MKLDNNGetDataType<U>(), MKLDNNMemoryFormat::ldnc},
+            {{1, 1, N, OC}, OneDNNGetDataType<U>(), MKLDNNMemoryFormat::ldnc},
             this->engine_);
         memset(user_h0_memory.get_data_handle(), 0, sizeof(U) * N * OC);
       }

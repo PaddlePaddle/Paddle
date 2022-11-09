@@ -309,9 +309,12 @@ class MatMulV2MKLDNNHandler
       out_strides = FakeTransposeStrides(out_ddims);
     }
 
-    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<XT>(), x_strides);
-    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<YT>(), y_strides);
-    auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<OT>(), out_strides);
+    auto x_md =
+        memory::desc(x_dims, phi::funcs::OneDNNGetDataType<XT>(), x_strides);
+    auto y_md =
+        memory::desc(y_dims, phi::funcs::OneDNNGetDataType<YT>(), y_strides);
+    auto out_md = memory::desc(
+        out_ddims, phi::funcs::OneDNNGetDataType<OT>(), out_strides);
 
     const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
 
@@ -347,7 +350,7 @@ class MatMulV2MKLDNNHandler
       auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
       auto residual_data_tz = phi::vectorize(residual_data->dims());
       auto residual_data_md = memory::desc(residual_data_tz,
-                                           MKLDNNGetDataType<OT>(),
+                                           phi::funcs::OneDNNGetDataType<OT>(),
                                            dnnl::memory::format_tag::any);
       post_operations.append_binary(dnnl::algorithm::binary_add,
                                     residual_data_md);

@@ -29,7 +29,7 @@ inline dnnl::memory::dims GetWeightsTz(const phi::DenseTensor* filter,
   auto weights_tz = phi::vectorize(filter->dims());
   int g = std::max(groups, 1);
   int g_dim = (g > 1) ? 1 : 0;
-  platform::GetGroupConvWeightsTz(weights_tz, g);
+  phi::funcs::GetGroupConvWeightsTz(weights_tz, g);
   // gIOHW -> gOIHW || IOHW -> OIHW
   std::swap(weights_tz[g_dim + 0], weights_tz[g_dim + 1]);
   return weights_tz;
@@ -136,7 +136,7 @@ class ConvTransposeMKLDNNHandlerT
     const auto src_tz = phi::vectorize(input->dims());
     const auto weights_tz = GetWeightsTz(filter, groups);
     const auto dst_tz = phi::vectorize(output->dims());
-    const auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
+    const auto mkldnn_paddings = phi::funcs::ToOneDNNPadding(paddings);
 
     /* create memory descriptor for convolution without specified format
      * ('any') which lets a primitive (convolution in this case) choose
@@ -154,7 +154,7 @@ class ConvTransposeMKLDNNHandlerT
     const auto weights_md =
         platform::MKLDNNMemDesc(weights_tz, data_type, chosen_memory_format);
     const auto dst_md = platform::MKLDNNMemDesc(
-        dst_tz, platform::MKLDNNGetDataType<T_out>(), chosen_memory_format);
+        dst_tz, phi::funcs::OneDNNGetDataType<T_out>(), chosen_memory_format);
 
     const dnnl::primitive_attr conv_trans_attr = CreateConvAttrs(ctx);
     auto fwd_prop_kind = is_test_ ? dnnl::prop_kind::forward_inference
@@ -238,7 +238,7 @@ class ConvTransposeMKLDNNHandlerT
 
     auto user_src_md = platform::MKLDNNMemDesc(
         weights_tz,
-        platform::MKLDNNGetDataType<K>(),
+        phi::funcs::OneDNNGetDataType<K>(),
         (g == 1) ? MKLDNNMemoryFormat::iohw : MKLDNNMemoryFormat::giohw);
 
     return this->template AcquireMemoryWithReorder<K>(
@@ -336,7 +336,7 @@ class ConvTransposeMKLDNNHandlerT
     const K* bias_data = bias->data<K>();
     auto user_bias_md =
         platform::MKLDNNMemDesc(phi::vectorize(bias->dims()),
-                                platform::MKLDNNGetDataType<K>(),
+                                phi::funcs::OneDNNGetDataType<K>(),
                                 MKLDNNMemoryFormat::x);
     return this->AcquireMemoryWithReorder(dev_ctx,
                                           user_bias_md,

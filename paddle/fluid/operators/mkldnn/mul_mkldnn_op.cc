@@ -239,7 +239,7 @@ class MulPrimitiveFactory {
   memory::desc CreateMemDescriptor(
       const Tensor *tensor,
       MKLDNNMemoryFormat format,
-      memory::data_type type = platform::MKLDNNGetDataType<T>()) {
+      memory::data_type type = phi::funcs::OneDNNGetDataType<T>()) {
     auto dims = phi::vectorize<int64_t>(tensor->dims());
     return platform::MKLDNNMemDesc(dims, type, format);
   }
@@ -248,7 +248,7 @@ class MulPrimitiveFactory {
   memory::desc CreateMemDescriptor(
       const std::vector<int64_t> &dims,
       MKLDNNMemoryFormat format,
-      memory::data_type type = platform::MKLDNNGetDataType<T>()) {
+      memory::data_type type = phi::funcs::OneDNNGetDataType<T>()) {
     return platform::MKLDNNMemDesc(dims, type, format);
   }
 
