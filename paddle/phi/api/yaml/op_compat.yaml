@@ -831,7 +831,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : sin
-  backward : sin_grad, sin_double_grad
+  backward : sin_grad, sin_double_grad, sin_triple_grad
   inputs :
     x : X
   outputs :

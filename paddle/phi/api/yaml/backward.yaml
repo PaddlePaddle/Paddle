@@ -661,6 +661,7 @@
     param : [x, x]
   kernel :
     func : sin_double_grad
+  backward : sin_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : sin_grad
@@ -674,6 +675,17 @@
     func : sin_grad
   backward : sin_double_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : sin_triple_grad
+  forward : sin_double_grad (Tensor x, Tensor grad_out_forward, Tensor grad_x_grad_forward) -> Tensor(grad_x), Tensor(grad_out_grad)
+  args : (Tensor x, Tensor grad_out_forward, Tensor grad_x_grad_forward, Tensor grad_x_grad, Tensor grad_out_grad_grad)
+  output : Tensor(x_grad), Tensor(grad_out_forward_grad), Tensor(grad_x_grad_forward_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [x, x, grad_x_grad_forward]
+  kernel :
+    func : sin_triple_grad
+  inplace : (grad_x_grad_forward -> grad_out_forward_grad)
 
 - backward_op : sinh_grad
   forward : sinh (Tensor x) -> Tensor(out)
