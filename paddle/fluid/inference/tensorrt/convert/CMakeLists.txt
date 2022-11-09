@@ -24,6 +24,7 @@ list(
   layer_norm_op.cc
   multihead_matmul_op.cc
   shuffle_channel_op.cc
+  where_op.cc
   swish_op.cc
   silu_op.cc
   instance_norm_op.cc
