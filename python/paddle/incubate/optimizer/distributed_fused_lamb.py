@@ -104,9 +104,7 @@ class DistributedFusedLamb(Optimizer):
         assert (
             not framework._non_static_mode()
         ), "DistributedFusedLamb does not support dygraph mode"
-        super(DistributedFusedLamb, self).__init__(
-            learning_rate=learning_rate, grad_clip=None, name=name
-        )
+        super().__init__(learning_rate=learning_rate, grad_clip=None, name=name)
 
         self._beta1 = beta1
         self._beta2 = beta2

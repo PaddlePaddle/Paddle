@@ -22,7 +22,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUD2STest
 
 class SimpleLayer(paddle.nn.Layer):
     def __init__(self, use_ipu=False):
-        super(SimpleLayer, self).__init__()
+        super().__init__()
         self.use_ipu = use_ipu
         self.conv = paddle.nn.Conv2D(
             in_channels=3, out_channels=1, kernel_size=2, stride=1

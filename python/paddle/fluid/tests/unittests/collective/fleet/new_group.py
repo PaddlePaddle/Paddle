@@ -16,7 +16,7 @@ import numpy as np
 import paddle
 
 
-class TestNewGroupAPI(object):
+class TestNewGroupAPI:
     def __init__(self):
         paddle.distributed.init_parallel_env()
         d1 = np.array([1, 2, 3])

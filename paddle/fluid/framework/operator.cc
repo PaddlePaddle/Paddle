@@ -1362,6 +1362,39 @@ bool OperatorWithKernel::SupportsMKLDNN(
   }
 }
 
+bool OperatorWithKernel::SupportsCUDNN(
+    const proto::VarType::Type data_type) const {
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  paddle::experimental::DataType phi_data_type =
+      framework::TransToPhiDataType(data_type);
+  auto has_phi_kernel = std::any_of(
+      phi_kernels.begin(),
+      phi_kernels.end(),
+      [phi_data_type](phi::KernelKeyMap::const_reference kern_pair) {
+        return kern_pair.first.backend() == phi::Backend::GPUDNN &&
+               kern_pair.first.dtype() == phi_data_type;
+      });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = op_kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [data_type](OpKernelMap::const_reference kern_pair) {
+            return platform::is_gpu_place(kern_pair.first.place_) &&
+                   kern_pair.first.library_type_ == LibraryType::kCUDNN &&
+                   kern_pair.first.data_type_ == data_type;
+          });
+    }
+  }
+}
+
 bool OperatorWithKernel::SupportsKernelType(
     const OpKernelType& kernel_type, const ExecutionContext& exe_ctx) const {
   auto& all_op_kernels = AllOpKernels();
@@ -1414,7 +1447,7 @@ bool OperatorWithKernel::SupportsKernelType(
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
+  if (this->CanCUDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kCUDNN;
     return kernels.find(tmp_kernel_type) != kernels.end();
@@ -1426,16 +1459,34 @@ bool OperatorWithKernel::SupportsKernelType(
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  // NOTE(jiahongyu): Only mkldnn kernels need to check "use_mkldnn" attribute,
-  // hence we first call function SupportsMKLDNN. If we check "use_mkldnn"
-  // attribute first, it will cause error because some codes add "use_mkldnn"
-  // attribute to non-mkldnn ops.
-  if (!this->SupportsMKLDNN(data_type)) {
-    return false;
+  return ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn") &&
+         platform::is_cpu_place(ctx.GetPlace()) &&
+         this->SupportsMKLDNN(data_type);
+}
+
+bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                                        proto::VarType::Type data_type) const {
+  bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
+                   paddle::platform::is_gpu_place(ctx.GetPlace());
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (use_cudnn) {
+    auto& dev_ctx = ctx.device_context<phi::GPUContext>();
+    use_cudnn &= (dev_ctx.cudnn_handle() != nullptr);
   }
-  const std::string use_mkldnn_attr = "use_mkldnn";
-  return ctx.HasAttr(use_mkldnn_attr) && ctx.Attr<bool>(use_mkldnn_attr) &&
-         platform::is_cpu_place(ctx.GetPlace());
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
+
+#if defined(PADDLE_WITH_CUDA)
+  if (use_cudnn && data_type == framework::proto::VarType::BF16) {
+    PADDLE_ENFORCE_GE(
+        platform::DnnVersion(),
+        8100,
+        platform::errors::InvalidArgument(
+            "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
+  }
+#endif  // PADDLE_WITH_CUDA
+
+  return use_cudnn && this->SupportsCUDNN(data_type);
 }
 
 void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
@@ -1602,7 +1653,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
+      if (this->CanCUDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
       }
 #endif
@@ -1851,7 +1902,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (!this->DnnFallback() && paddle::platform::CanCUDNNBeUsed(ctx)) {
+  if (this->CanCUDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
 #endif

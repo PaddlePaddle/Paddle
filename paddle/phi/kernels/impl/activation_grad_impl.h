@@ -16,7 +16,11 @@
 
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 
 namespace phi {
 
@@ -335,6 +339,34 @@ void PowGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void PowDoubleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         const Scalar& factor,
+                         DenseTensor* dx,
+                         DenseTensor* ddout) {
+  PADDLE_ENFORCE_NOT_NULL(
+      dx, errors::NotFound("The output DenseTensor dx can not be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      ddout,
+      errors::NotFound("The output DenseTensor ddout can not be nullptr"));
+  float exponent = factor.to<float>();
+  if (exponent == 1) {
+    *dx = phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0));
+  } else {
+    DenseTensor dx_tmp1 = phi::Multiply<T, Context>(dev_ctx, dout, ddx);
+    DenseTensor dx_tmp2 = phi::Multiply<T, Context>(
+        dev_ctx, dx_tmp1, phi::Pow<T, Context>(dev_ctx, x, exponent - 2));
+    *dx = phi::Scale<T, Context>(
+        dev_ctx, dx_tmp2, exponent * (exponent - 1), 0.0, true);
+  }
+  DenseTensor ddout_tmp = phi::Multiply<T, Context>(
+      dev_ctx, ddx, phi::Pow<T, Context>(dev_ctx, x, exponent - 1));
+  *ddout = phi::Scale<T, Context>(dev_ctx, ddout_tmp, exponent, 0.0, true);
+}
+
+template <typename T, typename Context>
 void SqrtDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
                           const DenseTensor& dx,
@@ -415,6 +447,58 @@ void SquareDoubleGradKernel(const Context& dev_ctx,
 
   phi::funcs::SquareGradGradFunctor<T> functor;
   functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
+}
+
+template <typename T, typename Context>
+void SinDoubleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         DenseTensor* dx,
+                         DenseTensor* ddout) {
+  if (dx) {
+    dx->Resize(x.dims());
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (ddout) {
+    dev_ctx.template Alloc<T>(ddout);
+  }
+  phi::funcs::SinDoubleGradFunctor<T> functor;
+  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
+}
+
+template <typename T, typename Context>
+void SinTripleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         const DenseTensor& d_dx_new,
+                         const DenseTensor& d_ddout,
+                         DenseTensor* d_x_new,
+                         DenseTensor* d_dout,
+                         DenseTensor* d_ddx) {
+  if (d_dout) {
+    d_dout->Resize(x.dims());
+    dev_ctx.template Alloc<T>(d_dout);
+  }
+  if (d_x_new) {
+    d_dout->Resize(x.dims());
+    dev_ctx.template Alloc<T>(d_x_new);
+  }
+  if (d_ddx) {
+    d_dout->Resize(ddx.dims());
+    dev_ctx.template Alloc<T>(d_ddx);
+  }
+  funcs::SinTripleGradFunctor<T> functor;
+  functor(dev_ctx,
+          &x,
+          &ddx,
+          &dout,
+          &d_ddout,
+          &d_dx_new,  // input
+          d_dout,
+          d_x_new,
+          d_ddx);  // output
 }
 
 }  // namespace phi

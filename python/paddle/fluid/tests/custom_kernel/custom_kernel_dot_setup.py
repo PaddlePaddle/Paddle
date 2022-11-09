@@ -27,7 +27,7 @@ class BuildExt(build_ext):
     def build_extensions(self):
         if '-Wstrict-prototypes' in self.compiler.compiler_so:
             self.compiler.compiler_so.remove('-Wstrict-prototypes')
-        super(BuildExt, self).build_extensions()
+        super().build_extensions()
 
 
 # cc flags

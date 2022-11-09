@@ -22,9 +22,6 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#endif
 
 namespace paddle {
 namespace framework {
@@ -137,8 +134,8 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   auto exec_ctx = ExecutionContext(*op, Scope(), *dev_ctx, runtime_context);
   auto expected_kernel_key = op_with_kernel->GetExpectedKernelType(exec_ctx);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (!op_with_kernel->DnnFallback() &&
-      paddle::platform::CanCUDNNBeUsed(exec_ctx)) {
+  if (op_with_kernel->CanCUDNNBeUsed(exec_ctx,
+                                     expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
 #endif

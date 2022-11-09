@@ -44,7 +44,7 @@ class PlaceType:
         return PlaceType.CPU
 
 
-class OffloadHelper(object):
+class OffloadHelper:
     cpu_place_type = 0
     cuda_place_type = PlaceType.default_device()
     cuda_pinned_place_type = PlaceType.default_pinned()

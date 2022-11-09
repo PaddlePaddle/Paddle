@@ -31,7 +31,7 @@ __all__ = []
 
 class ParameterServerRuntime(RuntimeBase):
     def __init__(self):
-        super(ParameterServerRuntime, self).__init__()
+        super().__init__()
         self._communicator = None
 
     def _set_basic_info(self, context):

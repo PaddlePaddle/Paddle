@@ -97,7 +97,7 @@ def parallel_matmul(lm_output, logit_weights, parallel_output):
 
 class PACT(nn.Layer):
     def __init__(self, init_value=20):
-        super(PACT, self).__init__()
+        super().__init__()
         alpha_attr = paddle.ParamAttr(
             name=self.full_name() + ".pact",
             initializer=paddle.nn.initializer.Constant(value=init_value),
@@ -124,7 +124,7 @@ class SimpleMPNet(nn.Layer):
         np_fc2,
         mp_id,
     ):
-        super(SimpleMPNet, self).__init__()
+        super().__init__()
 
         if mp_id == 0:
             init_fc1_data = np_fc1[:, : (inner_size // 2)]
@@ -184,7 +184,7 @@ class SimpleDPNet(nn.Layer):
         self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
     ):
 
-        super(SimpleDPNet, self).__init__()
+        super().__init__()
         self.linear1 = paddle.nn.Linear(
             hidden_size,
             inner_size,

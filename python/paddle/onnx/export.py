@@ -46,11 +46,10 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             class LinearNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear = paddle.nn.Linear(128, 10)
 
                 def forward(self, x):
@@ -66,7 +65,7 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
 
             class Logic(paddle.nn.Layer):
                 def __init__(self):
-                    super(Logic, self).__init__()
+                    super().__init__()
 
                 def forward(self, x, y, z):
                     if z:
@@ -77,8 +76,8 @@ def export(layer, path, input_spec=None, opset_version=9, **configs):
             # Export model with 'Tensor' to support pruned model by set 'output_spec'.
             def export_logic():
                 model = Logic()
-                x = paddle.to_tensor(np.array([1]))
-                y = paddle.to_tensor(np.array([2]))
+                x = paddle.to_tensor([1])
+                y = paddle.to_tensor([2])
                 # Static and run model.
                 paddle.jit.to_static(model)
                 out = model(x, y, z=True)

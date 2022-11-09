@@ -87,7 +87,7 @@ _logger = get_logger(
 )
 
 
-class _open_buffer(object):
+class _open_buffer:
     def __init__(self, buffer):
         self.buffer = buffer
 
@@ -97,7 +97,7 @@ class _open_buffer(object):
 
 class _buffer_reader(_open_buffer):
     def __init__(self, buffer):
-        super(_buffer_reader, self).__init__(buffer)
+        super().__init__(buffer)
         self.initial_tell = self.buffer.tell()
 
     def __exit__(self, *args):

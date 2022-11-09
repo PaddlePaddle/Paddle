@@ -35,7 +35,7 @@ paddle.seed(44)
 
 class MyDataset(Dataset):
     def __init__(self, num_samples):
-        super(MyDataset, self).__init__()
+        super().__init__()
         self.num_samples = num_samples
 
     def __getitem__(self, index):
@@ -55,7 +55,7 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(

@@ -54,7 +54,7 @@ from ..auto_parallel.utils import is_forward_op, is_backward_op, is_loss_op
 world_process_group = get_world_process_group()
 
 
-class AMPState(object):
+class AMPState:
     def __init__(self, block):
         self._block = block
         self._op_fp16_dict = (
@@ -618,7 +618,7 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
 @register_pass("auto_parallel_amp")
 class AMPPass(PassBase):
     def __init__(self):
-        super(AMPPass, self).__init__()
+        super().__init__()
         self.set_attr("loss", None)
         self.set_attr("dist_context", None)
         self.set_attr("custom_white_list", None)
