@@ -125,6 +125,7 @@ class BaseAPI:
         output_type_list, output_names, out_size_expr = self.parse_output(
             api_name, api_item_yaml['output']
         )
+
         return (
             inputs,
             attrs,
