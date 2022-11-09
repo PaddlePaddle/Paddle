@@ -487,9 +487,8 @@ class FP16State(object):
 
             # create cast grad
             grad_slot_name = slot_name + "@GRAD"
-            assert (
-                grad_slot_name in op.output_names
-            ), "[{}], Current Op: {}".format(grad_slot_name, str(op))
+            if grad_slot_name not in op.output_names:
+                continue
 
             # some forward input maybe stop_gradient=True, e.g. input_mask
             if len(op.output(grad_slot_name)) == 0:
