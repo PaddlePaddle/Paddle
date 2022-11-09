@@ -1656,7 +1656,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "where") {
       if (!with_dynamic_shape) {
-        VLOG(3) << "the where does not support static shape yet";
+        VLOG(3) << "the where op does not support static shape yet";
         return false;
       }
     }
