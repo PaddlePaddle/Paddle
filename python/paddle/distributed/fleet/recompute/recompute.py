@@ -405,7 +405,7 @@ def recompute(function, *args, **kwargs):
 
             import numpy as np
             import paddle
-            form paddle.distributed import fleet
+            from paddle.distributed.fleet.utils import recompute
             import random
 
             # required: gpu
@@ -453,7 +453,7 @@ def recompute(function, *args, **kwargs):
                     nums = len(self.total_func)
                     for i in range(nums):
                         if i in self.recompute_blocks:
-                            inputs = fleet.recompute(self.total_func[i], inputs, **{"preserve_rng_state": True})
+                            inputs = recompute(self.total_func[i], inputs, **{"preserve_rng_state": True})
                         else:
                             inputs = self.total_func[i](inputs)
                     return inputs
