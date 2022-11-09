@@ -123,12 +123,6 @@ inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
   meta_.layout = DataLayout::kMKLDNN;
 }
 
-dnnl::memory::format_tag format() const;
-
-inline void set_format(const dnnl::memory::format_tag format) {
-  format_ = format;
-}
-
 #endif
 
 /* ------------------------------ */

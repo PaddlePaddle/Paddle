@@ -580,7 +580,7 @@ class Engine:
                                     metric.compute(*(outputs + self._labels))
                                 )
                             )
-            else:
+            elif mode == "train":
                 assert isinstance(
                     self._loss, Variable
                 ), "the type of `loss` of the Engine arguments should be Variable."

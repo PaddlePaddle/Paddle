@@ -380,7 +380,7 @@ class OneDNNHandlerT {
     paddle::platform::RecordEvent record_reorder(
         "int_reorder",
         paddle::platform::TracerEventType::UserDefined,
-        2,
+        1,
         paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(
         astream,
@@ -433,7 +433,7 @@ class OneDNNHandlerT {
         paddle::platform::RecordEvent record_reorder(
             "int_reorder",
             paddle::platform::TracerEventType::UserDefined,
-            2,
+            1,
             paddle::platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
@@ -459,7 +459,7 @@ class OneDNNHandlerT {
         paddle::platform::RecordEvent record_reorder(
             "int_reorder",
             paddle::platform::TracerEventType::UserDefined,
-            2,
+            1,
             paddle::platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
@@ -647,7 +647,7 @@ class OneDNNHandlerNoCachingT {
     paddle::platform::RecordEvent record_reorder(
         "int_reorder",
         paddle::platform::TracerEventType::UserDefined,
-        2,
+        1,
         paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(
         astream,
@@ -678,7 +678,7 @@ class OneDNNHandlerNoCachingT {
       paddle::platform::RecordEvent record_reorder(
           "int_reorder",
           paddle::platform::TracerEventType::UserDefined,
-          2,
+          1,
           paddle::platform::EventRole::kUniqueOp);
       reorder_p->execute(
           astream,
@@ -858,6 +858,16 @@ class ReorderOneDNNHandler {
           output->mutable_data(place, ptype_dst_, dst_md.get_size());
       return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
     }
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(
+      DenseTensor* output,
+      const std::vector<int64_t>& dims,
+      const std::vector<int64_t>& strides,
+      Place place) {
+    auto dst_md = dnnl::memory::desc(dims, dtype_dst_, strides);
+    auto dst_data = output->mutable_data(place, ptype_dst_, dst_md.get_size());
+    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(

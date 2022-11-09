@@ -1528,8 +1528,8 @@ paddle::experimental::Tensor PyTensorHook::operator()(
   }
 
   PADDLE_ENFORCE_NOT_NULL(res,
-                          platform::errors::Unavailable(
-                              "Hook function of Tensor return a nullptr."));
+                          paddle::platform::errors::External(
+                              pybind11::detail::error_string().c_str()));
   if (res == Py_None) {
     return var;
   }

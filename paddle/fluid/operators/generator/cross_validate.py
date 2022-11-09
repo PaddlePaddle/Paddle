@@ -20,35 +20,35 @@ import yaml
 from parse_utils import cross_validate, to_named_dict
 
 
-def main(forward_api_yaml_paths, backward_api_yaml_paths):
-    apis = {}
-    for api_yaml_path in chain(forward_api_yaml_paths, backward_api_yaml_paths):
-        with open(api_yaml_path, "rt", encoding="utf-8") as f:
-            api_list = yaml.safe_load(f)
-            if api_list is not None:
-                apis.update(to_named_dict((api_list)))
+def main(forward_op_yaml_paths, backward_op_yaml_paths):
+    ops = {}
+    for op_yaml_path in chain(forward_op_yaml_paths, backward_op_yaml_paths):
+        with open(op_yaml_path, "rt", encoding="utf-8") as f:
+            op_list = yaml.safe_load(f)
+            if op_list is not None:
+                ops.update(to_named_dict((op_list)))
 
-    cross_validate(apis)
+    cross_validate(ops)
 
 
 if __name__ == "__main__":
     current_dir = Path(__file__).parent / "temp"
     parser = argparse.ArgumentParser(
-        description="Parse api yaml into canonical format."
+        description="Parse op yaml into canonical format."
     )
     parser.add_argument(
         '--forward_yaml_paths',
         type=str,
         nargs='+',
-        default=str(current_dir / "api.parsed.yaml"),
-        help="forward api yaml file.",
+        default=str(current_dir / "op .parsed.yaml"),
+        help="forward op yaml file.",
     )
     parser.add_argument(
         '--backward_yaml_paths',
         type=str,
         nargs='+',
-        default=str(current_dir / "backward_api.parsed.yaml"),
-        help="backward api yaml file.",
+        default=str(current_dir / "backward_op .parsed.yaml"),
+        help="backward op yaml file.",
     )
 
     args = parser.parse_args()

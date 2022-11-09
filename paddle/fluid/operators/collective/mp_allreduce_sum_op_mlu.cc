@@ -12,18 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/fluid/operators/collective/c_allreduce_op.h"
 
-namespace phi {
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-KernelSignature EigGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "eig_grad",
-      {"Eigenvalues", "Eigenvectors", "Eigenvalues@GRAD", "Eigenvectors@GRAD"},
-      {},
-      {"X@GRAD"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(eig_grad, phi::EigGradOpArgumentMapping);
+REGISTER_OP_MLU_KERNEL(mp_allreduce_sum,
+                       ops::CAllReduceOpMLUKernel<ops::kRedSum, float>,
+                       ops::CAllReduceOpMLUKernel<ops::kRedSum, plat::float16>,
+                       ops::CAllReduceOpMLUKernel<ops::kRedSum, int>,
+                       ops::CAllReduceOpMLUKernel<ops::kRedSum, int16_t>,
+                       ops::CAllReduceOpMLUKernel<ops::kRedSum, int8_t>,
+                       ops::CAllReduceOpMLUKernel<ops::kRedSum, uint8_t>)

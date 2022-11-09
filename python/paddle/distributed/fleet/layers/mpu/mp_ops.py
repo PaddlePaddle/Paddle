@@ -266,8 +266,6 @@ def _mp_allreduce(
                         use_calc_stream,
                         'ring_id',
                         ring_id,
-                        "use_model_parallel",
-                        use_model_parallel,
                     )
 
             @staticmethod
@@ -289,19 +287,17 @@ def _mp_allreduce(
     ring_id = 0 if group is None else group.id
     if _in_legacy_dygraph():
         if op == ReduceOp.SUM:
-            return _legacy_C_ops.c_allreduce_sum_(
+            return _legacy_C_ops.mp_allreduce_sum_(
                 tensor,
                 'use_calc_stream',
                 use_calc_stream,
                 'ring_id',
                 ring_id,
-                "use_model_parallel",
-                use_model_parallel,
             )
         else:
             raise ValueError("Unknown parameter: {}.".format(op))
 
-    op_type = 'c_allreduce_sum'
+    op_type = 'mp_allreduce_sum'
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
 
@@ -319,7 +315,6 @@ def _mp_allreduce(
         attrs={
             'ring_id': ring_id,
             'use_calc_stream': use_calc_stream,
-            'use_model_parallel': use_model_parallel,
         },
     )
     return out
@@ -602,13 +597,12 @@ def _parallel_linear(
     )
     if axis == 0:
         main_block.append_op(
-            type='c_allreduce_sum',
+            type='mp_allreduce_sum',
             inputs={'X': linear_out},
             outputs={'Out': out},
             attrs={
                 'ring_id': ring_id,
                 'use_calc_stream': True,
-                'use_model_parallel': True,
             },
         )
         if linear.bias is not None:
