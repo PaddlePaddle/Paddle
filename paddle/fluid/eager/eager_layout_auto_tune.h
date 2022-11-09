@@ -218,7 +218,7 @@ EagerLayoutAutotune<paddle::experimental::Scalar>(
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
     paddle::experimental::Scalar* axis) {
-  if (DesiredLayout() == paddle::experimental::DataLayout::UNDEFINED) {
+  if (DesiredLayout() == phi::DataLayout::UNDEFINED) {
     VLOG(4) << "Optimze Layout was not started" << op_name;
     return std::make_shared<EagerLayoutTransformer>(
         op_name, tensors_vector, tensors_vector[0][0].layout());
