@@ -37,10 +37,13 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto& dnnl_engine = dev_ctx.GetEngine();
     std::vector<int> transpose_axis = ctx.Attr<std::vector<int>>("axis");
     int ndims = transpose_axis.size();
-    auto* x = ctx.Input<Tensor>("X");
+    const phi::DenseTensor* x = ctx.Input<Tensor>("X");
     auto* out = ctx.Output<Tensor>("Out");
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+
+    platform::SetInMemDescWithLogicalLayoutFusesSupport(
+        ctx, const_cast<phi::DenseTensor*>(x), x->mem_desc());
 
     if (ndims == 1) {
       framework::TensorCopy(*x, x->place(), out);
@@ -81,8 +84,11 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
-    out->set_mem_desc(reorder_dst_memory_p->get_desc().permute_axes(
-        TransposeToPermuteAxis(transpose_axis)));
+    platform::SetOutMemDescWithLogicalLayoutFusesSupport(
+        ctx,
+        out,
+        reorder_dst_memory_p->get_desc().permute_axes(
+            TransposeToPermuteAxis(transpose_axis)));
   }
 
  private:

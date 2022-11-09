@@ -384,7 +384,7 @@ def nonzero(x, as_tuple=False):
 
     Args:
         x (Tensor): The input tensor variable.
-        as_tuple (bool): Return type, Tensor or tuple of Tensor.
+        as_tuple (bool, optional): Return type, Tensor or tuple of Tensor.
 
     Returns:
         Tensor. The data type is int64.

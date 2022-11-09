@@ -565,7 +565,7 @@ class WrapDecoder(Layer):
         return logits
 
 
-class CrossEntropyCriterion(object):
+class CrossEntropyCriterion:
     def __init__(self, label_smooth_eps):
         self.label_smooth_eps = label_smooth_eps
 
@@ -789,7 +789,7 @@ class Transformer(Layer):
         )
         predict_ids = []
         parent_ids = []
-        ### initialize states of beam search ###
+        # initialize states of beam search
         log_probs = to_variable(
             np.array(
                 [[0.0] + [-inf] * (beam_size - 1)] * batch_size, dtype="float32"

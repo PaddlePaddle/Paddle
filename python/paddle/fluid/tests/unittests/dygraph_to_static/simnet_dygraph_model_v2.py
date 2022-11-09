@@ -17,7 +17,7 @@ import paddle
 from paddle.static import Variable
 
 
-class EmbeddingLayer(object):
+class EmbeddingLayer:
     """
     Embedding Layer class
     """
@@ -50,7 +50,7 @@ class EmbeddingLayer(object):
         return emb
 
 
-class FCLayer(object):
+class FCLayer:
     """
     Fully Connect Layer class
     """
@@ -76,7 +76,7 @@ class FCLayer(object):
         return fc
 
 
-class ConcatLayer(object):
+class ConcatLayer:
     """
     Connection Layer class
     """
@@ -95,7 +95,7 @@ class ConcatLayer(object):
         return concat
 
 
-class ReduceMeanLayer(object):
+class ReduceMeanLayer:
     """
     Reduce Mean Layer class
     """
@@ -114,7 +114,7 @@ class ReduceMeanLayer(object):
         return mean
 
 
-class CosSimLayer(object):
+class CosSimLayer:
     """
     Cos Similarly Calculate Layer
     """
@@ -133,7 +133,7 @@ class CosSimLayer(object):
         return sim
 
 
-class ElementwiseMaxLayer(object):
+class ElementwiseMaxLayer:
     """
     Elementwise Max Layer class
     """
@@ -152,7 +152,7 @@ class ElementwiseMaxLayer(object):
         return max
 
 
-class ElementwiseAddLayer(object):
+class ElementwiseAddLayer:
     """
     Elementwise Add Layer class
     """
@@ -171,7 +171,7 @@ class ElementwiseAddLayer(object):
         return add
 
 
-class ElementwiseSubLayer(object):
+class ElementwiseSubLayer:
     """
     Elementwise Add Layer class
     """
@@ -190,7 +190,7 @@ class ElementwiseSubLayer(object):
         return sub
 
 
-class ConstantLayer(object):
+class ConstantLayer:
     """
     Generate A Constant Layer class
     """
@@ -212,7 +212,7 @@ class ConstantLayer(object):
         return constant
 
 
-class SoftsignLayer(object):
+class SoftsignLayer:
     """
     Softsign Layer class
     """
@@ -425,7 +425,7 @@ class FC(paddle.nn.Layer):
         return self._helper.append_activation(pre_activation, act=self._act)
 
 
-class HingeLoss(object):
+class HingeLoss:
     """
     Hing Loss Calculate class
     """

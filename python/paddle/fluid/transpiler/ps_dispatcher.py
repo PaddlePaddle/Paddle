@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-class PSDispatcher(object):
+class PSDispatcher:
     """
     PSDispatcher is the base class for dispatching vars
     into different pserver instance.

@@ -55,7 +55,7 @@ _global_weight_initializer_ = None
 _global_bias_initializer_ = None
 
 
-class Initializer(object):
+class Initializer:
     """Base class for variable initializers
 
     Defines the common interface of variable initializers.

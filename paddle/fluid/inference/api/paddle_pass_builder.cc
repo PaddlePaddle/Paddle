@@ -170,6 +170,12 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "conv_elementwise_add2_act_fuse_pass",
     "conv_elementwise_add_fuse_pass",
     "multihead_matmul_fuse_pass_v2",
+    "fused_multi_transformer_encoder_pass",
+    "fused_multi_transformer_decoder_pass",
+    "fused_multi_transformer_encoder_fuse_qkv_pass",
+    "fused_multi_transformer_decoder_fuse_qkv_pass",
+    "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",
+    "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",
     "gpu_cpu_map_matmul_v2_to_mul_pass",
     "gpu_cpu_map_matmul_v2_to_matmul_pass",
     "fc_fuse_pass",
@@ -259,6 +265,10 @@ void GpuPassStrategy::EnableMkldnnInt8() {
   LOG(ERROR) << "GPU not support MKL-DNN int8";
 }
 
+void GpuPassStrategy::DisableMkldnnFcPasses() {
+  LOG(ERROR) << "GPU not support MKL-DNN fc";
+}
+
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
@@ -308,6 +318,7 @@ void CpuPassStrategy::EnableMKLDNN() {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
     for (auto &pass : std::vector<std::string>({
+             "squeeze2_transpose2_onednn_fuse_pass",
              "depthwise_conv_mkldnn_pass",    //
              "conv_bn_fuse_pass",             // Execute BN passes again to
              "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
@@ -326,14 +337,16 @@ void CpuPassStrategy::EnableMKLDNN() {
              "matmul_elementwise_add_mkldnn_fuse_pass",    //
              "matmul_activation_mkldnn_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
-             //  "fc_mkldnn_pass",
-             //  "fc_act_mkldnn_fuse_pass",
+             "fc_mkldnn_pass",
+             "fc_act_mkldnn_fuse_pass",
              "fc_elementwise_add_mkldnn_fuse_pass",   //
              "batch_norm_act_fuse_pass",              //
              "softplus_activation_mkldnn_fuse_pass",  //
              "shuffle_channel_mkldnn_detect_pass",    //
              "elt_act_mkldnn_fuse_pass",              //
              "operator_scale_onednn_fuse_pass",       //
+             "operator_unsqueeze2_onednn_fuse_pass",  //
+             "operator_reshape2_onednn_fuse_pass",    //
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
              // "mkldnn_inplace_pass",  // This pass should be activated after
@@ -381,10 +394,11 @@ void CpuPassStrategy::EnableMkldnnInt8() {
 #ifdef PADDLE_WITH_MKLDNN
   if (!use_mkldnn_int8_) {
     passes_.clear();
+    passes_.push_back("simplify_with_basic_ops_pass");
     passes_.push_back("quant_dequant_mkldnn_pass");
     passes_.push_back("mkldnn_placement_pass");
-    passes_.push_back("simplify_with_basic_ops_pass");
     passes_.push_back("constant_folding_pass");
+    passes_.push_back("squeeze2_transpose2_onednn_fuse_pass");
     passes_.push_back("layer_norm_fuse_pass");
     passes_.push_back("attention_lstm_fuse_pass");
     passes_.push_back("seqconv_eltadd_relu_fuse_pass");
@@ -428,6 +442,8 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("reshape_transpose_matmul_mkldnn_fuse_pass");
     passes_.push_back("matmul_elementwise_add_mkldnn_fuse_pass");
     passes_.push_back("operator_scale_onednn_fuse_pass");
+    passes_.push_back("operator_unsqueeze2_onednn_fuse_pass");
+    passes_.push_back("operator_reshape2_onednn_fuse_pass");
     passes_.push_back("cpu_quantize_placement_pass");
     passes_.push_back("cpu_quantize_pass");
     passes_.push_back("cpu_quantize_squash_pass");
@@ -440,6 +456,30 @@ void CpuPassStrategy::EnableMkldnnInt8() {
 #else
   use_mkldnn_int8_ = false;
 #endif
+}
+
+void CpuPassStrategy::DisableMkldnnFcPasses() {
+#ifdef PADDLE_WITH_MKLDNN
+  if (!disable_mkldnn_fc_passes_) {
+    EraseFcMkldnnPasses();
+  }
+  disable_mkldnn_fc_passes_ = true;
+#else
+  disable_mkldnn_fc_passes_ = false;
+#endif
+}
+
+void CpuPassStrategy::EraseFcMkldnnPasses() {
+  std::vector<std::string> fc_passes_to_erase(
+      {"fc_mkldnn_pass",
+       "fc_act_mkldnn_fuse_pass",
+       "fc_elementwise_add_mkldnn_fuse_pass"});
+  for (const auto &pass : fc_passes_to_erase) {
+    int idx = GetPassIndex(pass);
+    if (idx != -1) {
+      passes_.erase(std::begin(passes_) + idx);
+    }
+  }
 }
 
 IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {

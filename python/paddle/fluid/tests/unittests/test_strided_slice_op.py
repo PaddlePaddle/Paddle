@@ -406,7 +406,7 @@ class TestStridedSliceOp_starts_Tensor(OpTest):
         self.outputs = {'Out': self.output}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
+            # 'starts': self.starts,
             'ends': self.ends,
             'strides': self.strides,
             'infer_flags': self.infer_flags,
@@ -442,7 +442,7 @@ class TestStridedSliceOp_ends_Tensor(OpTest):
         self.attrs = {
             'axes': self.axes,
             'starts': self.starts,
-            #'ends': self.ends,
+            # 'ends': self.ends,
             'strides': self.strides,
             'infer_flags': self.infer_flags,
         }
@@ -483,8 +483,8 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
         self.outputs = {'Out': self.output}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
-            #'ends': self.ends,
+            # 'starts': self.starts,
+            # 'ends': self.ends,
             'strides': self.strides,
             'infer_flags': self.infer_flags,
         }
@@ -520,7 +520,7 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            #'strides': self.strides,
+            # 'strides': self.strides,
             'infer_flags': self.infer_flags,
         }
 

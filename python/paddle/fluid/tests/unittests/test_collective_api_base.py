@@ -99,7 +99,7 @@ def create_test_data(shape=None, dtype=None, seed=None):
         raise NotImplementedError("Unsupported dtype for creating test data.")
 
 
-class TestCollectiveAPIRunnerBase(object):
+class TestCollectiveAPIRunnerBase:
     def get_model(
         self, train_prog, startup_prog, rank, indata=None, dtype=None
     ):

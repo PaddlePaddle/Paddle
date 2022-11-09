@@ -246,6 +246,12 @@ PreparedOp PrepareImpl(
   }
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (op.CanCUDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+  }
+#endif
+
 #if defined(PADDLE_WITH_XPU)
   bool is_xpu_unsupport =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&

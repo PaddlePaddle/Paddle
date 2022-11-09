@@ -62,6 +62,17 @@ _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 _all_cap_re = re.compile('([a-z])([A-Z])')
 
 
+def _scope_dist2single(dist_scope):
+    mapping = {
+        "row_parallel_linear": "linear",
+        "column_parallel_linear": "linear",
+        "vocab_parallel_embedding": "embedding",
+        # "parallel_cross_entropy": "cross_entropy", while mp_layer has parallel_cross_entropy,
+        # but there is no parameters so the mapping of parallel_cross_entropy is not neccessary.
+    }
+    return mapping.get(dist_scope, dist_scope)
+
+
 def _convert_camel_to_snake(name):
     s1 = _first_cap_re.sub(r'\1_\2', name)
     return _all_cap_re.sub(r'\1_\2', s1).lower()
@@ -78,7 +89,7 @@ def _addindent(string, indent):
     return s1[0] + '\n' + '\n'.join(s2)
 
 
-class HookRemoveHelper(object):
+class HookRemoveHelper:
     """A HookRemoveHelper that can be used to remove hook."""
 
     next_hook_id = 0
@@ -94,7 +105,7 @@ class HookRemoveHelper(object):
             del hooks[self._hook_id]
 
 
-class Layer(object):
+class Layer:
     """
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
@@ -137,6 +148,7 @@ class Layer(object):
         self.training = True
         if name_scope is None:
             name_scope = _convert_camel_to_snake(self.__class__.__name__)
+            name_scope = _scope_dist2single(name_scope)
         self._full_name = unique_name.generate(name_scope)
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
