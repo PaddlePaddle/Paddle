@@ -39,9 +39,10 @@ def recompute(function, *args, **kwargs):
               preserve_rng_state is True.
     Returns:
         Output of function on args.
+
     Examples:
         .. code-block:: python
-            import numpy as np
+
             import paddle
             from paddle.distributed.fleet.utils import recompute
             import random
@@ -72,7 +73,7 @@ def recompute(function, *args, **kwargs):
                 def __init__(self, input_size=10,
                             recompute_blocks=[1, 3],
                             recompute_kwargs={}):
-                    super().__init__()
+                    super(Naive_fc_net, self).__init__()
                     self.recompute_blocks = recompute_blocks
                     self.recompute_kwargs = recompute_kwargs
                     self.runfunc0 = get_fc_block(0, input_size, is_last=False)
@@ -92,7 +93,6 @@ def recompute(function, *args, **kwargs):
             def run_model(cuda_state, recompute_block=[], recompute_kwargs={}):
                 gen = paddle.seed(10)
                 gen.manual_seed(10)
-                np.random.seed(10)
                 random.seed(10)
                 if cuda_state:
                     paddle.set_cuda_rng_state(cuda_state)
@@ -106,15 +106,14 @@ def recompute(function, *args, **kwargs):
                 param_ = []
                 grad_ = []
                 for _ in range(5):
-                    x_data = np.random.randn(batch_size, input_size).astype(np.float32)
-                    x = paddle.to_tensor(x_data)
+                    x = paddle.rand(shape=[batch_size, input_size], dtype="float32")
                     y_pred = model(x)
                     loss = y_pred.mean()
-                    loss_.append(np.asarray(loss).tolist())
+                    loss_.append(loss.item())
                     loss.backward()
                     optimizer.step()
-                    param_.append(np.asarray(model.parameters()[9]).tolist())
-                    grad_.append(np.asarray(model.parameters()[3]._grad_ivar()).tolist())
+                    param_.append(model.parameters()[9])
+                    grad_.append(model.parameters()[3]._grad_ivar())
                     optimizer.clear_grad()
                 return loss_, param_, grad_
             cuda_state = paddle.get_cuda_rng_state()
