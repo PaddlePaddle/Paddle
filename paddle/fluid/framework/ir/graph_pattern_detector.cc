@@ -1042,6 +1042,25 @@ PDNode *patterns::SeqConvEltAddRelu::operator()(
   return relu_out_var;
 }
 
+PDNode *patterns::Squeeze2Transpose2::operator()() {
+  auto *squeeze2_op_in = pattern->NewNode(squeeze2_op_in_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("squeeze2", "X");
+  auto *squeeze2_op = pattern->NewNode(squeeze2_op_repr())
+                          ->assert_is_op("squeeze2")
+                          ->assert_has_n_outputs(2);
+  auto *squeeze2_op_out = pattern->NewNode(squeeze2_op_out_repr())
+                              ->AsIntermediate()
+                              ->assert_is_op_output("squeeze2", "Out")
+                              ->assert_is_op_input("transpose2", "X");
+  auto *transpose2_op =
+      pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
+
+  squeeze2_op->LinksFrom({squeeze2_op_in}).LinksTo({squeeze2_op_out});
+  transpose2_op->LinksFrom({squeeze2_op_out});
+  return transpose2_op;
+}
+
 PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
                                  bool with_bias,
                                  bool with_relu) {

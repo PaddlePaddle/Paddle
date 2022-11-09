@@ -120,12 +120,10 @@ static void SetOutMemDescWithUnsqueeze2FuseSupport(
   const std::vector<int64_t>& op_tz = out_md.dims();
   std::vector<int64_t> unsqueezed_op_tz(
       op_tz.size() + fused_unsqueeze2_axes.size(), 0);
-
   for (const auto& axis : fused_unsqueeze2_axes) {
     int positive_axis = axis < 0 ? unsqueezed_op_tz.size() + axis : axis;
     unsqueezed_op_tz[positive_axis] = 1;
   }
-
   int j = 0;
   for (size_t i = 0; i < unsqueezed_op_tz.size(); ++i) {
     if (unsqueezed_op_tz[i] == 0) {
@@ -143,20 +141,17 @@ static void SetOutMemDescWithReshape2FuseSupport(
   std::vector<int64_t> fused_reshape2_shape(
       ctx.Attr<std::vector<int>>("fused_reshape2_shape").begin(),
       ctx.Attr<std::vector<int>>("fused_reshape2_shape").end());
-
   const int out_shape_numel = out->numel();
   const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
                                               fused_reshape2_shape.end(),
                                               1,
                                               std::multiplies<int64_t>());
-
   for (size_t i = 0; i < fused_reshape2_shape.size(); ++i) {
     if (fused_reshape2_shape[i] == -1) {
       fused_reshape2_shape[i] = -out_shape_numel / new_shape_numel;
       break;
     }
   }
-
   out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
   out->Resize(phi::make_ddim(fused_reshape2_shape));
 }
@@ -169,8 +164,55 @@ static void SetOutMemDescWithLogicalLayoutFusesSupport(
     SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
   } else if (ctx.HasAttr("fused_reshape2_shape")) {
     SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
+  } else if (ctx.HasAttr("fused_squeeze2_axes")) {
+    out->set_mem_desc(out_md);
+    out->Resize(phi::make_ddim(out_md.dims()));
   } else {
     out->set_mem_desc(out_md);
+  }
+}
+
+static void SetInMemDescWithSqueeze2FuseSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* in,
+    const dnnl::memory::desc& in_md) {
+  const std::vector<int> fused_squeeze2_axes =
+      ctx.Attr<std::vector<int>>("fused_squeeze2_axes");
+  const std::set<int64_t> squeeze2_axes_set(fused_squeeze2_axes.begin(),
+                                            fused_squeeze2_axes.end());
+  const std::vector<int64_t>& x_vec_dims = in_md.dims();
+  std::vector<int64_t> squeezed_op_tz(
+      x_vec_dims.size() - fused_squeeze2_axes.size(), 0);
+
+  int j = 0;
+  for (size_t i = 0; i < x_vec_dims.size(); ++i) {
+    if (squeeze2_axes_set.count(i) ||
+        squeeze2_axes_set.count(i - x_vec_dims.size())) {
+      PADDLE_ENFORCE_EQ(
+          x_vec_dims[i],
+          1,
+          platform::errors::InvalidArgument(
+              "Squeeze2 input '%d' dim should be equal to one, but get '%d'.",
+              i,
+              x_vec_dims[i]));
+      continue;
+    }
+    squeezed_op_tz[j++] = x_vec_dims[i];
+  }
+
+  in->set_mem_desc(in_md.reshape(squeezed_op_tz));
+  in->Resize(phi::make_ddim(squeezed_op_tz));
+}
+
+static void SetInMemDescWithLogicalLayoutFusesSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* in,
+    const dnnl::memory::desc& in_md) {
+  if (ctx.HasAttr("fused_squeeze2_axes")) {
+    SetInMemDescWithSqueeze2FuseSupport(ctx, in, in_md);
+  } else {
+    in->set_mem_desc(in_md);
+    in->Resize(phi::make_ddim(in_md.dims()));
   }
 }
 
