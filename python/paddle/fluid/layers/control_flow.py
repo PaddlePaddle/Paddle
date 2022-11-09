@@ -48,7 +48,6 @@ from ..data_feeder import (
     check_type,
     check_dtype,
 )
-from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 from paddle import _C_ops, _legacy_C_ops
 
@@ -208,7 +207,7 @@ def select_input_with_buildin_type(inputs, mask, name):
         inputs = [to_static_variable(false_var), to_static_variable(true_var)]
         warnings.warn(
             "Return results from different branches in cond are not same type: "
-            "false_var returned by fasle_fn is '{}' and true_var of true_fn is "
+            "false_var returned by false_fn is '{}' and true_var of true_fn is "
             "'{}'".format(type(false_var), type(true_var))
         )
     elif (
@@ -231,7 +230,7 @@ def select_input_with_buildin_type(inputs, mask, name):
     else:
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
-            "returned by fasle_fn is '{}' and true_var of true_fn is '{}'".format(
+            "returned by false_fn is '{}' and true_var of true_fn is '{}'".format(
                 type(false_var), type(true_var)
             )
         )
@@ -537,7 +536,7 @@ def Assert(cond, data=None, summarize=20, name=None):
     return op
 
 
-class BlockGuard(object):
+class BlockGuard:
     """
     BlockGuard class.
 
@@ -570,24 +569,22 @@ class BlockGuardWithCompletion(BlockGuard):
     def __init__(self, rnn):
         if not isinstance(rnn, StaticRNN):
             raise TypeError("BlockGuardWithCompletion takes a StaticRNN")
-        super(BlockGuardWithCompletion, self).__init__(rnn.helper.main_program)
+        super().__init__(rnn.helper.main_program)
         self.rnn = rnn
 
     def __enter__(self):
         self.rnn.status = StaticRNN.IN_RNN_BLOCK
-        return super(BlockGuardWithCompletion, self).__enter__()
+        return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return False
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
         self.rnn._complete_op()
-        return super(BlockGuardWithCompletion, self).__exit__(
-            exc_type, exc_val, exc_tb
-        )
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
-class StaticRNNMemoryLink(object):
+class StaticRNNMemoryLink:
     """
     StaticRNNMemoryLink class.
 
@@ -610,7 +607,7 @@ class StaticRNNMemoryLink(object):
         self.mem = mem
 
 
-class StaticRNN(object):
+class StaticRNN:
     """
     :api_attr: Static Graph
 
@@ -1105,19 +1102,19 @@ class WhileGuard(BlockGuard):
     def __init__(self, while_op):
         if not isinstance(while_op, While):
             raise TypeError("WhileGuard takes a while op")
-        super(WhileGuard, self).__init__(while_op.helper.main_program)
+        super().__init__(while_op.helper.main_program)
         self.while_op = while_op
 
     def __enter__(self):
         self.while_op.status = While.IN_WHILE_BLOCK
-        return super(WhileGuard, self).__enter__()
+        return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
         self.while_op._complete()
-        return super(WhileGuard, self).__exit__(exc_type, exc_val, exc_tb)
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
 def get_inputs_outputs_in_block(
@@ -1182,7 +1179,7 @@ def get_inputs_outputs_in_block(
     return inner_inputs, inner_outputs
 
 
-class While(object):
+class While:
     """
     :api_attr: Static Graph
 
@@ -1954,7 +1951,7 @@ def less_than(x, y, force_cpu=None, cond=None, name=None):
     )
     if cond is not None:
         check_type(cond, "cond", Variable, "less_than")
-    if force_cpu != None:
+    if force_cpu is not None:
         check_type(force_cpu, "force_cpu", bool, "less_than")
 
     helper = LayerHelper("less_than", **locals())
@@ -2455,20 +2452,18 @@ class ConditionalBlockGuard(BlockGuard):
 
     def __init__(self, block):
         check_type(block, "block", ConditionalBlock, "ConditionalBlockGuard")
-        super(ConditionalBlockGuard, self).__init__(block.helper.main_program)
+        super().__init__(block.helper.main_program)
         self.block = block
 
     def __enter__(self):
-        return super(ConditionalBlockGuard, self).__enter__()
+        return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.block.complete()
-        return super(ConditionalBlockGuard, self).__exit__(
-            exc_type, exc_val, exc_tb
-        )
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
-class ConditionalBlock(object):
+class ConditionalBlock:
     '''
     **ConditionalBlock**
 
@@ -2836,10 +2831,10 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             "true_fn returns non-None while false_fn returns None"
         )
 
-    # Merge ture and false output if they are not None
+    # Merge true and false output if they are not None
     if return_names is None:
         is_dy2staic = False
-        return_names = ["no name"] * len(to_sequence(true_output))
+        return_names = ["no name"] * len(_to_sequence_except_dict(true_output))
     else:
         """
         dy2static will set the return_names and expand the return values to UndefinedVar.
@@ -2855,16 +2850,19 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             true_output, false_output, return_names
         )
 
-    if len(to_sequence(true_output)) != len(to_sequence(false_output)):
+    if len(_to_sequence_except_dict(true_output)) != len(
+        _to_sequence_except_dict(false_output)
+    ):
         raise ValueError(
             "true fn returns {} vars, but false fn returns {} vars, which is not equals".format(
-                len(to_sequence(true_output)), len(to_sequence(false_output))
+                len(_to_sequence_except_dict(true_output)),
+                len(_to_sequence_except_dict(false_output)),
             )
         )
     for true_out, false_out, return_name in zip(
-        to_sequence(true_output),
-        to_sequence(false_output),
-        to_sequence(return_names),
+        _to_sequence_except_dict(true_output),
+        _to_sequence_except_dict(false_output),
+        _to_sequence_except_dict(return_names),
     ):
         try:
             assert_same_structure(true_out, false_out, check_types=False)
@@ -2876,10 +2874,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             )
 
     def check_ret_none(seq_true, seq_false, seq_names):
-        length = len(seq_true)
-        for i in range(length):
-            f_true = flatten(seq_true[i])
-            f_false = flatten(seq_false[i])
+        for f_true, f_false, f_name in zip(seq_true, seq_false, seq_names):
+            f_true = flatten(f_true)
+            f_false = flatten(f_false)
             for idx in range(len(f_true)):
                 if (
                     f_true[idx] is None
@@ -2891,7 +2888,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                         "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
                         "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
                         "'None' in ifelse block might lead to error.".format(
-                            seq_names[i],
+                            f_name,
                             type(f_true[idx]),
                             f_true[idx],
                             type(f_false[idx]),
@@ -2900,9 +2897,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                     )
 
     check_ret_none(
-        to_sequence(true_output),
-        to_sequence(false_output),
-        to_sequence(return_names),
+        _to_sequence_except_dict(true_output),
+        _to_sequence_except_dict(false_output),
+        _to_sequence_except_dict(return_names),
     )
 
     if is_dy2staic:
@@ -2923,9 +2920,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     merged_output = list(
         map(
             merge_every_var_list,
-            to_sequence(false_output),
-            to_sequence(true_output),
-            to_sequence(return_names),
+            _to_sequence_except_dict(false_output),
+            _to_sequence_except_dict(true_output),
+            _to_sequence_except_dict(return_names),
         )
     )
     merged_output = pack_sequence_as(false_output, flatten(merged_output))
@@ -2943,6 +2940,24 @@ def change_none_to_undefinedvar(nest1, nest2):
     nest1_out = pack_sequence_as(nest1, list(map(map_fn, flatten(nest1))))
     nest2_out = pack_sequence_as(nest2, list(map(map_fn, flatten(nest2))))
     return nest1_out, nest2_out
+
+
+def _to_sequence_except_dict(x):
+    """
+    In this function, dict is not viewed as sequence.
+    """
+    if isinstance(x, dict):
+        return [x]
+    return to_sequence(x)
+
+
+def _is_sequence_except_dict(x):
+    """
+    In this function, dict is not viewed as sequence.
+    """
+    if isinstance(x, dict):
+        return False
+    return is_sequence(x)
 
 
 def expand_undefined_var(nest1, nest2, names):
@@ -2988,24 +3003,24 @@ def expand_undefined_var(nest1, nest2, names):
     nest1_out = list(
         map(
             map_fn,
-            to_sequence(nest1),
-            to_sequence(nest2),
-            to_sequence(names),
-            [0 for i in to_sequence(names)],
+            _to_sequence_except_dict(nest1),
+            _to_sequence_except_dict(nest2),
+            _to_sequence_except_dict(names),
+            [0 for i in _to_sequence_except_dict(names)],
         )
     )
     nest2_out = list(
         map(
             map_fn,
-            to_sequence(nest2),
-            to_sequence(nest1),
-            to_sequence(names),
-            [1 for i in to_sequence(names)],
+            _to_sequence_except_dict(nest2),
+            _to_sequence_except_dict(nest1),
+            _to_sequence_except_dict(names),
+            [1 for i in _to_sequence_except_dict(names)],
         )
     )
-    if not is_sequence(nest1):
+    if not _is_sequence_except_dict(nest1):
         nest1_out = nest1_out[0]
-    if not is_sequence(nest2):
+    if not _is_sequence_except_dict(nest2):
         nest2_out = nest2_out[0]
     return nest1_out, nest2_out
 
@@ -3158,7 +3173,7 @@ def case(pred_fn_pairs, default=None, name=None):
     return final_fn()
 
 
-class Switch(object):
+class Switch:
     """
     :api_attr: Static Graph
 
@@ -3288,7 +3303,7 @@ class Switch(object):
         return True
 
 
-class IfElseBlockGuard(object):
+class IfElseBlockGuard:
     def __init__(self, is_true, ifelse):
         if not isinstance(ifelse, IfElse):
             raise TypeError("ifelse must be an instance of IfElse class")
@@ -3325,7 +3340,7 @@ class IfElseBlockGuard(object):
         self.ie.status = IfElse.OUT_IF_ELSE_BLOCKS
 
 
-class IfElse(object):
+class IfElse:
     """
     :api_attr: Static Graph
 
@@ -3515,7 +3530,7 @@ class IfElse(object):
         return rlist
 
 
-class DynamicRNN(object):
+class DynamicRNN:
     """
     :api_attr: Static Graph
 

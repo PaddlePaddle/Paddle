@@ -39,7 +39,7 @@ _logger = get_logger(
 fleet = None
 
 
-class FleetUtil(object):
+class FleetUtil:
     """
     FleetUtil provides some common functions for users' convenience.
 
@@ -1880,7 +1880,7 @@ class GPUPSUtil(FleetUtil):
     """
 
     def __init__(self, fs_client=None):
-        super(GPUPSUtil, self).__init__("pslib")
+        super().__init__("pslib")
         self._afs = fs_client
         # self._afs = fs_client._fs
 

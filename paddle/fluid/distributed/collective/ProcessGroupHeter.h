@@ -58,8 +58,6 @@
 
 #include "paddle/fluid/distributed/collective/Common.h"
 
-constexpr const char* HETER_BACKEND_NAME = "HETER_BACKEND";
-
 namespace paddle {
 namespace distributed {
 
@@ -99,9 +97,7 @@ class ProcessGroupHeter : public ProcessGroup {
                     int src_rank,
                     int dst_rank);
 
-  const std::string GetBackendName() const override {
-    return std::string(HETER_BACKEND_NAME);
-  }
+  std::string GetBackendName() const override { return "HETER_BACKEND"; }
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>&,

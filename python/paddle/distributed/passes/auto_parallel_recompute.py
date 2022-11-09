@@ -41,7 +41,7 @@ def _to_be_recomputed(op):
 
 class RecomputeState(ProgramStats):
     def __init__(self, block, ops):
-        super(RecomputeState, self).__init__(block=block, ops=ops)
+        super().__init__(block=block, ops=ops)
         self._block = block
         self._ops = ops
         self.var_op_deps = {}
@@ -284,7 +284,7 @@ def _add_needed_descs_to_block(
 @register_pass("auto_parallel_recompute")
 class RecomputePass(PassBase):
     def __init__(self):
-        super(RecomputePass, self).__init__()
+        super().__init__()
         self.set_attr("checkpoints", None)
         self.set_attr("loss", None)
         self.set_attr("dist_context", None)

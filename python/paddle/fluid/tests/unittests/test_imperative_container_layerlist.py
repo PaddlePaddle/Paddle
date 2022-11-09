@@ -21,7 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class MyLayer(fluid.Layer):
     def __init__(self, layerlist):
-        super(MyLayer, self).__init__()
+        super().__init__()
         self.layerlist = layerlist
 
     def forward(self, x):

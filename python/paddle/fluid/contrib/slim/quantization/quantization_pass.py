@@ -107,7 +107,7 @@ def _check_grandchild_op_node(op_node, grandchild_op_name):
     return False
 
 
-class QuantizationTransformPass(object):
+class QuantizationTransformPass:
     """
     Quantize the ops that have weights. Add quant and dequant ops for
     the quantized ops's inputs.
@@ -1068,7 +1068,7 @@ class QuantizationTransformPass(object):
         return is_skip
 
 
-class QuantizationFreezePass(object):
+class QuantizationFreezePass:
     def __init__(
         self,
         scope,
@@ -1119,6 +1119,7 @@ class QuantizationFreezePass(object):
         self._op_input_rename_map = collections.OrderedDict()
         self._op_output_rename_map = collections.OrderedDict()
         self._quant_var_scale_map = collections.OrderedDict()
+        self._quantized_ops = set()
 
     def apply(self, graph):
         """
@@ -1173,24 +1174,27 @@ class QuantizationFreezePass(object):
                             quant_axis = 1
                         else:
                             quant_axis = 0
-                        quantized_param_v = utils.quant_tensor(
-                            param_v.copy(),
-                            scale_v,
-                            quant_axis,
-                            self._weight_bits,
-                        )
-                        quantized_param_v = np.round(quantized_param_v)
-                        # Weight bias correction
-                        if self._bias_correction == True:
-                            quantized_param_v = utils.bias_correction_w(
-                                param_v,
-                                quantized_param_v,
+                        if input_arg_name not in self._quantized_ops:
+                            self._quantized_ops.add(input_arg_name)
+                            quantized_param_v = utils.quant_tensor(
+                                param_v.copy(),
                                 scale_v,
                                 quant_axis,
-                                weight_bits=self._weight_bits,
+                                self._weight_bits,
                             )
                             quantized_param_v = np.round(quantized_param_v)
-                        self._restore_var(input_arg_name, quantized_param_v)
+                            # Weight bias correction
+                            if self._bias_correction == True:
+                                quantized_param_v = utils.bias_correction_w(
+                                    param_v,
+                                    quantized_param_v,
+                                    scale_v,
+                                    quant_axis,
+                                    weight_bits=self._weight_bits,
+                                )
+                                quantized_param_v = np.round(quantized_param_v)
+                            self._restore_var(input_arg_name, quantized_param_v)
+
                     self._remove_fake_quant_and_dequant_op(graph, op_node)
 
         # Remove all fake dequant op
@@ -1440,7 +1444,7 @@ class QuantizationFreezePass(object):
         )
 
 
-class ConvertToInt8Pass(object):
+class ConvertToInt8Pass:
     def __init__(self, scope, place, quantizable_op_type=None):
         """
         Convert the weights into int8_t type.
@@ -1533,7 +1537,7 @@ class ConvertToInt8Pass(object):
         graph.safe_remove_nodes(all_unused_vars)
 
 
-class TransformForMobilePass(object):
+class TransformForMobilePass:
     def __init__(self):
         """
         This pass is used to convert the frozen graph for paddle-mobile execution.
@@ -1575,7 +1579,7 @@ class TransformForMobilePass(object):
         return graph
 
 
-class OutScaleForTrainingPass(object):
+class OutScaleForTrainingPass:
     def __init__(
         self,
         scope=None,
@@ -1741,7 +1745,7 @@ class OutScaleForTrainingPass(object):
         return "%s@scale" % (var_name)
 
 
-class OutScaleForInferencePass(object):
+class OutScaleForInferencePass:
     def __init__(self, scope=None):
         """
         This pass is used for setting output scales of some operators.
@@ -1811,7 +1815,7 @@ class OutScaleForInferencePass(object):
         return "%s@scale" % (var_name)
 
 
-class AddQuantDequantPass(object):
+class AddQuantDequantPass:
     """
     Quantize the ops that do not have weights, and add quant_dequant op for the
     quantized ops's inputs.
@@ -1874,8 +1878,8 @@ class AddQuantDequantPass(object):
             '%s_grad' % (op) for op in self._quantizable_op_type
         ]
 
-        assert self._scope != None, "scope must not be None."
-        assert self._place != None, "place must not be None."
+        assert self._scope is not None, "scope must not be None."
+        assert self._place is not None, "place must not be None."
 
     def apply(self, graph):
         """
@@ -2083,7 +2087,7 @@ class AddQuantDequantPass(object):
         return quant_var_node, scale_out_node
 
 
-class InsertQuantizeLinear(object):
+class InsertQuantizeLinear:
     """
     Insert quantize_linear and dequantize_linear op before ops.
 
@@ -2660,7 +2664,7 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         return graph
 
 
-class AddQuantDequantPassV2(object):
+class AddQuantDequantPassV2:
     """
     Quantize the ops that do not have weights, and add quant_linear and dequant_linear
     op for the quantized ops's inputs. It is used in the new format of quantization.
@@ -2737,8 +2741,8 @@ class AddQuantDequantPassV2(object):
             '%s_grad' % (op) for op in self._quantizable_op_type
         ]
 
-        assert self._scope != None, "scope must not be None."
-        assert self._place != None, "place must not be None."
+        assert self._scope is not None, "scope must not be None."
+        assert self._place is not None, "place must not be None."
         self.persistable_vars = []
 
     def apply(self, graph):
@@ -2846,7 +2850,7 @@ class AddQuantDequantPassV2(object):
         return graph
 
 
-class ReplaceFakeQuantDequantPass(object):
+class ReplaceFakeQuantDequantPass:
     """
     replace quant-dequant ops with quantize_linear and dequantize_linear ops.
     """
@@ -2878,8 +2882,8 @@ class ReplaceFakeQuantDequantPass(object):
         self._place = _get_paddle_place(place)
         self._scope = scope
         self._quant_bits = quant_bits
-        assert self._scope != None, "scope must not be None."
-        assert self._place != None, "place must not be None."
+        assert self._scope is not None, "scope must not be None."
+        assert self._place is not None, "place must not be None."
 
     def apply(self, graph):
         assert isinstance(
@@ -2983,7 +2987,7 @@ class ReplaceFakeQuantDequantPass(object):
         return "%s@zero_point" % (var_name)
 
 
-class QuantWeightPass(object):
+class QuantWeightPass:
     """
     quant weights and remove weights input quantize_linear node. for example:
     `weight -> quant -> dequant -> conv2d` will be frozen into `weight -> dequant -> conv2d`,
@@ -3027,8 +3031,9 @@ class QuantWeightPass(object):
         self._bias_correction = bias_correction
         self._quant_bits = quant_bits
         self._save_int_weight = save_int_weight
-        assert self._scope != None, "scope must not be None."
-        assert self._place != None, "place must not be None."
+        assert self._scope is not None, "scope must not be None."
+        assert self._place is not None, "place must not be None."
+        self._quantized_ops = set()
 
     def apply(self, graph):
         assert isinstance(
@@ -3066,29 +3071,31 @@ class QuantWeightPass(object):
                 param_v = self._load_var(x_node.name())
                 quant_axis = _op.op().attr("quant_axis")
                 bits_length = _op.op().attr("bit_length")
-                quantized_param_v = utils.quant_tensor(
-                    param_v.copy(),
-                    scale_v,
-                    quant_axis,
-                    bits_length,
-                    onnx_format=True,
-                )
-                if self._bias_correction == True:
-                    quantized_param_v = utils.bias_correction_w(
-                        param_v,
-                        quantized_param_v,
+                if x_node.name() not in self._quantized_ops:
+                    self._quantized_ops.add(x_node.name())
+                    quantized_param_v = utils.quant_tensor(
+                        param_v.copy(),
                         scale_v,
                         quant_axis,
-                        weight_bits=bits_length,
+                        bits_length,
+                        onnx_format=True,
                     )
-                if self._save_int_weight:
-                    # cast weight type to int
-                    if self._quant_bits == 8:
-                        save_weight_dtype = np.int8
-                    quantized_param_v = quantized_param_v.astype(
-                        save_weight_dtype
-                    )
-                self._restore_var(x_node.name(), quantized_param_v)
+                    if self._bias_correction == True:
+                        quantized_param_v = utils.bias_correction_w(
+                            param_v,
+                            quantized_param_v,
+                            scale_v,
+                            quant_axis,
+                            weight_bits=bits_length,
+                        )
+                    if self._save_int_weight:
+                        # cast weight type to int
+                        if self._quant_bits == 8:
+                            save_weight_dtype = np.int8
+                        quantized_param_v = quantized_param_v.astype(
+                            save_weight_dtype
+                        )
+                    self._restore_var(x_node.name(), quantized_param_v)
 
                 for next_op_node in out_node.outputs:
                     graph.update_input_link(out_node, x_node, next_op_node)
@@ -3122,7 +3129,7 @@ class QuantWeightPass(object):
         tensor.set(array, self._place)
 
 
-class AddQuantDequantForInferencePass(object):
+class AddQuantDequantForInferencePass:
     """
     When export quant model, it will traverse to find the output of each op, and then insert the quant/dequant op after it.
     """

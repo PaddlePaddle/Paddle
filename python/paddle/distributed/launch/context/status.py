@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-class Status(object):
+class Status:
     UNINIT = "uninit"
     READY = "ready"
     RUNNING = "running"

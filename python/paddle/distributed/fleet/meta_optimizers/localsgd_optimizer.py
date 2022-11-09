@@ -23,7 +23,7 @@ __all__ = []
 
 class LocalSGDOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(LocalSGDOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
@@ -205,7 +205,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
 
 class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(AdaptiveLocalSGDOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [

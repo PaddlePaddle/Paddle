@@ -30,7 +30,7 @@ else:
 
 class MyLayer(paddle.nn.Layer):
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
         self.linear1 = paddle.nn.Linear(32, 32)
         self.linear2 = paddle.nn.Linear(32, 10)
 

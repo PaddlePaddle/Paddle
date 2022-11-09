@@ -25,7 +25,7 @@ from paddle.fluid.backward import append_backward
 np.random.seed(123)
 
 
-class PyArgsort(object):
+class PyArgsort:
     def __init__(self, input_shape, axis, descending, dtype):
         self.x = np.random.random(input_shape).astype(dtype)
         self.label = np.random.random(input_shape).astype(dtype)

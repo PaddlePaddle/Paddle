@@ -29,6 +29,11 @@ using string::PrettyLogDetail;
 void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
   auto act_types = paddle::platform::GetSupportedActivations();
 
+  // Currently softplus can't be fused with hard_sigmoid
+  act_types.erase(
+      std::remove(act_types.begin(), act_types.end(), "hard_sigmoid"),
+      act_types.end());
+
   for (const auto &act_type : act_types) {
     FuseSoftplusActivation(graph, act_type);
   }
@@ -95,7 +100,7 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
   gpd(graph, handler);
   AddStatis(found_softplus_activation_count);
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
-      found_softplus_activation_count > 0)
+      (found_softplus_activation_count > 0))
     PrettyLogDetail("---    fused %d softplus with %s activation",
                     found_softplus_activation_count,
                     act_type);
@@ -113,7 +118,6 @@ REGISTER_PASS_CAPABILITY(softplus_activation_mkldnn_fuse_pass)
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)
-            .EQ("hard_sigmoid", 0)
             .LE("hard_swish", 0)
             .LE("leaky_relu", 1)
             .LE("mish", 1)

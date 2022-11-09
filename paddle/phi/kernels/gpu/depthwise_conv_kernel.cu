@@ -31,10 +31,6 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          int groups,
                          const std::vector<int>& dilations_t,
                          const std::string& data_format,
-                         bool use_addto,
-                         int workspace_size_MB,
-                         bool exhaustive_search,
-                         bool fuse_relu,
                          DenseTensor* out) {
   DenseTensor* output = out;
   output->mutable_data<T>(dev_ctx.GetPlace());
@@ -44,6 +40,14 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   std::vector<int> paddings = paddings_t;
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+  bool has_fuse_relu = dev_ctx.HasDnnAttr("fuse_relu_before_depthwise_conv");
+  bool fuse_relu =
+      has_fuse_relu
+          ? PADDLE_GET_CONST(
+                bool, dev_ctx.GetDnnAttr("fuse_relu_before_depthwise_conv"))
+          : false;
+
   if (channel_last) {
     PADDLE_ENFORCE_EQ(
         output->dims()[output->dims().size() - 1] %

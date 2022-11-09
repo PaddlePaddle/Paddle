@@ -52,7 +52,7 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-class TestDistRunnerBase(object):
+class TestDistRunnerBase:
     def get_model(
         self,
         batch_size=DEFAULT_BATCH_SIZE,
@@ -586,7 +586,7 @@ class TestDistRunnerBase(object):
         print_to_out(out_losses)
 
 
-class TestParallelDyGraphRunnerBase(object):
+class TestParallelDyGraphRunnerBase:
     def get_model(self):
         raise NotImplementedError(
             "get_model should be implemented by child classes."
@@ -1330,8 +1330,8 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --diff_batch"
         self.__use_cuda = False
         self.__use_xpu = False
-        assert self.__use_cuda == False, "gloo not support use cuda"
-        assert self.__use_xpu == False, "gloo not support use xpu"
+        assert not self.__use_cuda, "gloo not support use cuda"
+        assert not self.__use_xpu, "gloo not support use xpu"
         tr_cmd += " --use_cpu"
         env.update(
             {
@@ -1345,7 +1345,7 @@ class TestDistBase(unittest.TestCase):
             }
         )
 
-        assert self._use_dgc == False, "gloo not support use dgc"
+        assert not self._use_dgc, "gloo not support use dgc"
 
         if self._accumulate_gradient:
             tr_cmd += " --accumulate_gradient"
@@ -1353,7 +1353,7 @@ class TestDistBase(unittest.TestCase):
         if self._find_unused_parameters:
             tr_cmd += " --find_unused_parameters"
 
-        assert self._pipeline_mode == False, "gloo not support use pipeline"
+        assert not self._pipeline_mode, "gloo not support use pipeline"
 
         if self._enable_backward_deps:  # build strategy, save it
             tr_cmd += " --enable_backward_deps"
@@ -1361,8 +1361,8 @@ class TestDistBase(unittest.TestCase):
         if self._fuse_all_reduce is not None:
             tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
 
-        assert self._use_fleet_api == False, "gloo not support use fleet api"
-        assert self._use_fleet_api_20 == False, "gloo not support use fleet api"
+        assert not self._use_fleet_api, "gloo not support use fleet api"
+        assert not self._use_fleet_api_20, "gloo not support use fleet api"
         return tr_cmd, env
 
     def _get_nccl2_trainer_cmd(

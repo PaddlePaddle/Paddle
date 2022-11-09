@@ -137,12 +137,9 @@ def _conv_nd(
             stride,
             padding,
             padding_algorithm,
-            groups,
             dilation,
+            groups,
             data_format,
-            False,
-            -1,
-            False,
         )
         if bias is not None:
             channel_dim = (
@@ -175,10 +172,6 @@ def _conv_nd(
             groups,
             dilation,
             data_format,
-            False,
-            -1,
-            False,
-            False,
             use_cudnn,
         )
         if bias is not None:
@@ -205,9 +198,6 @@ def _conv_nd(
             groups,
             dilation,
             data_format,
-            False,
-            -1,
-            False,
         )
         if bias is not None:
             channel_dim = (
@@ -378,26 +368,22 @@ def conv1d(
 
           import paddle
           import paddle.nn.functional as F
-          import numpy as np
-          x = np.array([[[4, 8, 1, 9],
-            [7, 2, 0, 9],
-            [6, 9, 2, 6]]]).astype(np.float32)
-          w=np.array(
-          [[[9, 3, 4],
-            [0, 0, 7],
-            [2, 5, 6]],
-           [[0, 3, 4],
-            [2, 9, 7],
-            [5, 6, 8]]]).astype(np.float32)
 
-          x_var = paddle.to_tensor(x)
-          w_var = paddle.to_tensor(w)
-          y_var = F.conv1d(x_var, w_var)
-          y_np = y_var.numpy()
-          print(y_np)
+          x = paddle.to_tensor([[[4, 8, 1, 9],
+                                 [7, 2, 0, 9],
+                                 [6, 9, 2, 6]]], dtype="float32")
+          w = paddle.to_tensor([[[9, 3, 4],
+                                 [0, 0, 7],
+                                 [2, 5, 6]],
+                                [[0, 3, 4],
+                                 [2, 9, 7],
+                                 [5, 6, 8]]], dtype="float32")
 
-          # [[[133. 238.]
-          #   [160. 211.]]]
+          y = F.conv1d(x, w)
+          print(y)
+          # Tensor(shape=[1, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+          #        [[[133., 238.],
+          #          [160., 211.]]])
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:
@@ -486,21 +472,33 @@ def conv1d(
     x = unsqueeze(x, axis=[squeeze_aixs])
 
     if in_dygraph_mode():
-        out = getattr(_C_ops, l_type)(
-            x,
-            weight,
-            stride,
-            padding,
-            padding_algorithm,
-            groups,
-            dilation,
-            conv2d_data_format,
-            False,
-            -1,
-            False,
-            False,
-            use_cudnn,
-        )
+        if l_type == 'conv2d':
+            out = _C_ops.conv2d(
+                x,
+                weight,
+                stride,
+                padding,
+                padding_algorithm,
+                dilation,
+                groups,
+                conv2d_data_format,
+            )
+        else:
+            out = getattr(_C_ops, l_type)(
+                x,
+                weight,
+                stride,
+                padding,
+                padding_algorithm,
+                groups,
+                dilation,
+                conv2d_data_format,
+                False,
+                -1,
+                False,
+                False,
+                use_cudnn,
+            )
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
     elif _in_legacy_dygraph():
@@ -746,12 +744,9 @@ def conv2d(
                 stride,
                 padding,
                 padding_algorithm,
-                groups,
                 dilation,
+                groups,
                 data_format,
-                False,
-                -1,
-                False,
             )
             if bias is not None:
                 out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
@@ -906,24 +901,20 @@ def conv1d_transpose(
     Examples:
         .. code-block:: python
 
-
-
           import paddle
           import paddle.nn.functional as F
-          import numpy as np
 
           # shape: (1, 2, 4)
-          x=np.array([[[4, 0, 9, 7],
-                       [8, 0, 9, 2,]]]).astype(np.float32)
+          x = paddle.to_tensor([[[4, 0, 9, 7],
+                                [8, 0, 9, 2,]]], dtype="float32")
           # shape: (2, 1, 2)
-          w=np.array([[[7, 0]],
-                      [[4, 2]]]).astype(np.float32)
-          x_var = paddle.to_tensor(x)
-          w_var = paddle.to_tensor(w)
-          y_var = F.conv1d_transpose(x_var, w_var)
-          print(y_var)
+          w = paddle.to_tensor([[[7, 0]],
+                                [[4, 2]]], dtype="float32")
 
-          # [[[60. 16. 99. 75.  4.]]]
+          y = F.conv1d_transpose(x, w)
+          print(y)
+          # Tensor(shape=[1, 1, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+          #        [[[60., 16., 99., 75., 4. ]]])
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:

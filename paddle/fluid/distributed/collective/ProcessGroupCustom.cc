@@ -19,7 +19,6 @@
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/place.h"
 
 DECLARE_bool(xccl_blocking_wait);
@@ -386,14 +385,25 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
 
   for (auto& place : places) {
     phi::DeviceGuard guard(place);
-    auto dt = full({1}, 0, phi::DataType::FLOAT32, place);
-    barrierTensors.push_back(
-        *std::dynamic_pointer_cast<phi::DenseTensor>(dt.impl()));
+    phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim({1}));
+    auto allocator = std::unique_ptr<phi::Allocator>(
+        new paddle::experimental::DefaultAllocator(place));
+    barrierTensors.emplace_back(allocator.get(), meta);
   }
   auto task = ProcessGroupCustom::AllReduce(barrierTensors, barrierTensors);
   auto xccl_task = dynamic_cast<ProcessGroupCustom::CustomTask*>(task.get());
   xccl_task->barrierTensors_ = std::move(barrierTensors);
   return task;
+}
+
+phi::ccl::CCLComm ProcessGroupCustom::CustomCCLComm(const Place& place) const {
+  std::vector<Place> places = {place};
+  const auto& iter = places_to_customcomm_.find(GetKeyFromPlaces(places));
+  PADDLE_ENFORCE_NE(iter,
+                    places_to_customcomm_.end(),
+                    platform::errors::InvalidArgument(
+                        "Cannot find nccl comm in process group."));
+  return iter->second[0]->GetCustomCCLComm();
 }
 
 }  //  namespace distributed

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-class FileSystem(object):
+class FileSystem:
     """
     A file system that support hadoop client desc.
 
@@ -34,9 +34,9 @@ class FileSystem(object):
         passwd=None,
         hadoop_bin="",
     ):
-        assert user != None
-        assert passwd != None
-        assert hadoop_bin != None
+        assert user is not None
+        assert passwd is not None
+        assert hadoop_bin is not None
         import ps_pb2 as pslib
 
         self.fs_client = pslib.FsClientParameter()
@@ -54,7 +54,7 @@ class FileSystem(object):
         return self.fs_client
 
 
-class MPIHelper(object):
+class MPIHelper:
     """
     MPIHelper is a wrapper of mpi4py, support get_rank get_size etc.
     Args:

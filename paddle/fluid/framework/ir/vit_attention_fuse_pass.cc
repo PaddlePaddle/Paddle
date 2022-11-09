@@ -56,6 +56,22 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+bool HasScale(OpDesc* const op_ptr,
+              std::string* name,
+              std::string regexp = "Input_scale_") {
+  name->clear();
+  std::unordered_map<std::string, Attribute> attr_map = op_ptr->GetAttrMap();
+  std::unordered_map<std::string, Attribute>::iterator iter;
+  int len = regexp.size();
+  for (iter = attr_map.begin(); iter != attr_map.end(); iter++) {
+    if (regexp == iter->first.substr(0, len)) {
+      *name = iter->first;
+      return true;
+    }
+  }
+  return false;
+}
+
 void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   const std::string pattern_name = "vit_attention_fuse";
@@ -85,13 +101,13 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
     }
     // refactor W and Bias
     auto* w_tensor =
-        scope->FindVar(matmul0_in_y->Name())->GetMutable<LoDTensor>();
+        scope->FindVar(matmul0_in_y->Name())->GetMutable<phi::DenseTensor>();
     auto w_dims =
         phi::make_ddim({w_tensor->dims()[0], 3, w_tensor->dims()[1] / 3});
     w_tensor->Resize(w_dims);
 
-    auto* b_tensor =
-        scope->FindVar(elementwise0_in_y->Name())->GetMutable<LoDTensor>();
+    auto* b_tensor = scope->FindVar(elementwise0_in_y->Name())
+                         ->GetMutable<phi::DenseTensor>();
     auto bias_dims = phi::make_ddim({3, b_tensor->dims()[0] / 3});
     b_tensor->Resize(bias_dims);
 
@@ -102,6 +118,16 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
     desc.SetAttr("head_number", static_cast<int>(shape[1]));
     float alpha = PADDLE_GET_CONST(float, scale1_op->Op()->GetAttr("scale"));
     desc.SetAttr("alpha", alpha);
+
+    // int8 for fc
+    std::string scale_name;
+    if (HasScale(matmul0_op->Op(), &scale_name)) {
+      desc.SetAttr("Input_scale", matmul0_op->Op()->GetAttr(scale_name));
+    }
+    if (HasScale(elementwise0_op->Op(), &scale_name, "Out")) {
+      desc.SetAttr("fc_out_threshold",
+                   elementwise0_op->Op()->GetAttr(scale_name));
+    }
 
     // Create a new node for the fused op.
     auto vit_attention_node = graph->CreateOpNode(&desc);

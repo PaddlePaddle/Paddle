@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-class DeviceWorker(object):
+class DeviceWorker:
     """
     DeviceWorker is an abstract class, which generates worker desc.
     This class is an inner class that we do computation logics within
@@ -83,7 +83,7 @@ class Hogwild(DeviceWorker):
 
     def __init__(self):
         """Init."""
-        super(Hogwild, self).__init__()
+        super().__init__()
 
     def _gen_worker_desc(self, trainer_desc):
         """
@@ -109,7 +109,7 @@ class Hogwild(DeviceWorker):
         dense_table_set = set()
         program_id = str(id(self._program))
         print("device worker program id:", program_id)
-        if self._program == None:
+        if self._program is None:
             print("program of current device worker is not configured")
             exit(-1)
         opt_info = self._program._fleet_opt
@@ -232,7 +232,7 @@ class DownpourLite(DeviceWorker):
 
     def __init__(self):
         """Init."""
-        super(DownpourLite, self).__init__()
+        super().__init__()
 
     def _gen_worker_desc(self, trainer_desc):
         """
@@ -259,7 +259,7 @@ class DownpourLite(DeviceWorker):
         dense_table_set = set()
         program_id = str(id(self._program))
         print("device worker program id:", program_id)
-        if self._program == None:
+        if self._program is None:
             print("program of current device worker is not configured")
             exit(-1)
         opt_info = self._program._fleet_opt
@@ -381,7 +381,7 @@ class DownpourSGD(DeviceWorker):
         Init.
         initialize downpourSGD device worker
         """
-        super(DownpourSGD, self).__init__()
+        super().__init__()
 
     def _gen_worker_desc(self, trainer_desc):
         """
@@ -392,7 +392,7 @@ class DownpourSGD(DeviceWorker):
         """
         dense_table_set = set()
         program_id = str(id(self._program))
-        if self._program == None:
+        if self._program is None:
             print("program of current device worker is not configured")
             exit(-1)
         opt_info = self._program._fleet_opt
@@ -500,7 +500,7 @@ class DownpourSGDOPT(DeviceWorker):
         Init.
         initialize downpourSGDOPT device worker
         """
-        super(DownpourSGDOPT, self).__init__()
+        super().__init__()
 
     def _gen_worker_desc(self, trainer_desc):
         """
@@ -511,7 +511,7 @@ class DownpourSGDOPT(DeviceWorker):
         """
         dense_table_set = set()
         program_id = str(id(self._program))
-        if self._program == None:
+        if self._program is None:
             print("program of current device worker is not configured")
             exit(-1)
         opt_info = self._program._fleet_opt
@@ -615,7 +615,7 @@ class Section(DeviceWorker):
 
     def __init__(self):
         """Init."""
-        super(Section, self).__init__()
+        super().__init__()
 
     def _gen_worker_desc(self, trainer_desc):
         """
@@ -665,7 +665,7 @@ class HeterSection(DeviceWorker):
 
     def __init__(self):
         """Init."""
-        super(HeterSection, self).__init__()
+        super().__init__()
 
     def _gen_worker_desc(self, trainer_desc):
         """
@@ -695,7 +695,7 @@ class HeterSection(DeviceWorker):
         )
 
 
-class DeviceWorkerFactory(object):
+class DeviceWorkerFactory:
     def _create_device_worker(self, worker_type):
         classname = worker_type.capitalize()
         return globals()[classname]()

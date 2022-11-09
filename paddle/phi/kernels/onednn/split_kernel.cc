@@ -69,22 +69,28 @@ void SplitWithNumKernel(const Context& dev_ctx,
                         std::vector<DenseTensor*> outs) {
   int axis_value = axis_scalar.to<int>();
   auto input_axis_dim = x.dims().at(axis_value);
-  std::vector<int64_t> sections_vec;
-  for (int i = 0; i < num; ++i) {
-    sections_vec.push_back(input_axis_dim / num);
-  }
+  const std::vector<int64_t> sections_vec(num, input_axis_dim / num);
+
   IntArray sections(sections_vec);
   SplitKernel<T, Context>(dev_ctx, x, sections, axis_scalar, outs);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    split, OneDNN, ONEDNN, phi::SplitKernel, float, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(split,
+                   OneDNN,
+                   ONEDNN,
+                   phi::SplitKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}
 
 PD_REGISTER_KERNEL(split_with_num,
                    OneDNN,
                    ONEDNN,
                    phi::SplitWithNumKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}
