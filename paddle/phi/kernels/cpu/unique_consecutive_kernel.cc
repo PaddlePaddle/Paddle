@@ -19,8 +19,6 @@
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/phi/core/utils/data_type.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -33,7 +31,7 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
                              DenseTensor* out,
                              DenseTensor* index,
                              DenseTensor* counts) {
-  auto data_type = static_cast<phi::DataType>(dtype);
+  auto data_type = var_type_map[dtype];
   if (data_type == phi::DataType::INT32) {
     PADDLE_ENFORCE_LE(
         x.numel(),

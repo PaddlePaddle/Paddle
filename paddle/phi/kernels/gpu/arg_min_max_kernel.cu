@@ -29,7 +29,6 @@ namespace cub = hipcub;
 #include <limits>
 
 #include "paddle/phi/core/ddim.h"
-#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 
@@ -216,7 +215,7 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
     return;
   }
   phi::VisitDataTypeTiny(
-      static_cast<phi::DataType>(dtype),
+      var_type_map[dtype],
       VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }

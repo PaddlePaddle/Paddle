@@ -149,7 +149,7 @@ void ArgMinMaxKernel(const Context& dev_ctx,
     return;
   }
   phi::VisitDataTypeTiny(
-      static_cast<phi::DataType>(dtype),
+      var_type_map[dtype],
       VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }
