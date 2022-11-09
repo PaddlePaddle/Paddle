@@ -414,14 +414,14 @@ class RecomputePass(PassBase):
                         )
 
                     ckpt_ops_dict[fwd_op_id][0] = False
-                add_dependencies_for_two_ops(
-                    main_block,
-                    idx,
-                    ops[i - 1],
-                    grad_op,
-                    self._dist_context,
-                    sync=False,
-                )
+                    add_dependencies_for_two_ops(
+                        main_block,
+                        idx,
+                        ops[i - 1],
+                        grad_op,
+                        self._dist_context,
+                        sync=False,
+                    )
         main_program._sync_with_cpp()
 
     def reset_op_dist_attr(self, op, var_name_dict):
