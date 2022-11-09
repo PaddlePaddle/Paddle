@@ -30,7 +30,7 @@ from paddle.distributed.auto_parallel.utils import (
 )
 from paddle.distributed.auto_parallel.utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
-    add_dependencies_for_two_ops,
+    insert_dependencies_for_two_ops,
 )
 
 
@@ -415,11 +415,15 @@ class RecomputePass(PassBase):
                         )
 
                     ckpt_ops_dict[fwd_op_id][0] = False
+                    print()
+                    print(str(ops[i - 1]))
+                    print(str(rc_op))
+                    print()
                     if rc_op:
-                        add_dependencies_for_two_ops(
+                        insert_dependencies_for_two_ops(
                             main_block,
                             idx,
-                            ops[i - 1],
+                            main_block.ops[rc_op.idx - 1],
                             rc_op,
                             self._dist_context,
                             sync=False,

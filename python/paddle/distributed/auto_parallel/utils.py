@@ -2091,7 +2091,7 @@ def _copy_dist_attr_from_cpp_for_graph(dist_context):
             _copy_op_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr)
 
 
-def add_dependencies_for_two_ops(
+def insert_dependencies_for_two_ops(
     block, idx, op1, op2, dist_context, is_recompute=False, sync=False
 ):
     """
@@ -2134,14 +2134,13 @@ def add_dependencies_for_two_ops(
         idx,
         type='nop',
         inputs={
-            "Dep": first_var,
-            "X": second_var,
+            "X": first_var,
         },
         outputs={"Out": second_var},
     )
-    depend_op.desc.set_type("depend")
+    # depend_op.desc.set_type("depend")
     depend_op._set_attr(OP_ROLE_KEY, OpRole.Backward)
-    depend_op.desc.set_input("Dep", [first_var.name])
+    # depend_op.desc.set_input("Dep", [first_var.name])
     # self.desc.set_output(out_proto.name, out_arg_names)
 
     naive_set_dist_op_attr_for_program_by_mesh(
