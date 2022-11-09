@@ -366,7 +366,7 @@ class GroupShardedStage2(nn.Layer):
             ), "Only support comm overlap strategy for single optimizer"
         self._sharding_optimizers[0]._set_reduce_overlap(reduce_overlap)
 
-    def _get_acc_grad_fn(self):
+    def _get_scaled_grad_fn(self):
         @paddle.autograd.no_grad()
         def scale(grad):
             grad.scale_(self._world_size_scaling)
@@ -517,7 +517,7 @@ class GroupShardedStage2(nn.Layer):
             return
 
         for index, param in enumerate(self._trainable_params):
-            param._register_grad_hook(self._get_acc_grad_fn())
+            param._register_grad_hook(self._get_scaled_grad_fn())
 
             dst_rank = self._trainable_param2rank[param.name]
 
