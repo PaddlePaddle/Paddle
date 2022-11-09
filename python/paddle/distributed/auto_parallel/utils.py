@@ -2141,7 +2141,7 @@ def add_dependencies_for_two_ops(
     )
     depend_op.desc.set_type("depend")
     depend_op._set_attr(OP_ROLE_KEY, OpRole.Backward)
-    depend_op.desc.set_input("Dep", [first_var])
+    depend_op.desc.set_input("Dep", [first_var.name])
     # self.desc.set_output(out_proto.name, out_arg_names)
 
     naive_set_dist_op_attr_for_program_by_mesh(
