@@ -311,12 +311,13 @@ def _multi_tensor_adam_init(
 
     optimizer._create_accumulators(target_block, parameters)
 
-    optimizer.beta1_pow_acc[param_group_idx] = optimizer._get_accumulator(
-        optimizer._beta1_pow_acc_str, parameters[0]
-    )
-    optimizer.beta2_pow_acc[param_group_idx] = optimizer._get_accumulator(
-        optimizer._beta2_pow_acc_str, parameters[0]
-    )
+    if parameters:
+        optimizer.beta1_pow_acc[param_group_idx] = optimizer._get_accumulator(
+            optimizer._beta1_pow_acc_str, parameters[0]
+        )
+        optimizer.beta2_pow_acc[param_group_idx] = optimizer._get_accumulator(
+            optimizer._beta2_pow_acc_str, parameters[0]
+        )
 
     for param in parameters:
         moment1 = optimizer._get_accumulator(optimizer._moment1_acc_str, param)
@@ -368,7 +369,8 @@ def _append_optimize_multi_tensor_adam_op(
 
     if isinstance(parameters_and_grads, list):
 
-        lr = optimizer._create_param_lr(parameters_and_grads[0])
+        if parameters_and_grads:
+            lr = optimizer._create_param_lr(parameters_and_grads[0])
 
         for param_and_grad in parameters_and_grads:
             if param_and_grad[1] is None:
@@ -389,7 +391,7 @@ def _append_optimize_multi_tensor_adam_op(
     else:
 
         for param_and_grad in parameters_and_grads['params']:
-            if lr == None:
+            if lr is None:
                 lr = optimizer._create_param_lr(param_and_grad)
 
             if param_and_grad[1] is None:
@@ -444,6 +446,7 @@ def _append_optimize_multi_tensor_adam_op(
 
                 if in_dygraph_mode():
                     found_inf = optimizer._get_auxiliary_var('found_inf')
+
                     _, _, _, _, _, _ = _C_ops.multi_tensor_adam_(
                         optimizer._param_dict[key][param_group_idx],
                         grad_dict[key],
@@ -463,8 +466,6 @@ def _append_optimize_multi_tensor_adam_op(
                         find_master,
                         False,
                     )
-
-                    return None
 
                 else:
                     _, _, _, _, _, _ = _legacy_C_ops.multi_tensor_adam(
@@ -497,8 +498,6 @@ def _append_optimize_multi_tensor_adam_op(
                         'multi_precision',
                         find_master,
                     )
-
-                    return None
 
             else:
                 inputs = {
@@ -545,4 +544,4 @@ def _append_optimize_multi_tensor_adam_op(
                     attrs=attrs,
                     stop_gradient=True,
                 )
-    return multi_tensor_adam_op
+    return None

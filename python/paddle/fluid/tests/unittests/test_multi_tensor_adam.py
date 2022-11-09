@@ -108,13 +108,14 @@ class TestMultiTensorAdam(unittest.TestCase):
         multi_precision = True if test_fp16 else False
         if use_multi_tensor_adam:
             if not use_adamw:
-                opt = paddle.incubate.optimizer.MultiTensorAdam(
+                opt = paddle.optimizer.Adam(
                     learning_rate=learning_rate,
                     parameters=input_paramters,
                     weight_decay=0.01,
                     beta1=beta1,
                     beta2=beta2,
                     multi_precision=multi_precision,
+                    use_multi_tensor=True,
                 )
             else:
                 opt = paddle.incubate.optimizer.MultiTensorAdamW(
@@ -281,12 +282,13 @@ class TestStaticMultiTensorAdam(unittest.TestCase):
                 beta1 = beta1_init
                 beta2 = beta2_init
                 epsilon = epsilon_init
-                multi_tensor_adam = paddle.incubate.optimizer.MultiTensorAdam(
+                multi_tensor_adam = paddle.optimizer.Adam(
                     learning_rate=0.01,
                     beta1=beta1,
                     beta2=beta2,
                     epsilon=epsilon,
                     grad_clip=clip,
+                    use_multi_tensor=True,
                 )
 
                 multi_tensor_adam.minimize(loss)

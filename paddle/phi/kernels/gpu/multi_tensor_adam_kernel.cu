@@ -116,61 +116,35 @@ struct MultiTensorAdamFunctor {
     int stride = blockDim.x * VecSize;
     int idx = threadIdx.x * VecSize;
 
-    for (; idx < n; idx += stride) {
+    for (; idx + VecSize <= n; idx += stride) {
       phi::AlignedVector<T, VecSize> g_vec;
-      phi::AlignedVector<T, VecSize> p_vec;
-      phi::AlignedVector<MT, VecSize> mp_vec;
-      phi::AlignedVector<MT, VecSize> mom1_vec;
-      phi::AlignedVector<MT, VecSize> mom2_vec;
-      if (idx <= n - VecSize) {
-        if (IsMultiPrecision) {
-          phi::Load<MT, VecSize>(mp_ptr + idx, &mp_vec);
-        } else {
-          phi::Load<T, VecSize>(p_ptr + idx, &p_vec);
-        }
-        phi::Load<T, VecSize>(g_ptr + idx, &g_vec);
-        phi::Load<MT, VecSize>(mom1_ptr + idx, &mom1_vec);
-        phi::Load<MT, VecSize>(mom2_ptr + idx, &mom2_vec);
-      } else if (idx < n) {
-        int size = n - idx;
-#pragma unroll
-        for (int j = 0; j < size; j++) {
-          if (IsMultiPrecision) {
-            mp_vec[j] = mp_ptr[idx + j];
-          } else {
-            p_vec[j] = p_ptr[idx + j];
-          }
-          g_vec[j] = g_ptr[idx + j];
-          mom1_vec[j] = static_cast<MT>(mom1_ptr[idx + j]);
-          mom2_vec[j] = static_cast<MT>(mom2_ptr[idx + j]);
-        }
-#pragma unroll
-        for (int j = size; j < VecSize; j++) {
-          g_vec[j] = T(0);
-          p_vec[j] = T(0);
-          mp_vec[j] = MT(0);
-          mom1_vec[j] = MT(0);
-          mom2_vec[j] = MT(0);
-        }
-      } else {
-#pragma unroll
-        for (int j = 0; j < VecSize; j++) {
-          g_vec[j] = T(0);
-          p_vec[j] = T(0);
-          mp_vec[j] = MT(0);
-          mom1_vec[j] = MT(0);
-          mom2_vec[j] = MT(0);
-        }
-      }
+      phi::AlignedVector<MT, VecSize> mom1_vec, mom2_vec, mp_vec;
+
+      phi::Load(g_ptr + idx, &g_vec);
+      phi::Load(mom1_ptr + idx, &mom1_vec);
+      phi::Load(mom2_ptr + idx, &mom2_vec);
 
 #pragma unroll
-      for (int j = 0; j < VecSize; j++) {
-        MT p = IsMultiPrecision ? mp_vec[j] : static_cast<MT>(p_vec[j]);
+      for (int j = 0; j < VecSize; ++j) {
         UpdateMoments(&mom1_vec[j],
                       &mom2_vec[j],
                       static_cast<MT>(g_vec[j]),
                       beta1,
                       beta2);
+      }
+      phi::Store(mom1_vec, mom1_ptr + idx);
+      phi::Store(mom2_vec, mom2_ptr + idx);
+
+      auto& p_vec = g_vec;
+      if (IsMultiPrecision) {
+        phi::Load(mp_ptr + idx, &mp_vec);
+      } else {
+        phi::Load(p_ptr + idx, &p_vec);
+      }
+
+#pragma unroll
+      for (int j = 0; j < VecSize; ++j) {
+        MT p = IsMultiPrecision ? mp_vec[j] : static_cast<MT>(p_vec[j]);
         p = UpdateParameter(p,
                             mom1_vec[j],
                             mom2_vec[j],
@@ -179,29 +153,40 @@ struct MultiTensorAdamFunctor {
                             lr,
                             epsilon,
                             decay);
-        mp_vec[j] = p;
+        if (IsMultiPrecision) {
+          mp_vec[j] = p;
+        }
+        p_vec[j] = static_cast<T>(p);
       }
 
-      if (idx <= n - VecSize) {
-        phi::Store<MT, VecSize>(mom1_vec, mom1_ptr + idx);
-        phi::Store<MT, VecSize>(mom2_vec, mom2_ptr + idx);
-        if (IsMultiPrecision) {
-          phi::Store<MT, VecSize>(mp_vec, mp_ptr + idx);
-        }
-        for (int j = 0; j < VecSize; j++) {
-          p_ptr[idx + j] = static_cast<T>(mp_vec[j]);
-        }
-      } else if (idx < n) {
-        int size = n - idx;
+      if (IsMultiPrecision) {
+        phi::Store(mp_vec, mp_ptr + idx);
+      }
+
+      // FIXME(zengjinle): I do not know why if I use
+      // phi::Store here, the calculation results would have
+      // some differences.
 #pragma unroll
-        for (int j = 0; j < size; j++) {
-          if (IsMultiPrecision) {
-            mp_ptr[idx + j] = mp_vec[j];
-          }
-          p_ptr[idx + j] = static_cast<T>(mp_vec[j]);
-          mom1_ptr[idx + j] = mom1_vec[j];
-          mom2_ptr[idx + j] = mom2_vec[j];
-        }
+      for (int j = 0; j < VecSize; ++j) {
+        p_ptr[idx + j] = p_vec[j];
+      }
+    }
+
+    for (; idx < n; ++idx) {
+      MT mom1 = mom1_ptr[idx];
+      MT mom2 = mom2_ptr[idx];
+      MT p = IsMultiPrecision ? mp_ptr[idx] : static_cast<MT>(p_ptr[idx]);
+      MT g = static_cast<MT>(g_ptr[idx]);
+
+      UpdateMoments(&mom1, &mom2, g, beta1, beta2);
+      p = UpdateParameter(
+          p, mom1, mom2, beta1_pow, beta2_pow, lr, epsilon, decay);
+
+      mom1_ptr[idx] = mom1;
+      mom2_ptr[idx] = mom2;
+      p_ptr[idx] = static_cast<T>(p);
+      if (IsMultiPrecision) {
+        mp_ptr[idx] = p;
       }
     }
   }
