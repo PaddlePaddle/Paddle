@@ -40,12 +40,12 @@ import re
 import shutil
 
 
-class LambConfig(object):
+class LambConfig:
     def __init__(self):
         pass
 
 
-class DistFCConfig(object):
+class DistFCConfig:
     def __init__(self):
         pass
 

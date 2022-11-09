@@ -19,7 +19,7 @@ from paddle.static import Program, Variable
 __all__ = []
 
 
-class VarWrapper(object):
+class VarWrapper:
     def __init__(self, var, graph):
         assert isinstance(var, Variable)
         assert isinstance(graph, GraphWrapper)
@@ -39,7 +39,7 @@ class VarWrapper(object):
         return self._var.shape
 
 
-class OpWrapper(object):
+class OpWrapper:
     def __init__(self, op, graph):
         assert isinstance(graph, GraphWrapper)
         self._op = op
@@ -69,7 +69,7 @@ class OpWrapper(object):
         return [self._graph.var(var_name) for var_name in self._op.output(name)]
 
 
-class GraphWrapper(object):
+class GraphWrapper:
     """
     It is a wrapper of paddle.fluid.framework.IrGraph with some special functions
     for paddle slim framework.
@@ -208,7 +208,7 @@ def static_flops(program, print_detail=False):
     return _graph_flops(graph, detail=print_detail)
 
 
-class Table(object):
+class Table:
     def __init__(self, table_heads):
         self.table_heads = table_heads
         self.table_len = []

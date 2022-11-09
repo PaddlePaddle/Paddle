@@ -605,6 +605,7 @@ def batch_norm_orig2prim(
 
 @REGISTER_ORIG2PRIM('size')
 def size_orig2prim(op, x):
+    # TODO(zhouwei): will change shape [1] to [] to support zero-dim
     return fill_const(
         functools.reduce(operator.mul, x.shape), (1,), paddle.int64
     )

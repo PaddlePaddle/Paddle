@@ -28,7 +28,7 @@ paddle.enable_static()
 CUDA_BLOCK_SIZE = 32
 
 
-class CTCForward(object):
+class CTCForward:
     def __init__(
         self,
         softmax,

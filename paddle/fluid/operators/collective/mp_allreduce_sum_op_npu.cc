@@ -12,18 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/fluid/operators/collective/c_allreduce_op.h"
 
-namespace phi {
+namespace paddle {
+namespace platform {
+struct ASCENDPlace;
+}  // namespace platform
+}  // namespace paddle
 
-KernelSignature EighGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "eigh_grad",
-      {"Eigenvalues", "Eigenvectors", "Eigenvalues@GRAD", "Eigenvectors@GRAD"},
-      {},
-      {"X@GRAD"});
-}
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(eigh_grad, phi::EighGradOpArgumentMapping);
+REGISTER_OP_NPU_KERNEL(
+    mp_allreduce_sum,
+    ops::CAllReduceOpASCENDKernel<ops::kRedSum, int>,
+    ops::CAllReduceOpASCENDKernel<ops::kRedSum, int8_t>,
+    ops::CAllReduceOpASCENDKernel<ops::kRedSum, float>,
+    ops::CAllReduceOpASCENDKernel<ops::kRedSum, plat::float16>)

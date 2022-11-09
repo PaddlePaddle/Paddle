@@ -60,7 +60,7 @@ translator_logger = TranslatorLogger()
 CONVERSION_OPTIONS = "An attribute for a function that indicates conversion flags of the function in dynamic-to-static."
 
 
-class ConversionOptions(object):
+class ConversionOptions:
     """
     A container for conversion flags of a function in dynamic-to-static.
 

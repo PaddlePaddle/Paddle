@@ -165,7 +165,7 @@ class TestExpm1API(unittest.TestCase):
         # The input dtype must be float16, float32, float64.
 
 
-class TestParameter(object):
+class TestParameter:
     def test_out_name(self):
         with fluid.program_guard(fluid.Program()):
             np_x = np.array([0.1])

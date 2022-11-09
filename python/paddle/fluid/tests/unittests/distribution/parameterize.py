@@ -103,7 +103,7 @@ def parameterize_func(
             frame_locals[name].__doc__ = doc_func(f, num, p)
 
         # Delete original patches to prevent new function from evaluating
-        # original patching object as well as re-constructed patches.
+        # original patching object as well as re-constrfucted patches.
         delete_patches_if_need(f)
 
         f.__test__ = False

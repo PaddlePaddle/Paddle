@@ -20,7 +20,7 @@ import paddle.distributed.fleet as fleet
 import numpy as np
 
 
-class HybridParallelInferenceHelper(object):
+class HybridParallelInferenceHelper:
     """
     A helper class to split program for inference with hybrid parallelism.
 

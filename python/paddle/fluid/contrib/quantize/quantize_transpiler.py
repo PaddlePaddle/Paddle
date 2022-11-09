@@ -81,7 +81,7 @@ def quant(x, scale, num_bits):
     return y
 
 
-class QuantizeTranspiler(object):
+class QuantizeTranspiler:
     def __init__(
         self,
         weight_bits=8,

@@ -498,7 +498,8 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
       "slice",
       "shape",
       "nearest_interp",
-      "nearest_interp_v2"};
+      "nearest_interp_v2",
+      "split"};
 
   StringPairMap var_quant_scales{};
 
