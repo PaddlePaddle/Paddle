@@ -19,7 +19,7 @@ from paddle.distributed.fleet.base.private_helper_function import (
 from paddle.distributed.passes import new_pass
 
 
-class PsProgramBuilder(object):
+class PsProgramBuilder:
     def __init__(self, pass_ctx):
         self.pass_ctx = pass_ctx
         self.attrs = self.pass_ctx._attrs

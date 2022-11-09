@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
-
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
@@ -54,7 +54,7 @@ void ConvGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
                     AllocationType::CPU,
                     phi::errors::PreconditionNotMet(
-                        "Operator DNNL ConvGrad must use CPUPlace"));
+                        "Operator oneDNN ConvGrad must use CPUPlace"));
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   const auto* bias =
@@ -140,6 +140,11 @@ void ConvGradKernel(const Context& dev_ctx,
                                                     diff_weights_memory_p);
 
             {
+              paddle::platform::RecordEvent record_reorder(
+                  "int_reorder",
+                  paddle::platform::TracerEventType::UserDefined,
+                  1,
+                  paddle::platform::EventRole::kUniqueOp);
               reorder_p->execute(
                   astream, *diff_weights_memory_p, *reorder_dst_memory_p);
               astream.wait();
@@ -182,6 +187,60 @@ void ConvGradKernel(const Context& dev_ctx,
       }));
 }
 
+template <typename T, typename Context>
+void DepthwiseConvGradKernel(const Context& dev_ctx,
+                             const DenseTensor& input,
+                             const DenseTensor& filter,
+                             const DenseTensor& out_grad,
+                             const std::vector<int>& strides,
+                             const std::vector<int>& paddings,
+                             const std::string& padding_algorithm,
+                             int groups,
+                             const std::vector<int>& dilations,
+                             const std::string& data_format,
+                             DenseTensor* input_grad,
+                             DenseTensor* filter_grad) {
+  ConvGradKernel<T, Context>(dev_ctx,
+                             input,
+                             filter,
+                             out_grad,
+                             strides,
+                             paddings,
+                             padding_algorithm,
+                             dilations,
+                             groups,
+                             data_format,
+                             input_grad,
+                             filter_grad);
+}
+
+template <typename T, typename Context>
+void Conv3DGradKernel(const Context& dev_ctx,
+                      const DenseTensor& input,
+                      const DenseTensor& filter,
+                      const DenseTensor& out_grad,
+                      const std::vector<int>& strides,
+                      const std::vector<int>& paddings,
+                      const std::string& padding_algorithm,
+                      int groups,
+                      const std::vector<int>& dilations,
+                      const std::string& data_format,
+                      DenseTensor* input_grad,
+                      DenseTensor* filter_grad) {
+  ConvGradKernel<T, Context>(dev_ctx,
+                             input,
+                             filter,
+                             out_grad,
+                             strides,
+                             paddings,
+                             padding_algorithm,
+                             dilations,
+                             groups,
+                             data_format,
+                             input_grad,
+                             filter_grad);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(conv2d_grad,
@@ -190,3 +249,12 @@ PD_REGISTER_KERNEL(conv2d_grad,
                    phi::ConvGradKernel,
                    float,
                    phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(depthwise_conv2d_grad,
+                   OneDNN,
+                   ONEDNN,
+                   phi::DepthwiseConvGradKernel,
+                   float,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(conv3d_grad, OneDNN, ONEDNN, phi::Conv3DGradKernel, float) {}

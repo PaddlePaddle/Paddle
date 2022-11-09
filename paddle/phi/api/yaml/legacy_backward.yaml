@@ -7,8 +7,6 @@
     param : [x]
   kernel :
     func : abs_double_grad
-  data_transform:
-    skip_transform : grad_x_grad
 
 - backward_op : abs_grad
   forward : abs (Tensor x) -> Tensor(out)
@@ -99,18 +97,6 @@
     param: [x]
   kernel :
     func : amin_grad
-
-- backward_op : as_complex_grad
-  forward : as_complex (Tensor x) -> Tensor(out)
-  args : (Tensor out_grad)
-  output : Tensor(x_grad)
-  invoke : as_real(out_grad)
-
-- backward_op : as_real_grad
-  forward : as_real (Tensor x) -> Tensor(out)
-  args : (Tensor out_grad)
-  output : Tensor(x_grad)
-  invoke : as_complex(out_grad)
 
 - backward_op : assign_grad
   forward : assign (Tensor x) -> Tensor(out)
@@ -470,32 +456,6 @@
     param : [out_grad]
   kernel :
     func : dropout_grad
-
-- backward_op : eig_grad
-  forward : eig (Tensor x) -> Tensor(out_w), Tensor(out_v)
-  args : (Tensor out_w, Tensor out_v, Tensor out_w_grad, Tensor out_v_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out_v]
-  kernel :
-    func : eig_grad
-    data_type : out_v
-  data_transform:
-    skip_transform : out_w, out_w_grad
-
-- backward_op : eigh_grad
-  forward : eigh (Tensor x, str UPLO) -> Tensor(out_w), Tensor(out_v)
-  args : (Tensor out_w, Tensor out_v, Tensor out_w_grad, Tensor out_v_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out_v]
-  kernel :
-    func : eigh_grad
-    data_type : out_v
-  data_transform:
-    skip_transform : out_w, out_w_grad
 
 - backward_op : eigvalsh_grad
   forward : eigvalsh (Tensor x, str uplo, bool is_test) -> Tensor(eigenvalues), Tensor(eigenvectors)
@@ -1364,6 +1324,17 @@
     param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
     use_gpudnn : use_gpudnn
 
+- backward_op : pow_double_grad
+  forward : pow_grad(Tensor x, Tensor grad_out, Scalar y) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, Scalar y)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param: [x, x]
+  kernel :
+    func : pow_double_grad
+  inplace : (grad_x_grad -> x_grad)
+
 - backward_op : pow_grad
   forward : pow(Tensor x, Scalar y) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, Scalar y=-1)
@@ -1373,6 +1344,7 @@
     param: [x]
   kernel :
     func : pow_grad
+  backward: pow_double_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : prelu_grad

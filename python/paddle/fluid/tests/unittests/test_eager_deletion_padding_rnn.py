@@ -27,7 +27,7 @@ from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
 os.environ["CPU_NUM"] = "1"
 
 
-class RNNConfig(object):
+class RNNConfig:
     def __init__(self, model_type, rnn_model):
         self.model_type = model_type
         self.rnn_model = rnn_model
@@ -93,7 +93,7 @@ class RNNConfig(object):
 
 
 # Fake data reader for test
-class Reader(object):
+class Reader:
     def get_data_iter(self, rnn_config):
         for i in range(rnn_config.max_epoch):
             x = np.zeros(

@@ -1077,7 +1077,7 @@ def mlu_places(device_ids=None):
     return [core.MLUPlace(dev_id) for dev_id in device_ids]
 
 
-class NameScope(object):
+class NameScope:
     def __init__(self, name="", parent=None):
         self._children = dict()
         self._name = name
@@ -2655,7 +2655,7 @@ def get_all_op_protos():
     return ret_values
 
 
-class OpProtoHolder(object):
+class OpProtoHolder:
     """
     A global variable to hold all OpProtos from C++ as a map
     """
@@ -2709,7 +2709,7 @@ class OpProtoHolder(object):
         }
 
 
-class Operator(object):
+class Operator:
     """
     In Fluid, all the operation are represented by Operator, and Operator
     is regarded as a build in an instruction of a Block. Users can use the
@@ -3550,7 +3550,7 @@ class Operator(object):
         self.desc.dist_attr = dist_attr
 
 
-class Block(object):
+class Block:
     """
     In Fluid, a Program is consistence of multi-Block, and Block stores
     VarDesc and OpDesc. In a specific Block, a VarDesc have a unique name.
@@ -4342,7 +4342,7 @@ def _apply_pass(
     return attrs
 
 
-class IrNode(object):
+class IrNode:
     """
     Python IrNode. Beneath it is a core.Node, which is used for Ir Pass.
     """
@@ -4783,7 +4783,7 @@ class IrOpNode(IrNode):
         return [IrVarNode(n) for n in self.node.outputs]
 
 
-class IrGraph(object):
+class IrGraph:
     """
     Python IrGraph. Beneath it is a core.Graph, which is used for
     creating a c++ Ir Pass Graph. An IrGraph is just a graph view of
@@ -5218,7 +5218,7 @@ class IrGraph(object):
             desc._set_attr(name, val)
 
 
-class Program(object):
+class Program:
     """
     Create Python Program.  It has at least one :ref:`api_guide_Block_en`, when the
     control flow op like conditional_block, while :ref:`api_paddle_fluid_layers_While` is included,

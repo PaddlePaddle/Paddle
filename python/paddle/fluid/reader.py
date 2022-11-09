@@ -145,21 +145,12 @@ def _reader_process_loop(batch_reader, data_queue):
         raise
 
 
-class DataLoaderBase(object):
+class DataLoaderBase:
     def __init__(self):
         self._places = None
 
     def __call__(self):
         return self
-
-    def next(self):
-        '''
-        Get the next item in the DataLoader object. This method
-        should not be called by users directly. It is used for
-        implementing iterator protocol of Python 2.x inside
-        PaddlePaddle framework.
-        '''
-        return self.__next__()
 
     def __iter__(self):
         raise NotImplementedError()
@@ -181,7 +172,7 @@ class DataLoaderBase(object):
         return arr
 
 
-class AuToTune(object):
+class AuToTune:
     def __init__(self, loader):
         self.loader = loader
         self.max_num_worker = multiprocessing.cpu_count() / 2
@@ -318,7 +309,7 @@ class AuToTune(object):
         return best_workers
 
 
-class DataLoader(object):
+class DataLoader:
     """
     DataLoader prodives an iterator which iterates given dataset
     once by the batch_sampler.

@@ -31,7 +31,7 @@ from ..data_feeder import (
 __all__ = ['Uniform', 'Normal', 'Categorical', 'MultivariateNormalDiag']
 
 
-class Distribution(object):
+class Distribution:
     """
     Distribution is the abstract base class for probability distributions.
     """

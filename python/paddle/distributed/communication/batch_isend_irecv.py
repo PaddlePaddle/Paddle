@@ -22,7 +22,7 @@ from paddle.distributed.communication.group import (
 )
 
 
-class P2POp(object):
+class P2POp:
     """
     A class that makes point-to-point operations for "batch_isend_irecv".
 

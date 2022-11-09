@@ -32,7 +32,7 @@ os.environ["CPU_NUM"] = "1"
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
-class PyRNNBase(object):
+class PyRNNBase:
     def __init__(self, input_shape, output_shape):
         self.x = np.ones(shape=input_shape).astype("float32")
         self.y = np.zeros(shape=output_shape).astype("float32")
