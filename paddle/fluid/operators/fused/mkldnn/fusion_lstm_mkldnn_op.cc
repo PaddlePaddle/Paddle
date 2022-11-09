@@ -89,20 +89,20 @@ class LSTMMKLDNNHandler
 
       // Create memory descriptors
       auto input_md = OneDNNMemDesc(
-          {Ti, N, IC}, OneDNNGetDataType<T>(), MKLDNNMemoryFormat::tnc);
+          {Ti, N, IC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::tnc);
       auto weight_x_md =
-          OneDNNMemDesc({L, D, IC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
+          OneDNNMemDesc({L, D, IC, G, OC}, weights_dt, OneDNNMemoryFormat::any);
       auto weight_h_md =
-          OneDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
+          OneDNNMemDesc({L, D, OC, G, OC}, weights_dt, OneDNNMemoryFormat::any);
       auto bias_md = OneDNNMemDesc(
-          {L, D, G, OC}, OneDNNGetDataType<float>(), MKLDNNMemoryFormat::ldgo);
+          {L, D, G, OC}, OneDNNGetDataType<float>(), OneDNNMemoryFormat::ldgo);
       auto hidden_md = OneDNNMemDesc(
-          {Ti, N, OC}, OneDNNGetDataType<T_out>(), MKLDNNMemoryFormat::any);
+          {Ti, N, OC}, OneDNNGetDataType<T_out>(), OneDNNMemoryFormat::any);
 
       auto h0_md = OneDNNMemDesc(
-          {L, D, N, OC}, OneDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+          {L, D, N, OC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
       auto c0_md = OneDNNMemDesc(
-          {L, D, N, OC}, OneDNNGetDataType<float>(), MKLDNNMemoryFormat::any);
+          {L, D, N, OC}, OneDNNGetDataType<float>(), OneDNNMemoryFormat::any);
 
       // Create LSTM oneDNN primitive
       const auto direction =
@@ -125,7 +125,7 @@ class LSTMMKLDNNHandler
       } else {
         auto weight_peephole_md = OneDNNMemDesc({L, D, 3, OC},
                                                 OneDNNGetDataType<float>(),
-                                                MKLDNNMemoryFormat::ldgo);
+                                                OneDNNMemoryFormat::ldgo);
         this->AcquireForwardPrimitiveDescriptor(
             this->attr_,
             dnnl::prop_kind::forward_inference,
@@ -175,7 +175,7 @@ class LSTMMKLDNNHandler
     if (!memory_p) {
       auto user_md = OneDNNMemDesc({1, 1, this->IC, this->G, this->OC},
                                    OneDNNGetDataType<U>(),
-                                   MKLDNNMemoryFormat::ldigo);
+                                   OneDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_x_data = reinterpret_cast<U*>(user_memory.get_data_handle());
@@ -207,7 +207,7 @@ class LSTMMKLDNNHandler
     if (!memory_p) {
       auto user_md = OneDNNMemDesc({1, 1, this->OC, this->G, this->OC},
                                    OneDNNGetDataType<U>(),
-                                   MKLDNNMemoryFormat::ldigo);
+                                   OneDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_h_data = reinterpret_cast<U*>(user_memory.get_data_handle());
@@ -266,7 +266,7 @@ class LSTMMKLDNNHandler
     if (!memory_p) {
       auto user_md = OneDNNMemDesc({1, 1, 3, this->OC},
                                    OneDNNGetDataType<float>(),
-                                   MKLDNNMemoryFormat::ldgo);
+                                   OneDNNMemoryFormat::ldgo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_peephole_desc(), this->engine_);
@@ -294,13 +294,13 @@ class LSTMMKLDNNHandler
       if (c0) {
         user_c0_memory = dnnl::memory({{1, 1, this->N, this->OC},
                                        OneDNNGetDataType<float>(),
-                                       MKLDNNMemoryFormat::ldnc},
+                                       OneDNNMemoryFormat::ldnc},
                                       this->engine_,
                                       to_void_cast(c0->data<float>()));
       } else {
         user_c0_memory = dnnl::memory({{1, 1, this->N, this->OC},
                                        OneDNNGetDataType<float>(),
-                                       MKLDNNMemoryFormat::ldnc},
+                                       OneDNNMemoryFormat::ldnc},
                                       this->engine_);
         memset(user_c0_memory.get_data_handle(),
                0,

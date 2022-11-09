@@ -144,7 +144,7 @@ class ConvTransposeMKLDNNHandlerT
      * ('any') which lets a primitive (convolution in this case) choose
      * the memory format preferred for best performance
      */
-    const auto chosen_memory_format = MKLDNNMemoryFormat::any;
+    const auto chosen_memory_format = OneDNNMemoryFormat::any;
 
     auto data_type = dnnl::memory::data_type::f32;
     if (ctx.Attr<std::string>("mkldnn_data_type") == "bfloat16" ||
@@ -163,7 +163,7 @@ class ConvTransposeMKLDNNHandlerT
     if (bias) {
       std::vector<int64_t> bias_tz = phi::vectorize(bias->dims());
       const auto bias_md =
-          OneDNNMemDesc(bias_tz, data_type, MKLDNNMemoryFormat::x);
+          OneDNNMemDesc(bias_tz, data_type, OneDNNMemoryFormat::x);
       this->AcquireForwardPrimitiveDescriptor(
           conv_trans_attr,
           fwd_prop_kind,
@@ -240,7 +240,7 @@ class ConvTransposeMKLDNNHandlerT
     auto user_src_md = OneDNNMemDesc(
         weights_tz,
         phi::funcs::OneDNNGetDataType<K>(),
-        (g == 1) ? MKLDNNMemoryFormat::iohw : MKLDNNMemoryFormat::giohw);
+        (g == 1) ? OneDNNMemoryFormat::iohw : OneDNNMemoryFormat::giohw);
 
     return this->template AcquireMemoryWithReorder<K>(
         dev_ctx,
@@ -337,7 +337,7 @@ class ConvTransposeMKLDNNHandlerT
     const K* bias_data = bias->data<K>();
     auto user_bias_md = OneDNNMemDesc(phi::vectorize(bias->dims()),
                                       phi::funcs::OneDNNGetDataType<K>(),
-                                      MKLDNNMemoryFormat::x);
+                                      OneDNNMemoryFormat::x);
     return this->AcquireMemoryWithReorder(dev_ctx,
                                           user_bias_md,
                                           this->fwd_pd_->bias_desc(),

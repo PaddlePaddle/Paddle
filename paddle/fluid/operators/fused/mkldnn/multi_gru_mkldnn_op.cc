@@ -178,24 +178,24 @@ class MultiGRUHandler {
 
       auto x_md = OneDNNMemDesc({Ti_, N_, ICs[layer]},
                                 OneDNNGetDataType<T>(),
-                                MKLDNNMemoryFormat::ntc);
+                                OneDNNMemoryFormat::ntc);
       auto h0_md = OneDNNMemDesc({L, D, N_, OCs[layer]},
                                  OneDNNGetDataType<T>(),
-                                 MKLDNNMemoryFormat::ldnc);
+                                 OneDNNMemoryFormat::ldnc);
       auto wx_md = OneDNNMemDesc({L, D, ICs[layer], G, OCs[layer]},
                                  weights_dt,
-                                 MKLDNNMemoryFormat::any);
+                                 OneDNNMemoryFormat::any);
       auto wh_md = OneDNNMemDesc({L, D, OCs[layer], G, OCs[layer]},
                                  weights_dt,
-                                 MKLDNNMemoryFormat::any);
+                                 OneDNNMemoryFormat::any);
       auto b_md = OneDNNMemDesc({L, D, G, OCs[layer]},
                                 OneDNNGetDataType<float>(),
-                                MKLDNNMemoryFormat::ldgo);
+                                OneDNNMemoryFormat::ldgo);
       auto h_md =
           OneDNNMemDesc({Ti_, N_, OCs[layer]},
                         (layer == layers_ - 1) ? OneDNNGetDataType<T_out>()
                                                : OneDNNGetDataType<T>(),
-                        MKLDNNMemoryFormat::ntc);
+                        OneDNNMemoryFormat::ntc);
 
       auto desc = std::make_shared<dnnl::gru_forward::desc>(
           dnnl::prop_kind::forward_inference,
@@ -229,7 +229,7 @@ class MultiGRUHandler {
           OneDNNMemDesc({Ti_, N_, OCs[layer]},
                         (layer == layers_ - 1) ? OneDNNGetDataType<T_out>()
                                                : OneDNNGetDataType<T>(),
-                        MKLDNNMemoryFormat::ntc);
+                        OneDNNMemoryFormat::ntc);
 
       std::vector<dnnl::memory::desc> src_mds{in_md, in_md};
       pd = std::make_shared<dnnl::concat::primitive_desc>(
@@ -337,7 +337,7 @@ class MultiGRUHandler {
       auto user_h0_memory = dnnl::memory();
       user_h0_memory = dnnl::memory({{1, 1, N_, OCs[layer]},
                                      OneDNNGetDataType<float>(),
-                                     MKLDNNMemoryFormat::ldnc},
+                                     OneDNNMemoryFormat::ldnc},
                                     engine_);
       memset(
           user_h0_memory.get_data_handle(), 0, sizeof(float) * N_ * OCs[layer]);
@@ -362,7 +362,7 @@ class MultiGRUHandler {
     if (!memory_p) {
       auto user_md = OneDNNMemDesc({1, 1, ICs[layer], 3, OCs[layer]},
                                    OneDNNGetDataType<float>(),
-                                   MKLDNNMemoryFormat::ldigo);
+                                   OneDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, engine_);
 
       auto* weight_x_data =
@@ -402,7 +402,7 @@ class MultiGRUHandler {
     if (!memory_p) {
       auto user_md = OneDNNMemDesc({1, 1, OCs[layer], 3, OCs[layer]},
                                    OneDNNGetDataType<float>(),
-                                   MKLDNNMemoryFormat::ldigo);
+                                   OneDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, engine_);
 
       // Reorder weights_h from PP format [OC, 2OC] + [OC, OC] to

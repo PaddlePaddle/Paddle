@@ -28,22 +28,9 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNMemoryFormat = dnnl::memory::format_tag;
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
 #endif
 namespace platform {
-
-using MKLDNNStream = dnnl::stream;
-using MKLDNNEngine = dnnl::engine;
-using MKLDNNMemory = dnnl::memory;
-using MKLDNNMemoryDescriptor = dnnl::memory::desc;
-using MKLDNNPrimitive = dnnl::primitive;
-using MKLDNNPrimitiveDesc = dnnl::handle<dnnl_primitive_desc_t>;
-
-typedef std::unique_ptr<MKLDNNStream> MKLDNNStreamPtr;
-typedef std::unique_ptr<MKLDNNEngine> MKLDNNEnginePtr;
-typedef std::unique_ptr<MKLDNNMemory> MKLDNNMemoryPtr;
-typedef std::unique_ptr<MKLDNNPrimitive> MKLDNNPrimitivePtr;
-typedef std::unique_ptr<MKLDNNPrimitiveDesc> MKLDNNPrimitiveDescPtr;
 
 template <typename Type>
 void* to_void_cast(const Type* t) {

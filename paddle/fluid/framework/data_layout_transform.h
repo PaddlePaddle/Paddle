@@ -54,16 +54,16 @@ struct CastDataLayout {
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNDataType = dnnl::memory::data_type;
 
-inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
+inline OneDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
   switch (layout) {
     case DataLayout::kNHWC:
-      return MKLDNNMemoryFormat::nhwc;
+      return OneDNNMemoryFormat::nhwc;
     case DataLayout::kNCHW:
-      return MKLDNNMemoryFormat::nchw;
+      return OneDNNMemoryFormat::nchw;
     case DataLayout::kNCDHW:
-      return MKLDNNMemoryFormat::ncdhw;
+      return OneDNNMemoryFormat::ncdhw;
     case DataLayout::kNDHWC:
-      return MKLDNNMemoryFormat::ndhwc;
+      return OneDNNMemoryFormat::ndhwc;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Fail to convert layout %s to MKLDNN format.",
@@ -71,15 +71,15 @@ inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
   }
 }
 
-inline DataLayout ToPaddleLayout(const MKLDNNMemoryFormat& format) {
+inline DataLayout ToPaddleLayout(const OneDNNMemoryFormat& format) {
   switch (format) {
-    case MKLDNNMemoryFormat::nhwc:
+    case OneDNNMemoryFormat::nhwc:
       return DataLayout::kNHWC;
-    case MKLDNNMemoryFormat::nchw:
+    case OneDNNMemoryFormat::nchw:
       return DataLayout::kNCHW;
-    case MKLDNNMemoryFormat::ncdhw:
+    case OneDNNMemoryFormat::ncdhw:
       return DataLayout::kNCDHW;
-    case MKLDNNMemoryFormat::ndhwc:
+    case OneDNNMemoryFormat::ndhwc:
       return DataLayout::kNDHWC;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(

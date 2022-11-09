@@ -209,12 +209,12 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
       auto user_h0_memory = dnnl::memory();
       if (h0) {
         user_h0_memory = dnnl::memory(
-            {{1, 1, N, OC}, OneDNNGetDataType<U>(), MKLDNNMemoryFormat::ldnc},
+            {{1, 1, N, OC}, OneDNNGetDataType<U>(), OneDNNMemoryFormat::ldnc},
             this->engine_,
             to_void_cast(h0->data<U>()));
       } else {
         user_h0_memory = dnnl::memory(
-            {{1, 1, N, OC}, OneDNNGetDataType<U>(), MKLDNNMemoryFormat::ldnc},
+            {{1, 1, N, OC}, OneDNNGetDataType<U>(), OneDNNMemoryFormat::ldnc},
             this->engine_);
         memset(user_h0_memory.get_data_handle(), 0, sizeof(U) * N * OC);
       }

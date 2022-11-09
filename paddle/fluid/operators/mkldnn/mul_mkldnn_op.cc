@@ -73,7 +73,7 @@ class MulPrimitiveFactory {
       return *(mul_);
     }
 
-    auto src_desc = CreateMemDescriptor<XT>(&x_matrix, MKLDNNMemoryFormat::nc);
+    auto src_desc = CreateMemDescriptor<XT>(&x_matrix, OneDNNMemoryFormat::nc);
     x_input_ = CreateMemory<XT>(src_desc, &x_matrix);
 
     if (is_int8_) {
@@ -84,7 +84,7 @@ class MulPrimitiveFactory {
       y_input_ = TransposeInputY(&y_matrix);
     }
 
-    auto dst_desc = CreateMemDescriptor<OT>(output, MKLDNNMemoryFormat::any);
+    auto dst_desc = CreateMemDescriptor<OT>(output, OneDNNMemoryFormat::any);
 
     mul_ = CreateMulPrimitive(*x_input_, *y_input_, dst_desc, output, ctx);
     Execute();
@@ -126,8 +126,8 @@ class MulPrimitiveFactory {
     auto ndims = input_y.get_desc().data.ndims;
     auto y_dims = std::vector<int64_t>(dims, dims + ndims);
 
-    auto user_y_desc = CreateMemDescriptor<YT>(y_dims, MKLDNNMemoryFormat::oi);
-    auto y_desc = CreateMemDescriptor<int8_t>(y_dims, MKLDNNMemoryFormat::oi);
+    auto user_y_desc = CreateMemDescriptor<YT>(y_dims, OneDNNMemoryFormat::oi);
+    auto y_desc = CreateMemDescriptor<int8_t>(y_dims, OneDNNMemoryFormat::oi);
 
     return ReorderWithScale(
         user_y_desc, y_desc, input_y.get_data_handle(), scale_y);
@@ -205,8 +205,8 @@ class MulPrimitiveFactory {
     auto dst_mdesc =
         data->dims().size() >= 4
             ? (data->dims().size() == 5
-                   ? CreateMemDescriptor<T>(data, MKLDNNMemoryFormat::ncdhw)
-                   : CreateMemDescriptor<T>(data, MKLDNNMemoryFormat::nchw))
+                   ? CreateMemDescriptor<T>(data, OneDNNMemoryFormat::ncdhw)
+                   : CreateMemDescriptor<T>(data, OneDNNMemoryFormat::nchw))
             : src_mdesc;
 
     if (src_mdesc != dst_mdesc) {
@@ -238,7 +238,7 @@ class MulPrimitiveFactory {
   template <typename T>
   memory::desc CreateMemDescriptor(
       const Tensor *tensor,
-      MKLDNNMemoryFormat format,
+      OneDNNMemoryFormat format,
       memory::data_type type = phi::funcs::OneDNNGetDataType<T>()) {
     auto dims = phi::vectorize<int64_t>(tensor->dims());
     return phi::funcs::OneDNNMemDesc(dims, type, format);
@@ -247,7 +247,7 @@ class MulPrimitiveFactory {
   template <typename T>
   memory::desc CreateMemDescriptor(
       const std::vector<int64_t> &dims,
-      MKLDNNMemoryFormat format,
+      OneDNNMemoryFormat format,
       memory::data_type type = phi::funcs::OneDNNGetDataType<T>()) {
     return phi::funcs::OneDNNMemDesc(dims, type, format);
   }
@@ -296,8 +296,8 @@ class MulPrimitiveFactory {
   memory TransposeInputY(const Tensor *input_y) {
     auto dims = phi::vectorize<int64_t>(input_y->dims());
     std::swap(dims[0], dims[1]);  // Correct output dimensions
-    auto src_desc = CreateMemDescriptor<YT>(dims, MKLDNNMemoryFormat::io);
-    auto dst_desc = CreateMemDescriptor<YT>(dims, MKLDNNMemoryFormat::oi);
+    auto src_desc = CreateMemDescriptor<YT>(dims, OneDNNMemoryFormat::io);
+    auto dst_desc = CreateMemDescriptor<YT>(dims, OneDNNMemoryFormat::oi);
     return Reorder(src_desc, dst_desc, to_void_cast<YT>(input_y->data<YT>()));
   }
 

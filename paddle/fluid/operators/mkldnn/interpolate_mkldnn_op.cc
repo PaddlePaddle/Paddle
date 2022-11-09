@@ -40,7 +40,7 @@ class InterpolateMKLDNNHandler
             engine, cpu_place) {
     const auto dst_tz = phi::vectorize(out->dims());
     const auto dst_md = memory::desc(
-        dst_tz, phi::funcs::OneDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+        dst_tz, phi::funcs::OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_inference, algo, x->mem_desc(), dst_md);
   }

@@ -82,17 +82,17 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
 
       // Create memory descriptors
       auto input_md = OneDNNMemDesc(
-          {Ti, N, IC}, OneDNNGetDataType<T>(), MKLDNNMemoryFormat::ntc);
+          {Ti, N, IC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::ntc);
       auto weight_x_md =
-          OneDNNMemDesc({L, D, IC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
+          OneDNNMemDesc({L, D, IC, G, OC}, weights_dt, OneDNNMemoryFormat::any);
       auto weight_h_md =
-          OneDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
+          OneDNNMemDesc({L, D, OC, G, OC}, weights_dt, OneDNNMemoryFormat::any);
       auto bias_md = OneDNNMemDesc(
-          {L, D, G, OC}, OneDNNGetDataType<float>(), MKLDNNMemoryFormat::ldgo);
+          {L, D, G, OC}, OneDNNGetDataType<float>(), OneDNNMemoryFormat::ldgo);
       auto hidden_md = OneDNNMemDesc(
-          {Ti, N, OC}, OneDNNGetDataType<T_out>(), MKLDNNMemoryFormat::ntc);
+          {Ti, N, OC}, OneDNNGetDataType<T_out>(), OneDNNMemoryFormat::ntc);
       auto h0_md = OneDNNMemDesc(
-          {L, D, N, OC}, OneDNNGetDataType<T>(), MKLDNNMemoryFormat::ldnc);
+          {L, D, N, OC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::ldnc);
 
       // Create GRU oneDNN primitive
       const auto direction =
@@ -123,7 +123,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
     if (!memory_p) {
       auto user_md = OneDNNMemDesc({1, 1, this->IC, this->G, this->OC},
                                    OneDNNGetDataType<U>(),
-                                   MKLDNNMemoryFormat::ldigo);
+                                   OneDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_x_data = reinterpret_cast<U*>(user_memory.get_data_handle());
@@ -163,7 +163,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
     if (!memory_p) {
       auto user_md = OneDNNMemDesc({1, 1, this->OC, this->G, this->OC},
                                    OneDNNGetDataType<U>(),
-                                   MKLDNNMemoryFormat::ldigo);
+                                   OneDNNMemoryFormat::ldigo);
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       // Reorder weights_h from PP format [OC, 2OC] + [OC, OC] to
