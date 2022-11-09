@@ -173,7 +173,7 @@ void TopkKernel(const Context& dev_ctx,
     // NOTE: old matrix implementation of stride is different to eigen.
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
-    paddle::platform::GpuLaunchConfig config =
+    auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_width);
     switch (config.thread_per_block.x) {
 #ifdef PADDLE_WITH_HIP
@@ -282,7 +282,7 @@ void TopkKernel(const Context& dev_ctx,
 
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
-    paddle::platform::GpuLaunchConfig config =
+    auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_width);
     switch (config.thread_per_block.x) {
 #ifdef PADDLE_WITH_HIP
