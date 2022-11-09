@@ -82,7 +82,7 @@ class TransferLayoutFunctor {
         // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
         // Just set layout/format. No real transform occur
 
-        auto out_format = platform::MKLDNNFormatForSize(
+        auto out_format = phi::funcs::OneDNNFormatForSize(
             in_tensor.dims().size(), framework::ToMKLDNNFormat(in_layout));
         out_tensor.ShareDataWith(in_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN

@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNMemoryFormat = dnnl::memory::format_tag;
@@ -54,22 +55,6 @@ using tf_desc = typename Type::desc;
 
 template <class Type>
 using tf_pd = typename Type::primitive_desc;
-
-template <typename Type, typename Engine, typename... Args>
-std::shared_ptr<tf_pd<Type>> MKLDNNFwdPrimitiveDesc(const Engine& e,
-                                                    Args&&... args) {
-  auto desc = tf_desc<Type>(dnnl::prop_kind::forward, (args)...);
-  auto pd = new tf_pd<Type>(desc, e);
-  return std::shared_ptr<tf_pd<Type>>(pd);
-}
-
-template <typename Type, typename Engine, typename Primitive, typename... Args>
-tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e,
-                                   const Primitive& p,
-                                   Args&&... args) {
-  auto desc = tf_desc<Type>(args...);
-  return tf_pd<Type>(desc, e, p);
-}
 
 inline void MatchShapeToLayout(phi::DenseTensor* tensor_in,
                                phi::DataLayout from,
@@ -124,11 +109,6 @@ inline void MatchShapeToLayout(phi::DenseTensor* tensor_in,
   }
 }
 
-struct mkldnn_dummy_primitive {
-  struct primitive_desc {};
-  struct desc {};
-};
-
 inline void ClearMKLDNNCache(const platform::Place& place,
                              void* ptr = nullptr) {
   // Clear mkl-dnn cache,
@@ -161,39 +141,6 @@ inline void Reorder(dnnl::memory src,
                                        platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
-}
-
-inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
-                                              MKLDNNMemoryFormat data_format) {
-  if (dims_size == 1) {
-    return MKLDNNMemoryFormat::x;
-  } else if (dims_size == 2) {
-    return MKLDNNMemoryFormat::nc;
-  } else if (dims_size == 3) {
-    if (data_format == MKLDNNMemoryFormat::nchw) {
-      return MKLDNNMemoryFormat::ncw;
-    } else if (data_format == MKLDNNMemoryFormat::nhwc) {
-      return MKLDNNMemoryFormat::nwc;
-    }
-  } else if (dims_size == 4) {
-    if (data_format == MKLDNNMemoryFormat::goihw) {
-      return MKLDNNMemoryFormat::oihw;
-    }
-  } else if (dims_size == 5) {
-    if (data_format == MKLDNNMemoryFormat::goidhw) {
-      return MKLDNNMemoryFormat::oidhw;
-    }
-    if (data_format == MKLDNNMemoryFormat::nchw) {
-      return MKLDNNMemoryFormat::ncdhw;
-    } else if (data_format == MKLDNNMemoryFormat::nhwc) {
-      return MKLDNNMemoryFormat::ndhwc;
-    }
-  } else if (dims_size == 6) {
-    if (data_format == MKLDNNMemoryFormat::nchw) {
-      return MKLDNNMemoryFormat::abcdef;
-    }
-  }
-  return data_format;
 }
 
 inline std::string ThreadIDasStr(void) {

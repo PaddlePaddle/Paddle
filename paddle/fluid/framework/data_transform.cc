@@ -60,8 +60,8 @@ void TransformData(const OpKernelType &expected_kernel_type,
         // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
         // Just set layout/format. No real transform occur
 
-        auto out_format = platform::MKLDNNFormatForSize(in.dims().size(),
-                                                        ToMKLDNNFormat(lin));
+        auto out_format = phi::funcs::OneDNNFormatForSize(in.dims().size(),
+                                                          ToMKLDNNFormat(lin));
         out.ShareDataWith(input_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
