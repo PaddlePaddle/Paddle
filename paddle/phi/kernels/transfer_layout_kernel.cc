@@ -96,18 +96,6 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
   VLOG(10) << " x: " << print_tensor_meta(x);
   VLOG(10) << " out: " << print_tensor_meta(*out) << " " << out;
 
-  // Note: Compatible with KernelTypeForVar function in fluid: If selects MKLDNN
-  // kernel, then change src_layout to kNHWC, which means transform tensor
-  // following kNHWC->ONEDNN rule instead of tensor.layout()->ONEDNN rule. When
-  // the op is first oneDNN op (there was some non oneDNN op previously), then
-  // we also need to rotate shape NHWC -> NCWH
-  if (dst_layout == DataLayout::ONEDNN &&
-      x.layout() != phi::DataLayout::ONEDNN &&
-      OneDNNContext::tls().get_cur_paddle_data_layout() ==
-          phi::DataLayout::NHWC) {
-    src_layout = phi::DataLayout::NHWC;
-  }
-
   // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
   // data_transfer.cc
   if (!x.IsInitialized() && src_layout == DataLayout::ONEDNN &&
@@ -120,6 +108,15 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
   }
 
   if (src_layout != DataLayout::ONEDNN && dst_layout == DataLayout::ONEDNN) {
+    // Note: Compatible with KernelTypeForVar function in fluid: If selects
+    // MKLDNN kernel, then change src_layout to kNHWC, which means transform
+    // tensor following kNHWC->ONEDNN rule instead of tensor.layout()->ONEDNN
+    // rule. When the op is first oneDNN op (there was some non oneDNN op
+    // previously), then we also need to rotate shape NHWC -> NCWH
+    if (OneDNNContext::tls().get_cur_paddle_data_layout() ==
+        phi::DataLayout::NHWC) {
+      src_layout = phi::DataLayout::NHWC;
+    }
     // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
     // Just set layout/format. No real transform occur
     auto out_format = funcs::OneDNNFormatForSize(
@@ -128,8 +125,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
     out->ShareDataWith(x);
     // For NHWC data we need reshape of tensors as MKL-DNN
     // is expecting NHWC dims description order
-    if (src_layout == DataLayout::NHWC) {
-      VLOG(4) << "NHWC";
+    if (src_layout == DataLayout::NHWC || src_layout == DataLayout::NDHWC) {
       funcs::MatchShapeToLayout(out, src_layout, dst_layout);
       OneDNNContext::tls().set_cur_paddle_data_layout(src_layout);
     }
@@ -143,7 +139,11 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
     // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
     // Do transform via MKLDNN lib
     funcs::innerTransDataLayoutFromOneDNN(
-        src_layout, dst_layout, x, out, dev_ctx.GetPlace());
+        src_layout,
+        OneDNNContext::tls().get_cur_paddle_data_layout(),
+        x,
+        out,
+        dev_ctx.GetPlace());
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout == DataLayout::ONEDNN) {
     PADDLE_ENFORCE_NE(
