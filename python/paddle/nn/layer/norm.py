@@ -1177,8 +1177,8 @@ class SyncBatchNorm(_BatchNormBase):
         # variance and variance out share the same memory
         variance_out = self._variance
 
-        ### train mode: use mini-batch stats, eval mode: use global stats
-        ### use_global_stats only support False in sync_batch_norm
+        # train mode: use mini-batch stats, eval mode: use global stats
+        # use_global_stats only support False in sync_batch_norm
         if in_dygraph_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,

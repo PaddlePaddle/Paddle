@@ -152,15 +152,6 @@ class DataLoaderBase:
     def __call__(self):
         return self
 
-    def next(self):
-        '''
-        Get the next item in the DataLoader object. This method
-        should not be called by users directly. It is used for
-        implementing iterator protocol of Python 2.x inside
-        PaddlePaddle framework.
-        '''
-        return self.__next__()
-
     def __iter__(self):
         raise NotImplementedError()
 

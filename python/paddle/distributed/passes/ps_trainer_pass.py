@@ -1238,7 +1238,7 @@ class SplitTrainerOpsPass(PassBase):
             attrs=attrs,
         )
 
-        ## TODO add check for bp block
+        # TODO add check for bp block
         # check_op_device(program.global_block(), DEFAULT_DEVICE)
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
