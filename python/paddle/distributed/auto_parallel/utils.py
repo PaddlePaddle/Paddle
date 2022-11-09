@@ -1406,7 +1406,9 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
     ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
 
-def naive_set_dist_op_attr_for_program_by_mesh(new_op, process_mesh, ctx):
+def naive_set_dist_op_attr_for_program_by_mesh(
+    new_op, process_mesh, ctx, is_recompute=False
+):
     assert process_mesh is not None
 
     new_op_dist_attr = OperatorDistributedAttribute()
@@ -1421,6 +1423,7 @@ def naive_set_dist_op_attr_for_program_by_mesh(new_op, process_mesh, ctx):
         new_op_dist_attr.set_output_dims_mapping(output_varname, mapping)
 
     new_op_dist_attr.process_mesh = process_mesh
+    new_op_dist_attr.is_recompute = is_recompute
     ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
 
@@ -2089,7 +2092,7 @@ def _copy_dist_attr_from_cpp_for_graph(dist_context):
 
 
 def add_dependencies_for_two_ops(
-    block, idx, op1, op2, dist_context, sync=False
+    block, idx, op1, op2, dist_context, is_recompute=False, sync=False
 ):
     """
     dependency: op1 should be run before op2
@@ -2138,11 +2141,11 @@ def add_dependencies_for_two_ops(
     )
     depend_op.desc.set_type("depend")
     depend_op._set_attr(OP_ROLE_KEY, OpRole.Backward)
-    # self.desc.set_input(in_proto.name, in_arg_names)
+    depend_op.desc.set_input("Dep", first_var)
     # self.desc.set_output(out_proto.name, out_arg_names)
 
     naive_set_dist_op_attr_for_program_by_mesh(
-        depend_op, op1_mesh, dist_context
+        depend_op, op1_mesh, dist_context, is_recompute
     )
 
     if sync:
