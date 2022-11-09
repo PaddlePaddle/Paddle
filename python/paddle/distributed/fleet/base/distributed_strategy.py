@@ -25,8 +25,6 @@ __all__ = []
 
 non_auto_func_called = True
 
-logger.setLevel("DEBUG")
-
 
 def __non_auto_func_called__(func):
     def __impl__(*args, **kwargs):
