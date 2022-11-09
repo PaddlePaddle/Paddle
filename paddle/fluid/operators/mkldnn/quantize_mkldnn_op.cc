@@ -72,25 +72,23 @@ class QuantOpKernel : public framework::OpKernel<T> {
           DNNL_ARG_DST, mask, {static_cast<int32_t>(quantization_shift)});
     }
 
-    framework::proto::VarType::Type x_paddle_dtype =
-        framework::TransToProtoVarType(x->dtype());
-    framework::proto::VarType::Type out_paddle_dtype;
+    auto x_type =
+        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
+    DataType out_dtype;
 
     if (bfloat16) {
-      out_paddle_dtype = framework::proto::VarType::BF16;
+      out_dtype = DataType::BFLOAT16;
     } else if (is_negative_input && !with_shift) {
-      out_paddle_dtype = framework::proto::VarType::INT8;
+      out_dtype = DataType::INT8;
     } else {
-      out_paddle_dtype = framework::proto::VarType::UINT8;
+      out_dtype = DataType::UINT8;
     }
 
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_tz,
-        x_paddle_dtype,
-        framework::ToMKLDNNDataType(x_paddle_dtype),
-        out_paddle_dtype,
-        framework::ToMKLDNNDataType(out_paddle_dtype),
-        dev_ctx.GetEngine());
+    auto out_type = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType((out_dtype)));
+
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        x_tz, x->dtype(), x_type, out_dtype, out_type, dev_ctx.GetEngine());
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), platform::to_void_cast(x->data<T>()));

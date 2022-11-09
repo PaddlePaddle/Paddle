@@ -75,11 +75,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
     dnnl::memory::data_type x_type =
         framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims,
-        framework::TransToProtoVarType(x->dtype()),
-        x_type,
-        onednn_engine);
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        x_vec_dims, x->dtype(), x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), platform::to_void_cast(x->data<T>()));
@@ -349,11 +346,8 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
 
     dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
         framework::TransToProtoVarType(dout->dtype()));
-    platform::ReorderMKLDNNHandler reorder_handler(
-        dout_vec_dims,
-        framework::TransToProtoVarType(dout->dtype()),
-        dout_type,
-        onednn_engine);
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        dout_vec_dims, dout->dtype(), dout_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->mem_desc(), platform::to_void_cast(dout->data<T>()));

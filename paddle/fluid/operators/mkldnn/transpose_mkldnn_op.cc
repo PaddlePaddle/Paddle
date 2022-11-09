@@ -53,11 +53,10 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto x_vec_dims = phi::vectorize(x->dims());
 
-    framework::proto::VarType::Type x_paddle_type =
-        framework::TransToProtoVarType(x->dtype());
-    dnnl::memory::data_type x_type = framework::ToMKLDNNDataType(x_paddle_type);
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims, x_paddle_type, x_type, dnnl_engine);
+    dnnl::memory::data_type x_type =
+        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        x_vec_dims, x->dtype(), x_type, dnnl_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), platform::to_void_cast(x->data<T>()));
@@ -149,13 +148,11 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     auto dout_vec_dims = phi::vectorize(dout->dims());
 
-    framework::proto::VarType::Type dout_paddle_type =
-        framework::TransToProtoVarType(dout->dtype());
-    dnnl::memory::data_type dout_type =
-        framework::ToMKLDNNDataType(dout_paddle_type);
+    auto dout_type = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(dout->dtype()));
 
-    platform::ReorderMKLDNNHandler reorder_handler(
-        dout_vec_dims, dout_paddle_type, dout_type, dnnl_engine);
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        dout_vec_dims, dout->dtype(), dout_type, dnnl_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
