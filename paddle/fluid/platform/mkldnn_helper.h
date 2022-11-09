@@ -56,59 +56,6 @@ using tf_desc = typename Type::desc;
 template <class Type>
 using tf_pd = typename Type::primitive_desc;
 
-inline void MatchShapeToLayout(phi::DenseTensor* tensor_in,
-                               phi::DataLayout from,
-                               phi::DataLayout to) {
-  auto print_dims = [](const std::vector<int>& dims) {
-    std::ostringstream oss;
-
-    if (!dims.empty()) {
-      oss << "[";
-      // Convert all but the last element to avoid a trailing ","
-      std::copy(
-          dims.begin(), dims.end() - 1, std::ostream_iterator<int>(oss, ","));
-
-      // Now add the last element with no delimiter
-      oss << dims.back() << "]";
-    }
-
-    return oss.str();
-  };
-
-  // In these data layouts, channel dimension is either on 2nd position: nChw or
-  // at last nhwC, so for dim==2 these layouts are the same and nothing should
-  // be done. Similarly for dim==1 when you have just one possible combination.
-  if (tensor_in->dims().size() < 3) {
-    VLOG(3) << "Keeping kMKLDNN/kNHWC/kNDHWC output_shape"
-            << print_dims(phi::vectorize<int>(tensor_in->dims()));
-    return;
-  }
-
-  switch (from) {
-    case phi::DataLayout::kMKLDNN:
-      if ((to == phi::DataLayout::kNHWC) || (to == phi::DataLayout::kNDHWC)) {
-        auto dims = phi::vectorize<int>(tensor_in->dims());
-        std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
-        tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: kMKLDNN to: kNHWC/kNDHWC output_shape"
-                << print_dims(dims);
-      }
-      break;
-    case phi::DataLayout::kNHWC:
-    case phi::DataLayout::kNDHWC:
-      if (to == phi::DataLayout::kMKLDNN) {
-        auto dims = phi::vectorize<int>(tensor_in->dims());
-        std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
-        tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: kNHWC/kNDHWC to: kMKLDNN output_shape"
-                << print_dims(dims);
-      }
-      break;
-    default:
-      break;
-  }
-}
-
 inline void ClearMKLDNNCache(const platform::Place& place,
                              void* ptr = nullptr) {
   // Clear mkl-dnn cache,

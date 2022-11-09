@@ -67,7 +67,7 @@ class TransferLayoutFunctor {
         out_layout == DataLayout::kNHWC) {
       tensor_out->Resize(in_tensor.dims());
       tensor_out->set_layout(out_layout);
-      platform::MatchShapeToLayout(tensor_out, in_layout, out_layout);
+      phi::funcs::MatchShapeToLayout(tensor_out, in_layout, out_layout);
       return;
     }
     if (in_layout == DataLayout::kMKLDNN || out_layout == DataLayout::kMKLDNN) {
@@ -89,7 +89,7 @@ class TransferLayoutFunctor {
         // is expecting NHWC dims description order
         if (in_layout == DataLayout::kNHWC) {
           VLOG(4) << "kNHWC";
-          platform::MatchShapeToLayout(&out_tensor, in_layout, out_layout);
+          phi::funcs::MatchShapeToLayout(&out_tensor, in_layout, out_layout);
           paddle::platform::MKLDNNDeviceContext::tls()
               .set_cur_paddle_data_layout(in_layout);
         }
