@@ -247,7 +247,7 @@ if(WITH_UNITY_BUILD)
 endif()
 
 if(WITH_ASCEND_CL)
-cc_test(gelu_op_npu_test SRCS gelu_op_npu_test.cc DEPS op_registry gelu_op scope device_context enforce executor)
+cc_test(gelu_op_npu_test SRCS gelu_op_npu_test.cc DEPS op_registry generated_op scope device_context enforce executor)
 endif()
 
 if (WITH_GPU OR WITH_ASCEND_CL)

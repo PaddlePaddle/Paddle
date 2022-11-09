@@ -770,16 +770,6 @@
   inplace : (x -> out)
   backward : fill_diagonal_grad
 
-- op : fill_diagonal_tensor
-  args : (Tensor x, Tensor y, int64_t offset, int dim1, int dim2)
-  output : Tensor(out)
-  infer_meta :
-    func : FillDiagonalTensorInferMeta
-  kernel :
-    func : fill_diagonal_tensor
-  inplace : (x -> out)
-  backward : fill_diagonal_tensor_grad
-
 - op : flatten
   args : (Tensor x, int start_axis, int stop_axis)
   output : Tensor(out), Tensor(xshape)
@@ -910,14 +900,6 @@
     data_type : x
   backward : gather_nd_grad
 
-- op : gather_tree
-  args : (Tensor ids, Tensor parents)
-  output : Tensor(out)
-  infer_meta :
-    func : GatherTreeMeta
-  kernel :
-    func : gather_tree
-
 - op : gaussian
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
   output: Tensor(out)
@@ -929,16 +911,6 @@
     param : [shape, mean, std, seed, dtype]
     data_type : dtype
     backend : place
-
-- op : gelu
-  args : (Tensor x,  bool approximate)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : gelu
-  backward : gelu_grad
 
 - op : generate_proposals
   args : (Tensor scores, Tensor bbox_deltas, Tensor im_shape, Tensor anchors, Tensor variances, int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size, float eta, bool pixel_offset=true)
@@ -985,15 +957,6 @@
   optional : scale, bias
   intermediate : mean, variance
   backward : group_norm_grad
-
-- op : gumbel_softmax
-  args : (Tensor x, float temperature, bool hard, int axis)
-  output : Tensor
-  infer_meta :
-    func : GumbelSoftmaxInferMeta
-  kernel :
-    func : gumbel_softmax
-  backward : gumbel_softmax_grad
 
 - op : hardswish
   args : (Tensor x, float threshold = 6.0, float scale = 6.0, float offset = 3.0)
@@ -2387,15 +2350,6 @@
     func : unbind
   backward : unbind_grad
 
-- op : unfold
-  args : (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
-  output : Tensor
-  infer_meta :
-    func : UnfoldInferMeta
-  kernel :
-    func : unfold
-  backward : unfold_grad
-
 - op : uniform
   args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
   output : Tensor(out)
@@ -2553,15 +2507,6 @@
   kernel:
     func: eig
   backward: eig_grad
-
-- op: fold
-  args: (Tensor x, int[] output_sizes, int[] kernel_sizes,  int[] strides, int[] paddings, int[] dilations)
-  output: Tensor(out)
-  infer_meta:
-    func: FoldInferMeta
-  kernel:
-    func: fold
-  backward: fold_grad
 
 - op: overlap_add
   args: (Tensor x, int hop_length, int axis)
