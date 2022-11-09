@@ -21,8 +21,8 @@ namespace operators {
 
 template <typename T>
 class LayerNormMKLDNNHandler
-    : public platform::
-          MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward> {
+    : public phi::funcs::
+          OneDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward> {
  public:
   LayerNormMKLDNNHandler(const std::vector<int64_t>& dims,
                          const float& epsilon,
@@ -31,7 +31,8 @@ class LayerNormMKLDNNHandler
                          const phi::DenseTensor* x,
                          const dnnl::engine engine,
                          platform::Place cpu_place)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
+      : phi::funcs::OneDNNHandlerNoCachingT<T,
+                                            dnnl::layer_normalization_forward>(
             engine, cpu_place) {
     const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                        : dnnl::prop_kind::forward_training;

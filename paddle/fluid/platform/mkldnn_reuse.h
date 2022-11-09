@@ -30,31 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = dnnl::memory;
-
-template <typename T,
-          typename TForward,
-          typename TBackward = mkldnn_dummy_primitive,
-          typename TBackward_params = mkldnn_dummy_primitive>
-using MKLDNNHandlerT =
-    phi::funcs::OneDNNHandlerT<T, TForward, TBackward, TBackward_params>;
-
-template <typename T,
-          typename TForward,
-          typename TBackward = mkldnn_dummy_primitive,
-          typename TBackward_params = mkldnn_dummy_primitive>
-using MKLDNNHandlerNoCachingT = phi::funcs::
-    OneDNNHandlerNoCachingT<T, TForward, TBackward, TBackward_params>;
-
-template <typename T>
-using ReductionMKLDNNHandler = phi::funcs::ReductionOneDNNHandler<T>;
-
-template <typename T>
-using BroadcastDataMKLDNNHandler = phi::funcs::BroadcastDataOneDNNHandler<T>;
-
-template <typename T>
-using BinaryMKLDNNHandler = phi::funcs::BinaryOneDNNHandler<T>;
 
 static void AppendActivation(const framework::ExecutionContext& ctx,
                              dnnl::post_ops& post_ops,  // NOLINT
@@ -219,19 +195,9 @@ static void SetInMemDescWithLogicalLayoutFusesSupport(
   }
 }
 
-template <typename T>
-constexpr bool IsInt8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
-}
-
-template <typename T>
-constexpr bool IsBfloat16() {
-  return std::is_same<T, paddle::platform::bfloat16>::value;
-}
-
 template <typename XT, typename YT, typename OT>
 class MatMulV2MKLDNNHandler
-    : public paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul> {
+    : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
   MatMulV2MKLDNNHandler(const framework::ExecutionContext& ctx,
                         const dnnl::engine engine,
@@ -243,8 +209,8 @@ class MatMulV2MKLDNNHandler
                         bool is_output_fused,
                         const std::vector<int64_t>& x_strides_override,
                         const std::vector<int64_t>& y_strides_override)
-      : paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
-                                                                    cpu_place) {
+      : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
+                                                              cpu_place) {
     // M X K * K X N
     std::vector<int64_t> x_dims(x_org_dims);
     std::vector<int64_t> y_dims(y_org_dims);

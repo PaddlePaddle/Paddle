@@ -43,8 +43,8 @@ struct InnerProductCache {
 };
 template <typename T_in, typename T_w, typename T_out>
 class FCMKLDNNHandler
-    : public platform::MKLDNNHandlerNoCachingT<T_in,
-                                               dnnl::inner_product_forward> {
+    : public phi::funcs::OneDNNHandlerNoCachingT<T_in,
+                                                 dnnl::inner_product_forward> {
  public:
   FCMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                   const platform::MKLDNNDeviceContext& dev_ctx,
@@ -55,7 +55,7 @@ class FCMKLDNNHandler
                   const int in_num_col_dims,
                   dnnl::engine mkldnn_engine,
                   platform::Place cpu_place)
-      : platform::MKLDNNHandlerNoCachingT<T_in, dnnl::inner_product_forward>(
+      : phi::funcs::OneDNNHandlerNoCachingT<T_in, dnnl::inner_product_forward>(
             mkldnn_engine, cpu_place),
         dev_ctx_(dev_ctx) {
     this->memory_key_ = ctx.InputName("W");

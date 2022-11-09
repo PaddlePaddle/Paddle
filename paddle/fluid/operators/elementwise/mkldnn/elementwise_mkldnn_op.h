@@ -28,6 +28,7 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::stream;
 using phi::DataLayout;
+using phi::funcs::BinaryOneDNNHandler;
 
 inline std::vector<int64_t> CalculateBroadcastedDims(
     const phi::DenseTensor* x, const phi::DenseTensor* y) {
@@ -88,7 +89,7 @@ inline void BroadcastReduction(const framework::ExecutionContext& ctx,
     broadcast_reduction_attr.set_post_ops(po);
   }
 
-  platform::ReductionMKLDNNHandler<T> reduction_handler(
+  phi::funcs::ReductionOneDNNHandler<T> reduction_handler(
       dnnl::algorithm::reduction_sum,
       0.0f,
       0.0f,
@@ -136,18 +137,18 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     float scale_o = ctx.Attr<float>("Scale_out");
     int axis = ctx.Attr<int>("axis");
 
-    platform::BinaryMKLDNNHandler<T> handler(BINARY_OP,
-                                             axis,
-                                             mkldnn_engine,
-                                             ctx.GetPlace(),
-                                             x,
-                                             y,
-                                             z,
-                                             scale_x,
-                                             scale_y,
-                                             scale_o,
-                                             true,
-                                             get_post_ops(ctx));
+    BinaryOneDNNHandler<T> handler(BINARY_OP,
+                                   axis,
+                                   mkldnn_engine,
+                                   ctx.GetPlace(),
+                                   x,
+                                   y,
+                                   z,
+                                   scale_x,
+                                   scale_y,
+                                   scale_o,
+                                   true,
+                                   get_post_ops(ctx));
 
     // oneDNN's binary is optimized for broadcasting y into x, so in other case
     // we have to swap tensors to achieve optimal performance
@@ -269,17 +270,17 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
               &reorder_handler, dx, reorder_src_memory, dst_memory, scales);
         }
       } else {  // elementwise_mul & elementwise_div
-        platform::BinaryMKLDNNHandler<T> binary_handler(BINARY_OP,
-                                                        axis,
-                                                        onednn_engine,
-                                                        ctx.GetPlace(),
-                                                        dout,
-                                                        y,
-                                                        dx,
-                                                        1.0f,
-                                                        1.0f,
-                                                        1.0f,
-                                                        false);
+        BinaryOneDNNHandler<T> binary_handler(BINARY_OP,
+                                              axis,
+                                              onednn_engine,
+                                              ctx.GetPlace(),
+                                              dout,
+                                              y,
+                                              dx,
+                                              1.0f,
+                                              1.0f,
+                                              1.0f,
+                                              false);
 
         const auto src_dout_memory = binary_handler.AcquireSrcMemory(dout);
         const auto src_y_memory = binary_handler.AcquireSecondSrcMemory(y);
@@ -327,23 +328,22 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         std::shared_ptr<dnnl::memory> src_0_memory;
         std::shared_ptr<dnnl::memory> src_1_memory;
 
-        platform::BinaryMKLDNNHandler<T> binary_handler(
-            dnnl::algorithm::binary_mul,
-            axis,
-            onednn_engine,
-            ctx.GetPlace(),
-            dout,
-            x,
-            nullptr,
-            1.0f,
-            1.0f,
-            1.0f,
-            false);
+        BinaryOneDNNHandler<T> binary_handler(dnnl::algorithm::binary_mul,
+                                              axis,
+                                              onednn_engine,
+                                              ctx.GetPlace(),
+                                              dout,
+                                              x,
+                                              nullptr,
+                                              1.0f,
+                                              1.0f,
+                                              1.0f,
+                                              false);
 
         src_1_memory = binary_handler.AcquireSecondSrcMemory(x);
 
         if (BINARY_OP == dnnl::algorithm::binary_div) {
-          platform::BinaryMKLDNNHandler<T> post_op_binary_handler(
+          BinaryOneDNNHandler<T> post_op_binary_handler(
               dnnl::algorithm::binary_div,
               axis,
               onednn_engine,
@@ -362,19 +362,18 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
           po.append_binary(dnnl::algorithm::binary_div,
                            post_op_memory->get_desc());
 
-          binary_handler =
-              platform::BinaryMKLDNNHandler<T>(dnnl::algorithm::binary_mul,
-                                               axis,
-                                               onednn_engine,
-                                               ctx.GetPlace(),
-                                               dout,
-                                               out,
-                                               nullptr,
-                                               -1.0f,
-                                               1.0f,
-                                               1.0f,
-                                               false,
-                                               po);
+          binary_handler = BinaryOneDNNHandler<T>(dnnl::algorithm::binary_mul,
+                                                  axis,
+                                                  onednn_engine,
+                                                  ctx.GetPlace(),
+                                                  dout,
+                                                  out,
+                                                  nullptr,
+                                                  -1.0f,
+                                                  1.0f,
+                                                  1.0f,
+                                                  false,
+                                                  po);
 
           src_1_memory = binary_handler.AcquireSecondSrcMemory(out);
         }

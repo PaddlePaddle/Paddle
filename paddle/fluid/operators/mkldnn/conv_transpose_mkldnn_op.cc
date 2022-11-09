@@ -37,7 +37,8 @@ inline dnnl::memory::dims GetWeightsTz(const phi::DenseTensor* filter,
 
 template <typename T, typename K, typename T_out>
 class ConvTransposeMKLDNNHandlerT
-    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::deconvolution_forward> {
+    : public phi::funcs::OneDNNHandlerNoCachingT<T,
+                                                 dnnl::deconvolution_forward> {
  public:
   ConvTransposeMKLDNNHandlerT(const framework::ExecutionContext& ctx,
                               const dnnl::engine mkldnn_engine,
@@ -45,7 +46,7 @@ class ConvTransposeMKLDNNHandlerT
                               const phi::DenseTensor* filter,
                               const phi::DenseTensor* bias,
                               phi::DenseTensor* output)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>(
+      : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>(
             mkldnn_engine, ctx.GetPlace()),
         is_test_(ctx.Attr<bool>("is_test")) {
     PADDLE_ENFORCE_EQ(is_test_,
@@ -221,7 +222,7 @@ class ConvTransposeMKLDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
       const phi::DenseTensor* input) {
     const T* input_data = input->data<T>();
-    return platform::MKLDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>::
+    return phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>::
         AcquireMemoryWithReorder(input->mem_desc(),
                                  this->fwd_pd_->src_desc(),
                                  platform::to_void_cast<T>(input_data));

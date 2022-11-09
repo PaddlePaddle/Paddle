@@ -35,7 +35,6 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = dnnl::memory;
 
 using OneDNNMemoryFormat = dnnl::memory::format_tag;

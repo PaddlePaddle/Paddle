@@ -30,14 +30,14 @@ using platform::to_void_cast;
 
 template <typename T = float>
 class InterpolateMKLDNNHandler
-    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward> {
+    : public phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::resampling_forward> {
  public:
   InterpolateMKLDNNHandler(const dnnl::algorithm algo,
                            const dnnl::engine engine,
                            platform::Place cpu_place,
                            const phi::DenseTensor* x,
                            phi::DenseTensor* out)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
+      : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
             engine, cpu_place) {
     const auto dst_tz = phi::vectorize(out->dims());
     const auto dst_md = memory::desc(

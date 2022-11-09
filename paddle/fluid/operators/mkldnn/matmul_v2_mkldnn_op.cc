@@ -106,7 +106,7 @@ phi::DDim GetDimForInput(const ExecutionContext &ctx, std::string input_name) {
 
 template <typename XT, typename YT, typename OT>
 class MatMulMKLDNNHandler
-    : public paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul> {
+    : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
   MatMulMKLDNNHandler(const dnnl::engine engine,
                       paddle::platform::Place cpu_place,
@@ -116,8 +116,8 @@ class MatMulMKLDNNHandler
                       bool trans_y,
                       Tensor *out,
                       float scale)
-      : paddle::platform::MKLDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
-                                                                    cpu_place) {
+      : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
+                                                              cpu_place) {
     auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x->dims(), 0, trans_x);
     auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y->dims(), 0, trans_y);
 
@@ -866,7 +866,7 @@ class MatMulV2GradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       Tensor *dx,
       const std::vector<int64_t> &dx_dims,
       const std::vector<int64_t> &squeezed_dims) const {
-    paddle::platform::ReductionMKLDNNHandler<T> handler(
+    phi::funcs::ReductionOneDNNHandler<T> handler(
         dnnl::algorithm::reduction_sum,
         0.0f,
         0.0f,
