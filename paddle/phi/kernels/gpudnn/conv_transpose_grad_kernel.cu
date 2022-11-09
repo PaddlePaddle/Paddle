@@ -227,7 +227,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     fwd_result.algo =
         search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
 #else
-    using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+    using search1 = SearchAlgorithm<ConvKind::kForward>;
     fwd_result = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search1::GetWorkspaceSize(args1, fwd_result.algo));
@@ -252,7 +252,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     filter_result.algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
 #else
-    using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+    using search2 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search2::GetWorkspaceSize(args2, filter_result.algo));
@@ -269,9 +269,9 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
   ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = ctx.cudnn_workspace_handle();
   if (dx) {
+#ifdef PADDLE_WITH_HIP
     // Because beta is zero, it is unnecessary to reset dx.
     for (int g = 0; g < groups; g++) {
-#ifdef PADDLE_WITH_HIP
       auto cudnn_func = [&](void* cudnn_workspace) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             dynload::miopenConvolutionForward(handle,
@@ -288,26 +288,23 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
                                               cudnn_workspace,
                                               workspace_size));
       };
-#else   // PADDLE_WITH_HIP
-      auto cudnn_func = [&](void* cudnn_workspace) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            dynload::cudnnConvolutionForward(handle,
-                                             &alpha,
-                                             args1.idesc.desc(),
-                                             dout_data + dout_offset * g,
-                                             args1.wdesc.desc(),
-                                             filter_data + filter_offset * g,
-                                             args1.cdesc.desc(),
-                                             fwd_result.algo,
-                                             cudnn_workspace,
-                                             workspace_size,
-                                             &beta,
-                                             args1.odesc.desc(),
-                                             dx_data + x_offset * g));
-      };
-#endif  // PADDLE_WITH_HIP
       workspace_handle.RunFunc(cudnn_func, workspace_size);
     }
+#else   // PADDLE_WITH_HIP
+    ConvRunner<T, ConvKind::kForward>::Apply(ctx,
+                                             args1,
+                                             fwd_result,
+                                             dout_data,
+                                             filter_data,
+                                             dx_data,
+                                             groups,
+                                             dout_offset,
+                                             filter_offset,
+                                             x_offset,
+                                             workspace_size,
+                                             &workspace_handle,
+                                             false);
+#endif  // PADDLE_WITH_HIP
 
     if (data_layout == GPUDNNDataLayout::kNHWC) {
       DenseTensor dx_transpose;
@@ -330,8 +327,8 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
   if (dfilter) {
     // Because beta is zero, it is unnecessary to reset dfilter.
     // Gradient with respect to the filter
-    for (int g = 0; g < groups; g++) {
 #ifdef PADDLE_WITH_HIP
+    for (int g = 0; g < groups; g++) {
       auto cudnn_func = [&](void* cudnn_workspace) {
         PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionBackwardWeights(
             handle,
@@ -348,26 +345,23 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
             cudnn_workspace,
             workspace_size));
       };
-#else   // PADDLE_WITH_HIP
-      auto cudnn_func = [&](void* cudnn_workspace) {
-        PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBackwardFilter(
-            handle,
-            &alpha,
-            args2.idesc.desc(),
-            dout_data + dout_offset * g,
-            args2.odesc.desc(),
-            x_data + x_offset * g,
-            args2.cdesc.desc(),
-            filter_result.algo,
-            cudnn_workspace,
-            workspace_size,
-            &beta,
-            args2.wdesc.desc(),
-            dfilter_data + filter_offset * g));
-      };
-#endif  // PADDLE_WITH_HIP
       workspace_handle.RunFunc(cudnn_func, workspace_size);
     }
+#else   // PADDLE_WITH_HIP
+    ConvRunner<T, ConvKind::kBackwardFilter>::Apply(ctx,
+                                                    args2,
+                                                    filter_result,
+                                                    x_data,
+                                                    dout_data,
+                                                    dfilter_data,
+                                                    groups,
+                                                    dout_offset,
+                                                    filter_offset,
+                                                    x_offset,
+                                                    workspace_size,
+                                                    &workspace_handle,
+                                                    false);
+#endif  // PADDLE_WITH_HIP
   }
 }
 
@@ -704,7 +698,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     bwd_result1.algo =
         search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
 #else
-    using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+    using search1 = SearchAlgorithm<ConvKind::kBackwardData>;
     bwd_result1 = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = search1::GetWorkspaceSize(args1, bwd_result1.algo);
 #endif
@@ -726,7 +720,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     bwd_result2.algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
 #else
-    using search2 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+    using search2 = SearchAlgorithm<ConvKind::kBackwardData>;
     bwd_result2 = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search2::GetWorkspaceSize(args2, bwd_result2.algo));
@@ -751,7 +745,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     filter_result.algo =
         search3::Find<T>(args3, false, deterministic, workspace_size, ctx);
 #else
-    using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+    using search3 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result = search3::Find<T>(ctx, args3, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search3::GetWorkspaceSize(args3, filter_result.algo));
@@ -777,7 +771,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     fwd_result.algo =
         search4::Find<T>(args4, false, deterministic, workspace_size, ctx);
 #else
-    using search4 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+    using search4 = SearchAlgorithm<ConvKind::kForward>;
     fwd_result = search4::Find<T>(ctx, args4, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search4::GetWorkspaceSize(args4, fwd_result.algo));
@@ -815,8 +809,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 
   if (ddout) {
     ddx_ = transformed_ddx.data<T>();
-    for (int i = 0; i < groups; i++) {
 #ifdef PADDLE_WITH_HIP
+    for (int i = 0; i < groups; i++) {
       workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionBackwardData(
@@ -835,30 +829,25 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                 workspace_size));
           },
           workspace_size);
-#else   // PADDLE_WITH_HIP
-      workspace_handle.RunFunc(
-          [&](void* workspace_ptr) {
-            PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBackwardData(
-                handle,
-                &alpha,
-                args1.wdesc.desc(),
-                filter_ + i * group_offset_filter,
-                args1.odesc.desc(),
-                ddx_ + i * group_offset_in,
-                args1.cdesc.desc(),
-                bwd_result1.algo,
-                workspace_ptr,
-                workspace_size,
-                &beta,
-                args1.idesc.desc(),
-                transformed_ddout_channel_ + i * group_offset_out));
-          },
-          workspace_size);
-#endif  // PADDLE_WITH_HIP
     }
+#else   // PADDLE_WITH_HIP
+    ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
+                                                  args1,
+                                                  bwd_result1,
+                                                  ddx_,
+                                                  filter_,
+                                                  transformed_ddout_channel_,
+                                                  groups,
+                                                  group_offset_out,
+                                                  group_offset_filter,
+                                                  group_offset_in,
+                                                  workspace_size,
+                                                  &workspace_handle,
+                                                  false);
+#endif  // PADDLE_WITH_HIP
 
-    for (int i = 0; i < groups; i++) {
 #ifdef PADDLE_WITH_HIP
+    for (int i = 0; i < groups; i++) {
       // MIOPEN ONLY support beta to be 0.0f
       DenseTensor conv_x_ddfilter(dout.type());
       conv_x_ddfilter.Resize(transformed_ddout_channel.dims());
@@ -893,27 +882,22 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           &beta,
           args2.idesc.desc(),
           transformed_ddout_channel_ + i * group_offset_out));
-#else   // PADDLE_WITH_HIP
-      workspace_handle.RunFunc(
-          [&](void* workspace_ptr) {
-            PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBackwardData(
-                handle,
-                &alpha,
-                args2.wdesc.desc(),
-                ddfilter_ + i * group_offset_filter,
-                args2.odesc.desc(),
-                x_ + i * group_offset_in,
-                args2.cdesc.desc(),
-                bwd_result2.algo,
-                workspace_ptr,
-                workspace_size,
-                &alpha,
-                args2.idesc.desc(),
-                transformed_ddout_channel_ + i * group_offset_out));
-          },
-          workspace_size);
-#endif  // PADDLE_WITH_HIP
     }
+#else   // PADDLE_WITH_HIP
+    ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
+                                                  args2,
+                                                  bwd_result2,
+                                                  x_,
+                                                  ddfilter_,
+                                                  transformed_ddout_channel_,
+                                                  groups,
+                                                  group_offset_out,
+                                                  group_offset_filter,
+                                                  group_offset_in,
+                                                  workspace_size,
+                                                  &workspace_handle,
+                                                  true);
+#endif  // PADDLE_WITH_HIP
 
     if ((!is_sys_pad) && (!channel_last)) {
       if (strides.size() == 2U) {
@@ -947,8 +931,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   T* transformed_dout_channel_ = transformed_dout.data<T>();
   if (dfilter) {
     ddx_ = transformed_ddx_channel.data<T>();
-    for (int i = 0; i < groups; i++) {
 #ifdef PADDLE_WITH_HIP
+    for (int i = 0; i < groups; i++) {
       workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
@@ -968,33 +952,28 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     workspace_size));
           },
           workspace_size);
-#else   // PADDLE_WITH_HIP
-      workspace_handle.RunFunc(
-          [&](void* workspace_ptr) {
-            PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBackwardFilter(
-                handle,
-                &alpha,
-                args3.idesc.desc(),
-                transformed_dout_channel_ + i * group_offset_out,
-                args3.odesc.desc(),
-                ddx_ + i * group_offset_in,
-                args3.cdesc.desc(),
-                filter_result.algo,
-                workspace_ptr,
-                workspace_size,
-                &beta,
-                args3.wdesc.desc(),
-                dfilter_ + i * group_offset_filter));
-          },
-          workspace_size);
-#endif  // PADDLE_WITH_HIP
     }
+#else   // PADDLE_WITH_HIP
+    ConvRunner<T, ConvKind::kBackwardFilter>::Apply(ctx,
+                                                    args3,
+                                                    filter_result,
+                                                    ddx_,
+                                                    transformed_dout_channel_,
+                                                    dfilter_,
+                                                    groups,
+                                                    group_offset_out,
+                                                    group_offset_filter,
+                                                    group_offset_in,
+                                                    workspace_size,
+                                                    &workspace_handle,
+                                                    false);
+#endif  // PADDLE_WITH_HIP
   }
 
   if (dx) {
     ddfilter_ = ddfilter.data<T>();
-    for (int i = 0; i < groups; i++) {
 #ifdef PADDLE_WITH_HIP
+    for (int i = 0; i < groups; i++) {
       workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionForward(
@@ -1013,27 +992,23 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                 workspace_size));
           },
           workspace_size);
-#else   // PADDLE_WITH_HIP
-      workspace_handle.RunFunc(
-          [&](void* workspace_ptr) {
-            PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionForward(
-                handle,
-                &alpha,
-                args4.idesc.desc(),
-                transformed_dout_channel_ + i * group_offset_out,
-                args4.wdesc.desc(),
-                ddfilter_ + i * group_offset_filter,
-                args4.cdesc.desc(),
-                fwd_result.algo,
-                workspace_ptr,
-                workspace_size,
-                &beta,
-                args4.odesc.desc(),
-                transformed_dx_ + i * group_offset_in));
-          },
-          workspace_size);
-#endif  // PADDLE_WITH_HIP
     }
+#else   // PADDLE_WITH_HIP
+    ConvRunner<T, ConvKind::kForward>::Apply(ctx,
+                                             args4,
+                                             fwd_result,
+                                             transformed_dout_channel_,
+                                             ddfilter_,
+                                             transformed_dx_,
+                                             groups,
+                                             group_offset_out,
+                                             group_offset_filter,
+                                             group_offset_in,
+                                             workspace_size,
+                                             &workspace_handle,
+                                             false);
+#endif  // PADDLE_WITH_HIP
+
     if (channel_last) {
       TransToChannelLast<Context, T>(ctx, &transformed_dx_channel, dx);
     }

@@ -188,7 +188,7 @@ class RNNCellBase(Layer):
                 return True
             return isinstance(seq, Sequence) and not isinstance(seq, str)
 
-        class Shape(object):
+        class Shape:
             def __init__(self, shape):
                 self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
 

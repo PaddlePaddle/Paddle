@@ -20,7 +20,7 @@ from paddle.fluid import Program, program_guard
 from paddle import fluid
 
 
-class Segment(object):
+class Segment:
     def __init__(self, chunk_type, start_idx, end_idx):
         self.chunk_type = chunk_type
         self.start_idx = start_idx

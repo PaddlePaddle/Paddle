@@ -81,6 +81,14 @@ void ReluDoubleGradKernel(const Context& dev_ctx,
                           DenseTensor* ddout);
 
 template <typename T, typename Context>
+void SinDoubleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         DenseTensor* dx,
+                         DenseTensor* ddout);
+
+template <typename T, typename Context>
 void TanhDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
                           const DenseTensor& dout,
@@ -199,6 +207,14 @@ void PowGradKernel(const Context& dev_ctx,
                    const Scalar& factor,
                    DenseTensor* dx);
 
+template <typename T, typename Context>
+void PowDoubleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         const Scalar& factor,
+                         DenseTensor* dx,
+                         DenseTensor* ddout);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Cos);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Tan);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Acos);

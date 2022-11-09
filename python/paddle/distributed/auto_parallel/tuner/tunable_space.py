@@ -22,7 +22,7 @@ from .tunable_variable import IntRange
 from .tunable_variable import FloatRange
 
 
-class TunableSpace(object):
+class TunableSpace:
     """
     A TunableSpace is constructed by the tunable variables.
     """

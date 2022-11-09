@@ -27,7 +27,7 @@ URL = 'https://dataset.bj.bcebos.com/movielens%2Fml-1m.zip'
 MD5 = 'c4d9eecfca2ab87c1945afe126590906'
 
 
-class MovieInfo(object):
+class MovieInfo:
     """
     Movie id, title and categories information are stored in MovieInfo.
     """
@@ -58,7 +58,7 @@ class MovieInfo(object):
         return self.__str__()
 
 
-class UserInfo(object):
+class UserInfo:
     """
     User id, gender, age, and job information are stored in UserInfo.
     """

@@ -325,7 +325,7 @@ def _change_is_test_status(program_desc, is_test):
                 op._set_attr('is_test', is_test)
 
 
-class _ProgramHolder(object):
+class _ProgramHolder:
     """
     Holds the execution information of a Program.
 

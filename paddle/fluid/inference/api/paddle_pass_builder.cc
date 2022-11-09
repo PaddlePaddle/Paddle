@@ -170,6 +170,12 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "conv_elementwise_add2_act_fuse_pass",
     "conv_elementwise_add_fuse_pass",
     "multihead_matmul_fuse_pass_v2",
+    "fused_multi_transformer_encoder_pass",
+    "fused_multi_transformer_decoder_pass",
+    "fused_multi_transformer_encoder_fuse_qkv_pass",
+    "fused_multi_transformer_decoder_fuse_qkv_pass",
+    "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",
+    "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",
     "gpu_cpu_map_matmul_v2_to_mul_pass",
     "gpu_cpu_map_matmul_v2_to_matmul_pass",
     "fc_fuse_pass",
@@ -308,6 +314,7 @@ void CpuPassStrategy::EnableMKLDNN() {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
     for (auto &pass : std::vector<std::string>({
+             "squeeze2_transpose2_onednn_fuse_pass",
              "depthwise_conv_mkldnn_pass",    //
              "conv_bn_fuse_pass",             // Execute BN passes again to
              "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
@@ -387,6 +394,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("mkldnn_placement_pass");
     passes_.push_back("simplify_with_basic_ops_pass");
     passes_.push_back("constant_folding_pass");
+    passes_.push_back("squeeze2_transpose2_onednn_fuse_pass");
     passes_.push_back("layer_norm_fuse_pass");
     passes_.push_back("attention_lstm_fuse_pass");
     passes_.push_back("seqconv_eltadd_relu_fuse_pass");

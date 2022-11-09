@@ -68,7 +68,7 @@ __all__ = ['ProgramTranslator', 'convert_to_static']
 MAX_TRACED_PROGRAM_COUNT = 10
 
 
-class FunctionCache(object):
+class FunctionCache:
     """
     Caches the transformed functions to avoid redundant conversions of the same function.
     """
@@ -158,7 +158,7 @@ def convert_to_static(function):
         return static_func
 
 
-class CacheKey(object):
+class CacheKey:
     """
     Cached key for ProgramCache.
     """
@@ -280,7 +280,7 @@ def unwrap_decorators(func):
     return decorators, cur
 
 
-class StaticFunction(object):
+class StaticFunction:
     """
     Wrapper class to Manage program conversion of decorated function.
 
@@ -847,7 +847,7 @@ def _verify_init_in_dynamic_mode(class_instance):
             )
 
 
-class HookHelper(object):
+class HookHelper:
     """
     Only For converting pre/post hooks operation in outermost layer while jit.save.
     Because hooks in sublayer have been processed automatically.
@@ -901,7 +901,7 @@ class HookHelper(object):
         return outputs
 
 
-class ConcreteProgram(object):
+class ConcreteProgram:
 
     __slots__ = [
         'inputs',
@@ -1037,7 +1037,7 @@ def _extract_indeed_params_buffers(class_instance):
     return params + buffers
 
 
-class ProgramCache(object):
+class ProgramCache:
     """
     Wrapper class for the program functions defined by dygraph function.
     """
@@ -1119,7 +1119,7 @@ def synchronized(func):
     return lock_func
 
 
-class ProgramTranslator(object):
+class ProgramTranslator:
     """
     Class to translate dygraph function into static graph function. The object
     of this class is a singleton.

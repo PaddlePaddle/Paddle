@@ -14771,7 +14771,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     )
 
 
-class PyFuncRegistry(object):
+class PyFuncRegistry:
     _register_funcs = []
 
     def __init__(self, func):
