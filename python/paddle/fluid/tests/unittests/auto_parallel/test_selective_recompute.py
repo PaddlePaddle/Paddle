@@ -56,7 +56,7 @@ def generate_model(use_recompute, recompute_granularity):
         eos_token_id=7,
         bos_token_id=0,
         eol_token_id=3,
-        use_recompute=use_recompute,
+        use_new_recompute=use_recompute,
         recompute_granularity=recompute_granularity,
     )
     model = GPTForPretraining(
