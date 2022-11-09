@@ -85,16 +85,33 @@ void AnalysisConfig::SetModel(const std::string &prog_file_path,
 
   Update();
 }
-void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
-                                  int device_id) {
+
+void AnalysisConfig::EnableUseGpu(
+    uint64_t memory_pool_init_size_mb,
+    int device_id,
+    Precision precision_mode,
+    const std::unordered_set<std::string> &black_list) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
   FLAGS_initial_gpu_memory_in_mb = memory_pool_init_size_mb_;
   gpu_device_id_ = device_id;
+  if (precision_mode == Precision::kFloat32) {
+    // default
+  } else if (precision_mode == Precision::kHalf ||
+             precision_mode == Precision::kBf16) {
+    enable_gpu_fp16_ = true;
+    mixed_black_list_ = black_list;
+    mixed_precision_mode_ = precision_mode;
+  } else {
+    LOG(ERROR)
+        << "The native GPU inference currently only supports "
+           "float32/float16/bfloat16 precision. Please check the parameters "
+           "you specified in EnableUseGpu or enable_use_gpu function.";
+  }
 #else
-  LOG(ERROR) << "Please compile with gpu to EnableGpu()";
-  use_gpu_ = false;
+  LOG(ERROR) << "PaddlePaddle of non GPU version, Please recompile "
+                "PaddlePaddle with GPU";
 #endif
 
   Update();
@@ -373,8 +390,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
 
-  // Mixed related.
+  // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
+  CP_MEMBER(enable_gpu_fp16_);
+  CP_MEMBER(mixed_precision_mode_);
 
   CP_MEMBER(enable_memory_optim_);
   // TensorRT related.
@@ -966,6 +985,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
+  ss << enable_gpu_fp16_;
   ss << use_external_stream_;
   ss << exec_stream_;
   ss << use_fc_padding_;
@@ -1176,6 +1196,7 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
+    os.InsertRow({"enable_gpu_fp16", std::to_string(enable_gpu_fp16_)});
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(

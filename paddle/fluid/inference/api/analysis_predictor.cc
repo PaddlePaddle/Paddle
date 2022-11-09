@@ -1253,8 +1253,15 @@ void AnalysisPredictor::PrepareArgument() {
     }
   }
   if (!config_.ir_optim()) {
-    passes.clear();
-    LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
+    argument_.SetEnableAnalysisOptim(false);
+    if (config_.enable_gpu_fp16_) {
+      argument_.SetEnableAnalysisOptim(true);
+      std::vector<std::string>({"float_to_mixed_pass"}).swap(passes);
+      LOG(INFO) << "This model run in native GPU float16 mode with no ir "
+                   "optimization";
+    } else {
+      LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
+    }
   }
   argument_.SetDisableLogs(config_.glog_info_disabled());
   argument_.SetIrAnalysisPasses(passes);
@@ -1264,6 +1271,9 @@ void AnalysisPredictor::PrepareArgument() {
   // mixed precison.
   argument_.SetModelPrecision(static_cast<int>(model_precision_));
   argument_.SetMixedBlackList(config_.mixed_black_list_);
+  argument_.SetEnableGPUFp16(config_.enable_gpu_fp16_);
+  argument_.SetMixedPrecisionMode(static_cast<int>(
+      paddle::ConvertPrecision(config_.mixed_precision_mode_)));
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.

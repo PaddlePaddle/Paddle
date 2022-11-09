@@ -131,6 +131,11 @@ void FloatToMixedPass::Init(framework::ir::Graph* graph) const {
   CHECK_NOTNULL(graph);
   CHECK_EQ(graph->IsMainGraph(), true);
 
+  keep_io_types_ = true;
+  mixed_precision_ =
+      static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
+  blacklist_ = Get<std::unordered_set<std::string>>("mixed_black_list");
+
   auto graph_size = graph->SubGraphsSize();
   subgraphes_.resize(graph_size);
   all_nodes_.resize(graph_size);
@@ -185,9 +190,10 @@ void FloatToMixedPass::SetOpUniqueType() const {
   for (const auto& nodes : all_nodes_) {
     for (auto* op_node : nodes) {
       if (!op_node->IsOp()) continue;
-      std::string unique_type =
-          op_node->Op()->Type() + "_" + std::to_string(suffix++);
-      op_original_type_[unique_type] = op_node->Op()->Type();
+      auto op_type = op_node->Op()->Type();
+      if (op_type == "feed" || op_type == "fetch") continue;
+      std::string unique_type = op_type + "_" + std::to_string(suffix++);
+      op_original_type_[unique_type] = op_type;
       op_node->Op()->SetType(unique_type);
       op_node->Op()->Flush();
     }
@@ -251,6 +257,12 @@ void FloatToMixedPass::GetOpPrecision() const {
 
       bool support_mixed = OpSupportPrecision(
           op_original_type_[op_node->Op()->Type()], mixed_precision_);
+
+      if (op_node->Op()->Type() == "feed" && keep_io_types_) {
+        support_mixed = false;
+      } else if (op_node->Op()->Type() == "fetch" && keep_io_types_) {
+        support_mixed = false;
+      }
 
       if (op_node->Op()->HasAttr("dtype")) {
         auto dtype = op_node->Op()->GetAttrIfExists<int>("dtype");

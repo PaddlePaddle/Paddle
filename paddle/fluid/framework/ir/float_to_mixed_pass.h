@@ -65,10 +65,11 @@ class FloatToMixedPass : public FusePassBase {
   void ProcessPersistableVar() const;
 
  private:
-  // float16 or bfloat16
-  phi::DataType mixed_precision_;
+  mutable bool keep_io_types_;
+  // float16 or bfloat16 now
+  mutable phi::DataType mixed_precision_;
 
-  std::unordered_set<std::string> blacklist_;
+  mutable std::unordered_set<std::string> blacklist_;
 
   // subgraph id -> pointer to subgraph
   mutable std::vector<framework::ir::Graph*> subgraphes_;
