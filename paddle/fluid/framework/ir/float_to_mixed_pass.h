@@ -18,8 +18,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
@@ -30,7 +30,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class FloatToMixedPass : public framework::ir::Pass {
+class FloatToMixedPass : public FusePassBase {
  public:
   using VarType = framework::proto::VarType;
 
@@ -83,6 +83,7 @@ class FloatToMixedPass : public framework::ir::Pass {
   // var -> the var's all input op
   mutable std::unordered_map<std::string, std::vector<framework::ir::Node*>>
       var_input_ops_;
+  mutable std::unordered_set<std::string> weights_should_be_mixed_;
 };
 
 }  // namespace ir
