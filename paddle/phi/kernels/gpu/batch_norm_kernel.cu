@@ -851,11 +851,13 @@ void BatchNormKernel(const Context &ctx,
         if (x_dims.size() == 2) {
           DenseTensor inv_var = phi::Empty<BatchNormParamType<T>>(ctx, {C});
           auto *inv_var_ptr = inv_var.data<BatchNormParamType<T>>();
-          InverseVariance<T>
-              <<<1, C>>>(est_var->template data<BatchNormParamType<T>>(),
-                         epsilon,
-                         C,
-                         inv_var_ptr);
+          const int threads = 512 > C ? C : 512;
+          const int blocks = (C + 511) / 512;
+          InverseVariance<T><<<blocks, threads>>>(
+              est_var->template data<BatchNormParamType<T>>(),
+              epsilon,
+              C,
+              inv_var_ptr);
           BN1DForwardInference<T, DataLayout::kNHWC>
               <<<grid_size, block_size, 0, ctx.stream()>>>(
                   transformed_x.template data<T>(),
