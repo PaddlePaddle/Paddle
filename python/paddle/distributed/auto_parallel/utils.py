@@ -2092,28 +2092,38 @@ def _copy_dist_attr_from_cpp_for_graph(dist_context):
 
 
 def insert_dependencies_for_two_ops(
-    block, idx, op1, op2, dist_context, is_recompute=False, sync=False
+    block,
+    idx,
+    prior_op,
+    posterior,
+    dist_context,
+    is_recompute=False,
+    sync=False,
 ):
     """
-    dependency: op1 should be run before op2
+    dependency: prior_op should be run before posterior
     """
 
     assert (
-        len(op1.output_arg_names) >= 1
+        len(prior_op.output_arg_names) >= 1
     ), "first op of dependency should at least have one output. [{}]".format(
-        str(op1)
+        str(prior_op)
     )
     assert (
-        len(op2.input_arg_names) >= 1
+        len(posterior.input_arg_names) >= 1
     ), "second op of dependency should at least have one input. [{}]".format(
-        str(op2)
+        str(posterior)
     )
-    op1_mesh = dist_context.get_op_dist_attr_for_program(op1).process_mesh
-    op2_mesh = dist_context.get_op_dist_attr_for_program(op2).process_mesh
+    prior_op_mesh = dist_context.get_op_dist_attr_for_program(
+        prior_op
+    ).process_mesh
+    posterior_mesh = dist_context.get_op_dist_attr_for_program(
+        posterior
+    ).process_mesh
     assert (
-        op1_mesh == op2_mesh
+        prior_op_mesh == posterior_mesh
     ), "two ops of dependency should have same mesh but got [{}] and [{}]".format(
-        str(op1_mesh), str(op2_mesh)
+        str(prior_op_mesh), str(posterior_mesh)
     )
 
     def _select_best_depend_var(vars):
@@ -2124,10 +2134,10 @@ def insert_dependencies_for_two_ops(
         return vars_with_numels[-1][0]
 
     first_var = _select_best_depend_var(
-        [block.var(name) for name in op1.output_arg_names]
+        [block.var(name) for name in prior_op.output_arg_names]
     )
     second_var = _select_best_depend_var(
-        [block.var(name) for name in op2.input_arg_names]
+        [block.var(name) for name in posterior.input_arg_names]
     )
 
     depend_op = block._insert_op_without_sync(
@@ -2144,7 +2154,7 @@ def insert_dependencies_for_two_ops(
     # self.desc.set_output(out_proto.name, out_arg_names)
 
     naive_set_dist_op_attr_for_program_by_mesh(
-        depend_op, op1_mesh, dist_context, is_recompute
+        depend_op, prior_op_mesh, dist_context, is_recompute
     )
 
     if sync:

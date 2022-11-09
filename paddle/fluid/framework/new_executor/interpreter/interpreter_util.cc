@@ -815,7 +815,7 @@ void BuildOpFuncList(const platform::Place& place,
   // It reduce about 10% memory usage for V100 8-GPU training of
   // transformer_base_bs4096_amp_fp16 and transformer_base_bs4096_pure_fp16
   // model.
-  memory::Release(place);
+  // memory::Release(place);
 }
 
 void LogDeviceMemoryStats(const platform::Place& place) {
