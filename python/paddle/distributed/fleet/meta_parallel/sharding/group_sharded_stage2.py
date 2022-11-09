@@ -660,21 +660,6 @@ class GroupShardedStage2(nn.Layer):
 
         del grad_storage_has_done
 
-        # print("dp_group: ", self._dp_group)
-        # print("sharding_group: ", self._group)
-        # print("mp_group: ", paddle.distributed.fleet.fleet._hcg.get_model_parallel_group())
-        #
-        # for dtype in self._grad_storages.keys():
-        #    for k, g in self._grad_storages[dtype].items():
-        #        print("==>GradStorage({}): g_holder={} _rank={} dst={} ranks[destination]={} global_rank={} initial={}".format(g._max_size, k, self._rank, g.destination, self._group.ranks[g.destination], dist.get_rank(), g.buffer._is_initialized()))
-
-        # print("\n"*3)
-        # for param in sorted(self._trainable_params, key=lambda p: p.name):
-        #    if param.name in self._param_grads and param.grad is not None:
-        #        print("==>Pram_{}: _rank={} dst={} ranks[destination]={} global_rank={} initial={} group_ranks={}".format(param.name, self._rank, self._trainable_param2rank[param.name], self._group.ranks[self._trainable_param2rank[param.name]], dist.get_rank(), param.grad._is_initialized(), self._group.ranks))
-        # import sys
-        # sys.exit(-1)
-
     def _redefine_opt_step(self):
         grad_func = self._grad_scale
         dp_allreduce_func = self._dp_allreduce
