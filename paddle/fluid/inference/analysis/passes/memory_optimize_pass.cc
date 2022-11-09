@@ -272,7 +272,7 @@ void UpdateOpDescsByReuse(
           VLOG(4) << node->Name() << " output " << x << " -> " << name;
         }
       }
-      node->Op()->SetAttr("OutputVarNames", output_var_names);
+      node->Op()->SetAttr("OutputVarNames", std::move(output_var_names));
 
       // modify the graph
       for (auto out_node : node->outputs) {
