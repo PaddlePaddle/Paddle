@@ -649,13 +649,17 @@ class Adam(Optimizer):
                 fp32_grads, fp16_grads = core.eager.get_two_grads_lists(params)
                 for index, grad in enumerate(fp32_grads):
                     if grad is not None:
-                        grad_dict['FP32_LODTensor'].append(grad)
-                        lr = self._create_param_lr((params[index], grad))
+                        grad_dict['FP32_LODTensor'].append(
+                            parameters_and_grads[index][1]
+                        )
+                        lr = self._create_param_lr(parameters_and_grads[index])
                         lr_dict['FP32_LODTensor'].append(lr)
                 for index, grad in enumerate(fp16_grads):
                     if grad is not None:
-                        grad_dict['FP16_LODTensor'].append(grad)
-                        lr = self._create_param_lr((params[index], grad))
+                        grad_dict['FP16_LODTensor'].append(
+                            parameters_and_grads[index][1]
+                        )
+                        lr = self._create_param_lr(parameters_and_grads[index])
                         lr_dict['FP16_LODTensor'].append(lr)
             else:
                 for param_and_grad in parameters_and_grads:
