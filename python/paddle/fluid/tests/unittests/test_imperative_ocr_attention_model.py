@@ -29,7 +29,7 @@ from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard
 
 
-class Config(object):
+class Config:
     '''
     config for training
     '''

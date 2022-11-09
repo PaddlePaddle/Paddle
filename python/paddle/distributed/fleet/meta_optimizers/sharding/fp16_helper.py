@@ -23,7 +23,7 @@ from paddle.fluid import core
 __all__ = []
 
 
-class FP16Utils(object):
+class FP16Utils:
     def __init__(self):
         pass
 

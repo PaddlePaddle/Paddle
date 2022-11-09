@@ -22,17 +22,19 @@ from paddle.distributed.auto_parallel.operators.common import (
 )
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from .dist_attribute import OperatorDistributedAttribute
-from .utils import is_backward_op, is_forward_op, is_loss_op, is_optimize_op
 from .operators.common import BACKWARD_ONLY_DIST_OPS
+from .utils import (
+    is_backward_op,
+    is_forward_op,
+    is_loss_op,
+    is_optimize_op,
+    __no_shape_var_type__,
+)
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue"]
-__not_shape_var_type__ = [
-    core.VarDesc.VarType.READER,
-    core.VarDesc.VarType.STEP_SCOPES,
-]
 
 
-class Partitioner(object):
+class Partitioner:
     """
     warning:: Partitioner is experimental and subject to change.
 
@@ -363,7 +365,7 @@ class Partitioner(object):
         var_dist_attrs = [
             self._dist_context.get_tensor_dist_attr_for_program(var)
             for var in vars_
-            if (var.type not in __not_shape_var_type__)
+            if (var.type not in __no_shape_var_type__)
         ]
 
         all_ops_annotated = all(
@@ -468,7 +470,7 @@ def _partition_var(
     """
     src_var = src_block.var(src_varname)
 
-    if src_var.type in __not_shape_var_type__:
+    if src_var.type in __no_shape_var_type__:
         persist = getattr(src_var, 'persistable', False)
         new_var = dst_block.create_var(
             type=src_var.type,

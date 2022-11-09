@@ -611,7 +611,7 @@ class TestAmpDecorator(unittest.TestCase):
 
     def test_input_type_exception(self):
         def test_error_model():
-            class MyModel(object):
+            class MyModel:
                 def __init__(self):
                     print("A fake Model")
 
@@ -630,7 +630,7 @@ class TestAmpDecorator(unittest.TestCase):
         self.assertRaises(RuntimeError, test_error_distributed_model)
 
         def test_error_optimizer():
-            class MyOptimizer(object):
+            class MyOptimizer:
                 def __init__(self):
                     print("A fake Optimizer")
 

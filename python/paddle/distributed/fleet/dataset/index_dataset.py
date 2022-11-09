@@ -16,7 +16,7 @@ from paddle.fluid import core
 __all__ = []
 
 
-class Index(object):
+class Index:
     def __init__(self, name):
         self._name = name
 

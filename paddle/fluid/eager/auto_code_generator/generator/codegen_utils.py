@@ -36,6 +36,8 @@ ops_to_fill_zero_for_empty_grads = set(
         "batch_norm_double_grad",
         "tanh_double_grad",
         "tanh_triple_grad",
+        "sin_double_grad",
+        "sin_triple_grad",
         "subtract_double_grad",
         "divide_double_grad",
         "log_double_grad",

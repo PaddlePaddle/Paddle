@@ -183,6 +183,7 @@ if(WITH_PYTHON)
   endif()
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
+set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_comm_utils)
 
 if(WITH_ASCEND)
   set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)

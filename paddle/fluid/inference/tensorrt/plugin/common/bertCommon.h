@@ -82,8 +82,9 @@ inline uint32_t getElementSize(nvinfer1::DataType t) noexcept {
     case nvinfer1::DataType::kBOOL:
     case nvinfer1::DataType::kINT8:
       return 1;
+    default:
+      return 0;
   }
-  return 0;
 }
 
 inline int64_t getWeightsSize(const nvinfer1::Weights& w,
