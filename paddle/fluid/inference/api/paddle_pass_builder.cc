@@ -394,9 +394,9 @@ void CpuPassStrategy::EnableMkldnnInt8() {
 #ifdef PADDLE_WITH_MKLDNN
   if (!use_mkldnn_int8_) {
     passes_.clear();
+    passes_.push_back("simplify_with_basic_ops_pass");
     passes_.push_back("quant_dequant_mkldnn_pass");
     passes_.push_back("mkldnn_placement_pass");
-    passes_.push_back("simplify_with_basic_ops_pass");
     passes_.push_back("constant_folding_pass");
     passes_.push_back("squeeze2_transpose2_onednn_fuse_pass");
     passes_.push_back("layer_norm_fuse_pass");
