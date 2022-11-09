@@ -829,7 +829,7 @@ void BatchNormKernel(const Context &ctx,
 //         epsilon));
 #else
     const bool use_native_kernel =
-        ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
+        ((x_dims.size() == 2) ||
          (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
     if (use_native_kernel) {
       const int block_size = 256;

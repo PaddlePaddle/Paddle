@@ -446,7 +446,59 @@ struct cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4 {
       false,
       true>;
 };
+struct cutlass_tensorop_s1688bf16gemm_128x64_16x6_nn_align4 {
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
+      cutlass::gemm::GemmShape<128, 64, 16>,
+      cutlass::gemm::GemmShape<64, 32, 16>,
+      cutlass::gemm::GemmShape<16, 8, 8>,
+      cutlass::epilogue::thread::LinearCombination<float, 4, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      6,
+      4,
+      4,
+      cutlass::arch::OpMultiplyAddFastF16,
+      cutlass::ComplexTransform::kNone,
+      cutlass::ComplexTransform::kNone,
+      true,
+      false,
+      true>;
+};
 struct cutlass_tensorop_s1688f16gemm_128x64_16x6_nn_align4 {
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
+      cutlass::gemm::GemmShape<128, 128, 16>,
+      cutlass::gemm::GemmShape<64, 64, 16>,
+      cutlass::gemm::GemmShape<16, 8, 8>,
+      cutlass::epilogue::thread::LinearCombination<float, 2, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      3,
+      4,
+      4,
+      cutlass::arch::OpMultiplyAddFastF16,
+      cutlass::ComplexTransform::kNone,
+      cutlass::ComplexTransform::kNone,
+      true,
+      false,
+      true>;
+};
+struct cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align2 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
       cutlass::layout::RowMajor,

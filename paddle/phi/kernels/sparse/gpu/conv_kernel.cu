@@ -18,10 +18,13 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
+#include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
+#include "paddle/phi/kernels/sparse/unary_kernel.h"
 #ifdef PADDLE_WITH_CUTLASS
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 #endif
@@ -310,20 +313,34 @@ void Conv3dCooKernel(const Context& dev_ctx,
                      SparseCooTensor* out,
                      DenseTensor* rulebook,
                      DenseTensor* counter) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "Conv3dCooGPUKernel", ([&] {
-                                 Conv3dCooGPUKernel<T, data_t>(dev_ctx,
-                                                               x,
-                                                               kernel,
-                                                               paddings,
-                                                               dilations,
-                                                               strides,
-                                                               groups,
-                                                               subm,
-                                                               key,
-                                                               out,
-                                                               rulebook,
-                                                               counter);
-                               }));
+  SparseCooTensor cast_x, cast_out;
+  EmptyLikeCooKernel<phi::dtype::float16>(dev_ctx, x, &cast_x);
+  CastCooKernel<T>(
+      dev_ctx, x, x.indices().dtype(), cast_x.values().dtype(), &cast_x);
+  EmptyLikeCooKernel<phi::dtype::float16>(dev_ctx, *out, &cast_out);
+  DenseTensor cast_kernel =
+      phi::EmptyLike<phi::dtype::float16>(dev_ctx, kernel);
+  phi::CastKernel<T>(dev_ctx, kernel, cast_kernel.dtype(), &cast_kernel);
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "Conv3dCooGPUKernel", ([&] {
+        Conv3dCooGPUKernel<phi::dtype::float16, data_t>(dev_ctx,
+                                                        cast_x,
+                                                        cast_kernel,
+                                                        paddings,
+                                                        dilations,
+                                                        strides,
+                                                        groups,
+                                                        subm,
+                                                        key,
+                                                        &cast_out,
+                                                        rulebook,
+                                                        counter);
+      }));
+  CastCooKernel<phi::dtype::float16>(dev_ctx,
+                                     cast_out,
+                                     cast_out.indices().dtype(),
+                                     out->values().dtype(),
+                                     out);
 }
 
 }  // namespace sparse
