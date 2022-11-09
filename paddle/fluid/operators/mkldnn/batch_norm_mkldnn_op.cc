@@ -30,7 +30,7 @@ using paddle::platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
 
 template <typename T>
-class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
+class BatchNormMKLDNNHandler : public phi::funcs::OneDNNHandlerNoCachingT<
                                    T,
                                    dnnl::batch_normalization_forward,
                                    dnnl::batch_normalization_backward> {
@@ -40,9 +40,9 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
                          const Tensor *in_x,
                          const Tensor *scale,
                          const Tensor *out_grad)
-      : platform::MKLDNNHandlerNoCachingT<T,
-                                          dnnl::batch_normalization_forward,
-                                          dnnl::batch_normalization_backward>(
+      : phi::funcs::OneDNNHandlerNoCachingT<T,
+                                            dnnl::batch_normalization_forward,
+                                            dnnl::batch_normalization_backward>(
             mkldnn_engine, ctx.GetPlace()) {
     auto scale_tz = phi::vectorize<int64_t>(scale->dims());
     PADDLE_ENFORCE_EQ(

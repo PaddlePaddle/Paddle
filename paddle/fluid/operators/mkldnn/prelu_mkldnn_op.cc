@@ -26,8 +26,8 @@ using platform::to_void_cast;
 namespace {
 template <typename T>
 class PReluMKLDNNHandler
-    : public platform::
-          MKLDNNHandlerT<T, dnnl::prelu_forward, dnnl::prelu_backward> {
+    : public phi::funcs::
+          OneDNNHandlerT<T, dnnl::prelu_forward, dnnl::prelu_backward> {
  public:
   PReluMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
                      const dnnl::engine engine,
@@ -38,12 +38,13 @@ class PReluMKLDNNHandler
                      const std::string& mode,
                      const std::string& data_format,
                      bool is_test = false)
-      : platform::MKLDNNHandlerT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
-            dev_ctx,
-            engine,
-            cpu_place,
-            platform::CreateKey(
-                dev_ctx, phi::vectorize(x->dims()), uniq_name)) {
+      : phi::funcs::
+            OneDNNHandlerT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
+                dev_ctx,
+                engine,
+                cpu_place,
+                platform::CreateKey(
+                    dev_ctx, phi::vectorize(x->dims()), uniq_name)) {
     if (unlikely(!this->isCached())) {
       auto weights_dims = phi::vectorize(weights->dims());
 

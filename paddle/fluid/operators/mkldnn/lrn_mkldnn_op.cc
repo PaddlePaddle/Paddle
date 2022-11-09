@@ -21,16 +21,16 @@ using paddle::platform::MKLDNNDeviceContext;
 
 template <typename T>
 class LRNMKLDNNHandler
-    : public platform::
-          MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward> {
+    : public phi::funcs::
+          OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward> {
  public:
   LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
                    const dnnl::engine mkldnn_engine,
                    platform::Place cpu_place,
                    const phi::DenseTensor* input)
 
-      : platform::
-            MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
+      : phi::funcs::
+            OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
                 mkldnn_engine, cpu_place) {
     const int n = ctx.Attr<int>("n");
     // MKL-DNN implements LRN in a caffe way:
@@ -61,8 +61,8 @@ class LRNMKLDNNHandler
                    const phi::DenseTensor* in_x,
                    const phi::DenseTensor* out_grad,
                    phi::DenseTensor* in_x_grad)
-      : platform::
-            MKLDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
+      : phi::funcs::
+            OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward>(
                 mkldnn_engine, cpu_place) {
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"),

@@ -26,7 +26,7 @@ using phi::funcs::OneDNNGetDataType;
 using platform::to_void_cast;
 
 template <typename T, typename T_alg, typename T_out = T>
-class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
+class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
  public:
   RNNMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                    const platform::MKLDNNDeviceContext& dev_ctx,
@@ -42,7 +42,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
                    const int64_t OC,
                    const int64_t G,
                    const std::string& unique_name)
-      : platform::MKLDNNHandlerT<T, T_alg>(
+      : phi::funcs::OneDNNHandlerT<T, T_alg>(
             dev_ctx,
             dev_ctx.GetEngine(),
             cpu_place,
