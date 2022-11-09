@@ -559,13 +559,13 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         kwargs['extra_link_args'] = extra_link_args
 
     else:
-        ########################### Linux Platform ###########################
+        # ----------------------- Linux Platform ----------------------- #
         extra_link_args = kwargs.get('extra_link_args', [])
         # On Linux, GCC support '-l:xxx.so' to specify the library name
         # without `lib` prefix.
         if OS_NAME.startswith('linux'):
             extra_link_args.append('-l:{}'.format(_get_core_name()))
-        ########################### MacOS Platform ###########################
+        # ----------------------- MacOS Platform ----------------------- #
         else:
             # See _reset_so_rpath for details.
             extra_link_args.append('-Wl,-rpath,{}'.format(_get_fluid_path()))
@@ -573,7 +573,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
             # liblibpaddle.dylib symbol link.
             lib_core_name = create_sym_link_if_not_exist()
             extra_link_args.append('-l{}'.format(lib_core_name))
-        ###########################   -- END --    ###########################
+        # -----------------------   -- END --    ----------------------- #
 
         add_compile_flag(extra_compile_args, ['-w'])  # disable warning
 

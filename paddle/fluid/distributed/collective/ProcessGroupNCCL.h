@@ -15,7 +15,6 @@
 #pragma once
 
 #include <chrono>
-#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -61,6 +60,9 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
     void Synchronize() override;
     void UpdateWaitChain(const phi::DeviceContext& ctx) override;
 
+    bool IsBlockCPUInWait() const { return block_cpu_in_wait_; }
+    void SetBlockCPUInWait() { block_cpu_in_wait_ = true; }
+
     // TODO(sunyilun): methods below will be removed later
     NCCLTask(const std::vector<Place>& places,
              int rank,
@@ -73,12 +75,10 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
              bool sync_op,
              bool use_calc_stream);
 
-   public:
-    bool barrier_{false};
-    platform::DeviceEvent comm_event_;  // event on comm stream
-
    private:
-    Place place_;
+    bool block_cpu_in_wait_{false};
+    platform::DeviceEvent comm_event_;  // event on comm stream
+    Place task_place_;
   };
 
  public:
@@ -253,11 +253,6 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream) override;
 
-  std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
-      phi::DenseTensor&,  // NOLINT
-      phi::DenseTensor&,  // NOLINT
-      const ReduceScatterOptions&) override;
-
  private:
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,
                                                          int rank,
@@ -278,8 +273,7 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream);
 
-  void SyncCalcStream(const Place& place,
-                      const std::shared_ptr<platform::DeviceEvent>& event);
+  void SyncCalcStream(const Place& place);
 
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
@@ -342,7 +336,8 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
  private:
   std::shared_ptr<Store> store_;
-  std::shared_ptr<platform::DeviceEvent> calc_event_;  // event on calc stream
+  std::unordered_map<std::string, platform::DeviceEvent>
+      place_to_calc_event_;  // event on calc stream
   std::unordered_map<std::string, phi::GPUContext*> place_to_calc_ctx_;
   std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
       place_to_comm_ctx_;

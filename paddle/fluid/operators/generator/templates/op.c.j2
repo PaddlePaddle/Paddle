@@ -18,32 +18,32 @@ namespace operators {
 
 using paddle::framework::GradVarName;
 
-{% for api in apis %}
-  {% if api is base_api %}
+{% for op in ops %}
+  {% if op is base_op %}
 
-{{op_maker(api)}}
+{{op_maker(op)}}
 
-{{operator(api)}}
+{{operator(op)}}
   {% endif %}
 {% endfor %}
 
-{% for api in backward_apis %}
-  {% if api is base_api %}
+{% for op in backward_ops %}
+  {% if op is base_op %}
 
-{{backward_op_maker(api, api_dict[api["forward"]["name"]])}}
+{{backward_op_maker(op, op_dict[op["forward"]["name"]])}}
 
-{{operator(api)}}
+{{operator(op)}}
   {% else %}
-{{backward_op_reused_maker(api, api_dict[api["forward"]["name"]], api["invoke"])}}
+{{backward_op_reused_maker(op, op_dict[op["forward"]["name"]], op["invoke"])}}
   {% endif %}
 {% endfor %}
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-{% for api in apis + backward_apis %}
-{% if api is base_api %}
-{{register_op_with_components(api)}}
-{{register_op_version(api)}}
+{% for op in ops + backward_ops %}
+{% if op is base_op %}
+{{register_op_with_components(op)}}
+{{register_op_version(op)}}
 {% endif %}
 {% endfor %}

@@ -41,20 +41,20 @@ def is_initializer_list(s):
     return s == "{}"
 
 
-def is_base_api(api):
-    return "kernel" in api and "infer_meta" in api
+def is_base_op(op):
+    return "kernel" in op and "infer_meta" in op
 
 
-def supports_selected_rows_kernel(api):
-    return is_base_api(api) and len(api["kernel"]["func"]) == 2
+def supports_selected_rows_kernel(op):
+    return is_base_op(op) and len(op["kernel"]["func"]) == 2
 
 
-def supports_inplace(api):
-    return api['inplace'] is not None
+def supports_inplace(op):
+    return op['inplace'] is not None
 
 
-def supports_no_need_buffer(api):
-    for input in api["inputs"]:
+def supports_no_need_buffer(op):
+    for input in op["inputs"]:
         if input["no_need_buffer"]:
             return True
     return False
