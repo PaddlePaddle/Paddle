@@ -277,7 +277,7 @@ class ConvTransposeMKLDNNHandlerT
         target_memory_p =
             std::make_shared<dnnl::memory>(target_md, this->engine_);
         dnnl::reorder::primitive_desc reorder_pdesc;
-        if (platform::is_int8<T>()) {
+        if (phi::funcs::is_int8<T>()) {
           dnnl::primitive_attr attr;
           attr.set_output_scales(mask, scale_data);
           reorder_pdesc = dnnl::reorder::primitive_desc(

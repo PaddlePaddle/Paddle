@@ -202,34 +202,6 @@ inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
   return data_format;
 }
 
-inline MKLDNNMemoryFormat data_format_to_memory_format(
-    const std::string& data_format) {
-  switch (phi::StringToDataLayout(data_format)) {
-    case phi::DataLayout::kNHWC:
-      return MKLDNNMemoryFormat::nhwc;
-    case phi::DataLayout::kNCHW:
-      return MKLDNNMemoryFormat::nchw;
-    default:
-      return MKLDNNMemoryFormat::any;
-  }
-}
-
-inline MKLDNNMemoryFormat StringToMKLDNNFormat(std::string* format) {
-  std::transform(format->begin(), format->end(), format->begin(), ::tolower);
-
-  if (!format->compare("nchw")) {
-    return MKLDNNMemoryFormat::nchw;
-  } else if (!format->compare("nchw16c")) {
-    return MKLDNNMemoryFormat::nChw16c;
-  } else if (!format->compare("nchw8c")) {
-    return MKLDNNMemoryFormat::nChw8c;
-  } else if (!format->compare("nhwc")) {
-    return MKLDNNMemoryFormat::nhwc;
-  } else {
-    return MKLDNNMemoryFormat::any;
-  }
-}
-
 inline std::string ThreadIDasStr(void) {
   return std::to_string(
       std::hash<std::thread::id>()(std::this_thread::get_id()));
@@ -322,28 +294,6 @@ inline std::string ExtendKeyWithThreadInfoIfNeeded(
              : key;
 }
 
-inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
-    const std::vector<int64_t>& paddings) {
-  if (paddings.size() == 6) {
-    int padding_front = paddings[0];
-    int padding_back = paddings[1];
-    int padding_top = paddings[2];
-    int padding_bottom = paddings[3];
-    int padding_left = paddings[4];
-    int padding_right = paddings[5];
-
-    return {{padding_front, padding_top, padding_left},
-            {padding_back, padding_bottom, padding_right}};
-  } else {
-    int padding_top = paddings[0];
-    int padding_bottom = paddings[1];
-    int padding_left = paddings[2];
-    int padding_right = paddings[3];
-
-    return {{padding_top, padding_left}, {padding_bottom, padding_right}};
-  }
-}
-
 inline void RegisterModelLayout(
     std::vector<std::unique_ptr<framework::OperatorBase>>& ops,  // NOLINT
     const platform::Place& place) {
@@ -389,11 +339,6 @@ inline bool HasOpBFLOAT16DataType(const paddle::framework::OpDesc* op) {
 }
 
 enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
-
-template <typename T>
-bool constexpr is_int8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
-}
 
 }  // namespace platform
 
