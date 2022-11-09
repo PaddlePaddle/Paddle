@@ -2116,6 +2116,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "where") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the lookup_table does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
     if (op_type == "expand_v2") {
       if (!with_dynamic_shape) {
         return false;
