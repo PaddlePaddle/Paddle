@@ -114,6 +114,7 @@ inline int GET_BLOCKS(
 }
 
 template <typename key_t, typename value_type>
+
 static void RadixSortPairsImpl(const key_t *keys_in,
                                key_t *keys_out,
                                const value_type *values_in,
@@ -521,7 +522,6 @@ void ArgsortKernel(const Context &dev_ctx,
     }
 
     TransposeKernel<int64_t, Context>(dev_ctx, tmp_indices, trans, indices);
-    // transpose back
     TransposeKernel<T, Context>(dev_ctx, tmp_out, trans, output);
     return;
   }
