@@ -20,10 +20,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using phi::CPUContext;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
-using platform::to_void_cast;
 
 template <typename T, typename T_out = T>
 class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
@@ -357,7 +355,7 @@ class FusionGRUMKLDNNKernel : public framework::OpKernel<T> {
 
     auto* hidden_onednn_data = hidden_onednn_memory_p->get_data_handle();
     auto* hidden_data =
-        to_void_cast(hidden->mutable_data<Tout>(ctx.GetPlace()));
+        phi::funcs::to_void_cast(hidden->mutable_data<Tout>(ctx.GetPlace()));
     if (handler.is_NTC()) {
       handler.reorderRNNdata(hidden_onednn_data,
                              hidden_data,

@@ -30,7 +30,6 @@ using LoDTensor = phi::DenseTensor;
 
 using platform::MatMulV2MKLDNNHandler;
 using platform::MKLDNNDeviceContext;
-using platform::to_void_cast;
 
 using dnnl::inner_product_forward;
 using dnnl::memory;
@@ -214,8 +213,8 @@ class MulPrimitiveFactory {
 
       Reorder(src_mdesc,
               dst_mdesc,
-              to_void_cast<T>(data->data<T>()),
-              to_void_cast<T>(x_tmp.data<T>()));
+              phi::funcs::to_void_cast<T>(data->data<T>()),
+              phi::funcs::to_void_cast<T>(x_tmp.data<T>()));
 
       x_tmp.Resize(data->dims());
       x_tmp.set_mem_desc(dst_mdesc);
@@ -230,7 +229,7 @@ class MulPrimitiveFactory {
   void UpdateDataPointers(const ExecutionContext &ctx,
                           Tensor *out,
                           const Tensor *in) {
-    x_input_->set_data_handle(to_void_cast<XT>(in->data<XT>()));
+    x_input_->set_data_handle(phi::funcs::to_void_cast<XT>(in->data<XT>()));
     output_->set_data_handle(out->mutable_data<OT>(ctx.GetPlace()));
     out->set_mem_desc(output_->get_desc());
   }
@@ -254,7 +253,8 @@ class MulPrimitiveFactory {
 
   template <typename T>
   memory CreateMemory(const memory::desc &desc, const Tensor *tensor) {
-    return memory(desc, engine_, to_void_cast<T>(tensor->data<T>()));
+    return memory(
+        desc, engine_, phi::funcs::to_void_cast<T>(tensor->data<T>()));
   }
 
   memory CreateDstMemory(
@@ -266,7 +266,7 @@ class MulPrimitiveFactory {
 
     OT *output_data = output->mutable_data<OT>(ctx.GetPlace(), buffer_size);
     output->set_mem_desc(dst_desc);
-    return memory(dst_desc, engine_, to_void_cast<OT>(output_data));
+    return memory(dst_desc, engine_, phi::funcs::to_void_cast<OT>(output_data));
   }
 
   memory Reorder(const memory::desc &src_desc,
@@ -298,7 +298,8 @@ class MulPrimitiveFactory {
     std::swap(dims[0], dims[1]);  // Correct output dimensions
     auto src_desc = CreateMemDescriptor<YT>(dims, OneDNNMemoryFormat::io);
     auto dst_desc = CreateMemDescriptor<YT>(dims, OneDNNMemoryFormat::oi);
-    return Reorder(src_desc, dst_desc, to_void_cast<YT>(input_y->data<YT>()));
+    return Reorder(
+        src_desc, dst_desc, phi::funcs::to_void_cast<YT>(input_y->data<YT>()));
   }
 
   const dnnl::engine &engine_;

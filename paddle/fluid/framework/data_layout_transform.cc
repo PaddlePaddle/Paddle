@@ -101,15 +101,16 @@ void* GetDataFromTensor(const phi::DenseTensor& tensor,
                         dnnl::memory::data_type type) {
   switch (type) {
     case dnnl::memory::data_type::f32:
-      return platform::to_void_cast(tensor.data<float>());
+      return phi::funcs::to_void_cast(tensor.data<float>());
     case dnnl::memory::data_type::s8:
-      return platform::to_void_cast(tensor.data<int8_t>());
+      return phi::funcs::to_void_cast(tensor.data<int8_t>());
     case dnnl::memory::data_type::u8:
-      return platform::to_void_cast(tensor.data<unsigned char>());
+      return phi::funcs::to_void_cast(tensor.data<unsigned char>());
     case dnnl::memory::data_type::s32:
-      return platform::to_void_cast(tensor.data<int32_t>());
+      return phi::funcs::to_void_cast(tensor.data<int32_t>());
     case dnnl::memory::data_type::bf16:
-      return platform::to_void_cast(tensor.data<paddle::platform::bfloat16>());
+      return phi::funcs::to_void_cast(
+          tensor.data<paddle::platform::bfloat16>());
     default:
       PADDLE_THROW(
           platform::errors::InvalidArgument("Wrong mkldnn type provided."));

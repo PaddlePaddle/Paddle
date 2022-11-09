@@ -27,11 +27,9 @@ namespace paddle {
 namespace operators {
 
 using paddle::platform::CreateKey;
-using phi::CPUContext;
 using phi::vectorize;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
-using platform::to_void_cast;
 using Direction = dnnl::rnn_direction;
 
 namespace {
@@ -251,7 +249,7 @@ class MultiGRUHandler {
       dev_ctx_.SetBlob(key, memory_p);
     }
 
-    auto* x_data = to_void_cast(x_->data<T>());
+    auto* x_data = phi::funcs::to_void_cast(x_->data<T>());
 
     auto* x_onednn_data = memory_p->get_data_handle();
     memset(x_onednn_data, 0, sizeof(T) * N_ * Ti_ * ICs[0]);
@@ -599,7 +597,8 @@ class MultiGRUHandler {
   template <typename Tout>
   void reorderOutput(std::shared_ptr<dnnl::memory> mem, int layer) {
     auto* data = mem->get_data_handle();
-    auto* hidden_data = to_void_cast(hidden_->mutable_data<Tout>(place_));
+    auto* hidden_data =
+        phi::funcs::to_void_cast(hidden_->mutable_data<Tout>(place_));
 
     if (isNTC(gru_pds_[{layers_ - 1, L2R}]->dst_desc())) {
       reorderNTCtoPP(data, hidden_data, layers_ - 1);

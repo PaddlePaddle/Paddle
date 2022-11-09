@@ -248,7 +248,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         tz, dout->dtype(), dout_type, onednn_engine);
 
     auto reorder_src_memory = reorder_handler.AcquireSrcMemory(
-        dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc(), phi::funcs::to_void_cast(dout->data<T>()));
 
     std::shared_ptr<dnnl::memory> dst_memory;
     std::shared_ptr<dnnl::memory> broadcast_src_memory = reorder_src_memory;

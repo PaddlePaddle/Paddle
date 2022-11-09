@@ -225,7 +225,7 @@ class ConvTransposeMKLDNNHandlerT
     return phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>::
         AcquireMemoryWithReorder(input->mem_desc(),
                                  this->fwd_pd_->src_desc(),
-                                 platform::to_void_cast<T>(input_data));
+                                 phi::funcs::to_void_cast<T>(input_data));
   }
 
   std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
@@ -246,7 +246,7 @@ class ConvTransposeMKLDNNHandlerT
         dev_ctx,
         user_src_md,
         this->fwd_pd_->weights_desc(),
-        platform::to_void_cast<K>(filter_data),
+        phi::funcs::to_void_cast<K>(filter_data),
         key,
         "@weights_mem_p",
         is_test_);
@@ -338,13 +338,14 @@ class ConvTransposeMKLDNNHandlerT
     auto user_bias_md = OneDNNMemDesc(phi::vectorize(bias->dims()),
                                       phi::funcs::OneDNNGetDataType<K>(),
                                       OneDNNMemoryFormat::x);
-    return this->AcquireMemoryWithReorder(dev_ctx,
-                                          user_bias_md,
-                                          this->fwd_pd_->bias_desc(),
-                                          platform::to_void_cast<K>(bias_data),
-                                          key,
-                                          "@bias_mem_p",
-                                          is_test_);
+    return this->AcquireMemoryWithReorder(
+        dev_ctx,
+        user_bias_md,
+        this->fwd_pd_->bias_desc(),
+        phi::funcs::to_void_cast<K>(bias_data),
+        key,
+        "@bias_mem_p",
+        is_test_);
   }
 
  private:

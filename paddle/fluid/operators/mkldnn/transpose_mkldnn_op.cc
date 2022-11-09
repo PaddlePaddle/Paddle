@@ -59,7 +59,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         x_vec_dims, x->dtype(), x_type, dnnl_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x->mem_desc(), platform::to_void_cast(x->data<T>()));
+        x->mem_desc(), phi::funcs::to_void_cast(x->data<T>()));
 
     auto dst_md =
         dnnl::memory::desc(x_vec_dims,
@@ -155,7 +155,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         dout_vec_dims, dout->dtype(), dout_type, dnnl_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc(), phi::funcs::to_void_cast(dout->data<T>()));
 
     auto reorder_dst_memory_p =
         reorder_handler.AcquireDstMemory(dx, dout->mem_desc(), ctx.GetPlace());

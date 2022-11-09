@@ -20,9 +20,7 @@ namespace paddle {
 namespace operators {
 
 using paddle::platform::CreateKey;
-using phi::CPUContext;
 using phi::funcs::OneDNNGetDataType;
-using platform::to_void_cast;
 
 template <typename T, typename T_alg, typename T_out = T>
 class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
@@ -162,7 +160,7 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
     }
 
     const auto& input_lod = input->lod()[0];
-    auto* x_data = to_void_cast(input->data<T>());
+    auto* x_data = phi::funcs::to_void_cast(input->data<T>());
 
     auto* x_onednn_data = memory_p->get_data_handle();
     memset(x_onednn_data, 0, sizeof(T) * N * Ti * IC);
@@ -211,7 +209,7 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
         user_h0_memory = dnnl::memory(
             {{1, 1, N, OC}, OneDNNGetDataType<U>(), OneDNNMemoryFormat::ldnc},
             this->engine_,
-            to_void_cast(h0->data<U>()));
+            phi::funcs::to_void_cast(h0->data<U>()));
       } else {
         user_h0_memory = dnnl::memory(
             {{1, 1, N, OC}, OneDNNGetDataType<U>(), OneDNNMemoryFormat::ldnc},

@@ -26,10 +26,8 @@ namespace operators {
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::reorder;
-using platform::to_void_cast;
 using Tensor = phi::DenseTensor;
 using dnnl::stream;
-using phi::DataLayout;
 
 template <typename T>
 class DeQuantOpKernel : public framework::OpKernel<T> {
@@ -75,7 +73,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
         x_tz, x->dtype(), x_type, out->dtype(), out_type, dev_ctx.GetEngine());
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x->mem_desc(), platform::to_void_cast(x->data<T>()));
+        x->mem_desc(), phi::funcs::to_void_cast(x->data<T>()));
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
         out, x->mem_desc(), dev_ctx.GetPlace());
 

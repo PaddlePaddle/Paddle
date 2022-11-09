@@ -24,10 +24,8 @@ namespace operators {
 
 using dnnl::memory;
 using dnnl::primitive;
-using dnnl::reorder;
 using dnnl::stream;
 using paddle::platform::MKLDNNDeviceContext;
-using platform::to_void_cast;
 
 template <typename T>
 class BatchNormMKLDNNHandler : public phi::funcs::OneDNNHandlerNoCachingT<
@@ -98,8 +96,8 @@ class BatchNormMKLDNNHandler : public phi::funcs::OneDNNHandlerNoCachingT<
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(
       const phi::DenseTensor *mean) {
     const T *mean_data = mean->data<T>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
-                                            to_void_cast<T>(mean_data));
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->mean_desc(), phi::funcs::to_void_cast<T>(mean_data));
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor *mean) {
@@ -112,8 +110,9 @@ class BatchNormMKLDNNHandler : public phi::funcs::OneDNNHandlerNoCachingT<
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
       const phi::DenseTensor *variance) {
     const T *variance_data = variance->data<T>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
-                                            to_void_cast<T>(variance_data));
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->variance_desc(),
+        phi::funcs::to_void_cast<T>(variance_data));
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(

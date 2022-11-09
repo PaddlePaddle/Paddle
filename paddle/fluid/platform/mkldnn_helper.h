@@ -32,11 +32,6 @@ using OneDNNMemoryFormat = dnnl::memory::format_tag;
 #endif
 namespace platform {
 
-template <typename Type>
-void* to_void_cast(const Type* t) {
-  return static_cast<void*>(const_cast<Type*>(t));
-}
-
 template <class Type>
 using tf_desc = typename Type::desc;
 

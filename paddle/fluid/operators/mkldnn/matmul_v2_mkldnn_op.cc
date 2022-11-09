@@ -22,7 +22,6 @@ using dnnl::memory;
 using paddle::framework::ExecutionContext;
 using paddle::platform::MatMulV2MKLDNNHandler;
 using paddle::platform::MKLDNNDeviceContext;
-using paddle::platform::to_void_cast;
 using phi::vectorize;
 using phi::funcs::OneDNNGetDataType;
 using Tensor = phi::DenseTensor;
@@ -62,8 +61,7 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext &dev_ctx,
       output_dims, input->dtype(), input_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      memory::format_tag::abc,
-      paddle::platform::to_void_cast(input->data<T>()));
+      memory::format_tag::abc, phi::funcs::to_void_cast(input->data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       &output, memory::format_tag::bac, dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
@@ -149,8 +147,9 @@ class MatMulMKLDNNHandler
 
   std::shared_ptr<memory> AcquireWeightsMemory(const Tensor *input) {
     const YT *input_data = input->data<YT>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                            to_void_cast<YT>(input_data));
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(),
+        phi::funcs::to_void_cast<YT>(input_data));
   }
 
  public:

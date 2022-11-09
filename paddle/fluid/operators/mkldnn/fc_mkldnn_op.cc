@@ -30,8 +30,8 @@ using framework::DDim;
 using framework::ExecutionContext;
 using LoDTensor = phi::DenseTensor;
 using phi::funcs::OneDNNGetDataType;
+using phi::funcs::to_void_cast;
 using platform::MKLDNNDeviceContext;
-using platform::to_void_cast;
 
 struct InnerProductCache {
   dnnl::inner_product_forward inner_product_p;
