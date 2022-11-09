@@ -227,7 +227,22 @@ class TestFLOPSAPI(unittest.TestCase):
     def test_flops(self):
         self.assertTrue(flops('relu', {'X': [[12, 12]]}, {'output': 4}) == 144)
         self.assertTrue(flops('dropout', {}, {'output': 4}) == 0)
-
+        self.assertTrue(
+            flops(
+                'matmul',
+                ([12, 12, 8], [12, 12, 8]),
+                **{'transpose_X': False, 'transpose_Y': True}
+            )
+            == 144 * 15 * 144
+        )
+        self.assertTrue(
+            flops(
+                'matmul_v2',
+                ([12, 12, 8], [12, 12, 8]),
+                **{'trans_x': False, 'trans_y': True}
+            )
+            == 144 * 15 * 144
+        )
 
 if __name__ == '__main__':
     paddle.enable_static()
