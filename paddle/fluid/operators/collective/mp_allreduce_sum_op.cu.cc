@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/collective/c_allreduce_op.h"
 
-namespace phi {
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-KernelSignature EigvalsOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("eigvals", {"X"}, {}, {"Out"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(eigvals, phi::EigvalsOpArgumentMapping);
+REGISTER_OP_CUDA_KERNEL(
+    mp_allreduce_sum,
+    ops::CAllReduceOpCUDAKernel<ops::kRedSum, float>,
+#if NCCL_VERSION_CODE >= 21000
+    ops::CAllReduceOpCUDAKernel<ops::kRedSum, plat::bfloat16>,
+#endif
+    ops::CAllReduceOpCUDAKernel<ops::kRedSum, double>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedSum, int>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedSum, int64_t>,
+    ops::CAllReduceOpCUDAKernel<ops::kRedSum, plat::float16>)

@@ -50,6 +50,7 @@ def convert_dtype(dtype):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
     elif isinstance(dtype, type):
+        # This branch is for NumPy scalar types
         if dtype in [
             bool,
             np.float16,
@@ -66,6 +67,7 @@ def convert_dtype(dtype):
         ]:
             return dtype.__name__
     else:
+        # This branch is for np.dtype and str
         if dtype in [
             'bool',
             'float16',
@@ -79,24 +81,10 @@ def convert_dtype(dtype):
             'uint8',
             'complex64',
             'complex128',
-            u'bool',
-            u'float16',
-            u'uint16',
-            u'float32',
-            u'float64',
-            u'int8',
-            u'int16',
-            u'int32',
-            u'int64',
-            u'uint8',
-            u'complex64',
-            u'complex128',
         ]:
-            # this code is a little bit dangerous, since error could happen
-            # when casting no-ascii code to str in python2.
-            # but since the set itself is limited, so currently, it is good.
-            # however, jointly supporting python2 and python3, (as well as python4 maybe)
-            # may still be a long-lasting problem.
+            # NOTE(SigureMo): Since the np.dtype object is not an instance of
+            # type, so it will not be handled by the previous branch. We need
+            # to convert it to str here.
             return str(dtype)
         # NOTE(zhangbo): Now numpy does not support bfloat, and paddle use uint16 to represent bfloat16, and there binaries are consistent.
         if dtype in ['bfloat16']:
@@ -104,7 +92,8 @@ def convert_dtype(dtype):
 
     raise TypeError(
         "dtype must be any of [bool, float16, uint16, float32, float64, int8, int16, "
-        "int32, int64, uint8, complex64, complex128], but received %s" % dtype
+        "int32, int64, uint8, complex64, complex128, bfloat16], but received %s"
+        % dtype
     )
 
 

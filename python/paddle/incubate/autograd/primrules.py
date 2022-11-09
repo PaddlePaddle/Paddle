@@ -96,7 +96,7 @@ def linear_jvp(op, *args, **kwargs):
     return out_dot
 
 
-## Register orig2prim lower rules
+# Register orig2prim lower rules
 """
 These original ops are fully supported:
 
@@ -334,7 +334,7 @@ def matmul_v2_orig2prim(op, x, y):
     return matmul(x, y)
 
 
-## NOTE(lml): The second output of reshape2 Xshape, which is only used in reshape2_grad, is meanlingless in new autograd mechanism, thus we use a zero tensor instead.
+# NOTE(lml): The second output of reshape2 Xshape, which is only used in reshape2_grad, is meanlingless in new autograd mechanism, thus we use a zero tensor instead.
 @REGISTER_ORIG2PRIM('reshape2')
 def reshape2_orig2prim(op, shape_t, shape_tl, x):
     assert (
@@ -611,7 +611,7 @@ def size_orig2prim(op, x):
     )
 
 
-## Register prim2orig lower rules
+# Register prim2orig lower rules
 @REGISTER_PRIM2ORIG('add_p')
 def add_prim2orig(op, x, y):
     return paddle.add(x, y)
@@ -825,7 +825,7 @@ def cast_prim2orig(op, x):
     return paddle.cast(x, paddle.dtype(op.attr('dtype')))
 
 
-## Register linearize rules
+# Register linearize rules
 @REGISTER_JVP('add_p')
 def add_jvp(op, x_dot, y_dot):
     if x_dot is None:
@@ -1207,7 +1207,7 @@ def rsqrt_jvp(op, x_dot):
     return y_dot
 
 
-## Register transpose rules
+# Register transpose rules
 
 
 @REGISTER_TRANSPOSE('add_p')

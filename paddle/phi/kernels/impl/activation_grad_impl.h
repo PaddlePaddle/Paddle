@@ -467,4 +467,38 @@ void SinDoubleGradKernel(const Context& dev_ctx,
   functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
 }
 
+template <typename T, typename Context>
+void SinTripleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         const DenseTensor& d_dx_new,
+                         const DenseTensor& d_ddout,
+                         DenseTensor* d_x_new,
+                         DenseTensor* d_dout,
+                         DenseTensor* d_ddx) {
+  if (d_dout) {
+    d_dout->Resize(x.dims());
+    dev_ctx.template Alloc<T>(d_dout);
+  }
+  if (d_x_new) {
+    d_dout->Resize(x.dims());
+    dev_ctx.template Alloc<T>(d_x_new);
+  }
+  if (d_ddx) {
+    d_dout->Resize(ddx.dims());
+    dev_ctx.template Alloc<T>(d_ddx);
+  }
+  funcs::SinTripleGradFunctor<T> functor;
+  functor(dev_ctx,
+          &x,
+          &ddx,
+          &dout,
+          &d_ddout,
+          &d_dx_new,  // input
+          d_dout,
+          d_x_new,
+          d_ddx);  // output
+}
+
 }  // namespace phi

@@ -293,7 +293,7 @@ class ConvTransposeMKLDNNHandlerT
         platform::RecordEvent record_reorder(
             "int_reorder",
             platform::TracerEventType::UserDefined,
-            2,
+            1,
             platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
@@ -319,7 +319,7 @@ class ConvTransposeMKLDNNHandlerT
         platform::RecordEvent record_reorder(
             "int_reorder",
             platform::TracerEventType::UserDefined,
-            2,
+            1,
             platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
