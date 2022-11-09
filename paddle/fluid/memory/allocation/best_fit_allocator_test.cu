@@ -21,7 +21,6 @@
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
-#include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/for_range.h"
 namespace paddle {
@@ -40,8 +39,7 @@ TEST(BestFitAllocator, concurrent_cuda) {
   CUDAAllocator allocator(platform::CUDAPlace(0));
   // 256 MB
   auto cuda_allocation = allocator.Allocate(256U * 1024 * 1024);
-  LockedAllocator concurrent_allocator(
-      std::unique_ptr<Allocator>(new BestFitAllocator(cuda_allocation.get())));
+  BestFitAllocator concurrent_allocator(cuda_allocation.get());
 
   platform::CUDAPlace gpu(0);
   phi::GPUContext dev_ctx(gpu);
