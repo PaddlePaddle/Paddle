@@ -1471,9 +1471,9 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
                 for name in ["epmap", "table_names", "epmap"]:
                     assert op.has_attr(name)
                     if name == "epmap":
-                        assert op.attr(name)[0] == u'127.0.0.1:6174'
+                        assert op.attr(name)[0] == '127.0.0.1:6174'
                     elif name == "table_names":
-                        assert op.attr(name)[0] == u'hierarchical_sigmoid_0.w_0'
+                        assert op.attr(name)[0] == 'hierarchical_sigmoid_0.w_0'
                     else:
                         assert op.attr(name) == 3
             elif op.type == "lookup_table":
@@ -1484,7 +1484,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
         for op in trainer.blocks[0].ops:
             if op.type == "recv":
                 assert len(op.output("Out")) == 1
-                assert op.output("Out")[0] == u'hierarchical_sigmoid_0.b_0'
+                assert op.output("Out")[0] == 'hierarchical_sigmoid_0.b_0'
                 op_count += 1
         assert op_count == 1
 

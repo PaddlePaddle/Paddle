@@ -125,7 +125,7 @@ class TestPrintOpBackward(unittest.TestCase):
             loss = paddle.static.Print(loss)
             paddle.optimizer.Adam().minimize(loss)
 
-        print_ops = [op for op in main.blocks[0].ops if op.type == u'print']
+        print_ops = [op for op in main.blocks[0].ops if op.type == 'print']
         assert len(print_ops) == 2, "The number of print op should be 2"
 
         place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
