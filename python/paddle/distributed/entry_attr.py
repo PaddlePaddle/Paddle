@@ -15,7 +15,7 @@
 __all__ = []
 
 
-class EntryAttr(object):
+class EntryAttr:
     """
     Entry Config for paddle.static.nn.sparse_embedding with Parameter Server.
 

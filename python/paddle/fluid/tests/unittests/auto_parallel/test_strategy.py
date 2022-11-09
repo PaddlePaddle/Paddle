@@ -44,7 +44,9 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(sharding.enable, False)
         self.assertEqual(sharding.stage, 1)
         self.assertEqual(sharding.degree, 8)
-        self.assertAlmostEqual(sharding.segment_broadcast_MB, 32.0)
+        self.assertAlmostEqual(sharding.overlap_grad_comm, False)
+        self.assertAlmostEqual(sharding.bucket_size_numel, -1)
+        self.assertAlmostEqual(sharding.partition_algor, "greedy_even")
         self.assertEqual(sharding.enable_tuning, False)
         self.assertEqual(sharding.tuning_range, [])
 

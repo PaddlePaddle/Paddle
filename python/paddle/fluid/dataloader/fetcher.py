@@ -19,7 +19,7 @@ from collections.abc import Sequence, Mapping
 _WARNING_TO_LOG = True
 
 
-class _DatasetFetcher(object):
+class _DatasetFetcher:
     def __init__(self, dataset, auto_collate_batch, collate_fn, drop_last):
         self.dataset = dataset
         self.auto_collate_batch = auto_collate_batch

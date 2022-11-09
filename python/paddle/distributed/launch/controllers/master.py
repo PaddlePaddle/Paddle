@@ -24,7 +24,7 @@ import random
 ETCD_PROTOCAL = 'etcd://'
 
 
-class Master(object):
+class Master:
     '''
     Master is a distributed store design to exchange info among nodes
     '''
