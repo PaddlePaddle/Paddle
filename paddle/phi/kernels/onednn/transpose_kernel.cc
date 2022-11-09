@@ -90,7 +90,7 @@ void TransposeKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(transpose,
                    OneDNN,
-                   ALL_LAYOUT,
+                   ONEDNN,
                    phi::TransposeKernel,
                    float,
                    uint8_t,

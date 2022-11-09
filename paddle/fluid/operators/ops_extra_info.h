@@ -120,6 +120,9 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"Scale_weights", ExtraAttrProperty::ONEDNN},
         {"x_data_format", ExtraAttrProperty::ONEDNN},
         {"y_data_format", ExtraAttrProperty::ONEDNN},
+        {"fused_squeeze2_axes", ExtraAttrProperty::ONEDNN},
+        {"fused_unsqueeze2_axes", ExtraAttrProperty::ONEDNN},
+        {"fused_reshape2_shape", ExtraAttrProperty::ONEDNN},
         // ONEDNN pass dedicated attributes
         {"Activation_scale", ExtraAttrProperty::ONEDNN},
         {"Bias_scales", ExtraAttrProperty::ONEDNN},
@@ -134,6 +137,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"is_test",
          ExtraAttrPropertySet(ExtraAttrProperty::ONEDNN) |
              ExtraAttrPropertySet(ExtraAttrProperty::GPUDNN)},
+
 };
 
 inline ExtraAttrPropertySet GetExtraAttrPropertys(

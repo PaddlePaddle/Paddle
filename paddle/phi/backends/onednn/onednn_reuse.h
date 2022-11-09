@@ -1635,7 +1635,7 @@ static void SetInMemDescWithSqueeze2FuseSupport(
     DenseTensor& in,
     const dnnl::memory::desc& in_md) {
   const std::vector<int> fused_squeeze2_axes =
-      ctx.HasDnnAttr("fused_unsqueeze2_axes")
+      ctx.HasDnnAttr("fused_squeeze2_axes")
           ? PADDLE_GET_CONST(std::vector<int>,
                              ctx.GetDnnAttr("fused_squeeze2_axes"))
           : std::vector<int>();
@@ -1686,6 +1686,7 @@ static void SetOutMemDescWithUnsqueeze2FuseSupport(
           ? PADDLE_GET_CONST(std::vector<int>,
                              ctx.GetDnnAttr("fused_unsqueeze2_axes"))
           : std::vector<int>();
+  
   const std::vector<int64_t>& op_tz = out_md.dims();
   std::vector<int64_t> unsqueezed_op_tz(
       op_tz.size() + fused_unsqueeze2_axes.size(), 0);
@@ -1709,11 +1710,14 @@ static void SetOutMemDescWithReshape2FuseSupport(
     const OneDNNContext& ctx,
     DenseTensor* out,
     const dnnl::memory::desc& out_md) {
-  std::vector<int64_t> fused_reshape2_shape =
+  std::vector<int> fused_reshape2_shape_int =
       ctx.HasDnnAttr("fused_reshape2_shape")
-          ? PADDLE_GET_CONST(std::vector<int64_t>,
+          ? PADDLE_GET_CONST(std::vector<int>,
                              ctx.GetDnnAttr("fused_reshape2_shape"))
-          : std::vector<int64_t>();
+          : std::vector<int>();
+  std::vector<int64_t> fused_reshape2_shape(
+      fused_reshape2_shape_int.begin(), fused_reshape2_shape_int.end());
+
   const int out_shape_numel = out->numel();
   const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
                                               fused_reshape2_shape.end(),
@@ -1739,6 +1743,9 @@ static void SetOutMemDescWithLogicalLayoutFusesSupport(
     SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
   } else if (ctx.HasDnnAttr("fused_reshape2_shape")) {
     SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
+  } else if (ctx.HasDnnAttr("fused_squeeze2_axes")) {
+    out->set_mem_desc(out_md);
+    out->Resize(make_ddim(out_md.dims()));
   } else {
     out->set_mem_desc(out_md);
   }
