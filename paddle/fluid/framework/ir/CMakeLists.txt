@@ -144,18 +144,6 @@ endif()
 
 if(WITH_MKLDNN)
   pass_library(mkldnn_placement_pass base DEPS placement_pass_base DIR mkldnn)
-  pass_library(
-    inference
-    DEPS
-    mkldnn_placement_pass
-    op_registry
-    elementwise_add_op
-    gelu_op
-    activation_op
-    softmax_op
-    softmax
-    DIR
-    mkldnn)
   pass_library(depthwise_conv_mkldnn_pass base DIR mkldnn)
   pass_library(conv_affine_channel_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_bias_mkldnn_fuse_pass inference DIR mkldnn)
