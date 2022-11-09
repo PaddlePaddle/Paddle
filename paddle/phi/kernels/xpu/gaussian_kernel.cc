@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/gaussian_kernel.h"
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
