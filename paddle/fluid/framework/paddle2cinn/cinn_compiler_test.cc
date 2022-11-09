@@ -111,7 +111,7 @@ std::unordered_map<std::string, std::vector<int64_t>> GetInputsInfo(
 
 //  X -
 //     | -> mul -> MUL_OUT -
-//  Y -                     | -> elementwise_add -> ADD_OUT -> scale -> RELU_OUT
+//  Y -                     | -> elementwise_add -> ADD_OUT -> relu -> RELU_OUT
 //                       Z -
 std::unique_ptr<Graph> CreateGraph() {
   ProgramDesc program;
@@ -164,17 +164,17 @@ std::unique_ptr<Graph> CreateGraph() {
   add_out->SetShape({1000, 100});
   add_op->SetOutput("Out", {add_out->Name()});
 
-  // scale
-  auto* scale_op = global_block->AppendOp();
-  scale_op->SetType("scale");
-  scale_op->SetInput("X", {add_out->Name()});
+  // relu
+  auto* relu_op = global_block->AppendOp();
+  relu_op->SetType("relu");
+  relu_op->SetInput("X", {add_out->Name()});
 
-  auto* scale_out = global_block->Var("RELU_OUT");
-  scale_out->SetType(proto::VarType::LOD_TENSOR);
-  scale_out->SetLoDLevel(0);
-  scale_out->SetDataType(proto::VarType::FP32);
-  scale_out->SetShape({1000, 100});
-  scale_op->SetOutput("Out", {scale_out->Name()});
+  auto* relu_out = global_block->Var("RELU_OUT");
+  relu_out->SetType(proto::VarType::LOD_TENSOR);
+  relu_out->SetLoDLevel(0);
+  relu_out->SetDataType(proto::VarType::FP32);
+  relu_out->SetShape({1000, 100});
+  relu_op->SetOutput("Out", {relu_out->Name()});
   program.Flush();
   return std::make_unique<Graph>(program);
 }
@@ -194,9 +194,9 @@ TEST(CinnCompilerTest, FlagController) {
     auto compilation_keys = GetCompilationKeys(*graph);
     ASSERT_EQ(compilation_keys.size(), 0);
   }
-  // apply build_cinn_pass & FLAGS_allow_cinn_ops="mul;scale"
+  // apply build_cinn_pass & FLAGS_allow_cinn_ops="mul;relu"
   {
-    FLAGS_allow_cinn_ops = "mul;scale";
+    FLAGS_allow_cinn_ops = "mul;relu";
     auto graph = CreateGraph();
     cinn_compiler->Clear();
     cinn_pass->Apply(graph.get());
@@ -204,10 +204,10 @@ TEST(CinnCompilerTest, FlagController) {
     ASSERT_EQ(compilation_keys.size(), 2);
   }
   // apply build_cinn_pass & FLAGS_allow_cinn_ops="" &
-  // FLAGS_deny_cinn_ops="scale"
+  // FLAGS_deny_cinn_ops="relu"
   {
     FLAGS_allow_cinn_ops = "";
-    FLAGS_deny_cinn_ops = "elementwise_add;scale";
+    FLAGS_deny_cinn_ops = "elementwise_add;relu";
     auto graph = CreateGraph();
     cinn_compiler->Clear();
     cinn_pass->Apply(graph.get());
@@ -301,5 +301,5 @@ TEST(CinnCompilerTest, Compile) {
 USE_PASS(build_cinn_pass);
 USE_PASS(graph_viz_pass);
 USE_OP_ITSELF(mul);
-USE_OP_ITSELF(scale);
+USE_OP_ITSELF(relu);
 USE_OP_ITSELF(elementwise_add);
