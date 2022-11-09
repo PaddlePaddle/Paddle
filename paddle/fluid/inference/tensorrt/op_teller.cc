@@ -2118,7 +2118,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "where") {
       if (!with_dynamic_shape) {
-        VLOG(3) << "the lookup_table does not support "
+        VLOG(3) << "the where op does not support "
                    "static shape yet";
         return false;
       }
