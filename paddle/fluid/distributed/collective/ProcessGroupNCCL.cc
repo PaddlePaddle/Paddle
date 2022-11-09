@@ -138,8 +138,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
       in_tensor,
       [&](phi::DenseTensor* output,
           const phi::DenseTensor& input,
-          const ncclComm_t& comm,
-          const gpuStream_t& stream) {
+          ncclComm_t comm,
+          gpuStream_t stream) {
         return platform::dynload::ncclAllGather(
             input.data(),
             output->data(),
@@ -164,8 +164,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
       in_tensor,
       [&](phi::DenseTensor* output,
           const phi::DenseTensor& input,
-          const ncclComm_t& comm,
-          const gpuStream_t& stream) {
+          ncclComm_t comm,
+          gpuStream_t stream) {
         return platform::dynload::ncclAllReduce(
             input.data(),
             output->data(),
@@ -208,8 +208,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
       in_tensor,
       [&](phi::DenseTensor* output,
           const phi::DenseTensor& input,
-          const ncclComm_t& comm,
-          const gpuStream_t& stream) {
+          ncclComm_t comm,
+          gpuStream_t stream) {
         int root = opts.source_rank + opts.source_root;
         return platform::dynload::ncclBroadcast(
             input.data(),
@@ -235,8 +235,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
       src_rank,
       [&](phi::DenseTensor* output,
           int src,
-          const ncclComm_t& comm,
-          const gpuStream_t& stream) {
+          ncclComm_t comm,
+          gpuStream_t stream) {
         return platform::dynload::ncclRecv(
             output->data(),
             output->numel(),
@@ -266,8 +266,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::RecvPartial(
       src_rank,
       [&](phi::DenseTensor* output,
           int src,
-          const ncclComm_t& comm,
-          const gpuStream_t& stream) {
+          ncclComm_t comm,
+          gpuStream_t stream) {
         return platform::dynload::ncclRecv(
             output->data(),
             output->numel(),
@@ -291,8 +291,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
       dst_rank,
       [&](phi::DenseTensor* input,
           int dst,
-          const ncclComm_t& comm,
-          const gpuStream_t& stream) {
+          ncclComm_t comm,
+          gpuStream_t stream) {
         return platform::dynload::ncclSend(
             input->data(),
             input->numel(),
@@ -322,8 +322,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::SendPartial(
       dst_rank,
       [&](phi::DenseTensor* input,
           int dst,
-          const ncclComm_t& comm,
-          const gpuStream_t& stream) {
+          ncclComm_t comm,
+          gpuStream_t stream) {
         return platform::dynload::ncclSend(
             input->data(),
             input->numel(),
