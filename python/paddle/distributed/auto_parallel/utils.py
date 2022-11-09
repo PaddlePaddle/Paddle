@@ -34,6 +34,9 @@ from paddle.distributed.auto_parallel.dist_attribute import (
 )
 
 
+OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+OpRole = core.op_proto_and_checker_maker.OpRole
+
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
     core.VarDesc.VarType.STEP_SCOPES,
@@ -1310,10 +1313,6 @@ def set_grad_var_shape(program, dist_context):
 
             if list(grad_var.shape) != ref_shape:
                 grad_var.desc.set_shape(ref_shape)
-
-
-OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-OpRole = core.op_proto_and_checker_maker.OpRole
 
 
 def is_forward_op(op):
