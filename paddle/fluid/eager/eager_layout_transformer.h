@@ -131,12 +131,13 @@ class EagerLayoutTransformer {
     bool need_trans =
         !(final_layout_ == Layout::UNDEFINED || final_layout_ == in.layout());
     // This is for Agnostic op when layout is differnet
-    auto trans_layout = final_layout_;
-    if (final_layout_ == DefaultLayout()) trans_layout = Layout::UNDEFINED;
-    VLOG(4) << "Agnostic op : " << op_name_ << "'s layout is " << final_layout_
-            << "in layout" << in.layout() << "in shape" << in.shape().size();
-    if (need_trans && final_layout_ != DesiredLayout()) {
-      auto out_tensor = EagerTraceTransposeOp(trans_layout, in);
+    bool equal_bool = true;
+    for (int i = 0; i < dim_size_; i++) {
+      VLOG(4) << "in.shape " << in.shape()[i];
+      if (in.shape()[i] != 1) equal_bool = false;
+    }
+    if (need_trans && (!equal_bool)) {
+      auto out_tensor = EagerTraceTransposeOp(final_layout_, in);
       phi::DenseTensorUtils::GetMutableMeta(
           static_cast<phi::DenseTensor*>(out_tensor.impl().get()))
           ->layout = final_layout_;
