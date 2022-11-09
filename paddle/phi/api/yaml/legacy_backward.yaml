@@ -7,8 +7,6 @@
     param : [x]
   kernel :
     func : abs_double_grad
-  data_transform:
-    skip_transform : grad_x_grad
 
 - backward_op : abs_grad
   forward : abs (Tensor x) -> Tensor(out)
