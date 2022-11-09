@@ -114,6 +114,7 @@ inline int GET_BLOCKS(
 }
 
 template <typename key_t, typename value_type>
+
 static void RadixSortPairsImpl(const key_t *keys_in,
                                key_t *keys_out,
                                const value_type *values_in,
@@ -452,7 +453,7 @@ void ArgsortKernel(const Context &dev_ctx,
     const int64_t input_height =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t input_width = in_dims[in_dims.size() - 1];
-    if (input_height <= 32) {
+    if (input_height <= 4) {
       ArgFullSortForTinyRows<T, int64_t>(dev_ctx,
                                          &input,
                                          output,
@@ -502,7 +503,7 @@ void ArgsortKernel(const Context &dev_ctx,
     dev_ctx.template Alloc<int64_t>(&tmp_indices);
     dev_ctx.template Alloc<int64_t>(indices);
 
-    if (input_height <= 32) {
+    if (input_height <= 4) {
       ArgFullSortForTinyRows<T, int64_t>(dev_ctx,
                                          &trans_inp,
                                          &tmp_out,
@@ -521,7 +522,6 @@ void ArgsortKernel(const Context &dev_ctx,
     }
 
     TransposeKernel<int64_t, Context>(dev_ctx, tmp_indices, trans, indices);
-    // transpose back
     TransposeKernel<T, Context>(dev_ctx, tmp_out, trans, output);
     return;
   }
