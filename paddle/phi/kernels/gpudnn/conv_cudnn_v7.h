@@ -150,7 +150,7 @@ static void SetConvolutionMathType(
       phi::dynload::cudnnSetConvolutionMathType(cdesc.desc(), math_type));
 }
 
-template <typename PerfT>
+template <ConvKind CK>
 struct SearchAlgorithmBase {};
 
 // cuDNN convolution forward algorithm searcher, consisted of three searching
@@ -158,7 +158,7 @@ struct SearchAlgorithmBase {};
 // As well as one workspace size acquirsition function with respect to
 // the chosen alogrithm.
 template <>
-struct SearchAlgorithmBase<cudnnConvolutionFwdAlgoPerf_t> {
+struct SearchAlgorithmBase<ConvKind::kForward> {
   using PerfT = cudnnConvolutionFwdAlgoPerf_t;
   using AlgoT = cudnnConvolutionFwdAlgo_t;
 
@@ -301,7 +301,7 @@ struct SearchAlgorithmBase<cudnnConvolutionFwdAlgoPerf_t> {
 // As well as one workspace size acquirsition function with
 // respect to the chosen alogrithm.
 template <>
-struct SearchAlgorithmBase<cudnnConvolutionBwdDataAlgoPerf_t> {
+struct SearchAlgorithmBase<ConvKind::kBackwardData> {
   using PerfT = cudnnConvolutionBwdDataAlgoPerf_t;
   using AlgoT = cudnnConvolutionBwdDataAlgo_t;
 
@@ -443,7 +443,7 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdDataAlgoPerf_t> {
 // exhaustive_search mode. As well as one workspace size acquirsition function
 // with respect to the chosen alogrithm.
 template <>
-struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
+struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
   using PerfT = cudnnConvolutionBwdFilterAlgoPerf_t;
   using AlgoT = cudnnConvolutionBwdFilterAlgo_t;
 
@@ -621,9 +621,9 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
   }
 };
 
-template <typename PerfT>
-struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
-  using AlgoT = typename SearchAlgorithmBase<PerfT>::AlgoT;
+template <ConvKind CK>
+struct SearchAlgorithm : public SearchAlgorithmBase<CK> {
+  using AlgoT = typename SearchAlgorithmBase<CK>::AlgoT;
 
   template <typename T>
   static SearchResult<AlgoT> Find(const phi::GPUContext& ctx,
@@ -647,7 +647,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
       //    default mode for the rest.
       auto key = args.ConvertToConvCacheKey<T>();
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetConv(
-          SearchAlgorithmBase<PerfT>::kAlgoType);
+          SearchAlgorithmBase<CK>::kAlgoType);
       bool find_in_cache = cache.Find(key);
       if (find_in_cache) {
         auto t = cache.Get(key);
@@ -665,7 +665,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
           // Once autotune is enabled, the autotuned result can rewrite the
           // previous result in cache found by heuristic method.
           result =
-              SearchAlgorithmBase<PerfT>::template FindAlgoExhaustiveSearch<T>(
+              SearchAlgorithmBase<CK>::template FindAlgoExhaustiveSearch<T>(
                   ctx, args);
           cache.Set(key,
                     phi::autotune::ConvAutoTuneResult(
@@ -684,7 +684,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
         }
       }
     }
-    VLOG(3) << "[cuDNN " << SearchAlgorithmBase<PerfT>::GetPerfName()
+    VLOG(3) << "[cuDNN " << SearchAlgorithmBase<CK>::GetPerfName()
             << "] exhaustive_search=" << exhaustive_search
             << ", use_autotune=" << use_autotune
             << ", deterministic=" << deterministic
@@ -767,9 +767,12 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
   }
 };
 
+template <typename T, ConvKind CK>
+struct ConvRunner {};
+
 template <typename T>
-struct ConvRunner {
-  static void RunForward(
+struct ConvRunner<T, ConvKind::kForward> {
+  static void Apply(
       const phi::GPUContext& ctx,
       const ConvArgs& args,
       const SearchResult<cudnnConvolutionFwdAlgo_t>& search_result,
@@ -783,9 +786,6 @@ struct ConvRunner {
       size_t workspace_size,
       phi::DnnWorkspaceHandle* workspace_handle,
       bool use_addto = false) {
-    SetConvolutionMathType(
-        ctx, args.cdesc, args.cudnn_dtype, search_result.use_tensor_op_math);
-
     ScalingParamType<T> alpha = 1.0f;
     ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
 
@@ -811,8 +811,11 @@ struct ConvRunner {
           workspace_size);
     }
   }
+};
 
-  static void RunBackwardData(
+template <typename T>
+struct ConvRunner<T, ConvKind::kBackwardData> {
+  static void Apply(
       const phi::GPUContext& ctx,
       const ConvArgs& args,
       const SearchResult<cudnnConvolutionBwdDataAlgo_t>& search_result,
@@ -826,9 +829,6 @@ struct ConvRunner {
       size_t workspace_size,
       phi::DnnWorkspaceHandle* workspace_handle,
       bool use_addto = false) {
-    SetConvolutionMathType(
-        ctx, args.cdesc, args.cudnn_dtype, search_result.use_tensor_op_math);
-
     ScalingParamType<T> alpha = 1.0f;
     ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
 
@@ -855,8 +855,11 @@ struct ConvRunner {
           workspace_size);
     }
   }
+};
 
-  static void RunBackwardFilter(
+template <typename T>
+struct ConvRunner<T, ConvKind::kBackwardFilter> {
+  static void Apply(
       const phi::GPUContext& ctx,
       const ConvArgs& args,
       const SearchResult<cudnnConvolutionBwdFilterAlgo_t>& search_result,
@@ -870,9 +873,6 @@ struct ConvRunner {
       size_t workspace_size,
       phi::DnnWorkspaceHandle* workspace_handle,
       bool use_addto = false) {
-    SetConvolutionMathType(
-        ctx, args.cdesc, args.cudnn_dtype, search_result.use_tensor_op_math);
-
     ScalingParamType<T> alpha = 1.0f;
     ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
 

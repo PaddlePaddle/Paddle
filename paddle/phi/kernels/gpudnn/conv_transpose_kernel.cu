@@ -227,7 +227,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
       search::Find<T>(args, false, deterministic, workspace_size, ctx);
 #else
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
-  using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+  using search = SearchAlgorithm<ConvKind::kBackwardData>;
   bwd_result = search::Find<T>(ctx, args, false, deterministic, false);
   workspace_size =
       std::max(workspace_size, search::GetWorkspaceSize(ctx, args, bwd_result));
@@ -262,18 +262,19 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }
 #else   // PADDLE_WITH_HIP
-  ConvRunner<T>::RunBackwardData(ctx,
-                                 args,
-                                 bwd_result,
-                                 x_data,
-                                 filter_data,
-                                 transformed_out_data,
-                                 groups,
-                                 out_offset,
-                                 filter_offset,
-                                 x_offset,
-                                 workspace_size,
-                                 &workspace_handle);
+  ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
+                                                args,
+                                                bwd_result,
+                                                x_data,
+                                                filter_data,
+                                                transformed_out_data,
+                                                groups,
+                                                out_offset,
+                                                filter_offset,
+                                                x_offset,
+                                                workspace_size,
+                                                &workspace_handle,
+                                                false);
 #endif  // PADDLE_WITH_HIP
 
   if (!is_sys_pad && strides.size() == 2U) {

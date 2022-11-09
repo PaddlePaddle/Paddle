@@ -34,7 +34,9 @@ template <typename T>
 using ScalingParamType =
     typename paddle::platform::CudnnDataType<T>::ScalingParamType;
 
-// As the container of searchAlgorithm::Find() result.
+enum class ConvKind { kForward = 1, kBackwardData = 2, kBackwardFilter = 3 };
+
+// The container of SearchAlgorithm::Find() result.
 template <typename AlgoT>
 struct SearchResult {
   SearchResult() {}

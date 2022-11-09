@@ -17,7 +17,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 __all__ = []
 
 
-class GradientClipHelper(object):
+class GradientClipHelper:
     def __init__(self, mp_ring_id):
         self.mp_ring_id = mp_ring_id
 

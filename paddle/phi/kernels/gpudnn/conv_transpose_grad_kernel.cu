@@ -227,7 +227,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     fwd_result.algo =
         search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
 #else
-    using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+    using search1 = SearchAlgorithm<ConvKind::kForward>;
     fwd_result = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search1::GetWorkspaceSize(ctx, args1, fwd_result));
@@ -252,7 +252,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     filter_result.algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
 #else
-    using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+    using search2 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search2::GetWorkspaceSize(ctx, args2, filter_result));
@@ -291,18 +291,19 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
       workspace_handle.RunFunc(cudnn_func, workspace_size);
     }
 #else   // PADDLE_WITH_HIP
-    ConvRunner<T>::RunForward(ctx,
-                              args1,
-                              fwd_result,
-                              dout_data,
-                              filter_data,
-                              dx_data,
-                              groups,
-                              dout_offset,
-                              filter_offset,
-                              x_offset,
-                              workspace_size,
-                              &workspace_handle);
+    ConvRunner<T, ConvKind::kForward>::Apply(ctx,
+                                             args1,
+                                             fwd_result,
+                                             dout_data,
+                                             filter_data,
+                                             dx_data,
+                                             groups,
+                                             dout_offset,
+                                             filter_offset,
+                                             x_offset,
+                                             workspace_size,
+                                             &workspace_handle,
+                                             false);
 #endif  // PADDLE_WITH_HIP
 
     if (data_layout == GPUDNNDataLayout::kNHWC) {
@@ -347,18 +348,19 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
       workspace_handle.RunFunc(cudnn_func, workspace_size);
     }
 #else   // PADDLE_WITH_HIP
-    ConvRunner<T>::RunBackwardFilter(ctx,
-                                     args2,
-                                     filter_result,
-                                     x_data,
-                                     dout_data,
-                                     dfilter_data,
-                                     groups,
-                                     dout_offset,
-                                     filter_offset,
-                                     x_offset,
-                                     workspace_size,
-                                     &workspace_handle);
+    ConvRunner<T, ConvKind::kBackwardFilter>::Apply(ctx,
+                                                    args2,
+                                                    filter_result,
+                                                    x_data,
+                                                    dout_data,
+                                                    dfilter_data,
+                                                    groups,
+                                                    dout_offset,
+                                                    filter_offset,
+                                                    x_offset,
+                                                    workspace_size,
+                                                    &workspace_handle,
+                                                    false);
 #endif  // PADDLE_WITH_HIP
   }
 }
@@ -696,7 +698,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     bwd_result1.algo =
         search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
 #else
-    using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+    using search1 = SearchAlgorithm<ConvKind::kBackwardData>;
     bwd_result1 = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = search1::GetWorkspaceSize(ctx, args1, bwd_result1);
 #endif
@@ -717,7 +719,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     bwd_result2.algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
 #else
-    using search2 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+    using search2 = SearchAlgorithm<ConvKind::kBackwardData>;
     bwd_result2 = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search2::GetWorkspaceSize(ctx, args2, bwd_result2));
@@ -742,7 +744,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     filter_result.algo =
         search3::Find<T>(args3, false, deterministic, workspace_size, ctx);
 #else
-    using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+    using search3 = SearchAlgorithm<ConvKind::kBackwardFilter>;
     filter_result = search3::Find<T>(ctx, args3, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search3::GetWorkspaceSize(ctx, args3, filter_result));
@@ -767,7 +769,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     fwd_result.algo =
         search4::Find<T>(args4, false, deterministic, workspace_size, ctx);
 #else
-    using search4 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+    using search4 = SearchAlgorithm<ConvKind::kForward>;
     fwd_result = search4::Find<T>(ctx, args4, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search4::GetWorkspaceSize(ctx, args4, fwd_result));
@@ -827,18 +829,19 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           workspace_size);
     }
 #else   // PADDLE_WITH_HIP
-    ConvRunner<T>::RunBackwardData(ctx,
-                                   args1,
-                                   bwd_result1,
-                                   ddx_,
-                                   filter_,
-                                   transformed_ddout_channel_,
-                                   groups,
-                                   group_offset_out,
-                                   group_offset_filter,
-                                   group_offset_in,
-                                   workspace_size,
-                                   &workspace_handle);
+    ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
+                                                  args1,
+                                                  bwd_result1,
+                                                  ddx_,
+                                                  filter_,
+                                                  transformed_ddout_channel_,
+                                                  groups,
+                                                  group_offset_out,
+                                                  group_offset_filter,
+                                                  group_offset_in,
+                                                  workspace_size,
+                                                  &workspace_handle,
+                                                  false);
 #endif  // PADDLE_WITH_HIP
 
 #ifdef PADDLE_WITH_HIP
@@ -879,19 +882,19 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           transformed_ddout_channel_ + i * group_offset_out));
     }
 #else   // PADDLE_WITH_HIP
-    ConvRunner<T>::RunBackwardData(ctx,
-                                   args2,
-                                   bwd_result2,
-                                   x_,
-                                   ddfilter_,
-                                   transformed_ddout_channel_,
-                                   groups,
-                                   group_offset_out,
-                                   group_offset_filter,
-                                   group_offset_in,
-                                   workspace_size,
-                                   &workspace_handle,
-                                   true);
+    ConvRunner<T, ConvKind::kBackwardData>::Apply(ctx,
+                                                  args2,
+                                                  bwd_result2,
+                                                  x_,
+                                                  ddfilter_,
+                                                  transformed_ddout_channel_,
+                                                  groups,
+                                                  group_offset_out,
+                                                  group_offset_filter,
+                                                  group_offset_in,
+                                                  workspace_size,
+                                                  &workspace_handle,
+                                                  true);
 #endif  // PADDLE_WITH_HIP
 
     if ((!is_sys_pad) && (!channel_last)) {
@@ -949,18 +952,19 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           workspace_size);
     }
 #else   // PADDLE_WITH_HIP
-    ConvRunner<T>::RunBackwardFilter(ctx,
-                                     args3,
-                                     filter_result,
-                                     ddx_,
-                                     transformed_dout_channel_,
-                                     dfilter_,
-                                     groups,
-                                     group_offset_out,
-                                     group_offset_filter,
-                                     group_offset_in,
-                                     workspace_size,
-                                     &workspace_handle);
+    ConvRunner<T, ConvKind::kBackwardFilter>::Apply(ctx,
+                                                    args3,
+                                                    filter_result,
+                                                    ddx_,
+                                                    transformed_dout_channel_,
+                                                    dfilter_,
+                                                    groups,
+                                                    group_offset_out,
+                                                    group_offset_filter,
+                                                    group_offset_in,
+                                                    workspace_size,
+                                                    &workspace_handle,
+                                                    false);
 #endif  // PADDLE_WITH_HIP
   }
 
@@ -988,18 +992,19 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
           workspace_size);
     }
 #else   // PADDLE_WITH_HIP
-    ConvRunner<T>::RunForward(ctx,
-                              args4,
-                              fwd_result,
-                              transformed_dout_channel_,
-                              ddfilter_,
-                              transformed_dx_,
-                              groups,
-                              group_offset_out,
-                              group_offset_filter,
-                              group_offset_in,
-                              workspace_size,
-                              &workspace_handle);
+    ConvRunner<T, ConvKind::kForward>::Apply(ctx,
+                                             args4,
+                                             fwd_result,
+                                             transformed_dout_channel_,
+                                             ddfilter_,
+                                             transformed_dx_,
+                                             groups,
+                                             group_offset_out,
+                                             group_offset_filter,
+                                             group_offset_in,
+                                             workspace_size,
+                                             &workspace_handle,
+                                             false);
 #endif  // PADDLE_WITH_HIP
 
     if (channel_last) {

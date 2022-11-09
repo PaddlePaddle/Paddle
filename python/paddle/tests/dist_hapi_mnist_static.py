@@ -29,7 +29,7 @@ from paddle.vision.datasets import MNIST
 
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True):
-        super(MnistDataset, self).__init__(mode=mode)
+        super().__init__(mode=mode)
         self.return_label = return_label
 
     def __getitem__(self, idx):

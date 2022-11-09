@@ -334,7 +334,7 @@ def not_to_static(func=None):
     return func
 
 
-class _SaveLoadConfig(object):
+class _SaveLoadConfig:
     def __init__(self):
         self._output_spec = None
         self._model_filename = None
@@ -621,7 +621,7 @@ _save_pre_hooks_lock = threading.Lock()
 _save_pre_hooks = []
 
 
-class HookRemoveHelper(object):
+class HookRemoveHelper:
     """A HookRemoveHelper that can be used to remove hook."""
 
     def __init__(self, hook):
@@ -658,7 +658,7 @@ def _register_save_pre_hook(hook):
 
             class LinearNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear = paddle.nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                 def forward(self, x):
@@ -824,7 +824,7 @@ def save(layer, path, input_spec=None, **configs):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                 @paddle.jit.to_static
@@ -1295,7 +1295,7 @@ def load(path, **configs):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
                 @paddle.jit.to_static
@@ -1496,7 +1496,7 @@ def _trace(
     return original_outputs, program, feed_names, fetch_names, parameters
 
 
-class TracedLayer(object):
+class TracedLayer:
     """
     :api_attr: imperative
 

@@ -17,7 +17,7 @@ import paddle
 from paddle.fluid import framework as framework
 
 
-class PrimOption(object):
+class PrimOption:
     def __init__(self):
         self.enable_prim = False
 

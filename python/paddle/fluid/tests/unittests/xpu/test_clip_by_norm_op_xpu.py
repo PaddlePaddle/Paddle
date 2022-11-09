@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,56 +19,68 @@ import unittest
 import numpy as np
 from op_test_xpu import XPUOpTest
 import paddle
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 
-class TestXPUClipByNormOp(XPUOpTest):
-    def setUp(self):
-        self.op_type = "clip_by_norm"
-        self.dtype = np.float32
-        self.use_xpu = True
-        self.max_relative_error = 0.006
-        self.initTestCase()
-        input = np.random.random(self.shape).astype("float32")
-        input[np.abs(input) < self.max_relative_error] = 0.5
-        self.inputs = {
-            'X': input,
-        }
-        self.attrs = {}
-        self.attrs['max_norm'] = self.max_norm
-        norm = np.sqrt(np.sum(np.square(input)))
-        if norm > self.max_norm:
-            output = self.max_norm * input / norm
-        else:
-            output = input
-        self.outputs = {'Out': output}
+class XPUTestClipByNormOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'clip_by_norm'
+        self.use_dynamic_create_class = False
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
-            paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
+    class TestClipByNormOp(XPUOpTest):
+        def setUp(self):
+            self.op_type = "clip_by_norm"
+            self.dtype = self.in_type
+            self.place = paddle.XPUPlace(0)
+            self.use_xpu = True
+            self.max_relative_error = 0.006
+            self.initTestCase()
+            input = np.random.random(self.shape).astype(self.dtype)
+            input[np.abs(input) < self.max_relative_error] = 0.5
+            self.inputs = {
+                'X': input,
+            }
+            self.attrs = {}
+            self.attrs['max_norm'] = self.max_norm
+            norm = np.sqrt(np.sum(np.square(input)))
+            if norm > self.max_norm:
+                output = self.max_norm * input / norm
+            else:
+                output = input
+            self.outputs = {'Out': output}
 
-    def initTestCase(self):
-        self.shape = (100,)
-        self.max_norm = 1.0
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                paddle.enable_static()
+                self.check_output_with_place(self.place)
+
+        def initTestCase(self):
+            self.shape = (100,)
+            self.max_norm = 1.0
+
+    class TestCase1(TestClipByNormOp):
+        def initTestCase(self):
+            self.shape = (100,)
+            self.max_norm = 1e20
+
+    class TestCase2(TestClipByNormOp):
+        def initTestCase(self):
+            self.shape = (16, 16)
+            self.max_norm = 0.1
+
+    class TestCase3(TestClipByNormOp):
+        def initTestCase(self):
+            self.shape = (4, 8, 16)
+            self.max_norm = 1.0
 
 
-class TestCase1(TestXPUClipByNormOp):
-    def initTestCase(self):
-        self.shape = (100,)
-        self.max_norm = 1e20
-
-
-class TestCase2(TestXPUClipByNormOp):
-    def initTestCase(self):
-        self.shape = (16, 16)
-        self.max_norm = 0.1
-
-
-class TestCase3(TestXPUClipByNormOp):
-    def initTestCase(self):
-        self.shape = (4, 8, 16)
-        self.max_norm = 1.0
+support_types = get_xpu_op_support_types('clip_by_norm')
+for stype in support_types:
+    create_test_class(globals(), XPUTestClipByNormOp, stype)
 
 
 if __name__ == "__main__":

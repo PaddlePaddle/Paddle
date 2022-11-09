@@ -139,7 +139,7 @@ def graph_send_recv(
         return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
-        return _C_ops.graph_send_recv(
+        return _C_ops.send_u_recv(
             x, src_index, dst_index, pool_type.upper(), out_size
         )
 

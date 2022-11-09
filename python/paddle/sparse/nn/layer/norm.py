@@ -61,11 +61,11 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-            will create ParamAttr as weight_attr. If it is set to Fasle, the weight is not learnable.
+            will create ParamAttr as weight_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the weight_attr is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
-            will create ParamAttr as bias_attr. If it is set to Fasle, the weight is not learnable.
+            will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Default "NCL".
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
@@ -83,18 +83,16 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         .. code-block:: python
 
           import paddle
-          from paddle.fluid.framework import _test_eager_guard
 
-          with _test_eager_guard():
-              paddle.seed(123)
-              channels = 3
-              x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
-              dense_x = paddle.to_tensor(x_data)
-              sparse_x = dense_x.to_sparse_coo(4)
-              batch_norm = paddle.sparse.nn.BatchNorm(channels)
-              batch_norm_out = batch_norm(sparse_x)
-              print(batch_norm_out.shape)
-              # [1, 6, 6, 6, 3]
+          paddle.seed(123)
+          channels = 3
+          x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
+          dense_x = paddle.to_tensor(x_data)
+          sparse_x = dense_x.to_sparse_coo(4)
+          batch_norm = paddle.sparse.nn.BatchNorm(channels)
+          batch_norm_out = batch_norm(sparse_x)
+          print(batch_norm_out.shape)
+          # [1, 6, 6, 6, 3]
     """
 
     def __init__(
@@ -108,7 +106,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         use_global_stats=None,
         name=None,
     ):
-        super(BatchNorm, self).__init__(
+        super().__init__(
             num_features,
             momentum=momentum,
             epsilon=epsilon,
@@ -131,7 +129,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 "When training, we now always track global mean and variance."
             )
 
-        if self._use_global_stats == None:
+        if self._use_global_stats is None:
             self._use_global_stats = not self.training
             trainable_statistics = False
         else:
@@ -142,17 +140,16 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         if in_dynamic_mode():
             batch_norm_out, _, _, _, _, _ = _C_ops.sparse_batch_norm(
                 input,
-                self.weight,
-                self.bias,
                 self._mean,
                 self._variance,
+                self.weight,
+                self.bias,
+                not self.training,
                 self._momentum,
                 self._epsilon,
                 data_format,
-                not self.training,
                 self._use_global_stats,
                 trainable_statistics,
-                False,
             )
             return batch_norm_out
         else:
@@ -270,6 +267,8 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. If it is set to False, this layer will not
              have trainable bias parameter. Default: None.
+        data_format(str, optional): Specify the input data format, may be "NCHW". Default "NCHW".
+        name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shapes:
         input: Tensor that the dimension from 2 to 5.
@@ -282,10 +281,8 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
           # required: gpu
           import paddle
           import paddle.sparse.nn as nn
-          import numpy as np
 
-          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-          x = paddle.to_tensor(x)
+          x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]], dtype='float32')
           x = x.to_sparse_coo(len(x.shape)-1)
 
           if paddle.is_compiled_with_cuda():
@@ -312,7 +309,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         data_format='NCHW',
         name=None,
     ):
-        super(SyncBatchNorm, self).__init__(
+        super().__init__(
             num_features,
             momentum,
             epsilon,
@@ -326,15 +323,14 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         self._check_data_format()
         sync_batch_norm_out, _, _, _, _, _ = _C_ops.sparse_sync_batch_norm_(
             x,
-            self.weight,
-            self.bias,
             self._mean,
             self._variance,
+            self.weight,
+            self.bias,
+            not self.training,
             self._momentum,
             self._epsilon,
             self._data_format,
-            not self.training,
-            False,
             False,
             False,
         )
@@ -365,15 +361,15 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         layer_output = layer
         if isinstance(layer, _BatchNormBase):
             if (
-                layer._weight_attr != None
+                layer._weight_attr is not None
                 and not isinstance(layer._weight_attr, bool)
-                and layer._weight_attr.name != None
+                and layer._weight_attr.name is not None
             ):
                 layer._weight_attr.name = layer._weight_attr.name + '_sync'
             if (
-                layer._bias_attr != None
+                layer._bias_attr is not None
                 and not isinstance(layer._bias_attr, bool)
-                and layer._bias_attr.name != None
+                and layer._bias_attr.name is not None
             ):
                 layer._bias_attr.name = layer._bias_attr.name + '_sync'
 
@@ -400,7 +396,10 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
                     layer._name,
                 )
 
-            if layer._weight_attr != False and layer._bias_attr != False:
+            if (
+                layer._weight_attr is not False
+                and layer._bias_attr is not False
+            ):
                 with no_grad():
                     layer_output.weight = layer.weight
                     layer_output.bias = layer.bias

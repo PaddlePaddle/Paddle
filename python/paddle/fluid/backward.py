@@ -20,7 +20,6 @@ from . import core
 import collections
 import copy
 import logging
-from .. import compat as cpt
 from . import unique_name
 from . import log_helper
 import paddle.fluid
@@ -42,7 +41,7 @@ _logger = log_helper.get_logger(
 )
 
 
-class ProgramStats(object):
+class ProgramStats:
     def __init__(self, block, ops):
         self.block = block
         self.ops = ops
@@ -790,7 +789,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
         (set[core.OpDesc]): A set of OpDescs which should be pruned.
     """
 
-    class Var(object):
+    class Var:
         def __init__(self, var_name):
             self.var_name = var_name
             self.gen_op = None
@@ -805,7 +804,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
             assert isinstance(op, Op)
             self.pendding_ops.append(op)
 
-    class Op(object):
+    class Op:
         def __init__(self, op_desc):
             self.op_desc = op_desc
             self.inputs = []
@@ -1943,7 +1942,7 @@ def append_backward(
         #  sub-block (control flow)
         is_recompute = False
         if (
-            checkpoints != None
+            checkpoints is not None
             and isinstance(checkpoints, list)
             and len(checkpoints) > 0
         ):

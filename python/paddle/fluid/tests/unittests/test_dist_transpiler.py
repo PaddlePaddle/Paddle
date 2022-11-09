@@ -275,7 +275,7 @@ class TestBasicModelWithLargeBlockSize(TranspilerTest):
 
 class TestNoSliceVar(TranspilerTest):
     def setUp(self):
-        super(TestNoSliceVar, self).setUp()
+        super().setUp()
 
     def transpiler_test_impl(self):
         config = fluid.DistributeTranspilerConfig()

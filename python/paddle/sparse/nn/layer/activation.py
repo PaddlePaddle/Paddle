@@ -47,7 +47,7 @@ class ReLU(Layer):
     """
 
     def __init__(self, name=None):
-        super(ReLU, self).__init__()
+        super().__init__()
         self._name = name
 
     def forward(self, x):
@@ -112,7 +112,7 @@ class Softmax(Layer):
     """
 
     def __init__(self, axis=-1, name=None):
-        super(Softmax, self).__init__()
+        super().__init__()
         self._axis = axis
         self._name = name
 
@@ -152,7 +152,7 @@ class ReLU6(Layer):
     """
 
     def __init__(self, name=None):
-        super(ReLU6, self).__init__()
+        super().__init__()
         self._name = name
 
     def forward(self, x):
@@ -199,7 +199,7 @@ class LeakyReLU(Layer):
     """
 
     def __init__(self, negative_slope=0.01, name=None):
-        super(LeakyReLU, self).__init__()
+        super().__init__()
         self._negative_slope = negative_slope
         self._name = name
 

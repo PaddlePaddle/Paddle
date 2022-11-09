@@ -146,12 +146,8 @@ def iou(box_a, box_b, norm):
     xmax_b = max(box_b[0], box_b[2])
     ymax_b = max(box_b[1], box_b[3])
 
-    area_a = (ymax_a - ymin_a + (norm == False)) * (
-        xmax_a - xmin_a + (norm == False)
-    )
-    area_b = (ymax_b - ymin_b + (norm == False)) * (
-        xmax_b - xmin_b + (norm == False)
-    )
+    area_a = (ymax_a - ymin_a + (not norm)) * (xmax_a - xmin_a + (not norm))
+    area_b = (ymax_b - ymin_b + (not norm)) * (xmax_b - xmin_b + (not norm))
     if area_a <= 0 and area_b <= 0:
         return 0.0
 
@@ -160,9 +156,7 @@ def iou(box_a, box_b, norm):
     xb = min(xmax_a, xmax_b)
     yb = min(ymax_a, ymax_b)
 
-    inter_area = max(xb - xa + (norm == False), 0.0) * max(
-        yb - ya + (norm == False), 0.0
-    )
+    inter_area = max(xb - xa + (not norm), 0.0) * max(yb - ya + (not norm), 0.0)
 
     iou_ratio = inter_area / (area_a + area_b - inter_area)
 

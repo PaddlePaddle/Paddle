@@ -16,9 +16,11 @@
 
 #include <algorithm>
 
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
+#include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
@@ -124,18 +126,63 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   }
 }
 
-void LogDeviceMemoryStats(const platform::Place& place) {
-  if (FLAGS_new_executor_log_memory_stats && platform::is_gpu_place(place)) {
-    VLOG(0) << "memory_allocated: "
-            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
-                   "Allocated", place.device)) /
-                   1024 / 1024
-            << " MB";
-    VLOG(0) << "max_memory_allocated: "
-            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
-                   "Allocated", place.device)) /
-                   1024 / 1024
-            << " MB";
+bool IsCommunicationOp(const std::string& op_name) {
+  const std::set<std::string> special_comm_op_set = {
+      "send",
+      "recv",
+      "send_v2",
+      "recv_v2",
+  };
+  const std::string communication_op_prefix = "c_";
+  if (op_name.find(communication_op_prefix) != std::string::npos ||
+      special_comm_op_set.count(op_name)) {
+    return true;
+  }
+  return false;
+}
+
+bool IsCommunicationOp(const Instruction& instr) {
+  return IsCommunicationOp(instr.OpBase()->Type());
+}
+
+bool IsCpuOp(const Instruction& instr) {
+  return platform::is_cpu_place(instr.DeviceContext().GetPlace());
+}
+
+bool IsSupportedHeterPlace(const phi::Place& place) {
+  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
+         platform::is_xpu_place(place) || platform::is_ipu_place(place) ||
+         platform::is_custom_place(place);
+}
+
+bool IsMemcpyD2H(const Instruction& instr) {
+  return instr.OpBase()->Type() == kMemcpyD2H;
+}
+
+bool IsMemcpyH2D(const Instruction& instr) {
+  return instr.OpBase()->Type() == kMemcpyH2D;
+}
+
+bool IsMemcpyOp(const Instruction& instr) {
+  return IsMemcpyD2H(instr) || IsMemcpyH2D(instr);
+}
+
+void AddFetch(const std::vector<std::string>& fetch_names,
+              framework::BlockDesc* block) {
+  auto* fetch_holder = block->Var(kFetchVarName);
+  fetch_holder->SetType(proto::VarType::FETCH_LIST);
+  fetch_holder->SetPersistable(true);
+
+  int i = 0;
+  for (auto& fetch_name : fetch_names) {
+    // append fetch op
+    auto* op = block->AppendOp();
+    op->SetType("fetch_v2");
+    op->SetInput("X", {fetch_name});
+    op->SetOutput("Out", {kFetchVarName});
+    op->SetAttr("col", {static_cast<int>(i)});
+    op->CheckAttrs();
+    i++;
   }
 }
 
@@ -227,7 +274,14 @@ void BuildVariableScope(const framework::BlockDesc& block,
     }
 
     if (var_desc->Persistable()) {
-      auto* ptr = inner_scope->Var(var_name);
+      // In principle, we should put all trainable parameters in global scope,
+      // which means the root of the scope tree. Some cases like quantization
+      // will look up these parameters in global scope.
+      const Scope* ancestor_scope = inner_scope;
+      while (ancestor_scope->parent()) {
+        ancestor_scope = ancestor_scope->parent();
+      }
+      auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var_name);
 
       VLOG(3) << "Initialize Variable " << var_name;
       // NOTE(zhiqiu): if var exists in scope and the type is right,
@@ -244,6 +298,30 @@ void BuildVariableScope(const framework::BlockDesc& block,
     }
     var_scope->AddVar(var_name, var_desc);
   }
+}
+
+OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
+                             const platform::Place& place) {
+  if (platform::is_cpu_place(place)) {
+    return OpFuncType::kQueueSync;
+  }
+
+  PADDLE_ENFORCE_EQ(IsSupportedHeterPlace(place),
+                    true,
+                    phi::errors::Fatal("Unsupported current place %s", place));
+
+  // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU
+  // computing. They execute serially in device thread and block CUDA kernel
+  // launching in other GPU OPs. To improve performance, set them as kQueueSync
+  // and so that they would be dispatched to host thread.
+  std::shared_ptr<OperatorBase> op = op_func_node.operator_base_;
+  if (op->Type() == kCoalesceTensor &&
+      op->Attr<bool>("set_constant") == false &&
+      op->Attr<bool>("copy_data") == false) {
+    return OpFuncType::kQueueSync;
+  }
+
+  return OpFuncType::kQueueAsync;
 }
 
 void CreateAllOps(const framework::BlockDesc& block,
@@ -291,7 +369,7 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
     const VariableNameMap& var_name_map,
     VariableScope* var_scope,
     Scope* local_scope,
-    bool allow_var_not_in_program = false,
+    bool find_var_recursively = false,
     bool allow_var_not_in_scope = false) {
   VariableValueMap name2var;
   VariableIdMap name2id;
@@ -301,8 +379,10 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
     vars.reserve(item.second.size());
 
     for (auto& var_name : item.second) {
+      auto* var = local_scope->FindVar(var_name);
+
       if (!var_scope->HasVar(var_name)) {
-        if (allow_var_not_in_program && local_scope->FindVar(var_name)) {
+        if (find_var_recursively && var) {
           VLOG(3) << "Add " << var_name << " to var_scope";
           var_scope->AddVar(var_name, nullptr);
         } else if (allow_var_not_in_scope) {
@@ -310,7 +390,6 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
           continue;
         }
       }
-      auto* var = local_scope->FindVar(var_name);
       auto var_id = var_scope->VarId(var_name);
       vars.push_back(var);
       ids.push_back(var_id);
@@ -393,14 +472,7 @@ void HandleOperatorBase(const platform::Place& place,
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
   op_func_node->operator_base_ = op_base;
-  if (IsSupportedHeterPlace(place)) {
-    op_func_node->type_ = OpFuncType::kQueueAsync;
-  } else if (platform::is_cpu_place(place)) {
-    op_func_node->type_ = OpFuncType::kQueueSync;
-  } else {
-    PADDLE_THROW(
-        platform::errors::Fatal("Unsupported current place %s", place));
-  }
+  op_func_node->type_ = AnalyseOpFuncType(*op_func_node, place);
   op_func_node->kernel_func_ = nullptr;
   op_base->Run(*local_scope, place);  // Run without data transformer.
   std::unordered_set<int> no_data_transform_index;
@@ -419,8 +491,8 @@ void BuildOpFuncList(const platform::Place& place,
                      const std::set<std::string>& skip_gc_vars,
                      std::vector<OpFuncNode>* vec_func_list,
                      VariableScope* var_scope,
-                     bool use_local_scope,
-                     bool used_for_jit) {
+                     const ExecutionConfig& execution_config,
+                     bool use_local_scope) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
@@ -428,7 +500,7 @@ void BuildOpFuncList(const platform::Place& place,
   // Step 1: create all ops for current block.
   CreateAllOps(block, &ops_unique);
 
-  if (!used_for_jit) {
+  if (!execution_config.used_for_jit) {
     // If gc is enabled and block size > 1
     const ProgramDesc& main_program = *block.Program();
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
@@ -479,14 +551,18 @@ void BuildOpFuncList(const platform::Place& place,
     bool allow_var_not_in_program = ops_with_var_not_in_program.count(op_type);
     bool allow_var_not_in_scope = ops_with_var_not_in_scope.count(op_type);
 
+    // ops in the control flow block may not find its inputs or outputs
+    // in VariableScope of the sub-block, so we need search it in parent scope.
+
     framework::VariableNameMap& input_name_map = op->Inputs();
     VariableValueMap ins_map;
     VariableIdMap ins_name2id;
-    std::tie(ins_map, ins_name2id) = BuildVariableMap(input_name_map,
-                                                      var_scope,
-                                                      local_scope,
-                                                      allow_var_not_in_program,
-                                                      allow_var_not_in_scope);
+    std::tie(ins_map, ins_name2id) = BuildVariableMap(
+        input_name_map,
+        var_scope,
+        local_scope,
+        execution_config.used_for_control_flow_op || allow_var_not_in_program,
+        allow_var_not_in_scope);
 
     framework::VariableNameMap& output_name_map = op->Outputs();
     VariableValueMap outs_map;
@@ -495,7 +571,7 @@ void BuildOpFuncList(const platform::Place& place,
         BuildVariableMap(output_name_map,
                          var_scope,
                          local_scope,
-                         /*allow_var_not_in_program=*/false,
+                         execution_config.used_for_control_flow_op,
                          allow_var_not_in_scope);
 
     // step 1: build OpFuncNode
@@ -503,6 +579,12 @@ void BuildOpFuncList(const platform::Place& place,
     op_func_node.operator_base_ = ops[i];
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
+
+    const OperatorDistAttr* dist_attr = block.Op(i)->DistAttr();
+    if (dist_attr &&
+        dist_attr->execution_stream() != distributed::auto_parallel::kDefault) {
+      op_func_node.execution_stream_ = dist_attr->execution_stream();
+    }
 
     SingleStreamGuard single_stream_guard(ops[i]);
 
@@ -553,6 +635,12 @@ void BuildOpFuncList(const platform::Place& place,
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
         auto expected_kernel_key =
             op_with_kernel->GetExpectedKernelType(exec_ctx);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        if (op_with_kernel->CanCUDNNBeUsed(exec_ctx,
+                                           expected_kernel_key.data_type_)) {
+          expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+        }
+#endif
         VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
         // change device by the device_guard()
         ApplyDeviceGuard(op, place, &expected_kernel_key);
@@ -598,14 +686,9 @@ void BuildOpFuncList(const platform::Place& place,
           dev_ctx = pool.Get(kernel_type.place_);
         }
         op_func_node.dev_ctx_ = dev_ctx;
-        if (IsSupportedHeterPlace(kernel_type.place_)) {
-          op_func_node.type_ = OpFuncType::kQueueAsync;
-        } else if (platform::is_cpu_place(kernel_type.place_)) {
-          op_func_node.type_ = OpFuncType::kQueueSync;
-        } else {
-          PADDLE_THROW(platform::errors::Fatal("Unsupported current place %s",
-                                               kernel_type.place_));
-        }
+        op_func_node.type_ =
+            AnalyseOpFuncType(op_func_node, kernel_type.place_);
+
         VLOG(3) << op_with_kernel->Type()
                 << " : finally selected kernel_key: " << kernel_type;
 
@@ -718,9 +801,9 @@ void BuildOpFuncList(const platform::Place& place,
       }
 
       VLOG(6) << "Erase variable " << var_name;
-      if (var->IsType<LoDTensor>()) {
+      if (var->IsType<phi::DenseTensor>()) {
         garbages->emplace_back(
-            var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+            var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
       }
     }
     delete garbages;  // free mem
@@ -735,38 +818,19 @@ void BuildOpFuncList(const platform::Place& place,
   memory::Release(place);
 }
 
-void AddFetch(const std::vector<std::string>& fetch_names,
-              framework::BlockDesc* block) {
-  auto* fetch_holder = block->Var(kFetchVarName);
-  fetch_holder->SetType(proto::VarType::FETCH_LIST);
-  fetch_holder->SetPersistable(true);
-
-  int i = 0;
-  for (auto& fetch_name : fetch_names) {
-    // append fetch op
-    auto* op = block->AppendOp();
-    op->SetType("fetch_v2");
-    op->SetInput("X", {fetch_name});
-    op->SetOutput("Out", {kFetchVarName});
-    op->SetAttr("col", {static_cast<int>(i)});
-    op->CheckAttrs();
-    i++;
+void LogDeviceMemoryStats(const platform::Place& place) {
+  if (FLAGS_new_executor_log_memory_stats && platform::is_gpu_place(place)) {
+    VLOG(0) << "memory_allocated: "
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Allocated", place.device)) /
+                   1024 / 1024
+            << " MB";
+    VLOG(0) << "max_memory_allocated: "
+            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
+                   "Allocated", place.device)) /
+                   1024 / 1024
+            << " MB";
   }
-}
-
-bool IsCommunicationOp(const std::string& op_name) {
-  const std::set<std::string> special_comm_op_set = {
-      "send",
-      "recv",
-      "send_v2",
-      "recv_v2",
-  };
-  const std::string communication_op_prefix = "c_";
-  if (op_name.find(communication_op_prefix) != std::string::npos ||
-      special_comm_op_set.count(op_name)) {
-    return true;
-  }
-  return false;
 }
 
 }  // namespace interpreter

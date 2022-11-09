@@ -40,7 +40,7 @@ def weight_init(mp, shape, col=True, seed=1024):
 
 class Criterion(nn.Layer):
     def __init__(self):
-        super(Criterion, self).__init__()
+        super().__init__()
         self.loss_func = nn.MSELoss(reduction="mean")
 
     def forward(self, pred, label):
@@ -89,14 +89,14 @@ class ModelPipeline(fleet.meta_parallel.PipelineLayer):
 
         out = nn.Linear(128, 32)
         self.layers_pp.append(out)
-        super(ModelPipeline, self).__init__(
+        super().__init__(
             layers=self.layers_pp, loss_fn=Criterion(), topology=self.topology
         )
 
 
 class Model(nn.Layer):
     def __init__(self, hcg):
-        super(Model, self).__init__()
+        super().__init__()
         paddle.seed(1024)
         dp_linear = nn.Linear(32, 128)
         self.layers_pp = []

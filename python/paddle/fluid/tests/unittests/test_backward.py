@@ -20,7 +20,7 @@ import paddle
 import numpy as np
 
 
-class BackwardNet(object):
+class BackwardNet:
     """
     Abstract Base Class.
     All Net inherited this Class should implement two functions:
@@ -185,7 +185,7 @@ class TestBackward(unittest.TestCase):
 
 class SimpleNet(BackwardNet):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.stop_gradient_grad_vars = set(
             [
                 u'x_no_grad@GRAD',
@@ -404,7 +404,7 @@ class TestGradientsWithOptimizer(unittest.TestCase):
 # TODO(Aurelius84): add conditional network test
 class ConditionalNet(BackwardNet):
     def __init__(self):
-        super(ConditionalNet, self).__init__()
+        super().__init__()
 
 
 if __name__ == '__main__':

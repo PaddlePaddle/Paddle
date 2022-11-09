@@ -47,7 +47,9 @@ class PsPassTestBase(unittest.TestCase):
         if ps_mode == "cpu-ps" or ps_mode == 'heter-ps':
             os.environ['WITH_DISTRIBUTE'] = 'ON'
 
-            cmd = [sys.executable, "-u",] + [
+            cmd = [
+                sys.executable,
+                "-u",
                 "-m",
                 "launch",
                 "--log_dir",

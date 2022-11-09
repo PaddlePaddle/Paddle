@@ -85,7 +85,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
     return Out
 
 
-class Generator(object):
+class Generator:
     def setUp(self):
         self.op_type = "matmul"
         X = np.random.random(self.shape_X).astype("float32")

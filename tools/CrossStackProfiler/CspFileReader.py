@@ -73,7 +73,7 @@ FILEORGANIZEFORM = [
 ]
 
 
-class FileReader(object):
+class FileReader:
     def __init__(self, logger, args):
         self._logger = logger
         self._args = args

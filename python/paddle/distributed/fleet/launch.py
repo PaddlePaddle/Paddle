@@ -369,7 +369,7 @@ def get_cluster_info(args):
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
     # auto mapping between processes and devices for auto-parallel
-    if args.enable_auto_mapping == True:
+    if args.enable_auto_mapping:
         assert (
             args.cluster_topo_path is not None
         ), "The cluster topology must be provied when enabling auto mapping."
@@ -796,7 +796,7 @@ def launch():
         )  # which_distributed_mode must modify args.backend
     else:
         assert (
-            args.run_mode == 'collective' or args.run_mode == None
+            args.run_mode == 'collective' or args.run_mode is None
         ), "When backend is not 'auto', run mode must be collective"
         check_backend(args.backend)
         distribute_mode = DistributeMode.COLLECTIVE
