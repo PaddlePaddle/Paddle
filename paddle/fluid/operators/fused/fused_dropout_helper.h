@@ -238,6 +238,29 @@ class FusedDropoutHelper {
           quant_round_type,
           quant_max_bound,
           quant_min_bound);
+    } else if (act_method == "fast_gelu") {
+      FastGeluFunctor<T> fast_gelu;
+      LaunchDropoutActBias<T, MaskType, FastGeluFunctor<T>, InType, OutType>(
+          fast_gelu,
+          dropout_param_.seed,
+          rows_,
+          cols_,
+          dropout_param_.increment,
+          dropout_param_.dropout_prob,
+          dropout_param_.is_upscale_in_train,
+          dropout_param_.is_test,
+          src,
+          bias,
+          out,
+          mask,
+          ctx,
+          quant_last_in_scale,
+          dequant_out_scale_data,
+          quant_out_scale_offset,
+          quant_next_in_scale,
+          quant_round_type,
+          quant_max_bound,
+          quant_min_bound);
     } else if (act_method == "relu") {
       phi::funcs::ReluFunctor<T> relu;
       LaunchDropoutActBias<T,

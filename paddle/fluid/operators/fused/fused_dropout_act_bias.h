@@ -42,16 +42,23 @@ __inline__ __device__ float tanh_opt(float x) {
 #endif
 }
 
-/**
- *@brief the gelu functor
- */
 template <typename T>
 struct GeluFunctor {
+  inline __host__ __device__ T operator()(const T x) const {
+    using U = LayerNormParamType<T>;
+    const U casted_x = static_cast<U>(x);
+    const U temp = erf(casted_x * static_cast<U>(M_SQRT1_2));
+    const U out = (casted_x * static_cast<U>(0.5) * (static_cast<U>(1) + temp));
+    return static_cast<T>(out);
+  }
+};
+
+template <typename T>
+struct FastGeluFunctor {
   inline __device__ T operator()(const T x) const {
     using U = LayerNormParamType<T>;
-    T val_pow3 = x * x * x;
-    U casted_pow3 = static_cast<U>(val_pow3);
     U casted_x = static_cast<U>(x);
+    U casted_pow3 = casted_x * casted_x * casted_x;
     casted_x = 0.5f * (1.0f + tanh_opt((0.7978845608028654f *
                                         (casted_x + 0.044715f * casted_pow3))));
     return x * static_cast<T>(casted_x);
@@ -167,6 +174,7 @@ __global__ void FusedActBias(Functor act,
   const int32_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
   using LoadT = phi::AlignedVector<T, VecSize>;
   using LoadInType = phi::AlignedVector<InType, VecSize>;
+  using LoadFloat = phi::AlignedVector<float, VecSize>;
   using StoreOutType = phi::AlignedVector<OutType, VecSize>;
 
   LoadInType src_vec;
@@ -178,11 +186,18 @@ __global__ void FusedActBias(Functor act,
        idx += step) {
     const int32_t col_idx = idx % cols;
     phi::Load<InType, VecSize>(&src[idx], &src_vec);
-    phi::Load<T, VecSize>(&bias[col_idx], &bias_vec);
+    if (bias) {
+      phi::Load<T, VecSize>(&bias[col_idx], &bias_vec);
+    }
 #pragma unroll
     for (int32_t unroll_idx = 0; unroll_idx < VecSize; unroll_idx++) {
-      out_vec[unroll_idx] = static_cast<OutType>(
-          act(static_cast<T>(src_vec[unroll_idx]) + bias_vec[unroll_idx]));
+      if (bias) {
+        out_vec[unroll_idx] = static_cast<OutType>(
+            act(static_cast<T>(src_vec[unroll_idx]) + bias_vec[unroll_idx]));
+      } else {
+        out_vec[unroll_idx] =
+            static_cast<OutType>(act(static_cast<T>(src_vec[unroll_idx])));
+      }
     }
     phi::Store<OutType, VecSize>(out_vec, &dst[idx]);
   }
