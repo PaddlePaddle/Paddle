@@ -984,7 +984,7 @@ class Completer:
             # Copy the corresponding distributed attribute from graph to serial_main_program
             self._dist_context.copy_dist_attr_from_graph_to_program()
         else:
-            self._logger.info("Default data parallel will be set.")
+            self._logger.info("Default distributed attributed will be set.")
             self._dist_context.initialize(with_graph=False)
             # A fast and special completion for data parallel
             self._update_dist_attr_for_dp()
@@ -1054,6 +1054,17 @@ class Completer:
             for arg_name in serial_op.output_arg_names:
                 op_dist_attr = dist_op.dist_attr
                 serial_tensor = dist_op.get_serial_output(arg_name)
+                if serial_op.type in ["fill_constant"]:
+                    old_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                        arg_name
+                    )
+                    if len(old_dims_mapping) > 0:
+                        new_dims_mapping = [0] + [
+                            -1 for _ in range(len(old_dims_mapping) - 1)
+                        ]
+                        op_dist_attr.set_output_dims_mapping(
+                            arg_name, new_dims_mapping
+                        )
                 dist_tensor = self._dist_context.get_dist_tensor_for_program(
                     serial_tensor
                 )
