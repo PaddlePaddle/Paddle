@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
+#include <glog/logging.h>
 
 #include <mutex>  // NOLINT
 
