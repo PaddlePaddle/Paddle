@@ -2096,12 +2096,12 @@ def add_dependencies_for_two_ops(
     """
 
     assert (
-        len(op1.output_arg_names) > 1
+        len(op1.output_arg_names) >= 1
     ), "first op of dependency should at least have one output. [{}]".format(
         str(op1)
     )
     assert (
-        len(op2.input_arg_names) > 1
+        len(op2.input_arg_names) >= 1
     ), "second op of dependency should at least have one input. [{}]".format(
         str(op2)
     )
