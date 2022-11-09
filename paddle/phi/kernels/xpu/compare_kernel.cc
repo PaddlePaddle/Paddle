@@ -69,6 +69,7 @@ DEFINE_XPU_COMPARE_KERNEL(LessThan, xpu::broadcast_less_than<XPUType>)
 DEFINE_XPU_COMPARE_KERNEL(LessEqual, xpu::broadcast_less_equal<XPUType>)
 DEFINE_XPU_COMPARE_KERNEL(GreaterThan, xpu::broadcast_greater_than<XPUType>)
 DEFINE_XPU_COMPARE_KERNEL(GreaterEqual, xpu::broadcast_greater_equal<XPUType>)
+
 #undef DEFINE_XPU_COMPARE_KERNEL
 
 }  // namespace phi
