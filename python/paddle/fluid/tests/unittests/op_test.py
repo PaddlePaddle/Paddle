@@ -1880,9 +1880,18 @@ class OpTest(unittest.TestCase):
             # yield the original state
             g_disable_legacy_dygraph()
         if check_eager:
+            if self.is_mkldnn_op():
+                FLAGS_use_mkldnn_guard = fluid.core.globals()[
+                    "FLAGS_use_mkldnn"
+                ]
+                fluid.core.globals()["FLAGS_use_mkldnn"] = True
             eager_checker = EagerChecker(self, self.outputs)
             eager_checker.check()
             eager_dygraph_outs = eager_checker.outputs
+            if self.is_mkldnn_op():
+                fluid.core.globals()[
+                    "FLAGS_use_mkldnn"
+                ] = FLAGS_use_mkldnn_guard
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
