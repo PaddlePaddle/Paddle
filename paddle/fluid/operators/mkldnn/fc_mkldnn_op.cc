@@ -210,10 +210,17 @@ class FCMKLDNNHandler
         *user_memory_p, *target_memory_p, attrs);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    reorder_p->execute(
-        astream,
-        {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
-    astream.wait();
+    {
+      platform::RecordEvent record_reorder(
+          "int_reorder",
+          platform::TracerEventType::UserDefined,
+          1,
+          platform::EventRole::kUniqueOp);
+      reorder_p->execute(
+          astream,
+          {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
+      astream.wait();
+    }
 
     return target_memory_p;
   }
