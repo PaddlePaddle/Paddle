@@ -20,7 +20,6 @@ namespace paddle {
 namespace operators {
 
 using paddle::platform::CreateKey;
-using paddle::platform::MKLDNNMemDesc;
 using phi::CPUContext;
 using phi::funcs::OneDNNGetDataType;
 using platform::to_void_cast;

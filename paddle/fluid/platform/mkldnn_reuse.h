@@ -425,7 +425,7 @@ class ReorderMKLDNNHandler {
   std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor* output,
                                                  const MKLDNNMemoryFormat& fmt,
                                                  platform::Place place) {
-    auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
+    auto dst_md = phi::funcs::OneDNNMemDesc(dims_, dtype_dst_, fmt);
     auto dst_data = output->mutable_data(
         place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
@@ -453,7 +453,7 @@ class ReorderMKLDNNHandler {
       const std::vector<int64_t>& dims,
       const MKLDNNMemoryFormat& fmt,
       platform::Place place) {
-    auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
+    auto dst_md = phi::funcs::OneDNNMemDesc(dims, dtype_dst_, fmt);
     auto dst_data = output->mutable_data(
         place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);

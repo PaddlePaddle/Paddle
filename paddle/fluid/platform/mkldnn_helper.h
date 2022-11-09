@@ -129,12 +129,6 @@ struct mkldnn_dummy_primitive {
   struct desc {};
 };
 
-inline dnnl::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
-                                        dnnl::memory::data_type data_type,
-                                        MKLDNNMemoryFormat format) {
-  return dnnl::memory::desc({dims}, data_type, format);
-}
-
 inline void ClearMKLDNNCache(const platform::Place& place,
                              void* ptr = nullptr) {
   // Clear mkl-dnn cache,
