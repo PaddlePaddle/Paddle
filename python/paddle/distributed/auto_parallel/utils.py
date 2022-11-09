@@ -2097,10 +2097,14 @@ def add_dependencies_for_two_ops(
 
     assert (
         len(op1.output_arg_names) > 1
-    ), "first op of dependency should at least have one output."
+    ), "first op of dependency should at least have one output. [{}]".format(
+        str(op1)
+    )
     assert (
         len(op2.input_arg_names) > 1
-    ), "second op of dependency should at least have one input."
+    ), "second op of dependency should at least have one input. [{}]".format(
+        str(op2)
+    )
     op1_mesh = dist_context.get_op_dist_attr_for_program(op1).process_mesh
     op2_mesh = dist_context.get_op_dist_attr_for_program(op2).process_mesh
     assert (
