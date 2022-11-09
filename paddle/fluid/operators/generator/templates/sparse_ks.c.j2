@@ -5,20 +5,20 @@
 
 namespace phi {
 
-{% for api in apis %}
-  {% if api is base_api %}
-{{sparse_op_name_map(api)}}
+{% for op in ops %}
+  {% if op is base_op %}
+{{sparse_op_name_map(op)}}
   {% endif %}
 {% endfor %}
-{% for api in backward_apis %}
-  {% if api is base_api %}
-{{sparse_op_name_map(api)}}
+{% for op in backward_ops %}
+  {% if op is base_op %}
+{{sparse_op_name_map(op)}}
   {% endif %}
 {% endfor %}
 }  // namespace phi
 
-{% for api in apis + backward_apis %}
-  {% if api is base_api %}
-{{register_name_map(api)}}
+{% for op in ops + backward_ops %}
+  {% if op is base_op %}
+{{register_name_map(op)}}
   {% endif %}
 {% endfor %}
