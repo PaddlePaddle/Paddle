@@ -397,6 +397,7 @@ class RecomputePass(PassBase):
                     while idx - 1 >= 0 and ops[idx - 1].type == "sum":
                         idx -= 1
                     segment_descs = ckpt_ops_dict[fwd_op_id][1]
+                    rc_op = None
                     for _, op_desc in reversed(list(enumerate(segment_descs))):
                         rc_op = main_block._insert_op_without_sync(
                             idx, type='nop'
@@ -414,14 +415,15 @@ class RecomputePass(PassBase):
                         )
 
                     ckpt_ops_dict[fwd_op_id][0] = False
-                    add_dependencies_for_two_ops(
-                        main_block,
-                        idx,
-                        ops[i - 1],
-                        grad_op,
-                        self._dist_context,
-                        sync=False,
-                    )
+                    if rc_op:
+                        add_dependencies_for_two_ops(
+                            main_block,
+                            idx,
+                            ops[i - 1],
+                            rc_op,
+                            self._dist_context,
+                            sync=False,
+                        )
         main_program._sync_with_cpp()
 
     def reset_op_dist_attr(self, op, var_name_dict):
