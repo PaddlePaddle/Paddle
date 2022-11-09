@@ -29,7 +29,8 @@ void TransposeKernel(const Context& dev_ctx,
       true,
       errors::PreconditionNotMet("Operator DNNL Transpose must use CPUPlace"));
 
-  const auto& onednn_engine = dev_ctx.GetEngine();
+  funcs::SetInMemDescWithLogicalLayoutFusesSupport(
+      dev_ctx, const_cast<DenseTensor&>(x), x.mem_desc());
 
   if (axis.size() == 1) {
     paddle::framework::TensorCopy(x, x.place(), out);
@@ -39,6 +40,7 @@ void TransposeKernel(const Context& dev_ctx,
 
   auto x_vec_dims = vectorize(x.dims());
   auto x_type = funcs::ToOneDNNDataType(x.dtype());
+  const auto& onednn_engine = dev_ctx.GetEngine();
   funcs::ReorderOneDNNHandler reorder_handler(
       x_vec_dims, x.dtype(), x_type, onednn_engine);
 
@@ -58,9 +60,11 @@ void TransposeKernel(const Context& dev_ctx,
     fake_strides[axis[i]] = total_stride;
     total_stride *= dims[axis[i]];
   }
+
   dst_md =
       dnnl::memory::desc(x_vec_dims, x.mem_desc().data_type(), fake_strides);
   auto dst_data = dev_ctx.Alloc(out, x.type());
+
   auto reorder_dst_memory_p =
       std::make_shared<dnnl::memory>(dst_md, onednn_engine, dst_data);
 
@@ -77,7 +81,6 @@ void TransposeKernel(const Context& dev_ctx,
   for (size_t i = 0; i < axis.size(); ++i) {
     permute_axis[axis[i]] = i;
   }
-
   funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
       dev_ctx,
       out,

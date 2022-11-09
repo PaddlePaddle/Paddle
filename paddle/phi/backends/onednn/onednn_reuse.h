@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -1629,9 +1630,56 @@ class PoolingOneDNNHandler
   }
 };
 
+static void SetInMemDescWithSqueeze2FuseSupport(
+    const OneDNNContext& ctx,
+    DenseTensor& in,
+    const dnnl::memory::desc& in_md) {
+  const std::vector<int> fused_squeeze2_axes =
+      ctx.HasDnnAttr("fused_unsqueeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             ctx.GetDnnAttr("fused_squeeze2_axes"))
+          : std::vector<int>();
+  const std::set<int64_t> squeeze2_axes_set(fused_squeeze2_axes.begin(),
+                                            fused_squeeze2_axes.end());
+  const std::vector<int64_t>& x_vec_dims = in_md.dims();
+  std::vector<int64_t> squeezed_op_tz(
+      x_vec_dims.size() - fused_squeeze2_axes.size(), 0);
+
+  int j = 0;
+  for (size_t i = 0; i < x_vec_dims.size(); ++i) {
+    if (squeeze2_axes_set.count(i) ||
+        squeeze2_axes_set.count(i - x_vec_dims.size())) {
+      PADDLE_ENFORCE_EQ(
+          x_vec_dims[i],
+          1,
+          errors::InvalidArgument(
+              "Squeeze2 input dim %d should be equal to one, but get %d.",
+              i,
+              x_vec_dims[i]));
+      continue;
+    }
+    squeezed_op_tz[j++] = x_vec_dims[i];
+  }
+
+  in.set_mem_desc(in_md.reshape(squeezed_op_tz));
+  in.Resize(make_ddim(squeezed_op_tz));
+}
+
+static void SetInMemDescWithLogicalLayoutFusesSupport(
+    const OneDNNContext& ctx,
+    DenseTensor& in,
+    const dnnl::memory::desc& in_md) {
+  if (ctx.HasDnnAttr("fused_squeeze2_axes")) {
+    SetInMemDescWithSqueeze2FuseSupport(ctx, in, in_md);
+  } else {
+    in.set_mem_desc(in_md);
+    in.Resize(make_ddim(in_md.dims()));
+  }
+}
+
 static void SetOutMemDescWithUnsqueeze2FuseSupport(
-    const phi::OneDNNContext& ctx,
-    phi::DenseTensor* out,
+    const OneDNNContext& ctx,
+    DenseTensor* out,
     const dnnl::memory::desc& out_md) {
   const std::vector<int>& fused_unsqueeze2_axes =
       ctx.HasDnnAttr("fused_unsqueeze2_axes")
@@ -1654,12 +1702,12 @@ static void SetOutMemDescWithUnsqueeze2FuseSupport(
     }
   }
   out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
-  out->Resize(phi::make_ddim(unsqueezed_op_tz));
+  out->Resize(make_ddim(unsqueezed_op_tz));
 }
 
 static void SetOutMemDescWithReshape2FuseSupport(
-    const phi::OneDNNContext& ctx,
-    phi::DenseTensor* out,
+    const OneDNNContext& ctx,
+    DenseTensor* out,
     const dnnl::memory::desc& out_md) {
   std::vector<int64_t> fused_reshape2_shape =
       ctx.HasDnnAttr("fused_reshape2_shape")
@@ -1680,12 +1728,12 @@ static void SetOutMemDescWithReshape2FuseSupport(
   }
 
   out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
-  out->Resize(phi::make_ddim(fused_reshape2_shape));
+  out->Resize(make_ddim(fused_reshape2_shape));
 }
 
 static void SetOutMemDescWithLogicalLayoutFusesSupport(
-    const phi::OneDNNContext& ctx,
-    phi::DenseTensor* out,
+    const OneDNNContext& ctx,
+    DenseTensor* out,
     const dnnl::memory::desc& out_md) {
   if (ctx.HasDnnAttr("fused_unsqueeze2_axes")) {
     SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
