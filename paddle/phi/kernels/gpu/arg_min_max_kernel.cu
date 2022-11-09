@@ -29,7 +29,7 @@ namespace cub = hipcub;
 #include <limits>
 
 #include "paddle/phi/core/ddim.h"
-
+#include "paddle/phi/core/utils/data_type.h"
 namespace phi {
 
 namespace {  // NOLINT

@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 
