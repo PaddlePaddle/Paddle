@@ -28,9 +28,8 @@ namespace cub = hipcub;
 #endif
 #include <limits>
 
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/core/ddim.h"
-
+#include "paddle/phi/core/utils/data_type.h"
 namespace phi {
 
 namespace {  // NOLINT
@@ -209,15 +208,14 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
                            int dtype,
                            DenseTensor* out) {
   if (dtype < 0) {
-    paddle::framework::VisitDataTypeTiny(
-        static_cast<paddle::framework::proto::VarType::Type>(
-            paddle::framework::proto::VarType::INT64),
+    phi::VisitDataTypeTiny(
+        phi::DataType::INT64,
         VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
             dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
     return;
   }
-  paddle::framework::VisitDataTypeTiny(
-      static_cast<paddle::framework::proto::VarType::Type>(dtype),
+  phi::VisitDataTypeTiny(
+      var_type_map[dtype],
       VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }
