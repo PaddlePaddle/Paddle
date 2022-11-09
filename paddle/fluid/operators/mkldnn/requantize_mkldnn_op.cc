@@ -88,7 +88,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     if (reorder_p == nullptr) {
       auto src_dt = framework::ToMKLDNNDataType(
           framework::TransToProtoVarType(input->dtype()));
-      auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
+      auto dst_dt = with_shift ? framework::OneDNNDataType::u8 : src_dt;
 
       src_memory = std::make_shared<dnnl::memory>(
           input->mem_desc(), engine, to_void_cast<T>(input_data));
