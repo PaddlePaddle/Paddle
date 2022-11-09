@@ -18,7 +18,7 @@ import logging
 from paddle.fluid import core
 
 from .utils import is_naive_data_parallel, get_logger
-from .utils import is_gradient_clip_op, __not_shape_var_type__
+from .utils import is_gradient_clip_op, __no_shape_var_type__
 from .operators import find_compatible_distributed_operator_impls
 from .dist_context import _node_id
 from .dist_attribute import TensorDistributedAttribute
@@ -151,11 +151,7 @@ class Completer:
             return False
         tensor_desc = tensor_node.var()
         # Skip reader tensor
-        if (
-            tensor_desc.type() == core.VarDesc.VarType.READER
-            or tensor_desc.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-            or tensor_desc.type == core.VarDesc.VarType.STEP_SCOPES
-        ):
+        if tensor_desc.type() in __no_shape_var_type__:
             return False
         tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
             tensor_node
@@ -621,7 +617,7 @@ class Completer:
                             ):
                                 if (
                                     tensor_node.var().type()
-                                    in __not_shape_var_type__
+                                    in __no_shape_var_type__
                                     or len(tensor_node.var().shape()) != 1
                                 ):
                                     flag = False
@@ -633,7 +629,7 @@ class Completer:
                             ):
                                 if (
                                     tensor_node.var().type()
-                                    in __not_shape_var_type__
+                                    in __no_shape_var_type__
                                     or len(tensor_node.var().shape()) != 1
                                 ):
                                     flag = False
