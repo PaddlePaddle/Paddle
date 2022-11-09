@@ -98,7 +98,7 @@ def append_backward_new(
     return params_and_grads
 
 
-class Optimizer(object):
+class Optimizer:
     r"""Optimizer Base class.
 
     Define the common interface of an optimizer.
@@ -282,12 +282,19 @@ class Optimizer(object):
         # NOTE: Multi Tensor: Pass in all parameters and gradients to the op kernel of the Optimizer at one time for updating for dygraph mode.
         # Optimizer support list: [ paddle.optimizer.Momentum, paddle.optimizer.Adam].
         self._use_multi_tensor = None
-        self._param_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
 
+        self._param_dict = self._create_multi_tensor_dict()
         self._auxiliary_vars = {}
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
+
+    def _create_multi_tensor_dict(self):
+        n = len(self._param_groups) if self._param_groups is not None else 1
+        return {
+            'FP32_LODTensor': [[] for _ in range(n)],
+            'FP16_LODTensor': [[] for _ in range(n)],
+        }
 
     def _get_auxiliary_var(self, key):
         return self._auxiliary_vars.get(key, None)
@@ -697,7 +704,7 @@ class Optimizer(object):
                     name, param.name
                 )
             )
-        if shape == None:
+        if shape is None:
             shape = param.shape
         assert isinstance(self.helper, LayerHelper)
 
@@ -779,7 +786,9 @@ class Optimizer(object):
             device = self._param_device_map[param_name]
         return device
 
-    def _create_optimization_pass(self, parameters_and_grads):
+    def _create_optimization_pass(
+        self, parameters_and_grads, param_group_idx=0
+    ):
         """Add optimization operators to update gradients to tensors.
 
         Args:
@@ -825,10 +834,12 @@ class Optimizer(object):
             'Adam',
         ]:
             if (
-                len(self._param_dict['FP32_LODTensor']) == 0
-                and len(self._param_dict['FP16_LODTensor']) == 0
+                len(self._param_dict['FP32_LODTensor'][param_group_idx]) == 0
+                and len(self._param_dict['FP16_LODTensor'][param_group_idx])
+                == 0
             ):
                 if isinstance(parameters_and_grads, list):
+                    assert param_group_idx == 0
                     self._multi_tensor_init(
                         target_block,
                         [
@@ -836,6 +847,7 @@ class Optimizer(object):
                             for p in parameters_and_grads
                             if not p[0].stop_gradient
                         ],
+                        param_group_idx,
                     )
                 else:
                     self._update_param_group(parameters_and_grads)
@@ -846,10 +858,13 @@ class Optimizer(object):
                             for p in parameters_and_grads['params']
                             if not p[0].stop_gradient
                         ],
+                        param_group_idx,
                     )
             if framework._non_static_mode():
                 self._append_optimize_multi_tensor_op(
-                    target_block, parameters_and_grads
+                    target_block,
+                    parameters_and_grads,
+                    param_group_idx=param_group_idx,
                 )
             else:
                 self._update_param_device_map(
@@ -871,7 +886,9 @@ class Optimizer(object):
                     device = self._get_device_for_param(param_grad_list[0].name)
                     with device_guard(device):
                         self._append_optimize_multi_tensor_op(
-                            target_block, parameters_and_grads
+                            target_block,
+                            parameters_and_grads,
+                            param_group_idx=param_group_idx,
                         )
         else:
             if not framework._non_static_mode():
@@ -987,14 +1004,13 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
+                x = paddle.arange(26, dtype="float32").reshape([2, 13])
+
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
                                             parameters = linear.parameters())
-                out = linear(a)
+                out = linear(x)
                 out.backward()
                 adam.step()
                 adam.clear_grad()
@@ -1012,14 +1028,25 @@ class Optimizer(object):
         if framework._non_static_mode():
             parameter_list = parameters if parameters else self._parameter_list
 
-            params_grads = []
-            for param in parameter_list:
-                if param.stop_gradient:
-                    continue
-                if param._grad_ivar() is not None:
-                    # create gradient tensor
-                    grad_var = param._grad_ivar()
-                    params_grads.append((param, grad_var))
+            if framework.in_dygraph_mode():
+                # It is very time-consuming to call c++ functions in a loop on the python side.
+                # We put this part of the code on the c++ side to improve the speed in eager mode.
+                params_grads = []
+                grads = core.eager.get_all_grads(parameter_list)
+                for index, grad in enumerate(grads):
+                    if grad is not None:
+                        params_grads.append((parameter_list[index], grad))
+            else:
+                # Keep the original code to support legacy mode.
+                # Delete the else branch when the legacy mode exits.
+                params_grads = []
+                for param in parameter_list:
+                    if param.stop_gradient:
+                        continue
+                    if param._grad_ivar() is not None:
+                        # create gradient tensor
+                        grad_var = param._grad_ivar()
+                        params_grads.append((param, grad_var))
         else:
             if callbacks is None:
                 callbacks = [error_clip_callback]
@@ -1064,11 +1091,9 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
 
-                inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+                inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
                 linear = paddle.nn.Linear(10, 10)
-                inp = paddle.to_tensor(inp)
                 out = linear(inp)
                 loss = paddle.mean(out)
                 optimizer = paddle.optimizer.Adam(learning_rate=0.1,
@@ -1095,7 +1120,9 @@ class Optimizer(object):
         optimize_ops = self._create_optimization_pass(params_grads)
         return optimize_ops
 
-    def _apply_optimize(self, loss, startup_program, params_grads):
+    def _apply_optimize(
+        self, loss, startup_program, params_grads, param_group_idx=0
+    ):
         """
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
@@ -1128,8 +1155,11 @@ class Optimizer(object):
                     params_grads['params'] = self.append_regularization_ops(
                         params_grads['params'], self.regularization
                     )
-                optimize_ops = self._create_optimization_pass(params_grads)
+                optimize_ops = self._create_optimization_pass(
+                    params_grads, param_group_idx=param_group_idx
+                )
         else:
+            assert param_group_idx == 0
             program = loss.block.program
             with program_guard(program, startup_program):
                 optimize_ops = self.apply_gradients(params_grads)
@@ -1264,11 +1294,9 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import numpy as np
                 import paddle
 
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
+                a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
@@ -1374,14 +1402,12 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
 
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
+                a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                                            parameters = linear.parameters())
+                                        parameters = linear.parameters())
                 out = linear(a)
                 out.backward()
                 adam.step()
@@ -1398,12 +1424,15 @@ class Optimizer(object):
                     params_grads.append((param, grad_var))
 
             self._apply_optimize(
-                loss=None, startup_program=None, params_grads=params_grads
+                loss=None,
+                startup_program=None,
+                params_grads=params_grads,
+                param_group_idx=0,
             )
 
         else:
             # optimize parameters in groups
-            for param_group in self._param_groups:
+            for idx, param_group in enumerate(self._param_groups):
                 params_grads = defaultdict(lambda: list())
                 for param in param_group['params']:
                     if param.stop_gradient:
@@ -1415,7 +1444,10 @@ class Optimizer(object):
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
                 self._apply_optimize(
-                    loss=None, startup_program=None, params_grads=params_grads
+                    loss=None,
+                    startup_program=None,
+                    params_grads=params_grads,
+                    param_group_idx=idx,
                 )
 
     def _add_param_group(self, param_group):
@@ -1475,7 +1507,7 @@ class Optimizer(object):
         pass
 
     @framework.dygraph_only
-    def _multi_tensor_init(self, target_block, parameters):
+    def _multi_tensor_init(self, target_block, parameters, param_group_idx):
         """
         All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, float32).
         This function will be overridden in the corresponding optimizer file.
@@ -1488,7 +1520,7 @@ class Optimizer(object):
 
     @framework.dygraph_only
     def _append_optimize_multi_tensor_op(
-        self, target_block, parameters_and_grads
+        self, target_block, parameters_and_grads, param_group_idx
     ):
         """
         For Multi Tensor, append optimize merged_operator to block.

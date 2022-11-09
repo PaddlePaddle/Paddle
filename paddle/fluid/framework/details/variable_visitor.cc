@@ -32,8 +32,8 @@ namespace framework {
 namespace details {
 template <typename Func>
 static void VisitVariable(Variable* var, Func* func) {
-  if (var->IsType<LoDTensor>()) {
-    (*func)(var->GetMutable<LoDTensor>());
+  if (var->IsType<phi::DenseTensor>()) {
+    (*func)(var->GetMutable<phi::DenseTensor>());
   } else if (var->IsType<phi::SelectedRows>()) {
     (*func)(var->GetMutable<phi::SelectedRows>());
   } else {
@@ -45,8 +45,8 @@ static void VisitVariable(Variable* var, Func* func) {
 
 template <typename Func>
 static void VisitVariable(const Variable& var, Func* func) {
-  if (var.IsType<LoDTensor>()) {
-    (*func)(var.Get<LoDTensor>());
+  if (var.IsType<phi::DenseTensor>()) {
+    (*func)(var.Get<phi::DenseTensor>());
   } else if (var.IsType<phi::SelectedRows>()) {
     (*func)(var.Get<phi::SelectedRows>());
   } else {
@@ -58,7 +58,7 @@ static void VisitVariable(const Variable& var, Func* func) {
 struct TensorVisitor {
   phi::DenseTensor* result_{nullptr};
 
-  void operator()(LoDTensor* tensor) { result_ = tensor; }
+  void operator()(phi::DenseTensor* tensor) { result_ = tensor; }
 
   void operator()(phi::SelectedRows* selected_rows) {
     result_ = selected_rows->mutable_value();
@@ -79,8 +79,8 @@ phi::DenseTensor& VariableVisitor::GetMutableTensor(Variable* var) {
 
 struct ShareDimsAndLoDVisitor {
   Variable* trg_;
-  void operator()(const LoDTensor& val) {
-    auto* tensor = trg_->GetMutable<LoDTensor>();
+  void operator()(const phi::DenseTensor& val) {
+    auto* tensor = trg_->GetMutable<phi::DenseTensor>();
     tensor->set_layout(val.layout());
     tensor->set_lod(val.lod());
     tensor->Resize(val.dims());
@@ -108,8 +108,8 @@ void VariableVisitor::ShareDimsAndLoD(const Variable& src, Variable* trg) {
 struct EnforceShapeAndDTypeEQVisitor {
   const Variable* dst_;
 
-  void operator()(const LoDTensor& src) {
-    auto& tensor = dst_->Get<LoDTensor>();
+  void operator()(const phi::DenseTensor& src) {
+    auto& tensor = dst_->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
         src.place().GetType(),
         tensor.place().GetType(),

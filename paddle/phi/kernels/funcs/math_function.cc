@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #ifdef PADDLE_WITH_MKLML
-#include "paddle/fluid/platform/dynload/mklml.h"
+#include "paddle/phi/backends/dynload/mklml.h"
 #endif
 
 #ifdef PADDLE_USE_OPENBLAS
@@ -26,10 +26,10 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
 #include "unsupported/Eigen/CXX11/Tensor"
@@ -299,9 +299,9 @@ struct RowwiseAdd<phi::CPUContext, T> {
                           in_dims_cstr,
                           out_dims_cstr));
 
-    auto in = paddle::framework::EigenMatrix<T>::From(input);
-    auto vec = paddle::framework::EigenVector<T>::Flatten(vector);
-    auto out = paddle::framework::EigenMatrix<T>::From(*output);
+    auto in = phi::EigenMatrix<T>::From(input);
+    auto vec = phi::EigenVector<T>::Flatten(vector);
+    auto out = phi::EigenMatrix<T>::From(*output);
 
     for (int64_t i = 0; i < in_dims[0]; ++i) {
       out.chip(i, 0) = in.chip(i, 0) + vec;

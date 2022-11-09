@@ -112,6 +112,42 @@ class ElementwiseDivOp(OpTest):
                 self.check_grad_with_place(*check_args, **check_kwargs)
 
 
+class TestElementwiseDivOp_ZeroDim1(ElementwiseDivOp):
+    def init_shape(self):
+        self.x_shape = []
+        self.y_shape = []
+
+
+class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
+    def init_shape(self):
+        self.x_shape = [13, 17]
+        self.y_shape = []
+
+    def compute_output(self, x, y):
+        return x / y.reshape([1, 1])
+
+    def compute_gradient_x(self, grad_out, y):
+        return grad_out / y.reshape([1, 1])
+
+    def compute_gradient_y(self, grad_out, out, y):
+        return np.sum(-1 * grad_out * out / y.reshape([1, 1]))
+
+
+class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
+    def init_shape(self):
+        self.x_shape = []
+        self.y_shape = [13, 17]
+
+    def compute_output(self, x, y):
+        return x.reshape([1, 1]) / y
+
+    def compute_gradient_x(self, grad_out, y):
+        return np.sum(grad_out / y)
+
+    def compute_gradient_y(self, grad_out, out, y):
+        return -1 * grad_out * out / y
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),

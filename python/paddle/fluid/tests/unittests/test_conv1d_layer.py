@@ -38,7 +38,7 @@ class Conv1DTestCase(unittest.TestCase):
         dtype="float32",
         data_format="NCL",
     ):
-        super(Conv1DTestCase, self).__init__(methodName)
+        super().__init__(methodName)
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.num_filters = num_filters

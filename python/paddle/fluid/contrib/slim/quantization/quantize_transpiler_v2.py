@@ -49,7 +49,7 @@ def load_variable_data(scope, var_name):
     return np.array(var_node.get_tensor())
 
 
-class QuantizeTranspilerV2(object):
+class QuantizeTranspilerV2:
     def __init__(
         self,
         weight_bits=8,
@@ -162,7 +162,7 @@ class QuantizeTranspilerV2(object):
             scope(fluid.Scope, optional): The scope of the program, use it to load
                 and save variables. If scope=None, get scope by global_scope().
         """
-        scope = global_scope() if scope == None else scope
+        scope = global_scope() if scope is None else scope
 
         for block in test_program.blocks:
             for op in block.ops:

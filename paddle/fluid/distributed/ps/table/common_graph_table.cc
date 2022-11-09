@@ -556,7 +556,7 @@ int32_t GraphTable::dump_edges_to_ssd(int idx) {
 }
 int32_t GraphTable::make_complementary_graph(int idx, int64_t byte_size) {
   VLOG(0) << "make_complementary_graph";
-  const int64_t fixed_size = byte_size / 8;
+  const size_t fixed_size = byte_size / 8;
   // std::vector<int64_t> edge_array[task_pool_size_];
   std::vector<std::unordered_map<uint64_t, int>> count(task_pool_size_);
   std::vector<std::future<int>> tasks;
@@ -1417,7 +1417,6 @@ int32_t GraphTable::load_edges(const std::string &path,
                                const std::string &edge_type) {
 #ifdef PADDLE_WITH_HETERPS
   if (search_level == 2) total_memory_cost = 0;
-  const uint64_t fixed_load_edges = 1000000;
 #endif
   int idx = 0;
   if (edge_type == "") {

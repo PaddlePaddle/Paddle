@@ -17,7 +17,6 @@ from paddle.distributed.launch.utils.kv_server import KVServer
 
 import time
 import sys
-import six
 import threading
 import copy
 import random
@@ -25,7 +24,7 @@ import random
 ETCD_PROTOCAL = 'etcd://'
 
 
-class Master(object):
+class Master:
     '''
     Master is a distributed store design to exchange info among nodes
     '''
@@ -214,22 +213,22 @@ class ETCDMaster(Master):
 
             if len(result) == size:
                 if rank < 0:
-                    keys = [six.ensure_str(i[1].key) for i in result]
-                    sorted_keys = [six.ensure_str(i[1].key) for i in result]
+                    keys = [i[1].key.decode() for i in result]
+                    sorted_keys = [i[1].key.decode() for i in result]
                     sorted_keys.sort()
-                    values = [six.ensure_str(i[0]) for i in result]
+                    values = [i[0].decode() for i in result]
                     ret = [values[keys.index(k)] for k in sorted_keys]
                     idx = ret.index(value)
                     return ret, idx
                 else:
                     ret = [None] * size
                     for v, k in result:
-                        ii = int(six.ensure_str(k.key).split('/')[-1])
+                        ii = int(k.key.decode().split('/')[-1])
                         if ii < 0:
                             self.ctx.logger.error(
                                 "rank {} error in sync".format(ii)
                             )
-                        ret[ii] = six.ensure_str(v)
+                        ret[ii] = v.decode()
                     return ret, rank
             else:
                 time.sleep(0.5)
@@ -278,8 +277,7 @@ class ETCDMaster(Master):
 
     def fetch_peer_alive(self):
         peer_alive = [
-            six.ensure_str(i[0])
-            for i in self.client.get_prefix(self.heartbeat_prefix)
+            i[0].decode() for i in self.client.get_prefix(self.heartbeat_prefix)
         ]
         self.ctx.logger.debug("peer alive {}".format(peer_alive))
         return peer_alive
@@ -319,7 +317,8 @@ class ETCDMaster(Master):
         ), "set status failed {}".format(status)
 
     def get_status(self):
-        return six.ensure_str(self.client.get(self.job_prefix)[0] or '')
+        value = self.client.get(self.job_prefix)[0]
+        return value.decode() if value is not None else ''
 
     def stop(self):
         if hasattr(self, 'beat_thread'):

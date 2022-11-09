@@ -96,7 +96,7 @@ def linear_jvp(op, *args, **kwargs):
     return out_dot
 
 
-## Register orig2prim lower rules
+# Register orig2prim lower rules
 """
 These original ops are fully supported:
 
@@ -334,7 +334,7 @@ def matmul_v2_orig2prim(op, x, y):
     return matmul(x, y)
 
 
-## NOTE(lml): The second output of reshape2 Xshape, which is only used in reshape2_grad, is meanlingless in new autograd mechanism, thus we use a zero tensor instead.
+# NOTE(lml): The second output of reshape2 Xshape, which is only used in reshape2_grad, is meanlingless in new autograd mechanism, thus we use a zero tensor instead.
 @REGISTER_ORIG2PRIM('reshape2')
 def reshape2_orig2prim(op, shape_t, shape_tl, x):
     assert (
@@ -515,7 +515,7 @@ def dropout_orig2prim(op, seed_t, x):
     ), 'Can not lower dropout into prim ops with seedtensor.'
     mask = bernoulli(shape=x.shape, dtype=x.dtype, p=op.attr('dropout_prob'))
     if op.attr('dropout_implementation') == 'upscale_in_train':
-        if op.attr('is_test') == False:
+        if not op.attr('is_test'):
             out = div(
                 mul(x, mask),
                 fill_const(1.0 - op.attr('dropout_prob'), x.shape, x.dtype),
@@ -524,7 +524,7 @@ def dropout_orig2prim(op, seed_t, x):
         else:
             return primops.cast(mask, dtype=paddle.uint8), x
     elif op.attr('dropout_implementation') == 'downgrade_in_infer':
-        if op.attr('is_test') == False:
+        if not op.attr('is_test'):
             return primops.cast(mask, dtype=paddle.uint8), mul(x, mask)
         else:
             return primops.cast(mask, dtype=paddle.uint8), mul(
@@ -605,12 +605,13 @@ def batch_norm_orig2prim(
 
 @REGISTER_ORIG2PRIM('size')
 def size_orig2prim(op, x):
+    # TODO(zhouwei): will change shape [1] to [] to support zero-dim
     return fill_const(
         functools.reduce(operator.mul, x.shape), (1,), paddle.int64
     )
 
 
-## Register prim2orig lower rules
+# Register prim2orig lower rules
 @REGISTER_PRIM2ORIG('add_p')
 def add_prim2orig(op, x, y):
     return paddle.add(x, y)
@@ -824,7 +825,7 @@ def cast_prim2orig(op, x):
     return paddle.cast(x, paddle.dtype(op.attr('dtype')))
 
 
-## Register linearize rules
+# Register linearize rules
 @REGISTER_JVP('add_p')
 def add_jvp(op, x_dot, y_dot):
     if x_dot is None:
@@ -1026,17 +1027,53 @@ def slice_select_jvp(op, x_dot):
 
 @REGISTER_JVP('slice_assign_p')
 def slice_assign_jvp(op, x_dot, y_dot):
-    if x_dot is None:
-        assert y_dot is None, 'y_dot must be None.'
-        return None
-    else:
-        assert y_dot is not None, 'y_dot should not be None.'
+    x, y = op_position_inputs(op)
+    assert (
+        x_dot is not None or y_dot is not None
+    ), "x_dot and y_dot can't be None at the same time. "
     axis = op.attr('axis')
     starts = op.attr('starts')
     ends = op.attr('ends')
     strides = op.attr('strides')
-    return linear_jvp(
-        op, x_dot, y_dot, axis=axis, starts=starts, ends=ends, strides=strides
+    if x_dot is None:
+        return linear_jvp(
+            op,
+            fill_const(value=0.0, shape=x.shape, dtype=x.dtype),
+            y_dot,
+            axis=axis,
+            starts=starts,
+            ends=ends,
+            strides=strides,
+        )
+    elif y_dot is None:
+        return linear_jvp(
+            op,
+            x_dot,
+            fill_const(value=0.0, shape=y.shape, dtype=y.dtype),
+            axis=axis,
+            starts=starts,
+            ends=ends,
+            strides=strides,
+        )
+    return add(
+        linear_jvp(
+            op,
+            fill_const(value=0.0, shape=x.shape, dtype=x.dtype),
+            y_dot,
+            axis=axis,
+            starts=starts,
+            ends=ends,
+            strides=strides,
+        ),
+        linear_jvp(
+            op,
+            x_dot,
+            fill_const(value=0.0, shape=y.shape, dtype=y.dtype),
+            axis=axis,
+            starts=starts,
+            ends=ends,
+            strides=strides,
+        ),
     )
 
 
@@ -1170,7 +1207,7 @@ def rsqrt_jvp(op, x_dot):
     return y_dot
 
 
-## Register transpose rules
+# Register transpose rules
 
 
 @REGISTER_TRANSPOSE('add_p')
@@ -1311,8 +1348,8 @@ def slice_select_transpose(op, check_dot, y_bar):
 @REGISTER_TRANSPOSE('slice_assign_p')
 def slice_assign_transpose(op, check_dot, z_bar):
     x, y = op_position_inputs(op)
-    assert check_dot(x) and check_dot(y), (
-        f'(check_dot(x) and check_dot(y)) must be True, '
+    assert check_dot(x) ^ check_dot(y), (
+        f'(check_dot(x) ^ check_dot(y)) must be True, '
         f'but check_dot(x)={check_dot(x)} and check_dot(y)={check_dot(y)}.'
     )
     zeros = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
@@ -1320,13 +1357,21 @@ def slice_assign_transpose(op, check_dot, z_bar):
     starts = op.attr('starts')
     ends = op.attr('ends')
     strides = op.attr('strides')
-    x_bar = slice_assign(
-        z_bar, zeros, axis=axis, starts=starts, ends=ends, strides=strides
-    )
-    y_bar = slice_select(
+    if check_dot(x):
+        return (
+            slice_assign(
+                z_bar,
+                zeros,
+                axis=axis,
+                starts=starts,
+                ends=ends,
+                strides=strides,
+            ),
+            None,
+        )
+    return None, slice_select(
         z_bar, axis=axis, starts=starts, ends=ends, strides=strides
     )
-    return x_bar, y_bar
 
 
 @REGISTER_TRANSPOSE('gather_p')

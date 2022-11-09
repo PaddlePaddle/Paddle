@@ -28,7 +28,7 @@ class Optimization_ex1(paddle.nn.Layer):
         param_attr=paddle.nn.initializer.Uniform(low=-5.0, high=5.0),
         dtype='float32',
     ):
-        super(Optimization_ex1, self).__init__()
+        super().__init__()
 
         self.theta = self.create_parameter(
             shape=shape, attr=param_attr, dtype=dtype, is_bias=False

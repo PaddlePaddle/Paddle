@@ -83,7 +83,7 @@ class TestEagerGrad(TestCase):
         # stop_gradient = !create_graph, create_graph default false
         self.assertEqual(dx[0].stop_gradient, True)
         # x is unused input in the graph
-        self.assertEqual(dx[1], None)
+        self.assertIsNone(dx[1])
 
     def test_simple_example_eager_grad_allow_unused(self):
         with _test_eager_guard():
@@ -292,7 +292,7 @@ class TestDygraphDoubleGrad(TestCase):
             (none_grad,) = self.grad(
                 [x], [y], create_graph=create_graph, allow_unused=True
             )
-            self.assertTrue(none_grad is None)
+            self.assertIsNone(none_grad)
 
             (grad_with_none_and_not_none,) = self.grad(
                 [x, y], [y], create_graph=create_graph

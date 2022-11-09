@@ -137,7 +137,8 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size,
                                bool autotune,
                                const std::string &autotune_file,
                                const std::string &precision,
-                               bool adaptive_seqlen) {
+                               bool adaptive_seqlen,
+                               bool enable_multi_stream) {
   use_xpu_ = true;
   xpu_l3_workspace_size_ = l3_workspace_size;
   xpu_locked_ = locked;
@@ -145,6 +146,7 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size,
   xpu_autotune_file_ = autotune_file;
   xpu_precision_ = precision;
   xpu_adaptive_seqlen_ = adaptive_seqlen;
+  xpu_enable_multi_stream_ = enable_multi_stream;
   Update();
 }
 
@@ -158,14 +160,17 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
 }
 
 void AnalysisConfig::EnableNpu(int device_id) {
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL)
   use_npu_ = true;
   npu_device_id_ = device_id;
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  use_custom_device_ = true;
+  custom_device_id_ = device_id;
+  custom_device_type_ = "npu";
 #else
   LOG(ERROR) << "Please compile with npu to EnableNpu()";
   use_npu_ = false;
 #endif
-
   Update();
 }
 
@@ -439,6 +444,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_autotune_file_);
   CP_MEMBER(xpu_precision_);
   CP_MEMBER(xpu_adaptive_seqlen_);
+  CP_MEMBER(xpu_enable_multi_stream_);
 
   // NPU related.
   CP_MEMBER(use_npu_);
@@ -483,6 +489,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_custom_device_);
   CP_MEMBER(custom_device_type_);
   CP_MEMBER(custom_device_id_);
+
+  // JITLayer relate
+  CP_MEMBER(apply_optim_);
+  CP_MEMBER(skip_load_params_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
@@ -602,6 +612,16 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
   use_mkldnn_bfloat16_ = false;
 #endif
 
+  Update();
+}
+
+void AnalysisConfig::DisableMkldnnFcPasses() {
+#ifdef PADDLE_WITH_MKLDNN
+  disable_mkldnn_fc_passes_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use DisableMkldnnFcPasses";
+  disable_mkldnn_fc_passes_ = false;
+#endif
   Update();
 }
 
@@ -882,6 +902,12 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  if (disable_mkldnn_fc_passes_) {
+#ifdef PADDLE_WITH_MKLDNN
+    pass_builder()->DisableMkldnnFcPasses();
+#endif
+  }
+
 #ifdef PADDLE_WITH_MKLDNN
   // Do not optimize when mkldnn is on
   if (enable_memory_optim_ && !use_mkldnn_) {
@@ -1016,6 +1042,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_autotune_file_;
   ss << xpu_precision_;
   ss << xpu_adaptive_seqlen_;
+  ss << xpu_enable_multi_stream_;
 
   ss << use_npu_;
   ss << npu_device_id_;

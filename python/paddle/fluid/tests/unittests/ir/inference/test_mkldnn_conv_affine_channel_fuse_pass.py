@@ -100,7 +100,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             outputs={"Out": ["affine_channel_ouput"]},
             data_layout=data_format,
         )
-        if has_bias == True:
+        if has_bias:
             conv2d_op.inputs["Bias"] = ["conv2d_bias"]
         ops = [conv2d_op, ac_op]
 
@@ -123,7 +123,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
             },
             outputs=["affine_channel_ouput"],
         )
-        if has_bias == True:
+        if has_bias:
             program_config.weights["conv2d_bias"] = TensorConfig(
                 data_gen=partial(generate_bias)
             )
@@ -145,7 +145,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
         def teller2(program_config, predictor_config):
             return (
                 predictor_config.mkldnn_enabled()
-                and program_config.ops[0].attrs['has_bias'] == True
+                and program_config.ops[0].attrs['has_bias']
             )
 
         self.add_ignore_check_case(

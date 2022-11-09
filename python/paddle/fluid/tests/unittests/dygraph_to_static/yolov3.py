@@ -15,9 +15,9 @@
 import os
 import sys
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative
-from paddle.fluid.dygraph.nn import Conv2D
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
@@ -27,7 +27,7 @@ from darknet import ConvBNLayer
 
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
-        super(AttrDict, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __getattr__(self, name):
         if name in self.__dict__:
@@ -132,7 +132,7 @@ cfg.class_num = 80
 
 class YoloDetectionBlock(fluid.dygraph.Layer):
     def __init__(self, ch_in, channel, is_test=True):
-        super(YoloDetectionBlock, self).__init__()
+        super().__init__()
 
         assert channel % 2 == 0, "channel {} cannot be divided by 2".format(
             channel
@@ -199,7 +199,7 @@ class YoloDetectionBlock(fluid.dygraph.Layer):
 
 class Upsample(fluid.dygraph.Layer):
     def __init__(self, scale=2):
-        super(Upsample, self).__init__()
+        super().__init__()
         self.scale = scale
 
     def forward(self, inputs):
@@ -222,7 +222,7 @@ class Upsample(fluid.dygraph.Layer):
 
 class YOLOv3(fluid.dygraph.Layer):
     def __init__(self, ch_in, is_train=True, use_random=False):
-        super(YOLOv3, self).__init__()
+        super().__init__()
 
         self.is_train = is_train
         self.use_random = use_random
@@ -247,14 +247,13 @@ class YOLOv3(fluid.dygraph.Layer):
 
             block_out = self.add_sublayer(
                 "block_out_%d" % (i),
-                Conv2D(
-                    num_channels=1024 // (2**i),
-                    num_filters=num_filters,
-                    filter_size=1,
+                paddle.nn.Conv2D(
+                    in_channels=1024 // (2**i),
+                    out_channels=num_filters,
+                    kernel_size=1,
                     stride=1,
                     padding=0,
-                    act=None,
-                    param_attr=ParamAttr(
+                    weight_attr=ParamAttr(
                         initializer=fluid.initializer.Normal(0.0, 0.02)
                     ),
                     bias_attr=ParamAttr(

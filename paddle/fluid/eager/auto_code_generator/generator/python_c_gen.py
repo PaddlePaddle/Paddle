@@ -18,9 +18,9 @@ from codegen_utils import FunctionGeneratorBase, GeneratorBase
 from codegen_utils import GetForwardFunctionName, IsVectorTensorType
 from codegen_utils import GetInplacedFunctionName
 
-###########################
-## Global Configurations ##
-###########################
+#########################
+# Global Configurations #
+#########################
 skipped_forward_api_names = set([])
 
 
@@ -58,9 +58,9 @@ def FindParsingFunctionFromAttributeType(atype):
     return atype_to_parsing_function[atype]
 
 
-##########################
-## Refactored Functions ##
-##########################
+########################
+# Refactored Functions #
+########################
 PARSE_PYTHON_C_TENSORS_TEMPLATE = (
     "    auto {} = {}(\"{}\", \"{}\", args, {}, {});\n"
 )
@@ -234,9 +234,9 @@ NAMESPACE_WRAPPER_TEMPLATE = """namespace {} {{
 """
 
 
-#######################
-## Generator Classes ##
-#######################
+#####################
+# Generator Classes #
+#####################
 class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
     def __init__(self, forward_api_contents, namespace):
         # Members from Parent:
@@ -532,7 +532,7 @@ class PythonCGenerator(GeneratorBase):
             )
             status = f_generator.run()
 
-            if status == True:
+            if status:
                 self.python_c_functions_str += (
                     f_generator.python_c_function_str + "\n"
                 )
@@ -565,9 +565,9 @@ class PythonCGenerator(GeneratorBase):
         self.AttachNamespace()
 
 
-############################
-## Code Generation Helper ##
-############################
+##########################
+# Code Generation Helper #
+##########################
 def ParseArguments():
     parser = argparse.ArgumentParser(
         description='Eager Code Generator Args Parser'

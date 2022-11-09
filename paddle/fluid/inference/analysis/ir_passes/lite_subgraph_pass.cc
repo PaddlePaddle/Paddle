@@ -258,6 +258,7 @@ void LiteSubgraphPass::SetUpEngine(
   std::string autotune_file = Get<std::string>("autotune_file");
   std::string precision = Get<std::string>("precision");
   bool adaptive_seqlen = Get<bool>("adaptive_seqlen");
+  bool enable_multi_stream = Get<bool>("enable_multi_stream");
   // NNAdapter Related
   bool use_nnadapter = Get<bool>("use_nnadapter");
   std::string nnadapter_model_cache_dir =
@@ -302,7 +303,6 @@ void LiteSubgraphPass::SetUpEngine(
       // input tensor of the Lite engine is located, and then affects
       // whether tensor sharing is feasible.
       paddle::lite_api::Place({target_type, precision_type}),
-      paddle::lite_api::Place({target_type, PRECISION(kInt64)}),
       paddle::lite_api::Place({target_type, PRECISION(kFloat)}),
 #ifdef PADDLE_WITH_ARM
       paddle::lite_api::Place({TARGET(kARM), precision_type}),
@@ -321,6 +321,7 @@ void LiteSubgraphPass::SetUpEngine(
   config.autotune_file = autotune_file;
   config.precision = precision;
   config.adaptive_seqlen = adaptive_seqlen;
+  config.enable_multi_stream = enable_multi_stream;
   // NNAdapter Related
   config.nnadapter_model_cache_dir = nnadapter_model_cache_dir;
   config.nnadapter_device_names = nnadapter_device_names;

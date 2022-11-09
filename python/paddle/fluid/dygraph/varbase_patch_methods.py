@@ -44,7 +44,7 @@ from paddle import _C_ops, _legacy_C_ops
 _grad_scalar = None
 
 
-class TensorHookRemoveHelper(object):
+class TensorHookRemoveHelper:
     """
     A helper class that for removing Tensor gradient's hook.
     NOTE(wuweilong):the operation weakref.ref(tensor) will cause some unexpected errors in eager mode.
@@ -1017,6 +1017,9 @@ def monkey_patch_varbase():
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
+    def __hash__(self):
+        return hash(id(self))
+
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
@@ -1060,6 +1063,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "_numel", _numel)
         setattr(core.eager.Tensor, "_uva", _uva)
         setattr(core.eager.Tensor, "_clear_data", _clear_data)
+        setattr(core.eager.Tensor, "__hash__", __hash__)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)
