@@ -15,7 +15,7 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/fluid/inference/tensorrt/plugin/merge_layernorm_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/skip_merge_layernorm_op_plugin.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace paddle {
@@ -27,7 +27,8 @@ namespace plugin {
 
 template <typename T>
 __global__ void merge_layernorm_v2(T *out,
-                                   const T *__restrict input,
+                                   const T *__restrict input0,
+                                   const T *__restrict input1,
                                    const T *__restrict gamma,
                                    const T *__restrict beta,
                                    const float layernorm_eps,
@@ -63,7 +64,8 @@ __global__ void merge_layernorm_v2(T *out,
       size_t input_id = batch_offset +
                         (2 * H_idx + offset_in_H) * input_H_stride +
                         (2 * W_idx + offset_in_W) * n_4 + (col_id % n_4);
-      local_out[i] = static_cast<float>(__ldg(input + input_id));
+      local_out[i] = static_cast<float>(__ldg(input0 + input_id));
+      local_out[i] += static_cast<float>(__ldg(input1 + input_id));
       sum += local_out[i];
     }
   }
@@ -106,7 +108,8 @@ __global__ void merge_layernorm_v2(T *out,
 
 template <typename T>
 void invokeMergeLayernorm(T *output,
-                          const T *input,
+                          const T *input0,
+                          const T *input1,
                           const T *gamma,
                           const T *beta,
                           float layernorm_eps,
@@ -121,12 +124,21 @@ void invokeMergeLayernorm(T *output,
   }
   dim3 grid(W / 2, H / 2, batch);
   int blockSize = (n + 31) / 32 * 32;
-  merge_layernorm_v2<T><<<grid, blockSize, 0, stream>>>(
-      output, input, gamma, beta, layernorm_eps, batch, H / 2, W / 2, n * 4);
+  merge_layernorm_v2<T><<<grid, blockSize, 0, stream>>>(output,
+                                                        input0,
+                                                        input1,
+                                                        gamma,
+                                                        beta,
+                                                        layernorm_eps,
+                                                        batch,
+                                                        H / 2,
+                                                        W / 2,
+                                                        n * 4);
 }
 
 template void invokeMergeLayernorm<float>(float *output,
-                                          const float *input,
+                                          const float *input0,
+                                          const float *input1,
                                           const float *gamma,
                                           const float *beta,
                                           float layernorm_eps,
@@ -137,7 +149,8 @@ template void invokeMergeLayernorm<float>(float *output,
                                           cudaStream_t stream);
 
 template void invokeMergeLayernorm<half>(half *output,
-                                         const half *input,
+                                         const half *input0,
+                                         const half *input1,
                                          const half *gamma,
                                          const half *beta,
                                          float layernorm_eps,
@@ -157,13 +170,13 @@ static void convertAndCopy(const std::vector<float> &host, T *dev) {
   delete host_ptr;
 }
 
-void MergeLayernormPluginDynamic::configurePlugin(
+void SkipMergeLayernormPluginDynamic::configurePlugin(
     const nvinfer1::DynamicPluginTensorDesc *in,
     int nbInputs,
     const nvinfer1::DynamicPluginTensorDesc *out,
     int nbOutputs) TRT_NOEXCEPT {}
 
-MergeLayernormPluginDynamic::MergeLayernormPluginDynamic(
+SkipMergeLayernormPluginDynamic::SkipMergeLayernormPluginDynamic(
     const float *bias_d,
     const size_t bias_num,
     const float *scale_d,
@@ -206,7 +219,7 @@ MergeLayernormPluginDynamic::MergeLayernormPluginDynamic(
   }
 }
 
-bool MergeLayernormPluginDynamic::supportsFormatCombination(
+bool SkipMergeLayernormPluginDynamic::supportsFormatCombination(
     int pos,
     const nvinfer1::PluginTensorDesc *in_out,
     int nb_inputs,
@@ -237,7 +250,7 @@ bool MergeLayernormPluginDynamic::supportsFormatCombination(
   return in.type == prev.type && in.format == prev.format;
 }
 
-nvinfer1::DataType MergeLayernormPluginDynamic::getOutputDataType(
+nvinfer1::DataType SkipMergeLayernormPluginDynamic::getOutputDataType(
     int index,
     const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
@@ -250,7 +263,7 @@ nvinfer1::DataType MergeLayernormPluginDynamic::getOutputDataType(
   return input_types[0];
 }
 
-nvinfer1::DimsExprs MergeLayernormPluginDynamic::getOutputDimensions(
+nvinfer1::DimsExprs SkipMergeLayernormPluginDynamic::getOutputDimensions(
     int output_index,
     const nvinfer1::DimsExprs *inputs,
     int nb_inputs,
@@ -267,7 +280,7 @@ nvinfer1::DimsExprs MergeLayernormPluginDynamic::getOutputDimensions(
   return ret;
 }
 
-int MergeLayernormPluginDynamic::enqueue(
+int SkipMergeLayernormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc,
     const void *const *inputs,
@@ -291,6 +304,7 @@ int MergeLayernormPluginDynamic::enqueue(
     invokeMergeLayernorm<float>(
         reinterpret_cast<float *>(outputs[0]),
         reinterpret_cast<const float *>(inputs[0]),
+        reinterpret_cast<const float *>(inputs[1]),
         reinterpret_cast<const float *>(scale_device_.get()),
         reinterpret_cast<const float *>(bias_device_.get()),
         eps_,
@@ -304,6 +318,7 @@ int MergeLayernormPluginDynamic::enqueue(
     invokeMergeLayernorm<half>(
         reinterpret_cast<half *>(outputs[0]),
         reinterpret_cast<const half *>(inputs[0]),
+        reinterpret_cast<const half *>(inputs[1]),
         reinterpret_cast<const half *>(scale_device_.get()),
         reinterpret_cast<const half *>(bias_device_.get()),
         eps_,
