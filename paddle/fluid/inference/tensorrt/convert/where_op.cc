@@ -60,5 +60,3 @@ class WhereOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(where, WhereOpConverter);
-case FluidDT::VarType_Type_BOOL:
-  return TRT_DT::kBOOL;
