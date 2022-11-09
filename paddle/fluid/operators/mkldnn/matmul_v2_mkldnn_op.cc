@@ -16,7 +16,6 @@ limitations under the License. */
 namespace {
 using dnnl::memory;
 using paddle::framework::ExecutionContext;
-using paddle::platform::GetMKLDNNFormat;
 using paddle::platform::MatMulV2MKLDNNHandler;
 using paddle::platform::MKLDNNDeviceContext;
 using paddle::platform::MKLDNNFormatForSize;
