@@ -20,7 +20,7 @@ from paddle.utils import download
 from paddle.dataset.common import DATA_HOME
 from .dataset import AudioClassificationDataset
 
-__all__ = ['TESS']
+__all__ = []
 
 
 class TESS(AudioClassificationDataset):
