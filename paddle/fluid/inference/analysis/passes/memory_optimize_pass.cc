@@ -269,8 +269,7 @@ void UpdateOpDescsByReuse(
             name = reuse_table.at(x);
           }
           out_args[argument.first].push_back(name);
-          LOG(INFO) << "JZZ: " << node->Name() << " output " << x << " -> "
-                    << name;
+          VLOG(4) << node->Name() << " output " << x << " -> " << name;
         }
       }
       node->Op()->SetAttr("OutputVarNames", output_var_names);

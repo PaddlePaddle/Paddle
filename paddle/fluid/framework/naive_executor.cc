@@ -62,28 +62,6 @@ void NaiveExecutor::Run() {
     platform::CudaNvtxRangePush(op->Type(), platform::NvtxRangeColor::Green);
 #endif
     op->Run(*scope_, place_);
-    // //获取 op 的输出 var
-    // auto output_var_names =
-    // op.get()->Attr<std::vector<std::string>>("OutputVarNames"); int
-    // output_var_names_index = 0; for (auto &output : op.get()->Outputs()) {
-    //   for(size_t i = 0; i < output.second.size(); ++i){
-    //     auto& var_name = output.second[i];
-    //     auto *var = scope_->FindVar(var_name);
-    //     if (!var || !var->IsType<phi::DenseTensor>()) continue;
-    //     auto dense_tensor = var->Get<phi::DenseTensor>();
-    //     if (!dense_tensor.initialized()) continue;
-    //     framework::DDim dim = dense_tensor.dims();
-    //     std::vector<int32_t> shape(dim.size());
-    //     std::cout << "JZZ: " << output_var_names[output_var_names_index++] <<
-    //     " -> "  << var_name << ": "; for (size_t i = 0; i < shape.size();
-    //     ++i) {
-    //       shape[i] = dim[i];
-    //       std::cout << shape[i] << " ";
-    //     }
-    //     std::cout << std::endl;
-    //   }
-    // }
-
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
 #endif

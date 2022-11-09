@@ -282,8 +282,6 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   void RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) override;
 
-  void RegisterCollectShapeHook() override;
-
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
   ///
