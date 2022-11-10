@@ -59,16 +59,16 @@ class ConvTransposeMKLDNNHandlerT
 
     PADDLE_ENFORCE_EQ(
         input->layout(),
-        DataLayout::kMKLDNN,
+        DataLayout::ONEDNN,
         platform::errors::InvalidArgument(
             "Got wrong layout = %d for Input tensor.", input->layout()));
 
     PADDLE_ENFORCE_EQ(
         filter->layout(),
-        DataLayout::kMKLDNN,
+        DataLayout::ONEDNN,
         platform::errors::InvalidArgument(
             "The filter tensor's layout should be %d, but got %d.",
-            DataLayout::kMKLDNN,
+            DataLayout::ONEDNN,
             filter->layout()));
 
     PADDLE_ENFORCE_EQ(
@@ -87,10 +87,10 @@ class ConvTransposeMKLDNNHandlerT
     if (bias) {
       PADDLE_ENFORCE_EQ(
           bias->layout(),
-          DataLayout::kMKLDNN,
+          DataLayout::ONEDNN,
           platform::errors::InvalidArgument(
               "The bias tensor's laytout should be %d, but got %d.",
-              DataLayout::kMKLDNN,
+              DataLayout::ONEDNN,
               bias->layout()));
 
       PADDLE_ENFORCE_EQ(

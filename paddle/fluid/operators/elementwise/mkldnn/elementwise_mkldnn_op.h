@@ -241,8 +241,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     int axis = ctx.Attr<int>("axis");
 
     auto tz = phi::vectorize<int64_t>(dout->dims());
-    auto dout_type = framework::ToMKLDNNDataType(
-        framework::TransToProtoVarType(dout->dtype()));
+    auto dout_type = phi::funcs::ToOneDNNDataType(dout->dtype());
 
     phi::funcs::ReorderOneDNNHandler reorder_handler(
         tz, dout->dtype(), dout_type, onednn_engine);

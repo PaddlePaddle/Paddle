@@ -374,8 +374,7 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
 
     auto& pool = paddle::platform::DeviceContextPool::Instance();
     auto cpu_place = paddle::platform::CPUPlace();
-    auto* dev_ctx = dynamic_cast<paddle::platform::MKLDNNDeviceContext*>(
-        pool.Get(cpu_place));
+    auto* dev_ctx = dynamic_cast<OneDNNContext*>(pool.Get(cpu_place));
     auto& onednn_engine = dev_ctx->GetEngine();
 
     funcs::OneDNNAXPYHandler<T> axpy_handler(

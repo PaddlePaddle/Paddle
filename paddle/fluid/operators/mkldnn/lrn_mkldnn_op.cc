@@ -20,11 +20,11 @@ namespace operators {
 using paddle::platform::MKLDNNDeviceContext;
 
 template <typename T>
-class LRNMKLDNNHandler
+class LRNOneDNNHandler
     : public phi::funcs::
           OneDNNHandlerNoCachingT<T, dnnl::lrn_forward, dnnl::lrn_backward> {
  public:
-  LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
+  LRNOneDNNHandler(const framework::ExecutionContext& ctx,
                    const dnnl::engine mkldnn_engine,
                    platform::Place cpu_place,
                    const phi::DenseTensor* input)
@@ -55,7 +55,7 @@ class LRNMKLDNNHandler
         k);
   }
 
-  LRNMKLDNNHandler(const framework::ExecutionContext& ctx,
+  LRNOneDNNHandler(const framework::ExecutionContext& ctx,
                    const dnnl::engine mkldnn_engine,
                    platform::Place cpu_place,
                    const phi::DenseTensor* in_x,
@@ -132,7 +132,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto out = ctx.Output<phi::DenseTensor>("Out");
     auto mid = ctx.Output<phi::DenseTensor>("MidOut");
 
-    LRNMKLDNNHandler<T> handler(ctx, mkldnn_engine, ctx.GetPlace(), x);
+    LRNOneDNNHandler<T> handler(ctx, mkldnn_engine, ctx.GetPlace(), x);
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto dst_memory = handler.AcquireDstMemory(out);
@@ -140,7 +140,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto lrn_p = handler.AcquireForwardPrimitive();
 
     auto workspace_memory = handler.AcquireWorkspaceMemory(mid);
-    mid->set_layout(phi::DataLayout::kMKLDNN);
+    mid->set_layout(phi::DataLayout::ONEDNN);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (!workspace_memory->get_desc().is_zero()) {
@@ -182,7 +182,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    LRNMKLDNNHandler<T> handler(
+    LRNOneDNNHandler<T> handler(
         ctx, mkldnn_engine, ctx.GetPlace(), in_x, out_grad, in_x_grad);
 
     auto src_memory = handler.AcquireSrcMemory(in_x);

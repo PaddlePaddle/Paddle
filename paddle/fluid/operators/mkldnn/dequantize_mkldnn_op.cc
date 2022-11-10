@@ -53,10 +53,8 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
 
     auto x_tz = phi::vectorize<int64_t>(x->dims());
-    auto x_type =
-        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
-    auto out_type = framework::ToMKLDNNDataType(
-        framework::TransToProtoVarType(out->dtype()));
+    auto x_type = phi::funcs::ToOneDNNDataType(x->dtype());
+    auto out_type = phi::funcs::ToOneDNNDataType(out->dtype());
 
     dnnl::primitive_attr attrs;
     static constexpr int32_t mask = 0;  // same shift and scale for whole tensor

@@ -20,11 +20,11 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class LayerNormMKLDNNHandler
+class LayerNormOneDNNHandler
     : public phi::funcs::
           OneDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward> {
  public:
-  LayerNormMKLDNNHandler(const std::vector<int64_t>& dims,
+  LayerNormOneDNNHandler(const std::vector<int64_t>& dims,
                          const float& epsilon,
                          const dnnl::normalization_flags& flags,
                          const bool& is_test,
@@ -104,7 +104,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       flags |= dnnl::normalization_flags::use_scale_shift;
     }
 
-    LayerNormMKLDNNHandler<T> handler(
+    LayerNormOneDNNHandler<T> handler(
         src_tz, epsilon, flags, is_test, x, mkldnn_engine, ctx.GetPlace());
 
     auto src_memory = handler.AcquireSrcMemory(x);

@@ -71,8 +71,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
           DNNL_ARG_DST, mask, {static_cast<int32_t>(quantization_shift)});
     }
 
-    auto x_type =
-        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
+    auto x_type = phi::funcs::ToOneDNNDataType(x->dtype());
     DataType out_dtype;
 
     if (bfloat16) {
@@ -83,8 +82,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
       out_dtype = DataType::UINT8;
     }
 
-    auto out_type = framework::ToMKLDNNDataType(
-        framework::TransToProtoVarType((out_dtype)));
+    auto out_type = phi::funcs::ToOneDNNDataType(out_dtype);
 
     phi::funcs::ReorderOneDNNHandler reorder_handler(
         x_tz, x->dtype(), x_type, out_dtype, out_type, dev_ctx.GetEngine());
