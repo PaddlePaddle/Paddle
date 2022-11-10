@@ -1287,7 +1287,7 @@ class SyncBatchNorm(_BatchNormBase):
 
         Examples:
             .. code-block:: python
-            
+
                 import paddle
                 import paddle.nn as nn
 
