@@ -213,9 +213,14 @@ void PowKernel(const Context& dev_ctx,
                        static_cast<void*>(&pow_factor),
                        sizeof(T));
 
-  // broadcast_pow(Context* ctx, const T* x, const T* y, T* z, const
-  // std::vector<int>& xshape, const std::vector<int>& yshape);
   auto x_dims = vectorize<int>(x.dims());
+  // use [1] to replace [], because xpu not support []
+  if (x_dims.size() == 0) {
+    x_dims = std::vector<int>({1});
+  }
+
+  // broadcast_pow(Context* ctx, const T* x, const T* y, T* z, const
+  //    std::vector<int>& xshape, const std::vector<int>& yshape);
   int r =
       xpu::broadcast_pow(xpu_context, x_data, factor_data, y_data, x_dims, {1});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
