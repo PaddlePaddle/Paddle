@@ -15,9 +15,9 @@
 import yaml
 import re
 
-########################
-### Global Variables ###
-########################
+####################
+# Global Variables #
+####################
 ops_to_fill_zero_for_empty_grads = set(
     [
         "split_grad",
@@ -38,6 +38,8 @@ ops_to_fill_zero_for_empty_grads = set(
         "tanh_triple_grad",
         "sin_double_grad",
         "sin_triple_grad",
+        "cos_double_grad",
+        "cos_triple_grad",
         "subtract_double_grad",
         "divide_double_grad",
         "log_double_grad",
@@ -95,9 +97,9 @@ yaml_types_mapping = {
 }
 
 
-#############################
-###  File Reader Helpers  ###
-#############################
+#########################
+#  File Reader Helpers  #
+#########################
 def AssertMessage(lhs_str, rhs_str):
     return f"lhs: {lhs_str}, rhs: {rhs_str}"
 
@@ -127,9 +129,9 @@ def ReadBwdFile(filepath):
     return ret
 
 
-##################################
-###  Generic Helper Functions  ###
-##################################
+##############################
+#  Generic Helper Functions  #
+##############################
 def FindGradName(string):
     return string + "_grad"
 
@@ -252,9 +254,9 @@ def GetIndent(num):
     return "".join([tab for i in range(num)])
 
 
-######################
-###  Yaml Parsers  ###
-######################
+##################
+#  Yaml Parsers  #
+##################
 def ParseYamlArgs(string):
     # Example: const Tensor& x, const Tensor& y, bool transpose_x, bool transpose_y
 
@@ -398,9 +400,9 @@ def ParseYamlInplaceInfo(string):
     return inplace_map
 
 
-########################
-###  Generator Base  ###
-########################
+####################
+#  Generator Base  #
+####################
 class FunctionGeneratorBase:
     def __init__(self, forward_api_contents, namespace):
         self.forward_api_contents = forward_api_contents
