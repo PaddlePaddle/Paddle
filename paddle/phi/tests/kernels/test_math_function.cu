@@ -26,7 +26,7 @@ void fill_fp16_data(phi::dtype::float16* in_ptr,
   PADDLE_ENFORCE_EQ(
       size,
       data.size(),
-      paddle::platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of argument data should"
           " be equal to the argument size. Expected %d, but received %d.",
           size,
