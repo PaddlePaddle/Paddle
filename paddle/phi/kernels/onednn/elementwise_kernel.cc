@@ -85,7 +85,7 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
     // NOTE(chenfeiyu): when the output reuses memory from other tensor rather
     // than allocate its own, it's still need to take care of its data type.
     // Unfortunately, paddle's operator only infers the output' shape, but not
-    // the data type. mutable_data<T> takes care of allocation and data type
+    // the data type. Alloc<T> takes care of allocation and data type
     // normally, but if the memory is already allocated and there is no need
     // to re-allocate, it just set the data type. So this it added there to
     // get the right data type.
