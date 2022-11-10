@@ -76,7 +76,7 @@ class FloatToMixedPass : public FusePassBase {
   // var name -> real var node
   mutable std::unordered_map<std::string, framework::ir::Node*> real_vars_;
   // subgraph id -> all nodes in subgraph
-  mutable std::vector<std::vector<framework::ir::Node*>> all_nodes_;
+  mutable std::vector<std::unordered_set<framework::ir::Node*>> all_nodes_;
   // op's unique type -> the op's origin type
   mutable std::unordered_map<std::string, std::string> op_original_type_;
   // op's unique type -> whether the op run at mixed precision
