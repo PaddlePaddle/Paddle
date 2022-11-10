@@ -28,27 +28,6 @@ namespace phi {
 
 const static Kernel empty_kernel;  // NOLINT
 
-const std::unordered_set<std::string> cudnn_white_list = {
-    "affine_grid",
-    "conv2d",
-    "conv2d_transpose",
-    "conv3d",
-    "conv3d_transpose",
-    "softmax",
-    "affine_grid_grad",
-    "conv2d_grad",
-    "conv2d_grad_grad",
-    "conv2d_transpose_double_grad",
-    "conv2d_transpose_grad",
-    "conv3d_double_grad",
-    "conv3d_grad",
-    "conv3d_transpose_grad",
-    "softmax_grad"};
-
-bool in_cudnn_white_list(const std::string& kernel_name) {
-  return cudnn_white_list.find(kernel_name) != cudnn_white_list.end();
-}
-
 uint32_t KernelKey::Hash::operator()(const KernelKey& key) const {
   uint32_t hash_value = 0;
   // |----31-20------|---19-12---|---11-8----|---7-0---|
@@ -135,8 +114,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
 
   KernelKey kernel_key = const_kernel_key;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (use_gpudnn || (kernel_key.backend() == Backend::GPUDNN &&
-                     in_cudnn_white_list(kernel_name))) {
+  if (kernel_key.backend() == Backend::GPUDNN) {
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, kernel_key.layout(), kernel_key.dtype()});
     if (kernel_iter == iter->second.end() &&

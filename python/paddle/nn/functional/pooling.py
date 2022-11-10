@@ -258,7 +258,6 @@ def avg_pool1d(
             False,
             False,
             padding_algorithm,
-            True,
         )
         return squeeze(output, [2])
 
@@ -407,7 +406,6 @@ def avg_pool2d(
                 False,
                 False,
                 padding_algorithm,
-                True,
             )
         else:
             output = _legacy_C_ops.pool2d(
@@ -561,7 +559,6 @@ def avg_pool3d(
             False,
             False,
             padding_algorithm,
-            True,
         )
     elif _in_legacy_dygraph():
         pool_out = _legacy_C_ops.pool3d(
@@ -718,7 +715,6 @@ def max_pool1d(
                 False,
                 False,
                 padding_algorithm,
-                True,
             )
             return squeeze(pool_out, [2])
 
@@ -1363,7 +1359,6 @@ def max_pool2d(
                 False,
                 False,
                 padding_algorithm,
-                True,
             )
 
     if _in_legacy_dygraph():
@@ -1554,7 +1549,6 @@ def max_pool3d(
                 False,
                 False,
                 padding_algorithm,
-                True,
             )
 
     if _in_legacy_dygraph():
@@ -1691,6 +1685,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
+        x._set_use_cudnn(False)
         pool_out = _C_ops.pool2d(
             x,
             pool_size,
@@ -1703,7 +1698,6 @@ def adaptive_avg_pool1d(x, output_size, name=None):
             False,
             True,
             "EXPLICIT",
-            False,
         )
         return squeeze(pool_out, [2])
     if _in_legacy_dygraph():
@@ -1824,6 +1818,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         output_size = utils._convert_to_tensor_list(output_size)
 
     if in_dygraph_mode():
+        x._set_use_cudnn(False)
         return _C_ops.pool2d(
             x,
             output_size,
@@ -1836,7 +1831,6 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             False,
             True,
             "EXPLICIT",
-            False,
         )
 
     if _in_legacy_dygraph():
@@ -1966,6 +1960,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             output_size[2] = in_w
 
     if in_dygraph_mode():
+        x._set_use_cudnn(False)
         return _C_ops.pool3d(
             x,
             output_size,
@@ -1978,7 +1973,6 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             False,
             True,
             "EXPLICIT",
-            False,
         )
     elif _in_legacy_dygraph():
         return _legacy_C_ops.pool3d(

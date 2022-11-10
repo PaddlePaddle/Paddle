@@ -2400,6 +2400,7 @@ def pool2d(
 
     pool_padding = update_padding(pool_padding, data_format)
     if in_dygraph_mode():
+        input._set_use_cudnn(use_cudnn)
         return _C_ops.pool2d(
             input,
             pool_size,
@@ -2412,7 +2413,6 @@ def pool2d(
             global_pooling,
             False,
             padding_algorithm,
-            use_cudnn,
         )
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
