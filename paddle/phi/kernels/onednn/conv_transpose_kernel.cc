@@ -14,11 +14,13 @@
 
 #include "paddle/phi/kernels/conv_transpose_kernel.h"
 
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/data_layout_transform.h"
-
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/core/expect.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace phi {
 
@@ -49,10 +51,9 @@ class ConvTransposeOneDNNHandlerT
                               DenseTensor* out)
       : funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>(
             dev_ctx.GetEngine(), dev_ctx.GetPlace()) {
-    const bool is_test =
-        dev_ctx.HasDnnAttr("is_test")
-            ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
-            : false;
+    is_test = dev_ctx.HasDnnAttr("is_test")
+                  ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
+                  : false;
     PADDLE_ENFORCE_EQ(is_test,
                       true,
                       phi::errors::InvalidArgument(
@@ -160,6 +161,7 @@ class ConvTransposeOneDNNHandlerT
 
     auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                  : dnnl::prop_kind::forward_training;
+
     if (bias) {
       std::vector<int64_t> bias_tz = phi::vectorize(bias->dims());
       const auto bias_md = funcs::OneDNNMemDesc(
@@ -313,10 +315,6 @@ class ConvTransposeOneDNNHandlerT
     auto user_bias_md = funcs::OneDNNMemDesc(phi::vectorize(bias->dims()),
                                              funcs::OneDNNGetDataType<K>(),
                                              funcs::OneDNNMemoryFormat::x);
-    const bool is_test =
-        dev_ctx.HasDnnAttr("is_test")
-            ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
-            : false;
     return this->AcquireMemoryWithReorder(dev_ctx,
                                           user_bias_md,
                                           this->fwd_pd_->bias_desc(),
@@ -325,12 +323,15 @@ class ConvTransposeOneDNNHandlerT
                                           "@bias_mem_p",
                                           is_test);
   }
+
+ private:
+  const bool is_test;
 };
 
 template <typename T, typename T_out>
 void Execute(const OneDNNContext& dev_ctx,
-             const DenseTensor& x,
-             const DenseTensor& filter,
+             const DenseTensor* x,
+             const DenseTensor* filter,
              const std::vector<int>& strides,
              const std::vector<int>& paddings,
              const std::string& padding_algorithm,
@@ -350,8 +351,6 @@ void Execute(const OneDNNContext& dev_ctx,
                                                        groups,
                                                        dilations,
                                                        out);
-
-  auto src_memory_p = handler.AcquireSrcMemoryWithReorder(x);
   // Caching Key for weights is needed
   std::string key =
       funcs::CreateKey(dev_ctx,
@@ -399,6 +398,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                     AllocationType::CPU,
                     phi::errors::PreconditionNotMet(
                         "Operator oneDNN Conv must use CPUPlace"));
+
   const bool is_BFLOAT16 =
       dev_ctx.HasDnnAttr("mkldnn_data_type")
           ? PADDLE_GET_CONST(std::string,
