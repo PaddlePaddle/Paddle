@@ -1163,7 +1163,7 @@ def triu(x, diagonal=0, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.tril(x, diagonal, False)
+        return _C_ops.triu(x, diagonal, False)
 
     if _in_legacy_dygraph():
         op = getattr(_legacy_C_ops, 'tril_triu')
