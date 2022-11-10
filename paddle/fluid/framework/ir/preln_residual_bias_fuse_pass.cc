@@ -155,12 +155,14 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     x = gpd.mutable_pattern()
             ->NewNode("preln_residual_bias_fuse/x")
             ->AsInput()
-            ->assert_is_op_input("elementwise_add", "X");
+            ->assert_is_op_input("elementwise_add", "X")
+            ->assert_var_not_persistable();
 
     y = gpd.mutable_pattern()
             ->NewNode("preln_residual_bias_fuse/y")
             ->AsInput()
-            ->assert_is_op_input("elementwise_add", "Y");
+            ->assert_is_op_input("elementwise_add", "Y")
+            ->assert_var_not_persistable();
   }
   patterns::PrelnResidualBias fused_pattern(
       gpd.mutable_pattern(), "preln_residual_bias_fuse", with_bias);

@@ -720,6 +720,17 @@ PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
   return result;
 }
 
+PyObject* ToPyObject(
+    const std::vector<std::vector<paddle::experimental::Tensor>>& value) {
+  PyObject* result = PyList_New((Py_ssize_t)value.size());
+
+  for (size_t i = 0; i < value.size(); i++) {
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(value[i]));
+  }
+
+  return result;
+}
+
 PyObject* ToPyObject(const platform::Place& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
@@ -1514,8 +1525,8 @@ paddle::experimental::Tensor PyTensorHook::operator()(
   }
 
   PADDLE_ENFORCE_NOT_NULL(res,
-                          platform::errors::Unavailable(
-                              "Hook function of Tensor return a nullptr."));
+                          paddle::platform::errors::External(
+                              pybind11::detail::error_string().c_str()));
   if (res == Py_None) {
     return var;
   }

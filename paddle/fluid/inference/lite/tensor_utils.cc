@@ -106,14 +106,14 @@ framework::proto::VarType::Type GetNativePrecisionType(
   }
 }
 
-framework::DataLayout GetNativeLayoutType(const DataLayoutType& type) {
+phi::DataLayout GetNativeLayoutType(const DataLayoutType& type) {
   switch (type) {
     case DataLayoutType::kNCHW:
-      return framework::DataLayout::kNCHW;
+      return phi::DataLayout::kNCHW;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported layout type. Now only supports NCHW."));
-      return static_cast<framework::DataLayout>(-1);
+      return static_cast<phi::DataLayout>(-1);
   }
 }
 

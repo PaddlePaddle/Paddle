@@ -19,14 +19,13 @@ import paddle
 
 
 class TestDistTRT(unittest.TestCase):
-
     def setUp(self):
         self.init_case()
         self.script = "test_trt_c_allreduce_infer_script.py"
 
     def init_case(self):
         self.op_type = "c_allreduce_sum"
-        self.target_value = 4.
+        self.target_value = 4.0
         self.precision = "fp16"
 
     def test_run(self):
@@ -45,14 +44,13 @@ class TestDistTRT(unittest.TestCase):
 
 
 class TestMin(TestDistTRT):
-
     def init_case(self):
         self.op_type = "c_allreduce_min"
-        self.target_value = 2.
+        self.target_value = 2.0
         self.precision = "int8"
 
 
-#class TestMax(TestDistTRT):
+# class TestMax(TestDistTRT):
 #
 #    def init_case(self):
 #        self.op_type = "c_allreduce_max"
@@ -60,7 +58,7 @@ class TestMin(TestDistTRT):
 #        self.precision = "fp16"
 #
 #
-#class TestProd(TestDistTRT):
+# class TestProd(TestDistTRT):
 #
 #    def init_case(self):
 #        self.op_type = "c_allreduce_prod"

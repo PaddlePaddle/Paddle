@@ -105,17 +105,16 @@ class BCEWithLogitsLoss(Layer):
 
     """
 
-    def __init__(self,
-                 weight=None,
-                 reduction='mean',
-                 pos_weight=None,
-                 name=None):
+    def __init__(
+        self, weight=None, reduction='mean', pos_weight=None, name=None
+    ):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in BCEWithLogitsLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
+                "received %s, which is not allowed." % reduction
+            )
 
-        super(BCEWithLogitsLoss, self).__init__()
+        super().__init__()
         self.weight = weight
         self.reduction = reduction
         self.pos_weight = pos_weight
@@ -123,8 +122,13 @@ class BCEWithLogitsLoss(Layer):
 
     def forward(self, logit, label):
         out = paddle.nn.functional.binary_cross_entropy_with_logits(
-            logit, label, self.weight, self.reduction, self.pos_weight,
-            self.name)
+            logit,
+            label,
+            self.weight,
+            self.reduction,
+            self.pos_weight,
+            self.name,
+        )
         return out
 
 
@@ -374,15 +378,17 @@ class CrossEntropyLoss(Layer):
 
     """
 
-    def __init__(self,
-                 weight=None,
-                 ignore_index=-100,
-                 reduction='mean',
-                 soft_label=False,
-                 axis=-1,
-                 use_softmax=True,
-                 name=None):
-        super(CrossEntropyLoss, self).__init__()
+    def __init__(
+        self,
+        weight=None,
+        ignore_index=-100,
+        reduction='mean',
+        soft_label=False,
+        axis=-1,
+        use_softmax=True,
+        name=None,
+    ):
+        super().__init__()
         self.weight = weight
         self.reduction = reduction
         self.ignore_index = ignore_index
@@ -392,15 +398,17 @@ class CrossEntropyLoss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        ret = paddle.nn.functional.cross_entropy(input,
-                                                 label,
-                                                 weight=self.weight,
-                                                 ignore_index=self.ignore_index,
-                                                 reduction=self.reduction,
-                                                 soft_label=self.soft_label,
-                                                 axis=self.axis,
-                                                 use_softmax=self.use_softmax,
-                                                 name=self.name)
+        ret = paddle.nn.functional.cross_entropy(
+            input,
+            label,
+            weight=self.weight,
+            ignore_index=self.ignore_index,
+            reduction=self.reduction,
+            soft_label=self.soft_label,
+            axis=self.axis,
+            use_softmax=self.use_softmax,
+            name=self.name,
+        )
 
         return ret
 
@@ -476,18 +484,21 @@ class HSigmoidLoss(Layer):
             #  [2.34564662]]
     """
 
-    def __init__(self,
-                 feature_size,
-                 num_classes,
-                 weight_attr=None,
-                 bias_attr=None,
-                 is_custom=False,
-                 is_sparse=False,
-                 name=None):
-        super(HSigmoidLoss, self).__init__()
+    def __init__(
+        self,
+        feature_size,
+        num_classes,
+        weight_attr=None,
+        bias_attr=None,
+        is_custom=False,
+        is_sparse=False,
+        name=None,
+    ):
+        super().__init__()
         if (num_classes < 2) and (not is_custom):
             raise ValueError(
-                "num_classes must not be less than 2 with default tree")
+                "num_classes must not be less than 2 with default tree"
+            )
 
         if (not is_custom) and (is_sparse):
             print("Sparse mode should not be used without custom tree")
@@ -505,29 +516,34 @@ class HSigmoidLoss(Layer):
         self._dtype = paddle.get_default_dtype()
 
         remote_prefetch = is_sparse
-        print("With sparse mode, if your models has only"
-              " small parameter prefetch may cause speed down")
+        print(
+            "With sparse mode, if your models has only"
+            " small parameter prefetch may cause speed down"
+        )
 
         C = self._num_classes if is_custom else self._num_classes - 1
-        self.weight = self.create_parameter([C, self._feature_size],
-                                            attr=self._weight_attr,
-                                            is_bias=False,
-                                            dtype=self._dtype)
-        self.bias = self.create_parameter([C, 1],
-                                          attr=self._bias_attr,
-                                          is_bias=True,
-                                          dtype=self._dtype)
+        self.weight = self.create_parameter(
+            [C, self._feature_size],
+            attr=self._weight_attr,
+            is_bias=False,
+            dtype=self._dtype,
+        )
+        self.bias = self.create_parameter(
+            [C, 1], attr=self._bias_attr, is_bias=True, dtype=self._dtype
+        )
 
     def forward(self, input, label, path_table=None, path_code=None):
-        out = F.hsigmoid_loss(input,
-                              label,
-                              self._num_classes,
-                              self.weight,
-                              self.bias,
-                              path_table=path_table,
-                              path_code=path_code,
-                              is_sparse=self._is_sparse,
-                              name=self._name)
+        out = F.hsigmoid_loss(
+            input,
+            label,
+            self._num_classes,
+            self.weight,
+            self.bias,
+            path_table=path_table,
+            path_code=path_code,
+            is_sparse=self._is_sparse,
+            name=self._name,
+        )
         return out
 
 
@@ -580,21 +596,22 @@ class MSELoss(Layer):
     """
 
     def __init__(self, reduction='mean'):
-        super(MSELoss, self).__init__()
+        super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MSELoss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction))
+                "but received {}.".format(reduction)
+            )
         self.reduction = reduction
 
     def forward(self, input, label):
         if not in_dynamic_mode():
-            fluid.data_feeder.check_variable_and_dtype(input, 'input',
-                                                       ['float32', 'float64'],
-                                                       'MSELoss')
-            fluid.data_feeder.check_variable_and_dtype(label, 'label',
-                                                       ['float32', 'float64'],
-                                                       'MSELoss')
+            fluid.data_feeder.check_variable_and_dtype(
+                input, 'input', ['float32', 'float64'], 'MSELoss'
+            )
+            fluid.data_feeder.check_variable_and_dtype(
+                label, 'label', ['float32', 'float64'], 'MSELoss'
+            )
 
         if in_dygraph_mode():
             square_out = paddle._C_ops.square(paddle.subtract(input, label))
@@ -676,16 +693,16 @@ class L1Loss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
-        super(L1Loss, self).__init__()
+                "received %s, which is not allowed." % reduction
+            )
+        super().__init__()
         self.reduction = reduction
         self.name = name
 
     def forward(self, input, label):
-        return paddle.nn.functional.l1_loss(input,
-                                            label,
-                                            self.reduction,
-                                            name=self.name)
+        return paddle.nn.functional.l1_loss(
+            input, label, self.reduction, name=self.name
+        )
 
 
 class BCELoss(Layer):
@@ -748,16 +765,15 @@ class BCELoss(Layer):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
-            input_data = np.array([0.5, 0.6, 0.7]).astype("float32")
-            label_data = np.array([1.0, 0.0, 1.0]).astype("float32")
 
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.to_tensor([0.5, 0.6, 0.7])
+            label = paddle.to_tensor([1.0, 0.0, 1.0])
             bce_loss = paddle.nn.BCELoss()
             output = bce_loss(input, label)
-            print(output)  # [0.65537095]
+            print(output)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.65537101])
 
     """
 
@@ -765,18 +781,18 @@ class BCELoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in bce_loss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
+                "received %s, which is not allowed." % reduction
+            )
 
-        super(BCELoss, self).__init__()
+        super().__init__()
         self.weight = weight
         self.reduction = reduction
         self.name = name
 
     def forward(self, input, label):
-        out = paddle.nn.functional.binary_cross_entropy(input, label,
-                                                        self.weight,
-                                                        self.reduction,
-                                                        self.name)
+        out = paddle.nn.functional.binary_cross_entropy(
+            input, label, self.weight, self.reduction, self.name
+        )
         return out
 
 
@@ -866,28 +882,29 @@ class NLLLoss(Layer):
 
     """
 
-    def __init__(self,
-                 weight=None,
-                 ignore_index=-100,
-                 reduction='mean',
-                 name=None):
+    def __init__(
+        self, weight=None, ignore_index=-100, reduction='mean', name=None
+    ):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in nll_loss should be 'sum', 'mean' or "
-                "'none', but received %s, which is not allowed." % reduction)
-        super(NLLLoss, self).__init__()
+                "'none', but received %s, which is not allowed." % reduction
+            )
+        super().__init__()
         self._weight = weight
         self._ignore_index = ignore_index
         self._reduction = reduction
         self._name = name
 
     def forward(self, input, label):
-        return F.nll_loss(input,
-                          label,
-                          weight=self._weight,
-                          ignore_index=self._ignore_index,
-                          reduction=self._reduction,
-                          name=self._name)
+        return F.nll_loss(
+            input,
+            label,
+            weight=self._weight,
+            ignore_index=self._ignore_index,
+            reduction=self._reduction,
+            name=self._name,
+        )
 
 
 class KLDivLoss(Layer):
@@ -951,7 +968,7 @@ class KLDivLoss(Layer):
     """
 
     def __init__(self, reduction='mean'):
-        super(KLDivLoss, self).__init__()
+        super().__init__()
         self.reduction = reduction
 
     def forward(self, input, label):
@@ -1019,17 +1036,17 @@ class MarginRankingLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
-        super(MarginRankingLoss, self).__init__()
+                "received %s, which is not allowed." % reduction
+            )
+        super().__init__()
         self.margin = margin
         self.reduction = reduction
         self.name = name
 
     def forward(self, input, other, label):
-        out = paddle.nn.functional.margin_ranking_loss(input, other, label,
-                                                       self.margin,
-                                                       self.reduction,
-                                                       self.name)
+        out = paddle.nn.functional.margin_ranking_loss(
+            input, other, label, self.margin, self.reduction, self.name
+        )
         return out
 
 
@@ -1060,7 +1077,6 @@ class CTCLoss(Layer):
         .. code-block:: python
 
             # declarative mode
-            import numpy as np
             import paddle
 
             # length of the longest logit sequence
@@ -1072,8 +1088,7 @@ class CTCLoss(Layer):
             # class num
             class_num = 3
 
-            np.random.seed(1)
-            log_probs = np.array([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
+            log_probs = paddle.to_tensor([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
                                     [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
 
                                     [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
@@ -1086,46 +1101,49 @@ class CTCLoss(Layer):
                                     [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
 
                                     [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
-                                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]]).astype("float32")
-            labels = np.array([[1, 2, 2],
-                            [1, 2, 2]]).astype("int32")
-            input_lengths = np.array([5, 5]).astype("int64")
-            label_lengths = np.array([3, 3]).astype("int64")
-
-            log_probs = paddle.to_tensor(log_probs)
-            labels = paddle.to_tensor(labels)
-            input_lengths = paddle.to_tensor(input_lengths)
-            label_lengths = paddle.to_tensor(label_lengths)
+                                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]], dtype="float32")
+            labels = paddle.to_tensor([[1, 2, 2],
+                            [1, 2, 2]], dtype="int32")
+            input_lengths = paddle.to_tensor([5, 5], dtype="int64")
+            label_lengths = paddle.to_tensor([3, 3], dtype="int64")
 
             loss = paddle.nn.CTCLoss(blank=0, reduction='none')(log_probs, labels,
                 input_lengths,
                 label_lengths)
-            print(loss)  #[3.9179852 2.9076521]
+            print(loss)
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [3.91798496, 2.90765190])
 
             loss = paddle.nn.CTCLoss(blank=0, reduction='mean')(log_probs, labels,
                 input_lengths,
                 label_lengths)
-            print(loss)  #[1.1376063]
+            print(loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.13760614])
     """
 
     def __init__(self, blank=0, reduction='mean'):
-        super(CTCLoss, self).__init__()
+        super().__init__()
         self.blank = blank
         self.reduction = reduction
 
-    def forward(self,
-                log_probs,
-                labels,
-                input_lengths,
-                label_lengths,
-                norm_by_times=False):
-        return paddle.nn.functional.ctc_loss(log_probs,
-                                             labels,
-                                             input_lengths,
-                                             label_lengths,
-                                             self.blank,
-                                             self.reduction,
-                                             norm_by_times=norm_by_times)
+    def forward(
+        self,
+        log_probs,
+        labels,
+        input_lengths,
+        label_lengths,
+        norm_by_times=False,
+    ):
+        return paddle.nn.functional.ctc_loss(
+            log_probs,
+            labels,
+            input_lengths,
+            label_lengths,
+            self.blank,
+            self.reduction,
+            norm_by_times=norm_by_times,
+        )
 
 
 class SmoothL1Loss(Layer):
@@ -1186,17 +1204,19 @@ class SmoothL1Loss(Layer):
     """
 
     def __init__(self, reduction='mean', delta=1.0, name=None):
-        super(SmoothL1Loss, self).__init__()
+        super().__init__()
         self.reduction = reduction
         self.delta = delta
         self.name = name
 
     def forward(self, input, label):
-        return F.smooth_l1_loss(input,
-                                label,
-                                reduction=self.reduction,
-                                delta=self.delta,
-                                name=self.name)
+        return F.smooth_l1_loss(
+            input,
+            label,
+            reduction=self.reduction,
+            delta=self.delta,
+            name=self.name,
+        )
 
 
 class MultiLabelSoftMarginLoss(Layer):
@@ -1260,21 +1280,24 @@ class MultiLabelSoftMarginLoss(Layer):
         """
 
     def __init__(self, weight=None, reduction="mean", name=None):
-        super(MultiLabelSoftMarginLoss, self).__init__()
+        super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MultiLabelSoftMarginloss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction))
+                "but received {}.".format(reduction)
+            )
         self.weight = weight
         self.reduction = reduction
         self.name = name
 
     def forward(self, input, label):
-        return F.multi_label_soft_margin_loss(input,
-                                              label,
-                                              weight=self.weight,
-                                              reduction=self.reduction,
-                                              name=self.name)
+        return F.multi_label_soft_margin_loss(
+            input,
+            label,
+            weight=self.weight,
+            reduction=self.reduction,
+            name=self.name,
+        )
 
 
 class HingeEmbeddingLoss(Layer):
@@ -1358,17 +1381,19 @@ class HingeEmbeddingLoss(Layer):
     """
 
     def __init__(self, margin=1.0, reduction="mean", name=None):
-        super(HingeEmbeddingLoss, self).__init__()
+        super().__init__()
         self.margin = margin
         self.reduction = reduction
         self.name = name
 
     def forward(self, input, label):
-        return F.hinge_embedding_loss(input,
-                                      label,
-                                      reduction=self.reduction,
-                                      margin=self.margin,
-                                      name=self.name)
+        return F.hinge_embedding_loss(
+            input,
+            label,
+            reduction=self.reduction,
+            margin=self.margin,
+            name=self.name,
+        )
 
 
 class CosineEmbeddingLoss(Layer):
@@ -1442,23 +1467,27 @@ class CosineEmbeddingLoss(Layer):
         if margin > 1 or margin < -1:
             raise ValueError(
                 "The value of 'margin' should be in the interval of [-1, 1], but received %f, which is not allowed."
-                % margin)
+                % margin
+            )
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' should be 'sum', 'mean' or "
-                "'none', but received %s, which is not allowed." % reduction)
-        super(CosineEmbeddingLoss, self).__init__()
+                "'none', but received %s, which is not allowed." % reduction
+            )
+        super().__init__()
         self.margin = margin
         self.reduction = reduction
         self.name = name
 
     def forward(self, input1, input2, label):
-        return F.cosine_embedding_loss(input1,
-                                       input2,
-                                       label,
-                                       margin=self.margin,
-                                       reduction=self.reduction,
-                                       name=self.name)
+        return F.cosine_embedding_loss(
+            input1,
+            input2,
+            label,
+            margin=self.margin,
+            reduction=self.reduction,
+            name=self.name,
+        )
 
 
 class TripletMarginWithDistanceLoss(Layer):
@@ -1540,18 +1569,21 @@ class TripletMarginWithDistanceLoss(Layer):
 
     """
 
-    def __init__(self,
-                 distance_function=None,
-                 margin=1.0,
-                 swap=False,
-                 reduction: str = 'mean',
-                 name=None):
-        super(TripletMarginWithDistanceLoss, self).__init__()
+    def __init__(
+        self,
+        distance_function=None,
+        margin=1.0,
+        swap=False,
+        reduction: str = 'mean',
+        name=None,
+    ):
+        super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in TripletMarginWithDistanceLoss "
                 "should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
+                "received %s, which is not allowed." % reduction
+            )
         self.margin = margin
         self.swap = swap
         self.reduction = reduction
@@ -1559,13 +1591,15 @@ class TripletMarginWithDistanceLoss(Layer):
         self.name = name
 
     def forward(self, input, positive, negative):
-        return F.triplet_margin_with_distance_loss(input,
-                                                   positive,
-                                                   negative,
-                                                   margin=self.margin,
-                                                   swap=self.swap,
-                                                   reduction=self.reduction,
-                                                   name=self.name)
+        return F.triplet_margin_with_distance_loss(
+            input,
+            positive,
+            negative,
+            margin=self.margin,
+            swap=self.swap,
+            reduction=self.reduction,
+            name=self.name,
+        )
 
 
 class TripletMarginLoss(Layer):
@@ -1643,18 +1677,21 @@ class TripletMarginLoss(Layer):
 
     """
 
-    def __init__(self,
-                 margin=1.0,
-                 p=2.,
-                 epsilon=1e-6,
-                 swap=False,
-                 reduction='mean',
-                 name=None):
-        super(TripletMarginLoss, self).__init__()
+    def __init__(
+        self,
+        margin=1.0,
+        p=2.0,
+        epsilon=1e-6,
+        swap=False,
+        reduction='mean',
+        name=None,
+    ):
+        super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in TripletMarginLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
+                "received %s, which is not allowed." % reduction
+            )
         self.margin = margin
         self.p = p
         self.epsilon = epsilon
@@ -1663,98 +1700,103 @@ class TripletMarginLoss(Layer):
         self.name = name
 
     def forward(self, input, positive, negative):
-        return F.triplet_margin_loss(input,
-                                     positive,
-                                     negative,
-                                     margin=self.margin,
-                                     p=self.p,
-                                     epsilon=self.epsilon,
-                                     swap=self.swap,
-                                     reduction=self.reduction,
-                                     name=self.name)
+        return F.triplet_margin_loss(
+            input,
+            positive,
+            negative,
+            margin=self.margin,
+            p=self.p,
+            epsilon=self.epsilon,
+            swap=self.swap,
+            reduction=self.reduction,
+            name=self.name,
+        )
 
 
 class MultiMarginLoss(Layer):
     r"""Creates a criterion that optimizes a multi-class classification hinge loss (margin-based loss) between
-        input :math:`input` and label :math:`label`:
+    input :math:`input` and label :math:`label`:
 
-        For i-th mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
-        output :math:`label_i` is:
+    For i-th mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
+    output :math:`label_i` is:
 
-        .. math::
-            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, \text{margin} - input_i[label_i] + input_i[j])^p}{\text{C}}
+    .. math::
+        \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, \text{margin} - input_i[label_i] + input_i[j])^p}{\text{C}}
 
-        where :math:`0 \leq j \leq \text{C}-1`, :math:`0 \leq i \leq \text{N}-1` and :math:`j \neq label_i`.
+    where :math:`0 \leq j \leq \text{C}-1`, :math:`0 \leq i \leq \text{N}-1` and :math:`j \neq label_i`.
 
-        Optionally, you can give non-equal weighting on the classes by passing
-        a 1D :attr:`weight` tensor into the constructor.
+    Optionally, you can give non-equal weighting on the classes by passing
+    a 1D :attr:`weight` tensor into the constructor.
 
-        The loss function for i-th sample then becomes:
+    The loss function for i-th sample then becomes:
 
-        .. math::
-            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, weight[label_i] * (\text{margin} - input_i[label_i] + input_i[j]))^p}{\text{C}}
+    .. math::
+        \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, weight[label_i] * (\text{margin} - input_i[label_i] + input_i[j]))^p}{\text{C}}
 
 
-        Parameters:
+    Parameters:
 
-            p (int, Optional):The norm degree for pairwise distance. Default: :math:`1`.
+        p (int, Optional):The norm degree for pairwise distance. Default: :math:`1`.
 
-            margin (float, Optional):Default: :math:`1`.
+        margin (float, Optional):Default: :math:`1`.
 
-            weight (Tensor,optional): a manual rescaling weight given to each class.
-                    If given, has to be a Tensor of shape (C,) and the data type is float32, float64.
-                    Default is ``'None'`` .
+        weight (Tensor,optional): a manual rescaling weight given to each class.
+                If given, has to be a Tensor of shape (C,) and the data type is float32, float64.
+                Default is ``'None'`` .
 
-            reduction (str, optional): Indicate how to calculate the loss by batch_size,
-                    the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
-                    If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
-                    If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-                    If :attr:`reduction` is ``'sum'``, the summed loss is returned.
-                    Default: ``'mean'``
+        reduction (str, optional): Indicate how to calculate the loss by batch_size,
+                the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+                If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+                Default: ``'mean'``
 
-            name (str, optional): Name for the operation (optional, default is None).
-                For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
-        Call parameters:
-            input (Tensor): Input tensor, the data type is float32 or float64.
+    Call parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64.
 
-            label (Tensor): Label tensor, 0<= label < input.shape[1], the data type is int32 or int64.
+        label (Tensor): Label tensor, 0<= label < input.shape[1], the data type is int32 or int64.
 
-        Shape:
-            input: 2-D Tensor, the shape is [N, C], N is batch size and `C` means number of classes.
+    Shape:
+        input: 2-D Tensor, the shape is [N, C], N is batch size and `C` means number of classes.
 
-            label: 1-D Tensor, the shape is [N,].
+        label: 1-D Tensor, the shape is [N,].
 
-            output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the label.
+        output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the label.
 
-        Returns:
-            A callable object of MultiMarginLoss.
+    Returns:
+        A callable object of MultiMarginLoss.
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                import paddle
-                import paddle.nn as nn
+            import paddle
+            import paddle.nn as nn
 
-                input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
-                label = paddle.to_tensor([0, 1, 2], dtype=paddle.int32)
+            input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
+            label = paddle.to_tensor([0, 1, 2], dtype=paddle.int32)
 
-                multi_margin_loss = nn.MultiMarginLoss(reduction='mean')
-                loss = multi_margin_loss(input, label)
-                print(loss)
-        """
+            multi_margin_loss = nn.MultiMarginLoss(reduction='mean')
+            loss = multi_margin_loss(input, label)
+            print(loss)
+    """
 
-    def __init__(self,
-                 p: int = 1,
-                 margin: float = 1.0,
-                 weight=None,
-                 reduction="mean",
-                 name=None):
-        super(MultiMarginLoss, self).__init__()
+    def __init__(
+        self,
+        p: int = 1,
+        margin: float = 1.0,
+        weight=None,
+        reduction="mean",
+        name=None,
+    ):
+        super().__init__()
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MultiMarginLoss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction))
+                "but received {}.".format(reduction)
+            )
         self.p = p
         self.margin = margin
         self.weight = weight
@@ -1762,13 +1804,15 @@ class MultiMarginLoss(Layer):
         self.name = name
 
     def forward(self, input, label):
-        return F.multi_margin_loss(input,
-                                   label,
-                                   p=self.p,
-                                   margin=self.margin,
-                                   weight=self.weight,
-                                   reduction=self.reduction,
-                                   name=self.name)
+        return F.multi_margin_loss(
+            input,
+            label,
+            p=self.p,
+            margin=self.margin,
+            weight=self.weight,
+            reduction=self.reduction,
+            name=self.name,
+        )
 
 
 class SoftMarginLoss(Layer):
@@ -1810,33 +1854,44 @@ class SoftMarginLoss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             input = paddle.to_tensor([[0.5, 0.6, 0.7],[0.3, 0.5, 0.2]], 'float32')
             label = paddle.to_tensor([[1.0, -1.0, 1.0],[-1.0, 1.0, 1.0]], 'float32')
             soft_margin_loss = paddle.nn.SoftMarginLoss()
             output = soft_margin_loss(input, label)
+            print(output)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.64022040])
 
-            input_np = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
-            label_np = np.random.randint(0, 2, size=(5, 5)).astype(np.int64)
+            input_np = paddle.uniform(shape=(5, 5), min=0.1, max=0.8, dtype="float64")
+            label_np = paddle.randint(high=2, shape=(5, 5), dtype="int64")
             label_np[label_np==0]=-1
             input = paddle.to_tensor(input_np)
             label = paddle.to_tensor(label_np)
             soft_margin_loss = paddle.nn.SoftMarginLoss(reduction='none')
             output = soft_margin_loss(input, label)
+            print(output)
+            # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.61739663, 0.51405668, 1.09346100, 0.42385561, 0.91602303],
+            #         [0.76997038, 1.01977148, 0.98971722, 1.13976032, 0.88152088],
+            #         [0.55476735, 1.10505384, 0.89923519, 0.45018155, 1.06587511],
+            #         [0.37998142, 0.48067240, 0.47791212, 0.55664053, 0.98581399],
+            #         [0.78571653, 0.59319711, 0.39701841, 0.76172109, 0.83781742]])
     """
 
     def __init__(self, reduction='mean', name=None):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in SoftMarginLoss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % reduction)
+                "received %s, which is not allowed." % reduction
+            )
 
-        super(SoftMarginLoss, self).__init__()
+        super().__init__()
         self.reduction = reduction
         self.name = name
 
     def forward(self, input, label):
-        out = paddle.nn.functional.soft_margin_loss(input, label,
-                                                    self.reduction, self.name)
+        out = paddle.nn.functional.soft_margin_loss(
+            input, label, self.reduction, self.name
+        )
         return out

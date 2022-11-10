@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestMul(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -43,12 +42,12 @@ class TestMul(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
-        y = paddle.static.data(name=self.feed_list[1],
-                               shape=self.feed_shape[1],
-                               dtype='float32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        y = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
         out = self.op(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -125,43 +124,36 @@ class TestMul(IPUOpTest):
 
 
 class TestAdd(TestMul):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_add
 
 
 class TestSub(TestMul):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_sub
 
 
 class TestDiv(TestMul):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_div
 
 
 class TestMin(TestMul):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_min
 
 
 class TestMax(TestMul):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_max
 
 
 class TestPow(TestMul):
-
     def set_test_op(self):
         self.op = paddle.fluid.layers.elementwise_pow
 
 
 class TestMod(TestMul):
-
     def set_atol(self):
         self.atol = 1e-7
         self.rtol = 1e-5

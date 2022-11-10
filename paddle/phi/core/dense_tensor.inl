@@ -57,7 +57,7 @@ size_t memory_size() const;
 
 void check_memory_size() const;
 
-void set_layout(const paddle::framework::DataLayout layout);
+void set_layout(const DataLayout layout);
 
 void clear() {
   holder_.reset();
@@ -121,12 +121,6 @@ public:
 inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
   mem_desc_ = mem_desc;
   meta_.layout = DataLayout::kMKLDNN;
-}
-
-dnnl::memory::format_tag format() const;
-
-inline void set_format(const dnnl::memory::format_tag format) {
-  format_ = format;
 }
 
 #endif

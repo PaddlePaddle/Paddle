@@ -29,7 +29,6 @@ np.random.seed(10)
 # CANN Op Support X: float16, float32, int32, int8 ,uint8
 # Situation 1: shape is a list(without tensor)
 class TestExpandV2NPUOpRank1(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -58,7 +57,6 @@ class TestExpandV2NPUOpRank1(OpTest):
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2NPUOpRank1):
-
     def init_data(self):
         self.ori_shape = [120]
         self.shape = [2, 120]
@@ -66,7 +64,6 @@ class TestExpandV2OpRank2_DimExpanding(TestExpandV2NPUOpRank1):
 
 
 class TestExpandV2OpRank2(TestExpandV2NPUOpRank1):
-
     def init_data(self):
         self.ori_shape = [1, 140]
         self.shape = [12, 140]
@@ -74,7 +71,6 @@ class TestExpandV2OpRank2(TestExpandV2NPUOpRank1):
 
 
 class TestExpandV2OpRank3_Corner(TestExpandV2NPUOpRank1):
-
     def init_data(self):
         self.ori_shape = (2, 10, 5)
         self.shape = (2, 10, 5)
@@ -82,7 +78,6 @@ class TestExpandV2OpRank3_Corner(TestExpandV2NPUOpRank1):
 
 
 class TestExpandV2OpRank4(TestExpandV2NPUOpRank1):
-
     def init_data(self):
         self.ori_shape = (2, 4, 5, 7)
         self.shape = (-1, -1, -1, -1)
@@ -90,7 +85,6 @@ class TestExpandV2OpRank4(TestExpandV2NPUOpRank1):
 
 
 class TestExpandV2OpRank5(TestExpandV2NPUOpRank1):
-
     def init_data(self):
         self.ori_shape = (2, 4, 1, 15)
         self.shape = (2, -1, 4, -1)
@@ -98,7 +92,6 @@ class TestExpandV2OpRank5(TestExpandV2NPUOpRank1):
 
 
 class TestExpandV2OpRank6(TestExpandV2NPUOpRank1):
-
     def init_data(self):
         self.ori_shape = (4, 1, 30)
         self.shape = (2, -1, 4, 30)
@@ -107,7 +100,6 @@ class TestExpandV2OpRank6(TestExpandV2NPUOpRank1):
 
 # Situation 2: shape is a list(with tensor)
 class TestExpandV2OpNPURank1_tensor_attr(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -116,8 +108,9 @@ class TestExpandV2OpNPURank1_tensor_attr(OpTest):
         self.dtype = np.float32
         expand_shapes_tensor = []
         for index, ele in enumerate(self.expand_shape):
-            expand_shapes_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            expand_shapes_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {
             'X': np.random.random(self.ori_shape).astype(self.dtype),
@@ -143,9 +136,9 @@ class TestExpandV2OpNPURank1_tensor_attr(OpTest):
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
-class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpNPURank1_tensor_attr
-                                             ):
-
+class TestExpandV2OpRank2_Corner_tensor_attr(
+    TestExpandV2OpNPURank1_tensor_attr
+):
     def init_data(self):
         self.ori_shape = [12, 14]
         self.expand_times = [1, 1]
@@ -155,7 +148,6 @@ class TestExpandV2OpRank2_Corner_tensor_attr(TestExpandV2OpNPURank1_tensor_attr
 
 # Situation 3: shape is a tensor
 class TestExpandV2NPUOpRank1_tensor(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -189,7 +181,6 @@ class TestExpandV2NPUOpRank1_tensor(OpTest):
 # Situation 4: input x is float16
 # skip grad check for float16
 class TestExpandV2OpFloat(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -212,7 +203,6 @@ class TestExpandV2OpFloat(OpTest):
 # Situation 5: input x is int32
 # skip grad check for int32
 class TestExpandV2OpInteger(OpTest):
-
     def init_dtype(self):
         self.dtype = 'int32'
 
@@ -236,13 +226,11 @@ class TestExpandV2OpInteger(OpTest):
 
 
 class TesstExpandV2OpInt64(TestExpandV2OpInteger):
-
     def init_dtype(self):
         self.dtype = 'int64'
 
 
 class TesstExpandV2OpBool(TestExpandV2OpInteger):
-
     def init_dtype(self):
         self.dtype = 'bool'
 
@@ -257,11 +245,11 @@ class TesstExpandV2OpBool(TestExpandV2OpInteger):
 
 
 class TestExpandV2Error(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
-                                         paddle.NPUPlace(0))
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], paddle.NPUPlace(0)
+            )
             shape = [2, 2]
             self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
             x2 = fluid.layers.data(name='x2', shape=[2], dtype="uint8")
@@ -273,20 +261,23 @@ class TestExpandV2Error(unittest.TestCase):
 
 # Test python API
 class TestExpandV2API(unittest.TestCase):
-
     def test_static(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = np.random.random([12, 14]).astype("float32")
-            x = fluid.layers.data(name='x',
-                                  shape=[12, 14],
-                                  append_batch_size=False,
-                                  dtype="float32")
+            x = fluid.layers.data(
+                name='x',
+                shape=[12, 14],
+                append_batch_size=False,
+                dtype="float32",
+            )
 
             positive_2 = fluid.layers.fill_constant([1], "int32", 12)
-            expand_shape = fluid.layers.data(name="expand_shape",
-                                             shape=[2],
-                                             append_batch_size=False,
-                                             dtype="int32")
+            expand_shape = fluid.layers.data(
+                name="expand_shape",
+                shape=[2],
+                append_batch_size=False,
+                dtype="int32",
+            )
 
             out_1 = paddle.expand(x, shape=[12, 14])
             out_2 = paddle.expand(x, shape=[positive_2, 14])
@@ -295,14 +286,14 @@ class TestExpandV2API(unittest.TestCase):
             g0 = fluid.backward.calc_gradient(out_2, x)
 
             exe = fluid.Executor(place=paddle.NPUPlace(0))
-            res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
-                                          feed={
-                                              "x":
-                                              input,
-                                              "expand_shape":
-                                              np.array([12, 14]).astype("int32")
-                                          },
-                                          fetch_list=[out_1, out_2, out_3])
+            res_1, res_2, res_3 = exe.run(
+                fluid.default_main_program(),
+                feed={
+                    "x": input,
+                    "expand_shape": np.array([12, 14]).astype("int32"),
+                },
+                fetch_list=[out_1, out_2, out_3],
+            )
 
             assert np.array_equal(res_1, np.tile(input, (1, 1)))
             assert np.array_equal(res_2, np.tile(input, (1, 1)))

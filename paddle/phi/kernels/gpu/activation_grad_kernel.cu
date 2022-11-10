@@ -40,6 +40,7 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
       d_out, errors::NotFound("The input DenseTensor dOut can not be nullptr"));
   PADDLE_ENFORCE_NOT_NULL(
       d_x, errors::NotFound("The output DenseTensor dX can not be nullptr"));
+
   if (!out) {
     out = d_out;  // fake out
   }
@@ -228,8 +229,8 @@ DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPOUT(Relu6,
                                                  CudaRelu6GradFunctor,
                                                  threshold);
 
-DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(BRelu,
-                                               CudaBReluGradFunctor,
+DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(HardTanh,
+                                               CudaHardTanhGradFunctor,
                                                t_min,
                                                t_max);
 
@@ -346,7 +347,7 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(atanh_grad, AtanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_grad, TanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_double_grad, TanhDoubleGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_triple_grad, TanhTripleGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(brelu_grad, BReluGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_tanh_grad, HardTanhGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_double_grad,
                                    LeakyReluDoubleGradKernel)
@@ -372,7 +373,7 @@ PD_REGISTER_KERNEL(exp_grad,
                    int64_t,
                    phi::dtype::float16) {}
 
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(soft_shrink_grad, SoftShrinkGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(softshrink_grad, SoftShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_shrink_grad, HardShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_shrink_grad, TanhShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(silu_grad, SiluGradKernel)
@@ -416,6 +417,26 @@ PD_REGISTER_KERNEL(square_double_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
+PD_REGISTER_KERNEL(sin_double_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SinDoubleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(sin_triple_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SinTripleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}
+
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softsign_grad, SoftsignGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_double_grad, SigmoidDoubleGradKernel)
@@ -445,6 +466,26 @@ PD_REGISTER_KERNEL(pow_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::PowGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(pow_double_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::PowDoubleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(pow_triple_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::PowTripleGradKernel,
                    float,
                    double,
                    int,

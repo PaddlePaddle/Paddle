@@ -40,7 +40,7 @@ const std::unordered_set<std::string> standard_kernel_suffixs({
  * after 2.0, and can no longer be occupied by the previously abandoned ops.
  * They are marked here uniformly.
  */
-const std::unordered_set<std::string> deprecated_op_names(
+static const std::unordered_set<std::string> deprecated_op_names(
     {"diag",
      "flatten",
      "flatten_grad",
@@ -81,7 +81,9 @@ const std::unordered_set<std::string> deprecated_op_names(
      "nearest_interp",
      "nearest_interp_grad",
      "bicubic_interp",
-     "bicubic_interp_grad"});
+     "bicubic_interp_grad",
+     "crop",
+     "crop_grad"});
 
 class DefaultKernelSignatureMap {
  public:

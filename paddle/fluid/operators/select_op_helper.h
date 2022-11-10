@@ -37,7 +37,7 @@ inline int GetBranchNumber(const phi::DenseTensor &mask) {
   if (platform::is_cpu_place(mask.place())) {
     return mask.data<int>()[0];
   }
-  // when platform::is_gpu_place(mask.place()) is ture
+  // when platform::is_gpu_place(mask.place()) is true
   std::unique_ptr<phi::DenseTensor> cpu_mask{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   framework::TensorCopySync(mask, platform::CPUPlace(), cpu_mask.get());

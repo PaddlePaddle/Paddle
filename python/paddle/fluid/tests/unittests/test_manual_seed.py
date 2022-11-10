@@ -20,7 +20,6 @@ import numpy as np
 
 
 class TestManualSeed(unittest.TestCase):
-
     def test_seed(self):
         fluid.enable_dygraph()
 

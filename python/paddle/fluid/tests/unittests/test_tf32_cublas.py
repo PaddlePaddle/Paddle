@@ -20,7 +20,6 @@ import paddle.fluid.core as core
 
 
 class TestTF32Switch(unittest.TestCase):
-
     def test_on_off(self):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
@@ -36,7 +35,6 @@ class TestTF32Switch(unittest.TestCase):
 
 
 class TestTF32OnMatmul(unittest.TestCase):
-
     def test_dygraph_without_out(self):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)

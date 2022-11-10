@@ -117,6 +117,11 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return var_type == proto::VarType::SPARSE_COO;
   }
 
+  bool IsSparseCsrTensorInput(const std::string& name) const override {
+    auto var_type = ctx_.GetInputVarType(name);
+    return var_type == proto::VarType::SPARSE_CSR;
+  }
+
   bool IsDenseTensorOutput(const std::string& name) const override {
     auto var_types = ctx_.GetOutputsVarType(name);
     return std::all_of(var_types.begin(),
@@ -374,12 +379,12 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
           static_cast<const CompatMetaTensor&>(meta_tensor).GetRuntimeLoD();
     } else {
       // NOTE(chenweihang): do nothing
-      // only LoDTensor need to share lod
+      // only phi::DenseTensor need to share lod
     }
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
     if (!meta_tensor.is_dense() && !meta_tensor.is_tensor_array()) {
-      VLOG(3) << "input metatensor is not LoDTensor or LoDTensorArray.";
+      VLOG(3) << "input metatensor is not phi::DenseTensor or LoDTensorArray.";
       return;
     }
     if (var) {
@@ -402,6 +407,8 @@ void CompatMetaTensor::share_dims(const MetaTensor& meta_tensor) {
           static_cast<const CompatMetaTensor&>(meta_tensor).GetSelectedRows();
       selected_rows->set_rows(input_selected_rows.rows());
       selected_rows->set_height(input_selected_rows.height());
+      phi::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value())
+          ->dims = input_selected_rows.value().dims();
     }
   }
 }
@@ -410,7 +417,7 @@ void CompatMetaTensor::share_meta(const MetaTensor& meta_tensor) {
   share_dims(meta_tensor);
   set_dtype(meta_tensor.dtype());
   set_layout(meta_tensor.layout());
-  // special case: share lod of LoDTensor
+  // special case: share lod of phi::DenseTensor
   share_lod(meta_tensor);
 }
 
@@ -490,9 +497,18 @@ std::vector<phi::MetaTensor*> CompatInferMetaContext::MutableOutputBetween(
     size_t start, size_t end) {
   std::vector<phi::MetaTensor*> result;
   result.reserve(end - start);
+  bool has_meta_tensor = false;
+
   for (size_t i = start; i < end; ++i) {
     auto& out = compat_outputs_.at(i);
     result.emplace_back(out.initialized() ? &out : nullptr);
+    if (!has_meta_tensor && out.initialized()) {
+      has_meta_tensor = true;
+    }
+  }
+
+  if (!has_meta_tensor) {
+    result.clear();
   }
   return result;
 }

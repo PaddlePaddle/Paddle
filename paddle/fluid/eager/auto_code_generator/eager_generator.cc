@@ -55,7 +55,9 @@ static std::unordered_set<std::string> black_ops_list = {"run_program",
                                                          "fused_gate_attention",
                                                          "fused_feedforward",
                                                          "fused_attention",
-                                                         "fused_gemm_epilogue"};
+                                                         "fused_gemm_epilogue",
+                                                         "sparse_divide_scalar",
+                                                         "sparse_scale"};
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
@@ -3026,8 +3028,8 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_auto_cast.h\"\n"
-      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n"
-      "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n\n";
+      "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
+
   std::string forward_cc_include_str =
       paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE);
   std::ofstream forward_cc_stream(forward_cc_path, std::ios::out);
@@ -3158,6 +3160,12 @@ static void DygraphCodeGeneration(const std::string& output_dir,
     if (!CheckOpProto(op_proto)) continue;
     const std::string& op_type = op_proto->type();
     if (black_ops_list.count(op_type)) {
+      continue;
+    }
+
+    // Skip the sparse op
+    if (op_type.compare(0, 7, "sparse_") == 0 && op_type != "sparse_momentum" &&
+        op_type != "sparse_attention") {
       continue;
     }
 

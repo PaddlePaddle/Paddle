@@ -28,6 +28,7 @@ if(WITH_NCCL OR WITH_RCCL)
          enforce
          collective_helper
          device_context
+         ${DEVICE_EVENT_LIBS}
          dense_tensor)
   if(WITH_DISTRIBUTE AND WITH_PSCORE)
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -41,6 +42,14 @@ if(WITH_NCCL OR WITH_RCCL)
       SRCS ProcessGroupHeter.cc NCCLTools.cc Common.cc
       DEPS place enforce collective_helper device_context phi_api eager_api)
   endif()
+endif()
+
+if(WITH_XPU_BKCL)
+  cc_library(
+    processgroup_bkcl
+    SRCS ProcessGroupBKCL.cc BKCLTools.cc Common.cc
+    DEPS processgroup place enforce collective_helper device_context
+         dense_tensor)
 endif()
 
 if(WITH_MPI)
@@ -86,11 +95,6 @@ if(WITH_CUSTOM_DEVICE)
   cc_library(
     processgroup_custom
     SRCS ProcessGroupCustom.cc CustomCCLTools.cc Common.cc
-    DEPS phi_backends
-         place
-         enforce
-         collective_helper
-         device_context
-         phi_api
-         eager_api)
+    DEPS processgroup phi_backends place enforce collective_helper
+         device_context)
 endif()

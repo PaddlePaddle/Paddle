@@ -12,15 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/core/expect.h"
 
 namespace paddle {
 namespace operators {
 
 using dnnl::memory;
 
-using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::MKLDNNGetDataType;
 using platform::to_void_cast;

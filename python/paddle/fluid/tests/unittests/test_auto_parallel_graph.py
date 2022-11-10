@@ -17,7 +17,6 @@ from paddle.distributed.auto_parallel.graph import Graph
 
 
 class TestAutoParallelGraph(unittest.TestCase):
-
     def test_graph(self):
         graph = Graph(name="foo")
         self.assertEqual(graph.attrs["name"], "foo")

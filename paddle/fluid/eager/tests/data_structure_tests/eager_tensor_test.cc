@@ -90,7 +90,7 @@ TEST(Tensor, MemberFunction) {
   auto expected_dim = phi::make_ddim({1, 2});
   CHECK_EQ(et3.dims(), expected_dim);
   CHECK_EQ(et3.type(), paddle::experimental::DataType::FLOAT32);
-  CHECK_EQ(et3.layout(), paddle::experimental::DataLayout::NCHW);
+  CHECK_EQ(et3.layout(), phi::DataLayout::NCHW);
   CHECK(paddle::platform::is_cpu_place(et3.place()));
   VLOG(6) << "Get impl";
   auto* dt3_ptr =
@@ -202,10 +202,9 @@ TEST(EagerVariable, Constructor) {
 
 TEST(EagerVariable, DataLayout) {
   paddle::experimental::Tensor tensor;
-  phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                           phi::make_ddim({1, 1, 1, 1}),
-                           paddle::experimental::DataLayout::UNDEFINED);
+  phi::DenseTensorMeta meta = phi::DenseTensorMeta(phi::DataType::FLOAT32,
+                                                   phi::make_ddim({1, 1, 1, 1}),
+                                                   phi::DataLayout::UNDEFINED);
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -219,11 +218,10 @@ TEST(EagerVariable, DataLayout) {
   tensor.set_impl(dt);
   auto eager_var = std::make_shared<egr::EagerVariable>(tensor);
   auto layout = paddle::imperative::GetDataLayout(eager_var);
-  CHECK_EQ(layout, paddle::experimental::DataLayout::UNDEFINED);
-  paddle::imperative::SetDataLayout(eager_var,
-                                    paddle::experimental::DataLayout::NCHW);
+  CHECK_EQ(layout, phi::DataLayout::UNDEFINED);
+  paddle::imperative::SetDataLayout(eager_var, phi::DataLayout::NCHW);
   layout = paddle::imperative::GetDataLayout(eager_var);
-  CHECK_EQ(layout, paddle::experimental::DataLayout::NCHW);
+  CHECK_EQ(layout, phi::DataLayout::NCHW);
 }
 
 TEST(VariableCompatTensor, MemberFunction) {

@@ -27,6 +27,11 @@ class ProcessGroupStream : public ProcessGroup {
  public:
   class TaskStream : public ProcessGroup::Task {
    public:
+    TaskStream(int rank, CommType comm_type, bool sync_op, bool use_calc_stream)
+        : Task(rank, comm_type, sync_op), use_calc_stream_(use_calc_stream) {}
+
+    virtual ~TaskStream() = default;
+
     // TODO(liyurui): This constructor is temporary here for compatible reason,
     // will be deleted soon.
     TaskStream(int rank,
@@ -42,8 +47,6 @@ class ProcessGroupStream : public ProcessGroup {
         : Task(rank, inputs, comm_type, sync_op),
           use_calc_stream_(use_calc_stream) {}
 
-    virtual ~TaskStream() = default;
-
    protected:
     bool UseCalcStream() const { return use_calc_stream_; }
 
@@ -51,36 +54,97 @@ class ProcessGroupStream : public ProcessGroup {
     bool use_calc_stream_{false};
   };
 
+ public:
   ProcessGroupStream(int rank, int size, const platform::Place& place, int gid);
   virtual ~ProcessGroupStream() = default;
 
-  virtual phi::DeviceContext* GetDeviceContext(const Place& place,
-                                               bool use_calc_stream) const;
+  virtual const phi::DeviceContext& GetDeviceContext(
+      const Place& place, bool use_calc_stream) const;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
       bool sync_op) override;
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
       bool sync_op,
       bool use_calc_stream);
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& input_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& output_tensors,  // NOLINT
-      const AllreduceOptions& options,
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const AllreduceOptions& opts,
       bool sync_op) override;
 
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& input_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& output_tensors,  // NOLINT
-      const AllreduceOptions& options,
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const AllreduceOptions& opts,
       bool sync_op,
       bool use_calc_stream);
 
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const BroadcastOptions& opts,
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const BroadcastOptions& opts,
+      bool sync_op,
+      bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+                                           int src_rank,
+                                           bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+                                                   int src_rank,
+                                                   bool sync_op,
+                                                   bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> RecvPartial(phi::DenseTensor* tensor,
+                                                  int src_rank,
+                                                  int64_t offset,
+                                                  int64_t length,
+                                                  bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> RecvPartial(
+      phi::DenseTensor* tensor,
+      int src_rank,
+      int64_t offset,
+      int64_t length,
+      bool sync_op,
+      bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> Send(phi::DenseTensor* tensor,
+                                           int dst_rank,
+                                           bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> Send(phi::DenseTensor* tensor,
+                                                   int dst_rank,
+                                                   bool sync_op,
+                                                   bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> SendPartial(phi::DenseTensor* tensor,
+                                                  int dst_rank,
+                                                  int64_t offset,
+                                                  int64_t length,
+                                                  bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> SendPartial(
+      phi::DenseTensor* tensor,
+      int dst_rank,
+      int64_t offset,
+      int64_t length,
+      bool sync_op,
+      bool use_calc_stream);
+
+  // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
@@ -104,19 +168,6 @@ class ProcessGroupStream : public ProcessGroup {
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
       std::vector<int64_t>& in_sizes,              // NOLINT
       std::vector<int64_t>& out_sizes,             // NOLINT
-      bool sync_op,
-      bool use_calc_stream);
-
-  std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-      const BroadcastOptions& opts,
-      bool sync_op) override;
-
-  virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-      const BroadcastOptions& opts,
       bool sync_op,
       bool use_calc_stream);
 
@@ -156,17 +207,6 @@ class ProcessGroupStream : public ProcessGroup {
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
       const ScatterOptions& opts,
-      bool sync_op,
-      bool use_calc_stream);
-
-  std::shared_ptr<ProcessGroup::Task> Send(
-      std::vector<phi::DenseTensor>& tensors,  // NOLINT
-      int dst_rank,
-      bool sync_op) override;
-
-  virtual std::shared_ptr<ProcessGroup::Task> Send(
-      std::vector<phi::DenseTensor>& tensors,  // NOLINT
-      int dst_rank,
       bool sync_op,
       bool use_calc_stream);
 

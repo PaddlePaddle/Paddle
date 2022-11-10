@@ -24,8 +24,8 @@ void SizeKernel(const Context& ctx,
                 DenseTensor* out) {
   auto place = ctx.GetPlace();
   auto out_data = ctx.template Alloc<int64_t>(out);
-  auto cpu_place = phi::CPUPlace();
-  if (place == cpu_place) {
+
+  if (place == phi::CPUPlace()) {
     out_data[0] = input.numel();
   } else {
     DenseTensor cpu_tensor;
