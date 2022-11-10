@@ -34,6 +34,7 @@ namespace detail {
 // and the required members need to be passed in from the eucalyptus tree.
 ccl::CCLComm GetCCLComm(const Place& place, int global_gid) {
   paddle::distributed::ProcessGroup* pg = nullptr;
+  pg = pg;
   if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
           global_gid)) {
     pg = paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
