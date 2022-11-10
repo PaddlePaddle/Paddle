@@ -168,7 +168,13 @@ void set_constant_with_place<paddle::platform::XPUPlace>(
     const paddle::platform::DeviceContext& context,
     phi::DenseTensor* tensor,
     float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("XPUPlace is not supported"));
+#ifdef PADDLE_WITH_XPU
+  phi::VisitDataType(
+      tensor->dtype(),
+      TensorSetConstantXPU<float>(tensor, value, tensor->place()));
+#else
+  PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with XPU!"));
+#endif
 }
 
 template <>
@@ -257,6 +263,8 @@ void set_constant(const paddle::platform::DeviceContext& context,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // tensor->place().apply_visitor(func);
   paddle::platform::VisitPlace(tensor->place(), func);
+#elif defined(PADDLE_WITH_XPU)
+  func(phi::XPUPlace());
 #else
   func(phi::CPUPlace());
 #endif
