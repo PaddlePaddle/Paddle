@@ -17,6 +17,8 @@ import inspect
 import re
 import sys
 
+from unittest import SkipTest
+
 import numpy as np
 import config
 
@@ -112,7 +114,7 @@ def parameterize_func(
 
 def reapply_patches_if_need(func):
     def dummy_wrapper(orgfunc):
-        @wraps(orgfunc)
+        @functools.wraps(orgfunc)
         def dummy_func(*args, **kwargs):
             return orgfunc(*args, **kwargs)
 
