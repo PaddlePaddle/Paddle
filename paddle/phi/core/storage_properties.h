@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/utils/type_registry.h"
 
 #ifdef PADDLE_WITH_MKLDNN
