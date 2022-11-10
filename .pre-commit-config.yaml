@@ -12,7 +12,7 @@ exclude: |
 repos:
 # Common hooks
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.1.0
+    rev: v4.3.0
     hooks:
     -   id: check-added-large-files
     -   id: check-merge-conflict
@@ -24,7 +24,7 @@ repos:
     -   id: trailing-whitespace
         files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake|yaml|yml|hook)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists\.txt)$
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
-    rev: v1.1.14
+    rev: v1.3.1
     hooks:
     -   id: remove-crlf
     -   id: remove-tabs
@@ -56,12 +56,12 @@ repos:
             )$
 # For Python files
 -   repo: https://github.com/psf/black.git
-    rev: 22.8.0
+    rev: 22.10.0
     hooks:
     -   id: black
         files: (.*\.(py|pyi|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
 -   repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
+    rev: 5.0.4
     hooks:
     -   id: flake8
 -   repo: https://github.com/PyCQA/autoflake

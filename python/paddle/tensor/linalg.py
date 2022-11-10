@@ -1961,12 +1961,14 @@ def det(x, name=None):
 
 def slogdet(x, name=None):
     """
+
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
     The determinant can be computed with ``sign * exp(logabsdet)
 
     Supports input of float, double
 
     Note that for matrices that have zero determinant, this returns ``(0, -inf)``
+    
     Args:
         x (Tensor): the batch of matrices of size :math:`(*, n, n)`
             where math:`*` is one or more batch dimensions.
