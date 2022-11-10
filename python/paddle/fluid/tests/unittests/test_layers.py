@@ -4260,8 +4260,8 @@ class TestBook(LayerTest):
 
             theta = layers.data(name="theta", shape=[2, 3], dtype="float32")
             out_shape = layers.data(name="out_shape", shape=[-1], dtype="int32")
-            data_0 = layers.affine_grid(theta, out_shape)
-            data_1 = layers.affine_grid(theta, [5, 3, 28, 28])
+            data_0 = paddle.nn.functional.affine_grid(theta, out_shape)
+            data_1 = paddle.nn.functional.affine_grid(theta, [5, 3, 28, 28])
 
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
