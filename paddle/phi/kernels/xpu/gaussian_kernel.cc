@@ -36,7 +36,13 @@ void GaussianKernel(const Context& ctx,
   uint64_t seed_v = static_cast<uint64_t>(seed);
   // TODO(pangyoki): implement GetXPURandomEngine to set different seeds on
   // corresponding XPU device.
-  auto engine = paddle::framework::GetCPURandomEngine(seed_v);
+  std::shared_ptr<std::mt19937_64> engine;
+  if (seed_v) {
+    engine = std::make_shared<std::mt19937_64>();
+    engine->seed(seed_v);
+  } else {
+    engine = ctx.GetGenerator()->GetCPUEngine();
+  }
 
   std::unique_ptr<T[]> data_cpu(new T[size]);
   for (int64_t i = 0; i < size; ++i) {
