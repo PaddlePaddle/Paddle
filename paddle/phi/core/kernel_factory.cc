@@ -104,7 +104,7 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
 
 KernelResult KernelFactory::SelectKernelOrThrowError(
     const std::string& kernel_name,
-    const KernelKey& kernel_key,
+    const KernelKey& const_kernel_key,
     bool use_gpudnn) const {
   auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(
@@ -112,8 +112,9 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
+  KernelKey kernel_key = const_kernel_key;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (use_gpudnn && kernel_key.backend() == Backend::GPU) {
+  if (use_gpudnn || kernel_key.backend() == Backend::GPUDNN) {
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, kernel_key.layout(), kernel_key.dtype()});
     if (kernel_iter == iter->second.end() &&
@@ -126,6 +127,8 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     }
     LOG(WARNING) << "The cudnn kernel for [" << kernel_name
                  << "] is not registered.";
+    kernel_key =
+        KernelKey(Backend::GPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
   auto kernel_iter = iter->second.find(kernel_key);
