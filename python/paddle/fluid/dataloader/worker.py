@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import six
 import sys
 import paddle
 import numpy as np
@@ -35,16 +34,16 @@ import queue
 __all__ = ['get_worker_info']
 
 
-class _IterableDatasetStopIteration(object):
+class _IterableDatasetStopIteration:
     def __init__(self, worker_id):
         self.worker_id = worker_id
 
 
-class _ResumeIteration(object):
+class _ResumeIteration:
     pass
 
 
-class _DatasetKind(object):
+class _DatasetKind:
     MAP = 0
     ITER = 1
 
@@ -64,7 +63,7 @@ class _DatasetKind(object):
             raise NotImplementedError("unknown Dataset kind {}".format(kind))
 
 
-class ParentWatchDog(object):
+class ParentWatchDog:
     def __init__(self):
         self._parent_pid = os.getppid()
         self._parent_alive = True
@@ -146,7 +145,7 @@ def get_worker_info():
     return _worker_info
 
 
-class WorkerInfo(object):
+class WorkerInfo:
     __initialized = False
 
     def __init__(self, **kwargs):
@@ -161,10 +160,10 @@ class WorkerInfo(object):
                     self.__class__.__name__
                 )
             )
-        return super(WorkerInfo, self).__setattr__(key, val)
+        return super().__setattr__(key, val)
 
 
-class _WorkerException(object):
+class _WorkerException:
     def __init__(self, worker_id, exc_info=None):
         self.worker_id = worker_id
         exc_info = exc_info or sys.exc_info()
@@ -395,7 +394,7 @@ def _worker_loop(
         # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
         pass
     except:
-        six.reraise(*sys.exc_info())
+        raise
     finally:
         if use_shared_memory:
             _cleanup_mmap()

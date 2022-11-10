@@ -32,7 +32,7 @@ os.environ["CPU_NUM"] = "1"
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
-class PyRNNBase(object):
+class PyRNNBase:
     def __init__(self, input_shape, output_shape):
         self.x = np.ones(shape=input_shape).astype("float32")
         self.y = np.zeros(shape=output_shape).astype("float32")
@@ -51,7 +51,7 @@ class PyRNNBase(object):
 
 class PySimpleRNN1(PyRNNBase):
     def __init__(self, input_shape, output_shape):
-        super(PySimpleRNN1, self).__init__(input_shape, output_shape)
+        super().__init__(input_shape, output_shape)
 
         seq_len, batch_size, input_dim = input_shape
         self.h_boot = np.random.normal(size=(batch_size, input_dim)).astype(
@@ -73,7 +73,7 @@ class PySimpleRNN1(PyRNNBase):
 
 class PySimpleRNN2(PyRNNBase):
     def __init__(self, input_shape, output_shape):
-        super(PySimpleRNN2, self).__init__(input_shape, output_shape)
+        super().__init__(input_shape, output_shape)
 
         seq_len, batch_size, input_dim = input_shape
         self.W = np.ones(shape=(input_dim, input_dim)).astype("float32")
@@ -335,7 +335,7 @@ class EagerDeletionRecurrentOpTest2(EagerDeletionRecurrentOpTest1):
         return rnn()
 
     def test_backward(self):
-        super(EagerDeletionRecurrentOpTest2, self).test_backward(rtol=0.01)
+        super().test_backward(rtol=0.01)
 
 
 class EagerDeletionRecurrentOpMultipleMemoryTest(EagerDeletionRecurrentOpTest1):
@@ -529,9 +529,7 @@ class EagerDeletionTwoRecurrentOpsTest(EagerDeletionRecurrentOpTest1):
 
     class PySimpleRNN5(PyRNNBase):
         def __init__(self, input_shape, output_shape):
-            super(EagerDeletionTwoRecurrentOpsTest.PySimpleRNN5, self).__init__(
-                input_shape, output_shape
-            )
+            super().__init__(input_shape, output_shape)
             self.mem_0 = np.zeros(shape=input_shape).astype("float32")
             self.mem_1 = np.zeros(shape=input_shape).astype("float32")
             self.rnn_0_output = np.zeros(shape=input_shape).astype("float32")
@@ -742,7 +740,7 @@ class EagerDeletionFarwardOnlyRnnAndBackwardRnnTest(
 
 class RecurrentNet(paddle.nn.Layer):
     def __init__(self):
-        super(RecurrentNet, self).__init__()
+        super().__init__()
         self.cell = paddle.nn.SimpleRNNCell(16, 32)
         self.rnn = paddle.nn.RNN(self.cell)
 

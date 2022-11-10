@@ -61,7 +61,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     place,
                     ['X', 'Y'],
                     'Out',
-                    check_dygraph=(self.use_mkldnn == False),
+                    check_dygraph=(not self.use_mkldnn),
                 )
 
         def test_check_grad_ingore_x(self):
@@ -72,7 +72,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     ['Y'],
                     'Out',
                     no_grad_set=set("X"),
-                    check_dygraph=(self.use_mkldnn == False),
+                    check_dygraph=(not self.use_mkldnn),
                 )
 
         def test_check_grad_ingore_y(self):
@@ -83,7 +83,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     ['X'],
                     'Out',
                     no_grad_set=set('Y'),
-                    check_dygraph=(self.use_mkldnn == False),
+                    check_dygraph=(not self.use_mkldnn),
                 )
 
         def init_input_output(self):

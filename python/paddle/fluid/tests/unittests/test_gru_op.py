@@ -258,7 +258,7 @@ class TestGRUOpInference(TestGRUOp):
         new_outputs = {}
         new_outputs['Hidden'] = self.outputs['Hidden']
         self.outputs = new_outputs
-        super(TestGRUOpInference, self).test_check_output()
+        super().test_check_output()
 
     # avoid checking gradient
     def test_check_grad(self):

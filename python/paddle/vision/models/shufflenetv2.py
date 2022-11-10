@@ -87,7 +87,7 @@ class InvertedResidual(nn.Layer):
     def __init__(
         self, in_channels, out_channels, stride, activation_layer=nn.ReLU
     ):
-        super(InvertedResidual, self).__init__()
+        super().__init__()
         self._conv_pw = ConvNormActivation(
             in_channels=in_channels // 2,
             out_channels=out_channels // 2,
@@ -133,7 +133,7 @@ class InvertedResidualDS(nn.Layer):
     def __init__(
         self, in_channels, out_channels, stride, activation_layer=nn.ReLU
     ):
-        super(InvertedResidualDS, self).__init__()
+        super().__init__()
 
         # branch1
         self._conv_dw_1 = ConvNormActivation(
@@ -222,7 +222,7 @@ class ShuffleNetV2(nn.Layer):
     """
 
     def __init__(self, scale=1.0, act="relu", num_classes=1000, with_pool=True):
-        super(ShuffleNetV2, self).__init__()
+        super().__init__()
         self.scale = scale
         self.num_classes = num_classes
         self.with_pool = with_pool

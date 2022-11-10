@@ -93,7 +93,7 @@ class TestTensorSize(unittest.TestCase):
         prog_trans = paddle.jit.ProgramTranslator()
         prog_trans.enable(to_static)
         x = paddle.ones([1, 2, 3])
-        if to_static == False:
+        if not to_static:
             return tensor_size(x)
         return tensor_size(x).numpy()
 

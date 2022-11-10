@@ -31,7 +31,7 @@ def gen_data():
 
 class GraphConv(fluid.Layer):
     def __init__(self, name_scope, in_features, out_features):
-        super(GraphConv, self).__init__(name_scope)
+        super().__init__(name_scope)
 
         self._in_features = in_features
         self._out_features = out_features
@@ -52,7 +52,7 @@ class GraphConv(fluid.Layer):
 
 class GCN(fluid.Layer):
     def __init__(self, name_scope, num_hidden):
-        super(GCN, self).__init__(name_scope)
+        super().__init__(name_scope)
         self.gc = GraphConv(self.full_name(), num_hidden, 32)
         self.gc2 = GraphConv(self.full_name(), 32, 10)
 

@@ -1,3 +1,14 @@
+# All the configuration in this file are only for existing operators,
+# which cannot be modified in principle. There's no need to configure
+# this file for new operator.
+#
+# This file is used for two purposes:
+# 1. Configure the mapping relationship of parameter names of operator
+#    between the operators in ops.yaml and the old operators defined
+#    in fluid.
+# 2. Save the extra parameters in the OpMaker of operators temporarily,
+#    which will be removed in the future.
+
 # - op : rnn
 #   backward : rnn_grad
 #   extra :
@@ -5,6 +16,10 @@
 
 - op : abs
   backward : abs_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -54,6 +69,18 @@
   outputs :
     out : Out
     indices : Indices
+
+- op : as_complex
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : as_real
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : asin
   inputs :
@@ -120,8 +147,19 @@
 
 - op : ceil
   backward : ceil_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : celu
+  backward : celu_grad, celu_double_grad(celu_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : cholesky
   inputs :
@@ -257,6 +295,12 @@
   outputs :
     out : Out
 
+- op : diag_embed
+  inputs :
+    input : Input
+  outputs :
+    out : Out
+
 - op : diagonal
   inputs :
     x : Input
@@ -301,6 +345,26 @@
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
 
+- op : eig
+  inputs :
+    x : X
+  outputs :
+    out_w : Eigenvalues
+    out_v : Eigenvectors
+
+- op : eigh
+  inputs :
+    x : X
+  outputs :
+    out_w : Eigenvalues
+    out_v : Eigenvectors
+
+- op : eigvals
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : elementwise_pow
   backward : elementwise_pow_grad
   extra :
@@ -308,7 +372,11 @@
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : elu
-  backward : elu_grad
+  backward : elu_grad, elu_double_grad (elu_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -318,6 +386,12 @@
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
              'str[] table_names = {}']
+
+- op : equal_all
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : erf
   inputs :
@@ -347,6 +421,10 @@
 
 - op : expm1
   backward : expm1_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -398,6 +476,10 @@
 
 - op : floor
   backward : floor_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -457,6 +539,20 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : hardshrink (hard_shrink)
+  backward : hardshrink_grad (hard_shrink_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : hardsigmoid (hard_sigmoid)
+  backward : hardsigmoid_grad (hard_sigmoid_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   extra :
@@ -474,7 +570,13 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : leaky_relu
-  backward : leaky_relu_grad
+  backward : leaky_relu_grad, leaky_relu_double_grad (leaky_relu_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs:
+    negative_slope : alpha
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -490,22 +592,38 @@
     attrs : [bool use_mkldnn = false]
 
 - op : log
-  backward : log_grad
+  backward : log_grad, log_double_grad (log_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : log10
   backward : log10_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : log1p
   backward : log1p_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : log2
   backward : log2_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -513,6 +631,18 @@
   backward : log_softmax_grad
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : logit
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : logsigmoid
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : logsigmoid
   backward : logsigmoid_grad
@@ -620,6 +750,10 @@
 
 - op : reciprocal
   backward : reciprocal_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -667,7 +801,11 @@
     attrs : [bool use_mkldnn = false]
 
 - op : relu
-  backward : relu_grad
+  backward : relu_grad, relu_double_grad (relu_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -688,11 +826,19 @@
 
 - op : round
   backward : round_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : rsqrt
-  backward : rsqrt_grad
+  backward : rsqrt_grad, rsqrt_double_grad (rsqrt_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -722,17 +868,25 @@
     attrs : [bool use_mkldnn = false]
 
 - op : sigmoid
-  backward : sigmoid_grad
+  backward : sigmoid_grad, sigmoid_double_grad (sigmoid_grad_grad), sigmoid_triple_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : silu
   backward : silu_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : sin
-  backward : sin_grad
+  backward : sin_grad, sin_double_grad, sin_triple_grad
   inputs :
     x : X
   outputs :
@@ -761,12 +915,29 @@
 
 - op : softplus
   backward : softplus_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false, str fuse_activation_type = "", float fuse_activation_alpha = 0.0f,
              float fuse_activation_beta = 0.0f, float fuse_activation_scale = 1.0f]
 
+- op : softshrink
+  backward : softshrink_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    threshold : lambda
+
 - op : softsign
   backward : softsign_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -777,12 +948,20 @@
     out : Out
 
 - op : sqrt
-  backward : sqrt_grad
+  backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : square
-  backward : square_grad
+  backward : square_grad, square_double_grad (square_grad_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
@@ -827,14 +1006,28 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh_shrink
   backward : tanh_shrink_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : thresholded_relu
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : trace
   inputs :

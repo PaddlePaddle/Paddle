@@ -30,7 +30,7 @@ def attention(
 ):
     r"""
     Note:
-        This API is only used from ``CUDA 11.7`` .
+        This API is only used from ``CUDA 11.8`` .
 
     SparseCsrTensor is used to store the intermediate result of Attention matrix
     in Transformer module, which can reduce memory usage and improve performance.

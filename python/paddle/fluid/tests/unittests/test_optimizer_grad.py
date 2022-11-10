@@ -29,7 +29,7 @@ np.random.seed(10)
 SHAPE = [16, 10]
 
 
-class SimpleNetWithCond(object):
+class SimpleNetWithCond:
     """
     Build net with conditional Block and useless layers.
     """

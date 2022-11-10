@@ -384,7 +384,7 @@ def nonzero(x, as_tuple=False):
 
     Args:
         x (Tensor): The input tensor variable.
-        as_tuple (bool): Return type, Tensor or tuple of Tensor.
+        as_tuple (bool, optional): Return type, Tensor or tuple of Tensor.
 
     Returns:
         Tensor. The data type is int64.
@@ -429,7 +429,7 @@ def nonzero(x, as_tuple=False):
     rank = len(shape)
 
     if in_dygraph_mode():
-        outs = _C_ops.where_index(x)
+        outs = _C_ops.nonzero(x)
     elif paddle.in_dynamic_mode():
         outs = _legacy_C_ops.where_index(x)
     else:
@@ -904,7 +904,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     """
 
     if in_dygraph_mode():
-        if axis == None:
+        if axis is None:
             axis = -1
         out, indices = _C_ops.topk(x, k, axis, largest, sorted)
         return out, indices

@@ -24,10 +24,6 @@
 namespace paddle {
 namespace framework {
 
-// stream types
-constexpr const char* kD2HStream = "D2HStream";
-constexpr const char* kH2DStream = "H2DStream";
-
 class ContextManager {
  public:
   using DeviceContextMap =
@@ -94,13 +90,14 @@ std::vector<size_t> StreamAnalyzer::GetNeedEventVarIds(
     return false;
   };
 
-  bool is_comm = interpreter::IsCommunicationOp(cur_instr.OpBase()->Type()) ||
-                 interpreter::IsCommunicationOp(next_instr.OpBase()->Type());
+  bool is_memcpy =
+      interpreter::IsMemcpyOp(cur_instr) || interpreter::IsMemcpyOp(next_instr);
+
   std::vector<size_t> need_event_var_ids;
   for (auto& item : next_instr.Inputs()) {
     for (auto var_id : item.second) {
       if (unique_var_ids.count(var_id) > 0) {
-        if (!is_comm) {
+        if (is_memcpy) {
           if (next_instr.NoDataTransformVars().count(var_id)) {
             VLOG(4) << "Skip inserting event at variable " << item.first
                     << " of operator " << next_instr.OpBase()->Type()
@@ -186,12 +183,22 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
     const OpFuncNode& op_func_node) {
   auto& op = op_func_node.operator_base_;
   auto& op_type = op->Type();
+  const std::string& execution_stream = op_func_node.execution_stream_;
   ContextManager& ctx_manager = ContextManager::Instance();
 
   // only gpu/npu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
   if (platform::is_gpu_place(place_) || platform::is_npu_place(place_) ||
       platform::is_custom_place(place_)) {
+    VLOG(7) << "Parse DeviceContext for " << op_type
+            << ", execution stream = " << execution_stream;
+    if (execution_stream != kDefaultStream) {
+      return ctx_manager
+          .Get(std::string(kCustomStream) + "-" + execution_stream, place_)
+          .get()
+          .get();
+    }
+
     if (op_type == interpreter::kMemcpyD2H) {
       return ctx_manager.Get(std::string(kD2HStream), place_).get().get();
     } else if (op_type == interpreter::kMemcpyH2D) {
@@ -232,11 +239,15 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
  */
 bool StreamAnalyzer::IsDirectRun(Instruction& cur_instr,
                                  const Instruction& next_instr) {
-  if (&cur_instr.DeviceContext() == &next_instr.DeviceContext()) return true;
+  if (cur_instr.KernelType() == next_instr.KernelType() &&
+      (&cur_instr.DeviceContext() == &next_instr.DeviceContext())) {
+    return true;
+  }
 
   // xpu&ipu memcpy kerenl is synchronous.
-  if (platform::is_ipu_place(place_) || platform::is_xpu_place(place_))
+  if (platform::is_ipu_place(place_) || platform::is_xpu_place(place_)) {
     return true;
+  }
 
   // npu d2h kernel is asynchronous.
   if (platform::is_npu_place(place_) || platform::is_custom_place(place_)) {

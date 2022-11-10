@@ -28,7 +28,7 @@ batch_num = 1000
 
 class SimpleNet(fluid.Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.net_a = paddle.nn.Sequential(
             paddle.nn.Linear(10, 20),
             paddle.nn.Linear(20, 20),

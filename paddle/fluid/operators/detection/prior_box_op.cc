@@ -14,13 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detection/prior_box_op.h"
 #include <string>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/infermeta/binary.h"
-
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
-#include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
 namespace operators {

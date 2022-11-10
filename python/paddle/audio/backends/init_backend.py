@@ -79,7 +79,7 @@ def list_available_backends() -> List[str]:
 
     if "paddleaudio" in sys.modules:
         version = paddleaudio.__version__
-        if _check_version(version) == False:
+        if not _check_version(version):
             err_msg = (
                 "the version of paddleaudio installed is {},\n"
                 "please ensure the paddleaudio >= 1.0.2."

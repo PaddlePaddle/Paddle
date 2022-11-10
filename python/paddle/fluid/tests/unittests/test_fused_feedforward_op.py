@@ -253,7 +253,7 @@ class APITestStaticFusedFFN(unittest.TestCase):
             pre_layer_norm=False,
         )
 
-        ######base ffn######
+        # base ffn
         linear1_out = F.linear(x, linear1_weight, linear1_bias)
         act_out = F.relu(linear1_out)
         dropout1_out = F.dropout(x=act_out, p=0.0, training=False)
@@ -265,7 +265,6 @@ class APITestStaticFusedFFN(unittest.TestCase):
             weight=ln2_scale,
             bias=ln2_bias,
         )
-        ######base ffn######
 
         exe = paddle.static.Executor(paddle.CUDAPlace(0))
 
