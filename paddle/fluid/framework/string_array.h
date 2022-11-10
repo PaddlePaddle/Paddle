@@ -20,13 +20,14 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/phi/core/vocab.h"
 
 namespace paddle {
 namespace framework {
 
 using String = std::string;
 using Strings = std::vector<std::string>;
-using Vocab = std::unordered_map<std::wstring, std::int32_t>;
+using Vocab = phi::Vocab;
 
 // Convert the std::string type to the std::string type.
 bool ConvertStrToWstr(const std::string& src, std::wstring* res);

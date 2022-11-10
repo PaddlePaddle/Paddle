@@ -142,6 +142,7 @@ enum class AttributeType {
   DATA_TYPE,
   DATA_LAYOUT,
   PLACE,
+  STRING_PTR,
 };
 
 struct AttributeArgDef {

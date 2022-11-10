@@ -46,7 +46,8 @@ using Attribute = paddle::variant<bool,
                                   IntArray,
                                   DataType,
                                   DataLayout,
-                                  Place>;
+                                  Place,
+                                  std::string*>;
 
 using AttributeMap = paddle::flat_hash_map<std::string, Attribute>;
 

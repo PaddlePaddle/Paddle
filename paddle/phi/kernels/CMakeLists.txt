@@ -77,7 +77,8 @@ set(COMMON_KERNEL_DEPS
     phi_data_layout_transform
     gpc
     utf8proc
-    device_memory_aligment)
+    device_memory_aligment
+    string_array)
 
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
 if(WITH_NCCL OR WITH_RCCL)

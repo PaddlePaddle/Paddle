@@ -101,11 +101,3 @@ REGISTER_OPERATOR(save_combine,
                   ops::SaveCombineOp,
                   ops::SaveCombineOpProtoMaker,
                   ops::SaveCombineOpInferVarType);
-
-REGISTER_OP_CPU_KERNEL(
-    save_combine,
-    ops::SaveCombineOpKernel<phi::CPUContext, float>,
-    ops::SaveCombineOpKernel<phi::CPUContext, double>,
-    ops::SaveCombineOpKernel<phi::CPUContext, paddle::platform::bfloat16>,
-    ops::SaveCombineOpKernel<phi::CPUContext, int>,
-    ops::SaveCombineOpKernel<phi::CPUContext, int64_t>);

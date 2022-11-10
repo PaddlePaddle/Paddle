@@ -2937,6 +2937,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
         need_prepare_phi_data_ = true;
         tensor_in = &(var->Get<framework::LoDTensorArray>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
+      } else if (var->IsType<framework::Vocab>()) {
+        tensor_in = &(var->Get<framework::Vocab>());
+        phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
@@ -3085,6 +3088,20 @@ void OperatorWithKernel::BuildPhiKernelContext(
           }
         }
         break;
+      case phi::AttributeType::STRING_PTR: {
+        // std::string* is ragard as attr in PHI,
+        // but it is regard as output in Fluid.
+        auto it = ctx.outputs.find(attr_names[i]);
+        if (it == ctx.outputs.end() || it->second.empty()) {
+          phi_kernel_context->EmplaceBackAttr(nullptr);
+          continue;
+        }
+        auto* var = (it->second)[0];
+        if (var->template IsType<std::string>()) {
+          phi_kernel_context->EmplaceBackAttr(
+              var->template GetMutable<std::string>());
+        }
+      } break;
       case phi::AttributeType::SCALARS: {
         PADDLE_ENFORCE_NE(
             attr_iter,
