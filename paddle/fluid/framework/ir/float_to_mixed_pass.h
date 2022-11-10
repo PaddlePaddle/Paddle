@@ -62,7 +62,9 @@ class FloatToMixedPass : public FusePassBase {
 
   void ProcessOpWithDtypeAttr() const;
 
-  void ProcessPersistableVar() const;
+  void ProcessWeights() const;
+
+  bool WeightsNotMixed(framework::ir::Node* var_node) const;
 
  private:
   mutable bool keep_io_types_;
