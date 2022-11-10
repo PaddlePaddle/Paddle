@@ -1022,10 +1022,30 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}     input_shapes.emplace_back("{input_name}", ddims_vec);"""
             )
 
+        def convert_scalar(scalar):
+            return scalar
+
+        input_tensor_code += f"""
+{code_indent}     framework::AttributeMap attrs;"""
+
+        for attr_name in self.attrs['names']:
+            if 'IntArray' in self.attrs['attr_info'][attr_name][0]:
+                input_tensor_code += f"""
+{code_indent}     attrs["{attr_name}"] = {attr_name}.GetData();"""
+            elif 'Scalar' in self.attrs['attr_info'][attr_name][0]:
+                pass  # temp pass
+            elif 'DataType' in self.attrs['attr_info'][attr_name][0]:
+                pass
+            elif 'Place' in self.attrs['attr_info'][attr_name][0]:
+                pass
+            else:
+                input_tensor_code += f"""
+{code_indent}     attrs["{attr_name}"] = {attr_name};"""
+
         input_tensor_code = (
             input_tensor_code
             + f"""
-{code_indent}     platform::RecordOpInfoSupplement("{self.api}", input_shapes);
+{code_indent}     platform::RecordOpInfoSupplement("{self.api}", input_shapes, attrs);
 {code_indent}  }}"""
         )
         kernel_args = ["*dev_ctx"]

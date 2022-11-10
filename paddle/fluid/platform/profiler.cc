@@ -306,7 +306,8 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
 RecordOpInfoSupplement::RecordOpInfoSupplement(
     const std::string &type,
     const std::vector<std::pair<const char *, std::vector<framework::DDim>>>
-        &input_shapes) {
+        &input_shapes,
+    const framework::AttributeMap &attrs) {
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
@@ -314,7 +315,6 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
     return;
   }
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
-  framework::AttributeMap attrs;
   uint64_t op_id = 0;
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
       PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
