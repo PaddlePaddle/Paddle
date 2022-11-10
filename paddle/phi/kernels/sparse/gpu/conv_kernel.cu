@@ -31,6 +31,12 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
+template <typename IntT>
+__global__ void print(const IntT* rulebook, const int rulebook_len) {
+  for (int i = 0; i < rulebook_len; i++) {
+    printf("\n%d,%d,%d\n", i, *(rulebook + i), *(rulebook + rulebook_len + i));
+  }
+}
 template <typename T, typename IntT>
 void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                         const SparseCooTensor& x,
@@ -185,6 +191,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
             N,
             K,
             static_cast<const int32_t*>(gather_indices),
+            nullptr,
             static_cast<const int32_t*>(scatter_indices),
             static_cast<cutlass::half_t>(1),
             static_cast<cutlass::half_t>(1));
@@ -202,6 +209,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                             N,
                             K,
                             gather_indices,
+                            nullptr,
                             scatter_indices,
                             static_cast<T>(1),
                             static_cast<T>(1));
@@ -219,6 +227,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                             N,
                             K,
                             gather_indices,
+                            nullptr,
                             scatter_indices,
                             static_cast<T>(1),
                             static_cast<T>(1));

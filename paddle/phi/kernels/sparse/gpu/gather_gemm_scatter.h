@@ -34,6 +34,7 @@ typedef void (*fp16_gather_gemm_scatter)(const GPUContext& dev_ctx,
                                          const int n,
                                          const int k,
                                          const int32_t* a_indices,
+                                         const int32_t* b_indices,
                                          const int32_t* c_d_indices,
                                          cutlass::half_t const alpha,
                                          cutlass::half_t const beta);
@@ -46,6 +47,7 @@ typedef void (*fp32_gather_gemm_scatter)(const GPUContext& dev_ctx,
                                          const int n,
                                          const int k,
                                          const int32_t* a_indices,
+                                         const int32_t* b_indices,
                                          const int32_t* c_d_indices,
                                          float const alpha,
                                          float const beta);
@@ -58,10 +60,11 @@ typedef void (*fp64_gather_gemm_scatter)(const GPUContext& dev_ctx,
                                          const int n,
                                          const int k,
                                          const int32_t* a_indices,
+                                         const int32_t* b_indices,
                                          const int32_t* c_d_indices,
                                          double const alpha,
                                          double const beta);
-template <typename T, typename Gemm>
+template <typename T, typename KernelConfig>
 void launchKernel(const GPUContext& dev_ctx,
                   const T* const a,
                   const T* const b,
@@ -71,30 +74,43 @@ void launchKernel(const GPUContext& dev_ctx,
                   const int n,
                   const int k,
                   const int32_t* a_indices,
+                  const int32_t* b_indices,
                   const int32_t* c_d_indices,
                   T const alpha,
                   T const beta) {
   cutlass::gemm::GemmCoord problem_size_real({m, n, k});
-  int split_k_slices = 1;
+  using Gemm = typename KernelConfig::Gemm;
   typename Gemm::Arguments arguments{
-      cutlass::gemm::GemmUniversalMode::kGemm,
+      KernelConfig::Mode,
       problem_size_real,
-      split_k_slices,
+      KernelConfig::SplitKSlices,
       {alpha, beta},
       a,
       b,
       c,
       d,
-      cutlass::layout::RowMajor().capacity(problem_size_real.mk()),
-      cutlass::layout::RowMajor().capacity(problem_size_real.kn()),
-      cutlass::layout::RowMajor().capacity(problem_size_real.mn()),
-      cutlass::layout::RowMajor().capacity(problem_size_real.mn()),
-      problem_size_real.k(),
-      problem_size_real.n(),
-      problem_size_real.n(),
-      problem_size_real.n(),
+      typename Gemm::Base::LayoutA().capacity(problem_size_real.mk()),
+      typename Gemm::Base::LayoutB().capacity(problem_size_real.kn()),
+      typename Gemm::Base::LayoutC().capacity(problem_size_real.mn()),
+      typename Gemm::Base::LayoutC().capacity(problem_size_real.mn()),
+      std::is_same<typename Gemm::Base::LayoutA,
+                   cutlass::layout::RowMajor>::value
+          ? problem_size_real.k()
+          : problem_size_real.m(),
+      std::is_same<typename Gemm::Base::LayoutB,
+                   cutlass::layout::RowMajor>::value
+          ? problem_size_real.n()
+          : problem_size_real.k(),
+      std::is_same<typename Gemm::Base::LayoutC,
+                   cutlass::layout::RowMajor>::value
+          ? problem_size_real.n()
+          : problem_size_real.m(),
+      std::is_same<typename Gemm::Base::LayoutC,
+                   cutlass::layout::RowMajor>::value
+          ? problem_size_real.n()
+          : problem_size_real.m(),
       a_indices,
-      nullptr,
+      b_indices,
       c_d_indices};
   size_t workspace_size = Gemm::get_workspace_size(arguments);
   cutlass::device_memory::allocation<uint8_t> workspace(workspace_size);
@@ -134,6 +150,9 @@ struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_h1688gemm_64x128_32x2_nn_align8 {
@@ -164,6 +183,9 @@ struct cutlass_tensorop_h1688gemm_64x128_32x2_nn_align8 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align4 {
@@ -194,6 +216,9 @@ struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4 {
@@ -224,6 +249,9 @@ struct cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8 {
@@ -254,6 +282,9 @@ struct cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8 {
@@ -284,6 +315,9 @@ struct cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8 {
@@ -312,6 +346,9 @@ struct cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8 {
@@ -340,6 +377,73 @@ struct cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
+};
+template <bool GatherA, bool GatherB, bool ScatterD>
+struct cutlass_tensorop_h1688gemm_64x128_32x2_tn_align8 {
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::layout::ColumnMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm75,
+      cutlass::gemm::GemmShape<64, 128, 32>,
+      cutlass::gemm::GemmShape<32, 64, 32>,
+      cutlass::gemm::GemmShape<16, 8, 8>,
+      cutlass::epilogue::thread::LinearCombination<cutlass::half_t,
+                                                   8,
+                                                   cutlass::half_t,
+                                                   cutlass::half_t>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      2,
+      8,
+      8,
+      cutlass::arch::OpMultiplyAdd,
+      cutlass::ComplexTransform::kNone,
+      cutlass::ComplexTransform::kNone,
+      GatherA,
+      GatherB,
+      ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
+};
+template <bool GatherA, bool GatherB, bool ScatterD>
+struct cutlass_tensorop_f16_s16816gemm_f16_128x128_32x5_nt_align8 {
+  using Gemm = cutlass::gemm::device::GemmUniversal<
+      cutlass::half_t,
+      cutlass::layout::ColumnMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      cutlass::half_t,
+      cutlass::layout::RowMajor,
+      float,
+      cutlass::arch::OpClassTensorOp,
+      cutlass::arch::Sm80,
+      cutlass::gemm::GemmShape<128, 128, 32>,
+      cutlass::gemm::GemmShape<64, 64, 32>,
+      cutlass::gemm::GemmShape<16, 8, 16>,
+      cutlass::epilogue::thread::
+          LinearCombination<cutlass::half_t, 8, float, float>,
+      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+      5,
+      8,
+      8,
+      cutlass::arch::OpMultiplyAdd,
+      cutlass::ComplexTransform::kNone,
+      cutlass::ComplexTransform::kNone,
+      GatherA,
+      GatherB,
+      ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemmSplitKParallel;
+  static const int SplitKSlices = 64;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4 {
@@ -367,6 +471,9 @@ struct cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4 {
@@ -394,6 +501,9 @@ struct cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4 {
@@ -421,6 +531,9 @@ struct cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4 {
@@ -448,6 +561,9 @@ struct cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4 {
@@ -475,6 +591,9 @@ struct cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4 {
@@ -502,6 +621,9 @@ struct cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_d884gemm_16x32_16x5_nn_align1 {
@@ -529,6 +651,9 @@ struct cutlass_tensorop_d884gemm_16x32_16x5_nn_align1 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 struct cutlass_tensorop_d884gemm_32x16_16x5_nn_align1 {
@@ -556,6 +681,9 @@ struct cutlass_tensorop_d884gemm_32x16_16x5_nn_align1 {
       GatherA,
       GatherB,
       ScatterD>;
+  static const cutlass::gemm::GemmUniversalMode Mode =
+      cutlass::gemm::GemmUniversalMode::kGemm;
+  static const int SplitKSlices = 1;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
@@ -564,100 +692,88 @@ fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
   if (K == 4 && N == 16) {
     return launchKernel<
         cutlass::half_t,
-        typename cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4<GatherA,
+                                                        GatherB,
+                                                        ScatterD>>;
   }
   if (K == 16 && N == 16) {
     return launchKernel<
         cutlass::half_t,
-        typename cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
+                                                        GatherB,
+                                                        ScatterD>>;
   }
   if (K == 16 && N == 32) {
     return launchKernel<
         cutlass::half_t,
-        typename cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
+                                                        GatherB,
+                                                        ScatterD>>;
   }
   if (K == 32 && N == 32) {
     return launchKernel<
         cutlass::half_t,
-        typename cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
+                                                        GatherB,
+                                                        ScatterD>>;
   }
   if (K == 32 && N == 64) {
     return launchKernel<
         cutlass::half_t,
-        typename cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
+                                                        GatherB,
+                                                        ScatterD>>;
   }
   if (K == 64 && N == 64) {
     if (M > 100000)
       launchKernel<
           cutlass::half_t,
-          typename cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
+          cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8<GatherA,
+                                                                   GatherB,
+                                                                   ScatterD>>;
     if (M > 20000)
       launchKernel<
           cutlass::half_t,
-          typename cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
+          cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8<GatherA,
+                                                                  GatherB,
+                                                                  ScatterD>>;
     if (M > 15000)
       return launchKernel<
           cutlass::half_t,
-          typename cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
+          cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8<GatherA,
+                                                           GatherB,
+                                                           ScatterD>>;
     return launchKernel<
         cutlass::half_t,
-        typename cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
+                                                        GatherB,
+                                                        ScatterD>>;
   }
   if (K == 128) {
     if (M >= 5000)
       return launchKernel<
           cutlass::half_t,
-          typename cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
+          cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
+                                                          GatherB,
+                                                          ScatterD>>;
     return launchKernel<
         cutlass::half_t,
-        typename cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8<GatherA,
+                                                         GatherB,
+                                                         ScatterD>>;
   }
   if (N == 128) {
     return launchKernel<
         cutlass::half_t,
-        typename cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8<GatherA,
+                                                        GatherB,
+                                                        ScatterD>>;
   }
   return launchKernel<
       cutlass::half_t,
-      typename cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4<GatherA,
-                                                               GatherB,
-                                                               ScatterD>::Gemm>;
+      cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4<GatherA,
+                                                      GatherB,
+                                                      ScatterD>>;
 }
 template <bool GatherA, bool GatherB, bool ScatterD>
 fp32_gather_gemm_scatter getBestFp32Kernel(const int M,
@@ -666,188 +782,169 @@ fp32_gather_gemm_scatter getBestFp32Kernel(const int M,
   if (K == 4 && N == 16) {
     return launchKernel<
         float,
-        typename cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
+                                                            GatherB,
+                                                            ScatterD>>;
   }
   if (K == 16 && N == 16) {
     return launchKernel<
         float,
-        typename cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
+                                                            GatherB,
+                                                            ScatterD>>;
   }
   if (K == 16 && N == 32) {
     if (M >= 10000)
       return launchKernel<
           float,
-          typename cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
+          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<GatherA,
+                                                          GatherB,
+                                                          ScatterD>>;
     return launchKernel<
         float,
-        typename cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
+                                                            GatherB,
+                                                            ScatterD>>;
   }
   if (K == 32 && N == 32) {
     if (M >= 10000)
       return launchKernel<
           float,
-          typename cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
+          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<GatherA,
+                                                          GatherB,
+                                                          ScatterD>>;
     return launchKernel<
         float,
-        typename cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
+                                                            GatherB,
+                                                            ScatterD>>;
   }
   if (K == 32 && N == 64) {
     if (M >= 10000)
       return launchKernel<
           float,
-          typename cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
+          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<GatherA,
+                                                          GatherB,
+                                                          ScatterD>>;
     return launchKernel<
         float,
-        typename cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
+                                                            GatherB,
+                                                            ScatterD>>;
   }
   if (K == 64 && N == 64) {
     if (M >= 15000)
       return launchKernel<
           float,
-          typename cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
+          cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4<GatherA,
+                                                          GatherB,
+                                                          ScatterD>>;
     return launchKernel<
         float,
-        typename cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
+                                                            GatherB,
+                                                            ScatterD>>;
   }
   if (K == 128) {
     if (M >= 100000)
       return launchKernel<
           float,
-          typename cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
+          cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4<GatherA,
+                                                               GatherB,
+                                                               ScatterD>>;
     if (M >= 5000)
       return launchKernel<
           float,
-          typename cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
+          cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4<GatherA,
+                                                              GatherB,
+                                                              ScatterD>>;
     return launchKernel<
         float,
-        typename cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4<GatherA,
+                                                              GatherB,
+                                                              ScatterD>>;
   }
   if (N == 128) {
     if (M >= 100000)
       return launchKernel<
           float,
-          typename cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
+          cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4<GatherA,
+                                                                GatherB,
+                                                                ScatterD>>;
     if (M >= 5000)
       return launchKernel<
           float,
-          typename cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
+          cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4<GatherA,
+                                                               GatherB,
+                                                               ScatterD>>;
     return launchKernel<
         float,
-        typename cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4<
-            GatherA,
-            GatherB,
-            ScatterD>::Gemm>;
+        cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4<GatherA,
+                                                            GatherB,
+                                                            ScatterD>>;
   }
   return launchKernel<
       float,
-      typename cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<
-          GatherA,
-          GatherB,
-          ScatterD>::Gemm>;
+      cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4<GatherA,
+                                                          GatherB,
+                                                          ScatterD>>;
 }
 template <bool GatherA, bool GatherB, bool ScatterD>
 fp64_gather_gemm_scatter getBestFp64Kernel(const int M,
                                            const int N,
                                            const int K) {
   if (K == 4 && N == 16) {
-    return launchKernel<double,
-                        typename cutlass_tensorop_d884gemm_16x32_16x5_nn_align1<
-                            GatherA,
-                            GatherB,
-                            ScatterD>::Gemm>;
+    return launchKernel<
+        double,
+        cutlass_tensorop_d884gemm_16x32_16x5_nn_align1<GatherA,
+                                                       GatherB,
+                                                       ScatterD>>;
   }
   if (K == 16 && N == 16) {
     if (M >= 10000)
       return launchKernel<
           double,
-          typename cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<
-              GatherA,
-              GatherB,
-              ScatterD>::Gemm>;
-    return launchKernel<double,
-                        typename cutlass_tensorop_d884gemm_16x32_16x5_nn_align1<
-                            GatherA,
-                            GatherB,
-                            ScatterD>::Gemm>;
+          cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<GatherA,
+                                                         GatherB,
+                                                         ScatterD>>;
+    return launchKernel<
+        double,
+        cutlass_tensorop_d884gemm_16x32_16x5_nn_align1<GatherA,
+                                                       GatherB,
+                                                       ScatterD>>;
   }
   if (K == 16 && N == 32) {
-    return launchKernel<double,
-                        typename cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<
-                            GatherA,
-                            GatherB,
-                            ScatterD>::Gemm>;
+    return launchKernel<
+        double,
+        cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<GatherA,
+                                                       GatherB,
+                                                       ScatterD>>;
   }
   if (K == 32 && N == 32) {
-    return launchKernel<double,
-                        typename cutlass_tensorop_d884gemm_16x32_16x5_nn_align1<
-                            GatherA,
-                            GatherB,
-                            ScatterD>::Gemm>;
+    return launchKernel<
+        double,
+        cutlass_tensorop_d884gemm_16x32_16x5_nn_align1<GatherA,
+                                                       GatherB,
+                                                       ScatterD>>;
   }
   if (K == 32 && N == 64) {
-    return launchKernel<double,
-                        typename cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<
-                            GatherA,
-                            GatherB,
-                            ScatterD>::Gemm>;
+    return launchKernel<
+        double,
+        cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<GatherA,
+                                                       GatherB,
+                                                       ScatterD>>;
   }
   if (K == 64 && N == 64) {
-    return launchKernel<double,
-                        typename cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<
-                            GatherA,
-                            GatherB,
-                            ScatterD>::Gemm>;
+    return launchKernel<
+        double,
+        cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<GatherA,
+                                                       GatherB,
+                                                       ScatterD>>;
   }
-  return launchKernel<
-      double,
-      typename cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<GatherA,
-                                                              GatherB,
-                                                              ScatterD>::Gemm>;
+  return launchKernel<double,
+                      cutlass_tensorop_d884gemm_32x16_16x5_nn_align1<GatherA,
+                                                                     GatherB,
+                                                                     ScatterD>>;
 }
 }  // namespace sparse
 }  // namespace phi

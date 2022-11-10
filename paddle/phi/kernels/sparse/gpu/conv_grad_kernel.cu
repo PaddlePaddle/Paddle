@@ -24,6 +24,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
+#ifdef PADDLE_WITH_CUTLASS
+#include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
+#endif
 
 namespace phi {
 namespace sparse {
@@ -130,33 +133,45 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   phi::backends::gpu::GpuMemsetAsync(
       out_index_ptr, 0, sizeof(int) * x.nnz() * 2, dev_ctx.stream());
 
-  GroupIndexsV2<<<config.block_per_grid,
-                  config.thread_per_block,
-                  0,
-                  dev_ctx.stream()>>>(rulebook_len,
-                                      x.nnz(),
-                                      kernel_size,
-                                      offsets[kernel_size / 2],
-                                      rulebook_ptr,
-                                      out_index_ptr,
-                                      unique_value_ptr);
+#ifdef PADDLE_WITH_CUTLASS
+  bool cutlass = true;
+  if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
+  if (in_channels % 8 != 0 || out_channels % 8 != 0) cutlass = false;
+  if (!std::is_same<T, phi::dtype::float16>::value) cutlass = false;
+  if (!std::is_same<IntT, int32_t>::value) cutlass = false;
 
-  GatherV2<T, IntT>(dev_ctx,
-                    x.values().data<T>(),
-                    out_index_ptr,
-                    unique_value_ptr,
-                    x.nnz(),
-                    kernel_size,
-                    in_channels,
-                    2,
-                    in_features_ptr);
+  if (!cutlass) {
+#endif
+    GroupIndexsV2<<<config.block_per_grid,
+                    config.thread_per_block,
+                    0,
+                    dev_ctx.stream()>>>(rulebook_len,
+                                        x.nnz(),
+                                        kernel_size,
+                                        offsets[kernel_size / 2],
+                                        rulebook_ptr,
+                                        out_index_ptr,
+                                        unique_value_ptr);
 
-  Gather<T, IntT>(dev_ctx,
-                  out_grad.values().data<T>(),
-                  rulebook_ptr + rulebook_len,
-                  rulebook_len,
-                  out_channels,
-                  out_grad_features_ptr);
+    GatherV2<T, IntT>(dev_ctx,
+                      x.values().data<T>(),
+                      out_index_ptr,
+                      unique_value_ptr,
+                      x.nnz(),
+                      kernel_size,
+                      in_channels,
+                      2,
+                      in_features_ptr);
+
+    Gather<T, IntT>(dev_ctx,
+                    out_grad.values().data<T>(),
+                    rulebook_ptr + rulebook_len,
+                    rulebook_len,
+                    out_channels,
+                    out_grad_features_ptr);
+#ifdef PADDLE_WITH_CUTLASS
+  }
+#endif
 
   const T* kernel_ptr = kernel.data<T>();
   for (int i = 0; i < kernel_size; i++) {
@@ -172,44 +187,105 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
     const T* tmp_kernel_ptr = kernel_ptr + i * in_channels * out_channels;
     T* tmp_d_x_ptr = d_x_features_ptr + offsets[i] * in_channels;
     T* tmp_d_kernel_ptr = d_kernel_ptr + i * in_channels * out_channels;
+    const IntT* gather_x_indices = rulebook_ptr + offsets[i];
+    const IntT* scatter_x_indices = rulebook_ptr + offsets[i];
+    const IntT* gather_out_indices = rulebook_ptr + rulebook_len + offsets[i];
 
-    // call gemm: d_kernel = transpose(x) * out_grad
-    // (in_channels, n) * (n, out_channels)
-    blas.GEMM(CblasTrans,
-              CblasNoTrans,
-              K,
-              N,
-              M,
-              static_cast<T>(1),
-              tmp_in_ptr,
-              tmp_out_grad_ptr,
-              static_cast<T>(0),
-              tmp_d_kernel_ptr);
+// call gemm: d_kernel = transpose(x) * out_grad
+// (in_channels, n) * (n, out_channels)
+#ifdef PADDLE_WITH_CUTLASS
+    if (cutlass) {
+      // call gemm: d_kernel = transpose(x) * out_grad
+      // (in_channels, n) * (n, out_channels)
+      if constexpr (std::is_same<T, phi::dtype::float16>::value &&
+                    std::is_same<IntT, int32_t>::value) {
+        launchKernel<
+            cutlass::half_t,
+            cutlass_tensorop_f16_s16816gemm_f16_128x128_32x5_nt_align8<true,
+                                                                       true,
+                                                                       false>>(
+            dev_ctx,
+            reinterpret_cast<const cutlass::half_t*>(x.values().data<T>()),
+            reinterpret_cast<const cutlass::half_t*>(
+                out_grad.values().data<T>()),
+            nullptr,
+            reinterpret_cast<cutlass::half_t*>(tmp_d_kernel_ptr),
+            in_channels,
+            out_channels,
+            counter_ptr[i],
+            static_cast<const int32_t*>(gather_x_indices),
+            static_cast<const int32_t*>(gather_out_indices),
+            nullptr,
+            static_cast<cutlass::half_t>(1),
+            static_cast<cutlass::half_t>(0));
 
-    // call gemm: d_x = out_grad * transpose(kernel)
-    // (n, out_channels) * (out_channels, in_channels)
-    blas.GEMM(CblasNoTrans,
-              CblasTrans,
-              M,
-              K,
-              N,
-              static_cast<T>(1),
-              tmp_out_grad_ptr,
-              tmp_kernel_ptr,
-              static_cast<T>(0),
-              tmp_d_x_ptr);
+        // call gemm: d_x = out_grad * transpose(kernel)
+        // (n, out_channels) * (out_channels, in_channels)
+        launchKernel<cutlass::half_t,
+                     cutlass_tensorop_h1688gemm_64x128_32x2_tn_align8<true,
+                                                                      false,
+                                                                      true>>(
+            dev_ctx,
+            reinterpret_cast<const cutlass::half_t*>(
+                out_grad.values().data<T>()),
+            reinterpret_cast<const cutlass::half_t*>(tmp_kernel_ptr),
+            reinterpret_cast<cutlass::half_t*>(x_grad_values_ptr),
+            reinterpret_cast<cutlass::half_t*>(x_grad_values_ptr),
+            counter_ptr[i],
+            in_channels,
+            out_channels,
+            static_cast<const int32_t*>(gather_out_indices),
+            nullptr,
+            static_cast<const int32_t*>(scatter_x_indices),
+            static_cast<cutlass::half_t>(1),
+            static_cast<cutlass::half_t>(1));
+      }
+    } else {
+#endif
+      blas.GEMM(CblasTrans,
+                CblasNoTrans,
+                K,
+                N,
+                M,
+                static_cast<T>(1),
+                tmp_in_ptr,
+                tmp_out_grad_ptr,
+                static_cast<T>(0),
+                tmp_d_kernel_ptr);
+
+      // call gemm: d_x = out_grad * transpose(kernel)
+      // (n, out_channels) * (out_channels, in_channels)
+      blas.GEMM(CblasNoTrans,
+                CblasTrans,
+                M,
+                K,
+                N,
+                static_cast<T>(1),
+                tmp_out_grad_ptr,
+                tmp_kernel_ptr,
+                static_cast<T>(0),
+                tmp_d_x_ptr);
+
+#ifdef PADDLE_WITH_CUTLASS
+    }
+#endif
   }
-
   // 4. scatter
-  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
-                                   d_x_features_ptr,
-                                   out_index.data<int>(),
-                                   unique_value.data<int>(),
-                                   x_grad->nnz(),
-                                   kernel_size,
-                                   in_channels,
-                                   2,
-                                   x_grad_values_ptr);
+#ifdef PADDLE_WITH_CUTLASS
+  if (!cutlass) {
+#endif
+    phi::funcs::sparse::ScatterV2<T>(dev_ctx,
+                                     d_x_features_ptr,
+                                     out_index.data<int>(),
+                                     unique_value.data<int>(),
+                                     x_grad->nnz(),
+                                     kernel_size,
+                                     in_channels,
+                                     2,
+                                     x_grad_values_ptr);
+#ifdef PADDLE_WITH_CUTLASS
+  }
+#endif
 }
 
 template <typename T, typename Context>
