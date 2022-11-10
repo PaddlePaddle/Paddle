@@ -92,7 +92,9 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
             if isinstance(out_shape, Variable)
             else out_shape
         )
-        return _C_ops.affine_grid(theta, _out_shape, use_cudnn, align_corners)
+        if not use_cudnn:
+            theta._set_use_cudnn(False)
+        return _C_ops.affine_grid(theta, _out_shape, align_corners)
     elif in_dynamic_mode():
         _out_shape = (
             out_shape.numpy().tolist()

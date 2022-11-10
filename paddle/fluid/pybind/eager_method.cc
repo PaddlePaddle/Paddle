@@ -1444,6 +1444,26 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__set_use_cudnn(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+
+  PADDLE_ENFORCE(
+      self->tensor.defined() && self->tensor.is_dense_tensor(),
+      paddle::platform::errors::Fatal(
+          "function _set_use_cudnn is only effective for DenseTensor"));
+
+  bool use_cudnn = pybind::CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+  phi::DenseTensorMeta* dense_tensor_meta =
+      phi::DenseTensorUtils::GetMutableMeta(
+          static_cast<phi::DenseTensor*>(self->tensor.impl().get()));
+  dense_tensor_meta->use_cudnn = use_cudnn;
+
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_set_vocab(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -1995,6 +2015,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"_copy_gradient_from",
      (PyCFunction)(void (*)(void))tensor__copy_gradient_from,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"_set_use_cudnn",
+     (PyCFunction)(void (*)(void))tensor__set_use_cudnn,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     /** the methods to adapt old dygraph, will be removed in the future **/
