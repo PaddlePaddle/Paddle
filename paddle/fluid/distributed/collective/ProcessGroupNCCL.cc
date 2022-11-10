@@ -228,113 +228,64 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
     phi::DenseTensor* tensor,
     int src_rank,
-    bool sync_op,
-    bool use_calc_stream) {
-  return PointToPoint(
-      tensor,
-      src_rank,
-      [&](phi::DenseTensor* output,
-          int src,
-          ncclComm_t comm,
-          gpuStream_t stream) {
-        return platform::dynload::ncclRecv(
-            output->data(),
-            output->numel(),
-            platform::ToNCCLDataType(output->dtype()),
-            src,
-            comm,
-            stream);
-      },
-      CommType::RECV,
-      sync_op,
-      use_calc_stream);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::RecvPartial(
-    phi::DenseTensor* tensor,
-    int src_rank,
     int64_t offset,
-    int64_t length,
+    int64_t numel,
     bool sync_op,
     bool use_calc_stream) {
-  phi::DenseTensor tensor_flattened;
-  tensor_flattened.ShareDataWith(*tensor).Resize({tensor->numel()});
-  phi::DenseTensor tensor_recv =
-      tensor_flattened.Slice(offset, offset + length);
+  auto recv_functor = [](phi::DenseTensor* output,
+                         int src,
+                         ncclComm_t comm,
+                         gpuStream_t stream) {
+    return platform::dynload::ncclRecv(
+        output->data(),
+        output->numel(),
+        platform::ToNCCLDataType(output->dtype()),
+        src,
+        comm,
+        stream);
+  };
+  // numel > 0 indicates the tensor need to be sliced
+  bool is_partial = numel > 0;
+  if (is_partial) {
+    phi::DenseTensor tensor_flattened;
+    tensor_flattened.ShareDataWith(*tensor).Resize({tensor->numel()});
+    phi::DenseTensor tensor_sliced =
+        tensor_flattened.Slice(offset, offset + numel);
+    tensor = &tensor_sliced;
+  }
   return PointToPoint(
-      &tensor_recv,
-      src_rank,
-      [&](phi::DenseTensor* output,
-          int src,
-          ncclComm_t comm,
-          gpuStream_t stream) {
-        return platform::dynload::ncclRecv(
-            output->data(),
-            output->numel(),
-            platform::ToNCCLDataType(output->dtype()),
-            src,
-            comm,
-            stream);
-      },
-      CommType::RECV,
-      sync_op,
-      use_calc_stream);
+      tensor, src_rank, recv_functor, CommType::RECV, sync_op, use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
     phi::DenseTensor* tensor,
     int dst_rank,
-    bool sync_op,
-    bool use_calc_stream) {
-  return PointToPoint(
-      tensor,
-      dst_rank,
-      [&](phi::DenseTensor* input,
-          int dst,
-          ncclComm_t comm,
-          gpuStream_t stream) {
-        return platform::dynload::ncclSend(
-            input->data(),
-            input->numel(),
-            platform::ToNCCLDataType(input->dtype()),
-            dst,
-            comm,
-            stream);
-      },
-      CommType::SEND,
-      sync_op,
-      use_calc_stream);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::SendPartial(
-    phi::DenseTensor* tensor,
-    int dst_rank,
     int64_t offset,
-    int64_t length,
+    int64_t numel,
     bool sync_op,
     bool use_calc_stream) {
-  phi::DenseTensor tensor_flattened;
-  tensor_flattened.ShareDataWith(*tensor).Resize({tensor->numel()});
-  phi::DenseTensor tensor_send =
-      tensor_flattened.Slice(offset, offset + length);
+  auto send_functor = [](phi::DenseTensor* input,
+                         int dst,
+                         ncclComm_t comm,
+                         gpuStream_t stream) {
+    return platform::dynload::ncclSend(input->data(),
+                                       input->numel(),
+                                       platform::ToNCCLDataType(input->dtype()),
+                                       dst,
+                                       comm,
+                                       stream);
+  };
+  // numel > 0 indicates the tensor need to be sliced
+  bool is_partial = numel > 0;
+  if (is_partial) {
+    phi::DenseTensor tensor_flattened;
+    tensor_flattened.ShareDataWith(*tensor).Resize({tensor->numel()});
+    phi::DenseTensor tensor_sliced =
+        tensor_flattened.Slice(offset, offset + numel);
+    tensor = &tensor_sliced;
+  }
   return PointToPoint(
-      &tensor_send,
-      dst_rank,
-      [&](phi::DenseTensor* input,
-          int dst,
-          ncclComm_t comm,
-          gpuStream_t stream) {
-        return platform::dynload::ncclSend(
-            input->data(),
-            input->numel(),
-            platform::ToNCCLDataType(input->dtype()),
-            dst,
-            comm,
-            stream);
-      },
-      CommType::SEND,
-      sync_op,
-      use_calc_stream);
+      tensor, dst_rank, send_functor, CommType::SEND, sync_op, use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(

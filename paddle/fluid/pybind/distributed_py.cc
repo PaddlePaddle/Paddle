@@ -171,7 +171,9 @@ void BindDistributed(py::module *m) {
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
                 auto *out_dense = p_dense.get();
-                return self.Send(out_dense, dst, sync_op);
+                // numel == -1 indicates sending the whole tensor
+                return self.Send(
+                    out_dense, dst, /*offset*/ 0, /*numel*/ -1, sync_op);
               },
               py::arg("tensor"),
               py::arg("dst"),
@@ -193,7 +195,7 @@ void BindDistributed(py::module *m) {
                 int64_t send_numel = numel / nranks;
                 int64_t offset = send_numel * rank_id;
                 auto *out_dense = p_dense.get();
-                return self.SendPartial(
+                return self.Send(
                     out_dense, dst_rank, offset, send_numel, sync_op);
               },
               py::arg("tensor"),
@@ -213,7 +215,9 @@ void BindDistributed(py::module *m) {
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
                 auto *in_dense = p_dense.get();
-                return self.Recv(in_dense, src, sync_op);
+                // numel == -1 indicates receiving the whole tensor
+                return self.Recv(
+                    in_dense, src, /*offset*/ 0, /*numel*/ -1, sync_op);
               },
               py::arg("tensor"),
               py::arg("src"),
@@ -235,7 +239,7 @@ void BindDistributed(py::module *m) {
                 int64_t recv_numel = numel / nranks;
                 int64_t offset = recv_numel * rank_id;
                 auto *out_dense = p_dense.get();
-                return self.RecvPartial(
+                return self.Send(
                     out_dense, src_rank, offset, recv_numel, sync_op);
               },
               py::arg("tensor"),
@@ -1125,8 +1129,11 @@ void BindDistributed(py::module *m) {
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
                 auto *out_dense = p_dense.get();
+                // numel == -1 indicates sending the whole tensor
                 return self.Send(out_dense,
                                  dst,
+                                 /*offset*/ 0,
+                                 /*numel*/ -1,
                                  /*sync_op*/ true,
                                  /*use_calc_stream*/ true);
               },
@@ -1148,12 +1155,12 @@ void BindDistributed(py::module *m) {
                 int64_t send_numel = numel / nranks;
                 int64_t offset = send_numel * rank_id;
                 auto *out_dense = p_dense.get();
-                return self.SendPartial(out_dense,
-                                        dst_rank,
-                                        offset,
-                                        send_numel,
-                                        /*sync_op*/ true,
-                                        /*use_calc_stream*/ true);
+                return self.Send(out_dense,
+                                 dst_rank,
+                                 offset,
+                                 send_numel,
+                                 /*sync_op*/ true,
+                                 /*use_calc_stream*/ true);
               },
               py::arg("tensor"),
               py::arg("dst"),
@@ -1170,8 +1177,11 @@ void BindDistributed(py::module *m) {
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
                 auto *in_dense = p_dense.get();
+                // numel == -1 indicates receiving the whole tensor
                 return self.Recv(in_dense,
                                  src,
+                                 /*offset*/ 0,
+                                 /*numel*/ -1,
                                  /*sync_op*/ true,
                                  /*use_calc_stream*/ true);
               },
@@ -1193,12 +1203,12 @@ void BindDistributed(py::module *m) {
                 int64_t recv_numel = numel / nranks;
                 int64_t offset = recv_numel * rank_id;
                 auto *out_dense = p_dense.get();
-                return self.RecvPartial(out_dense,
-                                        src_rank,
-                                        offset,
-                                        recv_numel,
-                                        /*sync_op*/ true,
-                                        /*use_calc_stream*/ true);
+                return self.Recv(out_dense,
+                                 src_rank,
+                                 offset,
+                                 recv_numel,
+                                 /*sync_op*/ true,
+                                 /*use_calc_stream*/ true);
               },
               py::arg("tensor"),
               py::arg("src"),

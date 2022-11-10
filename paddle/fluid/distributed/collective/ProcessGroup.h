@@ -99,8 +99,8 @@ class ProcessGroup {
   virtual std::string GetBackendName() const = 0;
 
   virtual const phi::DeviceContext& GetDeviceContext(const Place& place) const {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Does not support to get device_context from ProcessGroup%s.",
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "ProcessGroup%s does not support get device_context.",
         GetBackendName()));
   }
 
@@ -108,8 +108,8 @@ class ProcessGroup {
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
       bool sync_op) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support all_gather with sync_op flag",
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "ProcessGroup%s does not support all_gather with sync_op flag.",
         GetBackendName()));
   }
 
@@ -118,15 +118,15 @@ class ProcessGroup {
       const phi::DenseTensor& in_tensor,
       const AllreduceOptions& opts,
       bool sync_op) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support all_reduce with sync_op flag",
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "ProcessGroup%s does not support all_reduce with sync_op flag.",
         GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support barrier", GetBackendName()));
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "ProcessGroup%s does not support barrier.", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
@@ -134,46 +134,28 @@ class ProcessGroup {
       const phi::DenseTensor& in_tensor,
       const BroadcastOptions& opts,
       bool sync_op) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(platform::errors::Unimplemented(
         "ProcessGroup%s does not support broadcast with sync_op flag",
         GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                                    int src_rank,
+                                                   int64_t offset,
+                                                   int64_t numel,
                                                    bool sync_op) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support recv with sync_op flag",
-        GetBackendName()));
-  }
-
-  virtual std::shared_ptr<ProcessGroup::Task> RecvPartial(
-      phi::DenseTensor* tensor,
-      int src_rank,
-      int64_t offset,
-      int64_t length,
-      bool sync_op) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support recv_partial with sync_op flag",
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "ProcessGroup%s does not support recv with sync_op flag.",
         GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Send(phi::DenseTensor*,
                                                    int dst_rank,
+                                                   int64_t offset,
+                                                   int64_t numel,
                                                    bool sync_op) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support send with sync_op flag",
-        GetBackendName()));
-  }
-
-  virtual std::shared_ptr<ProcessGroup::Task> SendPartial(
-      phi::DenseTensor* tensor,
-      int dst_rank,
-      int64_t offset,
-      int64_t length,
-      bool sync_op) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support send_partial with sync_op flag",
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "ProcessGroup%s does not support send with sync_op flag.",
         GetBackendName()));
   }
 
