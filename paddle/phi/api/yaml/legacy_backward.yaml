@@ -1,71 +1,3 @@
-- backward_api : tan_grad
-  forward : tan (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : tan_grad
-  inplace : (out_grad -> x_grad)
-
-- backward_api : tanh_double_grad
-  forward : tanh_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
-  args : (Tensor out, Tensor grad_out, Tensor grad_x_grad)
-  output : Tensor(out_grad), Tensor(grad_out_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [out, out]
-  kernel :
-    func : tanh_double_grad
-  backward : tanh_triple_grad
-  inplace : (grad_x_grad -> grad_out_grad)
-
-- backward_api : tanh_grad
-  forward : tanh (Tensor x) -> Tensor(out)
-  args : (Tensor out, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out]
-  kernel :
-    func : tanh_grad
-  backward : tanh_double_grad
-  inplace : (out_grad -> x_grad)
-
-- backward_api : tanh_shrink_grad
-  forward : tanh_shrink (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : tanh_shrink_grad
-  inplace : (out_grad -> x_grad)
-
-- backward_api : tanh_triple_grad
-  forward : tanh_double_grad (Tensor out, Tensor grad_out_forward, Tensor grad_x_grad_forward) -> Tensor(grad_out_new), Tensor(grad_out_grad)
-  args : (Tensor out, Tensor grad_out_forward, Tensor grad_x_grad_forward, Tensor grad_out_new_grad, Tensor grad_out_grad_grad)
-  output : Tensor(out_grad), Tensor(grad_out_forward_grad), Tensor(grad_x_grad_forward_grad)
-  infer_meta :
-    func : GeneralTernaryGradInferMeta
-    param : [out, out, grad_x_grad_forward]
-  kernel :
-    func : tanh_triple_grad
-  inplace : (grad_x_grad_forward -> grad_out_forward_grad)
-  optional : grad_out_new_grad, grad_out_grad_grad
-
-- backward_api : temporal_shift_grad
-  forward : temporal_shift(Tensor x, int seg_num, float shift_ratio, str data_format_str) -> Tensor(out)
-  args : (Tensor out_grad, int seg_num, float shift_ratio, str data_format_str)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out_grad]
-  kernel :
-    func : temporal_shift_grad
-
 - backward_op : abs_double_grad
   forward : abs_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_x_grad)
@@ -1936,6 +1868,16 @@
     param : [arr]
   kernel :
     func : take_along_axis_grad
+
+- backward_op : temporal_shift_grad
+  forward : temporal_shift(Tensor x, int seg_num, float shift_ratio, str data_format_str) -> Tensor(out)
+  args : (Tensor out_grad, int seg_num, float shift_ratio, str data_format_str)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : temporal_shift_grad
 
 - backward_op : tile_double_grad
   forward : tile_grad (Tensor x, Tensor grad_out, IntArray repeat_times) -> Tensor(grad_x)
