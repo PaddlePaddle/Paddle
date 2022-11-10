@@ -60,7 +60,7 @@ class PairwiseDistance(Layer):
     """
 
     def __init__(self, p=2.0, epsilon=1e-6, keepdim=False, name=None):
-        super(PairwiseDistance, self).__init__()
+        super().__init__()
         self.p = p
         self.epsilon = epsilon
         self.keepdim = keepdim

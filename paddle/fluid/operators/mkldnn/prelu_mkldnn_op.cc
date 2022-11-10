@@ -20,7 +20,6 @@ namespace operators {
 
 using dnnl::memory;
 
-using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::MKLDNNGetDataType;
 using platform::to_void_cast;

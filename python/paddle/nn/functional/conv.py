@@ -368,26 +368,22 @@ def conv1d(
 
           import paddle
           import paddle.nn.functional as F
-          import numpy as np
-          x = np.array([[[4, 8, 1, 9],
-            [7, 2, 0, 9],
-            [6, 9, 2, 6]]]).astype(np.float32)
-          w=np.array(
-          [[[9, 3, 4],
-            [0, 0, 7],
-            [2, 5, 6]],
-           [[0, 3, 4],
-            [2, 9, 7],
-            [5, 6, 8]]]).astype(np.float32)
 
-          x_var = paddle.to_tensor(x)
-          w_var = paddle.to_tensor(w)
-          y_var = F.conv1d(x_var, w_var)
-          y_np = y_var.numpy()
-          print(y_np)
+          x = paddle.to_tensor([[[4, 8, 1, 9],
+                                 [7, 2, 0, 9],
+                                 [6, 9, 2, 6]]], dtype="float32")
+          w = paddle.to_tensor([[[9, 3, 4],
+                                 [0, 0, 7],
+                                 [2, 5, 6]],
+                                [[0, 3, 4],
+                                 [2, 9, 7],
+                                 [5, 6, 8]]], dtype="float32")
 
-          # [[[133. 238.]
-          #   [160. 211.]]]
+          y = F.conv1d(x, w)
+          print(y)
+          # Tensor(shape=[1, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+          #        [[[133., 238.],
+          #          [160., 211.]]])
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:
@@ -905,24 +901,20 @@ def conv1d_transpose(
     Examples:
         .. code-block:: python
 
-
-
           import paddle
           import paddle.nn.functional as F
-          import numpy as np
 
           # shape: (1, 2, 4)
-          x=np.array([[[4, 0, 9, 7],
-                       [8, 0, 9, 2,]]]).astype(np.float32)
+          x = paddle.to_tensor([[[4, 0, 9, 7],
+                                [8, 0, 9, 2,]]], dtype="float32")
           # shape: (2, 1, 2)
-          w=np.array([[[7, 0]],
-                      [[4, 2]]]).astype(np.float32)
-          x_var = paddle.to_tensor(x)
-          w_var = paddle.to_tensor(w)
-          y_var = F.conv1d_transpose(x_var, w_var)
-          print(y_var)
+          w = paddle.to_tensor([[[7, 0]],
+                                [[4, 2]]], dtype="float32")
 
-          # [[[60. 16. 99. 75.  4.]]]
+          y = F.conv1d_transpose(x, w)
+          print(y)
+          # Tensor(shape=[1, 1, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+          #        [[[60., 16., 99., 75., 4. ]]])
     """
     cudnn_version = get_cudnn_version()
     if cudnn_version is not None:

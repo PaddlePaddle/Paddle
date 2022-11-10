@@ -36,7 +36,7 @@ fluid.default_main_program().random_seed = 1
 
 
 # from transformer_config import ModelHyperParams, TrainTaskConfig, merge_cfg_from_list
-class TrainTaskConfig(object):
+class TrainTaskConfig:
     # only support GPU currently
     use_gpu = True
     # the epoch number to train.
@@ -88,7 +88,7 @@ class TrainTaskConfig(object):
     use_token_batch = False
 
 
-class InferTaskConfig(object):
+class InferTaskConfig:
     use_gpu = True
     # the number of examples in one run for sequence generation.
     batch_size = 10
@@ -105,7 +105,7 @@ class InferTaskConfig(object):
     model_path = "trained_models/pass_1.infer.model"
 
 
-class ModelHyperParams(object):
+class ModelHyperParams:
     # These following five vocabularies related configurations will be set
     # automatically according to the passed vocabulary path and special tokens.
     # size of source word dictionary.
@@ -268,7 +268,7 @@ fast_decoder_data_input_fields = (
 
 
 # from optim import LearningRateScheduler
-class LearningRateScheduler(object):
+class LearningRateScheduler:
     """
     Wrapper for learning rate scheduling as described in the Transformer paper.
     LearningRateScheduler adapts the learning rate externally and the adapted
@@ -714,13 +714,13 @@ def train_loop(
 
 
 # import transformer_reader as reader
-class SortType(object):
+class SortType:
     GLOBAL = 'global'
     POOL = 'pool'
     NONE = "none"
 
 
-class Converter(object):
+class Converter:
     def __init__(self, vocab, beg, end, unk, delimiter):
         self._vocab = vocab
         self._beg = beg
@@ -739,7 +739,7 @@ class Converter(object):
         )
 
 
-class ComposedConverter(object):
+class ComposedConverter:
     def __init__(self, converters):
         self._converters = converters
 
@@ -750,7 +750,7 @@ class ComposedConverter(object):
         ]
 
 
-class SentenceBatchCreator(object):
+class SentenceBatchCreator:
     def __init__(self, batch_size):
         self.batch = []
         self._batch_size = batch_size
@@ -763,7 +763,7 @@ class SentenceBatchCreator(object):
             return tmp
 
 
-class TokenBatchCreator(object):
+class TokenBatchCreator:
     def __init__(self, batch_size):
         self.batch = []
         self.max_len = -1
@@ -782,14 +782,14 @@ class TokenBatchCreator(object):
             self.batch.append(info)
 
 
-class SampleInfo(object):
+class SampleInfo:
     def __init__(self, i, max_len, min_len):
         self.i = i
         self.min_len = min_len
         self.max_len = max_len
 
 
-class MinMaxFilter(object):
+class MinMaxFilter:
     def __init__(self, max_len, min_len, underlying_creator):
         self._min_len = min_len
         self._max_len = max_len
@@ -806,7 +806,7 @@ class MinMaxFilter(object):
         return self._creator.batch
 
 
-class DataReader(object):
+class DataReader:
     """
     The data reader loads all data from files and produces batches of data
     in the way corresponding to settings.

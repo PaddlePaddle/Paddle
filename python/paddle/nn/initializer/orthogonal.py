@@ -67,7 +67,7 @@ class Orthogonal(Initializer):
 
     def __init__(self, gain=1.0, name=None):
         assert gain is not None, 'gain should not be None'
-        super(Orthogonal, self).__init__()
+        super().__init__()
         self._gain = gain
 
     def __call__(self, var, block=None):

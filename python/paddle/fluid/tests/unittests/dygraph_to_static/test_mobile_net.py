@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
+from paddle.fluid.dygraph.nn import Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -52,18 +52,16 @@ class ConvBNLayer(fluid.dygraph.Layer):
         use_cudnn=True,
         name=None,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
             groups=num_groups,
-            act=None,
-            use_cudnn=use_cudnn,
-            param_attr=ParamAttr(
+            weight_attr=ParamAttr(
                 initializer=MSRA(), name=self.full_name() + "_weights"
             ),
             bias_attr=False,
@@ -97,7 +95,7 @@ class DepthwiseSeparable(fluid.dygraph.Layer):
         scale,
         name=None,
     ):
-        super(DepthwiseSeparable, self).__init__()
+        super().__init__()
 
         self._depthwise_conv = ConvBNLayer(
             num_channels=num_channels,
@@ -125,7 +123,7 @@ class DepthwiseSeparable(fluid.dygraph.Layer):
 
 class MobileNetV1(fluid.dygraph.Layer):
     def __init__(self, scale=1.0, class_dim=1000):
-        super(MobileNetV1, self).__init__()
+        super().__init__()
         self.scale = scale
         self.dwsl = []
 
@@ -289,7 +287,7 @@ class InvertedResidualUnit(fluid.dygraph.Layer):
         padding,
         expansion_factor,
     ):
-        super(InvertedResidualUnit, self).__init__()
+        super().__init__()
         num_expfilter = int(round(num_in_filter * expansion_factor))
         self._expand_conv = ConvBNLayer(
             num_channels=num_channels,
@@ -333,7 +331,7 @@ class InvertedResidualUnit(fluid.dygraph.Layer):
 
 class InvresiBlocks(fluid.dygraph.Layer):
     def __init__(self, in_c, t, c, n, s):
-        super(InvresiBlocks, self).__init__()
+        super().__init__()
 
         self._first_block = InvertedResidualUnit(
             num_channels=in_c,
@@ -370,7 +368,7 @@ class InvresiBlocks(fluid.dygraph.Layer):
 
 class MobileNetV2(fluid.dygraph.Layer):
     def __init__(self, class_dim=1000, scale=1.0):
-        super(MobileNetV2, self).__init__()
+        super().__init__()
         self.scale = scale
         self.class_dim = class_dim
 
@@ -472,7 +470,7 @@ def fake_data_reader(batch_size, label_size):
     return reader
 
 
-class Args(object):
+class Args:
     batch_size = 4
     model = "MobileNetV1"
     lr = 0.001

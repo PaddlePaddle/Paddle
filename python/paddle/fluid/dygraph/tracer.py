@@ -102,7 +102,7 @@ class Tracer(core.Tracer):
     """
 
     def __init__(self):
-        super(Tracer, self).__init__()
+        super().__init__()
 
         self._train_mode = True
 

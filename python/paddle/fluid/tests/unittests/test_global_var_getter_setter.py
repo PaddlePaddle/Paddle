@@ -16,7 +16,7 @@ import paddle.fluid as fluid
 import unittest as unittest
 
 
-class VarInfo(object):
+class VarInfo:
     def __init__(self, var_name, var_type, writable):
         self.name = var_name
         self.type = var_type

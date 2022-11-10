@@ -76,7 +76,7 @@ class L1Decay(fluid.regularizer.L1Decay):
     """
 
     def __init__(self, coeff=0.0):
-        super(L1Decay, self).__init__(coeff)
+        super().__init__(coeff)
 
 
 class L2Decay(fluid.regularizer.L2Decay):
@@ -137,4 +137,4 @@ class L2Decay(fluid.regularizer.L2Decay):
     """
 
     def __init__(self, coeff=0.0):
-        super(L2Decay, self).__init__(coeff)
+        super().__init__(coeff)

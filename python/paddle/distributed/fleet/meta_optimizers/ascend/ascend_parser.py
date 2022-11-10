@@ -17,7 +17,7 @@ from functools import reduce
 
 __all__ = []
 
-registerd_op = {  ## forwards
+registerd_op = {  # forwards
     "elementwise_add": "AddParser",
     "matmul": "MatMulParser",
     "mul": "MulParser",
@@ -71,7 +71,7 @@ registerd_op = {  ## forwards
     "equal": "EqualParser",
     "expand": "ExpandParser",
     "squeeze2": "SqueezeParser",
-    ## backwords
+    # backwords
     "matmul_grad": "MatMulGradParser",
     "mul_grad": "MulGradParser",
     "relu_grad": "ReluGradParser",
@@ -93,7 +93,7 @@ registerd_op = {  ## forwards
     "gather_grad": "GatherGradParser",
     "transpose2_grad": "TransposeGradParser",
     "layer_norm_grad": "LayerNormGradParser",
-    ## opt
+    # opt
     "sgd": "SGDParser",
     # "adam": "AdamParser",
 }
@@ -101,7 +101,7 @@ global_cnt = -1
 global_input_cnt = -1
 
 
-class AscendHelper(object):
+class AscendHelper:
     def __init__(self):
         self.dtype2ge_map = {
             0: core.GEDataType.DT_BOOL,
@@ -136,7 +136,7 @@ class AscendHelper(object):
         return self.dtype2np_map[index]
 
 
-class AscendParserFactory(object):
+class AscendParserFactory:
     def __init__(self, graph, var2geop):
         self.graph = graph
         self.var2geop = var2geop
@@ -149,7 +149,7 @@ class AscendParserFactory(object):
             raise ValueError("parser class %s does not exist" % parser_class)
 
 
-class AscendParserBase(object):
+class AscendParserBase:
     def __init__(self, graph, var2geop):
         self.graph = graph
         self.var2geop = var2geop
@@ -303,7 +303,7 @@ class AscendParserBase(object):
 
 class AddParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(AddParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "elementwise_add"
 
     def _apply(self):
@@ -321,7 +321,7 @@ class AddParser(AscendParserBase):
 
 class DotSubParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(DotSubParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "elementwise_sub"
 
     def _apply(self):
@@ -339,7 +339,7 @@ class DotSubParser(AscendParserBase):
 
 class DotMulParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(DotMulParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "elementwise_mul"
 
     def _apply(self):
@@ -357,7 +357,7 @@ class DotMulParser(AscendParserBase):
 
 class DotDivParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(DotDivParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "elementwise_div"
 
     def _apply(self):
@@ -375,7 +375,7 @@ class DotDivParser(AscendParserBase):
 
 class DotPowParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(DotPowParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "elementwise_pow"
 
     def _apply(self):
@@ -393,7 +393,7 @@ class DotPowParser(AscendParserBase):
 
 class LessParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(LessParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "less_than"
 
     def _apply(self):
@@ -411,7 +411,7 @@ class LessParser(AscendParserBase):
 
 class MaxParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(MaxParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "elementwise_max"
 
     def _apply(self):
@@ -429,7 +429,7 @@ class MaxParser(AscendParserBase):
 
 class MinParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(MinParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "elementwise_min"
 
     def _apply(self):
@@ -445,10 +445,10 @@ class MinParser(AscendParserBase):
         return [min_out], [[0]]
 
 
-## cal
+# cal
 class LogParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(LogParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "log"
 
     def _apply(self):
@@ -461,7 +461,7 @@ class LogParser(AscendParserBase):
 
 class SqrtParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SqrtParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "sqrt"
 
     def _apply(self):
@@ -474,7 +474,7 @@ class SqrtParser(AscendParserBase):
 
 class PowParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(PowParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "pow"
 
     def _apply(self):
@@ -494,7 +494,7 @@ class PowParser(AscendParserBase):
 
 class SquareParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SquareParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "square"
 
     def _apply(self):
@@ -507,7 +507,7 @@ class SquareParser(AscendParserBase):
 
 class SumParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SumParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "sum"
 
     def _apply(self):
@@ -537,7 +537,7 @@ class SumParser(AscendParserBase):
 
 class LogicalNotParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(LogicalNotParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "logical_not"
 
     def _apply(self):
@@ -550,7 +550,7 @@ class LogicalNotParser(AscendParserBase):
 
 class MeanParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(MeanParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "mean"
 
     def _apply(self):
@@ -568,7 +568,7 @@ class MeanParser(AscendParserBase):
 
 class ReduceSumParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(ReduceSumParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "reduce_sum"
 
     def _apply(self):
@@ -592,7 +592,7 @@ class ReduceSumParser(AscendParserBase):
 
 # class IncrementParser(AscendParserBase):
 #    def __init__(self, graph, var2geop):
-#        super(IncrementParser, self).__init__(graph, var2geop)
+#        super().__init__(graph, var2geop)
 #        self.parser_name = "increment"
 #
 #    def _apply(self):
@@ -605,10 +605,10 @@ class ReduceSumParser(AscendParserBase):
 #        return [increment]
 
 
-## matrix cal
+# matrix cal
 class MatMulParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(MatMulParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "matmul"
 
     def _apply(self):
@@ -647,7 +647,7 @@ class MatMulParser(AscendParserBase):
 
 class MulParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(MulParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "mul"
 
     def _apply(self):
@@ -734,7 +734,7 @@ class MulParser(AscendParserBase):
 
 class LayerNormParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(LayerNormParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "layer_norm"
 
     def _apply(self):
@@ -803,10 +803,10 @@ class LayerNormParser(AscendParserBase):
         return [y, mean, variance], [[1], [2], [0]]
 
 
-## activate function
+# activate function
 class ReluParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(ReluParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "relu"
 
     def _apply(self):
@@ -819,7 +819,7 @@ class ReluParser(AscendParserBase):
 
 class GeluParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(GeluParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "gelu"
 
     def _apply(self):
@@ -832,7 +832,7 @@ class GeluParser(AscendParserBase):
 
 class TanhParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(TanhParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "tanh"
 
     def _apply(self):
@@ -843,10 +843,10 @@ class TanhParser(AscendParserBase):
         return [tanh], [[0]]
 
 
-## loss function
+# loss function
 class SoftmaxWithCrossEntropyParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SoftmaxWithCrossEntropyParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "softmax_with_cross_entropy"
 
     def _apply(self):
@@ -915,7 +915,7 @@ class SoftmaxWithCrossEntropyParser(AscendParserBase):
 
 class SoftMaxParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SoftMaxParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "softmax"
 
     def _apply(self):
@@ -932,10 +932,10 @@ class SoftMaxParser(AscendParserBase):
         return [softmax], [[0]]
 
 
-## general
+# general
 class ShapeParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(ShapeParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "shape"
 
     def _apply(self):
@@ -948,7 +948,7 @@ class ShapeParser(AscendParserBase):
 
 class FillConstantParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(FillConstantParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "fill_constant"
 
     def _apply(self):
@@ -988,7 +988,7 @@ class FillConstantParser(AscendParserBase):
 
 class TruncatedNormalParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(TruncatedNormalParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "truncated_gaussian_random"
 
     def _apply(self):
@@ -1038,7 +1038,7 @@ class TruncatedNormalParser(AscendParserBase):
             .set_attr_int32("seed", 0)
         )
 
-        ## wirte the output of truncatedNormal from startup_program to main_program
+        # wirte the output of truncatedNormal from startup_program to main_program
         if self.op.block.var(self.op.output('Out')[0]).persistable:
             # print("%s is Persistable in truncated_normal" %
             #      (self.op.output('Out')[0]))
@@ -1077,7 +1077,7 @@ class TruncatedNormalParser(AscendParserBase):
 
 class GatherParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(GatherParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "gather"
 
     def _apply(self):
@@ -1098,7 +1098,7 @@ class GatherParser(AscendParserBase):
 
 class ScatterParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(ScatterParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "scatter"
 
     def _apply(self):
@@ -1139,7 +1139,7 @@ class ScatterParser(AscendParserBase):
 
 class CastParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(CastParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "cast"
 
     def _apply(self):
@@ -1157,7 +1157,7 @@ class CastParser(AscendParserBase):
 
 class AssignParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(AssignParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "assign"
 
     def _apply(self):
@@ -1175,7 +1175,7 @@ class AssignParser(AscendParserBase):
 
 class ScaleParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(ScaleParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "scale"
 
     def _apply(self):
@@ -1216,7 +1216,7 @@ class ScaleParser(AscendParserBase):
 
 class SliceParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SliceParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "slice"
 
     def _apply(self):
@@ -1257,7 +1257,7 @@ class SliceParser(AscendParserBase):
 
 class ReshapeParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(ReshapeParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "reshape2"
 
     def _apply(self):
@@ -1297,7 +1297,7 @@ class ReshapeParser(AscendParserBase):
 
 class TransposeParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(TransposeParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "transpose2"
 
     def _apply(self):
@@ -1319,7 +1319,7 @@ class TransposeParser(AscendParserBase):
 
 class AccuracyParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(AccuracyParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "accuracy"
 
     def _apply(self):
@@ -1395,7 +1395,7 @@ class AccuracyParser(AscendParserBase):
 
 class TopkParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(TopkParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "top_k"
 
     def _apply(self):
@@ -1439,7 +1439,7 @@ class TopkParser(AscendParserBase):
 
 class LookupTableParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(LookupTableParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "lookup_table"
 
     def _apply(self):
@@ -1465,7 +1465,7 @@ class LookupTableParser(AscendParserBase):
 
 class StackParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(StackParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "stack"
 
     def _apply(self):
@@ -1504,7 +1504,7 @@ class StackParser(AscendParserBase):
 
 class UnSqueezeParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(UnSqueezeParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "unsqueeze2"
 
     def _apply(self):
@@ -1524,10 +1524,10 @@ class UnSqueezeParser(AscendParserBase):
         return [shape, output], [[1], [0]]
 
 
-## parallel
+# parallel
 class AllGatherParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(AllGatherParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "c_allgather"
 
     def _apply(self):
@@ -1548,7 +1548,7 @@ class AllGatherParser(AscendParserBase):
 
 class AllReduceParser(AscendParserBase):
     def __init__(self, graph, var2geop, reduction):
-        super(AllReduceParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "c_allreduce_" + reduction
         self.reduction = reduction
 
@@ -1578,17 +1578,17 @@ class AllReduceParser(AscendParserBase):
 
 class AllReduceSumParser(AllReduceParser):
     def __init__(self, graph, var2geop):
-        super(AllReduceSumParser, self).__init__(graph, var2geop, 'sum')
+        super().__init__(graph, var2geop, 'sum')
 
 
 class AllReduceMaxParser(AllReduceParser):
     def __init__(self, graph, var2geop):
-        super(AllReduceMaxParser, self).__init__(graph, var2geop, 'max')
+        super().__init__(graph, var2geop, 'max')
 
 
 class BroadcastParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(BroadcastParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "c_broadcast"
 
     def _apply(self):
@@ -1609,7 +1609,7 @@ class BroadcastParser(AscendParserBase):
 
 class ReduceScatterParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(ReduceScatterParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "c_reduce_scatter"
 
     def _apply(self):
@@ -1632,7 +1632,7 @@ class ReduceScatterParser(AscendParserBase):
 
 class SendParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SendParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "c_send"
 
     def _apply(self):
@@ -1655,7 +1655,7 @@ class SendParser(AscendParserBase):
 
 class ReceiveParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(ReceiveParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "c_receive"
 
     def _apply(self):
@@ -1682,7 +1682,7 @@ class ReceiveParser(AscendParserBase):
 
 class RangeParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(RangeParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "range"
 
     def _apply(self):
@@ -1705,7 +1705,7 @@ class RangeParser(AscendParserBase):
 
 class UniformRandomParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(UniformRandomParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "uniform_random"
 
     def _apply(self):
@@ -1752,7 +1752,7 @@ class UniformRandomParser(AscendParserBase):
 
 class EqualParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(EqualParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "equal"
 
     def _apply(self):
@@ -1770,7 +1770,7 @@ class EqualParser(AscendParserBase):
 
 class ExpandParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(ExpandParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "expand"
 
     def _apply(self):
@@ -1794,7 +1794,7 @@ class ExpandParser(AscendParserBase):
 
 class SqueezeParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SqueezeParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "squeeze2"
 
     def _apply(self):
@@ -1821,10 +1821,10 @@ class SqueezeParser(AscendParserBase):
 # ***************************            *************************#
 # ***************************            *************************#
 # ****************************************************************#
-## grad
+# grad
 class ReduceSumGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(ReduceSumGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "reduce_sum_grad"
 
     def _apply(self):
@@ -1854,7 +1854,7 @@ class ReduceSumGradParser(AscendParserBase):
 
 class MatMulGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(MatMulGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "matmul_grad"
 
     def _apply(self):
@@ -1956,7 +1956,7 @@ class MatMulGradParser(AscendParserBase):
 
 class MulGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(MulGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "mul_grad"
 
     def _apply(self):
@@ -2081,7 +2081,7 @@ class MulGradParser(AscendParserBase):
 
 class ReluGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(ReluGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "relu_grad"
 
     def _apply(self):
@@ -2099,7 +2099,7 @@ class ReluGradParser(AscendParserBase):
 
 class SoftmaxWithCrossEntropyGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SoftmaxWithCrossEntropyGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "softmax_with_cross_entropy_grad"
 
     def _apply(self):
@@ -2162,7 +2162,7 @@ class SoftmaxWithCrossEntropyGradParser(AscendParserBase):
 
 class DotMulGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(DotMulGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "elementwise_mul_grad"
 
     def _apply(self):
@@ -2190,7 +2190,7 @@ class DotMulGradParser(AscendParserBase):
 
 class DotAddGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(DotAddGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "elementwise_add_grad"
 
     def _apply(self):
@@ -2252,7 +2252,7 @@ class DotAddGradParser(AscendParserBase):
 
 class DotDivGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(DotDivGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "elementwise_div_grad"
 
     def _apply(self):
@@ -2324,7 +2324,7 @@ class DotDivGradParser(AscendParserBase):
 
 class SoftmaxGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SoftmaxGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "softmax_grad"
 
     def _apply(self):
@@ -2343,7 +2343,7 @@ class SoftmaxGradParser(AscendParserBase):
 
 class ReshapeGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(ReshapeGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "reshape2_grad"
 
     def _apply(self):
@@ -2372,7 +2372,7 @@ class ReshapeGradParser(AscendParserBase):
 
 class GatherGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(GatherGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "gather_grad"
 
     def _apply(self):
@@ -2410,7 +2410,7 @@ class GatherGradParser(AscendParserBase):
 
 class TransposeGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(TransposeGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "transpose2_grad"
 
     def _apply(self):
@@ -2435,7 +2435,7 @@ class TransposeGradParser(AscendParserBase):
 
 class LayerNormGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(LayerNormGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "layer_norm_grad"
 
     def _apply(self):
@@ -2490,7 +2490,7 @@ class LayerNormGradParser(AscendParserBase):
 
 class TanhGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(TanhGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = 'tanh_grad'
 
     def _apply(self):
@@ -2509,7 +2509,7 @@ class TanhGradParser(AscendParserBase):
 
 class LogGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(LogGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = 'log_grad'
 
     def _apply(self):
@@ -2527,7 +2527,7 @@ class LogGradParser(AscendParserBase):
 
 class SqrtGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SqrtGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "sqrt_grad"
 
     def _apply(self):
@@ -2545,7 +2545,7 @@ class SqrtGradParser(AscendParserBase):
 
 class PowGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(PowGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "pow_grad"
 
     def _apply(self):
@@ -2596,7 +2596,7 @@ class PowGradParser(AscendParserBase):
 
 class GeluGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(GeluGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "gelu_grad"
 
     def _apply(self):
@@ -2620,7 +2620,7 @@ class GeluGradParser(AscendParserBase):
 
 class MeanGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(MeanGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "mean_grad"
 
     def _apply(self):
@@ -2659,7 +2659,7 @@ class MeanGradParser(AscendParserBase):
 
 class SliceGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SliceGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "slice_grad"
 
     def _apply(self):
@@ -2701,7 +2701,7 @@ class SliceGradParser(AscendParserBase):
 
 class LookUpTableGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(LookUpTableGradParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "lookup_table_grad"
 
     def _apply(self):
@@ -2747,7 +2747,7 @@ class LookUpTableGradParser(AscendParserBase):
 
 class SGDParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(SGDParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "sgd"
 
     def _apply(self):
@@ -2767,7 +2767,7 @@ class SGDParser(AscendParserBase):
 
 class AdamParser(AscendParserBase):
     def __init__(self, graph, var2geop):
-        super(AdamParser, self).__init__(graph, var2geop)
+        super().__init__(graph, var2geop)
         self.parser_name = "adam"
 
     def _apply(self):

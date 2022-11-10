@@ -129,7 +129,7 @@ class Service:
 
 class GpuService(Service):
     def __init__(self):
-        super(GpuService, self).__init__()
+        super().__init__()
 
     def _set(self, service_proto):
         service_proto.server_class = 'PsLocalServer'
@@ -285,7 +285,7 @@ class Accessor:
 
 class CommonAccessor(Accessor):
     def __init__(self):
-        super(CommonAccessor, self).__init__()
+        super().__init__()
         self.table_name = ''
         self.entry = 'none'
         self.attrs = []
@@ -633,7 +633,7 @@ class Table:
 
 class BarrierTable(Table):
     def __init__(self, context, idx):
-        super(BarrierTable, self).__init__()
+        super().__init__()
         self.type = None
         self.shard_num = 256
         self.accessor.accessor_class = 'CommMergeAccessor'
@@ -668,7 +668,7 @@ class BarrierTable(Table):
 
 class TensorTable(Table):
     def __init__(self, idx, tensor_dict, role_maker):
-        super(TensorTable, self).__init__()
+        super().__init__()
         self.idx = idx
         self.tensor_dict = tensor_dict
         self.role_maker = role_maker
@@ -691,7 +691,7 @@ class TensorTable(Table):
 
 class SparseTable(Table):
     def __init__(self, context, send_ctx):
-        super(SparseTable, self).__init__()
+        super().__init__()
         self.context = context
         self.ctx = send_ctx
         self.type = None
@@ -800,7 +800,7 @@ class SparseTable(Table):
 
 class GeoSparseTable(SparseTable):
     def __init__(self, context, send_ctx):
-        super(GeoSparseTable, self).__init__(context, send_ctx)
+        super().__init__(context, send_ctx)
         self.table_class = "MemorySparseGeoTable"
         if self.context['ps_mode'] != DistributedMode.GEO:
             raise ValueError("not geo sparse table!")
@@ -835,7 +835,7 @@ class GeoSparseTable(SparseTable):
 
 class DenseTable(Table):
     def __init__(self, context, send_ctx):
-        super(DenseTable, self).__init__()
+        super().__init__()
         self.context = context
         self.ctx = send_ctx
         self.accessor = Accessor()
@@ -879,7 +879,7 @@ class Server:
 
 class DownpourServer(Server):
     def __init__(self):
-        super(DownpourServer, self).__init__()
+        super().__init__()
 
     def _set(self):
         pass
@@ -895,7 +895,7 @@ class Worker:
 
 class DownpourWorker(Worker):
     def __init__(self):
-        super(DownpourWorker, self).__init__()
+        super().__init__()
 
     def _set(self):
         pass
@@ -914,7 +914,7 @@ class fsClient:
         proto.hadoop_bin = self.fs_client_param.hadoop_bin
 
 
-class PsDescBuilder(object):
+class PsDescBuilder:
     def __init__(self, context):
         self.context = context
         self.is_sync = context['is_sync']
@@ -1032,7 +1032,7 @@ class PsDescBuilder(object):
 
 class TheOnePSRuntime(RuntimeBase):
     def __init__(self):
-        super(TheOnePSRuntime, self).__init__()
+        super().__init__()
         self._communicator = None
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()
