@@ -390,3 +390,11 @@ PD_REGISTER_KERNEL(pow_double_grad,
                    double,
                    int,
                    int64_t) {}
+PD_REGISTER_KERNEL(pow_triple_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::PowTripleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}

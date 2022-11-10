@@ -2265,6 +2265,7 @@ USE_TRT_CONVERTER(instance_norm);
 USE_TRT_CONVERTER(layer_norm);
 USE_TRT_CONVERTER(gelu);
 USE_TRT_CONVERTER(multihead_matmul);
+USE_TRT_CONVERTER(multihead_matmul_roformer);
 USE_TRT_CONVERTER(skip_layernorm);
 USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
@@ -2322,6 +2323,7 @@ USE_TRT_CONVERTER(celu)
 USE_TRT_CONVERTER(layernorm_shift_partition)
 USE_TRT_CONVERTER(preln_layernorm_shift_partition)
 USE_TRT_CONVERTER(merge_layernorm)
+USE_TRT_CONVERTER(skip_merge_layernorm)
 USE_TRT_CONVERTER(generic_plugin_creater)
 USE_TRT_CONVERTER(custom_plugin_creater)
 USE_TRT_CONVERTER(tanh_shrink)

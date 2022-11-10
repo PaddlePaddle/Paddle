@@ -1565,6 +1565,7 @@ void FusedMultiTransformerDecoderPass::ApplyImpl(Graph* graph) const {
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerDecoderPass, new bool(true));
+    graph->Set(kFusedMultiTransformerDecoderFusionCount, new int(fusion_count));
   }
   AddStatis(fusion_count);
 }
@@ -2178,6 +2179,7 @@ void FusedMultiTransformerDecoderFuseQKVPass::ApplyImpl(Graph* graph) const {
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerDecoderFuseQKVPass, new bool(true));
+    graph->Set(kFusedMultiTransformerDecoderFusionCount, new int(fusion_count));
   }
   AddStatis(fusion_count);
 }
@@ -2833,6 +2835,7 @@ void MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::ApplyImpl(
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerDecoderFuseQKVPass, new bool(true));
+    graph->Set(kFusedMultiTransformerDecoderFusionCount, new int(fusion_count));
   }
   AddStatis(fusion_count);
 }
