@@ -328,10 +328,10 @@ void CholeskySolveInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-void CompareInferMeta(const MetaTensor& x,
-                      const MetaTensor& y,
-                      int axis,
-                      MetaTensor* out) {
+void CompareRawInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         int axis,
+                         MetaTensor* out) {
   auto dim_x = x.dims();
   auto dim_y = y.dims();
 
@@ -356,6 +356,12 @@ void CompareInferMeta(const MetaTensor& x,
   }
 
   out->set_dtype(DataType::BOOL);
+}
+
+void CompareInferMeta(const MetaTensor& x,
+                      const MetaTensor& y,
+                      MetaTensor* out) {
+  CompareRawInferMeta(x, y, -1, out);
 }
 
 void CompareAllInferMeta(const MetaTensor& x,

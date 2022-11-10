@@ -196,14 +196,6 @@ framework::OpKernelType FusedBatchNormActOp::GetExpectedKernelType(
       input_data_type, ctx.GetPlace(), layout, library);
 }
 
-framework::OpKernelType FusedBatchNormActOp::GetKernelTypeForVar(
-    const std::string &var_name,
-    const Tensor &tensor,
-    const framework::OpKernelType &expected_kernel_type) const {
-  return framework::OpKernelType(
-      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
-}
-
 void FusedBatchNormActOpMaker::Make() {
   AddAttr<float>("momentum", "").SetDefault(0.9);
   AddAttr<float>("epsilon", "")

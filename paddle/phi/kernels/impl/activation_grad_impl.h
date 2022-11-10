@@ -17,6 +17,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
@@ -347,10 +348,10 @@ void PowDoubleGradKernel(const Context& dev_ctx,
                          DenseTensor* dx,
                          DenseTensor* ddout) {
   PADDLE_ENFORCE_NOT_NULL(
-      dx, errors::NotFound("The output DenseTensor dx can not be nullptr"));
+      dx, errors::NotFound("The output DenseTensor DX can not be nullptr"));
   PADDLE_ENFORCE_NOT_NULL(
       ddout,
-      errors::NotFound("The output DenseTensor ddout can not be nullptr"));
+      errors::NotFound("The output DenseTensor DDOut can not be nullptr"));
   float exponent = factor.to<float>();
   if (exponent == 1) {
     *dx = phi::FullLike<T, Context>(dev_ctx, x, static_cast<T>(0));
@@ -364,6 +365,150 @@ void PowDoubleGradKernel(const Context& dev_ctx,
   DenseTensor ddout_tmp = phi::Multiply<T, Context>(
       dev_ctx, ddx, phi::Pow<T, Context>(dev_ctx, x, exponent - 1));
   *ddout = phi::Scale<T, Context>(dev_ctx, ddout_tmp, exponent, 0.0, true);
+}
+
+template <typename T, typename Context>
+void PowTripleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         const DenseTensor& d_dx,
+                         const DenseTensor& d_ddout,
+                         const Scalar& factor,
+                         DenseTensor* out_d_x,
+                         DenseTensor* out_d_dout,
+                         DenseTensor* out_d_ddx) {
+  PADDLE_ENFORCE_NOT_NULL(
+      out_d_x,
+      errors::NotFound("The output DenseTensor D_X can not be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      out_d_dout,
+      errors::NotFound("The output DenseTensor D_DOut can not be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      out_d_ddx,
+      errors::NotFound("The output DenseTensor D_DDX can not be nullptr"));
+  float exponent = factor.to<float>();
+
+  if (exponent != 2 && exponent != 1) {
+    // case1: b != 2 and b != 1
+    // D_X = D_DX * DDX * DOut * b * (b-1) * (b-2) * X^(b-3)
+    //       + D_DDOut * DDX * b * (b-1) * X^(b-2)
+    DenseTensor out_d_x_tmp1 = phi::Multiply<T, Context>(dev_ctx, d_dx, ddx);
+    DenseTensor out_d_x_tmp2 =
+        phi::Scale<T, Context>(dev_ctx,
+                               phi::Pow<T, Context>(dev_ctx, x, exponent - 3),
+                               exponent * (exponent - 1) * (exponent - 2),
+                               0.0,
+                               true);
+    DenseTensor out_d_x_part1 = phi::Multiply<T, Context>(
+        dev_ctx,
+        phi::Multiply<T, Context>(dev_ctx, out_d_x_tmp1, dout),
+        out_d_x_tmp2);
+
+    DenseTensor out_d_x_tmp3 = phi::Multiply<T, Context>(dev_ctx, d_ddout, ddx);
+    DenseTensor out_d_x_tmp4 =
+        phi::Scale<T, Context>(dev_ctx,
+                               phi::Pow<T, Context>(dev_ctx, x, exponent - 2),
+                               exponent * (exponent - 1),
+                               0.0,
+                               true);
+    DenseTensor out_d_x_part2 =
+        phi::Multiply<T, Context>(dev_ctx, out_d_x_tmp3, out_d_x_tmp4);
+
+    *out_d_x = phi::Add<T, Context>(dev_ctx, out_d_x_part1, out_d_x_part2);
+
+    // D_DOut = D_DX * DDX * b * (b-1) * X^(b-2)
+    DenseTensor out_d_dout_tmp =
+        phi::Scale<T, Context>(dev_ctx,
+                               phi::Pow<T, Context>(dev_ctx, x, exponent - 2),
+                               exponent * (exponent - 1),
+                               0.0,
+                               true);
+
+    *out_d_dout =
+        phi::Multiply<T, Context>(dev_ctx, out_d_x_tmp1, out_d_dout_tmp);
+    // D_DDX = D_DX * DOut * b * (b-1) * X^(b-2) + D_DDOut * b * X^(b-1)
+    DenseTensor out_d_ddx_tmp1 = phi::Multiply<T, Context>(dev_ctx, d_dx, dout);
+    DenseTensor out_d_ddx_part1 =
+        phi::Multiply<T, Context>(dev_ctx, out_d_ddx_tmp1, out_d_dout_tmp);
+
+    DenseTensor out_d_ddx_tmp2 =
+        phi::Scale<T, Context>(dev_ctx,
+                               phi::Pow<T, Context>(dev_ctx, x, exponent - 1),
+                               exponent,
+                               0.0,
+                               true);
+    DenseTensor out_d_ddx_part2 =
+        phi::Multiply<T, Context>(dev_ctx, d_ddout, out_d_ddx_tmp2);
+
+    *out_d_ddx =
+        phi::Add<T, Context>(dev_ctx, out_d_ddx_part1, out_d_ddx_part2);
+  } else if (exponent == 2) {
+    // case2: b = 2
+    // D_X = D_DDOut * DDX * b * (b-1) * X^(b-2)
+    DenseTensor out_d_x_tmp1 = phi::Multiply<T, Context>(dev_ctx, d_ddout, ddx);
+    DenseTensor out_d_x_tmp2 =
+        phi::Scale<T, Context>(dev_ctx,
+                               phi::Pow<T, Context>(dev_ctx, x, exponent - 2),
+                               exponent * (exponent - 1),
+                               0.0,
+                               true);
+
+    *out_d_x = phi::Multiply<T, Context>(dev_ctx, out_d_x_tmp1, out_d_x_tmp2);
+    // D_DOut = D_DX * DDX * b * (b-1) * X^(b-2)
+    DenseTensor out_d_dout_tmp1 = phi::Multiply<T, Context>(dev_ctx, d_dx, ddx);
+    DenseTensor out_d_dout_tmp2 =
+        phi::Scale<T, Context>(dev_ctx,
+                               phi::Pow<T, Context>(dev_ctx, x, exponent - 2),
+                               exponent * (exponent - 1),
+                               0.0,
+                               true);
+
+    *out_d_dout =
+        phi::Multiply<T, Context>(dev_ctx, out_d_dout_tmp1, out_d_dout_tmp2);
+    // D_DDX = D_DX * DOut * b * (b-1) * X^(b-2) + D_DDOut * b * X^(b-1)
+    DenseTensor out_d_ddx_tmp1 = phi::Multiply<T, Context>(dev_ctx, d_dx, dout);
+    DenseTensor out_d_ddx_part1 =
+        phi::Multiply<T, Context>(dev_ctx, out_d_ddx_tmp1, out_d_dout_tmp2);
+
+    DenseTensor out_d_ddx_tmp2 =
+        phi::Scale<T, Context>(dev_ctx,
+                               phi::Pow<T, Context>(dev_ctx, x, exponent - 1),
+                               exponent,
+                               0.0,
+                               true);
+    DenseTensor out_d_ddx_part2 =
+        phi::Multiply<T, Context>(dev_ctx, d_ddout, out_d_ddx_tmp2);
+
+    *out_d_ddx =
+        phi::Add<T, Context>(dev_ctx, out_d_ddx_part1, out_d_ddx_part2);
+  } else {
+    // case3: b = 1
+    // D_X = D_DX * DDX * DOut * b * (b-1) * (b-2) * X^(b-3)
+    DenseTensor out_d_x_tmp1 = phi::Multiply<T, Context>(dev_ctx, d_dx, ddx);
+    DenseTensor out_d_x_tmp2 =
+        phi::Scale<T, Context>(dev_ctx,
+                               phi::Pow<T, Context>(dev_ctx, x, exponent - 3),
+                               exponent * (exponent - 1) * (exponent - 2),
+                               0.0,
+                               true);
+
+    *out_d_x = phi::Multiply<T, Context>(
+        dev_ctx,
+        phi::Multiply<T, Context>(dev_ctx, out_d_x_tmp1, dout),
+        out_d_x_tmp2);
+    // D_DOut = 0
+    *out_d_dout = phi::FullLike<T, Context>(dev_ctx, dout, static_cast<T>(0));
+    // D_DDX = D_DDOut * b * X^(b-1)
+    DenseTensor out_d_ddx_tmp =
+        phi::Scale<T, Context>(dev_ctx,
+                               phi::Pow<T, Context>(dev_ctx, x, exponent - 1),
+                               exponent,
+                               0.0,
+                               true);
+
+    *out_d_ddx = phi::Multiply<T, Context>(dev_ctx, d_ddout, out_d_ddx_tmp);
+  }
 }
 
 template <typename T, typename Context>
