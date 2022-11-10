@@ -248,10 +248,6 @@ if(WITH_UNITY_BUILD)
     target_link_libraries(paddle_operators_unity ${OP_HEADER_DEPS} ${COMMON_OP_DEPS})
 endif()
 
-if(WITH_ASCEND_CL)
-cc_test(gelu_op_npu_test SRCS gelu_op_npu_test.cc DEPS op_registry gelu_op_npu generated_op scope device_context enforce executor)
-endif()
-
 if (WITH_GPU OR WITH_ASCEND_CL)
 cc_test(copy_cross_scope_test SRCS copy_cross_scope_test.cc DEPS op_registry copy_cross_scope_op scope device_context enforce executor)
 endif()
