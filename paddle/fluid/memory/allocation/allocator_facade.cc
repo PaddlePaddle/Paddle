@@ -25,6 +25,7 @@
 #include "paddle/fluid/memory/allocation/stat_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/macros.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <shared_mutex>
@@ -1197,6 +1198,10 @@ void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
 }
 #endif
 #endif
+
+UNUSED static std::shared_ptr<NaiveBestFitAllocator> unused_obj =
+    std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
