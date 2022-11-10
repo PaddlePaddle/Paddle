@@ -111,12 +111,12 @@ template <typename T, dnnl::algorithm BINARY_OP>
 void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& y,
+                           const DenseTensor* out,
                            const DenseTensor& dout,
                            int axis,
                            DenseTensor* dx,
                            DenseTensor* dy) {
   const auto& onednn_engine = dev_ctx.GetEngine();
-  auto* out = dev_ctx.GetDnnInput("Out");
   // oneDNN's binary is optimized for broadcasting y into x, so in other case
   // we have to swap tensors to achieve optimal performance
   bool swap_x_y = false;
@@ -302,22 +302,35 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
   }
 }
 
-#define DEFINE_ONEDNN_ELEMENTWISE_GRAD_KERNEL(name, algorithm)              \
-  template <typename T, typename Context>                                   \
-  void name##GradKernel(const Context& dev_ctx,                             \
-                        const DenseTensor& x,                               \
-                        const DenseTensor& y,                               \
-                        const DenseTensor& dout,                            \
-                        int axis,                                           \
-                        DenseTensor* dx,                                    \
-                        DenseTensor* dy) {                                  \
-    ElementwiseGradKernel<T, algorithm>(dev_ctx, x, y, dout, axis, dx, dy); \
+#define DEFINE_ONEDNN_ELEMENTWISE_GRAD_KERNEL(name, algorithm) \
+  template <typename T, typename Context>                      \
+  void name##GradKernel(const Context& dev_ctx,                \
+                        const DenseTensor& x,                  \
+                        const DenseTensor& y,                  \
+                        const DenseTensor& dout,               \
+                        int axis,                              \
+                        DenseTensor* dx,                       \
+                        DenseTensor* dy) {                     \
+    ElementwiseGradKernel<T, algorithm>(                       \
+        dev_ctx, x, y, nullptr, dout, axis, dx, dy);           \
   }
 
 DEFINE_ONEDNN_ELEMENTWISE_GRAD_KERNEL(Add, dnnl::algorithm::binary_add)
 DEFINE_ONEDNN_ELEMENTWISE_GRAD_KERNEL(Subtract, dnnl::algorithm::binary_sub)
 DEFINE_ONEDNN_ELEMENTWISE_GRAD_KERNEL(Multiply, dnnl::algorithm::binary_mul)
-DEFINE_ONEDNN_ELEMENTWISE_GRAD_KERNEL(Divide, dnnl::algorithm::binary_div)
+
+template <typename T, typename Context>
+void DivideGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      const DenseTensor& out,
+                      const DenseTensor& dout,
+                      int axis,
+                      DenseTensor* dx,
+                      DenseTensor* dy) {
+  ElementwiseGradKernel<T, dnnl::algorithm::binary_div>(
+      dev_ctx, x, y, &out, dout, axis, dx, dy);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
