@@ -37,7 +37,7 @@ from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 
 class DistributedPNorm(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedPNorm, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedPNorm("p_norm"))
@@ -46,7 +46,7 @@ register_distributed_operator_impl_container(DistributedPNorm("p_norm"))
 # Row Parallel
 class DistributedPNormImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedPNormImpl, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = True
         self._backward_implemented = True
 

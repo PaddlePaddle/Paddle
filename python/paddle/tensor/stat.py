@@ -159,7 +159,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     )
     n = n.astype(dtype)
     if unbiased:
-        one_const = paddle.ones([1], x.dtype)
+        one_const = paddle.ones([], x.dtype)
         n = where(n > one_const, n - 1.0, one_const)
     out /= n
     return out
@@ -206,8 +206,11 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
             out1 = paddle.std(x)
             # [1.63299316]
-            out2 = paddle.std(x, axis=1)
+            out2 = paddle.std(x, unbiased=False)
+            # [1.49071205]
+            out3 = paddle.std(x, axis=1)
             # [1.       2.081666]
+
     """
     if not paddle.in_dynamic_mode():
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')

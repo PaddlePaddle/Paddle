@@ -21,7 +21,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator, to_variable
-from paddle.fluid.dygraph.nn import Conv2D, BatchNorm, Linear, Pool2D
+from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 random.seed(0)
@@ -56,17 +56,16 @@ class ConvBNLayer(fluid.dygraph.Layer):
         groups=1,
         act=None,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
-            groups=None,
-            act=None,
-            param_attr=fluid.param_attr.ParamAttr(),
+            groups=1,
+            weight_attr=fluid.param_attr.ParamAttr(),
             bias_attr=False,
         )
 
@@ -88,7 +87,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
     def __init__(
         self, num_channels, num_filters, stride, shortcut=True, seg_num=8
     ):
-        super(BottleneckBlock, self).__init__()
+        super().__init__()
 
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
@@ -136,7 +135,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
 class TSM_ResNet(fluid.dygraph.Layer):
     def __init__(self, name_scope, config, mode):
-        super(TSM_ResNet, self).__init__(name_scope)
+        super().__init__(name_scope)
 
         self.layers = config.MODEL.num_layers
         self.seg_num = config.MODEL.seg_num
@@ -215,7 +214,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
         return y
 
 
-class FakeDataReader(object):
+class FakeDataReader:
     def __init__(self, mode, cfg):
         self.format = cfg.MODEL.format
         self.num_classes = cfg.MODEL.num_classes

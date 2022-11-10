@@ -22,7 +22,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class MyLayer(fluid.Layer):
     def __init__(self, num_stacked_param, use_fluid_api):
-        super(MyLayer, self).__init__()
+        super().__init__()
         # create ParameterList with iterable Parameters
         self.params = (
             self.fluid_dygraph_ParameterList(num_stacked_param)

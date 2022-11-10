@@ -262,15 +262,19 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
     if (FLAGS_enable_bf16) {
       analysis_cfg.EnableMkldnnBfloat16();
     } else if (FLAGS_enable_int8) {
-      if (FLAGS_fuse_multi_gru)
+      if (FLAGS_fuse_multi_gru) {
         analysis_cfg.pass_builder()->AppendPass("multi_gru_fuse_pass");
-
+      }
       std::shared_ptr<std::vector<PaddleTensor>> warmup_data =
           WarmupData(input_slots_all);
       analysis_cfg.EnableMkldnnQuantizer();
       analysis_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
       analysis_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(
           FLAGS_batch_size);
+    } else {
+      // if fp32 => disable mkldnn fc passes
+      // when passes are enabled dnnl error occurs for iterations==0
+      analysis_cfg.DisableMkldnnFcPasses();
     }
     std::vector<double> acc_analysis(3);
     acc_analysis = Lexical_Test(input_slots_all, &outputs, &analysis_cfg, true);

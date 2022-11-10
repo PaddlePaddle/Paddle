@@ -18,8 +18,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/framework/data_type.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 
@@ -33,8 +32,8 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
                              DenseTensor* out,
                              DenseTensor* index,
                              DenseTensor* counts) {
-  auto data_type = static_cast<paddle::framework::proto::VarType::Type>(dtype);
-  if (data_type == paddle::framework::proto::VarType::INT32) {
+  auto data_type = var_type_map[dtype];
+  if (data_type == phi::DataType::INT32) {
     PADDLE_ENFORCE_LE(
         x.numel(),
         INT_MAX,
@@ -46,13 +45,13 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
   }
 
   if (axis.empty()) {
-    paddle::framework::VisitDataTypeTiny(
+    phi::VisitDataTypeTiny(
         data_type,
         UniqueConsecutiveFlattenedTensorFunctor<Context, T>(
             dev_ctx, x, out, return_inverse, return_counts, index, counts));
   } else {
     int valid_axis = axis[0];
-    paddle::framework::VisitDataTypeTiny(
+    phi::VisitDataTypeTiny(
         data_type,
         UniqueConsecutiveDimFunctor<Context, T>(dev_ctx,
                                                 x,

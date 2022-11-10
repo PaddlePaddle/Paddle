@@ -16,7 +16,7 @@ import requests
 import time
 
 
-class KVClient(object):
+class KVClient:
     def __init__(self, endpoint='localhost:2379'):
         self.endpoint = (
             endpoint

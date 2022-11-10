@@ -52,7 +52,7 @@ class ElasticStatus:
     EXIT = "exit"
 
 
-class LauncherInterface(object):
+class LauncherInterface:
     def __init__(self, args):
         self.args = args
         self.procs = []
@@ -124,7 +124,7 @@ class LauncherInterface(object):
         raise NotImplementedError
 
 
-class ElasticManager(object):
+class ElasticManager:
     def __init__(self, args, etcd_client):
 
         self.args = args

@@ -40,6 +40,8 @@ std::string GetKeyFromPlaces(const std::vector<Place>& places) {
   return placeList;
 }
 
+std::string GetKeyFromPlace(const Place& place) { return place.DebugString(); }
+
 bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors) {
   return std::all_of(
       tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
@@ -53,6 +55,13 @@ bool CheckTensorsInCustomPlace(const std::vector<phi::DenseTensor>& tensors,
       tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
         return platform::places_are_same_class(
             t.place(), paddle::platform::CustomPlace(dev_type));
+      });
+}
+
+bool CheckTensorsInXPUPlace(const std::vector<phi::DenseTensor>& tensors) {
+  return std::all_of(
+      tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
+        return platform::is_xpu_place(t.place());
       });
 }
 

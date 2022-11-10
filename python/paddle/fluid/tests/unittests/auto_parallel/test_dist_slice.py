@@ -32,6 +32,7 @@ def make_program_dp2():
         tmp_1 = x[:, 0, :]
         tmp_2 = x[:, :, 1]
         tmp_3 = x[:2, :2, :2]
+        tmp_3 = x[:4, :2, :2]
     return main_program, start_program
 
 

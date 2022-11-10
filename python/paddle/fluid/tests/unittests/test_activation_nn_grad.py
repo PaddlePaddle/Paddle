@@ -471,5 +471,224 @@ class TestLogDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestSinDoubleGradCheck(unittest.TestCase):
+    def sin_wrapper(self, x):
+        return paddle.sin(x[0])
+
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 0.0005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = paddle.sin(x)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.sin_wrapper, [x], y, x_init=x_arr, place=place
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestPowDoubleGradCheck1(unittest.TestCase):
+    def pow_wrapper(self, x):
+        return paddle.pow(x[0], 2)
+
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 1e-6
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = paddle.pow(x, 2)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.pow_wrapper, [x], y, x_init=x_arr, place=place
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestPowDoubleGradCheck2(unittest.TestCase):
+    def pow_wrapper(self, x):
+        return paddle.pow(x[0], 1)
+
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 1e-6
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = paddle.pow(x, 1)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.pow_wrapper, [x], y, x_init=x_arr, place=place
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestSinTripleGradCheck(unittest.TestCase):
+    def sin_wrapper(self, x):
+        return paddle.sin(x[0])
+
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 0.0005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = layers.sin(x)
+        x_arr = np.random.random(shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        gradient_checker.triple_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.sin_wrapper, [x], y, x_init=x_arr, place=place
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestPowTripleGradCheck1(unittest.TestCase):
+    def pow_wrapper(self, x):
+        return paddle.pow(x[0], 1)
+
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 1e-6
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = paddle.pow(x, 1)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        gradient_checker.triple_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.pow_wrapper, [x], y, x_init=x_arr, place=place
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestPowTripleGradCheck2(unittest.TestCase):
+    def pow_wrapper(self, x):
+        return paddle.pow(x[0], 2)
+
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 1e-6
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = paddle.pow(x, 2)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        gradient_checker.triple_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.pow_wrapper, [x], y, x_init=x_arr, place=place
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestPowTripleGradCheck3(unittest.TestCase):
+    def pow_wrapper(self, x):
+        return paddle.pow(x[0], 4)
+
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 1e-6
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = paddle.pow(x, 4)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        gradient_checker.triple_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.pow_wrapper, [x], y, x_init=x_arr, place=place
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 if __name__ == "__main__":
     unittest.main()
