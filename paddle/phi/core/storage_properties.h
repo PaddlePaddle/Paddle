@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
-
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/utils/type_registry.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -42,8 +42,11 @@ struct NPUStorageProperties
   virtual ~NPUStorageProperties() = default;
   static const char* name() { return "NPUStorageProperties"; }
 
-  int64_t storage_format;
-  int64_t storage_layout;
+  int64_t storage_format{-1};
+  // TODO(qili93): replace std::vector<int64_t> to DDim, current now KPS
+  // compiling will be broken when including ddim.h, Kunlun team is still
+  // working on it.
+  std::vector<int64_t> storage_shape;
 };
 
 // Add OneDNNStorageProperties firstly for unittest covergae
@@ -76,8 +79,8 @@ static std::unique_ptr<StorageProperties> CopyStorageProperties(
       auto result = std::make_unique<NPUStorageProperties>();
       result->storage_format =
           static_cast<NPUStorageProperties*>(sp.get())->storage_format;
-      result->storage_layout =
-          static_cast<NPUStorageProperties*>(sp.get())->storage_layout;
+      result->storage_shape =
+          static_cast<NPUStorageProperties*>(sp.get())->storage_shape;
       return result;
 #ifdef PADDLE_WITH_MKLDNN
     } else if (OneDNNStorageProperties::classof(sp.get())) {
