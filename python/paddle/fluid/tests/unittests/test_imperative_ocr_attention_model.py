@@ -330,7 +330,7 @@ class SimpleAttention(fluid.dygraph.Layer):
         scaled = fluid.layers.elementwise_mul(
             x=encoder_vec, y=weights_reshape, axis=0
         )
-        context = fluid.layers.reduce_sum(scaled, dim=1)
+        context = paddle.sum(scaled, dim=1)
 
         return context
 
@@ -506,7 +506,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     loss = fluid.layers.cross_entropy(
                         input=dy_prediction, label=label_out
                     )
-                    avg_loss = fluid.layers.reduce_sum(loss)
+                    avg_loss = paddle.sum(loss)
 
                     dy_out = avg_loss.numpy()
 
@@ -584,7 +584,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
             cost = fluid.layers.cross_entropy(
                 input=static_prediction, label=static_label_out
             )
-            static_avg_loss = fluid.layers.reduce_sum(cost)
+            static_avg_loss = paddle.sum(cost)
             # param_grad_list = fluid.backward.append_backward(static_avg_loss)
             optimizer.minimize(static_avg_loss)
 

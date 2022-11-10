@@ -384,9 +384,7 @@ def loss_cls(cls, label, cfg):
         cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]]
     )
     return (
-        fluid.layers.reduce_sum(
-            fluid.layers.sigmoid_cross_entropy_with_logits(cls, label)
-        )
+        paddle.sum(fluid.layers.sigmoid_cross_entropy_with_logits(cls, label))
         / cfg.batch_size
     )
 
@@ -438,7 +436,7 @@ def gradient_penalty(f, real, fake, no_grad_set, cfg):
 
     epsilon = 1e-16
     norm = fluid.layers.sqrt(
-        fluid.layers.reduce_sum(fluid.layers.square(gradient), dim=1) + epsilon
+        paddle.sum(fluid.layers.square(gradient), dim=1) + epsilon
     )
 
     gp = fluid.layers.reduce_mean(fluid.layers.square(norm - 1.0))

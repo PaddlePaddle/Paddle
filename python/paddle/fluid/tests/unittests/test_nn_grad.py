@@ -98,7 +98,7 @@ class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
-        y = layers.reduce_sum(x, dim=0)
+        y = paddle.sum(x, dim=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(

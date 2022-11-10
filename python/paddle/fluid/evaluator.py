@@ -297,11 +297,11 @@ class EditDistance(Evaluator):
         zero = layers.fill_constant(shape=[1], value=0.0, dtype='float32')
         compare_result = layers.equal(distances, zero)
         compare_result_int = layers.cast(x=compare_result, dtype='int64')
-        seq_right_count = layers.reduce_sum(compare_result_int)
+        seq_right_count = paddle.sum(compare_result_int)
         instance_error_count = layers.elementwise_sub(
             x=seq_num, y=seq_right_count
         )
-        total_distance = layers.reduce_sum(distances)
+        total_distance = paddle.sum(distances)
         layers.sums(
             input=[self.total_distance, total_distance], out=self.total_distance
         )

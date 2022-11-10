@@ -50,7 +50,7 @@ class TestMultiheadAttention(unittest.TestCase):
             num_heads=8,
             dropout_rate=0.0,
         )
-        out = fluid.layers.reduce_sum(contexts, dim=None)
+        out = paddle.sum(contexts, dim=None)
         fluid.backward.append_backward(loss=out)
 
         self.fetch_list = [contexts]

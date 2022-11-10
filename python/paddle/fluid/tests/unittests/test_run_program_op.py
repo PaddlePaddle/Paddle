@@ -456,7 +456,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
             ),
             is_sparse=True,
         )
-        y = fluid.layers.reduce_sum(emb, dim=-1)
+        y = paddle.sum(emb, dim=-1)
         # 2. get forward op num
         fwd_op_num = fluid.default_main_program().global_block().desc.op_size()
         # 3. append backward

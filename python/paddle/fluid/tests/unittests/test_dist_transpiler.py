@@ -405,7 +405,7 @@ class TestFakeInit(TranspilerTest):
         neg_emb_b_vec = fluid.layers.reshape(neg_emb_b, shape=[-1, neg_num])
 
         true_logits = fluid.layers.elementwise_add(
-            fluid.layers.reduce_sum(
+            paddle.sum(
                 fluid.layers.elementwise_mul(input_emb, true_emb_w),
                 dim=1,
                 keep_dim=True,
@@ -437,8 +437,8 @@ class TestFakeInit(TranspilerTest):
             neg_logits, label_zeros
         )
         cost = fluid.layers.elementwise_add(
-            fluid.layers.reduce_sum(true_xent, dim=1),
-            fluid.layers.reduce_sum(neg_xent, dim=1),
+            paddle.sum(true_xent, dim=1),
+            paddle.sum(neg_xent, dim=1),
         )
         avg_cost = fluid.layers.reduce_mean(cost)
 

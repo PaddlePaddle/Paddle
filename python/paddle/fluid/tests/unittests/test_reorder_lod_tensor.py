@@ -51,7 +51,7 @@ class TestReorderLoDTensor(unittest.TestCase):
         new_dat = fluid.layers.reorder_lod_tensor_by_rank(
             x=dat, rank_table=table
         )
-        loss = fluid.layers.reduce_sum(new_dat)
+        loss = paddle.sum(new_dat)
         fluid.backward.append_backward(loss=loss)
         cls.fetch_list = [new_dat, cls.data_desc[0][0] + '@GRAD']
 

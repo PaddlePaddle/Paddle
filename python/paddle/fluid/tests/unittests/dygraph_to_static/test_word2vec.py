@@ -258,7 +258,7 @@ class SkipGram(fluid.dygraph.Layer):
         word_sim = fluid.layers.elementwise_mul(
             center_words_emb, target_words_emb
         )
-        word_sim = fluid.layers.reduce_sum(word_sim, dim=-1)
+        word_sim = paddle.sum(word_sim, dim=-1)
 
         pred = fluid.layers.sigmoid(word_sim)
 

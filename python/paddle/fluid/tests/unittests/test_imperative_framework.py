@@ -46,7 +46,7 @@ class MLP(fluid.Layer):
     def forward(self, inputs):
         x = self._linear1(inputs)
         x = self._linear2(x)
-        x = fluid.layers.reduce_sum(x)
+        x = paddle.sum(x)
         return x
 
 

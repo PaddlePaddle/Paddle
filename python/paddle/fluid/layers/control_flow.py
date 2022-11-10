@@ -3386,7 +3386,7 @@ class IfElse:
         output = ie() #  [array([[-7.], [-9.], [ 8.], [ 7.]], dtype=float32)]
 
         # Get the first Variable in the output List and add all elements.
-        out = fluid.layers.reduce_sum(output[0])
+        out = paddle.sum(output[0])
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())

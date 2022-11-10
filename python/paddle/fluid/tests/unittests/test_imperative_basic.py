@@ -34,7 +34,7 @@ class MyLayer(fluid.Layer):
         x = fluid.layers.relu(inputs)
         self._x_for_debug = x
         x = fluid.layers.elementwise_mul(x, x)
-        x = fluid.layers.reduce_sum(x)
+        x = paddle.sum(x)
         return [x]
 
 
@@ -65,7 +65,7 @@ class MLP(fluid.Layer):
     def forward(self, inputs):
         x = self._linear1(inputs)
         x = self._linear2(x)
-        x = fluid.layers.reduce_sum(x)
+        x = fluid.paddle.sum(x)
         return x
 
 
@@ -342,7 +342,7 @@ class TestImperative(unittest.TestCase):
                 tmp.stop_gradient = False
                 inputs.append(tmp)
             ret = paddle.add_n(inputs)
-            loss = fluid.layers.reduce_sum(ret)
+            loss = fluid.paddle.sum(ret)
             loss.backward()
         with fluid.dygraph.guard():
             inputs2 = []
@@ -351,7 +351,7 @@ class TestImperative(unittest.TestCase):
                 tmp.stop_gradient = False
                 inputs2.append(tmp)
             ret2 = paddle.add_n(inputs2)
-            loss2 = fluid.layers.reduce_sum(ret2)
+            loss2 = fluid.paddle.sum(ret2)
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             loss2.backward()
 
@@ -739,15 +739,11 @@ class TestImperative(unittest.TestCase):
             )
 
             a = fluid.layers.expand(
-                fluid.layers.reshape(
-                    fluid.layers.reduce_sum(inp_data1), [1, 1]
-                ),
+                fluid.layers.reshape(fluid.paddle.sum(inp_data1), [1, 1]),
                 [4, 1],
             )
             b = fluid.layers.expand(
-                fluid.layers.reshape(
-                    fluid.layers.reduce_sum(inp_data2), [1, 1]
-                ),
+                fluid.layers.reshape(fluid.paddle.sum(inp_data2), [1, 1]),
                 [4, 1],
             )
             cond = fluid.layers.less_than(x=a, y=b)

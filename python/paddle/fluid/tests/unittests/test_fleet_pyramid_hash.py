@@ -55,7 +55,7 @@ class TestPyramidHashOpApi(unittest.TestCase):
             name=None,
         )
 
-        cost = fluid.layers.reduce_sum(hash_embd)
+        cost = paddle.sum(hash_embd)
 
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,

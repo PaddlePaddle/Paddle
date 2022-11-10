@@ -60,9 +60,7 @@ class AdaRoundLoss:
         square_cost = fluid.layers.square_error_cost(
             ada_quantized_output, orig_output
         )
-        recon_loss = fluid.layers.reduce_mean(
-            fluid.layers.reduce_sum(square_cost, dim=-1)
-        )
+        recon_loss = fluid.layers.reduce_mean(paddle.sum(square_cost, dim=-1))
         return recon_loss
 
     def compute_round_loss(self, alpha_v, warm_start, beta):
@@ -72,7 +70,7 @@ class AdaRoundLoss:
 
             # calculate regularization term - which ensures parameter to converge to exactly zeros and ones
             # at the end of optimization
-            reg_term = fluid.layers.reduce_sum(
+            reg_term = paddle.sum(
                 -fluid.layers.pow(fluid.layers.abs(2 * h_v - 1), factor=beta)
                 + 1
             )

@@ -608,7 +608,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
                 label.stop_gradient = True
                 loss = fluid.layers.sigmoid_focal_loss(
                     pred, label, fg_num, gamma=2.0, alpha=0.25)
-                loss = fluid.layers.reduce_sum(loss)
+                loss = paddle.sum(loss)
                 return loss
 
 
@@ -630,7 +630,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
                     data = fluid.layers.fill_constant(shape=[1], value=1, dtype='int32')
                     fg_label = fluid.layers.greater_equal(label, data)
                     fg_label = fluid.layers.cast(fg_label, dtype='int32')
-                    fg_num = fluid.layers.reduce_sum(fg_label)
+                    fg_num = paddle.sum(fg_label)
                     fg_num.stop_gradient = True
                     avg_loss = get_focal_loss(output, label, fg_num, num_classes)
                     return avg_loss
@@ -1851,9 +1851,9 @@ def ssd_loss(
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
     loss = nn.reshape(x=loss, shape=(-1, 0), actual_shape=actual_shape)
-    loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
+    loss = paddle.sum(loss, dim=1, keep_dim=True)
     if normalize:
-        normalizer = nn.reduce_sum(target_loc_weight)
+        normalizer = paddle.sum(target_loc_weight)
         loss = loss / normalizer
 
     return loss

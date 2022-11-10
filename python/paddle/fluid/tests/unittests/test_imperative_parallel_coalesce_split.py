@@ -34,7 +34,7 @@ class MyLayer(fluid.Layer):
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)
         x = fluid.layers.elementwise_mul(x, x)
-        x = fluid.layers.reduce_sum(x)
+        x = paddle.sum(x)
         return [x]
 
 
