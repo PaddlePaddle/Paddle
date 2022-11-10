@@ -26,7 +26,7 @@ from filters import (
     to_pascal_case,
 )
 from tests import (
-    is_base_api,
+    is_base_op,
     is_vec,
     is_scalar,
     is_initializer_list,
@@ -51,7 +51,7 @@ env.filters["to_pascal_case"] = to_pascal_case
 env.filters["to_input_name"] = to_input_name
 env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
-env.tests["base_api"] = is_base_api
+env.tests["base_op"] = is_base_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
 env.tests["initializer_list"] = is_initializer_list
@@ -59,126 +59,127 @@ env.tests["supports_inplace"] = supports_inplace
 env.tests["supports_no_need_buffer"] = supports_no_need_buffer
 
 
-def restruct_io(api):
-    api["input_dict"] = to_named_dict(api["inputs"])
-    api["attr_dict"] = to_named_dict(api["attrs"])
-    api["output_dict"] = to_named_dict(api["outputs"])
-    return api
+def restruct_io(op):
+    op["input_dict"] = to_named_dict(op["inputs"])
+    op["attr_dict"] = to_named_dict(op["attrs"])
+    op["output_dict"] = to_named_dict(op["outputs"])
+    return op
 
 
 # replace name of op and params for OpMaker
-def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
-    def get_api_and_op_name(api_item):
-        names = api_item.split('(')
+def replace_compat_name(op_op_map, forward_op_dict, backward_op_dict):
+    def get_op_and_op_name(op_item):
+        names = op_item.split('(')
         if len(names) == 1:
             return names[0].strip(), names[0].strip()
         else:
             return names[0].strip(), names[1].split(')')[0].strip()
 
-    def update_api_attr_name(attrs, attrs_alias_map):
+    def update_op_attr_name(attrs, attrs_alias_map):
         for attr_item in attrs:
             if attr_item['name'] in attrs_alias_map:
                 attr_item['name'] = attrs_alias_map[attr_item['name']]
 
-    for api_args in api_op_map:
-        api_name, op_name = get_api_and_op_name(api_args['op'])
-        if api_name not in forward_api_dict:
+    for op_args in op_op_map:
+        new_op_name, op_name = get_op_and_op_name(op_args['op'])
+        if new_op_name not in forward_op_dict:
             continue
-        forward_api_item = forward_api_dict[api_name]
-        has_backward = True if forward_api_item['backward'] else False
+        forward_op_item = forward_op_dict[new_op_name]
+        has_backward = True if forward_op_item['backward'] else False
         if has_backward:
-            backward_api_item = backward_api_dict[forward_api_item['backward']]
-        if api_name != op_name:
-            forward_api_item['op_name'] = op_name
-        if 'backward' in api_args and has_backward:
-            backward_op_list = api_args['backward'].split(',')
-            bw_api_name, bw_op_name = get_api_and_op_name(backward_op_list[0])
-            forward_api_item['backward'] = bw_op_name
-            backward_api_item['op_name'] = bw_op_name
+            backward_op_item = backward_op_dict[forward_op_item['backward']]
+        if new_op_name != op_name:
+            forward_op_item['op_name'] = op_name
+        if 'backward' in op_args and has_backward:
+            backward_op_list = op_args['backward'].split(',')
+            _, bw_op_name = get_op_and_op_name(backward_op_list[0])
+            forward_op_item['backward'] = bw_op_name
+            backward_op_item['op_name'] = bw_op_name
 
             # for double grad
             if len(backward_op_list) > 1:
-                double_grad_api_name, double_grad_op_name = get_api_and_op_name(
-                    backward_op_list[1]
-                )
-                double_grad_item = backward_api_dict[double_grad_api_name]
-                backward_api_item['backward'] = double_grad_op_name
+                (
+                    new_double_grad_op_name,
+                    double_grad_op_name,
+                ) = get_op_and_op_name(backward_op_list[1])
+                double_grad_item = backward_op_dict[new_double_grad_op_name]
+                backward_op_item['backward'] = double_grad_op_name
                 double_grad_item['op_name'] = double_grad_op_name
-                if 'attrs' in api_args:
-                    update_api_attr_name(
-                        double_grad_item['attrs'], api_args['attrs']
+                if 'attrs' in op_args:
+                    update_op_attr_name(
+                        double_grad_item['attrs'], op_args['attrs']
                     )
-                    update_api_attr_name(
-                        double_grad_item['forward']['attrs'], api_args['attrs']
+                    update_op_attr_name(
+                        double_grad_item['forward']['attrs'], op_args['attrs']
                     )
 
                 # for triple grad
                 if len(backward_op_list) > 2:
                     (
-                        triple_grad_api_name,
+                        new_triple_grad_op_name,
                         triple_grad_op_name,
-                    ) = get_api_and_op_name(backward_op_list[2])
-                    triple_grad_item = backward_api_dict[triple_grad_api_name]
+                    ) = get_op_and_op_name(backward_op_list[2])
+                    triple_grad_item = backward_op_dict[new_triple_grad_op_name]
                     double_grad_item['backward'] = triple_grad_op_name
                     triple_grad_item['op_name'] = triple_grad_op_name
-                    if 'attrs' in api_args:
-                        update_api_attr_name(
-                            triple_grad_item['attrs'], api_args['attrs']
+                    if 'attrs' in op_args:
+                        update_op_attr_name(
+                            triple_grad_item['attrs'], op_args['attrs']
                         )
-                        update_api_attr_name(
+                        update_op_attr_name(
                             triple_grad_item['forward']['attrs'],
-                            api_args['attrs'],
+                            op_args['attrs'],
                         )
 
         key_set = ['inputs', 'attrs', 'outputs']
         args_map = {}
         for key in key_set:
-            if key in api_args:
-                args_map.update(api_args[key])
-                for args_item in forward_api_item[key]:
-                    if args_item['name'] in api_args[key]:
-                        args_item['name'] = api_args[key][args_item['name']]
+            if key in op_args:
+                args_map.update(op_args[key])
+                for args_item in forward_op_item[key]:
+                    if args_item['name'] in op_args[key]:
+                        args_item['name'] = op_args[key][args_item['name']]
                 if has_backward:
-                    for args_item in backward_api_item['forward'][key]:
-                        if args_item['name'] in api_args[key]:
-                            args_item['name'] = api_args[key][args_item['name']]
-        forward_api_item['infer_meta']['param'] = [
+                    for args_item in backward_op_item['forward'][key]:
+                        if args_item['name'] in op_args[key]:
+                            args_item['name'] = op_args[key][args_item['name']]
+        forward_op_item['infer_meta']['param'] = [
             args_map[param] if param in args_map else param
-            for param in forward_api_item['infer_meta']['param']
+            for param in forward_op_item['infer_meta']['param']
         ]
-        forward_api_item['kernel']['param'] = [
+        forward_op_item['kernel']['param'] = [
             args_map[param] if param in args_map else param
-            for param in forward_api_item['kernel']['param']
+            for param in forward_op_item['kernel']['param']
         ]
-        if forward_api_item['kernel']['data_type']:
-            forward_api_item['kernel']['data_type']['candidates'] = [
+        if forward_op_item['kernel']['data_type']:
+            forward_op_item['kernel']['data_type']['candidates'] = [
                 args_map[param] if param in args_map else param
-                for param in forward_api_item['kernel']['data_type'][
+                for param in forward_op_item['kernel']['data_type'][
                     'candidates'
                 ]
             ]
-        if forward_api_item['kernel']['backend']:
-            forward_api_item['kernel']['backend']['candidates'] = [
+        if forward_op_item['kernel']['backend']:
+            forward_op_item['kernel']['backend']['candidates'] = [
                 args_map[param] if param in args_map else param
-                for param in forward_api_item['kernel']['backend']['candidates']
+                for param in forward_op_item['kernel']['backend']['candidates']
             ]
-        if forward_api_item['kernel']['layout']:
-            forward_api_item['kernel']['layout']['candidates'] = [
+        if forward_op_item['kernel']['layout']:
+            forward_op_item['kernel']['layout']['candidates'] = [
                 args_map[param] if param in args_map else param
-                for param in forward_api_item['kernel']['layout']['candidates']
+                for param in forward_op_item['kernel']['layout']['candidates']
             ]
-        if forward_api_item['inplace']:
+        if forward_op_item['inplace']:
             inplace_map = {}
-            for key, val in forward_api_item['inplace'].items():
+            for key, val in forward_op_item['inplace'].items():
                 if key in args_map:
                     key = args_map[key]
                 if val in args_map:
                     val = args_map[val]
                 inplace_map[key] = val
-            forward_api_item['inplace'] = inplace_map
+            forward_op_item['inplace'] = inplace_map
 
         if has_backward:
-            for args_item in backward_api_item['inputs']:
+            for args_item in backward_op_item['inputs']:
                 if args_item['name'] in args_map:
                     args_item['name'] = args_map[args_item['name']]
                 elif (
@@ -189,10 +190,10 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
                         args_map[args_item['name'][:-5]] + '_grad'
                     )
                     args_item['name'] = args_map[args_item['name']]
-            for args_item in backward_api_item['attrs']:
+            for args_item in backward_op_item['attrs']:
                 if args_item['name'] in args_map:
                     args_item['name'] = args_map[args_item['name']]
-            for args_item in backward_api_item['outputs']:
+            for args_item in backward_op_item['outputs']:
                 if (
                     args_item['name'].endswith('_grad')
                     and args_item['name'][:-5] in args_map
@@ -202,73 +203,73 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
                     )
                     args_item['name'] = args_map[args_item['name']]
 
-            if 'invoke' in backward_api_item:
-                backward_api_item['invoke']['args'] = [
+            if 'invoke' in backward_op_item:
+                backward_op_item['invoke']['args'] = [
                     args_map[param.strip()]
                     if param.strip() in args_map
                     else param.strip()
-                    for param in backward_api_item['invoke']['args'].split(',')
+                    for param in backward_op_item['invoke']['args'].split(',')
                 ]
                 continue
 
-            backward_api_item['infer_meta']['param'] = [
+            backward_op_item['infer_meta']['param'] = [
                 args_map[param] if param in args_map else param
-                for param in backward_api_item['infer_meta']['param']
+                for param in backward_op_item['infer_meta']['param']
             ]
-            backward_api_item['kernel']['param'] = [
+            backward_op_item['kernel']['param'] = [
                 args_map[param] if param in args_map else param
-                for param in backward_api_item['kernel']['param']
+                for param in backward_op_item['kernel']['param']
             ]
-            if backward_api_item['kernel']['data_type']:
-                backward_api_item['kernel']['data_type']['candidates'] = [
+            if backward_op_item['kernel']['data_type']:
+                backward_op_item['kernel']['data_type']['candidates'] = [
                     args_map[param] if param in args_map else param
-                    for param in backward_api_item['kernel']['data_type'][
+                    for param in backward_op_item['kernel']['data_type'][
                         'candidates'
                     ]
                 ]
-            if backward_api_item['kernel']['backend']:
-                backward_api_item['kernel']['backend']['candidates'] = [
+            if backward_op_item['kernel']['backend']:
+                backward_op_item['kernel']['backend']['candidates'] = [
                     args_map[param] if param in args_map else param
-                    for param in backward_api_item['kernel']['backend'][
+                    for param in backward_op_item['kernel']['backend'][
                         'candidates'
                     ]
                 ]
-            if backward_api_item['kernel']['layout']:
-                backward_api_item['kernel']['layout']['candidates'] = [
+            if backward_op_item['kernel']['layout']:
+                backward_op_item['kernel']['layout']['candidates'] = [
                     args_map[param] if param in args_map else param
-                    for param in backward_api_item['kernel']['layout'][
+                    for param in backward_op_item['kernel']['layout'][
                         'candidates'
                     ]
                 ]
-            if backward_api_item['no_need_buffer']:
-                backward_api_item['no_need_buffer'] = [
+            if backward_op_item['no_need_buffer']:
+                backward_op_item['no_need_buffer'] = [
                     args_map[param] if param in args_map else param
-                    for param in backward_api_item['no_need_buffer']
+                    for param in backward_op_item['no_need_buffer']
                 ]
-            if backward_api_item['inplace']:
+            if backward_op_item['inplace']:
                 inplace_map = {}
-                for key, val in backward_api_item['inplace'].items():
+                for key, val in backward_op_item['inplace'].items():
                     if key in args_map:
                         key = args_map[key]
                     if val in args_map:
                         val = args_map[val]
                     inplace_map[key] = val
-                backward_api_item['inplace'] = inplace_map
+                backward_op_item['inplace'] = inplace_map
 
 
-def process_invoke_op(forward_api_dict, backward_api_dict):
-    for bw_api in backward_api_dict.values():
-        if 'invoke' in bw_api:
-            invoke_op = bw_api['invoke']['func']
-            args_list = bw_api['invoke']['args']
+def process_invoke_op(forward_op_dict, backward_op_dict):
+    for bw_op in backward_op_dict.values():
+        if 'invoke' in bw_op:
+            invoke_op = bw_op['invoke']['func']
+            args_list = bw_op['invoke']['args']
             args_index = 0
-            if invoke_op in forward_api_dict:
-                reuse_op = forward_api_dict[invoke_op]
-                bw_api['invoke']['inputs'] = []
-                bw_api['invoke']['attrs'] = []
-                bw_api['invoke']['outputs'] = []
+            if invoke_op in forward_op_dict:
+                reuse_op = forward_op_dict[invoke_op]
+                bw_op['invoke']['inputs'] = []
+                bw_op['invoke']['attrs'] = []
+                bw_op['invoke']['outputs'] = []
                 for input_item in reuse_op['inputs']:
-                    bw_api['invoke']['inputs'].append(
+                    bw_op['invoke']['inputs'].append(
                         {
                             'name': input_item['name'],
                             'value': args_list[args_index],
@@ -279,20 +280,20 @@ def process_invoke_op(forward_api_dict, backward_api_dict):
                     if args_index < len(args_list):
                         attr_value = (
                             f"this->GetAttr(\"{args_list[args_index]}\")"
-                            if args_list[args_index] in bw_api['attr_dict']
+                            if args_list[args_index] in bw_op['attr_dict']
                             else args_list[args_index]
                         )
-                        bw_api['invoke']['attrs'].append(
+                        bw_op['invoke']['attrs'].append(
                             {'name': attr['name'], 'value': attr_value}
                         )
                         args_index = args_index + 1
                     else:
                         break
                 for idx, output_item in enumerate(reuse_op['outputs']):
-                    bw_api['invoke']['outputs'].append(
+                    bw_op['invoke']['outputs'].append(
                         {
                             'name': output_item['name'],
-                            'value': bw_api['outputs'][idx]['name'],
+                            'value': bw_op['outputs'][idx]['name'],
                         }
                     )
 
@@ -306,47 +307,47 @@ def main(
     output_arg_map_path,
 ):
     with open(ops_yaml_path, "rt") as f:
-        apis = yaml.safe_load(f)
-        apis = [restruct_io(api) for api in apis]
-    forward_api_dict = to_named_dict(apis)
+        ops = yaml.safe_load(f)
+        ops = [restruct_io(op) for op in ops]
+    forward_op_dict = to_named_dict(ops)
 
     with open(backward_yaml_path, "rt") as f:
-        backward_apis = yaml.safe_load(f)
-        backward_apis = [restruct_io(api) for api in backward_apis]
-    backward_api_dict = to_named_dict(backward_apis)
+        backward_ops = yaml.safe_load(f)
+        backward_ops = [restruct_io(op) for op in backward_ops]
+    backward_op_dict = to_named_dict(backward_ops)
 
     with open(op_version_yaml_path, "rt") as f:
-        api_versions = yaml.safe_load(f)
-    # add api version info into api
-    for api_version in api_versions:
-        forward_api_dict[api_version['op']]['version'] = api_version['version']
+        op_versions = yaml.safe_load(f)
+    # add op version info into op
+    for op_version in op_versions:
+        forward_op_dict[op_version['op']]['version'] = op_version['version']
 
     with open(op_compat_yaml_path, "rt") as f:
-        api_op_map = yaml.safe_load(f)
+        op_op_map = yaml.safe_load(f)
 
-    for api in apis:
-        api['op_name'] = api['name']
-    for bw_api in backward_apis:
-        bw_api['op_name'] = bw_api['name']
+    for op in ops:
+        op['op_name'] = op['name']
+    for bw_op in backward_ops:
+        bw_op['op_name'] = bw_op['name']
 
-    replace_compat_name(api_op_map, forward_api_dict, backward_api_dict)
+    replace_compat_name(op_op_map, forward_op_dict, backward_op_dict)
 
     # prepare for invoke case
-    process_invoke_op(forward_api_dict, backward_api_dict)
+    process_invoke_op(forward_op_dict, backward_op_dict)
 
-    # fill backward field for an api if another api claims it as forward
-    for name, backward_api in backward_api_dict.items():
-        forward_name = backward_api["forward"]["name"]
-        if forward_name in backward_api_dict:
-            forward_api = backward_api_dict[forward_name]
-            if forward_api["backward"] is None:
-                forward_api["backward"] = name
+    # fill backward field for an op if another op claims it as forward
+    for name, backward_op in backward_op_dict.items():
+        forward_name = backward_op["forward"]["name"]
+        if forward_name in backward_op_dict:
+            forward_op = backward_op_dict[forward_name]
+            if forward_op["backward"] is None:
+                forward_op["backward"] = name
 
-    api_dict = {}
-    api_dict.update(forward_api_dict)
-    api_dict.update(backward_api_dict)
+    op_dict = {}
+    op_dict.update(forward_op_dict)
+    op_dict.update(backward_op_dict)
 
-    if len(apis) == 0 and len(backward_apis) == 0:
+    if len(ops) == 0 and len(backward_ops) == 0:
         if os.path.isfile(output_op_path):
             os.remove(output_op_path)
         if os.path.isfile(output_arg_map_path):
@@ -356,19 +357,19 @@ def main(
     op_template = env.get_template('op.c.j2')
     with open(output_op_path, "wt") as f:
         msg = op_template.render(
-            apis=apis, backward_apis=backward_apis, api_dict=api_dict
+            ops=ops, backward_ops=backward_ops, op_dict=op_dict
         )
         f.write(msg)
 
     ks_template = env.get_template('ks.c.j2')
     with open(output_arg_map_path, 'wt') as f:
-        msg = ks_template.render(apis=apis, backward_apis=backward_apis)
+        msg = ks_template.render(ops=ops, backward_ops=backward_ops)
         f.write(msg)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Generate operator file from api yaml."
+        description="Generate operator file from op yaml."
     )
     parser.add_argument(
         '--ops_yaml_path', type=str, help="parsed ops yaml file."
