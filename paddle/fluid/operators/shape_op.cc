@@ -34,6 +34,8 @@ class ShapeOp : public framework::OperatorWithKernel {
     const phi::DenseTensor *t = nullptr;
     if (ctx.InputVar("Input")->IsType<phi::DenseTensor>()) {
       t = &ctx.InputVar("Input")->Get<phi::DenseTensor>();
+    } else if (ctx.InputVar("Input")->IsType<phi::SelectedRows>()) {
+      t = &(ctx.InputVar("Input")->Get<phi::SelectedRows>().value());
     }
     if (t != nullptr) {
       input_data_type = paddle::framework::TransToProtoVarType(t->dtype());
@@ -43,7 +45,8 @@ class ShapeOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "The Input Variable(Input) of (shape) Operator used "
                           "to determine kernel "
-                          "data type is empty or not phi::DenseTensor."));
+                          "data type is empty or not phi::DenseTensor or "
+                          "phi::SelectedRows."));
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
