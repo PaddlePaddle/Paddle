@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void Conv2dTransposeKernel(const Context& ctx,
+void Conv2dTransposeKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& filter,
                            const std::vector<int>& strides,
@@ -37,7 +37,7 @@ void Conv2dTransposeKernel(const Context& ctx,
                            DenseTensor* out);
 
 template <typename T, typename Context>
-void Conv3dTransposeKernel(const Context& ctx,
+void Conv3dTransposeKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& filter,
                            const std::vector<int>& strides,
@@ -51,7 +51,7 @@ void Conv3dTransposeKernel(const Context& ctx,
                            DenseTensor* out);
 
 template <typename T, typename Context>
-void DepthwiseConv2dTransposeKernel(const Context& ctx,
+void DepthwiseConv2dTransposeKernel(const Context& dev_ctx,
                                     const DenseTensor& x,
                                     const DenseTensor& filter,
                                     const std::vector<int>& strides,
