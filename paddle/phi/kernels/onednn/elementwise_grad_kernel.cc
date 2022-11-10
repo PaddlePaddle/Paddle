@@ -54,10 +54,12 @@ inline void AddSubNonBroadcast(ReorderOneDNNHandler* reorder_handler,
   reorder_attr.set_output_scales(0, scales);
   auto reorder_p =
       reorder_handler->AcquireReorder(dst_memory, src_memory, reorder_attr);
-  //   platform::RecordEvent record_reorder("int_reorder",
-  //                                        platform::TracerEventType::UserDefined,
-  //                                        2,
-  //                                        platform::EventRole::kUniqueOp);
+
+  paddle::platform::RecordEvent record_reorder(
+      "int_reorder",
+      paddle::platform::TracerEventType::UserDefined,
+      2,
+      paddle::platform::EventRole::kUniqueOp);
 
   reorder_p->execute(
       OneDNNContext::tls().get_stream(), *src_memory, *dst_memory);
