@@ -251,8 +251,8 @@
            pow_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
 - backward_op : relu6_grad
-  forward : relu6(Tensor x, float threshold) -> Tensor(out)
-  args : (Tensor out, Tensor out_grad, float threshold)
+  forward : relu6(Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, float threshold = 6)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

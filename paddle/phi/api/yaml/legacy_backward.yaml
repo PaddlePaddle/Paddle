@@ -570,8 +570,8 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : fmax_grad
-  forward : fmax(Tensor x, Tensor y, int axis) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad, int axis)
+  forward : fmax(Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
@@ -580,8 +580,8 @@
     func : fmax_grad
 
 - backward_op : fmin_grad
-  forward : fmin(Tensor x, Tensor y, int axis) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad, int axis)
+  forward : fmin(Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
@@ -677,8 +677,8 @@
     func : gumbel_softmax_grad
 
 - backward_op : hardswish_grad
-  forward : hardswish (Tensor x, float threshold = 6.0, float scale = 6.0, float offset = 3.0) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float threshold, float scale, float offset)
+  forward : hardswish (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float threshold = 6.0, float scale = 6.0, float offset = 3.0)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1411,8 +1411,8 @@
   invoke : real_grad_impl(out_grad, x_grad)
 
 - backward_op : relu6_grad
-  forward : relu6 (Tensor x, float threshold) -> Tensor(out)
-  args : (Tensor out, Tensor out_grad, float threshold)
+  forward : relu6 (Tensor x) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, float threshold = 6)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1802,7 +1802,7 @@
   optional: u_grad, vh_grad, s_grad
 
 - backward_op : swish_grad
-  forward : swish (Tensor x, float beta=1.0) -> Tensor(out)
+  forward : swish (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float bete=1.0)
   output : Tensor(x_grad)
   infer_meta :
