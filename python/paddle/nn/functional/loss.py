@@ -3962,6 +3962,7 @@ def multi_margin_loss(
 
 def soft_margin_loss(input, label, reduction='mean', name=None):
     """
+
     The API measures the soft margin loss between input predictions ``input``
     and target labels ``label`` . It can be described as:
 
@@ -3970,9 +3971,9 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
 
     Parameters:
 
-        input (Tensor): The input predications tensor with shape: [N, *],
+        input (Tensor): The input predications tensor with shape: ``[N, *]``,
             N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf.
-             Available dtype is float32, float64.
+            Available dtype is float32, float64.
 
         label (Tensor): The target labels tensor with the same shape as
             ``input``. The target labels which values should be numbers -1 or 1.
@@ -3990,8 +3991,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
 
     Returns:
 
-        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is [1].
+        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is same as ``input`` , else the shape of output is [1].
 
     Examples:
         .. code-block:: python
@@ -4017,6 +4017,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
             #         [0.84367639, 0.74795729, 0.44629076, 0.55123353, 0.77659678],
             #         [0.39465919, 0.76651484, 0.54485321, 0.76609844, 0.77166790],
             #         [0.51283568, 0.84757161, 0.78913331, 1.05268764, 0.45318675]])
+
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(

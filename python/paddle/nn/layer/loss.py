@@ -26,6 +26,7 @@ __all__ = []
 
 class BCEWithLogitsLoss(Layer):
     r"""
+
     This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
     Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
     layer and some reduce operations.
@@ -81,21 +82,21 @@ class BCEWithLogitsLoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shapes:
-        logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
-            N is batch_size, `*` means number of additional dimensions. The ``logit``
-            is usually the output of Linear layer. Available dtype is float32, float64.
-        label (Tensor): The target labels tensor. 2-D tensor with the same shape as
-            ``logit``. The target labels which values should be numbers between 0 and 1.
-            Available dtype is float32, float64.
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``logit`` , else the shape of output is scalar.
+        - logit (Tensor): The input predications tensor. 2-D tensor with shape: attr:`[N, *]`,
+          N is batch_size, `*` means number of additional dimensions. The ``logit``
+          is usually the output of Linear layer. Available dtype is float32, float64.
+        - label (Tensor): The target labels tensor. 2-D tensor with the same shape as
+          ``logit``. The target labels which values should be numbers between 0 and 1.
+          Available dtype is float32, float64.
+        - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+          same as ``logit`` , else the shape of output is scalar.
 
     Returns:
         A callable object of BCEWithLogitsLoss.
 
     Examples:
-
         .. code-block:: python
+
             import paddle
             logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
             label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
@@ -629,6 +630,7 @@ class MSELoss(Layer):
 
 class L1Loss(Layer):
     r"""
+
     Construct a callable object of the ``L1Loss`` class.
     The L1Loss layer calculates the L1 Loss of ``input`` and ``label`` as follows.
 
@@ -658,11 +660,11 @@ class L1Loss(Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input (Tensor): The input tensor. The shapes is [N, *], where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
-        label (Tensor): label. The shapes is [N, *], same shape as ``input`` . It's data type should be float32, float64, int32, int64.
-        output (Tensor): The L1 Loss of ``input`` and ``label``.
-            If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
-            If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+        - input (Tensor): The input tensor. The shapes is ``[N, *]``, where N is batch size and `*` means any number of additional dimensions. It's data type should be float32, float64, int32, int64.
+        - label (Tensor): label. The shapes is ``[N, *]``, same shape as ``input`` . It's data type should be float32, float64, int32, int64.
+        - output (Tensor): The L1 Loss of ``input`` and ``label``.
+          If `reduction` is ``'none'``, the shape of output loss is ``[N, *]``, the same as ``input`` .
+          If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
         .. code-block:: python
@@ -687,6 +689,7 @@ class L1Loss(Layer):
             print(output)
             # [[0.20000005 0.19999999]
             # [0.2        0.79999995]]
+            
     """
 
     def __init__(self, reduction='mean', name=None):
@@ -909,6 +912,7 @@ class NLLLoss(Layer):
 
 class KLDivLoss(Layer):
     r"""
+
     Generate a callable object of 'KLDivLoss' to calculate the
     Kullback-Leibler divergence loss between Input(X) and
     Input(Target). Notes that Input(X) is the log-probability
@@ -928,13 +932,9 @@ class KLDivLoss(Layer):
              Default is ``'mean'``.
 
     Shape:
-
-        - input (Tensor): (N, *), where * means, any number of additional dimensions.
-
-        - label (Tensor): (N, *), same shape as input.
-
+        - input (Tensor): ``(N, *)``, where ``*`` means, any number of additional dimensions.
+        - label (Tensor): ``(N, *)``, same shape as input.
         - output (Tensor): tensor with shape: [1] by default.
-
 
     Examples:
         .. code-block:: python
@@ -965,6 +965,7 @@ class KLDivLoss(Layer):
             kldiv_criterion = nn.KLDivLoss(reduction='none')
             pred_loss = kldiv_criterion(x, target)
             # shape=[5, 20]
+
     """
 
     def __init__(self, reduction='mean'):

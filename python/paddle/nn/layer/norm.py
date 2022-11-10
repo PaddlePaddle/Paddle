@@ -318,6 +318,7 @@ Where `H` means height of feature map, `W` means width of feature map.
 
 class GroupNorm(Layer):
     """
+
     This interface is used to construct a callable object of the ``GroupNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Group Normalization Layer.
@@ -338,7 +339,7 @@ class GroupNorm(Layer):
         name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: Tensor with shape: (batch, num_features, *).
+        - x: Tensor with shape: attr:`(batch, num_features, *)`.
         - output: The same shape as input x.
 
     Returns:

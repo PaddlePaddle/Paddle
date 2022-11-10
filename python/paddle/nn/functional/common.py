@@ -710,6 +710,7 @@ def upsample(
     name=None,
 ):
     """
+
     This API resizes a batch of images.
 
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
@@ -720,11 +721,12 @@ def upsample(
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
-        'linear' : Linear interpolation
-        'bilinear' : Bilinear interpolation
-        'trilinear' : Trilinear interpolation
-        'nearest' : Nearest neighbor interpolation
-        'bicubic' : Bicubic interpolation
+        - 'linear' : Linear interpolation
+        - 'bilinear' : Bilinear interpolation
+        - 'trilinear' : Trilinear interpolation
+        - 'nearest' : Nearest neighbor interpolation
+        - 'bicubic' : Bicubic interpolation
+
     Linear interpolation is the method of using a line connecting two known quantities
     to determine the value of an unknown quantity between the two known quantities.
 
@@ -826,6 +828,7 @@ def upsample(
               D_out = D_{in} * scale_{factor}
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
+
     https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of linear interpolation, please refer to Wikipedia:
 
@@ -871,23 +874,24 @@ def upsample(
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
+
     Returns:
         A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                import paddle
-                import paddle.nn as nn
+            import paddle
+            import paddle.nn as nn
 
-                input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
-                upsample_out = paddle.nn.Upsample(size=[12,12])
+            input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
+            upsample_out = paddle.nn.Upsample(size=[12,12])
 
-                output = upsample_out(x=input_data)
-                print(output.shape)
-                # [2L, 3L, 12L, 12L]
+            output = upsample_out(x=input_data)
+            print(output.shape)
+            # [2L, 3L, 12L, 12L]
 
     """
     return interpolate(
