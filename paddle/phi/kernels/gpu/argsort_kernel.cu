@@ -64,8 +64,6 @@ struct SegmentOffsetIter {
   int num_cols_;
 };
 
-// using phi::paddle::platform::PADDLE_CUDA_NUM_THREADS;
-
 #define PADDLE_CUDA_NUM_THREADS 1024
 
 template <typename T>
@@ -104,17 +102,7 @@ static __global__ void FillIndexAndSegmentKernel(int2 *data,
     PADDLE_ENFORCE_GPU_SUCCESS(err);                                           \
   } while (false)
 
-inline int GET_BLOCKS(
-    const int64_t N,
-    const int64_t max_threads_per_block = PADDLE_CUDA_NUM_THREADS) {
-  // Round up division for positive number that cannot cause integer overflow
-  auto block_num = (N - 1) / max_threads_per_block + 1;
-
-  return static_cast<int>(block_num);
-}
-
 template <typename key_t, typename value_type>
-
 static void RadixSortPairsImpl(const key_t *keys_in,
                                key_t *keys_out,
                                const value_type *values_in,
@@ -252,13 +240,14 @@ inline void SegmentedSortPairsByFullSort(const int64_t nsegments,
   auto i_s_ptr = reinterpret_cast<int2 *>(i_s_ptr_base);
 
   dim3 block = PADDLE_CUDA_NUM_THREADS;
-  dim3 grid = GET_BLOCKS(numel);
+  auto block_num = (numel - 1) / PADDLE_CUDA_NUM_THREADS + 1;
+  dim3 grid = static_cast<int>(block_num);
+
   auto cu_stream = ctx.stream();
 
   FillIndexAndSegmentKernel<<<grid, block, 0, cu_stream>>>(
       i_s_ptr, numel, nsort);
 
-  // Fill_index_and_segment(i_s_ptr, numel, nsort);
   DenseTensor indices_and_segment2;
   int64_t indices_and_segment2_size = numel;
   indices_and_segment2.Resize({indices_and_segment2_size * 2});
