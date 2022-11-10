@@ -38,6 +38,9 @@ inline dnnl::memory::dims GetWeightsTz(const phi::DenseTensor* filter,
 template <typename T, typename K, typename T_out>
 class ConvTransposeOneDNNHandlerT
     : public funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward> {
+ private:
+  const bool is_test_;
+
  public:
   ConvTransposeOneDNNHandlerT(const OneDNNContext& dev_ctx,
                               const DenseTensor* x,
@@ -50,11 +53,11 @@ class ConvTransposeOneDNNHandlerT
                               const std::vector<int>& dilations_in,
                               DenseTensor* out)
       : funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>(
-            dev_ctx.GetEngine(), dev_ctx.GetPlace()) {
-    is_test = dev_ctx.HasDnnAttr("is_test")
-                  ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
-                  : false;
-    PADDLE_ENFORCE_EQ(is_test,
+            dev_ctx.GetEngine(), dev_ctx.GetPlace()),
+        is_test_(dev_ctx.HasDnnAttr("is_test")
+                     ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
+                     : false) {
+    PADDLE_ENFORCE_EQ(is_test_,
                       true,
                       phi::errors::InvalidArgument(
                           "ConvTransposeOneDNN works only for inference. "
@@ -115,16 +118,14 @@ class ConvTransposeOneDNNHandlerT
         phi::errors::Unimplemented(
             "Now we only support 2d oneDNN convolution transpose op"));
 
-    const auto& input_dims = x->dims();
-    const auto data_dims = phi::slice_ddim(input_dims, 2, input_dims.size());
-    const auto& filter_dims = filter->dims();
+    const auto x_dims = x->dims();
+    const auto x_data_dims = phi::slice_ddim(x_dims, 2, x_dims.size());
+    const auto filter_dims = filter->dims();
     const auto filter_data_dims =
         phi::slice_ddim(filter_dims, 2, filter_dims.size());
-
     const auto ksize = phi::vectorize(filter_data_dims);
-
     UpdatePaddingAndDilation(
-        &paddings, &dilations, padding_algorithm, data_dims, strides, ksize);
+        &paddings, &dilations, padding_algorithm, x_data_dims, strides, ksize);
 
     std::transform(
         dilations.begin(), dilations.end(), dilations.begin(), [](int64_t i) {
@@ -140,7 +141,7 @@ class ConvTransposeOneDNNHandlerT
      * ('any') which lets a primitive (convolution in this case) choose
      * the memory format preferred for best performance
      */
-    const auto chosen_memory_format = funcs::OneDNNMemoryFormat::any;
+    auto chosen_memory_format = funcs::OneDNNMemoryFormat::any;
     auto data_type = dnnl::memory::data_type::f32;
     const bool is_BFLOAT16 =
         dev_ctx.HasDnnAttr("mkldnn_data_type")
@@ -159,8 +160,8 @@ class ConvTransposeOneDNNHandlerT
     const auto dst_md = funcs::OneDNNMemDesc(
         dst_tz, funcs::OneDNNGetDataType<T_out>(), chosen_memory_format);
 
-    auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
-                                 : dnnl::prop_kind::forward_training;
+    auto fwd_prop_kind = is_test_ ? dnnl::prop_kind::forward_inference
+                                  : dnnl::prop_kind::forward_training;
 
     if (bias) {
       std::vector<int64_t> bias_tz = phi::vectorize(bias->dims());
@@ -208,10 +209,6 @@ class ConvTransposeOneDNNHandlerT
     const K* filter_data = filter->data<K>();
     auto weights_tz = GetWeightsTz(filter, groups);
     int g = std::max(groups, 1);
-    const bool is_test =
-        dev_ctx.HasDnnAttr("is_test")
-            ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
-            : false;
 
     auto user_src_md =
         funcs::OneDNNMemDesc(weights_tz,
@@ -226,7 +223,7 @@ class ConvTransposeOneDNNHandlerT
         funcs::to_void_cast<K>(filter_data),
         key,
         "@weights_mem_p",
-        is_test);
+        is_test_);
   }
 
   template <typename F = T>
@@ -288,8 +285,8 @@ class ConvTransposeOneDNNHandlerT
           std::static_pointer_cast<dnnl::memory>(dev_ctx.GetBlob(user_key));
       user_memory_p->set_data_handle(ptr);
 
-      // TODO(jczaja): Here we detect if reorder is cached it means it is
-      // needed need to change this to get rid of keys
+      // TODO(jczaja): Here we detect if reorder is cached it means it is needed
+      // need to change this to get rid of keys
       auto reorder_p = std::static_pointer_cast<dnnl::reorder>(
           dev_ctx.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
@@ -321,11 +318,8 @@ class ConvTransposeOneDNNHandlerT
                                           funcs::to_void_cast<K>(bias_data),
                                           key,
                                           "@bias_mem_p",
-                                          is_test);
+                                          is_test_);
   }
-
- private:
-  const bool is_test;
 };
 
 template <typename T, typename T_out>
@@ -351,6 +345,8 @@ void Execute(const OneDNNContext& dev_ctx,
                                                        groups,
                                                        dilations,
                                                        out);
+
+  auto src_memory_p = handler.AcquireSrcMemoryWithReorder(x);
   // Caching Key for weights is needed
   std::string key =
       funcs::CreateKey(dev_ctx,
@@ -413,8 +409,8 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
 
   if (use_bfloat16) {
     Execute<T, dtype::bfloat16>(dev_ctx,
-                                x,
-                                filter,
+                                &x,
+                                &filter,
                                 strides,
                                 paddings,
                                 padding_algorithm,
@@ -423,8 +419,8 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                                 out);
   } else {
     Execute<T, float>(dev_ctx,
-                      x,
-                      filter,
+                      &x,
+                      &filter,
                       strides,
                       paddings,
                       padding_algorithm,
