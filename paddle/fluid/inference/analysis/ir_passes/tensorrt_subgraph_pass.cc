@@ -164,24 +164,15 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   // those parameter already exist in trt, and should not have another copy in
   // fluid.
   std::vector<std::string> repetitive_params;
-  size_t max_mem_size = 0;
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
       auto *trt_engine =
           CreateTensorRTOp(node, graph, graph_param_names, &repetitive_params);
-      if (trt_engine) {
-        size_t mem_size = trt_engine->engine()->getDeviceMemorySize();
-        max_mem_size = std::max(max_mem_size, mem_size);
-      }
       std::unordered_set<const Node *> nodes2remove(
           framework::ir::Agent(node).subgraph()->begin(),
           framework::ir::Agent(node).subgraph()->end());
       framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
     }
-  }
-  if (max_mem_size > 0) {
-    inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-        .updateContextMemorySize(max_mem_size, nullptr);
   }
 
   std::unordered_set<const Node *> nodes2remove;

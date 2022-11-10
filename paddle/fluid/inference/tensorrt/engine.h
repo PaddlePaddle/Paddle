@@ -641,7 +641,7 @@ class TensorRTEngine {
   int batch_size_{-1};
 
   // use for subengine context memory sharing
-  bool context_memory_shared_{true};
+  bool context_memory_sharing_{false};
 
   int device_id_;
   int max_profile_num_{1};
@@ -779,7 +779,7 @@ class TRTEngineManager {
   }
 
   void DeleteAll() {
-    // std::unique_lock<std::mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     for (auto& item : engines_) {
       item.second.reset(nullptr);
     }
@@ -795,37 +795,38 @@ class TRTEngineManager {
     }
   }
 
-  void updateContextMemorySize(size_t mem_size, TensorRTEngine* trt_engine) {
-    if (trt_engine) {
-      releaseContextMemory(trt_engine->predictor_id_per_thread);
+void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
+    bool size_updated{false};
+
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (max_ctx_mem_size_ < mem_size) {
+        max_ctx_mem_size_ = mem_size;
+        size_updated = true;
+      }
     }
-    std::unique_lock<std::mutex> lock(mutex_);
-    max_ctx_mem_size_ = std::max(max_ctx_mem_size_, mem_size);
+
+    if (size_updated) {
+      releaseContextMemory(predictor_id);
+    }
   }
 
   void* getContextMemory(PredictorID predictor_id,
                          const phi::GPUPlace& place,
                          const phi::Stream& stream) {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
+    static auto alignment = getAlignmentSize(place);
     if (context_memorys_.count(predictor_id) == 0) {
-      auto memory_addr = memory::Alloc(place, max_ctx_mem_size_, stream);
-      if (memory_addr == nullptr) {
-        PADDLE_ENFORCE_EQ(
-            max_ctx_mem_size_,
-            0,
-            platform::errors::InvalidArgument(
-                "The context memory size is non-zero, but the "
-                "memory address we applied for is NULL, we failed to set it."));
-      }
-      // context_memory_[predictor_id].reset(memory_addr.release());
-      context_memorys_[predictor_id] = std::move(memory_addr);
+      auto context_memory =
+          memory::Alloc(place, max_ctx_mem_size_ + alignment, stream);
+      // context_memory_[predictor_id].reset(context_memory.release());
+      context_memorys_[predictor_id] = std::move(context_memory);
     }
-    // ->ptr(): has offset in aligned memory
-    return context_memorys_[predictor_id].get()->ptr();
+    return getAlignedMemory(context_memorys_[predictor_id]->ptr(), alignment);
   }
 
   void releaseContextMemory(PredictorID predictor_id) {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     if (context_memorys_.count(predictor_id)) {
       context_memorys_[predictor_id].reset(nullptr);
       context_memorys_.erase(predictor_id);
@@ -833,6 +834,15 @@ class TRTEngineManager {
   }
 
  private:
+ size_t getAlignmentSize(const phi::GPUPlace& place) {
+    const auto& prop = platform::GetDeviceProperties(place.GetDeviceId());
+        return prop.textureAlignment;
+  }
+
+  void* getAlignedMemory(void* addr, size_t alignment) {
+    return reinterpret_cast<void*>(uintptr_t(addr) & (~(alignment - 1)));
+  }
+
   mutable std::mutex mutex_;
   size_t max_ctx_mem_size_{0};
   std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
