@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import collections
-import contextlib
 import functools
 import inspect
 import re
@@ -250,22 +249,6 @@ class param(_param):
 
 def to_safe_name(s):
     return str(re.sub("[^a-zA-Z0-9_]+", "_", s))
-
-
-@contextlib.contextmanager
-def stgraph(func, *args):
-    """static graph exec context"""
-    paddle.enable_static()
-    mp, sp = paddle.static.Program(), paddle.static.Program()
-    with paddle.static.program_guard(mp, sp):
-        input = paddle.static.data('input', x.shape, dtype=x.dtype)
-        output = func(input, n, axes, norm)
-
-    exe = paddle.static.Executor(place)
-    exe.run(sp)
-    [output] = exe.run(mp, feed={'input': x}, fetch_list=[output])
-    yield output
-    paddle.disable_static()
 
 
 # alias
