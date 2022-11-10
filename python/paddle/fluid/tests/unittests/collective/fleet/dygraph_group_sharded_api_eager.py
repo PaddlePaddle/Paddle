@@ -153,16 +153,6 @@ def test_sharding_api():
         list(range(paddle.distributed.get_world_size()))
     )
 
-    stage2_dp_params = train_mlp(
-        mlp1,
-        shard_level="os_g",
-        use_multi_precision=True,
-        output_dir=output_dir,
-        amp_level='O2',
-        sync_buffers=True,
-        dp_group=dp_group,
-    )
-
     # fp16
     stage2_params = train_mlp(
         mlp1,
