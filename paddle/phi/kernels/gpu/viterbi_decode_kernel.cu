@@ -91,7 +91,7 @@ struct BinaryOperation {
     std::vector<const DenseTensor*> ins{&lhs, &rhs};
     std::vector<DenseTensor*> outs{output};
     phi::funcs::LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        dev_ctx, ins, &outs, 0, BinaryFunctor<T>());
+        dev_ctx, ins, &outs, BinaryFunctor<T>());
   }
 };
 
