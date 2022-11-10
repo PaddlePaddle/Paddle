@@ -2132,6 +2132,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "skip_merge_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The merge_layernorm op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
     if (op_type == "lookup_table") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
@@ -2288,6 +2296,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logsigmoid",
       "preln_layernorm_shift_partition",
       "lookup_table",
+      "merge_layernorm",
+      "skip_merge_layernorm",
       // "lookup_table_v2",
       "expand_v2"};
 
@@ -2410,6 +2420,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logsigmoid",
       "preln_layernorm_shift_partition",
       "merge_layernorm",
+      "skip_merge_layernorm",
       "lookup_table",
       // "lookup_table_v2",
       "expand_v2"};
