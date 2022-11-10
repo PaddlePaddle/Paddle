@@ -33,9 +33,12 @@ from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
 )
 
-__not_shape_var_type__ = [
+__no_shape_var_type__ = [
     core.VarDesc.VarType.READER,
     core.VarDesc.VarType.STEP_SCOPES,
+    core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+    core.VarDesc.VarType.FEED_MINIBATCH,
+    core.VarDesc.VarType.FETCH_LIST,
 ]
 
 __not_naive_data_parallel_op__ = ["expand_v2"]

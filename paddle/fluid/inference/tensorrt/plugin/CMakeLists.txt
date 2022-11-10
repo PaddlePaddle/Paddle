@@ -14,7 +14,6 @@ list(
   emb_eltwise_layernorm_plugin.cu
   qkv_to_context_plugin.cu
   skip_layernorm_op_plugin.cu
-  slice_op_plugin.cu
   hard_swish_op_plugin.cu
   stack_op_plugin.cu
   anchor_generator_op_plugin.cu
@@ -35,6 +34,7 @@ list(
   layernorm_shift_partition_op.cu
   prelnlayernorm_shift_partition_op.cu
   merge_layernorm_op_plugin.cu
+  skip_merge_layernorm_op_plugin.cu
   generic_plugin.cu
   lookup_table.cu)
 

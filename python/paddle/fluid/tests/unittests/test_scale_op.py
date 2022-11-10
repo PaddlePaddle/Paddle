@@ -299,5 +299,19 @@ class TestScaleTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestScaleOpZeroNumelVariable(unittest.TestCase):
+    def test_check_zero_numel_cpu(self):
+        paddle.set_device('cpu')
+        data = paddle.ones([0, 1])
+        out = paddle.scale(data, 2)
+        self.assertEqual(out, data)
+
+        if paddle.is_compiled_with_cuda():
+            paddle.set_device('gpu')
+            data = paddle.ones([0, 1])
+            out = paddle.scale(data, 2)
+            self.assertEqual(out, data)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -173,10 +173,10 @@ void BindDistributed(py::module *m) {
                  int dst,
                  bool sync_op) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                auto dense =
+                auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.Send(tensors, dst, sync_op);
+                auto *out_dense = p_dense.get();
+                return self.Send(out_dense, dst, sync_op);
               },
               py::arg("tensor"),
               py::arg("dst"),
@@ -192,13 +192,14 @@ void BindDistributed(py::module *m) {
                  int rank_id,
                  bool sync_op) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                auto dense =
+                auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                int64_t numel = (*dense).numel();
+                int64_t numel = p_dense->numel();
                 int64_t send_numel = numel / nranks;
                 int64_t offset = send_numel * rank_id;
-                return self.Send_Partial(
-                    *dense, dst_rank, offset, send_numel, sync_op);
+                auto *out_dense = p_dense.get();
+                return self.SendPartial(
+                    out_dense, dst_rank, offset, send_numel, sync_op);
               },
               py::arg("tensor"),
               py::arg("dst"),
@@ -214,10 +215,10 @@ void BindDistributed(py::module *m) {
                  int src,
                  bool sync_op) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                auto dense =
+                auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.Recv(tensors, src, sync_op);
+                auto *in_dense = p_dense.get();
+                return self.Recv(in_dense, src, sync_op);
               },
               py::arg("tensor"),
               py::arg("src"),
@@ -233,13 +234,14 @@ void BindDistributed(py::module *m) {
                  int rank_id,
                  bool sync_op) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                auto dense =
+                auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                int64_t numel = (*dense).numel();
+                int64_t numel = p_dense->numel();
                 int64_t recv_numel = numel / nranks;
                 int64_t offset = recv_numel * rank_id;
-                return self.Recv_Partial(
-                    *dense, src_rank, offset, recv_numel, sync_op);
+                auto *out_dense = p_dense.get();
+                return self.RecvPartial(
+                    out_dense, src_rank, offset, recv_numel, sync_op);
               },
               py::arg("tensor"),
               py::arg("src"),
@@ -761,27 +763,6 @@ void BindDistributed(py::module *m) {
               py::arg("in"),
               py::arg("out"),
               py::arg("src"),
-              py::call_guard<py::gil_scoped_release>())
-
-          .def(
-              "_reduce_scatter_base",
-              [](distributed::ProcessGroup &self,
-                 py::handle py_out_tensor,
-                 py::handle py_in_tensor,
-                 distributed::ReduceOp op) {
-                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
-                auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
-                distributed::ReduceScatterOptions opts;
-                opts.reduce_op = op;
-                auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    out_tensor.impl());
-                auto dense_in = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    in_tensor.impl());
-                return self._ReduceScatterBase(*dense_out, *dense_in, opts);
-              },
-              py::arg("out_tensor"),
-              py::arg("in_tensor"),
-              py::arg("op") = distributed::ReduceOp::SUM,
               py::call_guard<py::gil_scoped_release>());
 
   auto ProcessGroupStream =
@@ -1146,10 +1127,10 @@ void BindDistributed(py::module *m) {
                  py::handle py_tensor,
                  int dst) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                auto dense =
+                auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.Send(tensors,
+                auto *out_dense = p_dense.get();
+                return self.Send(out_dense,
                                  dst,
                                  /*sync_op*/ true,
                                  /*use_calc_stream*/ true);
@@ -1166,17 +1147,18 @@ void BindDistributed(py::module *m) {
                  int nranks,
                  int rank_id) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                auto dense =
+                auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                int64_t numel = (*dense).numel();
+                int64_t numel = p_dense->numel();
                 int64_t send_numel = numel / nranks;
                 int64_t offset = send_numel * rank_id;
-                return self.Send_Partial(*dense,
-                                         dst_rank,
-                                         offset,
-                                         send_numel,
-                                         /*sync_op*/ true,
-                                         /*use_calc_stream*/ true);
+                auto *out_dense = p_dense.get();
+                return self.SendPartial(out_dense,
+                                        dst_rank,
+                                        offset,
+                                        send_numel,
+                                        /*sync_op*/ true,
+                                        /*use_calc_stream*/ true);
               },
               py::arg("tensor"),
               py::arg("dst"),
@@ -1190,10 +1172,10 @@ void BindDistributed(py::module *m) {
                  py::handle py_tensor,
                  int src) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                auto dense =
+                auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.Recv(tensors,
+                auto *in_dense = p_dense.get();
+                return self.Recv(in_dense,
                                  src,
                                  /*sync_op*/ true,
                                  /*use_calc_stream*/ true);
@@ -1210,17 +1192,18 @@ void BindDistributed(py::module *m) {
                  int nranks,
                  int rank_id) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-                auto dense =
+                auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                int64_t numel = (*dense).numel();
+                int64_t numel = p_dense->numel();
                 int64_t recv_numel = numel / nranks;
                 int64_t offset = recv_numel * rank_id;
-                return self.Recv_Partial(*dense,
-                                         src_rank,
-                                         offset,
-                                         recv_numel,
-                                         /*sync_op*/ true,
-                                         /*use_calc_stream*/ true);
+                auto *out_dense = p_dense.get();
+                return self.RecvPartial(out_dense,
+                                        src_rank,
+                                        offset,
+                                        recv_numel,
+                                        /*sync_op*/ true,
+                                        /*use_calc_stream*/ true);
               },
               py::arg("tensor"),
               py::arg("src"),
