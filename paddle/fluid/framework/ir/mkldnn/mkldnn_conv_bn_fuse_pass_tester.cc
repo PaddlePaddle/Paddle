@@ -36,7 +36,7 @@ PD_DECLARE_KERNEL(batch_norm, OneDNN, ONEDNN);
 USE_OP_ITSELF(conv2d_transpose);
 USE_OP_DEVICE_KERNEL(conv2d_transpose, MKLDNN);
 USE_OP_ITSELF(elementwise_add);
-PD_DECLARE_KERNEL(elementwise_add, OneDNN, ONEDNN);
+PD_DECLARE_KERNEL(add_raw, OneDNN, ONEDNN);
 USE_OP_ITSELF(gelu);
 PD_DECLARE_KERNEL(gelu, OneDNN, ONEDNN);
 PD_DECLARE_ARG_MAPPING_FN(gelu);
