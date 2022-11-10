@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ...base.topology import ParallelMode
-from paddle.fluid.dygraph import base as imperative_base
+import paddle.autograd as imperative_base
 import paddle
 from paddle import _legacy_C_ops
 

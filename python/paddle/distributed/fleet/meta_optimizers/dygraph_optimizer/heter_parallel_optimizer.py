@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid import framework
+import paddle.autograd as imperative_base
+from paddle import framework
 
 __all__ = []
 

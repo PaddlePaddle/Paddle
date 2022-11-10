@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
-from paddle.fluid import core, unique_name
+from paddle.framework import core
+from paddle.utils import unique_name
 from functools import reduce
 from paddle.distributed.fleet.meta_optimizers.common import (
     is_loss_grad_op,
@@ -1050,7 +1051,7 @@ def save_persistables(exe, dirname, main_program, filename=None):
             exe, dirname, main_program=main_program, filename=None
         )
     else:
-        paddle.fluid.io.save_vars(
+        paddle.static.save_vars(
             exe,
             dirname,
             main_program=main_program,
