@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "paddle/phi/core/macros.h"
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
@@ -42,6 +43,9 @@ class NaiveBestFitAllocator : public Allocator {
  private:
   platform::Place place_;
 };
+
+UNUSED static std::shared_ptr<NaiveBestFitAllocator> unused_obj =
+    std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
 
 }  // namespace allocation
 }  // namespace memory

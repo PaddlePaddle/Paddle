@@ -493,11 +493,6 @@ class AllocatorFacadePrivate {
   const AllocatorMap& GetAllocatorMap() { return allocators_; }
 
   void InitNaiveBestFitCPUAllocator() {
-    // This code just for compiling related symbols of NaiveBestFitAllocator
-    // using in some tests.
-    allocators_[platform::CPUPlace()] =
-        std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
-
     // It is more efficient to use CPUAllocator directly.
     allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
   }

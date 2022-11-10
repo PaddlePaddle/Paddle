@@ -20,22 +20,18 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-// Node(Weilong Wu): It is no meanings to test NaiveBestFitAllocator under CPU,
-// because InitNaiveBestFitCPUAllocator has been modified and use CPUAllocator
-// instead.
-//
-// TEST(NaiveBestFitAllocatorTest, CpuAlloc) {
-//   NaiveBestFitAllocator alloc{platform::CPUPlace()};
-//   {
-//     size_t size = (1 << 20);
-//     auto allocation = alloc.Allocate(size);
-//   }
-//   alloc.Release(platform::CPUPlace());
+TEST(NaiveBestFitAllocatorTest, CpuAlloc) {
+  NaiveBestFitAllocator alloc{platform::CPUPlace()};
+  {
+    size_t size = (1 << 20);
+    auto allocation = alloc.Allocate(size);
+  }
+  alloc.Release(platform::CPUPlace());
 
-//   size_t size = (1 << 20);
-//   auto allocation = alloc.Allocate(size);
-//   alloc.Release(platform::CPUPlace());
-// }
+  size_t size = (1 << 20);
+  auto allocation = alloc.Allocate(size);
+  alloc.Release(platform::CPUPlace());
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(NaiveBestFitAllocatorTest, GpuAlloc) {
