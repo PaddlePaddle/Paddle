@@ -60,8 +60,6 @@ Return the shape of the input.
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ShapeNoNeedBufferVarsInferer, "Input");
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -78,5 +76,4 @@ REGISTER_OPERATOR(
     ops::ShapeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::ShapeNoNeedBufferVarsInferer,
     ShapeInferShapeFunctor);

@@ -321,9 +321,6 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
     return OpFuncType::kQueueSync;
   }
 
-  if (op->Type() == "shape") {
-    return OpFuncType::kQueueSync;
-  }
   return OpFuncType::kQueueAsync;
 }
 

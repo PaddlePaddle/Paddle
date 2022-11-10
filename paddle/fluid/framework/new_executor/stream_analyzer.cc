@@ -90,13 +90,6 @@ std::vector<size_t> StreamAnalyzer::GetNeedEventVarIds(
     return false;
   };
 
-  auto is_shape_op = [](std::string op_name) {
-    if (op_name == "shape") {
-      return true;
-    }
-    return false;
-  };
-
   bool is_memcpy =
       interpreter::IsMemcpyOp(cur_instr) || interpreter::IsMemcpyOp(next_instr);
 
@@ -104,7 +97,7 @@ std::vector<size_t> StreamAnalyzer::GetNeedEventVarIds(
   for (auto& item : next_instr.Inputs()) {
     for (auto var_id : item.second) {
       if (unique_var_ids.count(var_id) > 0) {
-        if (is_memcpy || is_shape_op(next_instr.OpBase()->Type())) {
+        if (is_memcpy) {
           if (next_instr.NoDataTransformVars().count(var_id)) {
             VLOG(4) << "Skip inserting event at variable " << item.first
                     << " of operator " << next_instr.OpBase()->Type()
@@ -246,10 +239,6 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
  */
 bool StreamAnalyzer::IsDirectRun(Instruction& cur_instr,
                                  const Instruction& next_instr) {
-  if ((cur_instr.KernelType() == OpFuncType::kQueueSync) && (next_instr.KernelType() == OpFuncType::kQueueSync)) {
-    return true;
-  }
-
   if (cur_instr.KernelType() == next_instr.KernelType() &&
       (&cur_instr.DeviceContext() == &next_instr.DeviceContext())) {
     return true;
