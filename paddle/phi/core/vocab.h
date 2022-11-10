@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <unordered_map>
+
 #include "paddle/phi/core/extended_tensor.h"
 
 namespace phi {
