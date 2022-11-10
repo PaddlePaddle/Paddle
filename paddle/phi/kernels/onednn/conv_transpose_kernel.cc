@@ -16,13 +16,13 @@
 
 #include "paddle/phi/kernels/conv_transpose_kernel.h"
 
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/expect.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace phi {
 
@@ -42,25 +42,27 @@ class ConvTransposeOneDNNHandlerT
     : public funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward> {
  public:
   ConvTransposeOneDNNHandlerT(const OneDNNContext& dev_ctx,
-                            const dnnl::engine engine,
-                            Place cpu_place,
-                            const phi::DenseTensor* input,
-                            const phi::DenseTensor* filter,
-                            const phi::DenseTensor* bias,
-                            const std::vector<int>& strides_in,
-                            const std::vector<int>& paddings_in,
-                            const std::string& padding_algorithm,
-                            const std::vector<int>& dilations_in,
-                            int groups,
-                            const std::string& data_format,
-                            bool is_test,
-                            bool is_BFLOAT16,
-                            const std::string& fuse_activation,
-                            bool force_fp32_output,
-                            phi::DenseTensor* output)
+                              const dnnl::engine engine,
+                              Place cpu_place,
+                              const phi::DenseTensor* input,
+                              const phi::DenseTensor* filter,
+                              const phi::DenseTensor* bias,
+                              const std::vector<int>& strides_in,
+                              const std::vector<int>& paddings_in,
+                              const std::string& padding_algorithm,
+                              const std::vector<int>& dilations_in,
+                              int groups,
+                              const std::string& data_format,
+                              bool is_BFLOAT16,
+                              const std::string& fuse_activation,
+                              bool force_fp32_output,
+                              phi::DenseTensor* output)
       : funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>(
-            engine, cpu_place) {
-    PADDLE_ENFORCE_EQ(is_test,
+            engine, cpu_place),
+        is_test_(dev_ctx.HasDnnAttr("is_test")
+                     ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
+                     : false) {
+    PADDLE_ENFORCE_EQ(is_test_,
                       true,
                       phi::errors::InvalidArgument(
                           "ConvTransposeOneDNN works only for inference. "
@@ -70,8 +72,8 @@ class ConvTransposeOneDNNHandlerT
     PADDLE_ENFORCE_EQ(
         input->layout(),
         DataLayout::ONEDNN,
-        phi::errors::InvalidArgument(
-            "Got wrong layout = %d for Input tensor.", input->layout()));
+        phi::errors::InvalidArgument("Got wrong layout = %d for Input tensor.",
+                                     input->layout()));
 
     PADDLE_ENFORCE_EQ(
         filter->layout(),
@@ -85,14 +87,14 @@ class ConvTransposeOneDNNHandlerT
         input->dims().size(),
         4,
         phi::errors::InvalidArgument("Input must be with 4 dimensions, "
-                                          "i.e. NCHW. but got dimension =%d",
-                                          input->dims().size()));
+                                     "i.e. NCHW. but got dimension =%d",
+                                     input->dims().size()));
     PADDLE_ENFORCE_EQ(
         filter->dims().size(),
         4,
         phi::errors::InvalidArgument("Filter must be with 4 dimensions, "
-                                          "i.e. OIHW, but got dimension =%d",
-                                          filter->dims().size()));
+                                     "i.e. OIHW, but got dimension =%d",
+                                     filter->dims().size()));
 
     if (bias) {
       PADDLE_ENFORCE_EQ(
@@ -107,8 +109,8 @@ class ConvTransposeOneDNNHandlerT
           bias->dims().size(),
           1,
           phi::errors::InvalidArgument("Bias must only have 1 dimension, "
-                                            "i.e. X, but got dimension = %d .",
-                                            bias->dims().size()));
+                                       "i.e. X, but got dimension = %d .",
+                                       bias->dims().size()));
     }
 
     const auto input_dims = input->dims();
@@ -147,22 +149,24 @@ class ConvTransposeOneDNNHandlerT
     auto chosen_memory_format = funcs::OneDNNMemoryFormat::any;
     auto data_type = dnnl::memory::data_type::f32;
     if (is_BFLOAT16 || std::is_same<T_out, dtype::bfloat16>::value) {
-        data_type = dnnl::memory::data_type::bf16;
-      }
+      data_type = dnnl::memory::data_type::bf16;
+    }
 
-    const auto src_md = funcs::OneDNNMemDesc(src_tz, data_type, chosen_memory_format);
+    const auto src_md =
+        funcs::OneDNNMemDesc(src_tz, data_type, chosen_memory_format);
     const auto weights_md = funcs::OneDNNMemDesc(
-            weights_tz, data_type, funcs::OneDNNMemoryFormat::any);
+        weights_tz, data_type, funcs::OneDNNMemoryFormat::any);
     const auto dst_md = funcs::OneDNNMemDesc(
-          dst_tz, funcs::OneDNNGetDataType<T_out>(), chosen_memory_format);
+        dst_tz, funcs::OneDNNGetDataType<T_out>(), chosen_memory_format);
 
-    const dnnl::primitive_attr conv_trans_attr = CreateConvAttrs(dev_ctx, fuse_activation); //!!!!
-    auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
+    const dnnl::primitive_attr conv_trans_attr =
+        CreateConvAttrs(dev_ctx, fuse_activation);  //!!!!
+    auto fwd_prop_kind = is_test_ ? dnnl::prop_kind::forward_inference
                                   : dnnl::prop_kind::forward_training;
     if (bias) {
       std::vector<int64_t> bias_tz = phi::vectorize(bias->dims());
       const auto bias_md = funcs::OneDNNMemDesc(
-              bias_tz, data_type, funcs::OneDNNMemoryFormat::x);
+          bias_tz, data_type, funcs::OneDNNMemoryFormat::x);
       this->AcquireForwardPrimitiveDescriptor(
           conv_trans_attr,
           fwd_prop_kind,
@@ -190,14 +194,15 @@ class ConvTransposeOneDNNHandlerT
     }
   }
 
-  dnnl::primitive_attr CreateConvAttrs(const OneDNNContext& dev_ctx, const std::string& fuse_activation) {
+  dnnl::primitive_attr CreateConvAttrs(const OneDNNContext& dev_ctx,
+                                       const std::string& fuse_activation) {
     dnnl::primitive_attr conv_attr;
     dnnl::post_ops post_operations;
 
-    const float fuse_alpha = PADDLE_GET_CONST(
-                      float, dev_ctx.GetDnnAttr("fuse_alpha"));
-    const float fuse_beta = PADDLE_GET_CONST(
-                      float, dev_ctx.GetDnnAttr("fuse_beta"));
+    const float fuse_alpha =
+        PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"));
+    const float fuse_beta =
+        PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"));
     // Fusion with ReLU layer is executed through the PostOps feature. Create a
     // PostOps object and configure it to execute an eltwise relu operation.
     if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
@@ -235,10 +240,11 @@ class ConvTransposeOneDNNHandlerT
     auto weights_tz = GetWeightsTz(filter, groups);
     int g = std::max(groups, 1);
 
-    auto user_src_md = funcs::OneDNNMemDesc(
-        weights_tz,
-        funcs::OneDNNGetDataType<K>(),
-        (g == 1) ? funcs::OneDNNMemoryFormat::iohw : funcs::OneDNNMemoryFormat::giohw);
+    auto user_src_md =
+        funcs::OneDNNMemDesc(weights_tz,
+                             funcs::OneDNNGetDataType<K>(),
+                             (g == 1) ? funcs::OneDNNMemoryFormat::iohw
+                                      : funcs::OneDNNMemoryFormat::giohw);
 
     return this->template AcquireMemoryWithReorder<K>(
         dev_ctx,
@@ -246,7 +252,8 @@ class ConvTransposeOneDNNHandlerT
         this->fwd_pd_->weights_desc(),
         funcs::to_void_cast<K>(filter_data),
         key,
-        "@weights_mem_p");
+        "@weights_mem_p",
+        is_test_);
   }
 
   template <typename F = T>
@@ -332,21 +339,23 @@ class ConvTransposeOneDNNHandlerT
       const std::string& key,
       const phi::DenseTensor* bias) {
     const K* bias_data = bias->data<K>();
-    auto user_bias_md =
-        funcs::OneDNNMemDesc(phi::vectorize(bias->dims()),
-                                funcs::OneDNNGetDataType<K>(),
-                                funcs::OneDNNMemoryFormat::x);
+    auto user_bias_md = funcs::OneDNNMemDesc(phi::vectorize(bias->dims()),
+                                             funcs::OneDNNGetDataType<K>(),
+                                             funcs::OneDNNMemoryFormat::x);
     return this->AcquireMemoryWithReorder(dev_ctx,
                                           user_bias_md,
                                           this->fwd_pd_->bias_desc(),
                                           funcs::to_void_cast<K>(bias_data),
                                           key,
-                                          "@bias_mem_p");
+                                          "@bias_mem_p",
+                                          is_test_);
   }
+
+ private:
+  const bool is_test_;
 };
 
-
-static dnnl::memory::data_type GetDstType(bool is_bfloat16, 
+static dnnl::memory::data_type GetDstType(bool is_bfloat16,
                                           bool force_fp32_output) {
   auto dst_dt = dnnl::memory::data_type::f32;
   if (!force_fp32_output && is_bfloat16) {
@@ -366,7 +375,6 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
                  const std::vector<int>& dilations,
                  int groups,
                  const std::string& data_format,
-                 bool is_test,
                  bool is_BFLOAT16,
                  const std::string& fuse_activation,
                  bool force_fp32_output,
@@ -374,51 +382,51 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   ConvTransposeOneDNNHandlerT<T, float, T_out> handler(dev_ctx,
-                                                          onednn_engine,
-                                                          dev_ctx.GetPlace(),
-                                                          input,
-                                                          filter,
-                                                          bias,
-                                                          strides,
-                                                          paddings,
-                                                          padding_algorithm,
-                                                          dilations,
-                                                          groups,
-                                                          data_format,
-                                                          is_test,
-                                                          is_BFLOAT16,
-                                                          fuse_activation,
-                                                          force_fp32_output,
-                                                          output);
-    auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
-    // Caching Key for weights is needed
-    std::string key = funcs::CreateKey(dev_ctx,
-                                          dev_ctx.GetInputsName("Input")[0],
-                                          dev_ctx.GetInputsName("Filter")[0],
-                                          (bias ? dev_ctx.GetInputsName("Bias")[0] : ""));
-    key = funcs::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
-    auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-        dev_ctx, key, filter, groups);
+                                                       onednn_engine,
+                                                       dev_ctx.GetPlace(),
+                                                       input,
+                                                       filter,
+                                                       bias,
+                                                       strides,
+                                                       paddings,
+                                                       padding_algorithm,
+                                                       dilations,
+                                                       groups,
+                                                       data_format,
+                                                       is_BFLOAT16,
+                                                       fuse_activation,
+                                                       force_fp32_output,
+                                                       output);
+  auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
+  // Caching Key for weights is needed
+  std::string key =
+      funcs::CreateKey(dev_ctx,
+                       dev_ctx.GetInputsName("Input")[0],
+                       dev_ctx.GetInputsName("Filter")[0],
+                       (bias ? dev_ctx.GetInputsName("Bias")[0] : ""));
+  key = funcs::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+  auto weights_memory_p =
+      handler.AcquireWeightsMemoryWithReorder(dev_ctx, key, filter, groups);
 
-    std::shared_ptr<dnnl::memory> dst_memory_p =
-        handler.template AcquireDstMemory<T_out>(output);
-    auto conv_p = handler.AcquireForwardPrimitive();
+  std::shared_ptr<dnnl::memory> dst_memory_p =
+      handler.template AcquireDstMemory<T_out>(output);
+  auto conv_p = handler.AcquireForwardPrimitive();
 
-    std::unordered_map<int, dnnl::memory> args = {
-        {DNNL_ARG_SRC, *src_memory_p},
-        {DNNL_ARG_WEIGHTS, *weights_memory_p},
-        {DNNL_ARG_DST, *dst_memory_p}};
+  std::unordered_map<int, dnnl::memory> args = {
+      {DNNL_ARG_SRC, *src_memory_p},
+      {DNNL_ARG_WEIGHTS, *weights_memory_p},
+      {DNNL_ARG_DST, *dst_memory_p}};
 
-    if (bias) {
-      auto bias_memory_p =
-          handler.AcquireBiasMemoryWithReorder(dev_ctx, key, bias);
-      args.insert({DNNL_ARG_BIAS, *bias_memory_p});
-    }
-    auto& astream = OneDNNContext::tls().get_stream();
-    conv_p->execute(astream, args);
-    astream.wait();
-    output->set_mem_desc(dst_memory_p->get_desc());
+  if (bias) {
+    auto bias_memory_p =
+        handler.AcquireBiasMemoryWithReorder(dev_ctx, key, bias);
+    args.insert({DNNL_ARG_BIAS, *bias_memory_p});
   }
+  auto& astream = OneDNNContext::tls().get_stream();
+  conv_p->execute(astream, args);
+  astream.wait();
+  output->set_mem_desc(dst_memory_p->get_desc());
+}
 
 template <typename T, typename Context>
 void Conv2dTransposeKernel(const Context& dev_ctx,
@@ -438,9 +446,6 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
       AllocationType::CPU,
       phi::errors::PreconditionNotMet("Operator DNNL Conv must use CPUPlace"));
 
-  bool is_test = dev_ctx.HasDnnAttr("is_test")
-                     ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
-                     : false;
   bool is_BFLOAT16 =
       dev_ctx.HasDnnAttr("mkldnn_data_type")
           ? PADDLE_GET_CONST(std::string,
@@ -457,45 +462,40 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
       dev_ctx.HasDnnAttr("force_fp32_output")
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
           : false;
-  auto dst_dt = GetDstType(is_BFLOAT16,
-                           force_fp32_output);
+  auto dst_dt = GetDstType(is_BFLOAT16, force_fp32_output);
 
   if (dst_dt == dnnl::memory::data_type::f32) {
-      ComputeFP32<T, float>(dev_ctx,
-                            &x,
-                            &filter,
-                            bias,
-                            strides,
-                            paddings,
-                            padding_algorithm,
-                            dilations,
-                            groups,
-                            data_format,
-                            is_test,
-                            is_BFLOAT16,
-                            fuse_activation,
-                            force_fp32_output,
-                            out);
-    } else if (dst_dt == dnnl::memory::data_type::bf16) {
-      ComputeFP32<T, dtype::bfloat16>(dev_ctx,
-                                      &x,
-                                      &filter,
-                                      bias,
-                                      strides,
-                                      paddings,
-                                      padding_algorithm,
-                                      dilations,
-                                      groups,
-                                      data_format,
-                                      is_test,
-                                      is_BFLOAT16,
-                                      fuse_activation,
-                                      force_fp32_output,
-                                      out);
-    }
+    ComputeFP32<T, float>(dev_ctx,
+                          &x,
+                          &filter,
+                          bias,
+                          strides,
+                          paddings,
+                          padding_algorithm,
+                          dilations,
+                          groups,
+                          data_format,
+                          is_BFLOAT16,
+                          fuse_activation,
+                          force_fp32_output,
+                          out);
+  } else if (dst_dt == dnnl::memory::data_type::bf16) {
+    ComputeFP32<T, dtype::bfloat16>(dev_ctx,
+                                    &x,
+                                    &filter,
+                                    bias,
+                                    strides,
+                                    paddings,
+                                    padding_algorithm,
+                                    dilations,
+                                    groups,
+                                    data_format,
+                                    is_BFLOAT16,
+                                    fuse_activation,
+                                    force_fp32_output,
+                                    out);
   }
-
-
+}
 
 }  // namespace phi
 
