@@ -1048,6 +1048,7 @@ class BatchNorm3D(_BatchNormBase):
 
 class SyncBatchNorm(_BatchNormBase):
     r"""
+
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
     It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can
     be used as a normalizer function for other operations, such as conv2d and fully connected
@@ -1119,23 +1120,24 @@ class SyncBatchNorm(_BatchNormBase):
     Examples:
         .. code-block:: python
 
-          # required: gpu
+            # required: gpu
 
-          import paddle
-          import paddle.nn as nn
+            import paddle
+            import paddle.nn as nn
 
-          x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
+            x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
 
-          if paddle.is_compiled_with_cuda():
-              sync_batch_norm = nn.SyncBatchNorm(2)
-              hidden1 = sync_batch_norm(x)
-              print(hidden1)
-              # Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-              #        [[[[ 0.26824948,  1.09363246],
-              #           [ 0.26824948, -1.63013160]],
+            if paddle.is_compiled_with_cuda():
+                sync_batch_norm = nn.SyncBatchNorm(2)
+                hidden1 = sync_batch_norm(x)
+                print(hidden1)
+                # Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+                #        [[[[ 0.26824948,  1.09363246],
+                #           [ 0.26824948, -1.63013160]],
 
-              #          [[ 0.80956620, -0.66528702],
-              #           [-1.27446556,  1.13018656]]]])
+                #          [[ 0.80956620, -0.66528702],
+                #           [-1.27446556,  1.13018656]]]])
+
     """
 
     def __init__(
@@ -1284,8 +1286,8 @@ class SyncBatchNorm(_BatchNormBase):
             The original model with converted SyncBatchNorm layers. If BatchNorm*d layer in the model, use SyncBatchNorm layer instead.
 
         Examples:
-
             .. code-block:: python
+            
                 import paddle
                 import paddle.nn as nn
 
