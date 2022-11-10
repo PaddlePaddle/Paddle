@@ -2892,6 +2892,9 @@ function parallel_test() {
 function nv_test() {
     export FLAGS_enable_cudnn_frontend=0
     ctest -R "conv" --output-on-failure --timeout 150
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        show_ut_retry_result
+    fi
 }
 
 
