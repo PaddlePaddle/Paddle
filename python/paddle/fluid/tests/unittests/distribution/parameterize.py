@@ -100,7 +100,7 @@ def parameterize_func(
             # patch objects between new functions
             nf = reapply_patches_if_need(f)
             frame_locals[name] = param_as_standalone_func(p, nf, name)
-            frame_locals[name].__doc__ = None
+            frame_locals[name].__doc__ = f.__doc__
 
         # Delete original patches to prevent new function from evaluating
         # original patching object as well as re-constrfucted patches.
