@@ -67,10 +67,24 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
                                kSlotSmallVectorSize>& tensors_vector,
     T* attr) {
   // For lightly op like reduce
-  if (!(DesiredLayout() == phi::DataLayout::UNDEFINED)) {
+  if (DesiredLayout() == phi::DataLayout::UNDEFINED) {
     VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
     return std::make_shared<EagerLayoutTransformer>(
         op_name, tensors_vector, tensors_vector[0][0].layout());
+  }
+
+  if (op_name == "reshape") {
+    bool trans_back = tensors_vector[0][0].layout() == DesiredLayout();
+    (*attr).size() != 4;
+    if (trans_back && ((*attr).size() != 4)) {
+      VLOG(4) << "LayoutAutotune: Reshape's out dim_size is :" << (*attr).size()
+              << ", Input tensor need trans back to" << DefaultLayout();
+      return std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(
+          op_name);
+    } else {
+      return std::make_shared<EagerLayoutTransformer>(
+          op_name, tensors_vector, tensors_vector[0][0].layout());
+    }
   }
   return std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(op_name);
 }
