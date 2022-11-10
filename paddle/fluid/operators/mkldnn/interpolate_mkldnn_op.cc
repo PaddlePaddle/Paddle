@@ -27,10 +27,10 @@ using dnnl::stream;
 using phi::DataLayout;
 
 template <typename T = float>
-class InterpolateMKLDNNHandler
+class InterpolateOneDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::resampling_forward> {
  public:
-  InterpolateMKLDNNHandler(const dnnl::algorithm algo,
+  InterpolateOneDNNHandler(const dnnl::algorithm algo,
                            const dnnl::engine engine,
                            platform::Place cpu_place,
                            const phi::DenseTensor* x,
@@ -46,7 +46,7 @@ class InterpolateMKLDNNHandler
 };
 
 template <typename T = float>
-class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
+class InterpolateOneDNNKernel : public framework::OpKernel<T> {
   std::vector<int> ComputeOutputShape(
       const framework::ExecutionContext& ctx) const {
     const auto* x = ctx.Input<phi::DenseTensor>("X");
@@ -146,7 +146,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     framework::DDim dim_out = phi::make_ddim(out_dims_vec);
     out->Resize(dim_out);
 
-    InterpolateMKLDNNHandler<T> handler(
+    InterpolateOneDNNHandler<T> handler(
         algo, mkldnn_engine, ctx.GetPlace(), x, out);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
@@ -172,10 +172,10 @@ namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(nearest_interp,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
-                   ops::InterpolateMKLDNNKernel<float>,
-                   ops::InterpolateMKLDNNKernel<int8_t>,
-                   ops::InterpolateMKLDNNKernel<uint8_t>);
+                   ops::InterpolateOneDNNKernel<float>,
+                   ops::InterpolateOneDNNKernel<int8_t>,
+                   ops::InterpolateOneDNNKernel<uint8_t>);
 REGISTER_OP_KERNEL(bilinear_interp,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
-                   ops::InterpolateMKLDNNKernel<float>);
+                   ops::InterpolateOneDNNKernel<float>);
