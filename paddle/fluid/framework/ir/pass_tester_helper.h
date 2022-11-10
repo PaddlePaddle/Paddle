@@ -528,6 +528,119 @@ struct Layers {
     return out;
   }
 
+  VarDesc* shape(VarDesc* input) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("shape");
+    op->SetInput("Input", {input->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* slice(VarDesc* input,
+                 std::vector<int> axes,
+                 std::vector<int> starts,
+                 std::vector<int> ends) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("slice");
+    op->SetInput("Input", {input->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("axes", axes);
+    op->SetAttr("starts", starts);
+    op->SetAttr("ends", ends);
+    return out;
+  }
+
+  VarDesc* fill_constant_batch_size_like(VarDesc* x,
+                                         int dtype,
+                                         int input_dim_idx,
+                                         int output_dim_idx,
+                                         std::vector<int> shape,
+                                         float value) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("fill_constant_batch_size_like");
+    op->SetInput("Input", {x->Name()});
+    op->SetAttr("dtype", dtype);
+    op->SetAttr("input_dim_idx", input_dim_idx);
+    op->SetAttr("output_dim_idx", output_dim_idx);
+    op->SetAttr("shape", shape);
+    op->SetAttr("value", value);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* fused_multi_transformer(VarDesc* x,
+                                   VarDesc* cache_kv,
+                                   VarDesc* src_mask,
+                                   VarDesc* qkv_w,
+                                   VarDesc* qkv_bias,
+                                   VarDesc* out_linear_w,
+                                   VarDesc* out_linear_bias,
+                                   VarDesc* ffn1_w,
+                                   VarDesc* ffn1_bias,
+                                   VarDesc* ffn2_w,
+                                   VarDesc* ffn2_bias,
+                                   VarDesc* ln_scale,
+                                   VarDesc* ln_bias,
+                                   VarDesc* ffn_ln_scale,
+                                   VarDesc* ffn_ln_bias,
+                                   float epsilon,
+                                   float dropout_rate,
+                                   VarDesc* time_stamp = nullptr,
+                                   VarDesc* qkv_out_scale = nullptr,
+                                   VarDesc* out_linear_out_scale = nullptr,
+                                   VarDesc* ffn1_out_scale = nullptr,
+                                   VarDesc* ffn2_out_scale = nullptr,
+                                   std::vector<float> qkv_in_scale = {},
+                                   std::vector<float> out_linear_in_scale = {},
+                                   std::vector<float> ffn1_in_scale = {},
+                                   std::vector<float> ffn2_in_scale = {}) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    std::string op_type = qkv_out_scale ? "fused_multi_transformer_int8"
+                                        : "fused_multi_transformer";
+    op->SetType(op_type);
+    op->SetInput("X", {x->Name()});
+    op->SetInput("CacheKV", {cache_kv->Name()});
+    op->SetInput("SrcMask", {src_mask->Name()});
+    op->SetInput("QKVW", {qkv_w->Name()});
+    op->SetInput("QKVBias", {qkv_bias->Name()});
+    op->SetInput("OutLinearW", {out_linear_w->Name()});
+    op->SetInput("OutLinearBias", {out_linear_bias->Name()});
+    op->SetInput("FFN1Weight", {ffn1_w->Name()});
+    op->SetInput("FFN1Bias", {ffn1_bias->Name()});
+    op->SetInput("FFN2Weight", {ffn2_w->Name()});
+    op->SetInput("FFN2Bias", {ffn2_bias->Name()});
+    op->SetInput("LnScale", {ln_scale->Name()});
+    op->SetInput("LnBias", {ln_bias->Name()});
+    op->SetInput("FFNLnScale", {ffn_ln_scale->Name()});
+    op->SetInput("FFNLnBias", {ffn_ln_bias->Name()});
+    op->SetAttr("pre_layer_norm", true);
+    op->SetAttr("is_test", true);
+    op->SetAttr("dropout_implementation", "upscale_in_train");
+    op->SetAttr("dropout_rate", dropout_rate);
+    op->SetAttr("epsilon", epsilon);
+    op->SetOutput("Out", {out->Name()});
+
+    if (time_stamp) {
+      op->SetInput("TimeStep", {time_stamp->Name()});
+    }
+
+    if (qkv_out_scale) {
+      op->SetInput("QKVOutScale", {qkv_out_scale->Name()});
+      op->SetInput("OutLinearOutScale", {out_linear_out_scale->Name()});
+      op->SetInput("FFN1OutScale", {ffn1_out_scale->Name()});
+      op->SetInput("FFN2OutScale", {ffn2_out_scale->Name()});
+      op->SetAttr("qkv_in_scale", qkv_in_scale);
+      op->SetAttr("out_linear_in_scale", out_linear_in_scale);
+      op->SetAttr("ffn1_in_scale", ffn1_in_scale);
+      op->SetAttr("ffn2_in_scale", ffn2_in_scale);
+    }
+    return out;
+  }
+
   void backward(std::vector<VarDesc*> targets) {
     // This function is designed to simulate the structure of training program,
     //  but is constructed differently as the actual program.

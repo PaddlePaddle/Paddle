@@ -44,6 +44,14 @@ if(WITH_NCCL OR WITH_RCCL)
   endif()
 endif()
 
+if(WITH_XPU_BKCL)
+  cc_library(
+    processgroup_bkcl
+    SRCS ProcessGroupBKCL.cc BKCLTools.cc Common.cc
+    DEPS processgroup place enforce collective_helper device_context
+         dense_tensor)
+endif()
+
 if(WITH_MPI)
   cc_library(
     processgroup_mpi

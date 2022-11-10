@@ -137,6 +137,7 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
+    xpu_streams_py.cc
     jit.cc
     auto_parallel_py.cc
     op_function1.cc
@@ -160,6 +161,9 @@ if(WITH_PYTHON)
     if(WITH_PSCORE)
       set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
     endif()
+  endif()
+  if(WITH_XPU_BKCL)
+    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_bkcl)
   endif()
   if(WITH_GLOO)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_gloo)

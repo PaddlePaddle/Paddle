@@ -1168,7 +1168,7 @@ def fmax(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _C_ops.fmax(x, y, axis)
+        return _C_ops.fmax(x, y)
     if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type
@@ -1236,7 +1236,7 @@ def fmin(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _C_ops.fmin(x, y, axis)
+        return _C_ops.fmin(x, y)
     if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type

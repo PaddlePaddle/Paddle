@@ -97,7 +97,7 @@
   backward : addmm_grad
 
 - op : affine_grid
-  args : (Tensor input, IntArray outputShape, bool use_cudnn=true, bool align_corners=true)
+  args : (Tensor input, IntArray outputShape, bool align_corners=true, bool use_cudnn=true)
   output : Tensor
   infer_meta :
     func : AffineGridInferMeta
@@ -649,7 +649,7 @@
     backend : place > x
 
 - op : equal
-  args : (Tensor x, Tensor y, int axis = -1)
+  args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
@@ -751,7 +751,7 @@
     func : floor_divide
 
 - op : fmax
-  args : (Tensor x, Tensor y,  int axis)
+  args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
     param: [x, y]
@@ -761,7 +761,7 @@
   backward : fmax_grad
 
 - op : fmin
-  args : (Tensor x, Tensor y,  int axis)
+  args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
     param: [x, y]
@@ -898,7 +898,7 @@
     func : generate_proposals_v2
 
 - op : greater_equal
-  args : (Tensor x, Tensor y, int axis = -1)
+  args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
@@ -906,7 +906,7 @@
     func : greater_equal
 
 - op : greater_than
-  args : (Tensor x, Tensor y, int axis = -1)
+  args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
@@ -945,7 +945,7 @@
   backward : gumbel_softmax_grad
 
 - op : hardswish
-  args : (Tensor x, float threshold = 6.0, float scale = 6.0, float offset = 3.0)
+  args : (Tensor x)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
@@ -1180,7 +1180,7 @@
   backward : lerp_grad
 
 - op : less_equal
-  args : (Tensor x, Tensor y, int axis = -1)
+  args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
@@ -1188,7 +1188,7 @@
     func : less_equal
 
 - op : less_than
-  args : (Tensor x, Tensor y, int axis = -1)
+  args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
@@ -1623,7 +1623,7 @@
   backward : norm_grad
 
 - op : not_equal
-  args : (Tensor x, Tensor y, int axis = -1)
+  args : (Tensor x, Tensor y)
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
@@ -1820,7 +1820,7 @@
   backward : real_grad
 
 - op : relu6
-  args : (Tensor x, float threshold)
+  args : (Tensor x)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
@@ -2192,9 +2192,8 @@
     func : svd
   backward : svd_grad
 
-# The python API paddle.nn.functional.swish has no `bete` argument, it may be removed later
 - op : swish
-  args : (Tensor x, float beta=1.0)
+  args : (Tensor x)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
