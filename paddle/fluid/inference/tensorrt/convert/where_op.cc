@@ -42,7 +42,7 @@ class WhereOpConverter : public OpConverter {
     std::string input_x_name = op_desc.Input("X").front();
     std::string condition_name = op_desc.Input("Condition").front();
     std::string input_y_name = op_desc.Input("Y").front();
-    std::string output_name = op_desc.Output("Out")[0];
+    std::string output_name = op_desc.Output("Out").front();
 
     const auto input_x_tensor = engine_->GetITensor(input_x_name);
     const auto condition_tensor = engine_->GetITensor(condition_name);
