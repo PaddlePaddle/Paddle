@@ -15,6 +15,7 @@
 
 from paddle.distribution import distribution
 
+
 class MultivariateNormal(distribution.Distribution):
     r"""
        (MultivariateNormal Introduce)
