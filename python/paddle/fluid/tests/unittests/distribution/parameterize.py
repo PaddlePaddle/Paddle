@@ -68,3 +68,7 @@ def parameterize_cls(fields, values=None):
 
 def to_safe_name(s):
     return str(re.sub("[^a-zA-Z0-9_]+", "_", s))
+
+
+# alias
+param_cls = parameterize_cls
