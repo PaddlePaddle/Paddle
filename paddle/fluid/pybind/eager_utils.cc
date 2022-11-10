@@ -723,11 +723,14 @@ PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
 }
 
 PyObject* ToPyObject(
-    const std::vector<std::vector<paddle::experimental::Tensor>>& value) {
+    const std::vector<std::vector<paddle::experimental::Tensor>>& value,
+    bool return_py_none_if_not_initialize) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
   for (size_t i = 0; i < value.size(); i++) {
-    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(value[i]));
+    PyList_SET_ITEM(result,
+                    static_cast<Py_ssize_t>(i),
+                    ToPyObject(value[i], return_py_none_if_not_initialize));
   }
 
   return result;
