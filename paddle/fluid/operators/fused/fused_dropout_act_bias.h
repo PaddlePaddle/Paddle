@@ -37,8 +37,7 @@ __inline__ __device__ float tanh_opt(float x) {
   asm("tanh.approx.f32 %0,%1; \n\t" : "=f"(r) : "f"(x));
   return r;
 #else
-  const float exp_val = -1.f * fabs(2 * x);
-  return copysignf_pos((1.0f - __expf(exp_val)) / (__expf(exp_val) + 1.0f), x);
+  return tanh(x);
 #endif
 }
 
