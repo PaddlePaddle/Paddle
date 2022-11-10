@@ -98,6 +98,8 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
+      int64_t offset,
+      int64_t numel,
       bool sync_op,
       bool use_calc_stream) override;
 
@@ -156,49 +158,9 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   std::shared_ptr<ProcessGroup::Task> Recv(
       std::vector<phi::DenseTensor>& tensors, int src_rank) override;
 
-  std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor& tensors,
-                                                   int dst_rank,
-                                                   int64_t offset,
-                                                   int64_t length) override;
-
-  std::shared_ptr<ProcessGroup::Task> Send_Partial(
-      phi::DenseTensor& tensors,
-      int dst_rank,
-      int64_t offset,
-      int64_t length,
-      bool sync_op,
-      bool use_calc_stream) override;
-
-  std::shared_ptr<ProcessGroup::Task> Recv_Partial(phi::DenseTensor& tensors,
-                                                   int src_rank,
-                                                   int64_t offset,
-                                                   int64_t length) override;
-
-  std::shared_ptr<ProcessGroup::Task> Recv_Partial(
-      phi::DenseTensor& tensors,
-      int src_rank,
-      int64_t offset,
-      int64_t length,
-      bool sync_op,
-      bool use_calc_stream) override;
-
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      int64_t offset,
-      int64_t length) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      int64_t offset,
-      int64_t length,
-      bool sync_op,
-      bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>& in_tensors,

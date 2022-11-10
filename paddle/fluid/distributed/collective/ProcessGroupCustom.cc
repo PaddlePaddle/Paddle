@@ -263,24 +263,18 @@ void* XcclGetPointerByOffset(void* raw_pointer,
   return nullptr;
 }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather_Partial(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
+// NOTE: this is ONLY for compatibility
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
     int64_t offset,
-    int64_t length) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCustomPlace(in_tensors, device_type_),
-      true,
-      platform::errors::InvalidArgument(
-          "All inputs should be in CustomPlace(%s).", device_type_));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCustomPlace(out_tensors, device_type_),
-      true,
-      platform::errors::InvalidArgument(
-          "All outputs should be in CustomPlace(%s).", device_type_));
+    int64_t numel,
+    bool sync_op) {
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
   return Collective(
-      in_tensors,
-      out_tensors,
+      in_wrapper,
+      out_wrapper,
       [&](phi::DenseTensor& input,
           phi::DenseTensor& output,
           phi::ccl::CCLComm comm,
@@ -289,7 +283,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather_Partial(
             device_type_,
             XcclGetPointerByOffset(input.data(), offset, input.dtype()),
             output.data(),
-            length,
+            numel,
             phi::ccl::ToCCLDataType(input.dtype()),
             comm,
             stream);
