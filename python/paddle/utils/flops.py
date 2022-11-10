@@ -63,34 +63,26 @@ def _dropout_flops(input_shapes, attrs):
 
 @register_flops("matmul")
 def _matmul_flops(input_shapes, **attrs):
-    x = input_shapes[0].tolist()
-    y = input_shapes[1].tolist()
+    x_shape = input_shapes[0]
+    y_shape = input_shapes[1]
     if attrs['transpose_X']:
-        x[-1], x[-2] = x[-2], x[-1]
+        x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
     if attrs['transpose_Y']:
-        y[-1], y[-2] = y[-2], y[-1]
-    base = 1
-    for mut in x[:-2]:
-        base = base * mut
-    for mut in y[:-2]:
-        base = base * mut
-    return base * x[-2] * (2 * x[-1] - 1) * y[-1]
+        y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
+    macs = prod(x_shape) * y_shape[-1]
+    return 2 * macs
 
 
 @register_flops("matmul_v2")
 def _matmul_v2_flops(input_shapes, **attrs):
-    x = input_shapes[0].tolist()
-    y = input_shapes[1].tolist()
+    x_shape = input_shapes[0]
+    y_shape = input_shapes[1]
     if attrs['trans_x']:
-        x[-1], x[-2] = x[-2], x[-1]
+        x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
     if attrs['trans_y']:
-        y[-1], y[-2] = y[-2], y[-1]
-    base = 1
-    for mut in x[:-2]:
-        base = base * mut
-    for mut in y[:-2]:
-        base = base * mut
-    return base * x[-2] * (2 * x[-1] - 1) * y[-1]
+        y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
+    macs = prod(x_shape) * y_shape[-1]
+    return 2 * macs
 
 
 @register_flops("relu")

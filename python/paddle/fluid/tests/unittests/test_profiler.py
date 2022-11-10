@@ -233,7 +233,7 @@ class TestFLOPSAPI(unittest.TestCase):
                 ([12, 12, 8], [12, 12, 8]),
                 **{'transpose_X': False, 'transpose_Y': True}
             )
-            == 144 * 15 * 144
+            == 12 * 12 * 12 * 2 * 8
         )
         self.assertTrue(
             flops(
@@ -241,7 +241,7 @@ class TestFLOPSAPI(unittest.TestCase):
                 ([12, 12, 8], [12, 12, 8]),
                 **{'trans_x': False, 'trans_y': True}
             )
-            == 144 * 15 * 144
+            == 12 * 12 * 12 * 2 * 8
         )
 
 if __name__ == '__main__':
