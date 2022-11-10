@@ -230,18 +230,18 @@ class TestFLOPSAPI(unittest.TestCase):
         self.assertTrue(
             flops(
                 'matmul',
-                ([12, 12, 8], [12, 12, 8]),
+                ([3, 12, 12, 8], [12, 12, 8]),
                 **{'transpose_X': False, 'transpose_Y': True}
             )
-            == 12 * 12 * 12 * 2 * 8
+            == 3 * 12 * 12 * 12 * 2 * 8
         )
         self.assertTrue(
             flops(
                 'matmul_v2',
-                ([12, 12, 8], [12, 12, 8]),
+                ([3, 12, 12, 8], [12, 12, 8]),
                 **{'trans_x': False, 'trans_y': True}
             )
-            == 12 * 12 * 12 * 2 * 8
+            == 3 * 12 * 12 * 12 * 2 * 8
         )
 
 if __name__ == '__main__':

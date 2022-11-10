@@ -69,7 +69,16 @@ def _matmul_flops(input_shapes, **attrs):
         x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
     if attrs['transpose_Y']:
         y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
-    macs = prod(x_shape) * y_shape[-1]
+    dim_x = len(x_shape)
+    dim_y = len(y_shape)
+    output_len = max(dim_x, dim_y)
+    output_shape = []
+    for idx in range(output_len, 2, -1):
+        x_idx = x_shape[dim_x - idx] if idx <= dim_x else 1
+        y_idx = y_shape[dim_y - idx] if idx <= dim_y else 1
+        output_shape.append(max(x_idx, y_idx))
+
+    macs = prod(output_shape) * x_shape[-2] * x_shape[-1] * y_shape[-1]
     return 2 * macs
 
 
@@ -81,7 +90,16 @@ def _matmul_v2_flops(input_shapes, **attrs):
         x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
     if attrs['trans_y']:
         y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
-    macs = prod(x_shape) * y_shape[-1]
+    dim_x = len(x_shape)
+    dim_y = len(y_shape)
+    output_len = max(dim_x, dim_y)
+    output_shape = []
+    for idx in range(output_len, 2, -1):
+        x_idx = x_shape[dim_x - idx] if idx <= dim_x else 1
+        y_idx = y_shape[dim_y - idx] if idx <= dim_y else 1
+        output_shape.append(max(x_idx, y_idx))
+
+    macs = prod(output_shape) * x_shape[-2] * x_shape[-1] * y_shape[-1]
     return 2 * macs
 
 
