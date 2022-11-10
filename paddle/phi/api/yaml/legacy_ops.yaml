@@ -422,7 +422,6 @@
     func : ConvInferMeta
   kernel :
     func : conv2d
-    use_gpudnn : true
   backward : conv2d_grad
 
 - op : conv2d_transpose
@@ -432,7 +431,6 @@
     func : Conv2dTransposeInferMeta
   kernel :
     func : conv2d_transpose
-    use_gpudnn : true
   backward : conv2d_transpose_grad
 
 - op : conv3d
@@ -442,7 +440,6 @@
     func : Conv3DInferMeta
   kernel :
     func : conv3d
-    use_gpudnn : true
   backward : conv3d_grad
 
 - op : conv3d_transpose
@@ -452,7 +449,6 @@
     func : ConvTransposeInferMeta
   kernel :
     func : conv3d_transpose
-    use_gpudnn : true
   backward : conv3d_transpose_grad
 
 - op : copy_to
@@ -2092,7 +2088,6 @@
     func : SoftmaxInferMeta
   kernel :
     func : softmax
-    use_gpudnn : true
   inplace : (x -> out)
   backward : softmax_grad
 

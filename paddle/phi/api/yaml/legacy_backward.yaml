@@ -272,7 +272,6 @@
     param : [input, filter]
   kernel :
     func : conv2d_grad
-    use_gpudnn : true
   backward : conv2d_grad_grad
 
 - backward_op : conv2d_grad_grad
@@ -284,7 +283,6 @@
     param: [input, filter, grad_out]
   kernel :
     func : conv2d_grad_grad
-    use_gpudnn : true
   optional : grad_input_grad, grad_filter_grad
 
 - backward_op : conv2d_transpose_double_grad
@@ -295,7 +293,6 @@
     func : Conv2dTransposeDoubleGradInferMeta
   kernel :
     func : conv2d_transpose_grad_grad
-    use_gpudnn : true
 
 - backward_op : conv2d_transpose_grad
   forward : conv2d_transpose(Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
@@ -305,7 +302,6 @@
     func : Conv2dTransposeGradInferMeta
   kernel :
     func : conv2d_transpose_grad
-    use_gpudnn : true
   backward : conv2d_transpose_double_grad
 
 - backward_op : conv3d_double_grad
@@ -317,7 +313,6 @@
     param: [input, filter, grad_out]
   kernel :
     func : conv3d_double_grad
-    use_gpudnn : true
   optional : grad_input_grad, grad_filter_grad
 
 - backward_op : conv3d_grad
@@ -329,7 +324,6 @@
     param : [input, filter]
   kernel :
     func : conv3d_grad
-    use_gpudnn : true
   backward : conv3d_double_grad
 
 - backward_op : conv3d_transpose_grad
@@ -340,7 +334,6 @@
     func : ConvTransposeGradInferMeta
   kernel :
     func : conv3d_transpose_grad
-    use_gpudnn : true
 
 - backward_op : crop_grad
   forward : crop_tensor (Tensor x, IntArray shape, IntArray offsets) -> Tensor(out)
@@ -1679,7 +1672,6 @@
     param : [out]
   kernel :
     func : softmax_grad
-    use_gpudnn : true
 
 - backward_op : spectral_norm_grad
   forward : spectral_norm (Tensor weight, Tensor u, Tensor v, int dim, int power_iters, float eps) -> Tensor(out)
