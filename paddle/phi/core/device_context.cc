@@ -23,6 +23,7 @@
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/string_tensor.h"
 
+DECLARE_bool(use_graph_engine);
 namespace phi {
 using DataType = paddle::experimental::DataType;
 
@@ -151,6 +152,11 @@ struct DeviceContext::Impl {
     auto* allocator = tensor->numel() == 0
                           ? zero_allocator_
                           : (pinned ? pinned_allocator_ : device_allocator_);
+    if (place.GetType() == phi::AllocationType::CUSTOM &&
+        FLAGS_use_graph_engine) {
+      allocator = zero_allocator_;
+    }
+
 #ifdef PADDLE_WITH_CUDA
     bool must_cuda_graph_allocator = (tensor->numel() != 0) && !pinned;
     if (must_cuda_graph_allocator && paddle::platform::is_gpu_place(place) &&

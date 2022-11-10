@@ -129,11 +129,14 @@ class CustomGraphEngine final : public GraphEngine {
       for (size_t i = 0; i < feed_list->size(); ++i) {
         auto& out_name = feed_names[i];
         auto* out_var = local_scope_->FindVar(out_name);
-        auto& feed_item = paddle::get<0>(feed_list->at(static_cast<size_t>(i)));
+        auto& feed_item = paddle::get<phi::DenseTensor>(
+            feed_list->at(static_cast<size_t>(i)));
         auto out_tensor = out_var->GetMutable<phi::DenseTensor>();
         if (!cache_hit) {
           out_tensor->Resize(feed_item.dims());
           out_tensor->set_lod(feed_item.lod());
+          platform::DeviceContextPool::Instance().Get(place_)->Alloc(
+              out_tensor, feed_item.dtype());
           auto var = copy_program_->MutableBlock(0)->Var(out_name);
           var->SetShape(phi::vectorize<int64_t>(feed_item.dims()));
           // set_lod
