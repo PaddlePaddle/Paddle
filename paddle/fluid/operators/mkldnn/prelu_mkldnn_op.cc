@@ -21,8 +21,6 @@ namespace operators {
 using dnnl::memory;
 
 using platform::MKLDNNDeviceContext;
-using platform::MKLDNNGetDataType;
-using platform::to_void_cast;
 
 namespace {
 template <typename T>
@@ -58,8 +56,9 @@ class PReluMKLDNNHandler
         }
         weights_dims = std::move(new_weights_dims);
       }
-      auto weights_md = memory::desc(
-          weights_dims, MKLDNNGetDataType<T>(), memory::format_tag::any);
+      auto weights_md = memory::desc(weights_dims,
+                                     phi::funcs::OneDNNGetDataType<T>(),
+                                     memory::format_tag::any);
 
       this->AcquireForwardPrimitiveDescriptor(
           dnnl::prop_kind::forward_training, x->mem_desc(), weights_md);
@@ -76,16 +75,18 @@ class PReluMKLDNNHandler
     // if weights are 1D, every format tag is correct, so we accept
     // format_tag::any's output and no reorder is needed
     if (weights->dims().size() == 1) {
-      return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                              to_void_cast<T>(weights_data),
-                                              "@alpha_mem_p");
+      return this->AcquireMemoryFromPrimitive(
+          this->fwd_pd_->weights_desc(),
+          phi::funcs::to_void_cast<T>(weights_data),
+          "@alpha_mem_p");
     }
 
-    return this->AcquireMemoryWithReorder(weights->mem_desc(),
-                                          this->fwd_pd_->weights_desc(),
-                                          to_void_cast<T>(weights_data),
-                                          "@alpha_mem_p",
-                                          is_test);
+    return this->AcquireMemoryWithReorder(
+        weights->mem_desc(),
+        this->fwd_pd_->weights_desc(),
+        phi::funcs::to_void_cast<T>(weights_data),
+        "@alpha_mem_p",
+        is_test);
   }
 
   std::shared_ptr<memory> AcquireDiffWeightsMemory(phi::DenseTensor* output) {

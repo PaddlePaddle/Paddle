@@ -275,9 +275,12 @@ class MatMulV2MKLDNNHandler
       out_strides = FakeTransposeStrides(out_ddims);
     }
 
-    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<XT>(), x_strides);
-    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<YT>(), y_strides);
-    auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<OT>(), out_strides);
+    auto x_md =
+        memory::desc(x_dims, phi::funcs::OneDNNGetDataType<XT>(), x_strides);
+    auto y_md =
+        memory::desc(y_dims, phi::funcs::OneDNNGetDataType<YT>(), y_strides);
+    auto out_md = memory::desc(
+        out_ddims, phi::funcs::OneDNNGetDataType<OT>(), out_strides);
 
     const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
 
@@ -313,7 +316,7 @@ class MatMulV2MKLDNNHandler
       auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
       auto residual_data_tz = phi::vectorize(residual_data->dims());
       auto residual_data_md = memory::desc(residual_data_tz,
-                                           MKLDNNGetDataType<OT>(),
+                                           phi::funcs::OneDNNGetDataType<OT>(),
                                            dnnl::memory::format_tag::any);
       post_operations.append_binary(dnnl::algorithm::binary_add,
                                     residual_data_md);
@@ -355,8 +358,9 @@ class MatMulV2MKLDNNHandler
 
   std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor* input) {
     const YT* input_data = input->data<YT>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                            to_void_cast<YT>(input_data));
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(),
+        phi::funcs::to_void_cast<YT>(input_data));
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor* output) {
@@ -372,145 +376,5 @@ class MatMulV2MKLDNNHandler
   }
 };
 
-static std::unordered_map<std::string, std::string> GetAttributeMap(
-    std::string act_type) {
-  std::unordered_map<std::string, std::string> attr_map;
-  if (act_type == "swish") {
-    attr_map.emplace("beta", "fuse_alpha");
-  } else if (act_type == "relu6") {
-    attr_map.emplace("threshold", "fuse_alpha");
-  } else if (act_type == "hard_sigmoid") {
-    attr_map.emplace("slope", "fuse_alpha");
-    attr_map.emplace("offset", "fuse_beta");
-  } else if (act_type == "clip") {
-    attr_map.emplace("min", "fuse_alpha");
-    attr_map.emplace("max", "fuse_beta");
-  } else {
-    attr_map.emplace("alpha", "fuse_alpha");
-    attr_map.emplace("beta", "fuse_beta");
-  }
-  return attr_map;
-}
-
-static std::vector<std::string> GetSupportedActivations() {
-  return std::vector<std::string>{"abs",
-                                  "clip",
-                                  "gelu",
-                                  "hard_sigmoid",
-                                  "hard_swish",
-                                  "leaky_relu",
-                                  "mish",
-                                  "relu",
-                                  "relu6",
-                                  "sigmoid",
-                                  "sqrt",
-                                  "swish",
-                                  "tanh"};
-}
-
-class ReorderMKLDNNHandler {
- public:
-  ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
-                       framework::proto::VarType::Type vtype,
-                       dnnl::memory::data_type dtype,
-                       dnnl::engine engine)
-      : dims_(dims),
-        vtype_(vtype),
-        vtype_dst_(vtype),
-        dtype_(dtype),
-        dtype_dst_(dtype),
-        engine_(engine) {}
-
-  ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
-                       framework::proto::VarType::Type vtype,
-                       dnnl::memory::data_type dtype,
-                       framework::proto::VarType::Type vtype_dst,
-                       dnnl::memory::data_type dtype_dst,
-                       dnnl::engine engine)
-      : dims_(dims),
-        vtype_(vtype),
-        vtype_dst_(vtype_dst),
-        dtype_(dtype),
-        dtype_dst_(dtype_dst),
-        engine_(engine) {}
-
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const dnnl::memory::desc& md,
-                                                 void* ptr) {
-    return std::make_shared<dnnl::memory>(md, engine_, ptr);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const MKLDNNMemoryFormat& fmt,
-                                                 void* ptr) {
-    auto md = dnnl::memory::desc(dims_, dtype_, fmt);
-    return std::make_shared<dnnl::memory>(md, engine_, ptr);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireSubmemory(
-      const std::vector<int64_t>& dims,
-      const std::vector<int64_t>& offset,
-      const std::shared_ptr<dnnl::memory>& mem_p) {
-    auto sub_md = mem_p->get_desc().submemory_desc(dims, {offset});
-    auto sub_mem_p = std::make_shared<dnnl::memory>(
-        sub_md, engine_, mem_p->get_data_handle());
-    return sub_mem_p;
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor* output,
-                                                 const MKLDNNMemoryFormat& fmt,
-                                                 platform::Place place) {
-    auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
-    auto dst_data = output->mutable_data(
-        place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
-    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      phi::DenseTensor* output,
-      const dnnl::memory::desc& src_md,
-      platform::Place place) {
-    if (vtype_dst_ == vtype_) {
-      auto dst_data = output->mutable_data(
-          place, framework::TransToPhiDataType(vtype_dst_), src_md.get_size());
-      return std::make_shared<dnnl::memory>(src_md, engine_, dst_data);
-    } else {
-      auto dst_md = src_md;
-      dst_md.data.data_type = static_cast<dnnl_data_type_t>(dtype_dst_);
-      auto dst_data = output->mutable_data(
-          place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
-      return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
-    }
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      phi::DenseTensor* output,
-      const std::vector<int64_t>& dims,
-      const MKLDNNMemoryFormat& fmt,
-      platform::Place place) {
-    auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
-    auto dst_data = output->mutable_data(
-        place, framework::TransToPhiDataType(vtype_dst_), dst_md.get_size());
-    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
-  }
-
-  std::shared_ptr<dnnl::reorder> AcquireReorder(
-      std::shared_ptr<dnnl::memory> dst_memory_p,
-      std::shared_ptr<dnnl::memory> src_memory_p) {
-    return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p));
-  }
-
-  std::shared_ptr<dnnl::reorder> AcquireReorder(
-      std::shared_ptr<dnnl::memory> dst_memory_p,
-      std::shared_ptr<dnnl::memory> src_memory_p,
-      const dnnl::primitive_attr& attrs) {
-    return std::make_shared<dnnl::reorder>(
-        *(src_memory_p), *(dst_memory_p), attrs);
-  }
-
- private:
-  std::vector<int64_t> dims_;
-  framework::proto::VarType::Type vtype_, vtype_dst_;
-  dnnl::memory::data_type dtype_, dtype_dst_;
-  dnnl::engine engine_;
-};
 }  // namespace platform
 }  // namespace paddle

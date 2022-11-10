@@ -17,7 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using platform::MKLDNNGetDataType;
 template <typename T>
 class ShuffleChannelMKLDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::shuffle_forward> {

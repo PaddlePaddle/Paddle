@@ -52,11 +52,12 @@ inline std::vector<int64_t> CalculateBroadcastedDims(
   return dst_tz_ex;
 }
 
-inline void AddSubNonBroadcast(platform::ReorderMKLDNNHandler* reorder_handler,
-                               phi::DenseTensor* grad_tensor,
-                               const std::shared_ptr<dnnl::memory>& src_memory,
-                               const std::shared_ptr<dnnl::memory>& dst_memory,
-                               const std::vector<float>& scales) {
+inline void AddSubNonBroadcast(
+    phi::funcs::ReorderOneDNNHandler* reorder_handler,
+    phi::DenseTensor* grad_tensor,
+    const std::shared_ptr<dnnl::memory>& src_memory,
+    const std::shared_ptr<dnnl::memory>& dst_memory,
+    const std::vector<float>& scales) {
   dnnl::primitive_attr reorder_attr;
   reorder_attr.set_output_scales(0, scales);
   auto reorder_p =
@@ -240,16 +241,14 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     int axis = ctx.Attr<int>("axis");
 
     auto tz = phi::vectorize<int64_t>(dout->dims());
-    auto proto_type_dout = framework::TransToProtoVarType(dout->dtype());
+    auto dout_type = framework::ToMKLDNNDataType(
+        framework::TransToProtoVarType(dout->dtype()));
 
-    platform::ReorderMKLDNNHandler reorder_handler(
-        tz,
-        proto_type_dout,
-        framework::ToMKLDNNDataType(proto_type_dout),
-        onednn_engine);
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        tz, dout->dtype(), dout_type, onednn_engine);
 
     auto reorder_src_memory = reorder_handler.AcquireSrcMemory(
-        dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc(), phi::funcs::to_void_cast(dout->data<T>()));
 
     std::shared_ptr<dnnl::memory> dst_memory;
     std::shared_ptr<dnnl::memory> broadcast_src_memory = reorder_src_memory;

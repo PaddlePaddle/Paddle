@@ -29,9 +29,9 @@ using dnnl::stream;
 using framework::DDim;
 using framework::ExecutionContext;
 using LoDTensor = phi::DenseTensor;
+using phi::funcs::OneDNNGetDataType;
+using phi::funcs::to_void_cast;
 using platform::MKLDNNDeviceContext;
-using platform::MKLDNNGetDataType;
-using platform::to_void_cast;
 
 struct InnerProductCache {
   dnnl::inner_product_forward inner_product_p;
@@ -77,14 +77,14 @@ class FCMKLDNNHandler
     dnnl::memory::desc bias_md;
 
     auto src_md = dnnl::memory::desc(
-        {MB, IC}, MKLDNNGetDataType<T_in>(), dnnl::memory::format_tag::any);
+        {MB, IC}, OneDNNGetDataType<T_in>(), dnnl::memory::format_tag::any);
     auto weights_md = dnnl::memory::desc(
-        {OC, IC}, MKLDNNGetDataType<T_w>(), dnnl::memory::format_tag::any);
+        {OC, IC}, OneDNNGetDataType<T_w>(), dnnl::memory::format_tag::any);
     auto dst_md = dnnl::memory::desc(
-        {MB, OC}, MKLDNNGetDataType<T_out>(), dnnl::memory::format_tag::any);
+        {MB, OC}, OneDNNGetDataType<T_out>(), dnnl::memory::format_tag::any);
     if (bias) {
       bias_md = dnnl::memory::desc({bias->numel()},
-                                   MKLDNNGetDataType<float>(),
+                                   OneDNNGetDataType<float>(),
                                    dnnl::memory::format_tag::a);
     }
 
@@ -262,7 +262,7 @@ class FCMKLDNNHandler
         attrs.set_output_scales(mask, scale_data);
 
         auto user_md = dnnl::memory::desc({bias->dims()[0]},
-                                          MKLDNNGetDataType<float>(),
+                                          OneDNNGetDataType<float>(),
                                           dnnl::memory::format_tag::a);
 
         memory_p = this->AcquireMemoryWithReorderAndAttrs(
@@ -287,7 +287,7 @@ class FCMKLDNNHandler
       auto weights_dims = this->fwd_pd_->weights_desc().dims();
 
       auto user_md = dnnl::memory::desc(weights_dims,
-                                        MKLDNNGetDataType<float>(),
+                                        OneDNNGetDataType<float>(),
                                         dnnl::memory::format_tag::io);
 
       if (phi::funcs::is_int8<T_w>()) {

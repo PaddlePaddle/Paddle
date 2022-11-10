@@ -22,9 +22,8 @@ using dnnl::memory;
 using paddle::framework::ExecutionContext;
 using paddle::platform::MatMulV2MKLDNNHandler;
 using paddle::platform::MKLDNNDeviceContext;
-using paddle::platform::MKLDNNGetDataType;
-using paddle::platform::to_void_cast;
 using phi::vectorize;
+using phi::funcs::OneDNNGetDataType;
 using Tensor = phi::DenseTensor;
 using paddle::framework::GradVarName;
 using phi::make_ddim;
@@ -58,15 +57,11 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext &dev_ctx,
 
   memory::data_type input_type = paddle::framework::ToMKLDNNDataType(
       paddle::framework::TransToProtoVarType(input->dtype()));
-  paddle::platform::ReorderMKLDNNHandler reorder_handler(
-      output_dims,
-      paddle::framework::TransToProtoVarType(input->dtype()),
-      input_type,
-      dev_ctx.GetEngine());
+  phi::funcs::ReorderOneDNNHandler reorder_handler(
+      output_dims, input->dtype(), input_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      memory::format_tag::abc,
-      paddle::platform::to_void_cast(input->data<T>()));
+      memory::format_tag::abc, phi::funcs::to_void_cast(input->data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       &output, memory::format_tag::bac, dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
@@ -140,9 +135,9 @@ class MatMulMKLDNNHandler
         !trans_y ? memory::dims{N * K, N, 1} : memory::dims{N * K, 1, K};
     memory::dims out_strides = memory::dims{M * N, N, 1};
 
-    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<XT>(), x_strides);
-    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<YT>(), y_strides);
-    auto out_md = memory::desc(out_dims, MKLDNNGetDataType<OT>(), out_strides);
+    auto x_md = memory::desc(x_dims, OneDNNGetDataType<XT>(), x_strides);
+    auto y_md = memory::desc(y_dims, OneDNNGetDataType<YT>(), y_strides);
+    auto out_md = memory::desc(out_dims, OneDNNGetDataType<OT>(), out_strides);
 
     dnnl::primitive_attr attrs;
     if (scale != 1.0f) attrs.set_output_scales(0, {scale});
@@ -152,8 +147,9 @@ class MatMulMKLDNNHandler
 
   std::shared_ptr<memory> AcquireWeightsMemory(const Tensor *input) {
     const YT *input_data = input->data<YT>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                            to_void_cast<YT>(input_data));
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(),
+        phi::funcs::to_void_cast<YT>(input_data));
   }
 
  public:

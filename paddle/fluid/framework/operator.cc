@@ -2312,7 +2312,7 @@ Scope* OperatorWithKernel::PrepareData(
           in_vars->at(i) = trans_var;
           auto out = trans_var->GetMutable<phi::DenseTensor>();
           out->Resize(tensor_in->dims());
-          platform::MatchShapeToLayout(
+          phi::funcs::MatchShapeToLayout(
               out, tensor_in->layout(), DataLayout::kNHWC);
           VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
                      "phi::DenseTensor , "

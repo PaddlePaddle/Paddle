@@ -25,7 +25,6 @@ using dnnl::reorder;
 using dnnl::resampling_forward;
 using dnnl::stream;
 using phi::DataLayout;
-using platform::to_void_cast;
 
 template <typename T = float>
 class InterpolateMKLDNNHandler
@@ -40,7 +39,7 @@ class InterpolateMKLDNNHandler
             engine, cpu_place) {
     const auto dst_tz = phi::vectorize(out->dims());
     const auto dst_md = memory::desc(
-        dst_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+        dst_tz, phi::funcs::OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_inference, algo, x->mem_desc(), dst_md);
   }
