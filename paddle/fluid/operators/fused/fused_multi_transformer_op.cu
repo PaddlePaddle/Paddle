@@ -441,7 +441,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       fused_act_dropout_helper.DropoutActBias(dev_ctx,
                                               ffn1_out_data,
                                               ffn1_biases[i]->data<T>(),
-                                              "fast_gelu",
+                                              "gelu",
                                               ffn1_dropout_out_data,
                                               ffn1_dropout_mask_data);
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER

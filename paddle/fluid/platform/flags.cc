@@ -1021,3 +1021,19 @@ PADDLE_DEFINE_EXPORTED_bool(
 PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "Predictor",
                               "Choose default funciton type in JitLayer.");
+
+#if defined(PADDLE_WITH_CUDA)
+/**
+ * Use fast gelu FLAG
+ * Name: FLAGS_use_fast_gelu
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Enable tanh approximate gelu function.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    use_fast_gelu,
+    false,
+    "It controls whether use tanh to approximate gelu activation. ");
+
+#endif
