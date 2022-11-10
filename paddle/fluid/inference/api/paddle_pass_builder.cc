@@ -212,6 +212,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "fused_multi_transformer_decoder_fuse_qkv_pass",                //
         "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",  //
         "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",  //
+        "fuse_multi_transformer_layer_pass",                            //
         "gpu_cpu_squeeze2_matmul_fuse_pass",                            //
         "gpu_cpu_reshape2_matmul_fuse_pass",                            //
         "gpu_cpu_flatten2_matmul_fuse_pass",                            //
