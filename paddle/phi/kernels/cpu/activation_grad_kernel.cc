@@ -346,7 +346,6 @@ PD_REGISTER_KERNEL(sin_double_grad,
                    phi::dtype::float16,
                    int,
                    int64_t) {}
-
 PD_REGISTER_KERNEL(sin_triple_grad,
                    CPU,
                    ALL_LAYOUT,
@@ -356,7 +355,6 @@ PD_REGISTER_KERNEL(sin_triple_grad,
                    phi::dtype::float16,
                    int,
                    int64_t) {}
-
 PD_REGISTER_KERNEL(cos_double_grad,
                    CPU,
                    ALL_LAYOUT,
@@ -376,7 +374,6 @@ PD_REGISTER_KERNEL(cos_triple_grad,
                    phi::dtype::float16,
                    int,
                    int64_t) {}
-
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softsign_grad, SoftsignGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_double_grad, SigmoidDoubleGradKernel)
