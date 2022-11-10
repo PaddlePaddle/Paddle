@@ -139,6 +139,44 @@ class ProcessGroup {
         GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+                                                   int src_rank,
+                                                   bool sync_op) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support recv with sync_op flag",
+        GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> RecvPartial(
+      phi::DenseTensor* tensor,
+      int src_rank,
+      int64_t offset,
+      int64_t length,
+      bool sync_op) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support recv_partial with sync_op flag",
+        GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> Send(phi::DenseTensor*,
+                                                   int dst_rank,
+                                                   bool sync_op) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support send with sync_op flag",
+        GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> SendPartial(
+      phi::DenseTensor* tensor,
+      int dst_rank,
+      int64_t offset,
+      int64_t length,
+      bool sync_op) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support send_partial with sync_op flag",
+        GetBackendName()));
+  }
+
   // TODO(liyurui): This API will be moved later
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT

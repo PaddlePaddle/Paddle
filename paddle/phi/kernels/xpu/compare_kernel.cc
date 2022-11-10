@@ -36,6 +36,13 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
   auto x_shape = vectorize<int>(x.dims());
   auto y_shape = vectorize<int>(y.dims());
 
+  if (x.dims().size() == 0) {
+    x_shape = std::vector<int>({1});
+  }
+  if (y.dims().size() == 0) {
+    y_shape = std::vector<int>({1});
+  }
+
   auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto y_data = reinterpret_cast<const XPUType*>(y.data<T>());
   auto* out_data = dev_ctx.template Alloc<bool>(out);

@@ -118,6 +118,32 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream) override;
 
+  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+                                           int src_rank,
+                                           bool sync_op,
+                                           bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> RecvPartial(
+      phi::DenseTensor* tensor,
+      int src_rank,
+      int64_t offset,
+      int64_t length,
+      bool sync_op,
+      bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Send(phi::DenseTensor* tensor,
+                                           int dst_rank,
+                                           bool sync_op,
+                                           bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> SendPartial(
+      phi::DenseTensor* tensor,
+      int dst_rank,
+      int64_t offset,
+      int64_t length,
+      bool sync_op,
+      bool use_calc_stream) override;
+
   static void GroupStart();
 
   static void GroupEnd();
@@ -139,20 +165,8 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   std::shared_ptr<ProcessGroup::Task> Send(
       std::vector<phi::DenseTensor>& tensors, int dst_rank) override;
 
-  std::shared_ptr<ProcessGroup::Task> Send(
-      std::vector<phi::DenseTensor>& tensors,
-      int dst_rank,
-      bool sync_op,
-      bool use_calc_stream) override;
-
   std::shared_ptr<ProcessGroup::Task> Recv(
       std::vector<phi::DenseTensor>& tensors, int src_rank) override;
-
-  std::shared_ptr<ProcessGroup::Task> Recv(
-      std::vector<phi::DenseTensor>& tensors,
-      int src_rank,
-      bool sync_op,
-      bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor& tensors,
                                                    int dst_rank,
@@ -272,6 +286,14 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       CommType comm_type,
       bool sync_op,
       bool use_calc_stream);
+
+  template <typename Fn>
+  std::shared_ptr<ProcessGroup::Task> PointToPoint(phi::DenseTensor* tensor,
+                                                   int rank,
+                                                   Fn fn,
+                                                   CommType op_type,
+                                                   bool sync_op,
+                                                   bool use_calc_stream);
 
   void SyncCalcStream(const Place& place);
 
