@@ -1330,9 +1330,10 @@
   output : Tensor(x_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
-    param: [x, x]
+    param: [x, grad_out]
   kernel :
     func : pow_double_grad
+  backward : pow_triple_grad
   inplace : (grad_x_grad -> x_grad)
 
 - backward_op : pow_grad
@@ -1346,6 +1347,16 @@
     func : pow_grad
   backward: pow_double_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : pow_triple_grad
+  forward : pow_double_grad(Tensor x, Tensor grad_out, Tensor grad_grad_x, Scalar y) -> Tensor(grad_x), Tensor(grad_grad_out)
+  args : (Tensor x, Tensor grad_out, Tensor grad_grad_x, Tensor grad_x_grad, Tensor grad_grad_out_grad, Scalar y)
+  output : Tensor(x_grad), Tensor(grad_out_grad), Tensor(grad_grad_x_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param: [x, grad_out, grad_grad_x]
+  kernel :
+    func : pow_triple_grad
 
 - backward_op : prelu_grad
   forward : prelu(Tensor x, Tensor alpha, str data_format, str mode) -> Tensor(out)
