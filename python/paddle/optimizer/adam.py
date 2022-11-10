@@ -28,6 +28,8 @@ from paddle import _C_ops, _legacy_C_ops
 
 __all__ = []
 
+GRAD_TYPES = [int(paddle.float32), int(paddle.float16)]
+
 
 class Adam(Optimizer):
     r"""
@@ -646,16 +648,15 @@ class Adam(Optimizer):
         if isinstance(parameters_and_grads, list):
             if framework.in_dygraph_mode():
                 params = [pair[0] for pair in parameters_and_grads]
-                fp32_grads, fp16_grads = core.eager.get_two_grads_lists(params)
-                for index, grad in enumerate(fp32_grads):
-                    if grad is not None:
+                grads_types = core.eager.get_grads_types(params)
+                for index, tp in enumerate(grads_types):
+                    if tp == GRAD_TYPES[0]:
                         grad_dict['FP32_LODTensor'].append(
                             parameters_and_grads[index][1]
                         )
                         lr = self._create_param_lr(parameters_and_grads[index])
                         lr_dict['FP32_LODTensor'].append(lr)
-                for index, grad in enumerate(fp16_grads):
-                    if grad is not None:
+                    elif tp == GRAD_TYPES[1]:
                         grad_dict['FP16_LODTensor'].append(
                             parameters_and_grads[index][1]
                         )
