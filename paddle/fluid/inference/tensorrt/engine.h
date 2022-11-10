@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <NvInfer.h>
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT

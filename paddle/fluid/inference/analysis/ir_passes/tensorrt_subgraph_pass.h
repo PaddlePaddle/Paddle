@@ -43,7 +43,7 @@ class TensorRtSubgraphPass : public framework::ir::FusePassBase {
   void ApplyImpl(framework::ir::Graph *graph) const override;
 
  private:
-  tensorrt::TensorRTEngine *CreateTensorRTOp(
+  void CreateTensorRTOp(
       framework::ir::Node *x,
       framework::ir::Graph *graph,
       const std::vector<std::string> &graph_params,
