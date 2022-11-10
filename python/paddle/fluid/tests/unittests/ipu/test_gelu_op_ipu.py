@@ -45,7 +45,7 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
-        out = paddle.fluid.layers.gelu(x, **self.attrs)
+        out = paddle.nn.functional.gelu(x, **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

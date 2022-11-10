@@ -63,7 +63,7 @@ class HybridParallelClipGrad:
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
-            square = layers.square(merge_grad)
+            square = paddle.square(merge_grad)
             sum_square = layers.reduce_sum(square)
 
             not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
@@ -151,7 +151,7 @@ class HybridParallelClipGrad:
                 group=self._hcg.get_sharding_parallel_group(),
             )
 
-        global_norm_var_fp32 = layers.sqrt(
+        global_norm_var_fp32 = paddle.sqrt(
             global_norm_var_dist + global_norm_var_not_dist
         )
 

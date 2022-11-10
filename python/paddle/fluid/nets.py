@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from . import layers
 from .data_feeder import check_variable_and_dtype, convert_dtype
 from ..utils import deprecated
@@ -387,7 +388,7 @@ def glu(input, dim=-1):
         input, 'input', ['float16', 'float32', 'float64'], "glu"
     )
     a, b = layers.split(input, num_or_sections=2, dim=dim)
-    act_b = layers.sigmoid(x=b)
+    act_b = paddle.nn.funciontal.sigmoid(x=b)
     out = layers.elementwise_mul(x=a, y=act_b)
     return out
 

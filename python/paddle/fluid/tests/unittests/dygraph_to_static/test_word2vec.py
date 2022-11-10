@@ -260,7 +260,7 @@ class SkipGram(fluid.dygraph.Layer):
         )
         word_sim = fluid.layers.reduce_sum(word_sim, dim=-1)
 
-        pred = fluid.layers.sigmoid(word_sim)
+        pred = paddle.nn.funciontal.sigmoid(word_sim)
 
         loss = fluid.layers.sigmoid_cross_entropy_with_logits(word_sim, label)
         loss = fluid.layers.reduce_mean(loss)

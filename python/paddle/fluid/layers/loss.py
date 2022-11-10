@@ -17,7 +17,7 @@ from functools import partial, reduce
 import paddle
 from paddle.utils import deprecated
 from . import nn
-from .layer_function_generator import templatedoc
+from paddle.tensor.layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import (
     Variable,
