@@ -14,7 +14,6 @@
 
 from paddle.nn import functional as F
 from paddle.nn import Layer
-from paddle.quantization.config import SingleLayerConfig
 
 __all__ = ["QuantLinear"]
 
@@ -25,7 +24,7 @@ class QuantLinear(Layer):
     The only difference is that its inputs are all fake quantized.
     """
 
-    def __init__(self, layer: Layer, q_config: SingleLayerConfig):
+    def __init__(self, layer: Layer, q_config):
         super(QuantLinear, self).__init__()
         # For Linear
         self.weight = getattr(layer, 'weight')

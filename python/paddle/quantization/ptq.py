@@ -15,8 +15,8 @@
 import copy
 from paddle.nn import Layer
 from .config import QuantConfig
-from .quanters import BaseQuanter
-from .observers import BaseObserver
+from .quanter import BaseQuanter
+from .observer import BaseObserver
 from .export import LinearQuanterDequanter
 
 __all__ = ["PTQ"]

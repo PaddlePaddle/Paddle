@@ -33,13 +33,16 @@ from .quanters import (
     ActLSQPlusQuanter,
     ActLSQPlusQuanter,
     FakeQuanterWithAbsMaxObserver,
-    BaseQuanter,
 )
 from . import quanters
 from .stubs import Stub
 from . import stubs
 from .factory import ObserverFactory, QuanterFactory
 from . import factory
+from .quanter import BaseQuanter
+from . import quanter
+from .observer import BaseObserver
+from . import observer
 
 __all__ = []
 __all__ += qat.__all__
@@ -48,3 +51,5 @@ __all__ += config.__all__
 __all__ += quanters.__all__
 __all__ += stubs.__all__
 __all__ += factory.__all__
+__all__ += quanter.__all__
+__all__ += observer.__all__

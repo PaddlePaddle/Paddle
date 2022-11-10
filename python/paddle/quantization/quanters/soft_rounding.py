@@ -18,7 +18,7 @@ from paddle.framework import ParamAttr
 from paddle.utils import unique_name
 from paddle.nn.initializer import Constant
 import paddle.nn.functional as fn
-from .quanter import BaseQuanter
+from ..quanter import BaseQuanter
 from ..factory import QuanterFactory, ObserverFactory
 from ..observers import AbsmaxObserver
 

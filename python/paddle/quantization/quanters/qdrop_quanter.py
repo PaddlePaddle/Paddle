@@ -15,7 +15,7 @@
 import paddle
 from paddle.nn import Layer
 import paddle.nn.functional as fn
-from .quanter import BaseQuanter
+from ..quanter import BaseQuanter
 from ..factory import QuanterFactory, ObserverFactory
 from ..observers import AbsmaxObserver
 

@@ -13,15 +13,13 @@
 # limitations under the License.
 
 import paddle
-from paddle.nn import Layer
 from ..factory import ObserverFactory
-from .observer import BaseObserver
+from ..observer import BaseObserver
 
 __all__ = ["AbsmaxObserver"]
 
 
 class AbsmaxObserver(ObserverFactory):
-
     def __init__(self, quant_bits=8):
         super(AbsmaxObserver, self).__init__(quant_bits=quant_bits)
 
@@ -39,7 +37,6 @@ class AbsmaxObserverLayer(BaseObserver):
         self._quant_bits = quant_bits
 
     def forward(self, input):
-
         abs_max_val = float(paddle.max(paddle.abs(input)).numpy())
         self.abs_max_val = max(abs_max_val, self.abs_max_val)
 

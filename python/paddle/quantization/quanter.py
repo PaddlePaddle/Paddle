@@ -14,7 +14,6 @@
 
 import six
 import abc
-import paddle
 from paddle.nn import Layer
 
 __all__ = ["BaseQuanter"]
@@ -22,7 +21,6 @@ __all__ = ["BaseQuanter"]
 
 @six.add_metaclass(abc.ABCMeta)
 class BaseQuanter(Layer):
-
     def __init__(self):
         super(BaseQuanter, self).__init__()
 

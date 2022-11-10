@@ -46,6 +46,9 @@ class SingleLayerConfig(object):
     def weight(self):
         return self._weight
 
+    def __str__(self):
+        return f"activation: {self._activation}\nweight: {self._weight}"
+
 
 class QuantConfig(object):
     def __init__(self, activation: ObserverFactory, weight: ObserverFactory):
@@ -199,7 +202,7 @@ class QuantConfig(object):
 
     def __str__(self):
         result = ""
-        result += f"Global config:\nactivation: {self._activation}\nweight: {self._weight}\n"
+        result += f"Global config:\n{self._global_config}\n"
         if len(self._type2config) > 0:
             result += f"Layer type config:\n{self._type2config}\n"
         if len(self._prefix2config) > 0:

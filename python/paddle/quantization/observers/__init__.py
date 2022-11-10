@@ -14,6 +14,5 @@
 
 from .abs_max import AbsmaxObserver
 from .kl import KLObserver
-from .observer import BaseObserver
 
-__all__ = ["AbsmaxObserver", "KLObserver", "BaseObserver"]
+__all__ = ["AbsmaxObserver", "KLObserver"]

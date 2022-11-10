@@ -19,7 +19,7 @@ from paddle.nn.initializer import Constant
 from paddle.autograd import PyLayer
 import math
 from ..factory import QuanterFactory
-from .quanter import BaseQuanter
+from ..quanter import BaseQuanter
 
 __all__ = ["ActLSQPlusQuanter", "WeightLSQPlusQuanter"]
 

@@ -13,25 +13,21 @@
 # limitations under the License.
 
 import paddle
-from paddle.nn import Layer
 from paddle.framework import ParamAttr
 from paddle.utils import unique_name
 from paddle.fluid.framework import _varbase_creator
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 from paddle.nn.initializer import Constant
-from .quanter import BaseQuanter
+from ..quanter import BaseQuanter
 from ..factory import QuanterFactory
 
 __all__ = ["FakeQuanterWithAbsMaxObserver"]
 
 
 class FakeQuanterWithAbsMaxObserver(QuanterFactory):
-
-    def __init__(self,
-                 moving_rate=0.9,
-                 quant_bits=8,
-                 dtype='float32',
-                 reduce_type=None):
+    def __init__(
+        self, moving_rate=0.9, quant_bits=8, dtype='float32', reduce_type=None
+    ):
         args = locals()
         args.pop("self")
         args.pop("__class__")
@@ -51,66 +47,98 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
     :math:`Out = round(X / scale * range) * scale / range`
     """
 
-    def __init__(self,
-                 layer,
-                 name=None,
-                 moving_rate=0.9,
-                 quant_bits=8,
-                 dtype='float32',
-                 reduce_type=None):
+    def __init__(
+        self,
+        layer,
+        name=None,
+        moving_rate=0.9,
+        quant_bits=8,
+        dtype='float32',
+        reduce_type=None,
+    ):
         super(FakeQuanterWithAbsMaxObserverLayer, self).__init__()
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
         self._reduce_type = reduce_type
-        scale_prefix = "{}.scale".format(
-            name) if name else 'quant_dequant.scale'
-        scale_attr = ParamAttr(name=unique_name.generate(scale_prefix),
-                               initializer=Constant(0.001),
-                               trainable=False)
-        self._scale = self.create_parameter(shape=[1],
-                                            attr=scale_attr,
-                                            dtype=dtype)
+        scale_prefix = (
+            "{}.scale".format(name) if name else 'quant_dequant.scale'
+        )
+        scale_attr = ParamAttr(
+            name=unique_name.generate(scale_prefix),
+            initializer=Constant(0.001),
+            trainable=False,
+        )
+        self._scale = self.create_parameter(
+            shape=[1], attr=scale_attr, dtype=dtype
+        )
         self._scale.stop_gradient = True
 
-        state_prefix = "{}.state".format(
-            name) if name else 'quant_dequant.state'
-        state_attr = ParamAttr(name=unique_name.generate(state_prefix),
-                               initializer=Constant(1),
-                               trainable=False)
-        self._state = self.create_parameter(shape=[1],
-                                            attr=state_attr,
-                                            dtype=dtype)
+        state_prefix = (
+            "{}.state".format(name) if name else 'quant_dequant.state'
+        )
+        state_attr = ParamAttr(
+            name=unique_name.generate(state_prefix),
+            initializer=Constant(1),
+            trainable=False,
+        )
+        self._state = self.create_parameter(
+            shape=[1], attr=state_attr, dtype=dtype
+        )
         self._state.stop_gradient = True
 
-        accum_prefix = "{}.accum".format(
-            name) if name else 'quant_dequant.accum'
-        accum_attr = ParamAttr(name=unique_name.generate(accum_prefix),
-                               initializer=Constant(1),
-                               trainable=False)
-        self._accum = self.create_parameter(shape=[1],
-                                            attr=accum_attr,
-                                            dtype=dtype)
+        accum_prefix = (
+            "{}.accum".format(name) if name else 'quant_dequant.accum'
+        )
+        accum_attr = ParamAttr(
+            name=unique_name.generate(accum_prefix),
+            initializer=Constant(1),
+            trainable=False,
+        )
+        self._accum = self.create_parameter(
+            shape=[1], attr=accum_attr, dtype=dtype
+        )
         self._accum.stop_gradient = True
 
     def forward(self, input):
-        attrs = ('moving_rate', self._moving_rate, 'bit_length',
-                 self._quant_bits, 'is_test', not self.training)
-        quant_out = _varbase_creator(type=input.type,
-                                     name="{}.quantized.dequantized".format(
-                                         input.name),
-                                     shape=input.shape,
-                                     dtype=input.dtype,
-                                     persistable=False)
+        attrs = (
+            'moving_rate',
+            self._moving_rate,
+            'bit_length',
+            self._quant_bits,
+            'is_test',
+            not self.training,
+        )
+        quant_out = _varbase_creator(
+            type=input.type,
+            name="{}.quantized.dequantized".format(input.name),
+            shape=input.shape,
+            dtype=input.dtype,
+            persistable=False,
+        )
         if self._reduce_type == "max":
-            paddle.distributed.all_reduce(self._scale,
-                                          op=paddle.distributed.ReduceOp.MAX)
+            paddle.distributed.all_reduce(
+                self._scale, op=paddle.distributed.ReduceOp.MAX
+            )
 
         state = self._state if self.training else None
         accum = self._accum if self.training else None
 
-        out, _, _, _ = _legacy_C_ops.fake_quantize_dequantize_moving_average_abs_max(
-            input, self._scale, accum, state, quant_out, self._scale, state,
-            accum, *attrs)
+        (
+            out,
+            _,
+            _,
+            _,
+        ) = _legacy_C_ops.fake_quantize_dequantize_moving_average_abs_max(
+            input,
+            self._scale,
+            accum,
+            state,
+            quant_out,
+            self._scale,
+            state,
+            accum,
+            *attrs
+        )
 
         return out
 

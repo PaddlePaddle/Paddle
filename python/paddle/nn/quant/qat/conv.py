@@ -16,7 +16,6 @@ Layers used for QAT.
 """
 from paddle.nn import functional as F
 from paddle.nn import Layer
-from paddle.quantization.config import SingleLayerConfig
 
 __all__ = ["QuantConv2D"]
 
@@ -27,7 +26,7 @@ class QuantConv2D(Layer):
     The only difference is that its inputs are all fake quantized.
     """
 
-    def __init__(self, layer: Layer, q_config: SingleLayerConfig):
+    def __init__(self, layer: Layer, q_config):
         super(QuantConv2D, self).__init__()
 
         # For Conv2D

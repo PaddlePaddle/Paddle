@@ -21,7 +21,6 @@ __all__ = ["BaseObserver"]
 
 @six.add_metaclass(abc.ABCMeta)
 class BaseObserver(Layer):
-
     def __init__(self):
         super(BaseObserver, self).__init__()
 

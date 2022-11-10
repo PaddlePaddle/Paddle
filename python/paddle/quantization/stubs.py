@@ -14,7 +14,6 @@
 
 from paddle.nn import Layer
 from .factory import ObserverFactory
-from .config import SingleLayerConfig
 
 __all__ = ["Stub"]
 
@@ -29,7 +28,7 @@ class Stub(Layer):
 
 
 class ObserverStub(Layer):
-    def __init__(self, layer: Stub, q_config: SingleLayerConfig):
+    def __init__(self, layer: Stub, q_config):
         super(ObserverStub, self).__init__()
         self._observer = None
         if layer._observer is not None:

@@ -13,15 +13,13 @@
 # limitations under the License.
 
 import paddle
-from paddle.nn import Layer
 from ..factory import ObserverFactory
-from .observer import BaseObserver
+from ..observer import BaseObserver
 
 __all__ = ["KLObserver"]
 
 
 class KLObserver(ObserverFactory):
-
     def __init__(self, quant_bits=8):
         super(KLObserver, self).__init__(quant_bits=quant_bits)
 

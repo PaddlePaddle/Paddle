@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from paddle.nn import Layer
-from .quanters import BaseQuanter
-from .observers import BaseObserver
+from .quanter import BaseQuanter
+from .observer import BaseObserver
 from typing import Union
 
 __all__ = ["ObserveWrapper"]
