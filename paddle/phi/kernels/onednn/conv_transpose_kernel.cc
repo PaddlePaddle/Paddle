@@ -21,93 +21,6 @@
 
 namespace phi {
 
-#define PD_VISIT_FLOAT_AND_BF16_TYPES(TYPE, NAME, ...)                    \
-  [&] {                                                                   \
-    const auto& __dtype__ = TYPE;                                         \
-    switch (__dtype__) {                                                  \
-      PD_PRIVATE_CASE_TYPE(                                               \
-          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)          \
-      PD_PRIVATE_CASE_TYPE(NAME,                                          \
-                           ::paddle::DataType::BFLOAT16,                  \
-                           ::phi::dtype::bfloat16,                        \
-                           __VA_ARGS__)                                   \
-      default:                                                            \
-        PD_THROW("function " #NAME " is not implemented for data type `", \
-                 __dtype__,                                               \
-                 "`");                                                    \
-    }                                                                     \
-  }()
-
-template <typename T, typename T_out>
-void ComputeFP32(const OneDNNContext& dev_ctx,
-                 const DenseTensor* input,
-                 const DenseTensor* filter,
-                 const DenseTensor* bias,
-                 const std::vector<int>& strides,
-                 const std::vector<int>& paddings,
-                 const std::string& padding_algorithm,
-                 const std::vector<int>& dilations,
-                 int groups,
-                 const std::string& data_format,
-                 bool is_test,
-                 bool is_BFLOAT16,
-                 const std::string& fuse_activation,
-                 bool force_fp32_output,
-                 DenseTensor* output) {
-  const auto& onednn_engine = dev_ctx.GetEngine();
-
-  PD_VISIT_FLOAT_AND_BF16_TYPES(
-      filter->dtype(), "ConvTransposeOneDNNHandlerT", ([&] {
-        onednn::ConvTransposeOneDNNHandlerT<T, data_t, T_out> handler(
-            dev_ctx,
-            onednn_engine,
-            dev_ctx.GetPlace(),
-            input,
-            filter,
-            bias,
-            strides,
-            paddings,
-            padding_algorithm,
-            dilations,
-            groups,
-            data_format,
-            is_test,
-            is_BFLOAT16,
-            fuse_activation,
-            force_fp32_output,
-            output);
-        auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
-        // Caching Key for weights is needed
-        std::string key =
-            funcs::CreateKey(dev_ctx,
-                             dev_ctx.GetInputsName("Input")[0],
-                             dev_ctx.GetInputsName("Filter")[0],
-                             (bias ? dev_ctx.GetInputsName("Bias")[0] : ""));
-        key = funcs::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
-        auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-            dev_ctx, key, filter, groups);
-
-        std::shared_ptr<dnnl::memory> dst_memory_p =
-            handler.template AcquireDstMemory<T_out>(output);
-        auto conv_p = handler.AcquireForwardPrimitive();
-
-        std::unordered_map<int, dnnl::memory> args = {
-            {DNNL_ARG_SRC, *src_memory_p},
-            {DNNL_ARG_WEIGHTS, *weights_memory_p},
-            {DNNL_ARG_DST, *dst_memory_p}};
-
-        if (bias) {
-          auto bias_memory_p =
-              handler.AcquireBiasMemoryWithReorder(dev_ctx, key, bias);
-          args.insert({DNNL_ARG_BIAS, *bias_memory_p});
-        }
-        auto& astream = OneDNNContext::tls().get_stream();
-        conv_p->execute(astream, args);
-        astream.wait();
-        output->set_mem_desc(dst_memory_p->get_desc());
-      }));
-}
-
 template <typename T, typename Context>
 void Conv2dTransposeKernel(const Context& dev_ctx,
                            const DenseTensor& x,
@@ -138,9 +51,25 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
   const bool use_bfloat16 = (!force_fp32_output && is_BFLOAT16);
 
   if (use_bfloat16) {
-    Execute<T, dtype::bfloat16>(dev_ctx, x, filter, groups, out);
+    Execute<T, dtype::bfloat16>(dev_ctx,
+                                x,
+                                filter,
+                                strides,
+                                paddings,
+                                padding_algorithm,
+                                groups,
+                                dilations,
+                                out);
   } else {
-    Execute<T, float>(dev_ctx, x, filter, groups, out);
+    Execute<T, float>(dev_ctx,
+                      x,
+                      filter,
+                      strides,
+                      paddings,
+                      padding_algorithm,
+                      groups,
+                      dilations,
+                      out);
   }
 }
 
@@ -148,22 +77,35 @@ template <typename T, typename T_out>
 void Execute(const Context& dev_ctx,
              const DenseTensor& x,
              const DenseTensor& filter,
+             const std::vector<int>& strides,
+             const std::vector<int>& paddings,
+             const std::string& padding_algorithm,
              int groups,
+             const std::vector<int>& dilations,
              DenseTensor* out) const {
   const auto* bias =
       dev_ctx.HasDnnInput("Bias") ? dev_ctx.GetDnnInput("Bias") : nullptr;
-  auto* out = ctx.Output<phi::DenseTensor>("Output");
-  ConvTransposeMKLDNNHandlerT<T, K, T_out> handler(
-      dev_ctx.GetEngine(), x, filter, bias, out);
+
+  ConvTransposeOneDNNHandlerT<T, float, T_out> handler(dev_ctx,
+                                                       x,
+                                                       filter,
+                                                       strides,
+                                                       paddings,
+                                                       padding_algorithm,
+                                                       groups,
+                                                       dilations,
+                                                       out);
+
   auto src_memory_p = handler.AcquireSrcMemoryWithReorder(x);
   // Caching Key for weights is needed
-  std::string key = platform::CreateKey(dev_ctx,
-                                        ctx.InputName("Input"),
-                                        ctx.InputName("Filter"),
-                                        (bias ? ctx.InputName("Bias") : ""));
-  key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
-  auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-      dev_ctx, key, filter, ctx.Attr<int>("groups"));
+  std::string key =
+      funcs::CreateKey(dev_ctx,
+                       dev_ctx.GetInputsName("Input")[0],
+                       dev_ctx.GetInputsName("Filter")[0],
+                       (bias ? dev_ctx.GetInputsName("Bias")[0] : ""));
+  key = funcs::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+  auto weights_memory_p =
+      handler.AcquireWeightsMemoryWithReorder(dev_ctx, key, filter, groups);
 
   std::shared_ptr<dnnl::memory> dst_memory_p =
       handler.template AcquireDstMemory<T_out>(out);
@@ -179,7 +121,7 @@ void Execute(const Context& dev_ctx,
         handler.AcquireBiasMemoryWithReorder(dev_ctx, key, bias);
     args.insert({DNNL_ARG_BIAS, *bias_memory_p});
   }
-  auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+  auto& astream = OneDNNContext::tls().get_stream();
   conv_p->execute(astream, args);
   astream.wait();
   out->set_mem_desc(dst_memory_p->get_desc());
