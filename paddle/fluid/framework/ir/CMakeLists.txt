@@ -153,7 +153,7 @@ if(WITH_MKLDNN)
     mkldnn_placement_pass
     op_registry
     elementwise_add_op
-    gelu_op
+    generated_op
     activation_op
     softmax_op
     softmax
@@ -418,7 +418,7 @@ if(WITH_MKLDNN)
       im2col
       vol2col
       batch_norm_op
-      gelu_op
+      generated_op
       activation_op
       elementwise_add_op
       concat_and_split
