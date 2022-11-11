@@ -35,8 +35,8 @@ class DataLayoutTransferPass : public FusePassBase {
       framework::ir::Graph* graph,
       framework::ir::Node* node,
       framework::ir::Node* next_node,
-      framework::DataLayout from_layout,
-      framework::DataLayout to_layout,
+      DataLayout from_layout,
+      DataLayout to_layout,
       framework::BlockDesc* block_desc,
       std::unordered_map<framework::ir::Node*, framework::ir::Node*>* cache)
       const;

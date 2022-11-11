@@ -25,10 +25,10 @@ namespace framework {
 namespace ir {
 namespace {
 
-void TransDataLayout(framework::DataLayout from_layout,
-                     framework::DataLayout to_layout,
-                     const Tensor &in,
-                     Tensor *out) {
+void TransDataLayout(DataLayout from_layout,
+                     DataLayout to_layout,
+                     const phi::DenseTensor &in,
+                     phi::DenseTensor *out) {
   PADDLE_ENFORCE_EQ(
       arity(in.dims()),
       4,
@@ -85,7 +85,6 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   std::string target_op_type = "conv2d_fusion";
 
   for (auto *node : op_nodes) {
-    // TODO(liuyuanle): use a target_list with unordered_set<string>
     if (node->IsOp() && node->Name() == target_op_type) {
       auto *op_desc = node->Op();
       auto &&data_format = op_desc->GetAttrIfExists<std::string>("data_format");
@@ -96,8 +95,8 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
           insertLayoutTransOp(graph,
                               in_node,
                               node,
-                              framework::DataLayout::kNCHW,
-                              framework::DataLayout::kNHWC,
+                              DataLayout::kNCHW,
+                              DataLayout::kNHWC,
                               block_desc,
                               &cache);
         }
@@ -112,10 +111,8 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
           phi::DenseTensor temp_tensor = *filter_tensor;
           filter_tensor->clear();
 
-          TransDataLayout(framework::DataLayout::kNCHW,
-                          framework::DataLayout::kNHWC,
-                          temp_tensor,
-                          filter_tensor);
+          TransDataLayout(
+              DataLayout::kNCHW, DataLayout::kNHWC, temp_tensor, filter_tensor);
         }
 
         for (auto *out_node : node->outputs) {
@@ -127,8 +124,8 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
           insertLayoutTransOp(graph,
                               out_node,
                               out_node->outputs[0],
-                              framework::DataLayout::kNHWC,
-                              framework::DataLayout::kNCHW,
+                              DataLayout::kNHWC,
+                              DataLayout::kNCHW,
                               block_desc,
                               &cache);
         }
@@ -141,8 +138,8 @@ void DataLayoutTransferPass::insertLayoutTransOp(
     framework::ir::Graph *graph,
     framework::ir::Node *prev_node,
     framework::ir::Node *next_node,
-    framework::DataLayout from_layout,
-    framework::DataLayout to_layout,
+    DataLayout from_layout,
+    DataLayout to_layout,
     framework::BlockDesc *block_desc,
     std::unordered_map<framework::ir::Node *, framework::ir::Node *> *cache)
     const {
@@ -168,7 +165,7 @@ void DataLayoutTransferPass::insertLayoutTransOp(
       op_out_var_desc->SetPersistable(false);
       op_out_var_desc->SetDataType(prev_node->Var()->GetDataType());
       auto to_shape = prev_node->Var()->GetShape();
-      if (from_layout == framework::DataLayout::kNCHW) {
+      if (from_layout == DataLayout::kNCHW) {
         auto n = to_shape[0];
         auto c = to_shape[1];
         auto h = to_shape[2];
@@ -192,14 +189,13 @@ void DataLayoutTransferPass::insertLayoutTransOp(
     IR_NODE_LINK_TO(cache->at(prev_node), next_node);
   };
 
-  if (from_layout == framework::DataLayout::kNCHW &&
-      to_layout == framework::DataLayout::kNHWC) {
+  if (from_layout == DataLayout::kNCHW && to_layout == DataLayout::kNHWC) {
     auto in_var_name = prev_node->Var()->Name();
     auto out_var_name = in_var_name + "_nchw_to_nhwc";
     do_insert(in_var_name, out_var_name);
 
-  } else if (from_layout == framework::DataLayout::kNHWC &&
-             to_layout == framework::DataLayout::kNCHW) {
+  } else if (from_layout == DataLayout::kNHWC &&
+             to_layout == DataLayout::kNCHW) {
     auto in_var_name = prev_node->Var()->Name();
     auto out_var_name = in_var_name + "_nhwc_to_nchw";
     do_insert(in_var_name, out_var_name);
