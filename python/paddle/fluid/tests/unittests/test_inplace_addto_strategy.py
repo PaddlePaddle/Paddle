@@ -60,7 +60,7 @@ def create_program(data_format="NCHW"):
         x.stop_gradient = False
         if data_format == "NHWC":
             x = paddle.transpose(x, [0, 2, 3, 1])
-        x = fluid.layers.prelu(x, mode="channel")
+        x = paddle.static.nn.prelu(x, mode="channel")
         conv = ConvBNLayer(
             num_channels=3,
             num_filters=3,

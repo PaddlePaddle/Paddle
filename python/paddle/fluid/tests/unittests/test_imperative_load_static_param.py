@@ -82,8 +82,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
         prelu_in = fluid.data(
             name="prelu_in", shape=[None, 5, 10, 10], dtype='float32'
         )
-        prelu_out_1 = fluid.layers.prelu(prelu_in, "channel")
-        prelu_out_2 = fluid.layers.prelu(prelu_in, "channel")
+        prelu_out_1 = paddle.static.nn.prelu(prelu_in, "channel")
+        prelu_out_2 = paddle.static.nn.prelu(prelu_in, "channel")
 
         bilinear_tensor_pro_x = fluid.data(
             "t1", shape=[None, 5], dtype="float32"

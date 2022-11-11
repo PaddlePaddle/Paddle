@@ -1066,7 +1066,7 @@ class TestLayer(LayerTest):
                 dtype="float32",
                 append_batch_size=False,
             )
-            out = layers.prelu(
+            out = paddle.static.nn.prelu(
                 data_t, mode, param_attr=ParamAttr(initializer=Constant(1.0))
             )
             static_rlt = self.get_static_graph_result(
@@ -3715,7 +3715,7 @@ class TestBook(LayerTest):
                 name="input", shape=[5, 200, 100, 100], dtype="float32"
             )
             mode = 'channel'
-            out = layers.prelu(
+            out = paddle.static.nn.prelu(
                 input,
                 mode,
                 param_attr=ParamAttr(initializer=Constant(1.0)),
