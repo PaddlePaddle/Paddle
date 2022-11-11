@@ -1309,6 +1309,7 @@ def margin_ranking_loss(
 
 def l1_loss(input, label, reduction='mean', name=None):
     r"""
+
     Computes the L1 Loss of Tensor ``input`` and ``label`` as follows.
 
     If `reduction` set to ``'none'``, the loss is:
@@ -1340,7 +1341,7 @@ def l1_loss(input, label, reduction='mean', name=None):
 
     Returns:
         Tensor, the L1 Loss of Tensor ``input`` and ``label``.
-        If `reduction` is ``'none'``, the shape of output loss is [N, *], the same as ``input`` .
+        If `reduction` is ``'none'``, the shape of output loss is [N, `*`], the same as ``input`` .
         If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
 
     Examples:
@@ -1363,6 +1364,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             l1_loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
             print(l1_loss.numpy())
             # [1.4]
+
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
@@ -2285,6 +2287,7 @@ def cross_entropy(
     name=None,
 ):
     r"""
+
     By default, this operator implements the cross entropy loss function with softmax. This function
     combines the calculation of the softmax operation and the cross entropy loss function
     to provide a more numerically stable computing.
@@ -2401,13 +2404,11 @@ def cross_entropy(
 
         - **input** (Tensor)
 
-            Input tensor, the data type is float32, float64. Shape is
-        :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` .
+            Input tensor, the data type is float32, float64. Shape is :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` .
 
             Note:
 
-                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the
-                output of softmax operator, which will produce incorrect results.
+                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the output of softmax operator, which will produce incorrect results.
 
                 2. when use_softmax=False, it expects the output of softmax operator.
 
@@ -2477,9 +2478,7 @@ def cross_entropy(
 
         2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` .
 
-
     Examples:
-
         .. code-block:: python
 
             # hard labels

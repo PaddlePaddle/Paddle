@@ -31,6 +31,7 @@ def sample_neighbors(
     name=None,
 ):
     """
+
     Graph Sample Neighbors API.
 
     This API is mainly used in Graph Learning domain, and the main purpose is to
@@ -77,6 +78,7 @@ def sample_neighbors(
         .. code-block:: python
 
             import paddle
+
             # edges: (3, 0), (7, 0), (0, 1), (9, 1), (1, 2), (4, 3), (2, 4),
             #        (9, 5), (3, 5), (9, 6), (1, 6), (9, 8), (7, 8)
             row = [3, 7, 0, 9, 1, 4, 2, 9, 3, 9, 1, 9, 7]

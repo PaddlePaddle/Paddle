@@ -25,6 +25,7 @@ def reindex_graph(
     x, neighbors, count, value_buffer=None, index_buffer=None, name=None
 ):
     """
+
     Reindex Graph API.
 
     This API is mainly used in Graph Learning domain, which should be used
@@ -68,6 +69,7 @@ def reindex_graph(
         .. code-block:: python
 
             import paddle
+
             x = [0, 1, 2]
             neighbors = [8, 9, 0, 4, 7, 6, 7]
             count = [2, 3, 2]
@@ -137,6 +139,7 @@ def reindex_heter_graph(
     x, neighbors, count, value_buffer=None, index_buffer=None, name=None
 ):
     """
+
     Reindex HeterGraph API.
 
     This API is mainly used in Graph Learning domain, which should be used
@@ -182,6 +185,7 @@ def reindex_heter_graph(
         .. code-block:: python
 
             import paddle
+
             x = [0, 1, 2]
             neighbors_a = [8, 9, 0, 4, 7, 6, 7]
             count_a = [2, 3, 2]
