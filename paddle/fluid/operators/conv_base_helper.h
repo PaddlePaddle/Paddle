@@ -55,6 +55,7 @@ struct SearchResult {
   AlgoT algo = static_cast<AlgoT>(0);
   float time = -1.f;
   size_t workspace_size = 0;
+  cudnnMathType_t math_type;
 };
 
 template <typename T>

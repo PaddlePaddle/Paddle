@@ -204,6 +204,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
         auto t = cache.Get(key);
         result.algo = static_cast<AlgoT>(t.algo);
         result.workspace_size = t.workspace_size;
+        result.math_type = static_cast<cudnnMathType_t>(t.math_type);
       } else {
         bool use_autotune =
             phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
@@ -213,7 +214,8 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
           result = FindAlgoHeuristic(args, ctx);
         }
         phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                    result.workspace_size);
+                                    result.workspace_size,
+                                    static_cast<int64_t>(result.math_type));
         cache.Set(key, node);
       }
     }
@@ -268,6 +270,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
             perf_results.data()));
     result.algo = perf_results[best_algo_idx].algo;
     result.workspace_size = perf_results[best_algo_idx].memory;
+    result.math_type = perf_results[best_algo_idx].mathType;
 
     if (result.workspace_size > workspace_size_limit) {
 #if CUDNN_VERSION >= 8000
@@ -424,7 +427,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
           result = FindAlgoHeuristic(args, ctx);
         }
         phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                    result.workspace_size);
+                                    result.workspace_size,
+                                    static_cast<int64_t>(result.math_type));
         cache.Set(key, node);
       }
     }
@@ -647,7 +651,8 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
           result = FindAlgoHeuristic(args, ctx);
         }
         phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                    result.workspace_size);
+                                    result.workspace_size,
+                                    static_cast<int64_t>(result.math_type));
         cache.Set(key, node);
       }
     }

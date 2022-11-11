@@ -27,6 +27,7 @@
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -298,7 +299,7 @@ void ConvCudnnKernel(const Context& ctx,
                                 &o_h,
                                 &o_w);
   }
-
+  paddle::platform::RecordEvent test_event("conv test");
   int group_offset_in = i_c / groups * i_h * i_w * i_d;
   int group_offset_out = o_c / groups * o_h * o_w * o_d;
   int group_offset_filter = transformed_filter_channel.numel() / groups;
@@ -317,6 +318,7 @@ void ConvCudnnKernel(const Context& ctx,
       paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
   fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
   workspace_size = fwd_result.workspace_size;
+  // LOG(ERROR) << fwd_result.math_type;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
@@ -358,27 +360,55 @@ void ConvCudnnKernel(const Context& ctx,
       },
       workspace_size);
 #else
+
+  paddle::platform::RecordEvent conv_api_event("call conv");
+  DenseTensor workspace_tensor;
+  workspace_tensor.Resize({static_cast<int64_t>(workspace_size)});
+  void* workspace_ptr =
+      static_cast<void*>(ctx.template Alloc<uint8_t>(&workspace_tensor));
+  paddle::platform::RecordEvent forward_event("forward");
   for (int i = 0; i < groups; i++) {
-    workspace_handle.RunFunc(
-        [&](void* workspace_ptr) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              paddle::platform::dynload::cudnnConvolutionForward(
-                  handle,
-                  &alpha,
-                  args.idesc.desc(),
-                  input_data + i * group_offset_in,
-                  args.wdesc.desc(),
-                  filter_data + i * group_offset_filter,
-                  args.cdesc.desc(),
-                  fwd_result.algo,
-                  workspace_ptr,
-                  workspace_size,
-                  &beta,
-                  args.odesc.desc(),
-                  output_data + i * group_offset_out));
-        },
-        workspace_size);
+    paddle::platform::RecordEvent event1("set match conv");
+    paddle::platform::dynload::cudnnSetConvolutionMathType(
+        args.cdesc.desc(), fwd_result.math_type);
+    paddle::platform::RecordEvent event2("forward");
+    paddle::platform::dynload::cudnnConvolutionForward(
+        handle,
+        &alpha,
+        args.idesc.desc(),
+        input_data + i * group_offset_in,
+        args.wdesc.desc(),
+        filter_data + i * group_offset_filter,
+        args.cdesc.desc(),
+        fwd_result.algo,
+        workspace_ptr,
+        workspace_size,
+        &beta,
+        args.odesc.desc(),
+        output_data + i * group_offset_out);
   }
+
+  // for (int i = 0; i < groups; i++) {
+  //   workspace_handle.RunFunc(
+  //       [&](void* workspace_ptr) {
+  //         PADDLE_ENFORCE_GPU_SUCCESS(
+  //             paddle::platform::dynload::cudnnConvolutionForward(
+  //                 handle,
+  //                 &alpha,
+  //                 args.idesc.desc(),
+  //                 input_data + i * group_offset_in,
+  //                 args.wdesc.desc(),
+  //                 filter_data + i * group_offset_filter,
+  //                 args.cdesc.desc(),
+  //                 fwd_result.algo,
+  //                 workspace_ptr,
+  //                 workspace_size,
+  //                 &beta,
+  //                 args.odesc.desc(),
+  //                 output_data + i * group_offset_out));
+  //       },
+  //       workspace_size);
+  // }
 #endif
 
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {

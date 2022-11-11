@@ -58,10 +58,12 @@ namespace autotune {
 
 struct DnnNode {
   DnnNode() {}
-  explicit DnnNode(int64_t a, size_t size) : algo(a), workspace_size(size) {}
+  explicit DnnNode(int64_t a, size_t size, int64_t m_type)
+      : algo(a), workspace_size(size) {}
 
   int64_t algo;
   size_t workspace_size = 0;
+  int64_t math_type;
 };
 
 template <typename... Args>
