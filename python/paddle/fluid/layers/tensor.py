@@ -33,7 +33,7 @@ from ..framework import Variable
 from ..initializer import Constant
 from ..core import VarDesc
 from .. import core
-from paddle.tensor.layer_function_generator import templatedoc
+from .layer_function_generator import templatedoc
 from . import utils
 from ..data_feeder import (
     check_variable_and_dtype,

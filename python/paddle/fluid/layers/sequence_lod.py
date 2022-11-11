@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.tensor.layer_function_generator import templatedoc
+from .layer_function_generator import templatedoc
 from ..framework import (
     core,
     Variable,

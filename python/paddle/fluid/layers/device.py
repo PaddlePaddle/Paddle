@@ -15,7 +15,7 @@
 All util layers.
 """
 
-from paddle.tensor.layer_function_generator import autodoc
+from .layer_function_generator import autodoc
 from ..framework import unique_name
 from ..layer_helper import LayerHelper
 from paddle.utils import deprecated

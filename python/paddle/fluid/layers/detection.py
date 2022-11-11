@@ -17,7 +17,7 @@ All layers just related to the detection neural network.
 
 import paddle
 
-from paddle.tensor.layer_function_generator import templatedoc
+from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
 from .. import core

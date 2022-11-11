@@ -14,7 +14,7 @@
 
 from ..wrapped_decorator import signature_safe_contextmanager
 
-from paddle.tensor.layer_function_generator import templatedoc
+from .layer_function_generator import templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import (
