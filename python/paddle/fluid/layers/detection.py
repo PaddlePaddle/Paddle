@@ -24,7 +24,6 @@ from .. import core
 from .loss import softmax_with_cross_entropy
 from . import tensor
 from . import nn
-from . import ops
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 import math
 import numpy as np

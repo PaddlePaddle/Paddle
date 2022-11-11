@@ -327,7 +327,7 @@ class EagerDeletionRecurrentOpTest2(EagerDeletionRecurrentOpTest1):
                 bias_attr=False,
             )
 
-            h = paddle.nn.funciontal.sigmoid(
+            h = paddle.nn.functional.sigmoid(
                 x=layers.elementwise_add(x=temp_l, y=temp_r)
             )
 

@@ -449,7 +449,7 @@ def get_generator_loss(
     fake_img = generator(image_real, label_trg)
     rec_img = generator(fake_img, label_org)
     g_loss_rec = fluid.layers.reduce_mean(
-        paddle.abs(paddle.sub(image_real, rec_img))
+        paddle.abs(paddle.subtract(image_real, rec_img))
     )
 
     pred_fake, cls_fake = discriminator(fake_img)

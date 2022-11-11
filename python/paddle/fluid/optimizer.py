@@ -48,7 +48,6 @@ from .clip import (
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
-from .layers import ops
 from .dygraph import base as imperative_base
 from .dygraph import no_grad
 from .dygraph.learning_rate_scheduler import (
@@ -4457,7 +4456,7 @@ class ModelAverage(Optimizer):
         sum = layers.cast(
             x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
-        ops._elementwise_div(x=sum, y=tmp, out=param)
+        param = paddle.divide(x, y)
 
     def _add_average_restore_op(self, block, param_grad):
         param = block._clone_variable(param_grad[0])

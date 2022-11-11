@@ -42,7 +42,7 @@ ZETA = 1.1
 
 def compute_soft_rounding(alpha_v):
     return fluid.layers.clip(
-        paddle.nn.funciontal.sigmoid(alpha_v) * (ZETA - GAMMA) + GAMMA,
+        paddle.nn.functional.sigmoid(alpha_v) * (ZETA - GAMMA) + GAMMA,
         min=0,
         max=1,
     )

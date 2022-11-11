@@ -316,7 +316,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
                 bias_attr=False,
             )
 
-            h = paddle.nn.funciontal.sigmoid(
+            h = paddle.nn.functional.sigmoid(
                 x=layers.elementwise_add(x=temp_l, y=temp_r)
             )
 
@@ -712,7 +712,7 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
                 bias_attr=False,
             )
 
-            h = paddle.nn.funciontal.sigmoid(
+            h = paddle.nn.functional.sigmoid(
                 x=layers.elementwise_add(temp_l, temp_r)
             )
 

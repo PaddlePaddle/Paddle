@@ -23,9 +23,9 @@ strategy according to this module.
 import math
 import numbers
 
+import paddle
 from . import control_flow
 from . import nn
-from . import ops
 from . import tensor
 from ..framework import default_main_program, Parameter, unique_name, name_scope
 from ..framework import Variable
@@ -172,7 +172,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
             div_res = global_step / decay_steps
             if staircase:
-                div_res = ops.floor(div_res)
+                div_res = paddle.floor(div_res)
             decayed_lr = learning_rate * (decay_rate**div_res)
 
             return decayed_lr
@@ -234,8 +234,8 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
             div_res = global_step / decay_steps
             if staircase:
-                div_res = ops.floor(div_res)
-            decayed_lr = learning_rate * ops.exp(-1 * decay_rate * div_res)
+                div_res = paddle.floor(div_res)
+            decayed_lr = learning_rate * paddle.exp(-1 * decay_rate * div_res)
 
             return decayed_lr
 
@@ -294,7 +294,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
             div_res = global_step / decay_steps
             if staircase:
-                div_res = ops.floor(div_res)
+                div_res = paddle.floor(div_res)
 
             decayed_lr = learning_rate / (1 + decay_rate * div_res)
 
@@ -348,7 +348,7 @@ def polynomial_decay(
             global_step = _decay_step_counter()
 
             if cycle:
-                div_res = ops.ceil(global_step / decay_steps)
+                div_res = paddle.ceil(global_step / decay_steps)
                 zero_var = tensor.fill_constant(
                     shape=[1], dtype='float32', value=0.0
                 )
@@ -500,11 +500,11 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
         else:
             global_step = _decay_step_counter()
 
-            cur_epoch = ops.floor(global_step / step_each_epoch)
+            cur_epoch = paddle.floor(global_step / step_each_epoch)
             decayed_lr = (
                 learning_rate
                 * 0.5
-                * (ops.cos(cur_epoch * math.pi / epochs) + 1)
+                * (paddle.cos(cur_epoch * math.pi / epochs) + 1)
             )
             return decayed_lr
 
