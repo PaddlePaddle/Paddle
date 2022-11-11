@@ -633,7 +633,7 @@ class QuantizedConv2DTranspose(Layer):
           y_np = y_var.numpy()
           print(y_np.shape, y_quantized_np.shape)
           # (2, 6, 10, 10), (2, 6, 10, 10)
-          
+
     """
 
     def __init__(

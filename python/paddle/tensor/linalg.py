@@ -1968,7 +1968,7 @@ def slogdet(x, name=None):
     Supports input of float, double
 
     Note that for matrices that have zero determinant, this returns ``(0, -inf)``
-    
+
     Args:
         x (Tensor): the batch of matrices of size :math:`(*, n, n)`
             where math:`*` is one or more batch dimensions.

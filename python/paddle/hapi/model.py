@@ -1849,7 +1849,7 @@ class Model(object):
                             val_loader,
                             epochs=2,
                             save_dir='mnist_checkpoint')
-                            
+
         """
         assert train_data is not None, "train_data must be given!"
 
