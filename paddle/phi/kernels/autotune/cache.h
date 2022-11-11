@@ -15,43 +15,10 @@
 #pragma once
 
 #include <algorithm>
-#include <mutex>
 #include <numeric>
-#include <unordered_map>
-#include <vector>
 
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
-
-DECLARE_int32(search_cache_max_number);
-
-inline void HashCombine(std::size_t* seed) {}
-
-// combine hash value
-// https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
-template <typename T, typename... Rest>
-inline void HashCombine(std::size_t* seed, const T& v, Rest... rest) {
-  std::hash<T> hasher;
-  *seed ^= hasher(v) + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
-  *seed *= 0x00000100000001B3;
-  HashCombine(seed, rest...);
-}
-
-// custom specialization of std::hash can be injected in namespace std
-// ref: https://en.cppreference.com/w/cpp/utility/hash
-namespace std {
-template <typename T>
-struct hash<std::vector<T>> {
-  std::size_t operator()(std::vector<T> const& vec) const noexcept {
-    std::size_t seed = 0xcbf29ce484222325;
-    for (auto val : vec) {
-      HashCombine(&seed, val);
-    }
-    return seed;
-  }
-};
-}  // namespace std
+#include "paddle/phi/kernels/autotune/cache_base.h"
 
 namespace phi {
 namespace autotune {
@@ -66,207 +33,9 @@ struct ConvAutoTuneResult {
   bool exhaustive_search = false;
 };
 
-template <typename... Args>
-size_t GetKey(Args&&... args) {
-  size_t seed = 0;
-  HashCombine(&seed, std::forward<Args>(args)...);
-  return seed;
-}
-
-struct ConvCacheKey {
-  ConvCacheKey() {}
-  ConvCacheKey(const std::vector<int64_t>& arg_x_dims,
-               const std::vector<int64_t>& arg_w_dims,
-               const std::vector<int>& arg_strides,
-               const std::vector<int>& arg_paddings,
-               const std::vector<int>& arg_dilations,
-               phi::DataType arg_dtype,
-               int arg_groups,
-               int64_t arg_data_layout)
-      : x_dims(arg_x_dims),
-        w_dims(arg_w_dims),
-        strides(arg_strides),
-        paddings(arg_paddings),
-        dilations(arg_dilations),
-        dtype(arg_dtype),
-        groups(arg_groups),
-        data_layout(arg_data_layout) {}
-  size_t hash_value() const {
-    return GetKey(x_dims,
-                  w_dims,
-                  strides,
-                  paddings,
-                  dilations,
-                  static_cast<int64_t>(dtype),
-                  groups,
-                  data_layout);
-  }
-
-  std::vector<int64_t> x_dims;
-  std::vector<int64_t> w_dims;
-  std::vector<int> strides;
-  std::vector<int> paddings;
-  std::vector<int> dilations;
-  phi::DataType dtype;
-  int groups;
-  int64_t data_layout;
-};
-
-struct ConvCacheKeyHash {
-  size_t operator()(const ConvCacheKey& cache) const {
-    return cache.hash_value();
-  }
-};
-
-struct ConvCacheKeyEqual {
-  size_t operator()(const ConvCacheKey& first,
-                    const ConvCacheKey& second) const {
-    if (first.x_dims != second.x_dims) return false;
-    if (first.w_dims != second.w_dims) return false;
-    if (first.strides != second.strides) return false;
-    if (first.paddings != second.paddings) return false;
-    if (first.dilations != second.dilations) return false;
-    if (first.dtype != second.dtype) return false;
-    if (first.groups != second.groups) return false;
-    if (first.data_layout != second.data_layout) return false;
-
-    return true;
-  }
-};
-
-class CudnnAlgorithmsCacheMap {
- public:
-  CudnnAlgorithmsCacheMap() : cache_mutex_(new std::mutex()) { hash_.clear(); }
-
-  ConvAutoTuneResult Get(const ConvCacheKey& key) {
-    std::lock_guard<std::mutex> lock(*cache_mutex_);
-    PADDLE_ENFORCE_NE(
-        hash_.find(key),
-        hash_.end(),
-        phi::errors::PreconditionNotMet("The key does not exist."));
-    return hash_[key];
-  }
-
-  bool Find(const ConvCacheKey& key) {
-    bool ret = false;
-    std::lock_guard<std::mutex> lock(*cache_mutex_);
-    if (hash_.find(key) != hash_.end()) {
-      cache_hits_++;
-      ret = true;
-    } else {
-      cache_misses_++;
-    }
-    return ret;
-  }
-
-  void Clean() {
-    std::lock_guard<std::mutex> lock(*cache_mutex_);
-    hash_.clear();
-    cache_hits_ = 0;
-    cache_misses_ = 0;
-  }
-
-  void Set(const ConvCacheKey& key, ConvAutoTuneResult algo) {
-    std::lock_guard<std::mutex> lock(*cache_mutex_);
-    if (hash_.size() > static_cast<size_t>(FLAGS_search_cache_max_number)) {
-      hash_.clear();
-    }
-    hash_[key] = algo;
-  }
-
-  int64_t CacheMisses() const { return cache_misses_; }
-
-  int64_t CacheHits() const { return cache_hits_; }
-
-  float CacheHitRate() const {
-    int64_t num_accesses = cache_hits_ + cache_misses_;
-    float cache_hit_rate = 0.;
-    if (num_accesses != 0) {
-      cache_hit_rate =
-          static_cast<float>(cache_hits_) / static_cast<float>(num_accesses);
-    }
-    return cache_hit_rate;
-  }
-
-  int64_t Size() const { return hash_.size(); }
-
- private:
-  std::unordered_map<ConvCacheKey,
-                     ConvAutoTuneResult,
-                     ConvCacheKeyHash,
-                     ConvCacheKeyEqual>
-      hash_;
-  std::shared_ptr<std::mutex> cache_mutex_;
-
-  int64_t cache_hits_{0};
-  int64_t cache_misses_{0};
-};
-
 size_t TransposeKey(const std::vector<int64_t>& x_dims,
                     const std::vector<int32_t>& perm,
                     phi::DataType dtype);
-
-template <typename AlgorithmT>
-class AlgorithmsCache {
- public:
-  AlgorithmsCache() : cache_mutex_(new std::mutex()) { hash_.clear(); }
-
-  AlgorithmT Get(const size_t& key) {
-    std::lock_guard<std::mutex> lock(*cache_mutex_);
-    PADDLE_ENFORCE_NE(
-        hash_.find(key),
-        hash_.end(),
-        phi::errors::PreconditionNotMet("The key does not exist."));
-    return hash_[key];
-  }
-
-  bool Find(const size_t& key) {
-    bool ret = false;
-    std::lock_guard<std::mutex> lock(*cache_mutex_);
-    if (hash_.find(key) != hash_.end()) {
-      cache_hits_++;
-      ret = true;
-    } else {
-      cache_misses_++;
-    }
-    return ret;
-  }
-
-  void Clean() {
-    std::lock_guard<std::mutex> lock(*cache_mutex_);
-    hash_.clear();
-    cache_hits_ = 0;
-    cache_misses_ = 0;
-  }
-
-  void Set(const size_t& key, AlgorithmT algo) {
-    std::lock_guard<std::mutex> lock(*cache_mutex_);
-    hash_[key] = algo;
-  }
-
-  int64_t CacheMisses() const { return cache_misses_; }
-
-  int64_t CacheHits() const { return cache_hits_; }
-
-  float CacheHitRate() const {
-    int64_t num_accesses = cache_hits_ + cache_misses_;
-    float cache_hit_rate = 0.;
-    if (num_accesses != 0) {
-      cache_hit_rate =
-          static_cast<float>(cache_hits_) / static_cast<float>(num_accesses);
-    }
-    return cache_hit_rate;
-  }
-
-  int64_t Size() const { return hash_.size(); }
-
- private:
-  std::unordered_map<size_t, AlgorithmT> hash_;
-  std::shared_ptr<std::mutex> cache_mutex_;
-
-  int64_t cache_hits_{0};
-  int64_t cache_misses_{0};
-};
 
 enum class AlgorithmType {
   kConvForward = 1,
@@ -278,11 +47,12 @@ enum class AlgorithmType {
 
 // AlgorithmsConfigKey -> AlgorithmsID
 // (todo. hong) use cudnnConvolutionFwdAlgo_t
-using AlgorithmsCacheMap = AlgorithmsCache<int64_t>;
+using AlgorithmsCacheMap = AlgorithmsCache<size_t, int64_t>;
 // AlgorithmType -> AlgorithmsCache
 using AlgorithmsTypeMap = std::unordered_map<int64_t, AlgorithmsCacheMap>;
-using CudnnAlgorithmsTypeMap =
-    std::unordered_map<int64_t, CudnnAlgorithmsCacheMap>;
+using ConvAlgorithmsCacheMap = ConvAlgorithmsCache<ConvAutoTuneResult>;
+using ConvAlgorithmsTypeMap =
+    std::unordered_map<int64_t, ConvAlgorithmsCacheMap>;
 
 class AutoTuneCache {
  public:
@@ -295,8 +65,8 @@ class AutoTuneCache {
     return auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
-  CudnnAlgorithmsCacheMap& GetConv(const AlgorithmType& algo_type) {
-    return cudnn_auto_tune_map_[static_cast<int64_t>(algo_type)];
+  ConvAlgorithmsCacheMap& GetConv(const AlgorithmType& algo_type) {
+    return conv_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
   AlgorithmsCacheMap& GetTranspose() { return Get(AlgorithmType::kTranspose); }
@@ -306,7 +76,7 @@ class AutoTuneCache {
       v.second.Clean();
     }
 
-    for (auto& v : cudnn_auto_tune_map_) {
+    for (auto& v : conv_auto_tune_map_) {
       v.second.Clean();
     }
   }
@@ -344,8 +114,8 @@ class AutoTuneCache {
         algo_type == AlgorithmType::kConvBackwardFilter) {
       int64_t key = static_cast<int64_t>(algo_type);
       if (auto_tune_map_.find(key) == auto_tune_map_.end()) {
-        CudnnAlgorithmsCacheMap cache;
-        cudnn_auto_tune_map_[key] = cache;
+        ConvAlgorithmsCacheMap cache;
+        conv_auto_tune_map_[key] = cache;
       }
     } else {
       int64_t key = static_cast<int64_t>(algo_type);
@@ -357,7 +127,7 @@ class AutoTuneCache {
   }
 
   AlgorithmsTypeMap auto_tune_map_;
-  CudnnAlgorithmsTypeMap cudnn_auto_tune_map_;
+  ConvAlgorithmsTypeMap conv_auto_tune_map_;
   std::shared_ptr<std::mutex> autotune_cache_mutex_;
   int64_t total_cache_hits_{0};
   int64_t total_cache_misses_{0};
