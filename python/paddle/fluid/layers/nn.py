@@ -142,7 +142,6 @@ __all__ = [
     'soft_relu',
     'flatten',
     'stack',
-    'pad2d',
     'unstack',
     'unique',
     'unique_with_counts',
@@ -9692,148 +9691,48 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     return out
 
 
-def pad2d(
-    input,
-    paddings=[0, 0, 0, 0],
-    mode='constant',
-    pad_value=0.0,
-    data_format="NCHW",
-    name=None,
-):
+
+@deprecated(since="2.0.0", update_to="paddle.nn.functional.elu")
+def elu(x, alpha=1.0, name=None):
     """
+    :alias_main: paddle.nn.functional.elu
+        :alias: paddle.nn.functional.elu,paddle.nn.functional.activation.elu
+        :old_api: paddle.fluid.layers.elu
 
-    Pad 2-d images according to 'paddings' and 'mode'.
-    If mode is 'reflect', paddings[0] and paddings[1] must be no greater
-    than height-1. And the width dimension has the same condition.
-
-    Parameters:
-        input (Tensor): The input image with [N, C, H, W] format or [N, H, W, C] format, which is a 4-D Tensor with data type float32.
-        paddings (Tensor | List[int32]): The padding size. If padding is a List, it must
-            contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
-            Otherwise, it is a 1-D Tensor with shape [4]. Data type is int32.
-            Default is [0, 0, 0, 0].
-        mode (str): Three modes: 'constant' (default), 'reflect', 'edge' .
-                When in 'constant' mode, this op uses a constant value to pad the input tensor.
-                When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
-                When in 'edge' mode, uses input boundaries to pad the input tensor.
-                Default is 'constant'
-        pad_value (float32): The value to fill the padded areas in 'constant' mode . Default is 0.0
-        data_format (str): An string from: "NHWC", "NCHW". Specify the data format of
-                           the input data.
-                           Default is  "NCHW"
-        name (str, optional) : The default value is None.  Normally there is no need for
-                    user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
-
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        alpha(${alpha_type}|1.0): ${alpha_comment}
+        name(str|None): The default value is None. Normally there is no need for user to set this property.
+                        For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor, a 4-D Tensor padded according to paddings and mode and data type is same as input.
+        ${out_type}: ${out_comment}
 
     Examples:
-        .. code-block:: text
 
-            Input = [[[[1., 2., 3.],
-                       [4., 5., 6.]]]]
-
-            Case 0:
-                paddings = [0, 1, 2, 3],
-                mode = 'constant'
-                pad_value = 0
-                Out = [[[[0., 0., 1., 2., 3., 0., 0., 0.],
-                         [0., 0., 4., 5., 6., 0., 0., 0.],
-                         [0., 0., 0., 0., 0., 0., 0., 0.]]]]
-
-            Case 1:
-                paddings = [0, 1, 2, 1],
-                mode = 'reflect'
-                Out = [[[[3., 2., 1., 2., 3., 2.],
-                         [6., 5., 4., 5., 6., 5.],
-                         [3., 2., 1., 2., 3., 2.]]]]
-
-            Case 2:
-                paddings = [0, 1, 2, 1],
-                mode = 'edge'
-                Out = [[[[1., 1., 1., 2., 3., 3.],
-                         [4., 4., 4., 5., 6., 6.],
-                         [4., 4., 4., 5., 6., 6.]]]]
-
-    Code Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import numpy as np
-            import paddle
-            import paddle.nn.functional as F
 
-            # example 1
-            x_shape = (1, 1, 3, 4)
-            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
-            tensor_x = paddle.to_tensor(x)
-            y = paddle.fluid.layers.pad2d(tensor_x, paddings=[1, 2, 2, 1], pad_value=1, mode='constant')
-            print(y.numpy())
-            # [[[[ 1.  1.  1.  1.  1.  1.  1.]
-            #    [ 1.  1.  1.  2.  3.  4.  1.]
-            #    [ 1.  1.  5.  6.  7.  8.  1.]
-            #    [ 1.  1.  9. 10. 11. 12.  1.]
-            #    [ 1.  1.  1.  1.  1.  1.  1.]
-            #    [ 1.  1.  1.  1.  1.  1.  1.]]]]
-
-            # example 2
-            x_shape = (1, 1, 2, 3)
-            x = np.arange(np.prod(x_shape), dtype=np.float32).reshape(x_shape) + 1
-            tensor_x = paddle.to_tensor(x)
-            y = paddle.fluid.layers.pad2d(tensor_x, paddings=[1, 1, 1, 1], mode='reflect')
-            print(y.numpy())
-            # [[[[5. 4. 5. 6. 5.]
-            #    [2. 1. 2. 3. 2.]
-            #    [5. 4. 5. 6. 5.]
-            #    [2. 1. 2. 3. 2.]]]]
+            input_elu = np.array([[-1,6],[1,15.6]])
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(input_elu)
+                y = fluid.layers.elu(x, alpha=0.2)
+                print(y.numpy())
+                # [[-0.12642411  6.        ]
+                # [ 1.          15.6       ]]
     """
-    if _non_static_mode():
-        _paddings = (
-            paddings.numpy().tolist()
-            if isinstance(paddings, Variable)
-            else paddings
-        )
-        return _legacy_C_ops.pad2d(
-            input,
-            'mode',
-            mode,
-            'pad_value',
-            pad_value,
-            'data_format',
-            data_format,
-            'paddings',
-            _paddings,
-        )
-
-    check_variable_and_dtype(
-        input,
-        'input',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
-        "pad2d",
-    )
-
-    attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
-    inputs = {'X': [input]}
-    if isinstance(paddings, Variable):
-        inputs['Paddings'] = [paddings]
-        attrs['paddings'] = []
-    else:
-        attrs['paddings'] = paddings
-
-    helper = LayerHelper('pad2d', **locals())
-
-    assert mode in [
-        'reflect',
-        'edge',
-        'constant',
-    ], "mode should be one of constant, reflect, edge."
-
-    dtype = helper.input_dtype(input_param_name='input')
-    out = helper.create_variable_for_type_inference(dtype)
-
+    helper = LayerHelper('elu', **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'elu')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
-        type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs
+        type='elu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': alpha},
     )
-
+>>>>>>> fix code style
     return out
 
 

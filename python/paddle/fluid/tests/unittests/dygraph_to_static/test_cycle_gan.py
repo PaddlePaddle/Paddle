@@ -187,10 +187,11 @@ class build_resnet_block(fluid.dygraph.Layer):
         self.dim = dim
 
     def forward(self, inputs):
-        out_res = fluid.layers.pad2d(inputs, [1, 1, 1, 1], mode="reflect")
+        tmp_pad = paddle.nn.Pad2D([1, 1, 1, 1], mode="reflect")
+        out_res = tmp_pad(inputs)
         out_res = self.conv0(out_res)
 
-        out_res = fluid.layers.pad2d(out_res, [1, 1, 1, 1], mode="reflect")
+        out_res = tmp_pad(out_res)
         out_res = self.conv1(out_res)
         return out_res + inputs
 
@@ -261,7 +262,8 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
         )
 
     def forward(self, inputs):
-        pad_input = fluid.layers.pad2d(inputs, [3, 3, 3, 3], mode="reflect")
+        tmp_pad = paddle.nn.Pad2D([3, 3, 3, 3], mode="reflect")
+        pad_input = tmp_pad(inputs)
         y = self.conv0(pad_input)
         y = self.conv1(y)
         y = self.conv2(y)
@@ -269,7 +271,7 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
             y = build_resnet_block_i(y)
         y = self.deconv0(y)
         y = self.deconv1(y)
-        y = fluid.layers.pad2d(y, [3, 3, 3, 3], mode="reflect")
+        y = tmp_pad(y)
         y = self.conv3(y)
         y = fluid.layers.tanh(y)
         return y
@@ -469,9 +471,10 @@ class DeConv2D(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         conv = self._deconv(inputs)
-        conv = fluid.layers.pad2d(
-            conv, paddings=self.outpadding, mode='constant', pad_value=0.0
+        tmp_pad = paddle.nn.Pad2D(
+            paddings=self.outpadding, mode='constant', pad_value=0.0
         )
+        conv = tmp_pad(conv)
 
         if self.norm:
             conv = self.bn(conv)
