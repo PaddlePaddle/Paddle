@@ -141,7 +141,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
         errors::PreconditionNotMet(
             "No layout transform needed between two MKLDNN OPKernels."));
   } else {
-    TransferLayoutGeneral<Context>(dev_ctx, x, dst_layout, src_layout, , out);
+    TransferLayoutGeneral<Context>(dev_ctx, x, dst_layout, src_layout, out);
   }
 }
 #endif
