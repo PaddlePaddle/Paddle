@@ -14,12 +14,13 @@
 
 import six
 import abc
+import inspect
 from paddle.nn import Layer
 from .quanter import BaseQuanter
 from .observer import BaseObserver
 from typing import Union
 
-__all__ = ["ObserverFactory", "QuanterFactory"]
+__all__ = ["ObserverFactory", "QuanterFactory", "quanter"]
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -53,3 +54,36 @@ class ObserverFactory(ClassWithArguments):
 class QuanterFactory(ObserverFactory):
     def __init__(self, **args):
         super(QuanterFactory, self).__init__(**args)
+
+    def get_class(self):
+        return self.cls
+
+
+def quanter(class_name, **kwargs):
+    def wrapper(target_class):
+        formal_kwargs_str = ",".join([f"{k}={v}" for k, v in kwargs.items()])
+        actual_kwargs_str = ",".join([f"{k}={k}" for k, v in kwargs.items()])
+        print(f"formal_kwargs_str: {formal_kwargs_str}")
+        print(f"actual_kwargs_str: {actual_kwargs_str}")
+        init_function_str = f"""
+def init_function(self, {formal_kwargs_str}):
+    super(type(self), self).__init__({actual_kwargs_str})
+locals()["init_function"]=init_function"""
+        print(f"init_function_str: {init_function_str}")
+        exec(init_function_str)
+        new_class = type(
+            class_name,
+            (QuanterFactory,),
+            {
+                "__init__": locals()["init_function"],
+                "cls": target_class,
+            },
+        )
+        frm = inspect.stack()[1]
+        mod = inspect.getmodule(frm[0])
+        setattr(mod, class_name, new_class)
+        if "__all__" in mod.__dict__:
+            mod.__all__.append(class_name)
+        return target_class
+
+    return wrapper

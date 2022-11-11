@@ -30,7 +30,6 @@ class QAT(object):
     def quantize(self, model: Layer, inplace=False):
         _model = model if inplace else copy.deepcopy(model)
         self._config.specify(_model)
-        print(f"config: {self._config.details()}")
         self._convert_to_quant_layers(_model, self._config)
         self._insert_activation_observers(_model, self._config)
         return _model
