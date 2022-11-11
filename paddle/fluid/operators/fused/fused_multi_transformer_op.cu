@@ -186,12 +186,24 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto ffn1_weight_dim = ffn1_weights[0]->dims();
 
     int dim_ffn = ffn1_weight_dim[1];
-    auto ffn1_linear_compute = AttnMatMul<T>(
-        dev_ctx, false, false, bsz_seq, dim_ffn, dim_embed, false);
+
     Tensor ffn1_out;
     ffn1_out.Resize({{bsz_seq, dim_ffn}});
     auto *ffn1_out_data =
         dev_ctx.Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
+
+#if CUDA_VERSION >= 11060  // Use CublasLt
+    auto ffn1_linear_bias_gelu = CublasFusedMLP<T>(dev_ctx,
+                                                   false,
+                                                   false,
+                                                   bsz_seq,
+                                                   dim_ffn,
+                                                   dim_embed,
+                                                   "gelu",
+                                                   true /*compute_bias*/);
+#else
+    auto ffn1_linear_compute = AttnMatMul<T>(
+        dev_ctx, false, false, bsz_seq, dim_ffn, dim_embed, false);
 
     // 7. ffn act + bias
     DropoutParam ffn1_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
@@ -204,6 +216,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     ffn1_dropout_mask.Resize({{bsz_seq, dim_ffn}});
     auto *ffn1_dropout_mask_data = dev_ctx.Alloc<uint8_t>(
         &ffn1_dropout_mask, ffn1_dropout_mask.numel() * sizeof(uint8_t));
+#endif
 
     // 8. ffn2 matmul
     auto ffn2_weights = ctx.MultiInput<phi::DenseTensor>("FFN2Weight");
@@ -429,9 +442,14 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       VLOG(0) << "step5";
 #endif
 
+#if CUDA_VERSION >= 11060
+      ffn1_linear_bias_gelu.SetBiasPtr(ffn1_biases[i]->data<T>());
+      ffn1_linear_bias_gelu.ComputeForward(ffn1_weights[i], buf1, &ffn1_out);
+#else
       // step6. ffn matmul1
       ffn1_linear_compute.ComputeForward(
           ffn1_weights[i], buf1, nullptr, &ffn1_out, nullptr);
+
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step6";
 #endif
@@ -444,6 +462,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                               "gelu",
                                               ffn1_dropout_out_data,
                                               ffn1_dropout_mask_data);
+
+#endif  // CUDA_VERSION >= 11060
+
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step7";
 #endif
