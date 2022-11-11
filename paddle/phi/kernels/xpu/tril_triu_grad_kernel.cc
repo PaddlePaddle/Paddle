@@ -20,11 +20,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TrilGradKernel(const Context& ctx,
-                    const DenseTensor& out_grad,
-                    int diagonal,
-                    bool lower,
-                    DenseTensor* x_grad) {
+void TrilTriuGradKernel(const Context& ctx,
+                        const DenseTensor& out_grad,
+                        int diagonal,
+                        bool lower,
+                        DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(x_grad);
   auto dy_shape = vectorize<int>(out_grad.dims());
