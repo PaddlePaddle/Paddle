@@ -1,17 +1,21 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
-import errno
-import warnings
-import logging
-import pickle
-import contextlib
-from functools import reduce
-import sys
-from io import BytesIO
 
-import numpy as np
-import math
 import paddle
-
+from paddle.framework import dygraph_not_support
 
 
 def _save_distributed_persistables(executor, dirname, main_program):
@@ -181,3 +185,74 @@ def _save_distributed_persistables(executor, dirname, main_program):
             )
 
 
+@dygraph_not_support
+def save_persistables(executor, dirname, main_program=None, filename=None):
+    """
+    Save all persistable variables from :code:`main_program` to
+    the folder :code:`dirname` or file :code:`filename`. You can refer to
+    :ref:`api_guide_model_save_reader_en` for more details. And then
+    saves these persistables variables to the folder :code:`dirname` or file
+    :code:`filename`.
+
+    The :code:`dirname` is used to specify the folder where persistable variables
+    are going to be saved. If you would like to save variables in separate
+    files, set :code:`filename` None; if you would like to save all variables in a
+    single file, use :code:`filename` to specify the file name.
+
+    Args:
+        executor(Executor): The executor to run for saving persistable variables.
+                            You can refer to :ref:`api_guide_executor_en` for
+                            more details.
+
+        dirname(str, optional): The saving directory path.
+                            When you need to save the parameter to the memory, set it to None.
+        main_program(Program, optional): The program whose persistbale variables will
+                                         be saved. You can refer to
+                                         :ref:`api_guide_Program_en` for more details.
+                                         If it is None, the default main program will
+                                         be used.
+                                         Default: None.
+        filename(str, optional): The file to save all variables. If you prefer to
+                                 save variables in different files, set it to None.
+                                 Default: None.
+
+    Returns:
+        str: When saving parameters to a file, returns None.
+             When saving parameters to memory, returns a binary string containing parameters.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+
+            paddle.enable_static()
+            dir_path = "./my_paddle_model"
+            file_name = "persistables"
+            image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
+
+            predict = fluid.layers.fc(input=image, size=10, act='softmax')
+            loss = fluid.layers.cross_entropy(input=predict, label=label)
+            avg_loss = paddle.mean(loss)
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            fluid.io.save_persistables(executor=exe, dirname=dir_path, filename=file_name)
+            # The persistables variables weights and bias in the fc layer of the network
+            # are going to be saved in the same file named "persistables" in the path
+            # "./my_paddle_model"
+    """
+    if main_program and main_program._is_distributed:
+        return _save_distributed_persistables(
+            executor, dirname=dirname, main_program=main_program
+        )
+    else:
+        return paddle.static.save_vars(
+            executor,
+            dirname=dirname,
+            main_program=main_program,
+            vars=None,
+            predicate=is_persistable,
+            filename=filename,
+        )
