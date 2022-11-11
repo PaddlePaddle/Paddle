@@ -1854,7 +1854,6 @@ class SoftMarginLoss(Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shapes:
-<<<<<<< HEAD
         - Input (Tensor): The input tensor with shape: ``[N, *]``,
           N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf
           Available dtype is float32, float64.
@@ -1863,18 +1862,6 @@ class SoftMarginLoss(Layer):
           Available dtype is int32, int64, float32, float64.
         - Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
           same as ``input`` , else the shape of output is [1].
-=======
-        - Input (Tensor): The input tensor with shape: [N, *],
-            N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf
-            Available dtype is float32, float64.
-
-        - Label (Tensor): The target labels tensor with the same shape as
-            ``input``. The target labels which values should be numbers -1 or 1.
-            Available dtype is int32, int64, float32, float64.
-
-        - Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is [1].
->>>>>>> 560eed169b9e1b99e4f5041f8dc4b5283862cd7b
 
     Returns:
         A callable object of SoftMarginLoss.
