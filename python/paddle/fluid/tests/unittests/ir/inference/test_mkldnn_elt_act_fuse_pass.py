@@ -152,7 +152,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Relu6(
 ):
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
-        self.act = paddle.nn.functional.relu6
+        self.act = paddle.nn.ReLU6
         self.act_alpha = 5.0
 
 
@@ -245,7 +245,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Relu6(
 ):
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
-        self.act = paddle.nn.functional.relu6
+        self.act = paddle.nn.ReLU6
         self.act_alpha = 5.0
 
 
@@ -346,7 +346,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Relu6(
 ):
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
-        self.act = paddle.nn.functional.relu6
+        self.act = paddle.nn.ReLU6
         self.act_alpha = 5.0
 
 
