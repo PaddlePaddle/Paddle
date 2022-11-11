@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
+import paddle
 
 
 class TensorRTSubgraphPassActivationTest(InferencePassTest):
@@ -90,7 +91,7 @@ class TensorRTSubgraphPassHardSwishTest(TensorRTSubgraphPassActivationTest):
 
 class TensorRTSubgraphPassHardSigmoidTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.hard_sigmoid(x)
+        return paddle.nn.functional.hardsigmoid(x)
 
 
 class TensorRTSubgraphPassHardSwishPluginTest(
