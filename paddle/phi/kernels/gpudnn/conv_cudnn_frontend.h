@@ -290,7 +290,12 @@ void CudnnConvBwdDataV8(const DenseTensor* dy_tensor,
       beta);
 
   if (plan_cache_bwd_data.FindPlan(op_graph, use_addto)) {
-    auto cached_plan = plan_cache_bwd_data.GetPlan(op_graph, handle, use_addto);
+    auto engine_config =
+        plan_cache_bwd_data.GetConfig(op_graph, handle, use_addto);
+    auto cached_plan = cudnn_frontend::ExecutionPlanBuilder()
+                           .setHandle(handle)
+                           .setEngineConfig(engine_config, op_graph.getTag())
+                           .build();
     auto workspace_size = cached_plan.getWorkspaceSize();
     VLOG(4) << "Cached execution plan found." << cached_plan.getTag()
             << "; Require workspace: " << workspace_size;
@@ -390,7 +395,11 @@ void CudnnConvBwdFilterV8(const DenseTensor* x_tensor,
       beta);
 
   if (plan_cache_bwd_filter.FindPlan(op_graph)) {
-    auto cached_plan = plan_cache_bwd_filter.GetPlan(op_graph, handle);
+    auto engine_config = plan_cache_bwd_filter.GetConfig(op_graph, handle);
+    auto cached_plan = cudnn_frontend::ExecutionPlanBuilder()
+                           .setHandle(handle)
+                           .setEngineConfig(engine_config, op_graph.getTag())
+                           .build();
     auto workspace_size = cached_plan.getWorkspaceSize();
     VLOG(4) << "Cached execution plan found." << cached_plan.getTag()
             << "; Require workspace: " << workspace_size;

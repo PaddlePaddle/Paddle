@@ -71,17 +71,13 @@ class CudnnFrontendPlanCache {
     return ret;
   }
 
-  cudnn_frontend::ExecutionPlan GetPlan(
+  cudnn_frontend::ManagedOpaqueDescriptor GetConfig(
       const cudnn_frontend::OperationGraph& op_graph,
       cudnnHandle_t handle,
       bool use_addto = false) {
     std::lock_guard<std::mutex> lock(*cache_mutex_);
     auto engine_config = map_[MakeKey(op_graph, use_addto)];
-    auto plan = cudnn_frontend::ExecutionPlanBuilder()
-                    .setHandle(handle)
-                    .setEngineConfig(engine_config, op_graph.getTag())
-                    .build();
-    return std::move(plan);
+    return engine_config;
   }
 
   void InsertPlan(const cudnn_frontend::OperationGraph& op_graph,

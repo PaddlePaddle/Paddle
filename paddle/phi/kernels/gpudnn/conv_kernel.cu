@@ -217,6 +217,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
 #endif
 }
 
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
 template <typename T, typename Context>
 void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
                            const DenseTensor* filter_channel_tensor,
@@ -264,7 +265,11 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
       beta);
 
   if (plan_cache.FindPlan(op_graph)) {
-    auto cached_plan = plan_cache.GetPlan(op_graph, handle);
+    auto engine_config = plan_cache.GetConfig(op_graph, handle);
+    auto cached_plan = cudnn_frontend::ExecutionPlanBuilder()
+                           .setHandle(handle)
+                           .setEngineConfig(engine_config, op_graph.getTag())
+                           .build();
     auto workspace_size = cached_plan.getWorkspaceSize();
     VLOG(4) << "Cached execution plan found." << cached_plan.getTag()
             << "; Require workspace: " << workspace_size;
@@ -325,6 +330,7 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
       phi::errors::InvalidArgument("[CUDNN Frontend API] No valid plan could "
                                    "be found to execute conv."));
 }
+#endif
 
 template <typename T, typename Context>
 void ConvCudnnKernel(const Context& ctx,

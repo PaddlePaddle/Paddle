@@ -334,6 +334,7 @@ void ConvCudnnGradKernelImplV7(
   }
 }
 
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
 template <typename T, typename Context>
 void ConvCudnnGradKernelImplV8(
     const DenseTensor* transformed_input,
@@ -397,6 +398,7 @@ void ConvCudnnGradKernelImplV8(
                             transformed_filter_grad_channel);
   }
 }
+#endif
 
 template <typename T, typename Context>
 void ConvCudnnGradKernel(const Context& ctx,
