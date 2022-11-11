@@ -1047,8 +1047,8 @@ def save_persistables(exe, dirname, main_program, filename=None):
         )
 
     if int(os.environ.get('PADDLE_TRAINER_ID', 0)) == 0:
-        paddle.fluid.io.save_persistables(
-            exe, dirname, main_program=main_program, filename=None
+        paddle.distributed.io._save_distributed_persistables(
+            exe, dirname, main_program=main_program
         )
     else:
         paddle.static.save_vars(

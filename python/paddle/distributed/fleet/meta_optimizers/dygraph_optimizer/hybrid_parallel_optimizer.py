@@ -102,9 +102,7 @@ class HybridParallelClipGrad:
             )
         else:
             global_norm_not_dist_fp16 = paddle.concat(sum_square_not_dist_fp16)
-            global_norm_not_dist_fp16 = paddle.sum(
-                global_norm_not_dist_fp16
-            )
+            global_norm_not_dist_fp16 = paddle.sum(global_norm_not_dist_fp16)
             global_norm_not_dist_fp16 = paddle.cast(
                 global_norm_not_dist_fp16, dtype=paddle.float32
             )
@@ -156,7 +154,9 @@ class HybridParallelClipGrad:
         )
 
         max_global_norm = paddle.full(
-            shape=[1], dtype=global_norm_var_fp32.dtype, fill_value=self.clip_norm
+            shape=[1],
+            dtype=global_norm_var_fp32.dtype,
+            fill_value=self.clip_norm,
         )
         clip_var = paddle.divide(
             x=max_global_norm,
