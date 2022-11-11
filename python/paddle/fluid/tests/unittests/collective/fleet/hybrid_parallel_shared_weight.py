@@ -45,7 +45,7 @@ hidden_size = 16
 
 class SimpleNet(Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
 
         self.softmax_weight = self.create_parameter(
@@ -71,7 +71,7 @@ class SimpleNet(Layer):
 
 class EmbeddingPipe(Layer):
     def __init__(self):
-        super(EmbeddingPipe, self).__init__()
+        super().__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
 
     @property
@@ -86,7 +86,7 @@ class EmbeddingPipe(Layer):
 
 class MatmulNet(Layer):
     def __init__(self):
-        super(MatmulNet, self).__init__()
+        super().__init__()
         self.softmax_weight = self.create_parameter(
             shape=[hidden_size, vocab_size]
         )
@@ -100,7 +100,7 @@ class MatmulNet(Layer):
 
 class BiasNet(Layer):
     def __init__(self):
-        super(BiasNet, self).__init__()
+        super().__init__()
         self.softmax_bias = self.create_parameter(shape=[vocab_size])
 
     def forward(self, args):
@@ -112,7 +112,7 @@ class BiasNet(Layer):
 
 class LossNet(Layer):
     def __init__(self):
-        super(LossNet, self).__init__()
+        super().__init__()
 
     def forward(self, args, y1):
         projection = args
@@ -146,9 +146,7 @@ class SimpleNetPipe(PipelineLayer):
             )
         )
 
-        super(SimpleNetPipe, self).__init__(
-            layers=self.descs, loss_fn=LossNet(), **kwargs
-        )
+        super().__init__(layers=self.descs, loss_fn=LossNet(), **kwargs)
 
 
 class TestDistEmbeddingTraning(unittest.TestCase):

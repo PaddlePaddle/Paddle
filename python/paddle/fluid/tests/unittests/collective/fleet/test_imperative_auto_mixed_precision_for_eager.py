@@ -40,17 +40,15 @@ class SimpleConv(fluid.dygraph.Layer):
         groups=1,
         act=None,
     ):
-        super(SimpleConv, self).__init__()
-        self._conv = fluid.dygraph.Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        super().__init__()
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=groups,
-            act=None,
             bias_attr=None,
-            use_cudnn=True,
         )
 
     def forward(self, inputs):
@@ -61,7 +59,7 @@ class TestAutoCast(unittest.TestCase):
     def amp_guard_white_op(self):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with fluid.dygraph.guard():
-            conv2d = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             data = fluid.dygraph.to_variable(data)
             with fluid.dygraph.amp_guard(True):
                 out_fp16 = conv2d(data)
@@ -155,7 +153,7 @@ class TestAutoCast(unittest.TestCase):
     def amp_guard_upsupported_fp16_op(self):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with fluid.dygraph.guard():
-            conv2d = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             data = fluid.dygraph.to_variable(data)
             with fluid.dygraph.amp_guard(True):
                 out_amp_fp16 = conv2d(data)
@@ -185,9 +183,7 @@ class TestAutoCast(unittest.TestCase):
         def func():
             data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
             with fluid.dygraph.guard():
-                conv2d = fluid.dygraph.Conv2D(
-                    3, 2, 3, bias_attr=False, act=None
-                )
+                conv2d = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
                 data = fluid.dygraph.to_variable(data)
                 with fluid.dygraph.amp_guard(level='O'):
                     out = conv2d(data)
@@ -419,13 +415,13 @@ class TestAmpScaler(unittest.TestCase):
                 decr_every_n_nan_or_inf=2,
                 use_dynamic_loss_scaling=True,
             )
-            self.assertEqual(scaler.is_enable() == True, True)
+            self.assertEqual(scaler.is_enable(), True)
             self.assertEqual(scaler.get_init_loss_scaling() == 1024, True)
             self.assertEqual(scaler.get_incr_ratio() == 2.0, True)
             self.assertEqual(scaler.get_decr_ratio() == 0.5, True)
             self.assertEqual(scaler.get_incr_every_n_steps() == 1000, True)
             self.assertEqual(scaler.get_decr_every_n_nan_or_inf() == 2, True)
-            self.assertEqual(scaler.is_use_dynamic_loss_scaling() == True, True)
+            self.assertEqual(scaler.is_use_dynamic_loss_scaling(), True)
             scaler.set_decr_every_n_nan_or_inf(4)
             self.assertEqual(scaler.get_decr_every_n_nan_or_inf() == 4, True)
             scaler.set_decr_ratio(0.1)
@@ -459,7 +455,7 @@ class TestAmpScaler(unittest.TestCase):
 
             scaler3 = paddle.amp.GradScaler(enable=False)
             scaler3.load_state_dict(scaler_state)
-            self.assertEqual(scaler3.is_enable() == False, True)
+            self.assertFalse(scaler3.is_enable())
 
     def test_state_dict_and_load_state_dict_error(self):
         def test_error():
@@ -605,7 +601,7 @@ class TestAmpDecorator(unittest.TestCase):
     def test_mode_exception(self):
         def func():
             with fluid.dygraph.guard():
-                model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+                model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
                 opt = paddle.optimizer.SGD(parameters=model.parameters())
                 model, opt = paddle.amp.decorate(
                     models=model, optimizers=opt, level='O'
@@ -615,7 +611,7 @@ class TestAmpDecorator(unittest.TestCase):
 
     def test_input_type_exception(self):
         def test_error_model():
-            class MyModel(object):
+            class MyModel:
                 def __init__(self):
                     print("A fake Model")
 
@@ -626,7 +622,7 @@ class TestAmpDecorator(unittest.TestCase):
         self.assertRaises(TypeError, test_error_model)
 
         def test_error_distributed_model():
-            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             model = paddle.DataParallel(model)
             with fluid.dygraph.guard():
                 model = paddle.amp.decorate(models=model, level='O2')
@@ -634,11 +630,11 @@ class TestAmpDecorator(unittest.TestCase):
         self.assertRaises(RuntimeError, test_error_distributed_model)
 
         def test_error_optimizer():
-            class MyOptimizer(object):
+            class MyOptimizer:
                 def __init__(self):
                     print("A fake Optimizer")
 
-            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             opt = MyOptimizer()
             with fluid.dygraph.guard():
                 paddle.amp.decorate(models=model, optimizers=opt, level='O2')
@@ -646,14 +642,14 @@ class TestAmpDecorator(unittest.TestCase):
         self.assertRaises(TypeError, test_error_optimizer)
 
     def test_set_master_weight(self):
-        model1 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+        model1 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         opt1 = paddle.optimizer.Adam(
             learning_rate=0.0001,
             parameters=model1.parameters(),
             multi_precision=True,
         )
 
-        model2 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+        model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         opt2 = paddle.optimizer.Adam(
             learning_rate=0.0001,
             parameters=model2.parameters(),
@@ -673,12 +669,12 @@ class TestAmpDecorator(unittest.TestCase):
         )
         self.assertEqual(opt2._multi_precision, True)
 
-        model3 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+        model3 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         opt3 = paddle.optimizer.Adam(
             learning_rate=0.0001, parameters=model3.parameters()
         )
 
-        model4 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+        model4 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         opt4 = paddle.optimizer.Adam(
             learning_rate=0.0001, parameters=model4.parameters()
         )
@@ -767,7 +763,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
     def test_save_dtype_exception(self):
         def func():
             paddle.disable_static()
-            model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
             opt = paddle.optimizer.SGD(parameters=model.parameters())
             paddle.amp.decorate(
                 models=model, optimizers=opt, level='O2', save_dtype='int'
@@ -956,7 +952,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
 
         class LinearNet(nn.Layer):
             def __init__(self):
-                super(LinearNet, self).__init__()
+                super().__init__()
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
 
             def forward(self, x):

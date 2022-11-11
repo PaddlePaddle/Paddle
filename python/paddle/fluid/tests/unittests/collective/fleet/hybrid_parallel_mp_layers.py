@@ -32,7 +32,7 @@ def set_random_seed(seed):
 
 class ColumnLinearNet(fluid.dygraph.Layer):
     def __init__(self, input_size, output_size, global_dtype):
-        super(ColumnLinearNet, self).__init__()
+        super().__init__()
         self.parallel_linear = fleet.meta_parallel.ColumnParallelLinear(
             in_features=input_size,
             out_features=output_size,
@@ -49,7 +49,7 @@ class ColumnLinearNet(fluid.dygraph.Layer):
 
 class RowLinearNet(fluid.dygraph.Layer):
     def __init__(self, input_size, output_size):
-        super(RowLinearNet, self).__init__()
+        super().__init__()
         self.parallel_linear = fleet.meta_parallel.RowParallelLinear(
             in_features=input_size,
             out_features=output_size,
@@ -65,7 +65,7 @@ class RowLinearNet(fluid.dygraph.Layer):
 
 class EmbeddingNet(fluid.dygraph.Layer):
     def __init__(self, vocab_size, hidden_size):
-        super(EmbeddingNet, self).__init__()
+        super().__init__()
         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
             vocab_size, hidden_size
         )
@@ -77,7 +77,7 @@ class EmbeddingNet(fluid.dygraph.Layer):
 
 class SimpleMatmul(fluid.dygraph.Layer):
     def __init__(self, weight, output_size, global_dtype):
-        super(SimpleMatmul, self).__init__()
+        super().__init__()
         self.weight = paddle.create_parameter(
             shape=weight.shape,
             dtype=global_dtype,
@@ -100,7 +100,7 @@ class SimpleMatmul(fluid.dygraph.Layer):
 
 class SimpleEmbedding(fluid.dygraph.Layer):
     def __init__(self, vocab_size, hidden_size, weight):
-        super(SimpleEmbedding, self).__init__()
+        super().__init__()
         self.embedding = paddle.nn.Embedding(
             vocab_size,
             hidden_size,

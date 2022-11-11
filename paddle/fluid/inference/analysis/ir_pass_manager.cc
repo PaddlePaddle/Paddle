@@ -263,6 +263,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("precision", new std::string(argument->xpu_precision()));
       pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
       pass->Set("xpu_device_id", new int(argument->xpu_device_id()));
+      pass->Set("enable_multi_stream",
+                new bool(argument->xpu_enable_multi_stream()));
       // NNAdapter Related
       pass->Set("use_nnadapter", new bool(argument->use_nnadapter()));
       pass->Set("nnadapter_model_cache_dir",

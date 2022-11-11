@@ -135,7 +135,7 @@ class ViterbiDecoder(Layer):
     """
 
     def __init__(self, transitions, include_bos_eos_tag=True, name=None):
-        super(ViterbiDecoder, self).__init__()
+        super().__init__()
         self.transitions = transitions
         self.include_bos_eos_tag = include_bos_eos_tag
         self.name = name

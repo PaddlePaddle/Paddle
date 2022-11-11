@@ -710,6 +710,7 @@ def upsample(
     name=None,
 ):
     """
+
     This API resizes a batch of images.
 
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
@@ -720,11 +721,12 @@ def upsample(
     and the resizing only applies on the three dimensions(depth, height and width).
 
     Supporting resample methods:
-        'linear' : Linear interpolation
-        'bilinear' : Bilinear interpolation
-        'trilinear' : Trilinear interpolation
-        'nearest' : Nearest neighbor interpolation
-        'bicubic' : Bicubic interpolation
+        - 'linear' : Linear interpolation
+        - 'bilinear' : Bilinear interpolation
+        - 'trilinear' : Trilinear interpolation
+        - 'nearest' : Nearest neighbor interpolation
+        - 'bicubic' : Bicubic interpolation
+
     Linear interpolation is the method of using a line connecting two known quantities
     to determine the value of an unknown quantity between the two known quantities.
 
@@ -826,6 +828,7 @@ def upsample(
               D_out = D_{in} * scale_{factor}
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
+
     https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of linear interpolation, please refer to Wikipedia:
 
@@ -871,23 +874,24 @@ def upsample(
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
+
     Returns:
         A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                import paddle
-                import paddle.nn as nn
+            import paddle
+            import paddle.nn as nn
 
-                input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
-                upsample_out = paddle.nn.Upsample(size=[12,12])
+            input_data = paddle.randn(shape=(2,3,6,10)).astype(paddle.float32)
+            upsample_out = paddle.nn.Upsample(size=[12,12])
 
-                output = upsample_out(x=input_data)
-                print(output.shape)
-                # [2L, 3L, 12L, 12L]
+            output = upsample_out(x=input_data)
+            print(output.shape)
+            # [2L, 3L, 12L, 12L]
 
     """
     return interpolate(
@@ -1115,7 +1119,7 @@ def dropout(
     if axis and not isinstance(axis, (int, list, tuple)):
         raise TypeError("datatype of axis argument should be int or list")
 
-    if axis == None:  # commonly used dropout
+    if axis is None:  # commonly used dropout
         seed = None
         mode = (
             'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
@@ -1963,18 +1967,16 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-
-            x_data = np.array([[[0, 1, 0],
-                                [ 1,  0, 1]]]).astype("float32")
-            print(x_data.shape)
             paddle.disable_static()
-            x = paddle.to_tensor(x_data, stop_gradient=False)
+
+            x = paddle.to_tensor([[[0, 1, 0],
+                                [ 1,  0, 1]]], dtype="float32", stop_gradient=False)
+
             output = paddle.nn.functional.label_smooth(x)
             print(output)
-
-            #[[[0.03333334 0.93333334 0.03333334]
-            #  [0.93333334 0.03333334 0.93333334]]]
+            # Tensor(shape=[1, 2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            #        [[[0.03333334, 0.93333334, 0.03333334],
+            #          [0.93333334, 0.03333334, 0.93333334]]])
     """
     if epsilon > 1.0 or epsilon < 0.0:
         raise ValueError("The value of epsilon must be between 0 and 1.")
@@ -2109,7 +2111,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         #Tensor(shape=[7], dtype=int64, place=CUDAPlace(1), stop_gradient=True,
         #       [0, 1, 2, 3, 5, 7, 8])
     """
-    if not (group == False or group is None or hasattr(group, 'is_member')):
+    if not (group is False or group is None or hasattr(group, 'is_member')):
         raise ValueError(
             'Expected group is False, None or instance of paddle.distributed.collective.Group \
              (got group: {})'.format(
@@ -2124,7 +2126,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     ring_id = 0
     rank = 0
     nranks = 1
-    if group != False:
+    if group is not False:
         if core.is_compiled_with_dist():
             parallel_env = paddle.distributed.ParallelEnv()
             global_rank = parallel_env.rank

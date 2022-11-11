@@ -371,25 +371,22 @@ class OpTest(unittest.TestCase):
             return True
 
         def is_xpu_op_test():
-            return hasattr(cls, "use_xpu") and cls.use_xpu == True
+            return hasattr(cls, "use_xpu") and cls.use_xpu
 
         def is_mkldnn_op_test():
-            return hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True
+            return hasattr(cls, "use_mkldnn") and cls.use_mkldnn
 
         def is_rocm_op_test():
             return core.is_compiled_with_rocm()
 
         def is_npu_op_test():
-            return hasattr(cls, "use_npu") and cls.use_npu == True
+            return hasattr(cls, "use_npu") and cls.use_npu
 
         def is_mlu_op_test():
-            return hasattr(cls, "use_mlu") and cls.use_mlu == True
+            return hasattr(cls, "use_mlu") and cls.use_mlu
 
         def is_custom_device_op_test():
-            return (
-                hasattr(cls, "use_custom_device")
-                and cls.use_custom_device == True
-            )
+            return hasattr(cls, "use_custom_device") and cls.use_custom_device
 
         if not hasattr(cls, "op_type"):
             raise AssertionError(
@@ -465,17 +462,17 @@ class OpTest(unittest.TestCase):
         )
 
     def is_mkldnn_op(self):
-        return (hasattr(self, "use_mkldnn") and self.use_mkldnn == True) or (
+        return (hasattr(self, "use_mkldnn") and self.use_mkldnn) or (
             hasattr(self, "attrs")
             and "use_mkldnn" in self.attrs
-            and self.attrs["use_mkldnn"] == True
+            and self.attrs["use_mkldnn"]
         )
 
     def is_xpu_op(self):
-        return (hasattr(self, "use_xpu") and self.use_xpu == True) or (
+        return (hasattr(self, "use_xpu") and self.use_xpu) or (
             hasattr(self, "attrs")
             and "use_xpu" in self.attrs
-            and self.attrs["use_xpu"] == True
+            and self.attrs["use_xpu"]
         )
 
     # set the self.output_dtype .
@@ -1542,7 +1539,7 @@ class OpTest(unittest.TestCase):
     ):
 
         # disable legacy dygraph check when check_eager is True
-        if check_eager == True:
+        if check_eager:
             check_dygraph = False
 
         def find_imperative_actual(target_name, dygraph_outs, place):
@@ -1569,7 +1566,7 @@ class OpTest(unittest.TestCase):
             )
             return found[0]
 
-        class Checker(object):
+        class Checker:
             """base class for check with self.outputs.
             currently don't support check between checkers.
             """
@@ -1912,7 +1909,7 @@ class OpTest(unittest.TestCase):
             )
 
         if check_eager:
-            assert check_dygraph == False
+            assert not check_dygraph
             return outs, eager_dygraph_outs, fetch_list
         elif check_dygraph:
             return outs, dygraph_outs, fetch_list
@@ -2002,7 +1999,7 @@ class OpTest(unittest.TestCase):
     ):
 
         # disable legacy dygraph check when check_eager is True
-        if check_eager == True:
+        if check_eager:
             check_dygraph = False
 
         self.__class__.op_type = self.op_type
@@ -2024,7 +2021,7 @@ class OpTest(unittest.TestCase):
                 check_eager=check_eager,
             )
             if check_eager:
-                assert check_dygraph == False
+                assert not check_dygraph
                 outs, eager_dygraph_outs, fetch_list = res
             elif check_dygraph:
                 outs, dygraph_outs, fetch_list = res
@@ -2143,7 +2140,7 @@ class OpTest(unittest.TestCase):
     ):
 
         # disable legacy dygraph check when check_eager is True
-        if check_eager == True:
+        if check_eager:
             check_dygraph = False
 
         self._check_grad_helper()
@@ -2180,7 +2177,7 @@ class OpTest(unittest.TestCase):
     ):
 
         # disable legacy dygraph check when check_eager is True
-        if check_eager == True:
+        if check_eager:
             check_dygraph = False
 
         self.scope = core.Scope()
@@ -2207,7 +2204,7 @@ class OpTest(unittest.TestCase):
 
         # oneDNN numeric gradient should use CPU kernel
         use_onednn = False
-        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"] == True:
+        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
             op_attrs["use_mkldnn"] = False
             use_onednn = True
 

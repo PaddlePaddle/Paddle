@@ -21,7 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class MLP(fluid.Layer):
     def __init__(self, input_size):
-        super(MLP, self).__init__()
+        super().__init__()
         self._linear1 = fluid.dygraph.Linear(
             input_size,
             3,

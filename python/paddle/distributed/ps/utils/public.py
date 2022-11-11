@@ -88,7 +88,7 @@ class DistributedMode:
     NU = 5
 
 
-class TrainerRuntimeConfig(object):
+class TrainerRuntimeConfig:
     def __init__(self, valid_strategy):
         self.mode = None
         num_threads = os.getenv("CPU_NUM", "1")
@@ -671,7 +671,7 @@ def find_heter_ops(program, default_device="cpu"):
             # Todo: need update this method
             # op._set_attr('op_device', current_heter_device)
             return True
-        elif op_device == None or op_device == default_device:
+        elif op_device is None or op_device == default_device:
             op._set_attr('op_device', default_device)
             return False
         return False
@@ -710,7 +710,7 @@ def find_heter_ops(program, default_device="cpu"):
             ):
                 param_name = op.input(SPARSE_OP_TYPE_DICT[forward_op_type])[0]
                 if param_name in var2idx:
-                    ## insert sum op & remove sum op from var2idx and origin place
+                    # insert sum op & remove sum op from var2idx and origin place
                     op_list = list(block.ops)
                     sum_op = op_list[var2idx[param_name]]
                     sum_op_inputs = {
@@ -979,7 +979,7 @@ def find_entrance_exit_private(program, program_block_ops_list):
     block_var_detail = []
     persistables = []
     for index, block_op_list in enumerate(program_block_ops_list):
-        ## forward
+        # forward
         block_input, block_output = find_ops_list_input_output(
             program, block_op_list["forward"]
         )
@@ -999,7 +999,7 @@ def find_entrance_exit_private(program, program_block_ops_list):
             }
         }
 
-        ## backward
+        # backward
         bp_block_input, bp_block_output = find_ops_list_input_output(
             program, block_op_list["backward"]
         )
@@ -1115,7 +1115,7 @@ def entrance_exit_check(
 def delete_block_useless_exit(
     program, program_block_ops_list, block_var_detail
 ):
-    ## forward
+    # forward
     for index in range(len(block_var_detail)):
         if index == len(block_var_detail) - 1:
             break
@@ -1128,7 +1128,7 @@ def delete_block_useless_exit(
 
         for var in need_delete_var:
             current_block_exit.remove(var)
-    ## backward
+    # backward
     for index in range(len(block_var_detail) - 1, -1, -1):
         if index - 1 < 0:
             break
@@ -1744,7 +1744,7 @@ def create_backward_block(
                 ):
                     is_skip = True
                     break
-            if is_skip == True:
+            if is_skip:
                 continue
         block_append_op(program, origin_program, heter_block, op)
 

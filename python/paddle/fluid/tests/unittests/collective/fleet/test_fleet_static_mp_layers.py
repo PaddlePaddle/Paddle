@@ -24,7 +24,7 @@ paddle.enable_static()
 
 class ColumnLinearNet(fluid.dygraph.Layer):
     def __init__(self, input_size, output_size):
-        super(ColumnLinearNet, self).__init__()
+        super().__init__()
         self.parallel_linear = fleet.meta_parallel.ColumnParallelLinear(
             in_features=input_size,
             out_features=output_size,
@@ -41,7 +41,7 @@ class ColumnLinearNet(fluid.dygraph.Layer):
 
 class RowLinearNet(fluid.dygraph.Layer):
     def __init__(self, input_size, output_size):
-        super(RowLinearNet, self).__init__()
+        super().__init__()
         self.parallel_linear = fleet.meta_parallel.RowParallelLinear(
             in_features=input_size,
             out_features=output_size,
@@ -57,7 +57,7 @@ class RowLinearNet(fluid.dygraph.Layer):
 
 class EmbeddingNet(fluid.dygraph.Layer):
     def __init__(self, vocab_size, hidden_size):
-        super(EmbeddingNet, self).__init__()
+        super().__init__()
         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
             vocab_size, hidden_size
         )
@@ -128,7 +128,7 @@ class TestDistTraning(unittest.TestCase):
             ops = [op.type for op in ops]
             self.assertEqual(
                 ops,
-                ['c_split', 'matmul_v2', 'c_allreduce_sum', 'elementwise_add'],
+                ['c_split', 'matmul_v2', 'mp_allreduce_sum', 'elementwise_add'],
             )
 
             weight = model_a.parallel_linear.weight
@@ -156,7 +156,7 @@ class TestDistTraning(unittest.TestCase):
             # print(main_program)
             ops = main_program.global_block().ops
             ops = [op.type for op in ops]
-            self.assertEqual(ops, ['c_embedding', 'c_allreduce_sum'])
+            self.assertEqual(ops, ['c_embedding', 'mp_allreduce_sum'])
 
             weight = model_a.embedding.weight
             self.assertEqual(

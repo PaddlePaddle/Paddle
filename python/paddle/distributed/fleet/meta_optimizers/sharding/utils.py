@@ -38,7 +38,7 @@ def check_broadcast(block):
     broadcast_vars = {}
     for idx, op in enumerate(block.ops):
         if op.type == "c_broadcast":
-            if op.all_attrs()["use_calc_stream"] == False:
+            if not op.all_attrs()["use_calc_stream"]:
                 var_name = op.desc.input_arg_names()[0]
                 if "@BroadCast" in var_name:
                     if var_name in broadcast_vars:
@@ -72,7 +72,7 @@ def check_broadcast(block):
             last_sync_calc_op_idx = idx
             continue
         if op.type == "c_broadcast":
-            if op.all_attrs()["use_calc_stream"] == False:
+            if not op.all_attrs()["use_calc_stream"]:
                 var_name = op.desc.input_arg_names()[0]
                 if "@BroadCast" in var_name:
                     if broadcast_vars[var_name]["fill_constant_pos"] != -1:
@@ -117,7 +117,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
     for idx, op in enumerate(block.ops):
         # sharding use both allreduce and reduce to sync grad
         if op.type == "c_allreduce_sum" or op.type == "c_reduce_sum":
-            if op.all_attrs()["use_calc_stream"] == False:
+            if not op.all_attrs()["use_calc_stream"]:
                 ring_id = op.desc.attr("ring_id")
                 var_name = op.desc.input_arg_names()[0]
                 param = var_name.split("@")[0]
@@ -153,7 +153,7 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                     dp_grads_status[var_name] = 1
         # check sharding allreduce and  reduce but skip megatron allreduce
         elif op.type == "c_allreduce_sum" or op.type == "c_reduce_sum":
-            if op.all_attrs()["use_calc_stream"] == False:
+            if not op.all_attrs()["use_calc_stream"]:
                 var_name = op.desc.input_arg_names()[0]
                 ring_id = op.desc.attr("ring_id")
                 if ring_id == sharding_ring_id:
@@ -408,7 +408,7 @@ def insert_allreduce_ops(
     return
 
 
-class FuseHelper(object):
+class FuseHelper:
     @staticmethod
     def sort_vars_by_dtype(block, vars_name):
         fp32_vars = []

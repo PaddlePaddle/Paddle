@@ -179,13 +179,6 @@ class TestAudioFuncitons(unittest.TestCase):
             window_scipy_exp, window_paddle_exp.numpy(), decimal=5
         )
         try:
-            window_paddle = paddle.audio.functional.get_window(
-                ("kaiser", 1.0), self.n_fft
-            )
-        except NotImplementedError:
-            pass
-
-        try:
             window_paddle = paddle.audio.functional.get_window("hann", -1)
         except ValueError:
             pass

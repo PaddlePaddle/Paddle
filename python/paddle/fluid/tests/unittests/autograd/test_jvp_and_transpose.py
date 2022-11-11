@@ -22,7 +22,7 @@ from paddle.incubate.autograd.primrules import _jvp, _transpose
 paddle.enable_static()
 
 
-############################ Test linearize rules ############################
+# --------------------- Test linearize rules ----------------------- #
 class TestAddPJVPAndTranspose(unittest.TestCase):
     def setUp(self):
         self.main_program = paddle.static.Program()
@@ -883,7 +883,7 @@ class TestSliceSelectPJVPAndTranspose(TestAddPJVPAndTranspose):
         ]
 
 
-class TestSliceAssignPJVPAndTranspose(TestAddPJVPAndTranspose):
+class TestSliceAssignPJVPAndTranspose1(TestAddPJVPAndTranspose):
     def init_data(self):
         # Set prim op
         self.op_type = 'slice_assign_p'
@@ -909,19 +909,106 @@ class TestSliceAssignPJVPAndTranspose(TestAddPJVPAndTranspose):
         self.jvp_out_shape_map = {0: self.prim_output['Z']}
 
         # Set transpose
-        check_dot = lambda v: v is X or v is Y
+        check_dot = lambda v: v is X
         Z_BAR = paddle.static.data(name='Z_BAR', shape=[3, 20], dtype='float64')
         self.transpose_args = (check_dot, Z_BAR)
-        self.transpose_out_shape_map = {0: X, 1: Y}
+        self.transpose_out_shape_map = {0: X}
 
         self.all_ops = [
             # prim op:
             'slice_assign_p',
             # jvp op:
             'slice_assign_p',
+            "slice_assign_p",
+            "add_p",
+            "fill_constant_p",
+            "fill_constant_p",
             # transpose op:
             'slice_assign_p',
+            'fill_constant_p',
+        ]
+
+
+class TestSliceAssignPJVPAndTranspose2(TestAddPJVPAndTranspose):
+    def init_data(self):
+        # Set prim op
+        self.op_type = 'slice_assign_p'
+        X = paddle.static.data(name='X', shape=[3, 20], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[3, 5], dtype='float64')
+        self.prim_input = {'X': X, 'Y': Y}
+        self.prim_output = {
+            'Z': self.layer_help.create_variable_for_type_inference(
+                dtype=X.dtype
+            )
+        }
+        self.prim_attrs = {
+            'axis': [1],
+            'starts': [0],
+            'ends': [10],
+            'strides': [2],
+        }
+
+        # Set JVP
+        Y_DOT = paddle.static.data(name='Y_DOT', shape=[3, 5], dtype='float64')
+        self.jvp_args = (None, Y_DOT)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
+
+        # Set transpose
+        check_dot = lambda v: v is Y
+        Z_BAR = paddle.static.data(name='Z_BAR', shape=[3, 20], dtype='float64')
+        self.transpose_args = (check_dot, Z_BAR)
+        self.transpose_out_shape_map = {1: Y}
+
+        self.all_ops = [
+            # prim op:
+            'slice_assign_p',
+            # jvp op:
+            'slice_assign_p',
+            "fill_constant_p",
+            # transpose op:
             'slice_select_p',
+            'fill_constant_p',
+        ]
+
+
+class TestSliceAssignPJVPAndTranspose3(TestAddPJVPAndTranspose):
+    def init_data(self):
+        # Set prim op
+        self.op_type = 'slice_assign_p'
+        X = paddle.static.data(name='X', shape=[3, 20], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[3, 5], dtype='float64')
+        self.prim_input = {'X': X, 'Y': Y}
+        self.prim_output = {
+            'Z': self.layer_help.create_variable_for_type_inference(
+                dtype=X.dtype
+            )
+        }
+        self.prim_attrs = {
+            'axis': [1],
+            'starts': [0],
+            'ends': [10],
+            'strides': [2],
+        }
+
+        # Set JVP
+        X_DOT = paddle.static.data(name='X_DOT', shape=[3, 20], dtype='float64')
+        self.jvp_args = (X_DOT, None)
+        self.jvp_out_shape_map = {0: self.prim_output['Z']}
+
+        # Set transpose
+        check_dot = lambda v: v is X
+        Z_BAR = paddle.static.data(name='Z_BAR', shape=[3, 20], dtype='float64')
+        self.transpose_args = (check_dot, Z_BAR)
+        self.transpose_out_shape_map = {0: X}
+
+        self.all_ops = [
+            # prim op:
+            'slice_assign_p',
+            # jvp op:
+            'slice_assign_p',
+            "fill_constant_p",
+            # transpose op:
+            'slice_assign_p',
             'fill_constant_p',
         ]
 

@@ -28,7 +28,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 class DistributedSoftmax(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedSoftmax, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(DistributedSoftmax("softmax"))
@@ -36,7 +36,7 @@ register_distributed_operator_impl_container(DistributedSoftmax("softmax"))
 
 class DistributedSoftmaxImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedSoftmaxImpl, self).__init__(name)
+        super().__init__(name)
         self._forward_implemented = False
         self._backward_implemented = False
 

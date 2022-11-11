@@ -60,7 +60,6 @@ from paddle.fluid.layers import tensor
 from functools import reduce
 from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
-from .. import compat as cpt
 import warnings
 from paddle import _C_ops, _legacy_C_ops
 from ..fluid.framework import (
@@ -100,7 +99,7 @@ __all__ = [
 ]
 
 
-class Optimizer(object):
+class Optimizer:
     """Optimizer Base class.
 
     Define the common interface of an optimizer.
@@ -708,7 +707,7 @@ class Optimizer(object):
                     name, param.name
                 )
             )
-        if shape == None:
+        if shape is None:
             shape = param.shape
         assert isinstance(self.helper, LayerHelper)
 
@@ -771,7 +770,7 @@ class Optimizer(object):
             if framework._non_static_mode():
                 return self._global_accumulators[name]
             raise Exception("Global accumulator {} already exists".format(name))
-        if shape == None:
+        if shape is None:
             shape = [1]  # most case, global accumulator is of shape [1]
         assert isinstance(self.helper, LayerHelper)
 
@@ -1269,7 +1268,7 @@ class Optimizer(object):
 
         # NOTE(zhiqiu): currently, only support ClipGradByGlobalNorm and without regularization.
         if self._flatten_param_grads and self.regularization is None:
-            if self._grad_clip == None or isinstance(
+            if self._grad_clip is None or isinstance(
                 self._grad_clip, ClipGradByGlobalNorm
             ):
                 params_grads = self.flatten_param_grads(params_grads)
@@ -1476,7 +1475,7 @@ class SGDOptimizer(Optimizer):
         name=None,
     ):
         assert learning_rate is not None
-        super(SGDOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -1680,7 +1679,7 @@ class MomentumOptimizer(Optimizer):
     ):
         assert learning_rate is not None
         assert momentum is not None
-        super(MomentumOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -1837,7 +1836,7 @@ class DGCMomentumOptimizer(Optimizer):
 
         assert learning_rate is not None
         assert momentum is not None
-        super(DGCMomentumOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -2298,7 +2297,7 @@ class LarsMomentumOptimizer(Optimizer):
     ):
         assert learning_rate is not None
         assert momentum is not None
-        super(LarsMomentumOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -2550,7 +2549,7 @@ class AdagradOptimizer(Optimizer):
     ):
         assert learning_rate is not None
         assert epsilon is not None
-        super(AdagradOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -2801,7 +2800,7 @@ class AdamOptimizer(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(AdamOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -3145,7 +3144,7 @@ class AdamaxOptimizer(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(AdamaxOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -3326,7 +3325,7 @@ class DpsgdOptimizer(Optimizer):
         assert clip is not None
         assert batch_size is not None
         assert sigma is not None
-        super(DpsgdOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate, parameter_list=parameter_list
         )
         self.type = "dpsgd"
@@ -3345,7 +3344,7 @@ class DpsgdOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
 
         # create the dpsgd optimize op
-        if self._seed == None:
+        if self._seed is None:
             self._seed = 0
 
         if framework._non_static_mode():
@@ -3456,7 +3455,7 @@ class DecayedAdagradOptimizer(Optimizer):
         assert decay is not None
         assert epsilon is not None
 
-        super(DecayedAdagradOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -3587,7 +3586,7 @@ class AdadeltaOptimizer(Optimizer):
             raise ValueError("epsilon is not set.")
         if rho is None:
             raise ValueError("rho is not set.")
-        super(AdadeltaOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -3785,7 +3784,7 @@ class RMSPropOptimizer(Optimizer):
         grad_clip=None,
         name=None,
     ):
-        super(RMSPropOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -4002,7 +4001,7 @@ class FtrlOptimizer(Optimizer):
         grad_clip=None,
         name=None,
     ):
-        super(FtrlOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -4175,7 +4174,7 @@ class LambOptimizer(AdamOptimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(LambOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -4392,9 +4391,7 @@ class ModelAverage(Optimizer):
     ):
         if framework._non_static_mode():
             raise Exception("In dygraph, don't support ModelAverage.")
-        super(ModelAverage, self).__init__(
-            0.0, regularization=regularization, name=name
-        )
+        super().__init__(0.0, regularization=regularization, name=name)
         self.average_window = average_window_rate
         self.min_average_window = min_average_window
         self.max_average_window = max_average_window
@@ -4455,10 +4452,10 @@ class ModelAverage(Optimizer):
         tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
         sum = layers.sum(x=[sum_1, sum_2, sum_3])
         tmp = layers.cast(
-            x=tmp, dtype='float32' if self._dtype == None else self._dtype
+            x=tmp, dtype='float32' if self._dtype is None else self._dtype
         )
         sum = layers.cast(
-            x=sum, dtype='float32' if self._dtype == None else self._dtype
+            x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
         ops._elementwise_div(x=sum, y=tmp, out=param)
 
@@ -4620,7 +4617,7 @@ class ModelAverage(Optimizer):
         executor.run(self.restore_program)
 
 
-class ExponentialMovingAverage(object):
+class ExponentialMovingAverage:
     r"""
         :api_attr: Static Graph
 
@@ -4880,7 +4877,7 @@ class ExponentialMovingAverage(object):
         executor.run(self.restore_program)
 
 
-class PipelineOptimizer(object):
+class PipelineOptimizer:
     """
         :api_attr: Static Graph
 
@@ -5255,7 +5252,7 @@ class PipelineOptimizer(object):
             var_name = var_name.replace('.cast_fp16', '')
 
         post_ops = self.input_var_to_op[var_name]
-        if post_ops == None:
+        if post_ops is None:
             return None
         result_op = None
         for post_op, post_idx in reversed(post_ops):
@@ -5270,7 +5267,7 @@ class PipelineOptimizer(object):
         variable named var_name.
         """
         prev_ops = self.output_var_to_op[var_name]
-        if prev_ops == None:
+        if prev_ops is None:
             return None
         result_op = None
         for prev_op, prev_idx in reversed(prev_ops):
@@ -6933,9 +6930,10 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
-                import paddle.compat as cpt
 
+                paddle.enable_static()
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
@@ -6955,7 +6953,7 @@ class RecomputeOptimizer(Optimizer):
                     state_dict = {}
                     sgd.load(state_dict)
                 except NotImplementedError as e:
-                    print(cpt.get_exception_message(e))
+                    print(e)
         """
         raise NotImplementedError(
             "load function is not supported by Recompute Optimizer for now"
@@ -7270,7 +7268,7 @@ class RecomputeOptimizer(Optimizer):
 
                     if output_var in self.un_offload_checkpoint_names:
                         # insert sync op if last checkpoint has not been sync
-                        if last_offload_checkpoint != None:
+                        if last_offload_checkpoint is not None:
                             if (
                                 self.checkpoint_usage_count_and_idx[
                                     last_offload_checkpoint
@@ -7400,7 +7398,7 @@ class RecomputeOptimizer(Optimizer):
         """
         self._main_program = loss.block.program
         self.block = loss.block
-        if startup_program == None:
+        if startup_program is None:
             startup_program = paddle.static.default_startup_program()
 
         with program_guard(self._main_program, startup_program):
@@ -7602,7 +7600,7 @@ class RecomputeOptimizer(Optimizer):
         return optimize_ops, params_grads
 
 
-class LookaheadOptimizer(object):
+class LookaheadOptimizer:
     r"""
         :api_attr: Static Graph
 
@@ -7782,7 +7780,7 @@ class LookaheadOptimizer(object):
         return mini_out
 
 
-class GradientMergeOptimizer(object):
+class GradientMergeOptimizer:
     """
     Gradient Merge, also called as Gradient Accumulation,
     is a training strategy for larger batches. With this strategy,
