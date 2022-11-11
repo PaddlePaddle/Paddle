@@ -2857,8 +2857,8 @@ class TestPow_factor_tensor(TestActivation):
 
         factor_1 = 2.0
         factor_2 = fluid.layers.fill_constant([1], "float32", 3.0)
-        out_1 = fluid.layers.pow(x, factor=factor_1)
-        out_2 = fluid.layers.pow(x, factor=factor_2)
+        out_1 = paddle.pow(x, factor=factor_1)
+        out_2 = paddle.pow(x, factor=factor_2)
         out_4 = paddle.pow(x, factor_1, name='pow_res')
         out_6 = paddle.pow(x, factor_2)
         self.assertEqual(('pow_res' in out_4.name), True)
@@ -2890,10 +2890,10 @@ class TestPow_factor_tensor(TestActivation):
 
         factor_1 = fluid.layers.fill_constant([1], "float64", 3.0)
 
-        self.assertRaises(TypeError, fluid.layers.pow, x=in1, factor=factor_1)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in2, factor=factor_1)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in3, factor=factor_1)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in4, factor=factor_1)
+        self.assertRaises(TypeError, paddle.pow, x=in1, factor=factor_1)
+        self.assertRaises(TypeError, paddle.pow, x=in2, factor=factor_1)
+        self.assertRaises(TypeError, paddle.pow, x=in3, factor=factor_1)
+        self.assertRaises(TypeError, paddle.pow, x=in4, factor=factor_1)
 
 
 def ref_stanh(x, scale_a=0.67, scale_b=1.7159):
