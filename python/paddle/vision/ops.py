@@ -2483,14 +2483,14 @@ def matrix_nms(
         return_rois_num(bool): whether return rois_num. Default: True
         name(str): Name of the matrix nms op. Default: None.
     Returns:
-        - A tuple with three Tensor: (Out, Index, RoisNum) if return_index is True,
+        - A tuple with three Tensor, (Out, Index, RoisNum) if return_index is True,
           otherwise, a tuple with two Tensor (Out, RoisNum) is returned.
-        - Out (Tensor): A 2-D Tensor with shape [No, 6] containing the
+        - Out (Tensor), A 2-D Tensor with shape [No, 6] containing the
           detection results.
-          Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
-        - Index (Tensor): A 2-D Tensor with shape [No, 1] containing the
+          Each row has 6 values, [label, confidence, xmin, ymin, xmax, ymax]
+        - Index (Tensor), A 2-D Tensor with shape [No, 1] containing the
           selected indices, which are absolute values cross batches.
-        - rois_num (Tensor): A 1-D Tensor with shape [N] containing
+        - rois_num (Tensor), A 1-D Tensor with shape [N] containing
           the number of detected boxes in each image.
 
     Examples:

@@ -259,9 +259,11 @@ def _update_input_info(inputs):
     return shapes, dtypes
 
 
-class StaticGraphAdapter(object):
+class StaticGraphAdapter:
     """
+
     Model traning/inference with a static graph.
+
     """
 
     def __init__(self, model):
@@ -1772,7 +1774,7 @@ class Model(object):
                How to make a batch is done internally.
 
             .. code-block:: python
-              :name: code-example3
+              :name: code-example1
 
                 import paddle
                 import paddle.vision.transforms as T
@@ -1812,7 +1814,7 @@ class Model(object):
                DataLoader.
 
             .. code-block:: python
-              :name: code-example4
+              :name: code-example2
 
                 import paddle
                 import paddle.vision.transforms as T

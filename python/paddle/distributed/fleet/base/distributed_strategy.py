@@ -475,7 +475,7 @@ class DistributedStrategy:
 
         Set fs client configurations.
 
-        **Notes**:
+        Note:
             uri(str): the uri of fs client
 
             user(str): the user_name of fs client

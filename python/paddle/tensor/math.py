@@ -272,12 +272,12 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
 
 def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
-    """
+    r"""
     stanh activation.
 
     .. math::
 
-        out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}
+        out = b * \frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.

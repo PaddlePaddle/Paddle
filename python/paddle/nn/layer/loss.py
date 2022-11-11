@@ -27,86 +27,82 @@ __all__ = []
 class BCEWithLogitsLoss(Layer):
     r"""
 
-        This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
-        Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
-        layer and some reduce operations.
+    This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
+    Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
+    layer and some reduce operations.
 
-        This measures the element-wise probability error in classification tasks
-        in which each class is independent.
-        This can be thought of as predicting labels for a data-point, where labels
-        are not mutually exclusive. For example, a news article can be about
-        politics, technology or sports at the same time or none of these.
+    This measures the element-wise probability error in classification tasks
+    in which each class is independent.
+    This can be thought of as predicting labels for a data-point, where labels
+    are not mutually exclusive. For example, a news article can be about
+    politics, technology or sports at the same time or none of these.
 
-        First this operator calculate loss function as follows:
+    First this operator calculate loss function as follows:
+
+    .. math::
+           Out = -Labels * \log(\sigma(Logit)) - (1 - Labels) * \log(1 - \sigma(Logit))
+
+    We know that :math:`\sigma(Logit) = \frac{1}{1 + e^{-Logit}}`. By substituting this we get:
+
+    .. math::
+           Out = Logit - Logit * Labels + \log(1 + e^{-Logit})
+
+    For stability and to prevent overflow of :math:`e^{-Logit}` when Logit < 0,
+    we reformulate the loss as follows:
 
         .. math::
-               Out = -Labels * \log(\sigma(Logit)) - (1 - Labels) * \log(1 - \sigma(Logit))
+           Out = \max(Logit, 0) - Logit * Labels + \log(1 + e^{-\|Logit\|})
 
-        We know that :math:`\sigma(Logit) = \frac{1}{1 + e^{-Logit}}`. By substituting this we get:
+    Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
+    weight tensor on the loss `Out`. The ``weight`` tensor will attach different
+    weight on every items in the batch. The ``pos_weight`` will attach different
+    weight on the positive label of each class.
 
-        .. math::
-               Out = Logit - Logit * Labels + \log(1 + e^{-Logit})
+    Finally, this operator applies reduce operation on the loss.
+    If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
 
-        For stability and to prevent overflow of :math:`e^{-Logit}` when Logit < 0,
-        we reformulate the loss as follows:
+    Note that the target labels ``label`` should be numbers between 0 and 1.
 
-        .. math::
-               Out = \max(Logit, 0) - Logit * Labels + \log(1 + e^{-\|Logit\|})
+    Args:
+        weight (Tensor, optional): A manual rescaling weight given to the loss of each
+            batch element. If given, it has to be a 1D Tensor whose size is `[N, ]`,
+            The data type is float32, float64. Default is ``'None'``.
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'mean'``.
+        pos_weight (Tensor, optional): A weight of positive examples. Must be a vector
+            with length equal to the number of classes. The data type is float32, float64.
+            Default is ``'None'``.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
-        Then, if ``weight`` or ``pos_weight`` is not None, this operator multiply the
-        weight tensor on the loss `Out`. The ``weight`` tensor will attach different
-        weight on every items in the batch. The ``pos_weight`` will attach different
-        weight on the positive label of each class.
+    Shapes:
+        - logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, `*`],
+          N is batch_size, `*` means number of additional dimensions. The ``logit``
+          is usually the output of Linear layer. Available dtype is float32, float64.
+        - label (Tensor): The target labels tensor. 2-D tensor with the same shape as
+          ``logit``. The target labels which values should be numbers between 0 and 1.
+          Available dtype is float32, float64.
+        - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+          same as ``logit`` , else the shape of output is scalar.
 
-        Finally, this operator applies reduce operation on the loss.
-        If :attr:`reduction` set to ``'none'``, the operator will return the original loss `Out`.
-        If :attr:`reduction` set to ``'mean'``, the reduced mean loss is :math:`Out = MEAN(Out)`.
-        If :attr:`reduction` set to ``'sum'``, the reduced sum loss is :math:`Out = SUM(Out)`.
+    Returns:
+        A callable object of BCEWithLogitsLoss.
 
-        Note that the target labels ``label`` should be numbers between 0 and 1.
+    Examples:
+        .. code-block:: python
 
-        Args:
-            weight (Tensor, optional): A manual rescaling weight given to the loss of each
-                batch element. If given, it has to be a 1D Tensor whose size is `[N, ]`,
-                The data type is float32, float64. Default is ``'None'``.
-            reduction (str, optional): Indicate how to average the loss by batch_size,
-                the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-                If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
-                If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-                If :attr:`reduction` is ``'sum'``, the summed loss is returned.
-                Default is ``'mean'``.
-            pos_weight (Tensor, optional): A weight of positive examples. Must be a vector
-                with length equal to the number of classes. The data type is float32, float64.
-                Default is ``'None'``.
-            name (str, optional): Name for the operation (optional, default is None).
-                For more information, please refer to :ref:`api_guide_Name`.
-
-        Shapes:
-    <<<<<<< HEAD
-            - logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
-    =======
-            - logit (Tensor): The input predications tensor. 2-D tensor with shape: attr:`[N, *]`,
-    >>>>>>> 560eed169b9e1b99e4f5041f8dc4b5283862cd7b
-              N is batch_size, `*` means number of additional dimensions. The ``logit``
-              is usually the output of Linear layer. Available dtype is float32, float64.
-            - label (Tensor): The target labels tensor. 2-D tensor with the same shape as
-              ``logit``. The target labels which values should be numbers between 0 and 1.
-              Available dtype is float32, float64.
-            - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-              same as ``logit`` , else the shape of output is scalar.
-
-        Returns:
-            A callable object of BCEWithLogitsLoss.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
-                label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
-                bce_logit_loss = paddle.nn.BCEWithLogitsLoss()
-                output = bce_logit_loss(logit, label)
-                print(output.numpy())  # [0.45618808]
+            import paddle
+            logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
+            label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
+            bce_logit_loss = paddle.nn.BCEWithLogitsLoss()
+            output = bce_logit_loss(logit, label)
+            print(output.numpy())  # [0.45618808]
 
     """
 
