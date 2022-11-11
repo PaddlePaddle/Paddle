@@ -77,8 +77,7 @@ void LabelSmoothKernel(const Context& ctx,
     std::vector<const DenseTensor*> ins = {&label};
     std::vector<DenseTensor*> outs = {out};
     auto functor = LabelSmoothFunctor<T>(epsilon, label_dim);
-    phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
-        ctx, ins, &outs, functor);
+    phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
   }
 }
 
