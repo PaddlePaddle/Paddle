@@ -26,6 +26,7 @@ __all__ = []
 
 class BCEWithLogitsLoss(Layer):
     r"""
+
     This operator combines the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
     Also, we can see it as the combine of ``sigmoid_cross_entropy_with_logits``
     layer and some reduce operations.
@@ -81,21 +82,21 @@ class BCEWithLogitsLoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shapes:
-        logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
-            N is batch_size, `*` means number of additional dimensions. The ``logit``
-            is usually the output of Linear layer. Available dtype is float32, float64.
-        label (Tensor): The target labels tensor. 2-D tensor with the same shape as
-            ``logit``. The target labels which values should be numbers between 0 and 1.
-            Available dtype is float32, float64.
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``logit`` , else the shape of output is scalar.
+        - logit (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
+          N is batch_size, `*` means number of additional dimensions. The ``logit``
+          is usually the output of Linear layer. Available dtype is float32, float64.
+        - label (Tensor): The target labels tensor. 2-D tensor with the same shape as
+          ``logit``. The target labels which values should be numbers between 0 and 1.
+          Available dtype is float32, float64.
+        - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+          same as ``logit`` , else the shape of output is scalar.
 
     Returns:
         A callable object of BCEWithLogitsLoss.
 
     Examples:
-
         .. code-block:: python
+
             import paddle
             logit = paddle.to_tensor([5.0, 1.0, 3.0], dtype="float32")
             label = paddle.to_tensor([1.0, 0.0, 1.0], dtype="float32")
@@ -707,6 +708,7 @@ class L1Loss(Layer):
 
 class BCELoss(Layer):
     """
+
     This interface is used to construct a callable object of the ``BCELoss`` class.
     The BCELoss layer measures the binary_cross_entropy loss between input predictions ``input``
     and target labels ``label`` . The binary_cross_entropy loss can be described as:
@@ -750,14 +752,14 @@ class BCELoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        input (Tensor): 2-D tensor with shape: [N, *], N is batch_size, `*` means
-            number of additional dimensions. The input ``input`` should always
-            be the output of sigmod.  Available dtype is float32, float64.
-        label (Tensor): 2-D tensor with the same shape as ``input``. The target
-            labels which values should be numbers between 0 and 1. Available
-            dtype is float32, float64.
-        output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is scalar.
+        - input (Tensor): 2-D tensor with shape: ``[N, *]``, N is batch_size, `*` means
+          number of additional dimensions. The input ``input`` should always
+          be the output of sigmod.  Available dtype is float32, float64.
+        - label (Tensor): 2-D tensor with the same shape as ``input``. The target
+          labels which values should be numbers between 0 and 1. Available
+          dtype is float32, float64.
+        - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+          same as ``input`` , else the shape of output is scalar.
 
     Returns:
         A callable object of BCELoss.
@@ -1821,6 +1823,7 @@ class MultiMarginLoss(Layer):
 
 class SoftMarginLoss(Layer):
     r"""
+
     Creates a criterion that measures a two-class soft margin loss between input predictions ``input``
     and target labels ``label`` . It can be described as:
 
@@ -1839,17 +1842,14 @@ class SoftMarginLoss(Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shapes:
-
-        Input (Tensor): The input tensor with shape: [N, *],
-        N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf
-        Available dtype is float32, float64.
-
-        Label (Tensor): The target labels tensor with the same shape as
-        ``input``. The target labels which values should be numbers -1 or 1.
-        Available dtype is int32, int64, float32, float64.
-
-        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-            same as ``input`` , else the shape of output is [1].
+        - Input (Tensor): The input tensor with shape: ``[N, *]``,
+          N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf
+          Available dtype is float32, float64.
+        - Label (Tensor): The target labels tensor with the same shape as
+          ``input``. The target labels which values should be numbers -1 or 1.
+          Available dtype is int32, int64, float32, float64.
+        - Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+          same as ``input`` , else the shape of output is [1].
 
     Returns:
         A callable object of SoftMarginLoss.
@@ -1872,6 +1872,7 @@ class SoftMarginLoss(Layer):
             label = paddle.to_tensor(label_np)
             soft_margin_loss = paddle.nn.SoftMarginLoss(reduction='none')
             output = soft_margin_loss(input, label)
+
     """
 
     def __init__(self, reduction='mean', name=None):
