@@ -19,7 +19,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
 
 DECLARE_int32(cudnn_cache_saturation_count);
@@ -63,7 +62,6 @@ class CudnnFrontendPlanCache {
                 bool use_addto = false) {
     bool ret = false;
     std::lock_guard<std::mutex> lock(*cache_mutex_);
-    auto key = op_graph.getFeatureVector();
     if (map_.count(MakeKey(op_graph, use_addto)) > 0) {
       cache_hits_++;
       ret = true;

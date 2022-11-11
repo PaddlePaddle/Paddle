@@ -36,15 +36,16 @@
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 // clang-format off
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
-#include "paddle/phi/kernels/gpudnn/conv_kernel_impl_v8.h"
+#include "paddle/phi/kernels/autotune/cache.h"
+#include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 // clang-format on
 #endif
 
 namespace phi {
 
 template <typename T, typename Context>
-void ConvCudnnKernelImplV7(DenseTensor* transformed_input,
-                           DenseTensor* transformed_filter_channel,
+void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
+                           const DenseTensor* transformed_filter_channel,
                            const Context& ctx,
                            const std::vector<int>& strides,
                            const std::vector<int>& padding_common,
@@ -214,6 +215,115 @@ void ConvCudnnKernelImplV7(DenseTensor* transformed_input,
                                            &workspace_handle,
                                            false);
 #endif
+}
+
+template <typename T, typename Context>
+void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
+                           const DenseTensor* filter_channel_tensor,
+                           const Context& ctx,
+                           const std::vector<int>& strides,
+                           const std::vector<int>& padding_common,
+                           const std::vector<int>& dilations,
+                           cudnnDataType_t dtype,
+                           cudnnTensorFormat_t layout_format,
+                           bool exhaustive_search,
+                           bool deterministic,
+                           int groups,
+                           DenseTensor* output_tensor) {
+  auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
+      phi::autotune::AlgorithmType::kConvForwardV8);
+
+  PADDLE_ENFORCE_EQ(
+      groups,
+      1,
+      paddle::platform::errors::Unimplemented(
+          "Group concolution using CUDNNv8 API unsupported for now"));
+
+  T* input_data = const_cast<T*>(input_tensor->data<T>());
+  T* filter_data = const_cast<T*>(filter_channel_tensor->data<T>());
+  T* output_data = output_tensor->data<T>();
+  cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
+  auto workspace_handle = ctx.cudnn_workspace_handle();
+
+  float alpha = 1.0f;
+  float beta = 0.0f;
+
+  using helper = CudnnFrontendConvHelper;
+  auto op_graph = helper::BuildConvOperationGraph<
+      CUDNN_BACKEND_OPERATION_CONVOLUTION_FORWARD_DESCRIPTOR>(
+      input_tensor,
+      output_tensor,
+      filter_channel_tensor,
+      layout_format,
+      strides,
+      padding_common,
+      dilations,
+      dtype,
+      handle,
+      alpha,
+      beta);
+
+  if (plan_cache.FindPlan(op_graph)) {
+    auto cached_plan = plan_cache.GetPlan(op_graph, handle);
+    auto workspace_size = cached_plan.getWorkspaceSize();
+    VLOG(4) << "Cached execution plan found." << cached_plan.getTag()
+            << "; Require workspace: " << workspace_size;
+    workspace_handle.RunFunc(
+        [&](void* workspace_ptr) {
+          void* data_ptrs[] = {input_data, output_data, filter_data};
+          int64_t uids[] = {'x', 'y', 'w'};
+          auto variant_pack = cudnn_frontend::VariantPackBuilder()
+                                  .setWorkspacePointer(workspace_ptr)
+                                  .setDataPointers(3, data_ptrs)
+                                  .setUids(3, uids)
+                                  .build();
+          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBackendExecute(
+              handle, cached_plan.get_raw_desc(), variant_pack.get_raw_desc()));
+        },
+        workspace_size);
+    return;
+  }
+
+  auto plans = helper::FindExecutionPlans(&op_graph,
+                                          exhaustive_search,
+                                          deterministic,
+                                          input_data,
+                                          output_data,
+                                          filter_data,
+                                          handle,
+                                          &workspace_handle);
+
+  for (auto& plan : plans) {
+    try {
+      int64_t workspace_size = plan.getWorkspaceSize();
+      workspace_handle.RunFunc(
+          [&](void* workspace_ptr) {
+            void* data_ptrs[] = {input_data, output_data, filter_data};
+            int64_t uids[] = {'x', 'y', 'w'};
+            auto variant_pack = cudnn_frontend::VariantPackBuilder()
+                                    .setWorkspacePointer(workspace_ptr)
+                                    .setDataPointers(3, data_ptrs)
+                                    .setUids(3, uids)
+                                    .build();
+            PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBackendExecute(
+                handle, plan.get_raw_desc(), variant_pack.get_raw_desc()));
+          },
+          workspace_size);
+      if (!exhaustive_search || plan_cache.IsStable(op_graph, plan.getTag())) {
+        plan_cache.InsertPlan(op_graph, plan);
+      }
+      return;
+    } catch (cudnn_frontend::cudnnException& e) {
+      VLOG(4) << "Plan " << plan.describe()
+              << "failed to execute. Trying next plan.";
+    } catch (phi::enforce::EnforceNotMet& e) {
+      VLOG(4) << "Plan " << plan.describe()
+              << "failed to execute. Trying next plan.";
+    }
+  }
+  PADDLE_THROW(
+      phi::errors::InvalidArgument("[CUDNN Frontend API] No valid plan could "
+                                   "be found to execute conv."));
 }
 
 template <typename T, typename Context>
@@ -411,7 +521,6 @@ void ConvCudnnKernel(const Context& ctx,
                              groups,
                              &transformed_output);
   else
-#endif
     ConvCudnnKernelImplV7<T>(&transformed_input,
                              &transformed_filter_channel,
                              ctx,
@@ -425,6 +534,21 @@ void ConvCudnnKernel(const Context& ctx,
                              deterministic,
                              groups,
                              &transformed_output);
+#else
+  ConvCudnnKernelImplV7<T>(&transformed_input,
+                           &transformed_filter_channel,
+                           ctx,
+                           strides,
+                           padding_common,
+                           dilations,
+                           dtype,
+                           compute_format,
+                           layout_format,
+                           exhaustive_search,
+                           deterministic,
+                           groups,
+                           &transformed_output);
+#endif
 
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
     TransToChannelLast<Context, T>(ctx, &transformed_output, output);

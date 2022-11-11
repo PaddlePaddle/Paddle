@@ -35,32 +35,33 @@
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 // clang-format off
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
-#include "paddle/phi/kernels/gpudnn/conv_grad_kernel_impl_v8.h"
+#include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 // clang-format on
 #endif
 
 namespace phi {
 
 template <typename T, typename Context>
-void ConvCudnnGradKernelImplV7(DenseTensor* transformed_input,
-                               DenseTensor* transformed_filter_channel,
-                               DenseTensor* transformed_output_grad_channel,
-                               DenseTensor* input_grad,
-                               DenseTensor* filter_grad,
-                               const Context& ctx,
-                               const std::vector<int>& strides,
-                               const std::vector<int>& padding_common,
-                               const std::vector<int>& dilations,
-                               cudnnDataType_t dtype,
-                               paddle::platform::DataLayout compute_format,
-                               paddle::platform::DataLayout layout,
-                               cudnnTensorFormat_t layout_tensor,
-                               bool use_addto,
-                               bool exhaustive_search,
-                               bool deterministic,
-                               int groups,
-                               DenseTensor* transformed_input_grad,
-                               DenseTensor* transformed_filter_grad_channel) {
+void ConvCudnnGradKernelImplV7(
+    const DenseTensor* transformed_input,
+    const DenseTensor* transformed_filter_channel,
+    const DenseTensor* transformed_output_grad_channel,
+    DenseTensor* input_grad,
+    DenseTensor* filter_grad,
+    const Context& ctx,
+    const std::vector<int>& strides,
+    const std::vector<int>& padding_common,
+    const std::vector<int>& dilations,
+    cudnnDataType_t dtype,
+    paddle::platform::DataLayout compute_format,
+    paddle::platform::DataLayout layout,
+    cudnnTensorFormat_t layout_tensor,
+    bool use_addto,
+    bool exhaustive_search,
+    bool deterministic,
+    int groups,
+    DenseTensor* transformed_input_grad,
+    DenseTensor* transformed_filter_grad_channel) {
   const T* input_data = transformed_input->data<T>();
   const T* output_grad_data = transformed_output_grad_channel->data<T>();
   const T* filter_data = transformed_filter_channel->data<T>();
@@ -334,6 +335,70 @@ void ConvCudnnGradKernelImplV7(DenseTensor* transformed_input,
 }
 
 template <typename T, typename Context>
+void ConvCudnnGradKernelImplV8(
+    const DenseTensor* transformed_input,
+    const DenseTensor* transformed_filter_channel,
+    const DenseTensor* transformed_output_grad_channel,
+    DenseTensor* input_grad,
+    DenseTensor* filter_grad,
+    const Context& ctx,
+    const std::vector<int>& strides,
+    const std::vector<int>& padding_common,
+    const std::vector<int>& dilations,
+    cudnnDataType_t dtype,
+    paddle::platform::DataLayout compute_format,
+    cudnnTensorFormat_t layout_format,
+    bool use_addto,
+    bool exhaustive_search,
+    bool deterministic,
+    int groups,
+    DenseTensor* transformed_input_grad,
+    DenseTensor* transformed_filter_grad_channel) {
+  PADDLE_ENFORCE_EQ(
+      groups,
+      1,
+      paddle::platform::errors::Unimplemented(
+          "Group concolution using CUDNNv8 API is unsupported for now"));
+
+  cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
+  auto workspace_handle = ctx.cudnn_workspace_handle();
+
+  if (input_grad) {
+    CudnnConvBwdDataV8<T>(transformed_output_grad_channel,
+                          transformed_filter_channel,
+                          handle,
+                          &workspace_handle,
+                          strides,
+                          padding_common,
+                          dilations,
+                          dtype,
+                          compute_format,
+                          layout_format,
+                          use_addto,
+                          exhaustive_search,
+                          deterministic,
+                          transformed_input_grad);
+  }
+
+  if (filter_grad) {
+    CudnnConvBwdFilterV8<T>(transformed_input,
+                            transformed_output_grad_channel,
+                            handle,
+                            &workspace_handle,
+                            strides,
+                            padding_common,
+                            dilations,
+                            dtype,
+                            compute_format,
+                            layout_format,
+                            use_addto,
+                            exhaustive_search,
+                            deterministic,
+                            transformed_filter_grad_channel);
+  }
+}
+
+template <typename T, typename Context>
 void ConvCudnnGradKernel(const Context& ctx,
                          const DenseTensor& input,
                          const DenseTensor& filter,
@@ -584,7 +649,6 @@ void ConvCudnnGradKernel(const Context& ctx,
                                  &transformed_input_grad,
                                  &transformed_filter_grad_channel);
   else
-#endif
     ConvCudnnGradKernelImplV7<T>(&transformed_input,
                                  &transformed_filter_channel,
                                  &transformed_output_grad_channel,
@@ -604,6 +668,27 @@ void ConvCudnnGradKernel(const Context& ctx,
                                  groups,
                                  &transformed_input_grad,
                                  &transformed_filter_grad_channel);
+#else
+  ConvCudnnGradKernelImplV7<T>(&transformed_input,
+                               &transformed_filter_channel,
+                               &transformed_output_grad_channel,
+                               input_grad,
+                               filter_grad,
+                               ctx,
+                               strides,
+                               padding_common,
+                               dilations,
+                               dtype,
+                               compute_format,
+                               layout,
+                               layout_tensor,
+                               use_addto,
+                               exhaustive_search,
+                               deterministic,
+                               groups,
+                               &transformed_input_grad,
+                               &transformed_filter_grad_channel);
+#endif
 
   if (input_grad) {
     if (!is_sys_pad) {
