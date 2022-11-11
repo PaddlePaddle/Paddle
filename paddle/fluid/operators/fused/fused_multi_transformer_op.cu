@@ -450,10 +450,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       ffn1_linear_compute.ComputeForward(
           ffn1_weights[i], buf1, nullptr, &ffn1_out, nullptr);
 
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      VLOG(0) << "step6";
-#endif
-
       // step7. act bias
       // TODO(wangxi): remove dropout mask in inference
       fused_act_dropout_helper.DropoutActBias(dev_ctx,
@@ -462,6 +458,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                               "gelu",
                                               ffn1_dropout_out_data,
                                               ffn1_dropout_mask_data);
+
+#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
+      VLOG(0) << "step6";
+#endif
 
 #endif  // CUDA_VERSION >= 11060
 
