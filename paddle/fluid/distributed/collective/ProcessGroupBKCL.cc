@@ -56,8 +56,14 @@ bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
 
   if (barrier_) {
     // If we use the work to do barrier, we should block cpu
+    // TODO(zhangxiaoci) There is no such function that can sync entire device
+    // for xpu (for now), so all we can do is sync whatever stream that we know
+    // and hope for the best. Note that for correctness the communication stream
+    // needs to be in sync mode, see
+    // https://github.com/PaddlePaddle/Paddle/pull/47882
     platform::XPUDeviceGuard guard(place_.GetDeviceId());
     xpu_wait();
+    calc_ctx->Wait();
   }
   return true;
 }
