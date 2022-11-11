@@ -114,7 +114,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
 
   KernelKey kernel_key = const_kernel_key;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (use_gpudnn || kernel_key.backend() == Backend::GPUDNN) {
+  if (use_gpudnn && kernel_key.backend() == Backend::GPUDNN) {
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, kernel_key.layout(), kernel_key.dtype()});
     if (kernel_iter == iter->second.end() &&
@@ -127,10 +127,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     }
     LOG(WARNING) << "The cudnn kernel for [" << kernel_name
                  << "] is not registered.";
+  }
+#endif
+  if (kernel_key.backend() == Backend::GPUDNN) {
     kernel_key =
         KernelKey(Backend::GPU, kernel_key.layout(), kernel_key.dtype());
   }
-#endif
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
   if (kernel_iter == iter->second.end() &&
