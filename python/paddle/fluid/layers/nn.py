@@ -136,7 +136,6 @@ __all__ = [
     'crop_tensor',
     'elu',
     'relu6',
-    'pow',
     'stanh',
     'hard_sigmoid',
     'swish',
