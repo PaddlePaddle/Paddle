@@ -63,24 +63,6 @@ class TestBase(IPUOpTest):
         self.check()
 
 
-class TestBReluCase0(TestBase):
-    def set_data_feed(self):
-        data = np.random.uniform(size=[1, 3, 10, 10]) * 30
-        self.feed_fp32 = {'in_0': data.astype(np.float32)}
-        self.feed_fp16 = {'in_0': data.astype(np.float16)}
-        self.feed_list = list(self.feed_fp32.keys())
-
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.brelu
-        self.op_attrs = {}
-
-
-class TestBReluCase1(TestBReluCase0):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.brelu
-        self.op_attrs = {"t_min": 0.1, 't_max': 10.0}
-
-
 class TestEluCase1(TestBase):
     def set_test_op(self):
         self.op = F.elu

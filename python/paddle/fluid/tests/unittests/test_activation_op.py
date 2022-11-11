@@ -1926,77 +1926,6 @@ class TestGELUAPI(unittest.TestCase):
             F.gelu(x_fp16)
 
 
-class TestBRelu(TestActivation):
-    def setUp(self):
-        self.op_type = "brelu"
-        self.init_dtype()
-
-        np.random.seed(1024)
-        x = np.random.uniform(-5, 10, [10, 12]).astype(self.dtype)
-        t_min = 1.0
-        t_max = 4.0
-        # The same with TestAbs
-        x[np.abs(x - t_min) < 0.005] = t_min + 0.02
-        x[np.abs(x - t_max) < 0.005] = t_max + 0.02
-        t = np.copy(x)
-        t[t < t_min] = t_min
-        t[t > t_max] = t_max
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {'t_min': t_min, 't_max': t_max}
-        self.outputs = {'Out': t}
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out')
-
-
-class TestBreluAPI(unittest.TestCase):
-    # test paddle.fluid.layers.brelu
-    def setUp(self):
-        np.random.seed(1024)
-        self.t_min = 0.0
-        self.t_max = 24.0
-        self.x_np = np.random.uniform(-1, 30, [10, 12]).astype('float32')
-        self.out_ref = np.copy(self.x_np)
-        self.out_ref[self.out_ref < self.t_min] = self.t_min
-        self.out_ref[self.out_ref > self.t_max] = self.t_max
-        self.out_ref = self.out_ref.astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
-
-    def test_fluid_api(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', [10, 12])
-            out = paddle.fluid.layers.brelu(x)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-            np.testing.assert_allclose(self.out_ref, res[0], rtol=1e-05)
-
-            paddle.disable_static(self.place)
-            x = paddle.to_tensor(self.x_np)
-            out = paddle.fluid.layers.brelu(x)
-            np.testing.assert_allclose(self.out_ref, out.numpy(), rtol=1e-05)
-            paddle.enable_static()
-
-    def test_errors(self):
-        with program_guard(Program()):
-            # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.brelu, 1)
-            # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.brelu, x_int32)
-            # support the input dtype is float16
-            x_fp16 = fluid.layers.data(
-                name='x_fp16', shape=[12, 10], dtype='float16'
-            )
-            fluid.layers.brelu(x_fp16)
-
-
 def ref_relu6(x, threshold=6.0):
     out = np.copy(x)
     out[np.abs(x - threshold) < 0.005] = threshold + 0.02
@@ -3789,7 +3718,6 @@ create_test_act_fp16_class(TestAtanh, grad_atol=0.85)
 create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu)
 create_test_act_fp16_class(TestGelu)
-create_test_act_fp16_class(TestBRelu)
 create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu, grad_atol=0.85)
 create_test_act_fp16_class(TestELU)

@@ -141,7 +141,6 @@ __all__ = [
     'hard_sigmoid',
     'swish',
     'prelu',
-    'brelu',
     'leaky_relu',
     'soft_relu',
     'flatten',
@@ -10827,52 +10826,6 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         inputs={"X": x, 'Alpha': alpha},
         attrs={"mode": mode, "data_format": data_format},
         outputs={"Out": out},
-    )
-    return out
-
-
-@templatedoc()
-def brelu(x, t_min=0.0, t_max=24.0, name=None):
-    """
-    ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        t_min(${t_min_type}|0.0): ${t_min_comment}
-        t_max(${t_max_type}|24.0): ${t_max_comment}
-        name(str|None): The default value is None. Normally there is no need for user to set this property.
-                        For more information, please refer to :ref:`api_guide_Name`.
-    Returns:
-        ${out_type}: ${out_comment}
-
-    Examples:
-
-    .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            import numpy as np
-            paddle.enable_static()
-
-            input_brelu = np.array([[-1,6],[1,15.6]])
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(input_brelu)
-                y = fluid.layers.brelu(x, t_min=1.0, t_max=10.0)
-                print(y.numpy())
-                #[[ 1.  6.]
-                #[ 1. 10.]]
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.brelu(x, 't_min', t_min, 't_max', t_max)
-
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'brelu')
-
-    helper = LayerHelper('brelu', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='brelu',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'t_min': t_min, 't_max': t_max},
     )
     return out
 
