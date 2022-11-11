@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -45,41 +46,6 @@ static std::string GetSkipEagerDeletionVarsDebugString(
     str.push_back(' ');
   }
   return str;
-}
-
-static void BuildScopeForWhileOp(
-    const framework::InterpreterCore &interpreter_core,
-    const framework::BlockDesc &block,
-    framework::Scope *scope) {
-  for (auto &var_desc : block.AllVars()) {
-    auto var_name = var_desc->Name();
-    if (var_name == framework::kEmptyVarName) {
-      continue;
-    }
-    VLOG(5) << "[BuildScopeForWhileOp]"
-            << "start:" << var_name;
-    if (var_desc->Persistable()) {
-      VLOG(5) << "[BuildScopeForWhileOp]"
-              << "Don't process persistent: " << var_name;
-    } else {
-      auto *ptr = scope->Var(var_name);
-      InitializeVariable(ptr, var_desc->GetType());
-      VLOG(5) << "[BuildScopeForWhileOp]"
-              << "Not Found locally and created: " << var_name;
-    }
-  }
-
-  auto &data_transfer_added_vars =
-      interpreter_core.GetVariableScope()->DataTransferAddedVars();
-  for (size_t i = 0; i < data_transfer_added_vars.size(); i++) {
-    auto *ptr = scope->Var(data_transfer_added_vars[i].first);
-    InitializeVariable(ptr,
-                       static_cast<paddle::framework::proto::VarType::Type>(
-                           data_transfer_added_vars[i].second));
-    VLOG(5) << "[BuildScopeForWhileOp]"
-            << "Initialize Transfer Added Variable "
-            << data_transfer_added_vars[i].first;
-  }
 }
 
 static void TransferVariablePlace(const framework::Scope *scope,
@@ -202,6 +168,12 @@ class WhileOp : public framework::OperatorBase {
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
 
+    // note(lvyongkang): The assign op in while loop may change the place of
+    // variable. However, InterpreterCore fix the kernel of every ops during its
+    // first run. A cpu tensor may become gpu tensor after first run. This will
+    // lead to segmetation fault when it's used in a cpu kernel. Here we record
+    // the place of every inputs and restore their place after
+    // InterpreterCore.run().
     std::map<std::string, phi::Place> input_var_original_places;
     for (const auto &in_name : Inputs(kX)) {
       framework::Variable *var = scope.FindVar(in_name);
@@ -215,7 +187,7 @@ class WhileOp : public framework::OperatorBase {
             (var->Get<phi::DenseTensor>()).place();
       } else {
         VLOG(10) << "[while op]"
-                 << "skip input " << in_name << " type:"
+                 << "skip backup input " << in_name << " type:"
                  << framework::TransToPhiDataType(
                         framework::ToVarType(var->Type()));
       }
@@ -265,20 +237,21 @@ class WhileOp : public framework::OperatorBase {
           }
         }
         if (FLAGS_control_flow_use_new_executor) {
-          BuildScopeForWhileOp(*core, *block, &current_scope);
+          BuildScopeForControlFlowOp(*core, *block, &current_scope);
           core->reset_scope(&current_scope);
           core->Run({}, false);
+
+          // restore inputs place
+          for (const auto &n : input_var_original_places) {
+            const std::string &in_name = n.first;
+            const phi::Place &original_place = n.second;
+            // input vars exist in `scope` not `current_scope`
+            TransferVariablePlace(&scope, in_name, original_place);
+          }
+
         } else {
           executor->RunPreparedContext(
               ctx.get(), &current_scope, false, true, true);
-        }
-
-        // restore inputs place
-        for (const auto &n : input_var_original_places) {
-          const std::string &in_name = n.first;
-          const phi::Place &original_place = n.second;
-          // input vars exist in `scope` not `current_scope`
-          TransferVariablePlace(&scope, in_name, original_place);
         }
 
         for (auto &var_rename : rename_vars) {
@@ -293,7 +266,7 @@ class WhileOp : public framework::OperatorBase {
       auto &current_scope = scope.NewScope();
 
       if (FLAGS_control_flow_use_new_executor) {
-        BuildScopeForWhileOp(*core, *block, &current_scope);
+        BuildScopeForControlFlowOp(*core, *block, &current_scope);
         core->reset_scope(&current_scope);
       } else {
         executor->CreateVariables(*program, &current_scope, block->ID());
@@ -488,7 +461,7 @@ class WhileGradOp : public framework::OperatorBase {
       }
 
       if (FLAGS_control_flow_use_new_executor) {
-        BuildScopeForWhileOp(*core, *block, *cur_scope_iter);
+        BuildScopeForControlFlowOp(*core, *block, *cur_scope_iter);
         core->reset_scope(*cur_scope_iter);
         core->Run({}, false);
       } else {

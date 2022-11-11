@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/operators/assign_op.h"
+#include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -38,43 +39,6 @@ using Executor = framework::Executor;
 using ExecutorPrepareContext = framework::ExecutorPrepareContext;
 
 using InterpreterCore = framework::InterpreterCore;
-
-namespace details {
-static void BuildScopeForConditionalBlockOp(
-    const paddle::framework::InterpreterCore &interpreter_core,
-    const paddle::framework::BlockDesc &block,
-    paddle::framework::Scope *scope) {
-  for (auto &var_desc : block.AllVars()) {
-    auto var_name = var_desc->Name();
-    if (var_name == framework::kEmptyVarName) {
-      continue;
-    }
-    VLOG(5) << "[BuildScopeForConditionalBlockOp]"
-            << "start:" << var_name;
-    if (var_desc->Persistable()) {
-      VLOG(5) << "[BuildScopeForConditionalBlockOp]"
-              << "Don't process persistent: " << var_name;
-    } else {
-      auto *ptr = scope->Var(var_name);
-      InitializeVariable(ptr, var_desc->GetType());
-      VLOG(5) << "[BuildScopeForConditionalBlockOp]"
-              << "Not Found locally and created: " << var_name;
-    }
-  }
-
-  auto &data_transfer_added_vars =
-      interpreter_core.GetVariableScope()->DataTransferAddedVars();
-  for (size_t i = 0; i < data_transfer_added_vars.size(); i++) {
-    auto *ptr = scope->Var(data_transfer_added_vars[i].first);
-    InitializeVariable(ptr,
-                       static_cast<paddle::framework::proto::VarType::Type>(
-                           data_transfer_added_vars[i].second));
-    VLOG(5) << "[BuildScopeForConditionalBlockOp]"
-            << "Initialize Transfer Added Variable "
-            << data_transfer_added_vars[i].first;
-  }
-}
-}  // namespace details
 
 class ConditionalBlockOp : public ConditionalOp {
  public:
@@ -156,7 +120,7 @@ class ConditionalBlockOp : public ConditionalOp {
           VLOG(10) << "[interpreterCore cache]"
                    << "new created:" << core;
         } else {
-          details::BuildScopeForConditionalBlockOp(*core, *block, &cur_scope);
+          BuildScopeForControlFlowOp(*core, *block, &cur_scope);
           core->reset_scope(&cur_scope);
         }
 
@@ -266,7 +230,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
           VLOG(10) << "[interpreterCore cache]"
                    << "new created:" << core;
         } else {
-          details::BuildScopeForConditionalBlockOp(*core, *block, &cur_scope);
+          BuildScopeForControlFlowOp(*core, *block, &cur_scope);
           core->reset_scope(&cur_scope);
         }
         core->Run({}, false);

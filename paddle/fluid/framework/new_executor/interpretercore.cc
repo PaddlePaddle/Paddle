@@ -681,7 +681,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                        : var_scope_.GetMutableScope();
-  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope_);
+  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
   SetDeviceId(place);
 
@@ -794,7 +794,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     VLOG(4) << "Check nan/inf";
     framework::details::CheckOpHasNanOrInf(
         *op,
-        *local_scope_,
+        *local_scope,
         place);  // TODO(xiongkun03) change it to inner scope.
   }
 }
