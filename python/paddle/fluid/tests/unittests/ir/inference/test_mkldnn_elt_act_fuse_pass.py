@@ -84,7 +84,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_LeakyRelu(
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
         self.act_alpha = 0.2
-        self.act = fluid.layers.leaky_relu
+        self.act = paddle.nn.functional.leaky_relu
 
 
 class ElementwiseActivationMkldnnFusePassTest_Add_Swish(
@@ -186,7 +186,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_LeakyRelu(
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
         self.act_alpha = 0.2
-        self.act = fluid.layers.leaky_relu
+        self.act = paddle.nn.functional.leaky_relu
 
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_Swish(
@@ -279,7 +279,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_LeakyRelu(
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
         self.act_alpha = 0.2
-        self.act = fluid.layers.leaky_relu
+        self.act = paddle.nn.functional.leaky_relu
 
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_Swish(

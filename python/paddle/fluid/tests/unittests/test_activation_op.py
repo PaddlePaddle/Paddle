@@ -1739,7 +1739,6 @@ class TestLeakyRelu_ZeroDim(TestLeakyRelu):
 
 class TestLeakyReluAPI(unittest.TestCase):
     # test paddle.nn.LeakyReLU, paddle.nn.functional.leaky_relu,
-    # fluid.layers.leaky_relu
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
@@ -1784,7 +1783,7 @@ class TestLeakyReluAPI(unittest.TestCase):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', [10, 12])
-            out = fluid.layers.leaky_relu(x, 0.01)
+            out = paddle.nn.functional.leaky_relu(x, 0.01)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_leaky_relu(self.x_np)

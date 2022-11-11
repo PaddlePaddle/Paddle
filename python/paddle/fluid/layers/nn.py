@@ -142,7 +142,6 @@ __all__ = [
     'swish',
     'prelu',
     'brelu',
-    'leaky_relu',
     'soft_relu',
     'flatten',
     'stack',
@@ -10875,33 +10874,6 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
         attrs={'t_min': t_min, 't_max': t_max},
     )
     return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.leaky_relu")
-@templatedoc()
-def leaky_relu(x, alpha=0.02, name=None):
-    """
-    ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        alpha(${alpha_type}|0.02): ${alpha_comment}
-        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        output(${out_type}): ${out_comment}
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([[-1, 2], [3, -4]], dtype='float32')
-            y = paddle.fluid.layers.leaky_relu(x, alpha=0.1)
-            print(y) # [[-0.1, 2], [3, -0.4]]
-
-    """
-    return paddle.nn.functional.leaky_relu(x, alpha, name)
 
 
 def soft_relu(x, threshold=40.0, name=None):
