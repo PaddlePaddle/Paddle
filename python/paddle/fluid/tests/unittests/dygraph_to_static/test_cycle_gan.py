@@ -472,7 +472,7 @@ class DeConv2D(fluid.dygraph.Layer):
     def forward(self, inputs):
         conv = self._deconv(inputs)
         tmp_pad = paddle.nn.Pad2D(
-            paddings=self.outpadding, mode='constant', pad_value=0.0
+            padding=self.outpadding, mode='constant', pad_value=0.0
         )
         conv = tmp_pad(conv)
 

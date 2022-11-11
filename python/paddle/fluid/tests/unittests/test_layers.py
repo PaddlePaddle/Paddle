@@ -3657,7 +3657,7 @@ class TestBook(LayerTest):
             )
 
             tmp_pad = paddle.nn.Pad2D(
-                paddings=[1, 2, 3, 4],
+                padding=[1, 2, 3, 4],
                 mode='reflect',
                 data_format='NCHW',
                 name="shape",
