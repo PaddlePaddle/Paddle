@@ -354,6 +354,16 @@
     func : fft_r2c
   backward : fft_r2c_grad
 
+- op : fill_diagonal_tensor
+  args : (Tensor x, Tensor y, int64_t offset = 0, int dim1 = 0, int dim2 = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : FillDiagonalTensorInferMeta
+  kernel :
+    func : fill_diagonal_tensor
+  inplace : (x -> out)
+  backward : fill_diagonal_tensor_grad
+
 - op : flip
   args : (Tensor x, int[] axis)
   output : Tensor (out)
@@ -372,6 +382,43 @@
     func : floor
   inplace : (x -> out)
   backward : floor_grad
+
+- op : fold
+  args: (Tensor x, int[] output_sizes, int[] kernel_sizes,  int[] strides, int[] paddings, int[] dilations)
+  output: Tensor(out)
+  infer_meta:
+    func: FoldInferMeta
+  kernel:
+    func: fold
+  backward: fold_grad
+
+- op : gather_tree
+  args : (Tensor ids, Tensor parents)
+  output : Tensor(out)
+  infer_meta :
+    func : GatherTreeMeta
+  kernel :
+    func : gather_tree
+    data_type : ids
+
+- op : gelu
+  args : (Tensor x,  bool approximate = false)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : gelu
+  backward : gelu_grad
+
+- op : gumbel_softmax
+  args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
+  output : Tensor
+  infer_meta :
+    func : GumbelSoftmaxInferMeta
+  kernel :
+    func : gumbel_softmax
+  backward : gumbel_softmax_grad
 
 - op : hardshrink
   args : (Tensor x, float threshold = 0.5)
@@ -687,3 +734,12 @@
   kernel :
     func : trunc
   backward : trunc_grad
+
+- op : unfold
+  args : (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
+  output : Tensor(out)
+  infer_meta :
+    func : UnfoldInferMeta
+  kernel :
+    func : unfold
+  backward : unfold_grad
