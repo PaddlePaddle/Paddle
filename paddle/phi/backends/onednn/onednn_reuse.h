@@ -380,7 +380,7 @@ class OneDNNHandlerT {
     paddle::platform::RecordEvent record_reorder(
         "int_reorder",
         paddle::platform::TracerEventType::UserDefined,
-        2,
+        1,
         paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(
         astream,
@@ -433,7 +433,7 @@ class OneDNNHandlerT {
         paddle::platform::RecordEvent record_reorder(
             "int_reorder",
             paddle::platform::TracerEventType::UserDefined,
-            2,
+            1,
             paddle::platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
@@ -459,7 +459,7 @@ class OneDNNHandlerT {
         paddle::platform::RecordEvent record_reorder(
             "int_reorder",
             paddle::platform::TracerEventType::UserDefined,
-            2,
+            1,
             paddle::platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
@@ -647,7 +647,7 @@ class OneDNNHandlerNoCachingT {
     paddle::platform::RecordEvent record_reorder(
         "int_reorder",
         paddle::platform::TracerEventType::UserDefined,
-        2,
+        1,
         paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(
         astream,
@@ -678,7 +678,7 @@ class OneDNNHandlerNoCachingT {
       paddle::platform::RecordEvent record_reorder(
           "int_reorder",
           paddle::platform::TracerEventType::UserDefined,
-          2,
+          1,
           paddle::platform::EventRole::kUniqueOp);
       reorder_p->execute(
           astream,
@@ -858,6 +858,16 @@ class ReorderOneDNNHandler {
           output->mutable_data(place, ptype_dst_, dst_md.get_size());
       return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
     }
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(
+      DenseTensor* output,
+      const std::vector<int64_t>& dims,
+      const std::vector<int64_t>& strides,
+      Place place) {
+    auto dst_md = dnnl::memory::desc(dims, dtype_dst_, strides);
+    auto dst_data = output->mutable_data(place, ptype_dst_, dst_md.get_size());
+    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
@@ -1071,6 +1081,67 @@ class BroadcastDataOneDNNHandler
                                           this->fwd_pd_->dst_desc().get_size());
     memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
+  }
+};
+
+template <typename T>
+class PReluOneDNNHandler
+    : public OneDNNHandlerNoCachingT<T,
+                                     dnnl::prelu_forward,
+                                     dnnl::prelu_backward> {
+ public:
+  PReluOneDNNHandler(const dnnl::engine engine,
+                     Place cpu_place,
+                     const DenseTensor& x,
+                     const DenseTensor& weights,
+                     const std::string& mode,
+                     const std::string& data_format,
+                     const bool is_test)
+      : OneDNNHandlerNoCachingT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
+            engine, cpu_place) {
+    auto weights_dims = phi::vectorize(weights.dims());
+    // weights must have same size as X only for "element" case
+    if (weights.dims().size() != x.dims().size()) {
+      auto new_weights_dims = std::vector<int64_t>(x.dims().size(), 1);
+      if (mode == "channel") {
+        new_weights_dims[1] =
+            *std::max_element(weights_dims.begin(), weights_dims.end());
+      }
+      weights_dims = std::move(new_weights_dims);
+    }
+    auto weights_md = memory::desc(
+        weights_dims, OneDNNGetDataType<T>(), memory::format_tag::any);
+
+    this->AcquireForwardPrimitiveDescriptor(
+        dnnl::prop_kind::forward_training, x.mem_desc(), weights_md);
+    if (!is_test) {
+      this->AcquireBackwardPrimitiveDescriptor(
+          x.mem_desc(), weights_md, x.mem_desc(), weights_md);
+    }
+  }
+
+  std::shared_ptr<memory> AcquireWeightsMemoryPossiblyWithReorder(
+      const DenseTensor* weights, const bool is_test) {
+    const T* weights_data = weights->data<T>();
+
+    // if weights are 1D, every format tag is correct, so we accept
+    // format_tag::any's output and no reorder is needed
+    if (weights->dims().size() == 1) {
+      return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
+                                              to_void_cast<T>(weights_data));
+    }
+
+    return this->AcquireMemoryWithReorder(weights->mem_desc(),
+                                          this->fwd_pd_->weights_desc(),
+                                          to_void_cast<T>(weights_data),
+                                          is_test);
+  }
+
+  std::shared_ptr<memory> AcquireDiffWeightsMemory(DenseTensor* output) {
+    T* output_data = output->mutable_data<T>(
+        this->place_, this->bwd_pd_->diff_weights_desc().get_size());
+    return this->AcquireMemoryFromPrimitive(this->bwd_pd_->diff_weights_desc(),
+                                            output_data);
   }
 };
 

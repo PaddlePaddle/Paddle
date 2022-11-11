@@ -99,7 +99,7 @@ __all__ = [
 ]
 
 
-class Optimizer(object):
+class Optimizer:
     """Optimizer Base class.
 
     Define the common interface of an optimizer.
@@ -4617,7 +4617,7 @@ class ModelAverage(Optimizer):
         executor.run(self.restore_program)
 
 
-class ExponentialMovingAverage(object):
+class ExponentialMovingAverage:
     r"""
         :api_attr: Static Graph
 
@@ -4877,7 +4877,7 @@ class ExponentialMovingAverage(object):
         executor.run(self.restore_program)
 
 
-class PipelineOptimizer(object):
+class PipelineOptimizer:
     """
         :api_attr: Static Graph
 
@@ -7600,7 +7600,7 @@ class RecomputeOptimizer(Optimizer):
         return optimize_ops, params_grads
 
 
-class LookaheadOptimizer(object):
+class LookaheadOptimizer:
     r"""
         :api_attr: Static Graph
 
@@ -7780,7 +7780,7 @@ class LookaheadOptimizer(object):
         return mini_out
 
 
-class GradientMergeOptimizer(object):
+class GradientMergeOptimizer:
     """
     Gradient Merge, also called as Gradient Accumulation,
     is a training strategy for larger batches. With this strategy,

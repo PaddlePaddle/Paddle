@@ -19,7 +19,7 @@ import subprocess
 import tempfile
 
 
-class TestCollectiveAPIRunnerBase(object):
+class TestCollectiveAPIRunnerBase:
     def check_pass(self, *args, **kwargs):
         raise NotImplementedError(
             "get model should be implemented by child class."

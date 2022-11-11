@@ -35,7 +35,6 @@ from ...framework import get_default_dtype
 from ..initializer import Constant
 from ...framework import ParamAttr
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid import dygraph_utils
 
 from ..functional import batch_norm, layer_norm, instance_norm
 
@@ -413,15 +412,8 @@ class GroupNorm(Layer):
             )
 
     def forward(self, input):
-        mean_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True
-        )
-        variance_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True
-        )
-
         if in_dygraph_mode():
-            pre_act = _C_ops.group_norm(
+            return _C_ops.group_norm(
                 input,
                 self.weight,
                 self.bias,
@@ -430,11 +422,14 @@ class GroupNorm(Layer):
                 self._data_format,
             )
 
-            return dygraph_utils._append_activation_in_dygraph(
-                pre_act, act=None
-            )
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True
+        )
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True
+        )
 
-        elif _in_legacy_dygraph():
+        if _in_legacy_dygraph():
             pre_act, _, _ = _legacy_C_ops.group_norm(
                 input,
                 self.weight,
@@ -446,9 +441,7 @@ class GroupNorm(Layer):
                 'groups',
                 self._num_groups,
             )
-            return dygraph_utils._append_activation_in_dygraph(
-                pre_act, act=None
-            )
+            return pre_act
 
         inputs = {'X': input}
         if self.bias is not None:
@@ -1177,8 +1170,8 @@ class SyncBatchNorm(_BatchNormBase):
         # variance and variance out share the same memory
         variance_out = self._variance
 
-        ### train mode: use mini-batch stats, eval mode: use global stats
-        ### use_global_stats only support False in sync_batch_norm
+        # train mode: use mini-batch stats, eval mode: use global stats
+        # use_global_stats only support False in sync_batch_norm
         if in_dygraph_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,

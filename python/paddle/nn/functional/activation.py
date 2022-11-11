@@ -402,7 +402,7 @@ def hardswish(x, name=None):
     if _in_legacy_dygraph():
         return _legacy_C_ops.hard_swish(x)
     if in_dygraph_mode():
-        return _C_ops.hardswish(x, 6, 6, 3)
+        return _C_ops.hardswish(x)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64'], 'hardswish'
@@ -893,7 +893,7 @@ def relu6(x, name=None):
     """
     threshold = 6.0
     if in_dygraph_mode():
-        return _C_ops.relu6(x, threshold)
+        return _C_ops.relu6(x)
     if in_dynamic_mode():
         return _legacy_C_ops.relu6(x, 'threshold', threshold)
 
@@ -1388,7 +1388,7 @@ def swish(x, name=None):
             #        [-0.23840584,  0.        ,  0.73105854])
     """
     if in_dygraph_mode():
-        return _C_ops.swish(x, 1.0)
+        return _C_ops.swish(x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.swish(x, 'beta', 1.0)
 

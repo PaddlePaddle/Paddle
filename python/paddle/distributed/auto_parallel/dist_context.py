@@ -22,7 +22,7 @@ from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperator
 from .process_mesh import ProcessMesh
 from .utils import _copy_dist_attr_to_cpp
-from .utils import is_loss_grad_op
+from .utils import is_loss_grad_op, __no_shape_var_type__
 
 
 # There always exists a default context for user. And user can set it to another one.
@@ -862,11 +862,7 @@ class DistributedContext:
         for dist_tensor in self._dist_tensors_for_program.values():
             serial_tensor = dist_tensor.serial_tensor
             dist_attr = dist_tensor.dist_attr
-            if (
-                serial_tensor.type == core.VarDesc.VarType.READER
-                or serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-                or serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES
-            ):
+            if serial_tensor.type in __no_shape_var_type__:
                 tensor_shape = []
             else:
                 tensor_shape = serial_tensor.shape
@@ -896,10 +892,7 @@ class DistributedContext:
                 else:
                     if (
                         dist_op.get_serial_input(arg_name).type
-                        == core.VarDesc.VarType.READER
-                        or dist_op.get_serial_input(arg_name).type
-                        == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-                        or dist_op.serial_op.type == "create_py_reader"
+                        in __no_shape_var_type__
                     ):
                         tensor_shape = []
                     else:
@@ -923,11 +916,7 @@ class DistributedContext:
             for arg_name in serial_op.output_arg_names:
                 if (
                     dist_op.get_serial_output(arg_name).type
-                    == core.VarDesc.VarType.READER
-                    or dist_op.get_serial_output(arg_name).type
-                    == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-                    or dist_op.get_serial_output(arg_name).type
-                    == core.VarDesc.VarType.STEP_SCOPES
+                    in __no_shape_var_type__
                 ):
                     tensor_shape = []
                 else:
@@ -1146,7 +1135,7 @@ class DistributedOperatorContext:
         return kinputs, koutputs
 
 
-class BlockState(object):
+class BlockState:
     def __init__(self):
         self.nblock = 0
         self.forward_indices = []

@@ -36,7 +36,7 @@ _logger = get_logger(
 )
 
 
-class ImperativePTQ(object):
+class ImperativePTQ:
     """
     Static post training quantization.
     """

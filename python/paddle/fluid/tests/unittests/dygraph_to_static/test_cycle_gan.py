@@ -480,7 +480,7 @@ class DeConv2D(fluid.dygraph.Layer):
         return conv
 
 
-class ImagePool(object):
+class ImagePool:
     def __init__(self, pool_size=50):
         self.pool = []
         self.count = 0
@@ -530,7 +530,7 @@ def reader_creater():
     return reader
 
 
-class Args(object):
+class Args:
     epoch = 1
     batch_size = 4
     image_shape = [3, IMAGE_SIZE, IMAGE_SIZE]

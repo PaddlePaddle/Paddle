@@ -447,7 +447,7 @@ def bmn_loss_func(
     return loss, tem_loss, pem_reg_loss, pem_cls_loss
 
 
-class Args(object):
+class Args:
     epoch = 1
     batch_size = 4
     learning_rate = 0.1
