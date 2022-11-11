@@ -123,7 +123,7 @@ def train(args, place, to_static):
 
             loss_probs = fluid.layers.log(loss_probs)
             loss_probs = fluid.layers.elementwise_mul(loss_probs, mask)
-            loss_probs = paddle.sum(loss_probs, dim=-1)
+            loss_probs = paddle.sum(loss_probs, axis=-1)
 
             policy.saved_log_probs.append(loss_probs)
             return action, loss_probs

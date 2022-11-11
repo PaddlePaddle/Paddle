@@ -85,7 +85,7 @@ class TestReduceSum2(OpTest):
 class TestReduceSumNet(unittest.TestCase):
     def set_reduce_sum_function(self, x):
         # keep_dim = False
-        return paddle.paddle.sum(x, dim=-1)
+        return paddle.sum(x, axis=-1)
 
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
@@ -153,7 +153,7 @@ class TestReduceSumNet(unittest.TestCase):
 class TestReduceSumNet2(TestReduceSumNet):
     def set_reduce_sum_function(self, x):
         # keep_dim = True
-        return paddle.paddle.sum(x, dim=-1, keep_dim=True)
+        return paddle.sum(x, axis=-1, keep_dim=True)
 
 
 class TestReduceSumNet3(TestReduceSumNet):

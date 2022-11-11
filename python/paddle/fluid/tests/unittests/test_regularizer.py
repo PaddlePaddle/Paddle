@@ -226,7 +226,7 @@ class TestRegularizer(unittest.TestCase):
             para_sum = []
             for para in param_list:
                 para_mul = fluid.layers.square(x=para)
-                para_sum.append(paddle.sum(input=para_mul))
+                para_sum.append(paddle.sum(para_mul))
             avg_cost_l2 += fluid.layers.sums(para_sum) * 0.5
 
             optimizer = fluid.optimizer.Adagrad(learning_rate=0.1)

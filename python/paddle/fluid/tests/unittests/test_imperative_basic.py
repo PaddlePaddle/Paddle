@@ -108,7 +108,7 @@ class SimpleRNNCell(fluid.Layer):
         hidden = self._helper.append_activation(hidden, act='tanh')
         out = paddle.fluid.layers.nn.mul(hidden, self._h2o_w)
         softmax_out = paddle.nn.functional.softmax(out)
-        reduce_out = paddle.fluid.layers.nn.reduce_sum(softmax_out)
+        reduce_out = paddle.sum(softmax_out)
         return reduce_out, hidden
 
 

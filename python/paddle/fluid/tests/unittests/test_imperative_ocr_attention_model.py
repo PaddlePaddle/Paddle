@@ -330,7 +330,7 @@ class SimpleAttention(fluid.dygraph.Layer):
         scaled = fluid.layers.elementwise_mul(
             x=encoder_vec, y=weights_reshape, axis=0
         )
-        context = paddle.sum(scaled, dim=1)
+        context = paddle.sum(scaled, axis=1)
 
         return context
 

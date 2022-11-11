@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
 
@@ -509,8 +510,8 @@ class BOW(Layer):
             right_emb, shape=[-1, self.seq_len, self.bow_dim]
         )
 
-        bow_left = paddle.sum(left_emb, dim=1)
-        bow_right = paddle.sum(right_emb, dim=1)
+        bow_left = paddle.sum(left_emb, axis=1)
+        bow_right = paddle.sum(right_emb, axis=1)
         softsign_layer = SoftsignLayer()
         left_soft = softsign_layer.ops(bow_left)
         right_soft = softsign_layer.ops(bow_right)

@@ -73,7 +73,7 @@ class TestImperativeMnist(unittest.TestCase):
 
             loss_probs = fluid.layers.log(loss_probs)
             loss_probs = fluid.layers.elementwise_mul(loss_probs, dy_mask)
-            loss_probs = paddle.sum(loss_probs, dim=-1)
+            loss_probs = paddle.sum(loss_probs, axis=-1)
 
             dy_reward = fluid.dygraph.base.to_variable(reward)
             dy_reward.stop_gradient = True
@@ -141,7 +141,7 @@ class TestImperativeMnist(unittest.TestCase):
 
             st_loss_probs = fluid.layers.log(st_loss_probs)
             st_loss_probs = fluid.layers.elementwise_mul(st_loss_probs, st_mask)
-            st_loss_probs = paddle.sum(st_loss_probs, dim=-1)
+            st_loss_probs = paddle.sum(st_loss_probs, axis=-1)
 
             st_loss_probs = fluid.layers.elementwise_mul(
                 st_reward, st_loss_probs

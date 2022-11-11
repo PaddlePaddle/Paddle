@@ -437,8 +437,8 @@ class TestFakeInit(TranspilerTest):
             neg_logits, label_zeros
         )
         cost = fluid.layers.elementwise_add(
-            paddle.sum(true_xent, dim=1),
-            paddle.sum(neg_xent, dim=1),
+            paddle.sum(true_xent, axis=1),
+            paddle.sum(neg_xent, axis=1),
         )
         avg_cost = fluid.layers.reduce_mean(cost)
 

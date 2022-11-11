@@ -15,6 +15,7 @@
 import math
 import random
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import unittest
 
@@ -258,7 +259,7 @@ class SkipGram(fluid.dygraph.Layer):
         word_sim = fluid.layers.elementwise_mul(
             center_words_emb, target_words_emb
         )
-        word_sim = paddle.sum(word_sim, dim=-1)
+        word_sim = paddle.sum(word_sim, axis=-1)
 
         pred = fluid.layers.sigmoid(word_sim)
 

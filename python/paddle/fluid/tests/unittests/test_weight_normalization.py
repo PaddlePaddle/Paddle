@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 import collections
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.initializer import ConstantInitializer

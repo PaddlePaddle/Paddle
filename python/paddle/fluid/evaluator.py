@@ -15,6 +15,7 @@
 import warnings
 import numpy as np
 
+import paddle
 from . import layers
 from .framework import Program, Variable, program_guard
 from . import unique_name
