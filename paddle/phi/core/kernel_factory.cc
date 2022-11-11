@@ -149,10 +149,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     }
     LOG(WARNING) << "The cudnn kernel for [" << kernel_name
                  << "] is not registered.";
+  }
+#endif
+  if (kernel_key.backend() == Backend::GPUDNN) {
     kernel_key =
         KernelKey(Backend::GPU, kernel_key.layout(), kernel_key.dtype());
   }
-#endif
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
   if (kernel_iter == iter->second.end() &&
