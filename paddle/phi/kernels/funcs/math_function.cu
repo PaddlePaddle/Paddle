@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"

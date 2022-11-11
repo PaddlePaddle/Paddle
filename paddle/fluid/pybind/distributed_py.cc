@@ -59,6 +59,10 @@ limitations under the License. */
 #include "paddle/fluid/distributed/store/tcp_store.h"
 #endif
 
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/distributed/collective/ProcessGroupBKCL.h"
+#endif
+
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 
 namespace py = pybind11;
@@ -1326,6 +1330,24 @@ void BindDistributed(py::module *m) {
            py::arg("group_id") = 0,
            py::call_guard<py::gil_scoped_release>());
 
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+  auto processGroupBKCL =
+      py::class_<distributed::ProcessGroupBKCL,
+                 std::shared_ptr<distributed::ProcessGroupBKCL>>(
+          *m, "ProcessGroupBKCL", ProcessGroup)
+          .def(py::init<const std::shared_ptr<distributed::Store> &,
+                        int,
+                        int,
+                        const platform::XPUPlace &,
+                        int>(),
+               py::arg("store"),
+               py::arg("rank"),
+               py::arg("world_size"),
+               py::arg("place"),
+               py::arg("group_id") = 0,
+               py::call_guard<py::gil_scoped_release>());
 #endif
 
   py::class_<distributed::ProcessGroup::Task,

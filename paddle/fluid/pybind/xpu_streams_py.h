@@ -12,20 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-namespace phi {
+#include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
 
-KernelSignature GeluOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("gelu", {"X"}, {"approximate"}, {"Out"});
-}
+namespace py = pybind11;
 
-KernelSignature GeluGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "gelu_grad", {"X", "Out@GRAD"}, {"approximate"}, {"X@GRAD"});
-}
+namespace paddle {
+namespace pybind {
 
-}  // namespace phi
+void BindXpuStream(py::module* m);
 
-PD_REGISTER_ARG_MAPPING_FN(gelu_grad, phi::GeluGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(gelu, phi::GeluOpArgumentMapping);
+}  // namespace pybind
+}  // namespace paddle
