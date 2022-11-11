@@ -135,8 +135,8 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
 
   KernelKey kernel_key = const_kernel_key;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (use_gpudnn || (kernel_key.backend() == Backend::GPUDNN &&
-                     in_cudnn_white_list(kernel_name))) {
+  if (kernel_key.backend() == Backend::GPUDNN &&
+      (use_gpudnn || in_cudnn_white_list(kernel_name))) {
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, kernel_key.layout(), kernel_key.dtype()});
     if (kernel_iter == iter->second.end() &&
