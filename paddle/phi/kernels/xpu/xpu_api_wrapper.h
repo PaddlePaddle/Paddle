@@ -34,7 +34,7 @@ enum XPUFCCalcType {
 
 template <typename T>
 XPUFCCalcType FCCalcType() {
-  if (std::is_same<paddle::platform::float16, T>::value ||
+  if (std::is_same<phi::dtype::float16, T>::value ||
       std::is_same<float16, T>::value) {
     return XPUFCCalcType::FC_INT16;
   } else if (std::getenv("XPU_PADDLE_FC_INT32") != nullptr) {
