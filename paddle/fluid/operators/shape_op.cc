@@ -28,25 +28,8 @@ class ShapeOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::proto::VarType::Type dafault_data_type =
-        static_cast<framework::proto::VarType::Type>(-1);
-    framework::proto::VarType::Type input_data_type = dafault_data_type;
-    const phi::DenseTensor *t = nullptr;
-    if (ctx.InputVar("Input")->IsType<phi::DenseTensor>()) {
-      t = &ctx.InputVar("Input")->Get<phi::DenseTensor>();
-    } else if (ctx.InputVar("Input")->IsType<phi::SelectedRows>()) {
-      t = &(ctx.InputVar("Input")->Get<phi::SelectedRows>().value());
-    }
-    if (t != nullptr) {
-      input_data_type = paddle::framework::TransToProtoVarType(t->dtype());
-    }
-    PADDLE_ENFORCE_NE(input_data_type,
-                      dafault_data_type,
-                      platform::errors::InvalidArgument(
-                          "The Input Variable(Input) of (shape) Operator used "
-                          "to determine kernel "
-                          "data type is empty or not phi::DenseTensor or "
-                          "phi::SelectedRows."));
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
