@@ -44,6 +44,8 @@ class FloatToMixedPass : public FusePassBase {
  private:
   void Init(framework::ir::Graph* graph) const;
 
+  void SetDefaultBlacklist() const;
+
   bool OpSupportPrecision(const std::string& op_type,
                           phi::DataType precision,
                           phi::Backend backend = phi::Backend::GPU) const;
@@ -71,7 +73,7 @@ class FloatToMixedPass : public FusePassBase {
   // float16 or bfloat16 now
   mutable phi::DataType mixed_precision_;
 
-  mutable std::unordered_set<std::string> blacklist_;
+  mutable std::unordered_set<std::string> black_list_;
 
   // subgraph id -> pointer to subgraph
   mutable std::vector<framework::ir::Graph*> subgraphes_;

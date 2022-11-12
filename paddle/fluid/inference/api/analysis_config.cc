@@ -105,7 +105,7 @@ void AnalysisConfig::EnableUseGpu(
     mixed_precision_mode_ = precision_mode;
   } else {
     LOG(ERROR)
-        << "The native GPU inference currently only supports "
+        << "The Paddle-GPU inference currently only supports "
            "float32/float16/bfloat16 precision. Please check the parameters "
            "you specified in EnableUseGpu or enable_use_gpu function.";
   }

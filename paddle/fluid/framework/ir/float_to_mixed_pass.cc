@@ -97,7 +97,6 @@ void DoInsertCastOp(
     std::string cast_input_name = var_node->Var()->Name();
     std::string cast_output_name =
         var_node->Var()->Name() + "_cast.tmp_" + std::to_string((*suffix)++);
-    CHECK_NOTNULL(block_desc);
     framework::OpDesc cast_op_desc(block_desc);
     update_cast_desc(cast_op_desc,
                      cast_input_name,
@@ -136,11 +135,44 @@ inline bool IsMixedType(VarType::Type type) {
 
 };  // namespace
 
+void FloatToMixedPass::SetDefaultBlacklist() const {
+  // Copy from python/paddle/fluid/contrib/mixed_precision/fp16_lists.py.
+
+  // The set of ops that support fp16 calculation and are considered
+  // numerically-dangerous and whose effects may also be observed in downstream
+  // ops.
+  black_list_.insert({
+      "exp",
+      "square",
+      "log",
+      "mean",
+      "sum",
+      "cos_sim",
+      "softmax",
+      "softmax_with_cross_entropy",
+      "sigmoid_cross_entropy_with_logits",
+      "c_softmax_with_cross_entropy",
+      "cross_entropy",
+      "cross_entropy2",
+      // fp16 is slower than fp32, though fp16 is supported.
+      "lookup_table",
+      "lookup_table_v2",
+      "linear_interp_v2",
+      "nearest_interp_v2",
+      "bilinear_interp_v2",
+      "bicubic_interp_v2",
+      "trilinear_interp_v2",
+      // default fp32 can avoid return inf when the sum value large than 65504.
+      "reduce_sum",
+  });
+}
+
 void FloatToMixedPass::Init(framework::ir::Graph* graph) const {
   keep_io_types_ = true;
   mixed_precision_ =
       static_cast<phi::DataType>(Get<int>("mixed_precision_mode"));
-  blacklist_ = Get<std::unordered_set<std::string>>("mixed_black_list");
+  black_list_ = Get<std::unordered_set<std::string>>("mixed_black_list");
+  SetDefaultBlacklist();
 
   auto graph_size = graph->SubGraphsSize();
   LOG(INFO) << "graph size: " << graph_size;
@@ -150,7 +182,6 @@ void FloatToMixedPass::Init(framework::ir::Graph* graph) const {
   for (size_t i = 0; i < graph_size; i++) {
     subgraphes_[i] = graph->GetSubGraph(i);
     all_op_nodes_[i] = framework::ir::TopologySortOperations(*subgraphes_[i]);
-    // all_nodes_[i] = subgraphes_[i]->Nodes();
     LOG(INFO) << "subgraph " << i << " has " << all_op_nodes_[i].size()
               << "op nodes";
     for (auto* var_node : subgraphes_[i]->Nodes()) {
@@ -204,7 +235,7 @@ bool FloatToMixedPass::OpSupportPrecision(const std::string& op_type,
                                           phi::DataType precision,
                                           phi::Backend backend) const {
   bool support = false;
-  if (blacklist_.count(op_type) == 0) {
+  if (black_list_.count(op_type) == 0) {
     if (backend == phi::Backend::GPU) {
       support = GpuKernelSupportPrecision(op_type, precision);
     }
@@ -490,6 +521,7 @@ void FloatToMixedPass::InsertCastOp() const {
 
   for (size_t i = 0; i < all_op_nodes_.size(); i++) {
     auto* block_desc = all_op_nodes_[i][0]->Op()->Block();
+    CHECK_NOTNULL(block_desc);
     for (auto* op_node : all_op_nodes_[i]) {
       CHECK_EQ(op_node->IsOp(), true);
 
