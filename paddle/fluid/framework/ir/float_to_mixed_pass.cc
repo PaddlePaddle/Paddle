@@ -63,7 +63,6 @@ bool GpuKernelSupportPrecision(
       }
     }
   }
-  LOG(INFO) << "GpuKernelSupportPrecision: " << op_type << ": " << support;
   return support;
 }
 
@@ -160,7 +159,7 @@ void FloatToMixedPass::Init(framework::ir::Graph* graph) const {
       auto var_name = var_node->Var()->Name();
       if (real_vars_.count(var_name) == 0) {
         real_vars_[var_name] = var_node;
-        LOG(INFO) << " --- " << var_name << " is in graph " << i;
+        LOG(INFO) << var_name << " is in graph " << i;
       }
     }
   }
@@ -227,7 +226,7 @@ void FloatToMixedPass::SetOpUniqueType() const {
       op_original_type_[unique_type] = op_type;
       op_node->Op()->SetType(unique_type);
       op_node->Op()->Flush();
-      LOG(INFO) << "change op type: " << op_type << " ----> " << unique_type;
+      LOG(INFO) << "change op type: " << op_type << " ---> " << unique_type;
     }
   }
 }
@@ -241,7 +240,7 @@ void FloatToMixedPass::RestoreOpOriginType() const {
       if (op_original_type_.count(op_type)) {
         op_node->Op()->SetType(op_original_type_[op_type]);
         op_node->Op()->Flush();
-        LOG(INFO) << "restore op type: " << op_type << " ----> "
+        LOG(INFO) << "restore op type: " << op_type << " ---> "
                   << op_original_type_[op_type];
       }
     }
@@ -358,8 +357,6 @@ void FloatToMixedPass::UpdateOpPrecision() const {
         auto* real_var_node = real_vars_[var_node->Var()->Name()];
         if (!VarNodeHasDtype(real_var_node)) continue;
 
-        LOG(INFO) << "process var: " << real_var_node->Var()->Name();
-
         const auto& input_op_nodes =
             var_input_ops_[real_var_node->Var()->Name()];
         size_t mixed_num = 0;
@@ -398,6 +395,7 @@ void FloatToMixedPass::SetVarPrecision() const {
 
           auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
           if (!VarNodeHasDtype(real_in_var_node)) continue;
+          if (!IsFloatType(real_in_var_node->Var()->GetDataType())) continue;
 
           if (real_in_var_node->Var()->Persistable()) {
             if (not_convert_ops.count(
@@ -414,6 +412,7 @@ void FloatToMixedPass::SetVarPrecision() const {
 
           auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
           if (!VarNodeHasDtype(real_out_var_node)) continue;
+          if (!IsFloatType(real_out_var_node->Var()->GetDataType())) continue;
 
           if (real_out_var_node->Var()->Persistable()) {
             if (not_convert_ops.count(
@@ -497,7 +496,8 @@ void FloatToMixedPass::InsertCastOp() const {
       if (op_node->Op()->Type() == "feed") continue;
 
       LOG(INFO) << "process op: " << op_node->Op()->Type()
-                << "run mixed: " << op_run_mixed_[op_node->Op()->Type()];
+                << " run mixed: " << op_run_mixed_[op_node->Op()->Type()];
+
       auto inputs = op_node->inputs;
       for (auto* in_var_node : inputs) {
         if (!in_var_node->IsVar()) continue;
@@ -511,6 +511,10 @@ void FloatToMixedPass::InsertCastOp() const {
         LOG(INFO) << "process var: " << real_in_var_node->Var()->Name()
                   << " type: " << in_var_type;
 
+        // if (op_original_type_[op_node->Op()->Type()] == "cast") {
+        //   op_node->Op()->SetAttr("in_dtype", static_cast<int>(in_var_type));
+        //   op_node->Op()->Flush();
+        // } else
         if (IsFloatType(in_var_type) && op_run_mixed_[op_node->Op()->Type()]) {
           DoInsertCastOp(subgraphes_[i],
                          real_in_var_node,
