@@ -56,15 +56,15 @@ class FloatToMixedPass : public FusePassBase {
 
   void GetOpPrecision() const;
 
-  void SetVarAndUpdateOpPrecision() const;
+  void UpdateOpPrecision() const;
 
   void InsertCastOp() const;
 
   void ProcessOpWithDtypeAttr() const;
 
-  void ConvertWeightsDataType() const;
+  void SetVarPrecision() const;
 
-  bool WeightsNotMixed(framework::ir::Node* var_node) const;
+  void ConvertWeightsData() const;
 
  private:
   mutable bool keep_io_types_;
@@ -86,7 +86,8 @@ class FloatToMixedPass : public FusePassBase {
   // var -> the var's all input op
   mutable std::unordered_map<std::string, std::vector<framework::ir::Node*>>
       var_input_ops_;
-  mutable std::unordered_set<std::string> weights_should_be_mixed_;
+
+  mutable std::unordered_set<std::string> weights_convert_to_mixed_;
 };
 
 }  // namespace ir

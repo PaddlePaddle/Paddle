@@ -23,6 +23,7 @@ namespace framework {
 namespace ir {
 
 namespace {
+
 using VarType = FloatToMixedPass::VarType;
 
 bool PhiKernelSupportPrecision(
@@ -42,8 +43,6 @@ bool GpuKernelSupportPrecision(
     const std::string& op_type,
     phi::DataType precision,
     phi::DataLayout layout = phi::DataLayout::ALL_LAYOUT) {
-  LOG(INFO) << "GpuKernelSupportPrecision: " << op_type;
-
   auto phi_op_type = phi::TransToPhiKernelName(op_type);
   bool support = PhiKernelSupportPrecision(
       phi_op_type, phi::Backend::GPU, precision, layout);
@@ -64,7 +63,7 @@ bool GpuKernelSupportPrecision(
       }
     }
   }
-  LOG(INFO) << "GpuKernelSupportPrecision support: " << support;
+  LOG(INFO) << "GpuKernelSupportPrecision: " << op_type << ": " << support;
   return support;
 }
 
@@ -153,7 +152,8 @@ void FloatToMixedPass::Init(framework::ir::Graph* graph) const {
     subgraphes_[i] = graph->GetSubGraph(i);
     all_op_nodes_[i] = framework::ir::TopologySortOperations(*subgraphes_[i]);
     // all_nodes_[i] = subgraphes_[i]->Nodes();
-    LOG(INFO) << " all_op_nodes_[i].size(): " << all_op_nodes_[i].size();
+    LOG(INFO) << "subgraph " << i << " has " << all_op_nodes_[i].size()
+              << "op nodes";
     for (auto* var_node : subgraphes_[i]->Nodes()) {
       if (!var_node->IsVar()) continue;
 
@@ -183,12 +183,14 @@ void FloatToMixedPass::ApplyImpl(framework::ir::Graph* graph) const {
   LOG(INFO) << "GetVarInputOps done";
   GetOpPrecision();
   LOG(INFO) << "GetOpPrecision done";
-  SetVarAndUpdateOpPrecision();
-  LOG(INFO) << "SetVarAndUpdateOpPrecision done";
+  UpdateOpPrecision();
+  LOG(INFO) << "UpdateOpPrecision done";
+  SetVarPrecision();
+  LOG(INFO) << "SetVarPrecision done";
+  ConvertWeightsData();
+  LOG(INFO) << "ConvertWeightsData done";
   ProcessOpWithDtypeAttr();
   LOG(INFO) << "ProcessOpWithDtypeAttr done";
-  ConvertWeightsDataType();
-  LOG(INFO) << "ConvertWeightsDataType done";
   InsertCastOp();
   LOG(INFO) << "InsertCastOp done";
   RestoreOpOriginType();
@@ -327,7 +329,6 @@ void FloatToMixedPass::GetOpPrecision() const {
         for (auto* var_node : op_node->inputs) {
           CHECK_EQ(var_node->IsVar(), true);
           auto* real_var_node = real_vars_[var_node->Var()->Name()];
-
           if (!VarNodeHasDtype(real_var_node)) continue;
           if (real_var_node->Var()->Persistable()) continue;
 
@@ -346,7 +347,7 @@ void FloatToMixedPass::GetOpPrecision() const {
   }
 }
 
-void FloatToMixedPass::SetVarAndUpdateOpPrecision() const {
+void FloatToMixedPass::UpdateOpPrecision() const {
   bool precision_updated = false;
   do {
     precision_updated = false;
@@ -355,10 +356,9 @@ void FloatToMixedPass::SetVarAndUpdateOpPrecision() const {
         if (!var_node->IsVar() || var_node->Var()->Persistable()) continue;
 
         auto* real_var_node = real_vars_[var_node->Var()->Name()];
-
         if (!VarNodeHasDtype(real_var_node)) continue;
 
-        LOG(INFO) << "process var node: " << real_var_node->Var()->Name();
+        LOG(INFO) << "process var: " << real_var_node->Var()->Name();
 
         const auto& input_op_nodes =
             var_input_ops_[real_var_node->Var()->Name()];
@@ -369,73 +369,91 @@ void FloatToMixedPass::SetVarAndUpdateOpPrecision() const {
             mixed_num++;
           }
         }
-        LOG(INFO) << "here 1";
-        if (mixed_num >= input_op_nodes.size()) {
-          LOG(INFO) << "here 2";
-          if (!WeightsNotMixed(real_var_node)) {
-            if (IsFloatType(real_var_node->Var()->GetDataType())) {
-              real_var_node->Var()->SetDataType(
-                  framework::TransToProtoVarType(mixed_precision_));
-              LOG(INFO) << "var node " << real_var_node->Var()->Name()
-                        << " ---> mixed";
-              if (real_var_node->Var()->Persistable()) {
-                LOG(INFO) << "persistable var: "
-                          << real_var_node->Var()->Name();
-                weights_should_be_mixed_.insert(real_var_node->Var()->Name());
-              }
-            }
-          }
-          LOG(INFO) << "here 3";
-        } else if (mixed_num > 0) {
-          LOG(INFO) << "here 4";
 
+        if (mixed_num > 0 && mixed_num < input_op_nodes.size()) {
           for (auto* op_node : input_op_nodes) {
-            LOG(INFO) << "here 5";
-
             CHECK_EQ(op_node->IsOp(), true);
             op_run_mixed_[op_node->Op()->Type()] = false;
             precision_updated = true;
-            LOG(INFO) << "here 6";
+            LOG(INFO) << op_node->Op()->Type()
+                      << " not support mixed precision.";
           }
-        } else if (IsMixedType(real_var_node->Var()->GetDataType())) {
-          LOG(INFO) << "here 7";
-
-          real_var_node->Var()->SetDataType(VarType::FP32);
-          LOG(INFO) << "var node " << real_var_node->Var()->Name()
-                    << " ---> float";
-          if (weights_should_be_mixed_.count(real_var_node->Var()->Name())) {
-            LOG(INFO) << "remove persistable var: "
-                      << real_var_node->Var()->Name();
-            weights_should_be_mixed_.erase(real_var_node->Var()->Name());
-          }
-          LOG(INFO) << "here 9";
         }
       }
     }
   } while (precision_updated);
 }
 
-void FloatToMixedPass::ConvertWeightsDataType() const {
-  auto* scope = param_scope();
-  CHECK_NOTNULL(scope);
+void FloatToMixedPass::SetVarPrecision() const {
+  std::unordered_set<std::string> not_convert_ops{"batch_norm",
+                                                  "fused_multi_transformer"};
 
-  // This code used to precess vars that has same name as op's input and output
+  for (const auto& nodes : all_op_nodes_) {
+    for (auto* op_node : nodes) {
+      CHECK_EQ(op_node->IsOp(), true);
+
+      if (op_run_mixed_[op_node->Op()->Type()]) {
+        for (auto* in_var_node : op_node->inputs) {
+          CHECK_EQ(in_var_node->IsVar(), true);
+
+          auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
+          if (!VarNodeHasDtype(real_in_var_node)) continue;
+
+          if (real_in_var_node->Var()->Persistable()) {
+            if (not_convert_ops.count(
+                    op_original_type_[op_node->Op()->Type()]) == 0) {
+              real_in_var_node->Var()->SetDataType(
+                  framework::TransToProtoVarType(mixed_precision_));
+              weights_convert_to_mixed_.insert(real_in_var_node->Var()->Name());
+            }
+          }
+        }
+
+        for (auto* out_var_node : op_node->outputs) {
+          CHECK_EQ(out_var_node->IsVar(), true);
+
+          auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
+          if (!VarNodeHasDtype(real_out_var_node)) continue;
+
+          if (real_out_var_node->Var()->Persistable()) {
+            if (not_convert_ops.count(
+                    op_original_type_[op_node->Op()->Type()]) == 0) {
+              real_out_var_node->Var()->SetDataType(
+                  framework::TransToProtoVarType(mixed_precision_));
+              weights_convert_to_mixed_.insert(
+                  real_out_var_node->Var()->Name());
+            }
+          } else {
+            real_out_var_node->Var()->SetDataType(
+                framework::TransToProtoVarType(mixed_precision_));
+          }
+        }
+      }
+    }
+  }
+
+  // This code used to precess vars that has same name
   for (auto* subgraph : subgraphes_) {
     for (auto* var_node : subgraph->Nodes()) {
       if (!var_node->IsVar() || !var_node->Var()->Persistable()) continue;
 
       auto var_name = var_node->Var()->Name();
-      if (weights_should_be_mixed_.count(var_name)) {
+      if (weights_convert_to_mixed_.count(var_name)) {
         var_node->Var()->SetDataType(
             framework::TransToProtoVarType(mixed_precision_));
       }
     }
   }
+}
+
+void FloatToMixedPass::ConvertWeightsData() const {
+  auto* scope = param_scope();
+  CHECK_NOTNULL(scope);
 
   auto var_names = scope->LocalVarNames();
   for (const auto& var_name : var_names) {
-    if (weights_should_be_mixed_.count(var_name)) {
-      LOG(INFO) << "here 11";
+    if (weights_convert_to_mixed_.count(var_name)) {
+      LOG(INFO) << var_name << "'s data type was convert to mixed";
 #define CONVERT_TENSOR_DTYPE(DTYPE, dtype)                                   \
   mixed_tensor.set_type(DTYPE);                                              \
   auto* mixed_data = mixed_tensor.mutable_data<dtype>(platform::CPUPlace()); \
@@ -448,19 +466,13 @@ void FloatToMixedPass::ConvertWeightsDataType() const {
 
       auto* var = scope->FindLocalVar(var_name);
 
-      LOG(INFO) << "here 12";
       if (var->IsType<phi::DenseTensor>()) {
-        LOG(INFO) << "here 13";
         auto* origin_tensor = var->GetMutable<phi::DenseTensor>();
-        LOG(INFO) << "here 14";
         phi::DenseTensor mixed_tensor;
         mixed_tensor.Resize(origin_tensor->dims());
-        LOG(INFO) << "here 15";
         auto* origin_data =
             origin_tensor->mutable_data<float>(platform::CPUPlace());
-        LOG(INFO) << "here 16";
         if (mixed_precision_ == phi::DataType::FLOAT16) {
-          LOG(INFO) << "here 17";
           CONVERT_TENSOR_DTYPE(paddle::experimental::DataType::FLOAT16,
                                phi::dtype::float16);
         } else if (mixed_precision_ == phi::DataType::BFLOAT16) {
@@ -474,8 +486,6 @@ void FloatToMixedPass::ConvertWeightsDataType() const {
 }
 
 void FloatToMixedPass::InsertCastOp() const {
-  // todo: 处理op具有相同输入输出var的情况?
-
   int suffix = 0;
   std::unordered_map<framework::ir::Node*, framework::ir::Node*> cache;
 
@@ -493,7 +503,6 @@ void FloatToMixedPass::InsertCastOp() const {
         if (!in_var_node->IsVar()) continue;
 
         auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
-
         if (!VarNodeHasDtype(real_in_var_node)) continue;
         if (real_in_var_node->Var()->Persistable()) continue;
 
@@ -525,60 +534,6 @@ void FloatToMixedPass::InsertCastOp() const {
       }
     }
   }
-}
-
-bool FloatToMixedPass::WeightsNotMixed(framework::ir::Node* var_node) const {
-  if (!var_node->Var()->Persistable()) return false;
-
-  auto op_nodes = var_node->outputs;
-  for (auto* node : var_node->inputs) {
-    op_nodes.push_back(node);
-  }
-
-  for (auto* op_node : op_nodes) {
-    auto* op_desc = op_node->Op();
-    if (op_original_type_[op_desc->Type()] == "batch_norm") {
-      auto vecs = op_desc->Input("Bias");
-      if (std::find(vecs.begin(), vecs.end(), var_node->Name()) != vecs.end()) {
-        return true;
-      }
-      vecs = op_desc->Input("Mean");
-      if (std::find(vecs.begin(), vecs.end(), var_node->Name()) != vecs.end()) {
-        return true;
-      }
-      vecs = op_desc->Input("Scale");
-      if (std::find(vecs.begin(), vecs.end(), var_node->Name()) != vecs.end()) {
-        return true;
-      }
-      vecs = op_desc->Input("Variance");
-      if (std::find(vecs.begin(), vecs.end(), var_node->Name()) != vecs.end()) {
-        return true;
-      }
-    } else if (op_original_type_[op_desc->Type()] ==
-               "fused_multi_transformer") {
-      auto vecs = op_desc->Input("LnScale");
-      if (std::find(vecs.begin(), vecs.end(), var_node->Name()) != vecs.end()) {
-        return true;
-      }
-
-      vecs = op_desc->Input("LnBias");
-      if (std::find(vecs.begin(), vecs.end(), var_node->Name()) != vecs.end()) {
-        return true;
-      }
-
-      vecs = op_desc->Input("FFNLnScale");
-      if (std::find(vecs.begin(), vecs.end(), var_node->Name()) != vecs.end()) {
-        return true;
-      }
-
-      vecs = op_desc->Input("FFNLnBias");
-      if (std::find(vecs.begin(), vecs.end(), var_node->Name()) != vecs.end()) {
-        return true;
-      }
-    }
-  }
-
-  return false;
 }
 
 }  // namespace ir
