@@ -52,7 +52,6 @@ void ConvCudnnGradKernelImplV7(
     const std::vector<int>& strides,
     const std::vector<int>& padding_common,
     const std::vector<int>& dilations,
-    cudnnDataType_t dtype,
     paddle::platform::DataLayout compute_format,
     paddle::platform::DataLayout layout,
     cudnnTensorFormat_t layout_tensor,
@@ -72,6 +71,7 @@ void ConvCudnnGradKernelImplV7(
   auto handle = ctx.cudnn_handle();
   auto workspace_handle = ctx.cudnn_workspace_handle();
 
+  auto dtype = paddle::platform::CudnnDataType<T>::type;
   ConvArgs args1{handle,
                  transformed_input_grad,
                  transformed_filter_channel,
@@ -660,7 +660,6 @@ void ConvCudnnGradKernel(const Context& ctx,
                                  strides,
                                  padding_common,
                                  dilations,
-                                 dtype,
                                  compute_format,
                                  layout,
                                  layout_tensor,
@@ -680,7 +679,6 @@ void ConvCudnnGradKernel(const Context& ctx,
                                strides,
                                padding_common,
                                dilations,
-                               dtype,
                                compute_format,
                                layout,
                                layout_tensor,

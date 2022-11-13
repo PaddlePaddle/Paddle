@@ -50,7 +50,6 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                            const std::vector<int>& strides,
                            const std::vector<int>& padding_common,
                            const std::vector<int>& dilations,
-                           cudnnDataType_t dtype,
                            paddle::platform::DataLayout compute_format,
                            cudnnTensorFormat_t layout_format,
                            bool exhaustive_search,
@@ -63,6 +62,8 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
 
   auto handle = ctx.cudnn_handle();
   auto workspace_handle = ctx.cudnn_workspace_handle();
+
+  auto dtype = paddle::platform::CudnnDataType<T>::type;
 
   // ------------------- cudnn descriptors ---------------------
   ConvArgs args{handle,
@@ -533,7 +534,6 @@ void ConvCudnnKernel(const Context& ctx,
                              strides,
                              padding_common,
                              dilations,
-                             dtype,
                              compute_format,
                              layout_format,
                              exhaustive_search,
@@ -547,7 +547,6 @@ void ConvCudnnKernel(const Context& ctx,
                            strides,
                            padding_common,
                            dilations,
-                           dtype,
                            compute_format,
                            layout_format,
                            exhaustive_search,
