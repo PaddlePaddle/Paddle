@@ -33,7 +33,19 @@
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
+#include "cutlass/gemm/device/gemm.h"
+#include "cutlass/cutlass.h"
+#include "cutlass/conv/device/implicit_gemm_convolution.h"
+#include "cutlass/conv/kernel/default_conv2d_fprop.h"
+
+
 namespace phi {
+
+void check(cutlass::Status status) {
+  if (status != cutlass::Status::kSuccess) {
+    printf("不能实施\n");
+  }
+}
 
 template <typename T, typename Context>
 void ConvCudnnKernel(const Context& ctx,
@@ -49,6 +61,105 @@ void ConvCudnnKernel(const Context& ctx,
                      int workspace_size_MB,
                      bool exhaustive_search_t,
                      DenseTensor* output) {
+
+
+  auto cutlass_in_dims = input.dims();
+  auto cutlass_filter_dims = filter.dims();
+  auto expect_in_dims = phi::make_ddim({1, 64, 56, 56});
+  int batch = cutlass_in_dims[0];
+  int ic = cutlass_in_dims[1];
+  int ih = cutlass_in_dims[2];
+  int iw = cutlass_in_dims[3];
+  int pad_h = paddings_t[0];
+  int pad_w = paddings_t[1];
+  int stride_h = strides[0];
+  int stride_w = strides[1];
+  int oc = cutlass_filter_dims[0];
+  int kh = cutlass_filter_dims[2];
+  int kw = cutlass_filter_dims[3];
+
+  int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
+  int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
+
+  if (cutlass_in_dims == expect_in_dims && stride_w == 1 || 1)
+  {
+    std::cout << std::endl;
+    for(int i = 0; i <  cutlass_in_dims.size(); i++)
+    {
+      std::cout << cutlass_in_dims[i] << " ";
+    }
+    std::cout << oc << " " << oh << " ";
+
+    std::cout << std::endl;
+/*
+    using ElementAccumulator = float;
+    using ElementComputeEpilogue = float;
+    using ElementInputA = cutlass::half_t; 
+    using ElementInputB = cutlass::half_t;  
+    using ElementOutput = cutlass::half_t;
+    using LayoutInputA = cutlass::layout::TensorNHWC;
+    using LayoutInputB = cutlass::layout::TensorNHWC;
+    using LayoutOutput = cutlass::layout::TensorNHWC;
+    using MMAOp = cutlass::arch::OpClassTensorOp;
+    using SmArch = cutlass::arch::Sm75;
+    using ThreadblockShape = cutlass::gemm::GemmShape<128, 64, 64>;
+    using WarpShape = cutlass::gemm::GemmShape<32, 64, 64>;
+    using InstructionShape = cutlass::gemm::GemmShape<16, 8, 8>;
+    using SwizzleThreadBlock =
+        cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<4>;
+    constexpr int NumStages = 2;
+    static cutlass::conv::IteratorAlgorithm const IteratorAlgorithm =
+        cutlass::conv::IteratorAlgorithm::kOptimized;
+    using EpilogueOp = cutlass::epilogue::thread::LinearCombination<
+        ElementOutput,  // Data type of output matrix.
+        128 / cutlass::sizeof_bits<ElementOutput>::
+                  value,          // The number of elements per vectorized.
+                                  // memory access. This becomes the vector width of
+                                  // math instructions in the epilogue too.
+        float,       // Data type of accumulator
+        ElementComputeEpilogue,
+        cutlass::epilogue::thread::ScaleType::Nothing>;
+    
+    using Conv2dFpropKernel = typename cutlass::conv::kernel::DefaultConv2dFprop<
+        ElementInputA, LayoutInputA, ElementInputB, LayoutInputB, ElementOutput,
+        LayoutOutput, ElementAccumulator, MMAOp, SmArch, ThreadblockShape,
+        WarpShape, InstructionShape, EpilogueOp, SwizzleThreadBlock, NumStages,
+        cutlass::arch::OpMultiplyAdd, IteratorAlgorithm,
+        cutlass::conv::StrideSupport::kStrided,
+        8,
+        8
+        >::Kernel;
+    using ImplicitGemm =
+        cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
+
+    cutlass::conv::Mode mode = cutlass::conv::Mode::kCrossCorrelation;
+    cutlass::conv::Conv2dProblemSize problem_size(
+        {batch, ih, iw, ic}, {oc, kh, kw, ic}, {pad_h, pad_w, pad_h, pad_w},
+        {stride_h, stride_w}, {stride_h, stride_w}, {batch, oh, ow, oc}, mode, 1);
+  
+    typename ImplicitGemm::Arguments arguments{
+      problem_size,
+      {(cutlass::half_t *)(input.data<T>()), {ic, ic * iw, ic * iw * ih}},
+      {(cutlass::half_t *)(filter.data<T>()), {ic, ic * kw, ic * kw * kh}},
+      {(cutlass::half_t *)(output->data<T>()), {oc, oc * ow, oc * ow * oh}},
+      {(cutlass::half_t *)(output->data<T>()), {oc, oc * ow, oc * ow * oh}},
+      {1.f, 0.f}};
+
+      ImplicitGemm implicit_gemm_op;
+      size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
+      void *workspace;
+      cudaMalloc((void **)&workspace, bytes);
+
+      cutlass::Status status = implicit_gemm_op.can_implement(arguments);
+      check(status);
+      status = implicit_gemm_op.initialize(arguments, workspace);
+      check(status);
+      status = implicit_gemm_op();
+      check(status);
+      return;
+      */
+  }
+
   ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
@@ -77,10 +188,13 @@ void ConvCudnnKernel(const Context& ctx,
                             ? paddle::platform::DataLayout::kNHWC
                             : paddle::platform::DataLayout::kNCHW;
 #endif
-  VLOG(3) << "Compute ConvOp with cuDNN:"
+  std::cout  << "Compute ConvOp with cuDNN:"
           << " data_format=" << data_format << " compute_format="
           << (compute_format == paddle::platform::DataLayout::kNHWC ? "NHWC"
-                                                                    : "NCHW");
+                                                                    : "NCHW") << std::endl;
+if(dtype == CUDNN_DATA_HALF) {
+  std::cout << "是fp16数据！" << std::endl;
+}
 
   // ------------ transformed tensor -----------
   DenseTensor transformed_input_channel(input.type());
@@ -334,25 +448,6 @@ void ConvCudnnKernel(const Context& ctx,
   // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
 
 #ifdef PADDLE_WITH_HIP
-  workspace_handle.RunFunc(
-      [&](void* workspace_ptr) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::miopenConvolutionForward(
-                handle,
-                &alpha,
-                args.idesc.desc(),
-                input_data,
-                args.wdesc.desc(),
-                filter_data,
-                args.cdesc.desc(),
-                fwd_result.algo,
-                &beta,
-                args.odesc.desc(),
-                output_data,
-                workspace_ptr,
-                workspace_size));
-      },
-      workspace_size);
 #else
   for (int i = 0; i < groups; i++) {
     workspace_handle.RunFunc(
@@ -380,6 +475,7 @@ void ConvCudnnKernel(const Context& ctx,
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
     TransToChannelLast<Context, T>(ctx, &transformed_output, output);
   }
+  std::cout << fwd_result.algo << std::endl;
 }
 
 template <typename T, typename Context>

@@ -101,7 +101,7 @@ file(
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
-
+include_directories(/zhoukangkang/2022-04-28inference_try/cutlass/include)
 if(WITH_MKLDNN)
   file(
     GLOB
