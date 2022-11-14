@@ -217,6 +217,9 @@ class TensorRTEngine {
       const ShapeMapType min_input_shape = {},
       const ShapeMapType max_input_shape = {},
       const ShapeMapType optim_input_shape = {},
+      const ShapeMapType min_shape_tensor = {},
+      const ShapeMapType max_shape_tensor = {},
+      const ShapeMapType optim_shape_tensor = {},
       bool disable_trt_plugin_fp16 = false,
       phi::DataType model_precision = phi::DataType::FLOAT32,
       nvinfer1::ILogger& logger = NaiveLogger::Global())
@@ -228,6 +231,9 @@ class TensorRTEngine {
         min_input_shape_(min_input_shape),
         max_input_shape_(max_input_shape),
         optim_input_shape_(optim_input_shape),
+        min_shape_tensor_(min_shape_tensor),
+        max_shape_tensor_(max_shape_tensor),
+        optim_shape_tensor_(optim_shape_tensor),
         disable_trt_plugin_fp16_(disable_trt_plugin_fp16),
         model_precision_(model_precision),
         logger_(logger) {
@@ -364,15 +370,15 @@ class TensorRTEngine {
 
   // Get fp16 trt weight. If src weight is not fp16, we will cast.
   Weight GetFp16TrtWeight(const std::string& name,
-                          const framework::Tensor& weight_tensor);
+                          const phi::DenseTensor& weight_tensor);
 
   // Get fp32 trt weight. If src weight is not fp32, we will cast.
   Weight GetFp32TrtWeight(const std::string& name,
-                          const framework::Tensor& weight_tensor);
+                          const phi::DenseTensor& weight_tensor);
 
   // if the src weight type is fp16, then return fp16 trt weight, etc.
   Weight GetTrtWeight(const std::string& name,
-                      const framework::Tensor& weight_tensor);
+                      const phi::DenseTensor& weight_tensor);
 
   float GetTensorDynamicRange(nvinfer1::ITensor* tensor) {
     return quant_dynamic_range_[tensor];
@@ -387,13 +393,13 @@ class TensorRTEngine {
   // so we need to copy the weights from GPU to CPU in our op converter.
   // We use a map to store these weights for the weight memory is not released
   // in advance, which affecting the construction of TRT Op.
-  std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
+  std::unordered_map<std::string /*name*/, std::unique_ptr<phi::DenseTensor>>
       weight_map;
 
   // When setting weight_map, a self-increasing suffix is needed for the names
   // so as to avoid repeatedly setting weights with the same name.
   void SetWeights(std::string w_name,
-                  std::unique_ptr<framework::Tensor> w_tensor) {
+                  std::unique_ptr<phi::DenseTensor> w_tensor) {
     static int suffix_counter = 0;
     std::string suffix = std::to_string(suffix_counter);
     std::string splitter = "__";
@@ -443,6 +449,9 @@ class TensorRTEngine {
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
+  ShapeMapType min_shape_tensor() { return min_shape_tensor_; }
+  ShapeMapType max_shape_tensor() { return max_shape_tensor_; }
+  ShapeMapType optim_shape_tensor() { return optim_shape_tensor_; }
 
   bool AdjustDynamicShapeRange(const ShapeMapType& runtime_input_shape,
                                std::vector<std::string>* changed) {
@@ -641,6 +650,9 @@ class TensorRTEngine {
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
+  ShapeMapType min_shape_tensor_;
+  ShapeMapType max_shape_tensor_;
+  ShapeMapType optim_shape_tensor_;
   bool disable_trt_plugin_fp16_{false};
   phi::DataType model_precision_{phi::DataType::FLOAT32};
   bool use_varseqlen_{false};
@@ -741,6 +753,9 @@ class TRTEngineManager {
       const std::map<std::string, std::vector<int>> min_input_shape = {},
       const std::map<std::string, std::vector<int>> max_input_shape = {},
       const std::map<std::string, std::vector<int>> optim_input_shape = {},
+      const std::map<std::string, std::vector<int>> min_shape_tensor = {},
+      const std::map<std::string, std::vector<int>> max_shape_tensor = {},
+      const std::map<std::string, std::vector<int>> optim_shape_tensor = {},
       bool disable_trt_plugin_fp16 = false,
       phi::DataType model_precision = phi::DataType::FLOAT32,
       nvinfer1::ILogger& logger = NaiveLogger::Global()) {
@@ -752,6 +767,9 @@ class TRTEngineManager {
                                  min_input_shape,
                                  max_input_shape,
                                  optim_input_shape,
+                                 min_shape_tensor,
+                                 max_shape_tensor,
+                                 optim_shape_tensor,
                                  disable_trt_plugin_fp16,
                                  model_precision,
                                  logger);

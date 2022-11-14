@@ -33,7 +33,6 @@ class DenseTensor;
 
 namespace paddle {
 namespace platform {
-using framework::Tensor;
 
 template <typename T>
 inline cudnnDataType_t ToCudnnDataType(const T& t) {
@@ -141,7 +140,7 @@ class TensorDescriptor {
   }
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
-  void set(const Tensor& tensor, const int groups = 1) {
+  void set(const phi::DenseTensor& tensor, const int groups = 1) {
     auto dims = phi::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
@@ -177,7 +176,7 @@ class TensorDescriptor {
                                               transformed_dims.data()));
   }
 
-  void set(const Tensor& tensor, const cudnnTensorFormat_t format) {
+  void set(const phi::DenseTensor& tensor, const cudnnTensorFormat_t format) {
     auto dims = phi::vectorize<int>(tensor.dims());
     auto dtype =
         ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype()));
@@ -228,7 +227,7 @@ class FilterDescriptor {
                                             transformed_dims.data()));
   }
 
-  void set(const Tensor& tensor,
+  void set(const phi::DenseTensor& tensor,
            const cudnnTensorFormat_t format,
            const int groups = 1) {
     auto dims = phi::vectorize<int>(tensor.dims());

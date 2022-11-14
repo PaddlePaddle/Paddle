@@ -14,7 +14,6 @@
 
 import unittest
 from paddle.fluid import core
-from paddle import compat as cpt
 
 
 class TestGetAllRegisteredOpKernels(unittest.TestCase):
@@ -39,15 +38,15 @@ class TestGetAllRegisteredOpKernels(unittest.TestCase):
 
 
 class TestGetAllOpNames(unittest.TestCase):
-
     def test_get_all_op_names(self):
         all_op_names = core.get_all_op_names()
         all_op_with_phi_kernels = core.get_all_op_names("phi")
         all_op_with_fluid_kernels = core.get_all_op_names("fluid")
 
         self.assertTrue(
-            len(all_op_names) > len(
-                set(all_op_with_phi_kernels) | set(all_op_with_fluid_kernels)))
+            len(all_op_names)
+            > len(set(all_op_with_phi_kernels) | set(all_op_with_fluid_kernels))
+        )
         self.assertTrue("scale" in all_op_with_phi_kernels)
         self.assertTrue("scale" in all_op_with_phi_kernels)
 

@@ -17,36 +17,45 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid.layers as layers
 import paddle.fluid as fluid
-import random
-import six
-from sys import version_info
 
 
 def create_tdm_travel():
-    tree_travel = [[1, 3, 7, 14], [1, 3, 7, 15], [1, 3, 8, 16], [1, 3, 8, 17],
-                   [1, 4, 9, 18], [1, 4, 9, 19], [1, 4, 10, 20], [1, 4, 10, 21],
-                   [2, 5, 11, 22], [2, 5, 11, 23], [2, 5, 12, 24],
-                   [2, 5, 12, 25], [2, 6, 13, 0]]
+    tree_travel = [
+        [1, 3, 7, 14],
+        [1, 3, 7, 15],
+        [1, 3, 8, 16],
+        [1, 3, 8, 17],
+        [1, 4, 9, 18],
+        [1, 4, 9, 19],
+        [1, 4, 10, 20],
+        [1, 4, 10, 21],
+        [2, 5, 11, 22],
+        [2, 5, 11, 23],
+        [2, 5, 12, 24],
+        [2, 5, 12, 25],
+        [2, 6, 13, 0],
+    ]
     return tree_travel
 
 
 def create_tdm_layer():
-    tree_layer = [[1, 2], [3, 4, 5, 6], [7, 8, 9, 10, 11, 12, 13],
-                  [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]]
+    tree_layer = [
+        [1, 2],
+        [3, 4, 5, 6],
+        [7, 8, 9, 10, 11, 12, 13],
+        [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+    ]
     return tree_layer
 
 
 type_dict = {
     "int32": int(core.VarDesc.VarType.INT32),
-    "int64": int(core.VarDesc.VarType.INT64)
+    "int64": int(core.VarDesc.VarType.INT64),
 }
 
 
 class TestTDMSamplerOp(OpTest):
-
     def setUp(self):
         self.__class__.op_type = "tdm_sampler"
         self.config()
@@ -55,8 +64,9 @@ class TestTDMSamplerOp(OpTest):
         self.tree_layer = create_tdm_layer()
 
         output_0 = self.x_shape[0]
-        output_1 = len(self.neg_samples_num_list) + \
-            np.sum(self.neg_samples_num_list)
+        output_1 = len(self.neg_samples_num_list) + np.sum(
+            self.neg_samples_num_list
+        )
         self.output_shape = (output_0, output_1)
         self.layer_sample_nums = [1 + i for i in self.neg_samples_num_list]
 
@@ -73,8 +83,9 @@ class TestTDMSamplerOp(OpTest):
         layer_np = np.array(tree_layer_flat).astype(self.tree_dtype)
         layer_np = layer_np.reshape([-1, 1])
 
-        self.x_np = np.random.randint(low=0, high=13,
-                                      size=self.x_shape).astype(self.x_type)
+        self.x_np = np.random.randint(low=0, high=13, size=self.x_shape).astype(
+            self.x_type
+        )
 
         out = np.random.random(self.output_shape).astype(self.out_dtype)
         label = np.random.random(self.output_shape).astype(self.out_dtype)
@@ -85,7 +96,7 @@ class TestTDMSamplerOp(OpTest):
             'output_positive': True,
             'layer_offset_lod': tree_layer_offset_lod,
             'seed': 0,
-            'dtype': type_dict[self.out_dtype]
+            'dtype': type_dict[self.out_dtype],
         }
         self.inputs = {'X': self.x_np, 'Travel': travel_np, 'Layer': layer_np}
         self.outputs = {'Out': out, 'Labels': label, 'Mask': mask}
@@ -133,7 +144,8 @@ class TestTDMSamplerOp(OpTest):
                 positive_travel.append(sampling_res_list[0])
 
                 label_sampling_res = label_res[batch_ids][
-                    start_offset:end_offset]
+                    start_offset:end_offset
+                ]
                 mask_sampling_res = mask_res[batch_ids][start_offset:end_offset]
 
                 # check unique
@@ -141,8 +153,12 @@ class TestTDMSamplerOp(OpTest):
                     assert len(set(sampling_res_list)) == len(
                         sampling_res_list
                     ), "len(set(sampling_res_list)): {}, len(sampling_res_list): {} , sample_res: {}, label_res:{}, mask_res: {}".format(
-                        len(set(sampling_res_list)), len(sampling_res_list),
-                        sampling_res, label_sampling_res, mask_sampling_res)
+                        len(set(sampling_res_list)),
+                        len(sampling_res_list),
+                        sampling_res,
+                        label_sampling_res,
+                        mask_sampling_res,
+                    )
                 # check legal
                 layer_node = self.tree_layer[layer_idx]
                 layer_node.append(0)
@@ -150,8 +166,12 @@ class TestTDMSamplerOp(OpTest):
                     assert (
                         sample in layer_node
                     ), "sample: {}, layer_node: {} , sample_res: {}, label_res: {}, mask_res:{}".format(
-                        sample, layer_node, sampling_res, label_sampling_res,
-                        mask_sampling_res)
+                        sample,
+                        layer_node,
+                        sampling_res,
+                        label_sampling_res,
+                        mask_sampling_res,
+                    )
 
                 # check label
                 label_flag = 1
@@ -163,15 +183,16 @@ class TestTDMSamplerOp(OpTest):
                 assert not np.sum(
                     mask_sampling_res[padding_index]
                 ), "np.sum(mask_sampling_res[padding_index]): {} ".format(
-                    np.sum(mask_sampling_res[padding_index]))
+                    np.sum(mask_sampling_res[padding_index])
+                )
                 start_offset = end_offset
             # check travel legal
-            assert self.tree_travel[int(
-                self.x_np[batch_ids])] == positive_travel
+            assert (
+                self.tree_travel[int(self.x_np[batch_ids])] == positive_travel
+            )
 
 
 class TestCase1(TestTDMSamplerOp):
-
     def config(self):
         """test input int64"""
         self.neg_samples_num_list = [0, 0, 0, 0]
@@ -182,7 +203,6 @@ class TestCase1(TestTDMSamplerOp):
 
 
 class TestCase2(TestTDMSamplerOp):
-
     def config(self):
         """test dtype int64"""
         self.neg_samples_num_list = [0, 0, 0, 0]
@@ -193,7 +213,6 @@ class TestCase2(TestTDMSamplerOp):
 
 
 class TestCase3(TestTDMSamplerOp):
-
     def config(self):
         """test all dtype int64"""
         self.neg_samples_num_list = [0, 0, 0, 0]
@@ -204,7 +223,6 @@ class TestCase3(TestTDMSamplerOp):
 
 
 class TestCase4(TestTDMSamplerOp):
-
     def config(self):
         """test one neg"""
         self.neg_samples_num_list = [1, 1, 1, 1]
@@ -215,7 +233,6 @@ class TestCase4(TestTDMSamplerOp):
 
 
 class TestCase5(TestTDMSamplerOp):
-
     def config(self):
         """test normal neg"""
         self.neg_samples_num_list = [1, 2, 3, 4]
@@ -226,7 +243,6 @@ class TestCase5(TestTDMSamplerOp):
 
 
 class TestCase6(TestTDMSamplerOp):
-
     def config(self):
         """test huge batchsize"""
         self.neg_samples_num_list = [1, 2, 3, 4]
@@ -237,7 +253,6 @@ class TestCase6(TestTDMSamplerOp):
 
 
 class TestCase7(TestTDMSamplerOp):
-
     def config(self):
         """test full neg"""
         self.neg_samples_num_list = [1, 3, 6, 11]
@@ -248,7 +263,6 @@ class TestCase7(TestTDMSamplerOp):
 
 
 class TestTDMSamplerShape(unittest.TestCase):
-
     def test_shape(self):
         x = fluid.layers.data(name='x', shape=[1], dtype='int32', lod_level=1)
         tdm_tree_travel = create_tdm_travel()
@@ -272,23 +286,41 @@ class TestTDMSamplerShape(unittest.TestCase):
             leaf_node_num,
             tree_travel_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
-                    travel_array)),
-            tree_layer_attr=fluid.ParamAttr(initializer=fluid.initializer.
-                                            NumpyArrayInitializer(layer_array)),
+                    travel_array
+                )
+            ),
+            tree_layer_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(layer_array)
+            ),
             output_positive=True,
             output_list=True,
             seed=0,
             tree_dtype='int32',
-            dtype='int32')
+            dtype='int32',
+        )
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place=place)
         exe.run(fluid.default_startup_program())
 
         feed = {
-            'x':
-            np.array([[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10],
-                      [11], [12]]).astype('int32')
+            'x': np.array(
+                [
+                    [0],
+                    [1],
+                    [2],
+                    [3],
+                    [4],
+                    [5],
+                    [6],
+                    [7],
+                    [8],
+                    [9],
+                    [10],
+                    [11],
+                    [12],
+                ]
+            ).astype('int32')
         }
         exe.run(feed=feed)
 

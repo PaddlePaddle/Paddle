@@ -25,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
@@ -33,18 +33,18 @@ class FusedBiasDropoutResidualLnOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     using U = LayerNormParamType<T>;
-    auto *input_x = ctx.Input<Tensor>("X");
-    auto *bias = ctx.Input<Tensor>("Bias");
-    auto *residual = ctx.Input<Tensor>("Residual");
+    auto *input_x = ctx.Input<phi::DenseTensor>("X");
+    auto *bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto *residual = ctx.Input<phi::DenseTensor>("Residual");
     const float ln_epsilon = ctx.Attr<float>("ln_epsilon");
-    auto *ln_scale = ctx.Input<Tensor>("LnScale");
-    auto *ln_bias = ctx.Input<Tensor>("LnBias");
-    auto *dropout_mask_out = ctx.Output<Tensor>("DropoutMaskOut");
+    auto *ln_scale = ctx.Input<phi::DenseTensor>("LnScale");
+    auto *ln_bias = ctx.Input<phi::DenseTensor>("LnBias");
+    auto *dropout_mask_out = ctx.Output<phi::DenseTensor>("DropoutMaskOut");
     auto *bias_dropout_residual_out =
-        ctx.Output<Tensor>("BiasDropoutResidualOut");
-    auto *ln_mean = ctx.Output<Tensor>("LnMean");
-    auto *ln_var = ctx.Output<Tensor>("LnVariance");
-    auto *y = ctx.Output<Tensor>("Y");
+        ctx.Output<phi::DenseTensor>("BiasDropoutResidualOut");
+    auto *ln_mean = ctx.Output<phi::DenseTensor>("LnMean");
+    auto *ln_var = ctx.Output<phi::DenseTensor>("LnVariance");
+    auto *y = ctx.Output<phi::DenseTensor>("Y");
     auto *x_data = input_x->data<T>();
     auto *bias_data = (bias == nullptr) ? nullptr : bias->data<T>();
     auto *residual_data = (residual == nullptr) ? nullptr : residual->data<T>();
@@ -96,13 +96,13 @@ class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
     using U = LayerNormParamType<T>;
     const float ln_epsilon = ctx.Attr<float>("ln_epsilon");
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
-    auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto *ln_scale = ctx.Input<Tensor>("LnScale");
-    auto *dropout_mask_out = ctx.Input<Tensor>("DropoutMaskOut");
+    auto *d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto *ln_scale = ctx.Input<phi::DenseTensor>("LnScale");
+    auto *dropout_mask_out = ctx.Input<phi::DenseTensor>("DropoutMaskOut");
     auto *bias_dropout_residual_out =
-        ctx.Input<Tensor>("BiasDropoutResidualOut");
-    auto *ln_mean = ctx.Input<Tensor>("LnMean");
-    auto *ln_var = ctx.Input<Tensor>("LnVariance");
+        ctx.Input<phi::DenseTensor>("BiasDropoutResidualOut");
+    auto *ln_mean = ctx.Input<phi::DenseTensor>("LnMean");
+    auto *ln_var = ctx.Input<phi::DenseTensor>("LnVariance");
     auto *d_y_data = d_y->data<T>();
     auto *ln_scale_data = (ln_scale == nullptr ? nullptr : ln_scale->data<U>());
     auto *dropout_mask_out_data = dropout_mask_out->data<uint8_t>();
@@ -110,13 +110,16 @@ class FusedBiasDropoutResidualLnGradKernel : public framework::OpKernel<T> {
     auto *ln_mean_data = ln_mean->data<U>();
     auto *ln_var_data = ln_var->data<U>();
 
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *d_residual = ctx.Output<Tensor>(framework::GradVarName("Residual"));
-    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
-    auto *d_bias_dropout_residual_out =
-        ctx.Output<Tensor>(framework::GradVarName("BiasDropoutResidualOut"));
-    auto *d_ln_scale = ctx.Output<Tensor>(framework::GradVarName("LnScale"));
-    auto *d_ln_bias = ctx.Output<Tensor>(framework::GradVarName("LnBias"));
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_residual =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Residual"));
+    auto *d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
+    auto *d_bias_dropout_residual_out = ctx.Output<phi::DenseTensor>(
+        framework::GradVarName("BiasDropoutResidualOut"));
+    auto *d_ln_scale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("LnScale"));
+    auto *d_ln_bias =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("LnBias"));
     auto *d_x_data = dev_ctx.Alloc<T>(d_x, d_x->numel() * sizeof(T));
     auto *d_residual_data =
         dev_ctx.Alloc<T>(d_residual, d_residual->numel() * sizeof(T));

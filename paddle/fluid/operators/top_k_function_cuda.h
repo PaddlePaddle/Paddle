@@ -57,7 +57,7 @@ struct NumericTraits<paddle::platform::float16>
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 inline void GetDims(
     const phi::DDim& dim, int axis, int* pre, int* n, int* post) {
@@ -354,16 +354,11 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
     }
     if (--(*k) == 0) break;
 
-    if (MaxLength < 5) {
-      if (*beam >= MaxLength) break;
-    } else {
-      unsigned mask = 0u;
-      CREATE_SHFL_MASK(mask, true);
-      if (tid_max / 32 == wid) {
-        if (platform::CudaShuffleSync(mask, *beam, tid_max % 32, 32) ==
-            MaxLength)
-          break;
-      }
+    unsigned mask = 0u;
+    CREATE_SHFL_MASK(mask, true);
+    if (tid_max / 32 == wid) {
+      if (platform::CudaShuffleSync(mask, *beam, tid_max % 32, 32) == MaxLength)
+        break;
     }
   }
 }
@@ -933,12 +928,12 @@ __global__ void AssignGradWithAxis(const T* grad_out,
 // use the radix sort for the topk
 template <typename T>
 bool SortTopk(const phi::GPUContext& ctx,
-              const framework::Tensor* input_tensor,
+              const phi::DenseTensor* input_tensor,
               const int64_t num_cols,
               const int64_t num_rows,
               const int k,
-              framework::Tensor* out_tensor,
-              framework::Tensor* indices_tensor,
+              phi::DenseTensor* out_tensor,
+              phi::DenseTensor* indices_tensor,
               bool largest = true) {
   auto cu_stream = ctx.stream();
 

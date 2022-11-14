@@ -19,22 +19,23 @@ sys.path.append("..")
 
 import numpy as np
 
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 import paddle
 
 paddle.enable_static()
 
 
 class XPUTestSqueeze2Op(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = "squeeze2"
         self.use_dynamic_create_class = False
 
     class TestSqueeze2Op(XPUOpTest):
-
         def setUp(self):
             self.op_type = "squeeze2"
             self.__class__.op_type = "squeeze2"
@@ -46,7 +47,7 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
             }
             self.outputs = {
                 "Out": self.inputs["X"].reshape(self.new_shape),
-                "XShape": np.random.random(self.ori_shape).astype(self.dtype)
+                "XShape": np.random.random(self.ori_shape).astype(self.dtype),
             }
             self.init_attrs()
 
@@ -74,7 +75,6 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
 
     # Correct: There is mins axis.
     class TestSqueeze2Op1(TestSqueeze2Op):
-
         def init_test_case(self):
             self.ori_shape = (1, 20, 1, 5)
             self.axes = (0, -2)
@@ -82,7 +82,6 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
 
     # Correct: No axes input.
     class TestSqueeze2Op2(TestSqueeze2Op):
-
         def init_test_case(self):
             self.ori_shape = (1, 20, 1, 5)
             self.axes = ()
@@ -90,7 +89,6 @@ class XPUTestSqueeze2Op(XPUOpTestWrapper):
 
     # Correct: Just part of axes be squeezed.
     class TestSqueeze2Op3(TestSqueeze2Op):
-
         def init_test_case(self):
             self.ori_shape = (6, 1, 5, 1, 4, 1)
             self.axes = (1, -1)

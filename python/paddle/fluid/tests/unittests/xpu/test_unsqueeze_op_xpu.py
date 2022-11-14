@@ -20,23 +20,23 @@ sys.path.append("..")
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 # Correct: General.
 class XPUTestUnsqueezeOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = "unsqueeze"
         self.use_dynamic_create_class = False
 
     class TestUnsqueezeOp(XPUOpTest):
-
         def setUp(self):
             self.op_type = "unsqueeze"
             self.__class__.op_type = "unsqueeze"
@@ -72,15 +72,13 @@ class XPUTestUnsqueezeOp(XPUOpTestWrapper):
 
     # Correct: Single input index.
     class TestUnsqueezeOp1(TestUnsqueezeOp):
-
         def init_test_case(self):
             self.ori_shape = (20, 5)
-            self.axes = (-1, )
+            self.axes = (-1,)
             self.new_shape = (20, 5, 1)
 
     # Correct: Mixed input axis.
     class TestUnsqueezeOp2(TestUnsqueezeOp):
-
         def init_test_case(self):
             self.ori_shape = (20, 5)
             self.axes = (0, -1)
@@ -88,7 +86,6 @@ class XPUTestUnsqueezeOp(XPUOpTestWrapper):
 
     # Correct: There is duplicated axis.
     class TestUnsqueezeOp3(TestUnsqueezeOp):
-
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (0, 3, 3)
@@ -96,7 +93,6 @@ class XPUTestUnsqueezeOp(XPUOpTestWrapper):
 
     # Correct: Reversed axes.
     class TestUnsqueezeOp4(TestUnsqueezeOp):
-
         def init_test_case(self):
             self.ori_shape = (10, 2, 5)
             self.axes = (3, 1, 1)

@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 void FusedBatchNormAddActOp::InferShape(
     framework::InferShapeContext *ctx) const {
@@ -145,15 +145,17 @@ framework::OpKernelType FusedBatchNormAddActOp::GetExpectedKernelType(
 
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
+      framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
       platform::errors::InvalidArgument("Scale input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
+      framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
       platform::errors::InvalidArgument("Bias input should be of float type"));
 
   framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
   return framework::OpKernelType(
       input_data_type, ctx.GetPlace(), layout, library);
@@ -274,7 +276,7 @@ framework::OpKernelType FusedBatchNormAddActGradOp::GetExpectedKernelType(
   }
 
   framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"),

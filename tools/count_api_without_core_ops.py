@@ -16,11 +16,7 @@ import importlib
 import inspect
 import collections
 import sys
-import pydoc
 import hashlib
-import functools
-import platform
-from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'get_apis_with_and_without_core_ops',
@@ -41,9 +37,12 @@ def md5(doc):
         md5sum = hashinst.hexdigest()
     except UnicodeDecodeError as e:
         md5sum = None
-        print("Error({}) occurred when `md5({})`, discard it.".format(
-            str(e), doc),
-              file=sys.stderr)
+        print(
+            "Error({}) occurred when `md5({})`, discard it.".format(
+                str(e), doc
+            ),
+            file=sys.stderr,
+        )
     return md5sum
 
 
@@ -54,11 +53,13 @@ def split_with_and_without_core_ops(member, cur_name):
     if member.__doc__.find(':api_attr: Static Graph') != -1:
         return
 
-    if cur_name.find('ParamBase') != -1 or cur_name.find(
-            'Parameter') != -1 or cur_name.find(
-                'Variable') != -1 or cur_name.find(
-                    'control_flow') != -1 or cur_name.find(
-                        'contrib.mixed_precision') != -1:
+    if (
+        cur_name.find('ParamBase') != -1
+        or cur_name.find('Parameter') != -1
+        or cur_name.find('Variable') != -1
+        or cur_name.find('control_flow') != -1
+        or cur_name.find('contrib.mixed_precision') != -1
+    ):
         return
 
     if inspect.isclass(member):
@@ -98,8 +99,9 @@ def visit_member(parent_name, member, func):
     if inspect.isclass(member):
         func(member, cur_name)
         for name, value in inspect.getmembers(member):
-            if hasattr(value, '__name__') and (not name.startswith("_")
-                                               or name == "__init__"):
+            if hasattr(value, '__name__') and (
+                not name.startswith("_") or name == "__init__"
+            ):
                 visit_member(cur_name, value, func)
     elif inspect.ismethoddescriptor(member):
         return
@@ -110,11 +112,13 @@ def visit_member(parent_name, member, func):
     else:
         raise RuntimeError(
             "Unsupported generate signature of member, type {0}".format(
-                str(type(member))))
+                str(type(member))
+            )
+        )
 
 
 def is_primitive(instance):
-    int_types = (int, )
+    int_types = (int,)
     pritimitive_types = int_types + (float, str)
     if isinstance(instance, pritimitive_types):
         return True
@@ -166,7 +170,7 @@ def visit_all_module(mod, func):
                 IdSet.add(instance_id)
                 visit_member(mod.__name__, instance, func)
         except:
-            if not cur_name in ErrorSet and not cur_name in skiplist:
+            if cur_name not in ErrorSet and cur_name not in skiplist:
                 ErrorSet.add(cur_name)
 
 
@@ -175,8 +179,9 @@ def get_apis_with_and_without_core_ops(modules):
     api_with_ops = []
     api_without_ops = []
     for m in modules:
-        visit_all_module(importlib.import_module(m),
-                         split_with_and_without_core_ops)
+        visit_all_module(
+            importlib.import_module(m), split_with_and_without_core_ops
+        )
     return api_with_ops, api_without_ops
 
 
@@ -193,7 +198,8 @@ if __name__ == "__main__":
         modules = sys.argv[2].split(",")
         if sys.argv[1] == '-c':
             api_with_ops, api_without_ops = get_apis_with_and_without_core_ops(
-                modules)
+                modules
+            )
 
             print('api_with_ops:', len(api_with_ops))
             print('\n'.join(api_with_ops))
@@ -207,9 +213,11 @@ if __name__ == "__main__":
                 print(name, func_dict[name])
 
     else:
-        print("""Usage:
+        print(
+            """Usage:
             1. Count and list all operator-raleated APIs that contains append_op but not _legacy_C_ops.xx.
                 python ./count_api_without_core_ops.py -c paddle
             2. Print api and the md5 of source code of the api.
                 python ./count_api_without_core_ops.py -p paddle
-            """)
+            """
+        )

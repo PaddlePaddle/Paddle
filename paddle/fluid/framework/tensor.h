@@ -18,12 +18,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace paddle {
 namespace framework {
 
 using LoD = std::vector<paddle::framework::Vector<size_t>>;
-using Tensor = phi::DenseTensor;
 
 }  // namespace framework
 }  // namespace paddle

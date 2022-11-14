@@ -20,8 +20,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 template <typename T>
@@ -45,8 +45,8 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<LoDTensor>("X");
-    auto* offset = ctx.Input<Tensor>("Offset");
-    auto* length = ctx.Input<Tensor>("Length");
+    auto* offset = ctx.Input<phi::DenseTensor>("Offset");
+    auto* length = ctx.Input<phi::DenseTensor>("Length");
     auto* out = ctx.Output<LoDTensor>("Out");
 
     auto lod = in->lod();
@@ -85,8 +85,8 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     const int64_t* offset_data = offset->data<int64_t>();
     const int64_t* length_data = length->data<int64_t>();
-    framework::Tensor offset_cpu;
-    framework::Tensor length_cpu;
+    phi::DenseTensor offset_cpu;
+    phi::DenseTensor length_cpu;
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
       offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
@@ -156,17 +156,15 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<LoDTensor>("X");
-    auto* offset = ctx.Input<Tensor>("Offset");
-    auto* length = ctx.Input<Tensor>("Length");
-    auto* out_grad =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto* x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* offset = ctx.Input<phi::DenseTensor>("Offset");
+    auto* length = ctx.Input<phi::DenseTensor>("Length");
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     const int64_t* offset_data = offset->data<int64_t>();
     const int64_t* length_data = length->data<int64_t>();
-    framework::Tensor offset_cpu;
-    framework::Tensor length_cpu;
+    phi::DenseTensor offset_cpu;
+    phi::DenseTensor length_cpu;
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
       offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());

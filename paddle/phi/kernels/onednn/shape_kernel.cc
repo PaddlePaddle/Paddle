@@ -51,7 +51,7 @@ void ShapeKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(shape,
                    OneDNN,
-                   ALL_LAYOUT,
+                   ONEDNN,
                    phi::ShapeKernel,
                    float,
                    phi::dtype::bfloat16,

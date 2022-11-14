@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 /* --------------------------- */
-/*   From framework::Tensor    */
+/*   From phi::DenseTensor    */
 /* --------------------------- */
-/* The following members & interfaces were copied from framework::Tensor,
+/* The following members & interfaces were copied from phi::DenseTensor,
     so as to facilitate the unification of different Tensors
 
     Will be adjusted/removed/moved in the near future
@@ -57,7 +57,7 @@ size_t memory_size() const;
 
 void check_memory_size() const;
 
-void set_layout(const paddle::framework::DataLayout layout);
+void set_layout(const DataLayout layout);
 
 void clear() {
   holder_.reset();
@@ -116,25 +116,19 @@ following codes there.
 #ifdef PADDLE_WITH_MKLDNN
 
 public:
-  dnnl::memory::desc mem_desc() const;
+  const dnnl::memory::desc& mem_desc() const;
 
 inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
   mem_desc_ = mem_desc;
   meta_.layout = DataLayout::kMKLDNN;
 }
 
-dnnl::memory::format_tag format() const;
-
-inline void set_format(const dnnl::memory::format_tag format) {
-  format_ = format;
-}
-
 #endif
 
 /* ------------------------------ */
-/*   From framework::LoDTensor    */
+/*   From phi::DenseTensor    */
 /* ------------------------------ */
-/* The following members & interfaces were copied from framework::Tensor,
+/* The following members & interfaces were copied from phi::DenseTensor,
     so as to facilitate the unification of different Tensors
 
     Will be adjusted/removed/moved in the near future

@@ -29,8 +29,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using DataLayout = framework::DataLayout;
+using Tensor = phi::DenseTensor;
+using DataLayout = phi::DataLayout;
 using ExecutionContext = framework::ExecutionContext;
 using DeviceContextPool = platform::DeviceContextPool;
 using MLUDeviceContext = platform::MLUDeviceContext;
@@ -87,9 +87,9 @@ inline cnnlInterpBackwardMode_t GetMLUCnnlInterpBackwardMode(
       "Not support interp mode of MLU Device: %s", interp_mode));
 }
 
-inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
+inline const void* GetBasePtr(const phi::DenseTensor* t) { return t->data(); }
 
-inline void* GetBasePtr(Tensor* t) { return t->data(); }
+inline void* GetBasePtr(phi::DenseTensor* t) { return t->data(); }
 
 inline cnnlDataType_t ToCnnlDataType(
     const paddle::experimental::DataType& dtype) {
@@ -309,18 +309,18 @@ class MLUCnnlTensorDesc {
                     const cnnlDataType_t tensor_dtype,
                     int position);
 
-  MLUCnnlTensorDesc(const Tensor& tensor,
+  MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                     const cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype);
 
-  explicit MLUCnnlTensorDesc(const Tensor& tensor);
+  explicit MLUCnnlTensorDesc(const phi::DenseTensor& tensor);
 
-  MLUCnnlTensorDesc(const Tensor& tensor,
+  MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                     cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype,
                     int position);
 
-  MLUCnnlTensorDesc(const Tensor& tensor,
+  MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                     cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype,
                     int position,
@@ -2292,6 +2292,50 @@ class MLUCnnl {
       void* diff_x);
 };
 
+class MLUOP {
+ public:
+  static void OpYoloBox(const ExecutionContext& ctx,
+                        const mluOpTensorDescriptor_t x_desc,
+                        const void* x,
+                        const mluOpTensorDescriptor_t img_size_desc,
+                        const void* img_size,
+                        const mluOpTensorDescriptor_t anchors_desc,
+                        const void* anchors,
+                        const int class_num,
+                        const float conf_thresh,
+                        const int downsample_ratio,
+                        const bool clip_bbox,
+                        const float scale,
+                        const bool iou_aware,
+                        const float iou_aware_factor,
+                        const mluOpTensorDescriptor_t boxes_desc,
+                        void* boxes,
+                        const mluOpTensorDescriptor_t scores_desc,
+                        void* scores);
+
+  static void OpPriorBox(const ExecutionContext& ctx,
+                         const mluOpTensorDescriptor_t min_sizes_desc,
+                         const void* min_sizes,
+                         const mluOpTensorDescriptor_t aspect_ratios_desc,
+                         const void* aspect_ratios,
+                         const mluOpTensorDescriptor_t variances_desc,
+                         const void* variances,
+                         const mluOpTensorDescriptor_t max_sizes_desc,
+                         const void* max_sizes,
+                         const int height,
+                         const int width,
+                         const int im_height,
+                         const int im_width,
+                         const float step_h,
+                         const float step_w,
+                         const float offset,
+                         const bool clip,
+                         const bool min_max_aspect_ratios_order,
+                         const mluOpTensorDescriptor_t output_desc,
+                         void* output,
+                         const mluOpTensorDescriptor_t var_desc,
+                         void* var);
+};
 const std::map<const std::string, std::pair<std::vector<int>, std::vector<int>>>
     TransPermMap = {
         // trans_mode, (forward_perm, backward_perm)
@@ -2354,8 +2398,8 @@ inline void SetMLUTransposePerm(const framework::DDim& dims,
 template <typename T>
 inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
                                    const std::vector<int> perm,
-                                   const Tensor* transformed_input,
-                                   Tensor* transformed_output,
+                                   const phi::DenseTensor* transformed_input,
+                                   phi::DenseTensor* transformed_output,
                                    bool need_reshape_or_alloc) {
   const int dim_size = perm.size();
   if (need_reshape_or_alloc) {
@@ -2384,7 +2428,7 @@ inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
 template <typename T>
 inline void FillMLUTensorWithHostValue(const ExecutionContext& ctx,
                                        T value,
-                                       Tensor* out) {
+                                       phi::DenseTensor* out) {
   MLUCnnlTensorDesc out_desc(*out);
   MLUCnnl::Fill(
       ctx, CNNL_POINTER_MODE_HOST, &value, out_desc.get(), GetBasePtr(out));

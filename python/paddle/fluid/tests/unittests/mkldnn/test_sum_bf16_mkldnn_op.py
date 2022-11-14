@@ -15,16 +15,15 @@
 import unittest
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
 from paddle import enable_static
 import numpy as np
-import paddle.fluid.op as fluid_op
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestSumBF16MKLDNN(TestSumOp):
-
     def setUp(self):
         self.op_type = "sum"
         self.use_mkldnn = True

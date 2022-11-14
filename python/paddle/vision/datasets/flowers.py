@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import io
 import tarfile
 import numpy as np
 from PIL import Image
@@ -107,44 +106,57 @@ class Flowers(Dataset):
                 # <class 'paddle.Tensor'> [3, 64, 96] [1]
     """
 
-    def __init__(self,
-                 data_file=None,
-                 label_file=None,
-                 setid_file=None,
-                 mode='train',
-                 transform=None,
-                 download=True,
-                 backend=None):
-        assert mode.lower() in ['train', 'valid', 'test'], \
-                "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+    def __init__(
+        self,
+        data_file=None,
+        label_file=None,
+        setid_file=None,
+        mode='train',
+        transform=None,
+        download=True,
+        backend=None,
+    ):
+        assert mode.lower() in [
+            'train',
+            'valid',
+            'test',
+        ], "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
 
         if backend is None:
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
                 "Expected backend are one of ['pil', 'cv2'], but got {}".format(
-                    backend))
+                    backend
+                )
+            )
         self.backend = backend
 
         flag = MODE_FLAG_MAP[mode.lower()]
 
         if not data_file:
-            assert download, "data_file is not set and downloading automatically is disabled"
-            data_file = _check_exists_and_download(data_file, DATA_URL,
-                                                   DATA_MD5, 'flowers',
-                                                   download)
+            assert (
+                download
+            ), "data_file is not set and downloading automatically is disabled"
+            data_file = _check_exists_and_download(
+                data_file, DATA_URL, DATA_MD5, 'flowers', download
+            )
 
         if not label_file:
-            assert download, "label_file is not set and downloading automatically is disabled"
-            label_file = _check_exists_and_download(label_file, LABEL_URL,
-                                                    LABEL_MD5, 'flowers',
-                                                    download)
+            assert (
+                download
+            ), "label_file is not set and downloading automatically is disabled"
+            label_file = _check_exists_and_download(
+                label_file, LABEL_URL, LABEL_MD5, 'flowers', download
+            )
 
         if not setid_file:
-            assert download, "setid_file is not set and downloading automatically is disabled"
-            setid_file = _check_exists_and_download(setid_file, SETID_URL,
-                                                    SETID_MD5, 'flowers',
-                                                    download)
+            assert (
+                download
+            ), "setid_file is not set and downloading automatically is disabled"
+            setid_file = _check_exists_and_download(
+                setid_file, SETID_URL, SETID_MD5, 'flowers', download
+            )
 
         self.transform = transform
 

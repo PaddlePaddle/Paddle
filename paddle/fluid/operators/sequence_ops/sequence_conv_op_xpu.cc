@@ -19,7 +19,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class SequenceConvXPUKernel : public framework::OpKernel<T> {
@@ -27,7 +27,7 @@ class SequenceConvXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
     auto* out = context.Output<LoDTensor>("Out");
-    auto filter = *context.Input<Tensor>("Filter");
+    auto filter = *context.Input<phi::DenseTensor>("Filter");
 
     out->mutable_data<T>(context.GetPlace());
 
@@ -161,9 +161,10 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
     auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* filter_g = context.Output<Tensor>(framework::GradVarName("Filter"));
+    auto* filter_g =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
     auto* in = context.Input<LoDTensor>("X");
-    auto* filter = context.Input<Tensor>("Filter");
+    auto* filter = context.Input<phi::DenseTensor>("Filter");
 
     int context_start = context.Attr<int>("contextStart");
     int context_length = context.Attr<int>("contextLength");

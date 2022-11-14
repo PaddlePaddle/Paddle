@@ -12,33 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import argparse
 import os
 import sys
-import signal
-import time
-import socket
-from contextlib import closing
-from six import string_types
-import math
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-import paddle.fluid.unique_name as nameGen
-from paddle.fluid import core
-import unittest
 import pickle
-from multiprocessing import Process
 import paddle.fluid.layers as layers
-from functools import reduce
 import test_collective_api_base as test_base
 
 paddle.enable_static()
 
 
 class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
@@ -61,29 +46,30 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(
-                device_id)  #if args.use_gpu else fluid.CPUPlace()
+                device_id
+            )  # if args.use_gpu else fluid.CPUPlace()
         elif args['backend'] == 'bkcl':
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = fluid.XPUPlace(device_id)
         else:
             place = fluid.CPUPlace()
-        indata = test_base.create_test_data(shape=(10, 1000),
-                                            dtype=args["dtype"],
-                                            seed=os.getpid())
-        assert args[
-            'static_mode'] == 1, "collective_allgather_api only support static mode"
-        result = self.get_model(train_prog,
-                                startup_prog,
-                                rank,
-                                dtype=args["dtype"])
+        indata = test_base.create_test_data(
+            shape=(10, 1000), dtype=args["dtype"], seed=os.getpid()
+        )
+        assert (
+            args['static_mode'] == 1
+        ), "collective_allgather_api only support static mode"
+        result = self.get_model(
+            train_prog, startup_prog, rank, dtype=args["dtype"]
+        )
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         fetch_list = []
         for elem in result:
             fetch_list.append(elem.name)
-        out = exe.run(train_prog,
-                      feed={'tindata': indata},
-                      fetch_list=fetch_list)
+        out = exe.run(
+            train_prog, feed={'tindata': indata}, fetch_list=fetch_list
+        )
         sys.stdout.buffer.write(pickle.dumps(out))
 
 

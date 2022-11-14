@@ -92,8 +92,7 @@ void TemporalShiftKernel(const Context& dev_ctx,
   auto* input = &x;
   auto* output = out;
   int t = seg_num;
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
 
   const int nt = input->dims()[0];
   const int c =

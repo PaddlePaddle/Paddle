@@ -206,7 +206,7 @@ void InitTensorWithTensor(TensorObject* self,
 }
 
 void InitTensorWithFrameworkTensor(TensorObject* self,
-                                   const framework::Tensor& src,
+                                   const phi::DenseTensor& src,
                                    const paddle::platform::Place& place,
                                    const std::string& name) {
   self->tensor.set_name(name);
@@ -382,7 +382,7 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
   InitTensorWithNumpyValue(py_tensor_ptr, numpy_value, place, zero_copy);
 }
 
-// initialize Tensor by Tensor or framework::Tensor (mix args and
+// initialize Tensor by Tensor or phi::DenseTensor (mix args and
 // kwargs) automatically.
 void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
                             std::unordered_map<std::string, PyObject*> kws_map,
@@ -428,7 +428,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
     InitTensorWithTensor(py_tensor_ptr, src_tensor, place, act_name);
   } else {
     // init by framework tensor
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     if (kw_order_map["value"] <= args_num) {
       src_tensor = CastPyArg2FrameworkTensor(
           PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
@@ -438,8 +438,8 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
         src_tensor = CastPyArg2FrameworkTensor(kws_map["value"], 0);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "The first expected arguments is {value: framework::Tensor}, "
-            "but could not parse the first argument {value: framework::Tensor} "
+            "The first expected arguments is {value: phi::DenseTensor}, "
+            "but could not parse the first argument {value: phi::DenseTensor} "
             "successfully. "
             "Please check your input first and make sure you are on the right "
             "way."));
@@ -687,7 +687,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "Could not parse the first keyword argument successfully, "
               "the first keyword argument is value, but it should be PyArray "
-              "or Tensor or framework::Tensor. "
+              "or Tensor or phi::DenseTensor. "
               "Please check your input first and make sure you are on the "
               "right way."));
         }
@@ -753,7 +753,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "We not only support construct Tensor from numpy value "
-            "or tensor(Tensor or framework::Tensor) "
+            "or tensor(Tensor or phi::DenseTensor) "
             "with python kwargs by this initializer, "
             "but also even support dtype to init a empty Tensor. "
             "Please check your input first and make sure you call the existed "
@@ -789,10 +789,10 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "We support construct Tensor from numpy value "
-          "or tensor(Tensor or framework::Tensor) "
+          "or tensor(Tensor or phi::DenseTensor) "
           "with python args and kwargs by this initializer, "
           "but the first argument should be PyArray or Tensor or "
-          "framework::Tensor. "
+          "phi::DenseTensor. "
           "Please check your input first and make sure you call the existed "
           "constructor."));
     }

@@ -77,9 +77,9 @@ void MLUOpTensorKernel(const framework::ExecutionContext& ctx,
                     platform::errors::Unavailable(
                         "This kernel of MLU only support ADD, SUB, MUL."));
 
-  auto* x = ctx.Input<Tensor>("X");
-  auto* y = ctx.Input<Tensor>("Y");
-  auto* out = ctx.Output<Tensor>("Out");
+  auto* x = ctx.Input<phi::DenseTensor>("X");
+  auto* y = ctx.Input<phi::DenseTensor>("Y");
+  auto* out = ctx.Output<phi::DenseTensor>("Out");
   out->mutable_data<T>(ctx.GetPlace());
 
   int axis = ctx.Attr<int>("axis");
@@ -186,9 +186,9 @@ inline void MLUBinary<POW>(const framework::ExecutionContext& ctx,
 
 template <BINARY_FUNCTOR Functor, typename T>
 void MLUBinaryOp(const framework::ExecutionContext& ctx) {
-  auto* x = ctx.Input<Tensor>("X");
-  auto* y = ctx.Input<Tensor>("Y");
-  auto* out = ctx.Output<Tensor>("Out");
+  auto* x = ctx.Input<phi::DenseTensor>("X");
+  auto* y = ctx.Input<phi::DenseTensor>("Y");
+  auto* out = ctx.Output<phi::DenseTensor>("Out");
   out->mutable_data<T>(ctx.GetPlace());
 
   int axis = ctx.Attr<int>("axis");
@@ -259,8 +259,8 @@ inline void MLUUnary<RECIPROCAL>(const framework::ExecutionContext& ctx,
 
 template <UNARY_FUNCTOR Functor, typename Tin, typename Tout = Tin>
 void MLUUnaryOp(const framework::ExecutionContext& ctx) {
-  auto* x = ctx.Input<Tensor>("X");
-  auto* out = ctx.Output<Tensor>("Out");
+  auto* x = ctx.Input<phi::DenseTensor>("X");
+  auto* out = ctx.Output<phi::DenseTensor>("Out");
 
   out->mutable_data<Tout>(ctx.GetPlace());
 
@@ -283,11 +283,11 @@ enum MINMAX_GRAD_FUNCTOR {
 };
 template <MINMAX_GRAD_FUNCTOR Functor, typename Tin, typename Tout = Tin>
 void MLUMinMaxGradHelper(const framework::ExecutionContext& ctx) {
-  auto* x = ctx.Input<Tensor>("X");
-  auto* y = ctx.Input<Tensor>("Y");
-  auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-  auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-  auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+  auto* x = ctx.Input<phi::DenseTensor>("X");
+  auto* y = ctx.Input<phi::DenseTensor>("Y");
+  auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+  auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+  auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
   int axis = ctx.Attr<int>("axis");
 
   const auto& x_dims = x->dims();

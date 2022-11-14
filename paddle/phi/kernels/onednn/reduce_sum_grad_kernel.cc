@@ -39,9 +39,6 @@ void SumGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sum_grad,
-                   OneDNN,
-                   ALL_LAYOUT,
-                   phi::SumGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    sum_grad, OneDNN, ONEDNN, phi::SumGradKernel, float, phi::dtype::bfloat16) {
+}

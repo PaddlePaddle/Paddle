@@ -30,7 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
   case (dim): {                        \
@@ -67,12 +67,12 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(ctx.GetPlace()),
         true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
-    auto* indices = ctx.Output<Tensor>("Indices");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* indices = ctx.Output<phi::DenseTensor>("Indices");
     int k = static_cast<int>(ctx.Attr<int>("k"));
 
-    auto* k_t = ctx.Input<Tensor>("K");
+    auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
       Tensor k_host;
       framework::TensorCopySync(*k_t, platform::CPUPlace(), &k_host);
@@ -127,7 +127,8 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
                                                         input_height));
         default:
           PADDLE_THROW(platform::errors::Fatal(
-              "the input k has error in the topk cuda kernel."));
+              "the input k has error when use getMaxLength function to get the "
+              "maxLength."));
       });
       default:
         PADDLE_THROW(platform::errors::Unavailable(
@@ -144,10 +145,12 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(context.GetPlace()),
         true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
-    auto* x = context.Input<Tensor>("X");
-    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* indices = context.Input<Tensor>("Indices");
-    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* indices = context.Input<phi::DenseTensor>("Indices");
+    auto* x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     T* x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
     const T* out_grad_data = out_grad->data<T>();

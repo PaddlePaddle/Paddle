@@ -19,10 +19,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
-static void CumsumImp(const Tensor& input,
-                      Tensor* output,
+static void CumsumImp(const phi::DenseTensor& input,
+                      phi::DenseTensor* output,
                       const framework::NPUAttributeMap& attr_input,
                       const framework::ExecutionContext& ctx) {
   auto stream =
@@ -65,8 +65,8 @@ template <typename DeviceContext, typename T>
 class CumSumNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     int axis = ctx.Attr<int>("axis");
     bool exclusive = ctx.Attr<bool>("exclusive");
     bool reverse = ctx.Attr<bool>("reverse");

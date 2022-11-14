@@ -22,8 +22,8 @@ namespace paddle {
 namespace operators {
 
 using platform::PADDLE_CUDA_NUM_THREADS;
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 __global__ void CvmComputeKernel(const bool use_cvm,
@@ -131,11 +131,11 @@ class CVMGradCUDAKernel : public framework::OpKernel<T> {
     auto* dx = context.Output<LoDTensor>(framework::GradVarName("X"));
     T* dx_data = dx->mutable_data<T>(context.GetPlace());
 
-    const Tensor* cvm = context.Input<Tensor>("CVM");
+    const phi::DenseTensor* cvm = context.Input<phi::DenseTensor>("CVM");
     const T* cvm_data = cvm->data<T>();
 
     const auto* dOut =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Y"));
+        context.Input<phi::DenseTensor>(framework::GradVarName("Y"));
     const T* dout_data = dOut->data<T>();
 
     auto use_cvm = context.Attr<bool>("use_cvm");

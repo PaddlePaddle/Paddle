@@ -18,7 +18,7 @@ namespace paddle {
 namespace imperative {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-void Group::DivNRanks(framework::Tensor *tensor,
+void Group::DivNRanks(phi::DenseTensor *tensor,
                       int64_t nranks,
                       const platform::DeviceContext &context) {
 #ifdef PADDLE_WITH_HIP

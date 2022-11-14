@@ -29,18 +29,17 @@ template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-using framework::Tensor;
 
 static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   std::vector<int> res;
-  int rank = ctx.Input<Tensor>("X")->dims().size();
+  int rank = ctx.Input<phi::DenseTensor>("X")->dims().size();
   if (ctx.HasInput("Offsets")) {
     PADDLE_ENFORCE_EQ(ctx.Attr<std::vector<int>>("offsets").empty(),
                       true,
                       platform::errors::InvalidArgument(
                           "Input 'Offsets' and attribute 'offsets' "
                           "should not be used at the same time for CropOp."));
-    const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
+    const auto* offsets_tensor = ctx.Input<phi::DenseTensor>("Offsets");
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(),
                       1,
                       platform::errors::InvalidArgument(
@@ -57,7 +56,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
                                           offsets_tensor->dims()[0],
                                           rank));
     const int* offsets_data;
-    framework::Tensor cpu_tmp_tensor;
+    phi::DenseTensor cpu_tmp_tensor;
     if (platform::is_cpu_place(offsets_tensor->place())) {
       offsets_data = offsets_tensor->data<int>();
     } else {
@@ -83,8 +82,8 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
 
 template <typename DeviceContext, typename T, size_t D>
 void CropFunction(const framework::ExecutionContext& context) {
-  auto* x = context.Input<Tensor>("X");
-  auto* out = context.Output<Tensor>("Out");
+  auto* x = context.Input<phi::DenseTensor>("X");
+  auto* out = context.Output<phi::DenseTensor>("Out");
   auto out_dims = out->dims();
   if (out_dims[0] == -1) {
     out_dims[0] = x->dims()[0];
@@ -115,7 +114,7 @@ template <typename DeviceContext, typename T>
 class CropKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    int rank = context.Input<Tensor>("X")->dims().size();
+    int rank = context.Input<phi::DenseTensor>("X")->dims().size();
     PADDLE_ENFORCE_GE(
         rank,
         1,
@@ -155,10 +154,11 @@ class CropKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename T, size_t D>
 void CropGradFunction(const framework::ExecutionContext& context) {
-  auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-  auto* x = context.Input<Tensor>("X");
+  auto* d_x = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+  auto* x = context.Input<phi::DenseTensor>("X");
   if (d_x != nullptr) {
-    auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* d_out =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     d_x->mutable_data<T>(x->dims(), context.GetPlace());
     auto offsets = GetOffsets(context);
     Eigen::array<std::pair<int64_t, int64_t>, D> paddings;
@@ -180,7 +180,9 @@ class CropGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     size_t rank =
-        context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"))
+            ->dims()
+            .size();
     PADDLE_ENFORCE_GE(
         rank,
         1,

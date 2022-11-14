@@ -20,6 +20,7 @@
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
+#include "paddle/phi/core/compat/op_utils.h"
 
 DECLARE_bool(enable_api_kernel_fallback);
 
@@ -43,6 +44,17 @@ uint32_t KernelKey::Hash::operator()(const KernelKey& key) const {
 KernelFactory& KernelFactory::Instance() {
   static KernelFactory g_op_kernel_factory;
   return g_op_kernel_factory;
+}
+
+bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
+  if (deprecated_op_names.find(op_type) == deprecated_op_names.end()) {
+    if (phi::OpUtilsMap::Instance().Contains(op_type)) {
+      return true;
+    } else if (kernels_.find(op_type) != kernels_.end()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
@@ -133,10 +145,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_key,
           kernel_name));
 
-  if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
-      || paddle::platform::is_in_xpu_black_list(TransToFluidOpName(kernel_name))
-
+  VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
+  if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
+      paddle::platform::is_in_xpu_black_list(TransToFluidOpName(kernel_name))
+#else
+  if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #endif
   ) {
     // Fallback CPU backend

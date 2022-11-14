@@ -26,7 +26,6 @@ paddle.enable_static()
 
 
 class TestSeedOpFixSeed(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "seed"
@@ -42,7 +41,6 @@ class TestSeedOpFixSeed(OpTest):
 
 
 class TestSeedOpDiffSeed(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "seed"

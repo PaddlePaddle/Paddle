@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -50,12 +50,12 @@ template <typename DeviceContext, typename T, typename AttrType = T>
 class SmoothL1LossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("X");
-    auto* in1 = context.Input<Tensor>("Y");
-    auto* in2 = context.Input<Tensor>("InsideWeight");
-    auto* in3 = context.Input<Tensor>("OutsideWeight");
-    auto* out0 = context.Output<Tensor>("Diff");
-    auto* out1 = context.Output<Tensor>("Out");
+    auto* in0 = context.Input<phi::DenseTensor>("X");
+    auto* in1 = context.Input<phi::DenseTensor>("Y");
+    auto* in2 = context.Input<phi::DenseTensor>("InsideWeight");
+    auto* in3 = context.Input<phi::DenseTensor>("OutsideWeight");
+    auto* out0 = context.Output<phi::DenseTensor>("Diff");
+    auto* out1 = context.Output<phi::DenseTensor>("Out");
 
     out0->mutable_data<T>(context.GetPlace());
     out1->mutable_data<T>(context.GetPlace());
@@ -121,10 +121,10 @@ template <typename DeviceContext, typename T, typename AttrType = T>
 class SmoothL1LossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("InsideWeight");
-    auto* in1 = context.Input<Tensor>("OutsideWeight");
-    auto* in2 = context.Input<Tensor>("Diff");
-    auto* og = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* in0 = context.Input<phi::DenseTensor>("InsideWeight");
+    auto* in1 = context.Input<phi::DenseTensor>("OutsideWeight");
+    auto* in2 = context.Input<phi::DenseTensor>("Diff");
+    auto* og = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto sigma = static_cast<T>(context.Attr<AttrType>("sigma"));
     T sigma2 = sigma * sigma;
     bool has_weight = (in0 != nullptr) && (in1 != nullptr);
@@ -165,8 +165,8 @@ class SmoothL1LossGradKernel : public framework::OpKernel<T> {
                          Eigen::array<int, 2>({{1, static_cast<int>(cols)}})) *
                      weights * diff_mat_view;
 
-    auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* out1 = context.Output<Tensor>(framework::GradVarName("Y"));
+    auto* out0 = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* out1 = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
     if (out0) {
       out0->mutable_data<T>(context.GetPlace());

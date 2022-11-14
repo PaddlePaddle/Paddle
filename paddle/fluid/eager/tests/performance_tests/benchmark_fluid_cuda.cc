@@ -60,7 +60,7 @@ TEST(Benchmark, FluidScaleCUDA) {
     std::vector<float> src_data(128, 5.0);
     std::vector<int64_t> dims = {2, 4, 4, 4};
 
-    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* x_tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
     x_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
 
@@ -123,7 +123,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
     auto* dev_ctx = dynamic_cast<phi::GPUContext*>(pool.Get(place));
     auto stream = dev_ctx->stream();
 
-    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* x_tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
     x_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
@@ -133,7 +133,7 @@ TEST(Benchmark, FluidMatmulCUDA) {
                          sizeof(float) * x_src_data.size(),
                          stream);
 
-    auto* y_tensor = Y->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* y_tensor = Y->MutableVar()->GetMutable<phi::DenseTensor>();
     y_tensor->Resize(phi::make_ddim(dims));
     auto* mutable_y = y_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
@@ -193,7 +193,7 @@ TEST(Benchmark, FluidMLPCUDA) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
 
-    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* x_tensor = X->MutableVar()->GetMutable<phi::DenseTensor>();
     x_tensor->Resize(phi::make_ddim(x_dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place,
@@ -213,7 +213,7 @@ TEST(Benchmark, FluidMLPCUDA) {
           new imperative::VarBase(true, "B"));
       B->SetOverridedStopGradient(false);
 
-      auto* w_tensor = W->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto* w_tensor = W->MutableVar()->GetMutable<phi::DenseTensor>();
       w_tensor->Resize(phi::make_ddim(w_dims));
       auto* mutable_w = w_tensor->mutable_data<float>(place);
       paddle::memory::Copy(place,
@@ -223,7 +223,7 @@ TEST(Benchmark, FluidMLPCUDA) {
                            sizeof(float) * w_src_data.size(),
                            stream);
 
-      auto* b_tensor = B->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto* b_tensor = B->MutableVar()->GetMutable<phi::DenseTensor>();
       b_tensor->Resize(phi::make_ddim(b_dims));
       auto* mutable_b = b_tensor->mutable_data<float>(place);
       paddle::memory::Copy(place,

@@ -17,13 +17,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/scope_guard.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
@@ -31,12 +32,13 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
-    const Tensor* x = ctx.Input<Tensor>("X");
-    const Tensor* y = ctx.Input<Tensor>("Y");
-    const Tensor* bias = ctx.Input<Tensor>("Bias");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* y = ctx.Input<phi::DenseTensor>("Y");
+    const phi::DenseTensor* bias = ctx.Input<phi::DenseTensor>("Bias");
 
-    Tensor* out = ctx.Output<Tensor>("Out");
-    Tensor* reserve_space = ctx.Output<Tensor>("ReserveSpace");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
+    phi::DenseTensor* reserve_space =
+        ctx.Output<phi::DenseTensor>("ReserveSpace");
 
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
@@ -61,6 +63,9 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
     if (std::is_same<T, paddle::platform::float16>::value) {
       mat_type = CUDA_R_16F;
+    }
+    if (std::is_same<T, platform::bfloat16>::value) {
+      mat_type = CUDA_R_16BF;
     }
     if (std::is_same<T, double>::value) {
       mat_type = CUDA_R_64F;
@@ -322,14 +327,15 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
   static void ComputeImpl(const framework::ExecutionContext& ctx) {
     using Trait = FusedGEMMGradTrait<TransX, TransY>;
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    const Tensor* dout = ctx.Input<Tensor>("DOut");
-    const Tensor* x = ctx.Input<Tensor>("X");
-    const Tensor* y = ctx.Input<Tensor>("Y");
-    const Tensor* reserve_space = ctx.Input<Tensor>("ReserveSpace");
+    const phi::DenseTensor* dout = ctx.Input<phi::DenseTensor>("DOut");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* y = ctx.Input<phi::DenseTensor>("Y");
+    const phi::DenseTensor* reserve_space =
+        ctx.Input<phi::DenseTensor>("ReserveSpace");
 
-    Tensor* dx = ctx.Output<Tensor>("DX");
-    Tensor* dy = ctx.Output<Tensor>("DY");
-    Tensor* dbias = ctx.Output<Tensor>("DBias");
+    phi::DenseTensor* dx = ctx.Output<phi::DenseTensor>("DX");
+    phi::DenseTensor* dy = ctx.Output<phi::DenseTensor>("DY");
+    phi::DenseTensor* dbias = ctx.Output<phi::DenseTensor>("DBias");
 
     std::string activation_grad = ctx.Attr<std::string>("activation_grad");
 
@@ -351,6 +357,9 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
     if (std::is_same<T, paddle::platform::float16>::value) {
       mat_type = CUDA_R_16F;
+    }
+    if (std::is_same<T, platform::bfloat16>::value) {
+      mat_type = CUDA_R_16BF;
     }
     if (std::is_same<T, double>::value) {
       mat_type = CUDA_R_64F;
@@ -686,12 +695,14 @@ REGISTER_OP_CUDA_KERNEL(
     fused_gemm_epilogue,
     ops::FusedGemmEpilogueKernel<phi::GPUContext, float>,
     ops::FusedGemmEpilogueKernel<phi::GPUContext, double>,
-    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::float16>);
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::bfloat16>);
 
 REGISTER_OP_CUDA_KERNEL(
     fused_gemm_epilogue_grad,
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext, float>,
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext, double>,
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext,
-                                     paddle::platform::float16>);
+                                     paddle::platform::float16>,
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::bfloat16>);
 #endif

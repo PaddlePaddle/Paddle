@@ -15,20 +15,15 @@
 import unittest
 import random
 import numpy as np
-import os
-import shutil
 
 import paddle
 from paddle.fluid import core
-import datetime
-from datetime import timedelta
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
 class TestProcessGroupFp32(unittest.TestCase):
-
     def setUp(self):
         paddle.seed(2022)
         random.seed(2022)
@@ -44,8 +39,9 @@ class TestProcessGroupFp32(unittest.TestCase):
             nranks = ParallelEnv().nranks
             rank = ParallelEnv().local_rank
             is_master = True if rank == 0 else False
-            store = paddle.fluid.core.TCPStore("127.0.0.1", 6272, is_master,
-                                               nranks, 30)
+            store = paddle.fluid.core.TCPStore(
+                "127.0.0.1", 6272, is_master, nranks, 30
+            )
             place = paddle.fluid.core.CPUPlace()
             pg = paddle.fluid.core.ProcessGroupGloo(store, rank, nranks, place)
 
@@ -139,8 +135,9 @@ class TestProcessGroupFp32(unittest.TestCase):
                 task = pg.all_gather(tensor_y, tensor_out)
                 task.wait()
             out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
-            out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2],
-                                 [out_shape[0]])
+            out_2 = paddle.slice(
+                tensor_out, [0], [out_shape[0] // 2], [out_shape[0]]
+            )
             assert np.array_equal(tensor_x, out_1)
             assert np.array_equal(tensor_y, out_2)
             print("test allgather api ok\n")
@@ -179,8 +176,9 @@ class TestProcessGroupFp32(unittest.TestCase):
                 task = pg.scatter(tensor_x, tensor_y, 0)
                 task.wait()
             out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
-            out2 = paddle.slice(tensor_x, [0], [self.shape[0]],
-                                [self.shape[0] * 2])
+            out2 = paddle.slice(
+                tensor_x, [0], [self.shape[0]], [self.shape[0] * 2]
+            )
             if pg.rank() == 0:
                 assert np.array_equal(tensor_y, out1)
             else:

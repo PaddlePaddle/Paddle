@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestHybridParallelInferenceHelper(TestMultipleGpus):
-
     def test_hybrid_parallel_inference_helper(self):
         self.run_mnist_2gpu('hybrid_parallel_inference_helper.py')
 

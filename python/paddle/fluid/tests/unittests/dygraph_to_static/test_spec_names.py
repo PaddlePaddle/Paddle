@@ -14,14 +14,12 @@
 
 import paddle
 from paddle.nn import Layer
-import numpy as np
 import unittest
 
 
 class Net(Layer):
-
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
         self.fc = paddle.nn.Linear(16, 3)
 
     def forward(self, x, y, m, n):
@@ -37,7 +35,6 @@ class Net(Layer):
 
 
 class TestArgsSpecName(unittest.TestCase):
-
     def read_from_dataset(self):
         self.x = paddle.randn([4, 2, 8])
         self.y = paddle.randn([4, 2, 8])

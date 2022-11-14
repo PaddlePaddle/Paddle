@@ -40,7 +40,7 @@ USE_OP(cinn_instruction_run);
 namespace paddle {
 namespace operators::details {
 
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using framework::OpDesc;
 using framework::ParallelExecutor;
 using framework::ProgramDesc;

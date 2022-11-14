@@ -23,7 +23,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class MatMulXPUKernel : public framework::OpKernel<T> {
@@ -31,9 +30,9 @@ class MatMulXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* y = context.Input<framework::Tensor>("Y");
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* y = context.Input<phi::DenseTensor>("Y");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(context.GetPlace());
     bool trans_x = context.Attr<bool>("transpose_X");
     bool trans_y = context.Attr<bool>("transpose_Y");
@@ -86,12 +85,11 @@ class MatMulGradXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto x = *context.Input<framework::Tensor>("X");
-    auto y = *context.Input<framework::Tensor>("Y");
-    auto dout =
-        *context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* dx = context.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* dy = context.Output<framework::Tensor>(framework::GradVarName("Y"));
+    auto x = *context.Input<phi::DenseTensor>("X");
+    auto y = *context.Input<phi::DenseTensor>("Y");
+    auto dout = *context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");
     float alpha = static_cast<T>(context.Attr<float>("alpha"));

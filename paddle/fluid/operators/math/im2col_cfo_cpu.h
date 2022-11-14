@@ -27,11 +27,11 @@ namespace math {
  * Support dilation, stride and padding.
  */
 template <typename T>
-inline void im2col_common(const framework::Tensor& im,
+inline void im2col_common(const phi::DenseTensor& im,
                           const std::vector<int>& dilation,
                           const std::vector<int>& stride,
                           const std::vector<int>& padding,
-                          framework::Tensor* col,
+                          phi::DenseTensor* col,
                           const DataLayout data_layout = DataLayout::kNCHW) {
   int im_channels =
       (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
@@ -77,8 +77,8 @@ inline void im2col_common(const framework::Tensor& im,
  */
 template <typename T>
 inline void im2col_sh1sw1dh1dw1ph0pw0(
-    const framework::Tensor& im,
-    framework::Tensor* col,
+    const phi::DenseTensor& im,
+    phi::DenseTensor* col,
     const DataLayout data_layout = DataLayout::kNCHW) {
   int im_channels =
       (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
@@ -129,8 +129,8 @@ inline void im2col_sh1sw1dh1dw1ph0pw0(
  * and filter_width == 1 have a special implementation
  */
 template <typename T>
-inline void im2col_sh1sw1dh1dw1ph1pw1(const framework::Tensor& im,
-                                      framework::Tensor* col,
+inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
+                                      phi::DenseTensor* col,
                                       const DataLayout data_layout) {
   int im_channels =
       (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);

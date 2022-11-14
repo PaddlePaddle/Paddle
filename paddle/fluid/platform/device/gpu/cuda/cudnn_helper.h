@@ -341,7 +341,7 @@ class ScopedDropoutDescriptor {
                                              const platform::Place& place,
                                              bool initialized,
                                              float dropout_prob_,
-                                             framework::Tensor* dropout_state_,
+                                             phi::DenseTensor* dropout_state_,
                                              int seed,
                                              size_t state_size) {
     if (dropout_state_ == nullptr) {  // for no dropout or test
@@ -615,18 +615,6 @@ class ScopedActivationDescriptor {
   cudnnActivationDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedActivationDescriptor);
 };
-
-inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
-  use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
-#ifdef PADDLE_WITH_CUDA
-  if (use_cudnn) {
-    auto& dev_ctx = ctx.device_context<phi::GPUContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
-  }
-#endif
-  return use_cudnn;
-}
 
 #if CUDNN_VERSION >= 7001
 class ScopedCTCLossDescriptor {

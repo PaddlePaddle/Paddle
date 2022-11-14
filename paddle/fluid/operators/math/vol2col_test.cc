@@ -21,10 +21,10 @@ limitations under the License. */
 
 template <typename DeviceContext, typename Place>
 void testVol2col() {
-  paddle::framework::Tensor input;
-  paddle::framework::Tensor input_tmp;
-  paddle::framework::Tensor output;
-  paddle::framework::Tensor output_tmp;
+  phi::DenseTensor input;
+  phi::DenseTensor input_tmp;
+  phi::DenseTensor output;
+  phi::DenseTensor output_tmp;
 
   auto* place = new Place();
   DeviceContext* context = new DeviceContext(*place);
@@ -133,10 +133,10 @@ void testVol2col() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
 void testVol2col<phi::GPUContext, paddle::platform::CUDAPlace>() {
-  paddle::framework::Tensor input;
-  paddle::framework::Tensor input_tmp;
-  paddle::framework::Tensor output;
-  paddle::framework::Tensor output_tmp;
+  phi::DenseTensor input;
+  phi::DenseTensor input_tmp;
+  phi::DenseTensor output;
+  phi::DenseTensor output_tmp;
 
   auto* place = new paddle::platform::CUDAPlace();
   auto* context = new phi::GPUContext(*place);

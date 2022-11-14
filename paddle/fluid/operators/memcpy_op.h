@@ -50,8 +50,8 @@ class MemcpyFunctor {
                 const int dst_place_type)
       : out_(out), dev_ctx_(dev_ctx), dst_place_type_(dst_place_type) {}
 
-  void operator()(const framework::LoDTensor &lod_tensor) const {
-    auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
+  void operator()(const phi::DenseTensor &lod_tensor) const {
+    auto &out_tensor = *out_->GetMutable<phi::DenseTensor>();
 
     if (dst_place_type_ == DeviceType::CUDA_PINNED) {
       framework::TensorCopy(

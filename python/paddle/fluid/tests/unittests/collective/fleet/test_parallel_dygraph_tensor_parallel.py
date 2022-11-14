@@ -14,13 +14,11 @@
 
 import os
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestHybridParallel(TestMultipleGpus):
-
     def test_hybrid_parallel_mp_random(self):
         self.run_mnist_2gpu('hybrid_parallel_mp_random.py')
         self.run_mnist_2gpu('hybrid_parallel_mp_random.py', eager_mode=False)

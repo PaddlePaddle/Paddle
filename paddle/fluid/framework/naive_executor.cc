@@ -22,8 +22,11 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
+#endif
+#ifdef PADDLE_WITH_INFERENCE_NVTX
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
 namespace paddle {
@@ -48,12 +51,27 @@ void NaiveExecutor::Run() {
   platform::RegisterModelLayout(ops_, place_);
 #endif
   platform::ScopedFlushDenormal flush;
+#ifdef PADDLE_WITH_INFERENCE_NVTX
+  platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
+#endif
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
+#ifdef PADDLE_WITH_INFERENCE_NVTX
+    platform::CudaNvtxRangePush(op->Type(), platform::NvtxRangeColor::Green);
+#endif
     op->Run(*scope_, place_);
+#ifdef PADDLE_WITH_INFERENCE_NVTX
+    platform::CudaNvtxRangePop();
+#endif
+    if (hookfunc_) {
+      hookfunc_(op.get());
+    }
   }
+#ifdef PADDLE_WITH_INFERENCE_NVTX
+  platform::CudaNvtxRangePop();
+#endif
 }
 
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
@@ -115,7 +133,7 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc,
   }
 }
 
-LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
+phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(scope_,
                           platform::errors::PreconditionNotMet(
                               "Need to init scope in NaiveExecutor firstly."));
@@ -123,18 +141,12 @@ LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(
       var,
       platform::errors::NotFound("No variable [%s] in current scope.", name));
-  auto *tensor = const_cast<LoDTensor *>(&var->Get<LoDTensor>());
+  auto *tensor = const_cast<phi::DenseTensor *>(&var->Get<phi::DenseTensor>());
   return tensor;
 }
 
-void NaiveExecutor::CleanFeedFetchOps() {
-  std::vector<std::unique_ptr<OperatorBase>> ops;
-  for (auto &op : ops_) {
-    if (op->Type() != "feed" && op->Type() != "fetch") {
-      ops.emplace_back(std::move(op));
-    }
-  }
-  ops_.swap(ops);
+void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
+  hookfunc_ = hookfunc;
 }
 
 NaiveExecutor::~NaiveExecutor() {
@@ -146,7 +158,7 @@ NaiveExecutor::~NaiveExecutor() {
 }
 
 void NaiveExecutor::ResetTrtOps(int num) {
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
   for (auto &op : ops_) {
     if (op->Type() == "tensorrt_engine") {
       operators::TensorRTEngineOp *trtop =

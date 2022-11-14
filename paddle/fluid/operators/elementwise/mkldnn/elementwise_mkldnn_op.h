@@ -27,22 +27,85 @@ namespace operators {
 using dnnl::memory;
 using dnnl::primitive;
 using dnnl::stream;
-using framework::DataLayout;
-using framework::Tensor;
+using phi::DataLayout;
 
-inline std::vector<int64_t> CalculateBroadcastedDims(const Tensor* x,
-                                                     const Tensor* y) {
+inline std::vector<int64_t> CalculateBroadcastedDims(
+    const phi::DenseTensor* x, const phi::DenseTensor* y) {
   const auto src_tz = phi::vectorize(x->dims());
   const auto dst_tz = phi::vectorize(y->dims());
 
-  size_t j = 0;
   std::vector<int64_t> dst_tz_ex(src_tz.size(), 1);
-  for (size_t i = 0; i < src_tz.size(); ++i) {
-    dst_tz_ex[i] = (src_tz[i] != dst_tz[j]) ? 1 : dst_tz[j++];
-    if (j == dst_tz.size()) break;
+
+  if (src_tz.size() == dst_tz.size()) {
+    for (size_t i = 0; i < src_tz.size(); i++) {
+      dst_tz_ex[i] = (src_tz[i] == dst_tz[i]) ? dst_tz[i] : 1;
+    }
+  } else {
+    size_t j = 0;
+    for (size_t i = 0; i < src_tz.size(); i++) {
+      dst_tz_ex[i] = (src_tz[i] != dst_tz[j]) ? 1 : dst_tz[j++];
+      if (j == dst_tz.size()) break;
+    }
   }
 
   return dst_tz_ex;
+}
+
+inline void AddSubNonBroadcast(platform::ReorderMKLDNNHandler* reorder_handler,
+                               phi::DenseTensor* grad_tensor,
+                               const std::shared_ptr<dnnl::memory>& src_memory,
+                               const std::shared_ptr<dnnl::memory>& dst_memory,
+                               const std::vector<float>& scales) {
+  dnnl::primitive_attr reorder_attr;
+  reorder_attr.set_output_scales(0, scales);
+  auto reorder_p =
+      reorder_handler->AcquireReorder(dst_memory, src_memory, reorder_attr);
+
+  reorder_p->execute(platform::MKLDNNDeviceContext::tls().get_stream(),
+                     *src_memory,
+                     *dst_memory);
+}
+
+template <typename T>
+inline void BroadcastReduction(const framework::ExecutionContext& ctx,
+                               const dnnl::engine& onednn_engine,
+                               phi::DenseTensor* grad_tensor,
+                               const phi::DenseTensor* dout,
+                               const std::shared_ptr<dnnl::memory>& src_memory,
+                               std::shared_ptr<dnnl::memory> dst_memory,
+                               const std::vector<float>& scales,
+                               const bool is_sub) {
+  dnnl::primitive_attr broadcast_reduction_attr;
+
+  // Broadcasting
+  if (is_sub) {
+    dnnl::post_ops po;
+    po.append_eltwise(1.0f, dnnl::algorithm::eltwise_linear, scales[0], 0);
+    broadcast_reduction_attr.set_post_ops(po);
+  }
+
+  platform::ReductionMKLDNNHandler<T> reduction_handler(
+      dnnl::algorithm::reduction_sum,
+      0.0f,
+      0.0f,
+      onednn_engine,
+      ctx.GetPlace(),
+      dout,
+      grad_tensor,
+      CalculateBroadcastedDims(dout, grad_tensor),
+      broadcast_reduction_attr);
+  dst_memory = reduction_handler.AcquireDstMemory(grad_tensor);
+
+  auto reduction_p = reduction_handler.AcquireForwardPrimitive();
+  auto astream = platform::MKLDNNDeviceContext::tls().get_stream();
+  reduction_p->execute(astream,
+                       {
+                           {DNNL_ARG_SRC, *src_memory},
+                           {DNNL_ARG_DST, *dst_memory},
+                       });
+  astream.wait();
+  grad_tensor->set_mem_desc(dst_memory->get_desc().reshape(
+      phi::vectorize<int64_t>(grad_tensor->dims())));
 }
 
 template <typename T, dnnl::algorithm BINARY_OP>
@@ -60,9 +123,9 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* z = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* z = ctx.Output<phi::DenseTensor>("Out");
 
     float scale_x = ctx.Attr<float>("Scale_x");
     float scale_y = ctx.Attr<float>("Scale_y");
@@ -79,6 +142,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
                                              scale_x,
                                              scale_y,
                                              scale_o,
+                                             true,
                                              get_post_ops(ctx));
 
     // oneDNN's binary is optimized for broadcasting y into x, so in other case
@@ -127,7 +191,16 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     binary_prim->execute(astream, args);
     astream.wait();
 
-    z->set_mem_desc(dst_memory->get_desc());
+    if (handler.use_broadcasting_hack == false) {
+      platform::SetOutMemDescWithLogicalLayoutFusesSupport(
+          ctx, z, dst_memory->get_desc());
+    } else {
+      auto dims = dst_memory->get_desc().dims();
+      dims.insert(dims.begin(), x->dims()[0]);
+      dims[1] /= dims[0];
+      platform::SetOutMemDescWithLogicalLayoutFusesSupport(
+          ctx, z, dst_memory->get_desc().reshape(dims));
+    }
   }
 };
 
@@ -136,20 +209,18 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElemwiseGradKernel<T>::Compute(ctx);
-    using Tensor = framework::Tensor;
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Input<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Input<phi::DenseTensor>("Out");
 
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    VLOG(4) << "element sub: dx " << dx << " dy " << dy << " dout " << dout;
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     // oneDNN's binary is optimized for broadcasting y into x, so in other case
     // we have to swap tensors to achieve optimal performance
@@ -176,31 +247,23 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         framework::ToMKLDNNDataType(proto_type_dout),
         onednn_engine);
 
-    auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
+    auto reorder_src_memory = reorder_handler.AcquireSrcMemory(
         dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
+
+    std::shared_ptr<dnnl::memory> dst_memory;
+    std::shared_ptr<dnnl::memory> broadcast_src_memory = reorder_src_memory;
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (dx) {
-      std::shared_ptr<dnnl::memory> dst_memory;
-
       // elementwise_add & elementwise_sub
       if (BINARY_OP == dnnl::algorithm::binary_add ||
           BINARY_OP == dnnl::algorithm::binary_sub) {
-        dst_memory = reorder_handler.AcquireDstMemory(
-            dx, dout->mem_desc(), ctx.GetPlace());
-
-        dnnl::primitive_attr reorder_attr;
-        reorder_attr.set_output_scales(0, scales);
-        auto reorder_p = reorder_handler.AcquireReorder(
-            dst_memory, reorder_src_memory_p, reorder_attr);
-        platform::RecordEvent record_reorder(
-            "int_reorder",
-            platform::TracerEventType::UserDefined,
-            2,
-            platform::EventRole::kUniqueOp);
-
-        reorder_p->execute(astream, *reorder_src_memory_p, *dst_memory);
-
+        if (dout->dims() == dx->dims()) {
+          dst_memory = reorder_handler.AcquireDstMemory(
+              dx, dout->mem_desc(), ctx.GetPlace());
+          AddSubNonBroadcast(
+              &reorder_handler, dx, reorder_src_memory, dst_memory, scales);
+        }
       } else {  // elementwise_mul & elementwise_div
         platform::BinaryMKLDNNHandler<T> binary_handler(BINARY_OP,
                                                         axis,
@@ -211,7 +274,8 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
                                                         dx,
                                                         1.0f,
                                                         1.0f,
-                                                        1.0f);
+                                                        1.0f,
+                                                        false);
 
         const auto src_dout_memory = binary_handler.AcquireSrcMemory(dout);
         const auto src_y_memory = binary_handler.AcquireSecondSrcMemory(y);
@@ -228,37 +292,29 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       }
       astream.wait();
 
-      dx->set_mem_desc(dst_memory->get_desc());
+      if (dout->dims() != dx->dims()) {
+        BroadcastReduction<T>(ctx,
+                              onednn_engine,
+                              dx,
+                              dout,
+                              broadcast_src_memory,
+                              dst_memory,
+                              scales,
+                              BINARY_OP == dnnl::algorithm::binary_sub);
+      } else {
+        dx->set_mem_desc(dst_memory->get_desc());
+      }
     }
 
     if (dy) {
-      dnnl::primitive_attr broadcast_reduction_attr;
-      std::shared_ptr<dnnl::memory> broadcast_src_memory;
-      std::shared_ptr<dnnl::memory> dst_memory;
-
       // elementwise_add & elementwise_sub
       if (BINARY_OP == dnnl::algorithm::binary_add ||
           BINARY_OP == dnnl::algorithm::binary_sub) {
         if (dout->dims() == dy->dims()) {
-          auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+          dst_memory = reorder_handler.AcquireDstMemory(
               dy, dout->mem_desc(), ctx.GetPlace());
-
-          dnnl::primitive_attr reorder_attr;
-          reorder_attr.set_output_scales(0, scales);
-
-          auto reorder_p = reorder_handler.AcquireReorder(
-              reorder_dst_memory_p, reorder_src_memory_p, reorder_attr);
-          platform::RecordEvent record_reorder(
-              "int_reorder",
-              platform::TracerEventType::UserDefined,
-              2,
-              platform::EventRole::kUniqueOp);
-          reorder_p->execute(
-              astream, *reorder_src_memory_p, *reorder_dst_memory_p);
-
-          dst_memory = reorder_dst_memory_p;
-        } else {
-          broadcast_src_memory = reorder_src_memory_p;
+          AddSubNonBroadcast(
+              &reorder_handler, dy, reorder_src_memory, dst_memory, scales);
         }
       } else {  // elementwise_mul & elementwise_div
         std::unordered_map<int, dnnl::memory> args;
@@ -277,7 +333,8 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
             nullptr,
             1.0f,
             1.0f,
-            1.0f);
+            1.0f,
+            false);
 
         src_1_memory = binary_handler.AcquireSecondSrcMemory(x);
 
@@ -292,7 +349,8 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
               nullptr,
               1.0f,
               1.0f,
-              1.0f);
+              1.0f,
+              false);
 
           post_op_memory = post_op_binary_handler.AcquireSrcMemory(y);
 
@@ -311,6 +369,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
                                                -1.0f,
                                                1.0f,
                                                1.0f,
+                                               false,
                                                po);
 
           src_1_memory = binary_handler.AcquireSecondSrcMemory(out);
@@ -338,36 +397,14 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       astream.wait();
 
       if (dout->dims() != dy->dims()) {
-        // Broadcasting
-        if (BINARY_OP == dnnl::algorithm::binary_sub) {
-          dnnl::post_ops po;
-          po.append_eltwise(
-              1.0f, dnnl::algorithm::eltwise_linear, scales[0], 0);
-          broadcast_reduction_attr.set_post_ops(po);
-        }
-
-        platform::ReductionMKLDNNHandler<T> reduction_handler(
-            dnnl::algorithm::reduction_sum,
-            0.0f,
-            0.0f,
-            onednn_engine,
-            ctx.GetPlace(),
-            dout,
-            dy,
-            CalculateBroadcastedDims(dout, dy),
-            broadcast_reduction_attr);
-        dst_memory = reduction_handler.AcquireDstMemory(dy);
-
-        auto reduction_p = reduction_handler.AcquireForwardPrimitive();
-
-        reduction_p->execute(astream,
-                             {
-                                 {DNNL_ARG_SRC, *broadcast_src_memory},
-                                 {DNNL_ARG_DST, *dst_memory},
-                             });
-        astream.wait();
-        dy->set_mem_desc(dst_memory->get_desc().reshape(
-            phi::vectorize<int64_t>(dy->dims())));
+        BroadcastReduction<T>(ctx,
+                              onednn_engine,
+                              dy,
+                              dout,
+                              broadcast_src_memory,
+                              dst_memory,
+                              scales,
+                              BINARY_OP == dnnl::algorithm::binary_sub);
       } else {
         dy->set_mem_desc(dst_memory->get_desc());
       }

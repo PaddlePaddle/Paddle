@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 import paddle
 
 from test_collective_base import TestDistBase
@@ -22,7 +21,6 @@ paddle.enable_static()
 
 
 class TestCReduceOp(TestDistBase):
-
     def _setup_config(self):
         pass
 

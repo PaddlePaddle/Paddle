@@ -55,7 +55,7 @@ void MeanGradKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(mean_grad,
                    OneDNN,
-                   ALL_LAYOUT,
+                   ONEDNN,
                    phi::MeanGradKernel,
                    float,
                    phi::dtype::bfloat16) {}

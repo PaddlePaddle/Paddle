@@ -14,8 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
-#define PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
+#pragma once
 
 #include <cublas_v2.h>
 #include <cuda_fp16.h>
@@ -83,8 +82,9 @@ inline uint32_t getElementSize(nvinfer1::DataType t) noexcept {
     case nvinfer1::DataType::kBOOL:
     case nvinfer1::DataType::kINT8:
       return 1;
+    default:
+      return 0;
   }
-  return 0;
 }
 
 inline int64_t getWeightsSize(const nvinfer1::Weights& w,
@@ -220,5 +220,3 @@ inline nvinfer1::DataType fieldTypeToDataType(
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-
-#endif  // PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_

@@ -20,15 +20,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class GatherNdMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<Tensor>("X");
-    auto *index = ctx.Input<Tensor>("Index");
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *index = ctx.Input<phi::DenseTensor>("Index");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
 
     auto place = ctx.GetPlace();
     out->template mutable_data<T>(place);
@@ -71,10 +71,10 @@ template <typename T>
 class GatherNdGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *index = ctx.Input<Tensor>("Index");
-    auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *x = ctx.Input<Tensor>("X");
+    auto *index = ctx.Input<phi::DenseTensor>("Index");
+    auto *dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *x = ctx.Input<phi::DenseTensor>("X");
 
     if (dx->numel() == 0) return;
     if (index->numel() == 0) {
@@ -83,8 +83,8 @@ class GatherNdGradMLUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    framework::Tensor tmp_tensor(index->type());
-    framework::Tensor tmp_tensor2(dout->type());
+    phi::DenseTensor tmp_tensor(index->type());
+    phi::DenseTensor tmp_tensor2(dout->type());
     const auto index_dims = index->dims();
     if (index_dims.size() == 1) {
       tmp_tensor.ShareDataWith(*index);

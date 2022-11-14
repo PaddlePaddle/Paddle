@@ -40,7 +40,7 @@ class ScaleLoDTensorFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
                   const T* scales,
-                  framework::LoDTensor* seq) {
+                  phi::DenseTensor* seq) {
     const size_t level = 0;
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;
