@@ -1655,6 +1655,10 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "where") {
+#if !IS_TRT_VERSION_GE(8400)
+      VLOG(3) << "where is not supported when TensorRT < 8.4";
+      return false;
+#endif
       if (!with_dynamic_shape) {
         VLOG(3) << "the where op does not support static shape yet";
         return false;
