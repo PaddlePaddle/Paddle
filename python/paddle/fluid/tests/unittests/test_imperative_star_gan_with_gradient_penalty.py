@@ -437,7 +437,7 @@ def gradient_penalty(f, real, fake, no_grad_set, cfg):
     )
 
     epsilon = 1e-16
-    norm = paddle.sqrt(paddle.sum(paddle.square(gradient), dim=1) + epsilon)
+    norm = paddle.sqrt(paddle.sum(paddle.square(gradient), axis=1) + epsilon)
 
     gp = paddle.mean(paddle.square(norm - 1.0))
     return gp

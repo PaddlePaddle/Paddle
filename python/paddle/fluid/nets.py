@@ -388,7 +388,7 @@ def glu(input, dim=-1):
         input, 'input', ['float16', 'float32', 'float64'], "glu"
     )
     a, b = layers.split(input, num_or_sections=2, dim=dim)
-    act_b = paddle.nn.functionnal.sigmoid(x=b)
+    act_b = paddle.nn.functional.sigmoid(x=b)
     out = layers.elementwise_mul(x=a, y=act_b)
     return out
 

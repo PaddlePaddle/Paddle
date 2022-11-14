@@ -733,7 +733,7 @@ class TestCosTripleGradCheck(unittest.TestCase):
         dtype = np.float64
         x = layers.data('x', shape, False, dtype=dtype)
         x.persistable = True
-        y = layers.cos(x)
+        y = paddle.cos(x)
         x_arr = np.random.random(shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.triple_grad_check(
