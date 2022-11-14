@@ -46,7 +46,7 @@ class SimpleLayer(paddle.nn.Layer):
     @to_static()
     def forward(self, x, target=None):
         x = self.conv(x)
-        x = paddle.fluid.layers.flatten(x, axis=1)
+        x = paddle.flatten(x, 1, -1)
         if target is not None:
             if self.use_softmax:
                 x = paddle.fluid.layers.softmax(x)
