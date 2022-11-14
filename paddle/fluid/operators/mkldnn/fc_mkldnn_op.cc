@@ -29,7 +29,6 @@ using dnnl::stream;
 using framework::DDim;
 using framework::ExecutionContext;
 using LoDTensor = phi::DenseTensor;
-using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::MKLDNNGetDataType;
 using platform::to_void_cast;
@@ -211,10 +210,17 @@ class FCMKLDNNHandler
         *user_memory_p, *target_memory_p, attrs);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    reorder_p->execute(
-        astream,
-        {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
-    astream.wait();
+    {
+      platform::RecordEvent record_reorder(
+          "int_reorder",
+          platform::TracerEventType::UserDefined,
+          1,
+          platform::EventRole::kUniqueOp);
+      reorder_p->execute(
+          astream,
+          {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
+      astream.wait();
+    }
 
     return target_memory_p;
   }

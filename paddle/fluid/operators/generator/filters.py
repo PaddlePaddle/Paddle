@@ -102,12 +102,12 @@ def to_pascal_case(s):
 
 
 def to_input_name(s):
-    """find input variable name in api yaml for higher order backward api.
+    """find input variable name in op yaml for higher order backward op .
     x -> dx
     x -> d2x
     x -> d3x
 
-    NOTE: for first order backward api
+    NOTE: for first order backward op
     x -> x_grad
     is more common.
     """
@@ -137,16 +137,14 @@ def cartesian_prod_attrs(attrs):
     return combinations
 
 
-def cartesian_prod_mapping(api):
-    kernels = api["kernel"]["func"]
+def cartesian_prod_mapping(op):
+    kernels = op["kernel"]["func"]
     inputs = [
-        x["name"] for x in api["inputs"] if x["name"] in api["kernel"]["param"]
+        x["name"] for x in op["inputs"] if x["name"] in op["kernel"]["param"]
     ]
     inputs = [to_opmaker_name_cstr(input) for input in inputs]
-    attrs = cartesian_prod_attrs(api["attrs"])
-    outputs = [
-        to_opmaker_name_cstr(output["name"]) for output in api["outputs"]
-    ]
+    attrs = cartesian_prod_attrs(op["attrs"])
+    outputs = [to_opmaker_name_cstr(output["name"]) for output in op["outputs"]]
 
     def vec(items):
         return "{" + ', '.join(items) + "}"

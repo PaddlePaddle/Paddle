@@ -256,8 +256,7 @@ class MultiGRUHandler {
     auto* x_onednn_data = memory_p->get_data_handle();
     memset(x_onednn_data, 0, sizeof(T) * N_ * Ti_ * ICs[0]);
 
-    if (platform::GetMKLDNNFormat(gru_pds_[{0, L2R}]->src_desc()) ==
-        dnnl::memory::format_tag::ntc) {
+    if (isNTC(gru_pds_[{0, L2R}]->src_desc())) {
       reorderPPtoNTC(x_data, x_onednn_data, x_lod_, 0, L2R);
     } else {
       reorderPPtoTNC(x_data, x_onednn_data, x_lod_, 0, L2R);
@@ -601,16 +600,18 @@ class MultiGRUHandler {
   void reorderOutput(std::shared_ptr<dnnl::memory> mem, int layer) {
     auto* data = mem->get_data_handle();
     auto* hidden_data = to_void_cast(hidden_->mutable_data<Tout>(place_));
-    if (isNTC(layers_ - 1)) {
+
+    if (isNTC(gru_pds_[{layers_ - 1, L2R}]->dst_desc())) {
       reorderNTCtoPP(data, hidden_data, layers_ - 1);
     } else {
       reorderTNCtoPP(data, hidden_data, layers_ - 1);
     }
   }
 
-  bool isNTC(int layer) {
-    return (platform::GetMKLDNNFormat(gru_pds_[{layer, L2R}]->dst_desc()) ==
-            dnnl::memory::format_tag::ntc);
+  bool isNTC(const dnnl::memory::desc& md) {
+    auto ntc_md = dnnl::memory::desc(
+        md.dims(), md.data_type(), dnnl::memory::format_tag::ntc);
+    return md == ntc_md;
   }
 
   int getLayers() const { return layers_; }
