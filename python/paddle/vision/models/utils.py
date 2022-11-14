@@ -55,6 +55,7 @@ class IntermediateLayerGetter(nn.LayerDict):
     Examples:
         .. code-block:: python
 
+        >>> import paddle
         >>> m = paddle.vision.models.resnet18(pretrained=True)
         >>> # extract layer1 and layer3, giving as names `feat1` and feat2`
         >>> new_m = paddle.vision.models.utils.IntermediateLayerGetter(m,
