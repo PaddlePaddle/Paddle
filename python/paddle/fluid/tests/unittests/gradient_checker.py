@@ -207,7 +207,7 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     filted_idx, filted_dx = zip(*filted)
 
     for i in range(y_size):
-        _set_item(dy_t, i, 1, np_type)
+        _set_item(dy_t, i, 1, np_type, place)
 
         dx_res = exe.run(program, scope=scope, fetch_list=filted_dx)
 
@@ -220,7 +220,7 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
                     dx[dx_idx].shape, dtype=np_type
                 ).flatten()
 
-        _set_item(dy_t, i, 0, np_type)
+        _set_item(dy_t, i, 0, np_type, place)
 
     return jacobian
 
