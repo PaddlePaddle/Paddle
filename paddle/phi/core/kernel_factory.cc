@@ -103,9 +103,7 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
 }
 
 KernelResult KernelFactory::SelectKernelOrThrowError(
-    const std::string& kernel_name,
-    const KernelKey& const_kernel_key,
-    bool use_gpudnn) const {
+    const std::string& kernel_name, const KernelKey& const_kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(
       iter,
