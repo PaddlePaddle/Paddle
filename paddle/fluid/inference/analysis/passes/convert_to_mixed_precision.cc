@@ -573,7 +573,8 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(BlockID block_idx) {
         }
 
         VLOG(2) << " process output nodes:";
-        for (auto* out_node : op_node->outputs) {
+        auto outputs = op_node->outputs;
+        for (auto* out_node : outputs) {
           ProcessOutputNode(block_idx, out_node, to_type);
         }
       } else {
@@ -593,8 +594,10 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(BlockID block_idx) {
     // 3. check op not support fp16/bf16 or in blacklist.
     //      - add cast op if the input dtype is not fp32.
     else {  // NOLINT
-      VLOG(3) << "not to run fp16 op_type: " << op_type;
-      for (auto* in_node : op_node->inputs) {
+      VLOG(3) << "not to run fp16 op_type: " << op_type << ", node input size "
+              << op_node->inputs.size();
+      auto in_nodes = op_node->inputs;
+      for (auto* in_node : in_nodes) {
         auto* in_var = in_node->Var();
         if (in_var->GetDataType() == to_type) {
           AddCastOp(graph,
@@ -794,6 +797,7 @@ void AddCastOp(
   }
   next_op->Op()->Rename(node->Name(), map->at(node)->Name());
   IR_NODE_LINK_TO(node, map->at(node)->inputs[0]);
+  IR_NODE_UNLINK(node, next_op);
   IR_NODE_LINK_TO(map->at(node), next_op);
 }
 
