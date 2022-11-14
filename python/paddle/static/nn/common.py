@@ -595,6 +595,7 @@ def deform_conv2d(
             name=name,
         )
 
+
 def batch_norm(
     input,
     act=None,

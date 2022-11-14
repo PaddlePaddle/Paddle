@@ -245,7 +245,6 @@ def fill_zeros_like_orig2prim(op, x):
     return fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
 
 
-
 @REGISTER_ORIG2PRIM('fill_any_like')
 def fill_any_like_orig2prim(op, x):
     if op.attr('dtype') == -1:
