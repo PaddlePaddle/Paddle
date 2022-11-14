@@ -1330,11 +1330,11 @@ def distribute_fpn_proposals(
             None by default.
 
     Returns:
-        - multi_rois (List) : The proposals in each FPN level. It is a list of 2-D Tensor with shape [M, 4], where M is
+        - multi_rois (List), The proposals in each FPN level. It is a list of 2-D Tensor with shape [M, 4], where M is
           and data type is same as `fpn_rois` . The length is max_level-min_level+1.
-        - restore_ind (Tensor): The index used to restore the order of fpn_rois. It is a 2-D Tensor with shape [N, 1]
+        - restore_ind (Tensor), The index used to restore the order of fpn_rois. It is a 2-D Tensor with shape [N, 1]
           , where N is the number of total rois. The data type is int32.
-        - rois_num_per_level (List): A list of 1-D Tensor and each Tensor is
+        - rois_num_per_level (List), A list of 1-D Tensor and each Tensor is
           the RoIs' number in each image on the corresponding level. The shape
           is [B] and data type of int32, where B is the number of images.
 

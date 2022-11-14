@@ -712,84 +712,73 @@ class L1Loss(Layer):
 class BCELoss(Layer):
     """
 
-        This interface is used to construct a callable object of the ``BCELoss`` class.
-        The BCELoss layer measures the binary_cross_entropy loss between input predictions ``input``
-        and target labels ``label`` . The binary_cross_entropy loss can be described as:
+    This interface is used to construct a callable object of the ``BCELoss`` class.
+    The BCELoss layer measures the binary_cross_entropy loss between input predictions ``input``
+    and target labels ``label`` . The binary_cross_entropy loss can be described as:
 
-        If :attr:`weight` is set, the loss is:
+    If :attr:`weight` is set, the loss is:
 
-        .. math::
-            Out = -1 * weight * (label * log(input) + (1 - label) * log(1 - input))
+    .. math::
+        Out = -1 * weight * (label * log(input) + (1 - label) * log(1 - input))
 
-        If :attr:`weight` is None, the loss is:
+    If :attr:`weight` is None, the loss is:
 
-        .. math::
-            Out = -1 * (label * log(input) + (1 - label) * log(1 - input))
+    .. math::
+        Out = -1 * (label * log(input) + (1 - label) * log(1 - input))
 
-        If :attr:`reduction` set to ``'none'``, the interface will return the original loss `Out`.
+    If :attr:`reduction` set to ``'none'``, the interface will return the original loss `Out`.
 
-        If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
 
-        .. math::
-            Out = MEAN(Out)
+    .. math::
+        Out = MEAN(Out)
 
-        If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
 
-        .. math::
-            Out = SUM(Out)
+    .. math::
+        Out = SUM(Out)
 
-        Note that the input predictions ``input`` always be the output of sigmoid, and the target labels ``label``
-        should be numbers between 0 and 1.
+    Note that the input predictions ``input`` always be the output of sigmoid, and the target labels ``label``
+    should be numbers between 0 and 1.
 
-        Parameters:
-            weight (Tensor, optional): A manual rescaling weight given to the loss of each
-                batch element. If given, has to be a Tensor of size nbatch and the data type
-                is float32, float64. Default is ``'None'``.
-            reduction (str, optional): Indicate how to average the loss by batch_size,
-                the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-                If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
-                If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-                If :attr:`reduction` is ``'sum'``, the summed loss is returned.
-                Default is ``'mean'``.
-            name (str, optional): Name for the operation (optional, default is None).
-                For more information, please refer to :ref:`api_guide_Name`.
+    Parameters:
+        weight (Tensor, optional): A manual rescaling weight given to the loss of each
+            batch element. If given, has to be a Tensor of size nbatch and the data type
+            is float32, float64. Default is ``'None'``.
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
-        Shape:
-    <<<<<<< HEAD
-            - input (Tensor): 2-D tensor with shape: ``[N, *]``, N is batch_size, `*` means
-              number of additional dimensions. The input ``input`` should always
-              be the output of sigmod.  Available dtype is float32, float64.
-            - label (Tensor): 2-D tensor with the same shape as ``input``. The target
-              labels which values should be numbers between 0 and 1. Available
-              dtype is float32, float64.
-            - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-              same as ``input`` , else the shape of output is scalar.
-    =======
-            - input (Tensor): 2-D tensor with shape: [N, *], N is batch_size, `*` means
-                number of additional dimensions. The input ``input`` should always
-                be the output of sigmod.  Available dtype is float32, float64.
-            - label (Tensor): 2-D tensor with the same shape as ``input``. The target
-                labels which values should be numbers between 0 and 1. Available
-                dtype is float32, float64.
-            - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-                same as ``input`` , else the shape of output is scalar.
-    >>>>>>> 560eed169b9e1b99e4f5041f8dc4b5283862cd7b
+    Shape:
+        - input (Tensor): 2-D tensor with shape: ``[N, *]``, N is batch_size, `*` means
+          number of additional dimensions. The input ``input`` should always
+          be the output of sigmod.  Available dtype is float32, float64.
+        - label (Tensor): 2-D tensor with the same shape as ``input``. The target
+          labels which values should be numbers between 0 and 1. Available
+          dtype is float32, float64.
+        - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+          same as ``input`` , else the shape of output is scalar.
 
-        Returns:
-            A callable object of BCELoss.
+    Returns:
+        A callable object of BCELoss.
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                import paddle
+            import paddle
 
-                input = paddle.to_tensor([0.5, 0.6, 0.7])
-                label = paddle.to_tensor([1.0, 0.0, 1.0])
-                bce_loss = paddle.nn.BCELoss()
-                output = bce_loss(input, label)
-                print(output)
-                # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                #        [0.65537101])
+            input = paddle.to_tensor([0.5, 0.6, 0.7])
+            label = paddle.to_tensor([1.0, 0.0, 1.0])
+            bce_loss = paddle.nn.BCELoss()
+            output = bce_loss(input, label)
+            print(output)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.65537101])
 
     """
 
@@ -1832,68 +1821,64 @@ class MultiMarginLoss(Layer):
 class SoftMarginLoss(Layer):
     r"""
 
-        Creates a criterion that measures a two-class soft margin loss between input predictions ``input``
-        and target labels ``label`` . It can be described as:
+    Creates a criterion that measures a two-class soft margin loss between input predictions ``input``
+    and target labels ``label`` . It can be described as:
 
-        .. math::
-            Out = log(1 + exp((-label * input)))
+    .. math::
+        Out = log(1 + exp((-label * input)))
 
-        Parameters:
+    Parameters:
 
-            reduction (str, optional): Indicate how to average the loss by batch_size,
-                the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
-                If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
-                If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
-                If :attr:`reduction` is ``'sum'``, the summed loss is returned.
-                Default is ``'mean'``.
+        reduction (str, optional): Indicate how to average the loss by batch_size,
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default is ``'mean'``.
 
-            name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-        Shapes:
-            - Input (Tensor): The input tensor with shape: ``[N, *]``,
-              N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf
-              Available dtype is float32, float64.
-            - Label (Tensor): The target labels tensor with the same shape as
-              ``input``. The target labels which values should be numbers -1 or 1.
-              Available dtype is int32, int64, float32, float64.
-            - Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-              same as ``input`` , else the shape of output is [1].
+    Shapes:
+        - Input (Tensor): The input tensor with shape: ``[N, *]``,
+          N is batch_size, `*` means any number of additional dimensions. The ``input`` ranges from -inf to inf
+          Available dtype is float32, float64.
+        - Label (Tensor): The target labels tensor with the same shape as
+          ``input``. The target labels which values should be numbers -1 or 1.
+          Available dtype is int32, int64, float32, float64.
+        - Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
+          same as ``input`` , else the shape of output is [1].
 
-        Returns:
-            A callable object of SoftMarginLoss.
+    Returns:
+        A callable object of SoftMarginLoss.
 
-        Examples:
-            .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-                import paddle
+            import paddle
 
-                input = paddle.to_tensor([[0.5, 0.6, 0.7],[0.3, 0.5, 0.2]], 'float32')
-                label = paddle.to_tensor([[1.0, -1.0, 1.0],[-1.0, 1.0, 1.0]], 'float32')
-                soft_margin_loss = paddle.nn.SoftMarginLoss()
-                output = soft_margin_loss(input, label)
-                print(output)
-                # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                #        [0.64022040])
+            input = paddle.to_tensor([[0.5, 0.6, 0.7],[0.3, 0.5, 0.2]], 'float32')
+            label = paddle.to_tensor([[1.0, -1.0, 1.0],[-1.0, 1.0, 1.0]], 'float32')
+            soft_margin_loss = paddle.nn.SoftMarginLoss()
+            output = soft_margin_loss(input, label)
+            print(output)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.64022040])
 
-                input_np = paddle.uniform(shape=(5, 5), min=0.1, max=0.8, dtype="float64")
-                label_np = paddle.randint(high=2, shape=(5, 5), dtype="int64")
-                label_np[label_np==0]=-1
-                input = paddle.to_tensor(input_np)
-                label = paddle.to_tensor(label_np)
-                soft_margin_loss = paddle.nn.SoftMarginLoss(reduction='none')
-                output = soft_margin_loss(input, label)
-    <<<<<<< HEAD
+            input_np = paddle.uniform(shape=(5, 5), min=0.1, max=0.8, dtype="float64")
+            label_np = paddle.randint(high=2, shape=(5, 5), dtype="int64")
+            label_np[label_np==0]=-1
+            input = paddle.to_tensor(input_np)
+            label = paddle.to_tensor(label_np)
+            soft_margin_loss = paddle.nn.SoftMarginLoss(reduction='none')
+            output = soft_margin_loss(input, label)
+            print(output)
+            # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.61739663, 0.51405668, 1.09346100, 0.42385561, 0.91602303],
+            #         [0.76997038, 1.01977148, 0.98971722, 1.13976032, 0.88152088],
+            #         [0.55476735, 1.10505384, 0.89923519, 0.45018155, 1.06587511],
+            #         [0.37998142, 0.48067240, 0.47791212, 0.55664053, 0.98581399],
+            #         [0.78571653, 0.59319711, 0.39701841, 0.76172109, 0.83781742]])
 
-    =======
-                print(output)
-                # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-                #        [[0.61739663, 0.51405668, 1.09346100, 0.42385561, 0.91602303],
-                #         [0.76997038, 1.01977148, 0.98971722, 1.13976032, 0.88152088],
-                #         [0.55476735, 1.10505384, 0.89923519, 0.45018155, 1.06587511],
-                #         [0.37998142, 0.48067240, 0.47791212, 0.55664053, 0.98581399],
-                #         [0.78571653, 0.59319711, 0.39701841, 0.76172109, 0.83781742]])
-
-    >>>>>>> 560eed169b9e1b99e4f5041f8dc4b5283862cd7b
     """
 
     def __init__(self, reduction='mean', name=None):

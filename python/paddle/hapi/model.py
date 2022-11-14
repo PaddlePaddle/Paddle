@@ -1774,7 +1774,7 @@ class Model(object):
                How to make a batch is done internally.
 
             .. code-block:: python
-              :name: code-example1
+              :name: code-example3
 
                 import paddle
                 import paddle.vision.transforms as T
@@ -1814,7 +1814,7 @@ class Model(object):
                DataLoader.
 
             .. code-block:: python
-              :name: code-example2
+              :name: code-example4
 
                 import paddle
                 import paddle.vision.transforms as T

@@ -1742,10 +1742,10 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
     For avg adaptive pool2d:
 
     ..  math::
-        hstart &= floor(i * H_{in} / H_{out})
-        hend &= ceil((i + 1) * H_{in} / H_{out})
-        wstart &= floor(j * W_{in} / W_{out})
-        wend &= ceil((j + 1) * W_{in} / W_{out})
+        hstart &= floor(i * H_{in} / H_{out}) \\
+        hend &= ceil((i + 1) * H_{in} / H_{out}) \\
+        wstart &= floor(j * W_{in} / W_{out}) \\
+        wend &= ceil((j + 1) * W_{in} / W_{out}) \\
         Output(i ,j) &= \frac{\sum Input[hstart:hend, wstart:wend]}{(hend - hstart) * (wend - wstart)}
 
     Args:
@@ -1890,12 +1890,12 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
     For avg adaptive pool3d:
 
     ..  math::
-        dstart &= floor(i * D_{in} / D_{out})
-        dend &= ceil((i + 1) * D_{in} / D_{out})
-        hstart &= floor(j * H_{in} / H_{out})
-        hend &= ceil((j + 1) * H_{in} / H_{out})
-        wstart &= floor(k * W_{in} / W_{out})
-        wend &= ceil((k + 1) * W_{in} / W_{out})
+        dstart &= floor(i * D_{in} / D_{out}) \\
+        dend &= ceil((i + 1) * D_{in} / D_{out}) \\
+        hstart &= floor(j * H_{in} / H_{out}) \\
+        hend &= ceil((j + 1) * H_{in} / H_{out}) \\
+        wstart &= floor(k * W_{in} / W_{out}) \\
+        wend &= ceil((k + 1) * W_{in} / W_{out}) \\
         Output(i ,j, k) &= \frac{\sum Input[dstart:dend, hstart:hend, wstart:wend]}
             {(dend - dstart) * (hend - hstart) * (wend - wstart)}
 

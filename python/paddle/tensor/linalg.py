@@ -1974,7 +1974,7 @@ def slogdet(x, name=None):
             where math:`*` is one or more batch dimensions.
 
     Returns:
-        y (Tensor): A tensor containing the sign of the determinant and the natural logarithm
+        y (Tensor), A tensor containing the sign of the determinant and the natural logarithm
         of the absolute value of determinant, respectively.
 
     Examples:
