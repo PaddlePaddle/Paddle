@@ -370,3 +370,9 @@ def _pool_flops(input_shapes, attrs):
     """
     input = input_shapes.get('X')[0]
     return prod(input)
+
+
+@register_flops("reduce_sum")
+def _reduece_sum_flops(input_shapes, attrs):
+    return prod(input_shapes.get('X')[0])
+
