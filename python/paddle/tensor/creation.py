@@ -621,7 +621,7 @@ def ones(shape, dtype=None, name=None):
 
     Args:
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
-            If ``shape`` is a list or tuple, the elements of it should be integers or OD Tensor with shape [].
+            If ``shape`` is a list or tuple, the elements of it should be integers or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (np.dtype|str, optional): Data type of output Tensor, it should be one of
             bool, float16, float32, float64, int32 and int64. If it is set to None, the data type will be float32.
@@ -697,7 +697,7 @@ def zeros(shape, dtype=None, name=None):
 
     Args:
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
-            If ``shape`` is a list or tuple, each element of it should be integer or OD Tensor with shape [].
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the date type is float32.
@@ -859,7 +859,7 @@ def full(shape, fill_value, dtype=None, name=None):
 
     Args:
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
-            If ``shape`` is a list or tuple, each element of it should be integer or OD Tensor with shape [].
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         fill_value(bool|float|int|Tensor): The constant value used to initialize the Tensor to be created.
             If ``fill_value`` is an Tensor, it shoule be an 0-D Tensor which represents a scalar.
@@ -1522,7 +1522,7 @@ def empty(shape, dtype=None, name=None):
 
     Args:
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
-            If ``shape`` is a list or tuple, each element of it should be integer or OD Tensor with shape [].
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of the output Tensor
             which can be bool, float16, float32, float64, int32, int64, if dytpe is `None`, the data
