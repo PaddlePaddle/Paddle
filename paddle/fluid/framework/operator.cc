@@ -2117,7 +2117,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 #ifdef PADDLE_WITH_ASCEND_CL
   if (kernel_iter == kernels.end() &&
       platform::is_npu_place(expected_kernel_key.place_)) {
-    LOG(INFO) << "missing NPU kernel: " << type_
+    VLOG(3) << "missing NPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
@@ -2137,7 +2137,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (kernel_iter == kernels.end() &&
       platform::is_custom_place(expected_kernel_key.place_)) {
-    VLOG(3) << "missing " << expected_kernel_key.place_.GetDeviceType()
+    LOG(INFO) << "missing " << expected_kernel_key.place_.GetDeviceType()
             << " kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
