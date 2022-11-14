@@ -625,6 +625,7 @@ class StaticRNN:
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
