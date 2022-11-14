@@ -104,7 +104,8 @@ PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value);
 PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(
-    const std::vector<std::vector<paddle::experimental::Tensor>>& value);
+    const std::vector<std::vector<paddle::experimental::Tensor>>& value,
+    bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const platform::Place& value);
 PyObject* ToPyObject(const phi::DenseTensor* value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
