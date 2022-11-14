@@ -2075,7 +2075,7 @@ def greater_than(x, y, cond=None, name=None):
     attrs = dict()
 
     if in_dygraph_mode():
-        return _C_ops.greater_than(x, y, -1)
+        return _C_ops.greater_than(x, y)
     else:
         helper.append_op(
             type='greater_than',
@@ -2173,8 +2173,7 @@ def equal(x, y, cond=None, name=None):
           out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
     if in_dygraph_mode():
-        default_axis = -1
-        return _C_ops.equal(x, y, default_axis)
+        return _C_ops.equal(x, y)
 
     check_variable_and_dtype(
         x, "x", ["float32", "float64", "int32", "int64"], "equal"

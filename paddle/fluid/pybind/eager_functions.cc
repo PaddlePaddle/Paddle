@@ -248,6 +248,40 @@ PyObject* eager_api_get_grads_lists(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* eager_api_get_grads_types(PyObject* self,
+                                    PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+  auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
+
+  std::vector<int> ret;
+
+  for (auto& tensor : tensor_list) {
+    VLOG(6) << "Get grad for tensor: " << tensor.name();
+    auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
+    if (!meta || meta->StopGradient()) {
+      ret.emplace_back(-1);
+      continue;
+    }
+
+    auto& grad = meta->Grad();
+    if (meta && grad.initialized()) {
+      if (grad.is_dense_tensor() &&
+          (tensor.dtype() == paddle::experimental::DataType::FLOAT32 ||
+           tensor.dtype() == paddle::experimental::DataType::FLOAT16)) {
+        ret.emplace_back(
+            paddle::framework::TransToProtoVarType(tensor.dtype()));
+      }
+    } else {
+      ret.emplace_back(-1);
+    }
+  }
+
+  return ToPyObject(ret);
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* eager_api_read_next_tensor_list(PyObject* self,
                                                  PyObject* args,
                                                  PyObject* kwargs) {
@@ -1065,6 +1099,10 @@ PyMethodDef variable_functions[] = {
      NULL},
     {"get_grads_lists",
      (PyCFunction)(void (*)(void))eager_api_get_grads_lists,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"get_grads_types",
+     (PyCFunction)(void (*)(void))eager_api_get_grads_types,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"read_next_tensor_list",

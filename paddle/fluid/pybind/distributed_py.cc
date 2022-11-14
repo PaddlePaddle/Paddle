@@ -41,22 +41,17 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroupMPI.h"
 #endif
 
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
-#endif
-
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/fluid/distributed/collective/ProcessGroupCustom.h"
-#endif
-
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
-#include "paddle/fluid/distributed/collective/ProcessGroupHeter.h"
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
 #include "paddle/fluid/distributed/collective/ProcessGroupGloo.h"
 #include "paddle/fluid/distributed/store/tcp_store.h"
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/distributed/collective/ProcessGroupBKCL.h"
 #endif
 
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
@@ -1254,62 +1249,6 @@ void BindDistributed(py::module *m) {
            py::call_guard<py::gil_scoped_release>());
 #endif
 
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
-  py::class_<distributed::ProcessGroupHeter,
-             std::shared_ptr<distributed::ProcessGroupHeter>>(
-      *m, "ProcessGroupHeter", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &,
-                    int,
-                    int,
-#if defined(PADDLE_WITH_ASCEND_CL)
-                    const platform::NPUPlace &,
-#else
-                    const platform::CUDAPlace &,
-#endif
-                    int,
-                    int,
-                    int,
-                    int,
-                    int,
-                    bool,
-                    std::string,
-                    int,
-                    int>(),
-           py::arg("store"),
-           py::arg("rank"),
-           py::arg("world_size"),
-           py::arg("place"),
-           py::arg("gid") = 0,
-           py::arg("local_rank") = 0,
-           py::arg("local_size") = 1,
-           py::arg("gloo_rank") = 0,
-           py::arg("gloo_size") = 1,
-           py::arg("with_switch") = false,
-           py::arg("switch_endpoint") = "",
-           py::arg("src_rank") = "",
-           py::arg("dst_rank") = "",
-           py::call_guard<py::gil_scoped_release>());
-#endif
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-  py::class_<distributed::ProcessGroupHCCL,
-             std::shared_ptr<distributed::ProcessGroupHCCL>>(
-      *m, "ProcessGroupHCCL", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &,
-                    int,
-                    int,
-                    const platform::NPUPlace &,
-                    int>(),
-           py::arg("store"),
-           py::arg("rank"),
-           py::arg("world_size"),
-           py::arg("place"),
-           py::arg("group_id") = 0,
-           py::call_guard<py::gil_scoped_release>());
-
-#endif
-
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   py::class_<distributed::ProcessGroupCustom,
              std::shared_ptr<distributed::ProcessGroupCustom>>(
@@ -1326,6 +1265,24 @@ void BindDistributed(py::module *m) {
            py::arg("group_id") = 0,
            py::call_guard<py::gil_scoped_release>());
 
+#endif
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+  auto processGroupBKCL =
+      py::class_<distributed::ProcessGroupBKCL,
+                 std::shared_ptr<distributed::ProcessGroupBKCL>>(
+          *m, "ProcessGroupBKCL", ProcessGroup)
+          .def(py::init<const std::shared_ptr<distributed::Store> &,
+                        int,
+                        int,
+                        const platform::XPUPlace &,
+                        int>(),
+               py::arg("store"),
+               py::arg("rank"),
+               py::arg("world_size"),
+               py::arg("place"),
+               py::arg("group_id") = 0,
+               py::call_guard<py::gil_scoped_release>());
 #endif
 
   py::class_<distributed::ProcessGroup::Task,

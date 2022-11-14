@@ -221,11 +221,9 @@ def gaussian(shape, mean=0.0, std=1.0, dtype=None, name=None):
     distribution, with ``shape`` and ``dtype``.
 
     Args:
-        shape (list|tuple|Tensor): The shape of the output Tensor. If ``shape``
-            is a list or tuple, the elements of it should be integers or Tensors
-            (with the shape [1], and the data type int32 or int64). If ``shape``
-            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
-            int64).
+        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         mean (float|int, optional): Mean of the output tensor, default is 0.0.
         std (float|int, optional): Standard deviation of the output tensor, default
             is 1.0.
@@ -307,11 +305,9 @@ def standard_normal(shape, dtype=None, name=None):
     and ``dtype``.
 
     Args:
-        shape (list|tuple|Tensor): The shape of the output Tensor. If ``shape``
-            is a list or tuple, the elements of it should be integers or Tensors
-            (with the shape [1], and the data type int32 or int64). If ``shape``
-            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
-            int64).
+        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (str|np.dtype, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
@@ -335,8 +331,8 @@ def standard_normal(shape, dtype=None, name=None):
             #  [ 0.39632758,  0.08177969,  0.2692008 ]]  # random
 
             # example 2: attr shape is a list which contains Tensor.
-            dim1 = paddle.to_tensor([2], 'int64')
-            dim2 = paddle.to_tensor([3], 'int32')
+            dim1 = paddle.to_tensor(2, 'int64')
+            dim2 = paddle.to_tensor(3, 'int32')
             out2 = paddle.standard_normal(shape=[dim1, dim2, 2])
             # [[[-2.8852394 , -0.25898588],  # random
             #   [-0.47420555,  0.17683524],  # random
@@ -362,11 +358,9 @@ def randn(shape, dtype=None, name=None):
     and ``dtype``.
 
     Args:
-        shape (list|tuple|Tensor): The shape of the output Tensor. If ``shape``
-            is a list or tuple, the elements of it should be integers or Tensors
-            (with the shape [1], and the data type int32 or int64). If ``shape``
-            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
-            int64).
+        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (str|np.dtype, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
@@ -390,8 +384,8 @@ def randn(shape, dtype=None, name=None):
             #  [ 0.39632758,  0.08177969,  0.2692008 ]]  # random
 
             # example 2: attr shape is a list which contains Tensor.
-            dim1 = paddle.to_tensor([2], 'int64')
-            dim2 = paddle.to_tensor([3], 'int32')
+            dim1 = paddle.to_tensor(2, 'int64')
+            dim2 = paddle.to_tensor(3, 'int32')
             out2 = paddle.randn(shape=[dim1, dim2, 2])
             # [[[-2.8852394 , -0.25898588],  # random
             #   [-0.47420555,  0.17683524],  # random
@@ -429,12 +423,10 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
             If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
             Defaule is 1.0
-        shape (list|tuple|Tensor, optional): The shape of the output Tensor. If ``shape``
-            is a list or tuple, the elements of it should be integers or Tensors
-            (with the shape [1], and the data type int32 or int64). If ``shape``
-            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
-            int64). If ``mean`` or ``std`` is a Tensor, the shape of the output
-            Tensor is the same as ``mean`` or ``std`` , attr ``shape`` is ignored.
+        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. If ``mean`` or ``std``
+            is a Tensor, the shape of the output Tensor is the same as ``mean`` or ``std`` , attr ``shape`` is ignored.
             Default is None
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -518,11 +510,9 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
           result=[[0.8505902, 0.8397286]]
 
     Args:
-        shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
-            is a list or tuple, the elements of it should be integers or Tensors
-            (with the shape [1], and the data type int32 or int64). If ``shape``
-            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
-            int64).
+        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(str|np.dtype, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
@@ -557,8 +547,8 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
             # example 2:
             # attr shape is a list which contains Tensor.
-            dim1 = paddle.to_tensor([2], 'int64')
-            dim2 = paddle.to_tensor([3], 'int32')
+            dim1 = paddle.to_tensor(2, 'int64')
+            dim2 = paddle.to_tensor(3, 'int32')
             out2 = paddle.uniform(shape=[dim1, dim2])
             # [[-0.9951253,   0.30757582, 0.9899647 ], # random
             #  [ 0.5864527,   0.6607096,  -0.8886161]] # random
@@ -684,11 +674,9 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         high (int, optional): The upper bound on the range of random values to
             generate, the ``high`` is excluded in the range. Default is None
             (see above for behavior if high = None). Default is None.
-        shape (list|tuple|Tensor, optional): The shape of the output Tensor. If ``shape``
-            is a list or tuple, the elements of it should be integers or Tensors
-            (with the shape [1], and the data type int32 or int64). If ``shape``
-            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
-            int64). Default is [1].
+        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. Default is [1].
         dtype (str|np.dtype, optional): The data type of the
             output tensor. Supported data types: int32, int64. If ``dytpe``
             is None, the data type is int64. Default is None.
@@ -707,22 +695,23 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
             # example 1:
             # attr shape is a list which doesn't contain Tensor.
-            out1 = paddle.randint(low=-5, high=5, shape=[3])
+            out1 = paddle.randint(low=-5, high=5, shape=[2, 3])
             # [0, -3, 2]  # random
 
             # example 2:
             # attr shape is a list which contains Tensor.
-            dim1 = paddle.to_tensor([2], 'int64')
-            dim2 = paddle.to_tensor([3], 'int32')
+            dim1 = paddle.to_tensor(2, 'int64')
+            dim2 = paddle.to_tensor(3, 'int32')
             out2 = paddle.randint(low=-5, high=5, shape=[dim1, dim2])
             # [[0, -1, -3],  # random
             #  [4, -2,  0]]  # random
 
             # example 3:
             # attr shape is a Tensor
-            shape_tensor = paddle.to_tensor(3)
+            shape_tensor = paddle.to_tensor([2, 3])
             out3 = paddle.randint(low=-5, high=5, shape=shape_tensor)
-            # [-2, 2, 3]  # random
+            # [[ 2, -3, -1],    # random
+            #  [-3, -2,  1]])   # random
 
             # example 4:
             # data type is int32
@@ -1033,11 +1022,9 @@ def rand(shape, dtype=None, name=None):
     distribution in the range [0, 1), with ``shape`` and ``dtype``.
 
     Args:
-        shape (list|tuple|Tensor): The shape of the output Tensor. If ``shape``
-            is a list or tuple, the elements of it should be integers or Tensors
-            (with the shape [1], and the data type int32 or int64). If ``shape``
-            is a Tensor, it should be a 1-D Tensor(with the data type int32 or
-            int64).
+        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (str|np.dtype, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see ``get_default_dtype``
@@ -1061,8 +1048,8 @@ def rand(shape, dtype=None, name=None):
             #  [0.22550228, 0.22106001, 0.7877319 ]]  # random
 
             # example 2: attr shape is a list which contains Tensor.
-            dim1 = paddle.to_tensor([2], 'int64')
-            dim2 = paddle.to_tensor([3], 'int32')
+            dim1 = paddle.to_tensor(2, 'int64')
+            dim2 = paddle.to_tensor(3, 'int32')
             out2 = paddle.rand(shape=[dim1, dim2, 2])
             # [[[0.8879919 , 0.25788337],  # random
             #   [0.28826773, 0.9712097 ],  # random
@@ -1076,7 +1063,6 @@ def rand(shape, dtype=None, name=None):
             out3 = paddle.rand(shape_tensor)
             # [[0.22920267, 0.841956  , 0.05981819],  # random
             #  [0.4836288 , 0.24573246, 0.7516129 ]]  # random
-
     """
     return uniform(shape, dtype, min=0.0, max=1.0, name=name)
 

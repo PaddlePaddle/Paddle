@@ -152,7 +152,7 @@ class ElementwiseMaxLayer:
         """
         operation
         """
-        max = fluid.layers.elementwise_max(x, y)
+        max = paddle.maximum(x, y)
         return max
 
 

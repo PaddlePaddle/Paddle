@@ -105,6 +105,7 @@ pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
 pass_library(skip_layernorm_fuse_pass base)
 pass_library(multihead_matmul_fuse_pass inference)
+pass_library(multihead_matmul_roformer_fuse_pass inference)
 pass_library(fused_multi_transformer_encoder_pass inference)
 pass_library(fused_multi_transformer_decoder_pass inference)
 pass_library(fuse_multi_transformer_layer_pass inference)
@@ -152,7 +153,7 @@ if(WITH_MKLDNN)
     mkldnn_placement_pass
     op_registry
     elementwise_add_op
-    gelu_op
+    generated_op
     activation_op
     softmax_op
     softmax
@@ -417,7 +418,7 @@ if(WITH_MKLDNN)
       im2col
       vol2col
       batch_norm_op
-      gelu_op
+      generated_op
       activation_op
       elementwise_add_op
       concat_and_split
