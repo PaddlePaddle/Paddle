@@ -42,7 +42,7 @@ class TestLoadOp(unittest.TestCase):
             )
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
-        fluid.io.save_persistables(
+        paddle.distributed.io.save_persistables(
             exe,
             dirname=os.path.join(self.temp_dir.name, "./model"),
             main_program=main_prog,

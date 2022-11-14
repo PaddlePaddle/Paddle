@@ -41,10 +41,10 @@ def _save_distributed_persistables(executor, dirname, main_program):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
+            import paddle
 
             paddle.enable_static()
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = paddle.static.Executor(paddle.CPUPlace())
             param_path = "./my_paddle_model"
             t = distribute_transpiler.DistributeTranspiler()
             t.transpile(...)
@@ -224,21 +224,20 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
 
             paddle.enable_static()
             dir_path = "./my_paddle_model"
             file_name = "persistables"
-            image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
+            image = paddle.static..data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            feeder = paddle.static.DataFeeder(feed_list=[image, label], place=paddle.CPUPlace())
 
-            predict = fluid.layers.fc(input=image, size=10, act='softmax')
-            loss = fluid.layers.cross_entropy(input=predict, label=label)
+            predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+            loss = paddle.nn.functional.cross_entropy(input=predict, label=label)
             avg_loss = paddle.mean(loss)
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-            fluid.io.save_persistables(executor=exe, dirname=dir_path, filename=file_name)
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            paddle.distributed.io.save_persistables(executor=exe, dirname=dir_path, filename=file_name)
             # The persistables variables weights and bias in the fc layer of the network
             # are going to be saved in the same file named "persistables" in the path
             # "./my_paddle_model"
