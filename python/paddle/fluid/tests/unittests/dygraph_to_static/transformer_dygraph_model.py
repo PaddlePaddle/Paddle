@@ -762,7 +762,7 @@ class Transformer(Layer):
             return probs
 
         def gather(input, indices, batch_pos):
-            topk_coordinates = fluid.layers.stack([batch_pos, indices], axis=2)
+            topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
             return layers.gather_nd(input, topk_coordinates)
 
         # run encoder
@@ -880,8 +880,8 @@ class Transformer(Layer):
             if layers.reduce_all(finished).numpy():
                 break
 
-        predict_ids = layers.stack(predict_ids, axis=0)
-        parent_ids = layers.stack(parent_ids, axis=0)
+        predict_ids = paddle.stack(predict_ids, axis=0)
+        parent_ids = paddle.stack(parent_ids, axis=0)
         finished_seq = layers.transpose(
             layers.gather_tree(predict_ids, parent_ids), [1, 2, 0]
         )
