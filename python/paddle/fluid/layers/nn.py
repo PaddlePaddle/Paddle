@@ -132,7 +132,6 @@ __all__ = [
     'relu',
     'selu',
     'log',
-    'crop',
     'crop_tensor',
     'elu',
     'relu6',
@@ -9877,108 +9876,6 @@ def mean_iou(input, label, num_classes):
         attrs={"num_classes": num_classes},
     )
     return out_mean_iou, out_wrong, out_correct
-
-
-def crop(x, shape=None, offsets=None, name=None):
-    """
-    Crop input into output, as specified by offsets and shape.
-
-    **Warning:** THIS OP IS DEPRECATED. It will be removed in the future version.
-    Instructions for updating: Use :ref:`api_fluid_layers_crop_tensor` instead.
-
-    .. code-block:: text
-
-        * Case 1:
-            Given
-                X = [[0, 1, 2, 0, 0]
-                     [0, 3, 4, 0, 0]
-                     [0, 0, 0, 0, 0]],
-            and
-                shape = [2, 2],
-                offsets = [0, 1],
-            output is:
-                Out = [[1, 2],
-                       [3, 4]].
-        * Case 2:
-            Given
-                X = [[0, 1, 2, 5, 0]
-                     [0, 3, 4, 6, 0]
-                     [0, 0, 0, 0, 0]],
-            and shape is tensor
-                shape = [[0, 0, 0]
-                         [0, 0, 0]]
-            and
-                offsets = [0, 1],
-
-            output is:
-                Out = [[1, 2, 5],
-                       [3, 4, 6]].
-
-    Parameters:
-        x (Variable): Tensor, data type can be float32 or float64.
-        shape (Variable|list/tuple of integers, optional): The output shape is specified
-            by `shape`, which can be a Tensor or a list/tuple of integers.
-            If it is a Tensor, it's rank must be the same as `x` , only
-            it's shape will be used, and the value of it will be ignored. This way
-            is suitable for the case that the output shape may be changed each
-            iteration. If it is a list/tuple of integers, it's length must be the same
-            as the rank of `x`
-        offsets (Variable|list/tuple of integers|None, optional): Specifies the cropping
-            offsets at each dimension. It can be a Tensor or a list/tuple
-            of integers. If it is a Tensor, it's rank must be the same as `x`.
-            This way is suitable for the case that the offsets may be changed
-            each iteration. If it is a list/tuple of integers, it's length must be the
-            same as the rank of `x`. If None, the offsets are 0 at each dimension.
-        name(str, optional): For detailed information, please refer
-            to :ref:`api_guide_Name` . Usually name is no need to set and
-            None by default.
-
-    Returns:
-        Tensor, The cropped Tensor, which has the same rank and data type with `x`.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3, 3, 5], dtype="float32")
-            y = fluid.data(name="y", shape=[2, 2, 3], dtype="float32")
-            crop = fluid.layers.crop(x, shape=y)
-
-            # or
-            z = fluid.data(name="z", shape=[3, 3, 5], dtype="float32")
-            crop = fluid.layers.crop(z, shape=[2, 2, 3])
-
-    """
-    check_variable_and_dtype(x, 'x', ['float32'], 'crop')
-    check_type(shape, 'shape', (list, tuple, Variable), 'crop')
-    helper = LayerHelper('crop', **locals())
-
-    if offsets is None:
-        offsets = [0] * len(x.shape)
-
-    out = helper.create_variable_for_type_inference(x.dtype)
-    ipts = {'X': x}
-    attrs = {}
-    if isinstance(shape, Variable):
-        ipts['Y'] = shape
-    else:
-        attrs['shape'] = shape
-    if isinstance(offsets, Variable):
-        ipts['Offsets'] = offsets
-    else:
-        attrs['offsets'] = offsets
-
-    helper.append_op(
-        type='crop',
-        inputs=ipts,
-        outputs={'Out': out},
-        attrs=None if len(attrs) == 0 else attrs,
-    )
-    return out
 
 
 def crop_tensor(x, shape=None, offsets=None, name=None):
