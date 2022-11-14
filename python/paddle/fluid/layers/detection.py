@@ -1851,7 +1851,7 @@ def ssd_loss(
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
     loss = nn.reshape(x=loss, shape=(-1, 0), actual_shape=actual_shape)
-    loss = paddle.sum(loss, axis=1, keep_dim=True)
+    loss = paddle.sum(loss, axis=1, keepdim=True)
     if normalize:
         normalizer = paddle.sum(target_loc_weight)
         loss = loss / normalizer

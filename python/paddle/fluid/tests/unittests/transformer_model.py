@@ -158,7 +158,7 @@ def multi_head_attention(
 
         def __softmax(x, eps=1e-9):
             exp_out = layers.exp(x=x)
-            sum_out = paddle.sum(exp_out, axis=-1, keep_dim=False)
+            sum_out = paddle.sum(exp_out, axis=-1, keepdim=False)
             return layers.elementwise_div(x=exp_out, y=sum_out, axis=0)
 
         scaled_q = layers.scale(x=q, scale=d_model**-0.5)

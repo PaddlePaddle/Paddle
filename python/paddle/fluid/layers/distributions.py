@@ -557,7 +557,7 @@ class Categorical(Distribution):
         """
         logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
         e_logits = ops.exp(logits)
-        z = paddle.sum(e_logits, axis=-1, keep_dim=True)
+        z = paddle.sum(e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
         entropy = -1.0 * paddle.sum(
             prob * (logits - nn.log(z)), axis=-1, keep_dim=True

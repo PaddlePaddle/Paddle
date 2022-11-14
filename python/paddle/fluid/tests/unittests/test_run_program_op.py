@@ -417,7 +417,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         self.op_type = "run_program"
         self.dtype = np.float32
         self.input_names = {'X': ['x'], 'Params': ['emb_weight']}
-        self.output_names = {'Out': ['reduce_sum_0.tmp_0']}
+        self.output_names = {'Out': ['sum_0.tmp_0']}
 
         self.inputs = {
             'X': {'x': np.array([[1, 3, 0, 4, 7]]).astype("int64")},
