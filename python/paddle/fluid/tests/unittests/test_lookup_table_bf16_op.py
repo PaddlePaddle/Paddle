@@ -232,7 +232,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
 
         with fluid.program_guard(self.prog, self.startup_prog):
             x = fluid.layers.data(name='x', shape=self.ids_shape, dtype='int64')
-            self.emb = fluid.layers.embedding(
+            self.emb = paddle.static.nn.embedding(
                 input=x,
                 size=self.w_shape,
                 param_attr=fluid.ParamAttr(

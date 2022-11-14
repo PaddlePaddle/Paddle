@@ -87,7 +87,7 @@ class TestDynamicRNN(unittest.TestCase):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=1
             )
-            sent_emb = fluid.layers.embedding(
+            sent_emb = paddle.static.nn.embedding(
                 input=sentence, size=[self.word_dict_len, 32], dtype='float32'
             )
 
@@ -158,7 +158,7 @@ class TestDynamicRNN(unittest.TestCase):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=1
             )
-            sent_emb = fluid.layers.embedding(
+            sent_emb = paddle.static.nn.embedding(
                 input=sentence, size=[self.word_dict_len, 32], dtype='float32'
             )
 
@@ -224,7 +224,7 @@ class TestDynamicRNN(unittest.TestCase):
             with drnn0.block():
                 in_0 = drnn0.step_input(sentence)
                 assert in_0.lod_level == 1, "the lod level of in_ should be 1"
-                sentence_emb = fluid.layers.embedding(
+                sentence_emb = paddle.static.nn.embedding(
                     input=in_0, size=[len(word_dict), 32], dtype='float32'
                 )
                 out_0 = fluid.layers.fc(
@@ -285,7 +285,7 @@ class TestDynamicRNN(unittest.TestCase):
             drnn0 = fluid.layers.DynamicRNN()
             with drnn0.block():
                 in_0 = drnn0.step_input(sentence)
-                sentence_emb = fluid.layers.embedding(
+                sentence_emb = paddle.static.nn.embedding(
                     input=in_0,
                     size=[len(word_dict), hidden_size],
                     dtype='float32',

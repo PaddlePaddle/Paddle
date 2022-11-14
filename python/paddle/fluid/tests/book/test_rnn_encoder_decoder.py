@@ -125,7 +125,7 @@ def seq_to_seq_net():
         name='source_sequence', shape=[1], dtype='int64', lod_level=1
     )
 
-    src_embedding = fluid.layers.embedding(
+    src_embedding = paddle.static.nn.embedding(
         input=src_word_idx,
         size=[source_dict_dim, embedding_dim],
         dtype='float32',
@@ -147,7 +147,7 @@ def seq_to_seq_net():
         name='target_sequence', shape=[1], dtype='int64', lod_level=1
     )
 
-    trg_embedding = fluid.layers.embedding(
+    trg_embedding = paddle.static.nn.embedding(
         input=trg_word_idx,
         size=[target_dict_dim, embedding_dim],
         dtype='float32',

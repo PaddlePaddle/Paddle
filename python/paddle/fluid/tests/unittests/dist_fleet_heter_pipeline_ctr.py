@@ -75,7 +75,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
 
             # build dnn model
             dnn_layer_dims = [128, 64, 32, 1]
-            dnn_embedding = fluid.layers.embedding(
+            dnn_embedding = paddle.static.nn.embedding(
                 is_distributed=False,
                 input=dnn_data,
                 size=[dnn_input_dim, dnn_layer_dims[0]],
@@ -91,7 +91,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             dnn_out = dnn_pool
 
             # build lr model
-            lr_embbding = fluid.layers.embedding(
+            lr_embbding = paddle.static.nn.embedding(
                 is_distributed=False,
                 input=lr_data,
                 size=[lr_input_dim, 1],

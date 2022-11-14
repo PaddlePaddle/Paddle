@@ -32,7 +32,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
         BATCH_SIZE = batch_size
 
         def __network__(words):
-            embed_first = fluid.layers.embedding(
+            embed_first = paddle.static.nn.embedding(
                 input=words[0],
                 size=[dict_size, EMBED_SIZE],
                 dtype='float32',
@@ -42,7 +42,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                     initializer=fluid.initializer.Constant(value=0.1),
                 ),
             )
-            embed_second = fluid.layers.embedding(
+            embed_second = paddle.static.nn.embedding(
                 input=words[1],
                 size=[dict_size, EMBED_SIZE],
                 dtype='float32',
@@ -52,7 +52,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                     initializer=fluid.initializer.Constant(value=0.1),
                 ),
             )
-            embed_third = fluid.layers.embedding(
+            embed_third = paddle.static.nn.embedding(
                 input=words[2],
                 size=[dict_size, EMBED_SIZE],
                 dtype='float32',
@@ -62,7 +62,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                     initializer=fluid.initializer.Constant(value=0.1),
                 ),
             )
-            embed_forth = fluid.layers.embedding(
+            embed_forth = paddle.static.nn.embedding(
                 input=words[3],
                 size=[dict_size, EMBED_SIZE],
                 dtype='float32',

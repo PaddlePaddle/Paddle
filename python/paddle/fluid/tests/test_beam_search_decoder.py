@@ -51,7 +51,7 @@ def encoder():
     src_word = layers.data(
         name="src_word", shape=[1], dtype='int64', lod_level=1
     )
-    src_embedding = layers.embedding(
+    src_embedding = paddle.static.nn.embedding(
         input=src_word,
         size=[dict_size, word_dim],
         dtype='float32',
@@ -86,7 +86,7 @@ def decoder_train(state_cell):
     trg_language_word = layers.data(
         name="target_word", shape=[1], dtype='int64', lod_level=1
     )
-    trg_embedding = layers.embedding(
+    trg_embedding = paddle.static.nn.embedding(
         input=trg_language_word,
         size=[dict_size, word_dim],
         dtype='float32',

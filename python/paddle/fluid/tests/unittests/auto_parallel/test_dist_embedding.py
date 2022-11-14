@@ -31,7 +31,7 @@ def make_program_lookup_table_v1_mp_dp():
             name='src_ids', shape=[12, 512, 1], dtype='int64'
         )
         src_ids.stop_gradient = True
-        emb_out = paddle.fluid.layers.embedding(
+        emb_out = paddle.static.nn.embedding(
             input=src_ids,
             size=[64, 128],
             param_attr=paddle.fluid.ParamAttr(name="emb_weight"),

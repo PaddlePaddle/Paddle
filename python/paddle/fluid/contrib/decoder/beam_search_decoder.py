@@ -22,6 +22,7 @@ This API is still under active development and may change drastically.
 
 from ...wrapped_decorator import signature_safe_contextmanager
 import numpy as np
+import paddle
 
 from ... import layers
 from ...framework import Variable
@@ -701,7 +702,7 @@ class BeamSearchDecoder:
             prev_scores = self.read_array(
                 init=self._init_scores, is_scores=True
             )
-            prev_ids_embedding = layers.embedding(
+            prev_ids_embedding = paddle.static.nn.embedding(
                 input=prev_ids,
                 size=[self._target_dict_dim, self._word_dim],
                 dtype='float32',

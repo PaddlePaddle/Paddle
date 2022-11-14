@@ -25,7 +25,7 @@ import os
 def convolution_net(
     data, label, input_dim, class_dim=2, emb_dim=32, hid_dim=32
 ):
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data, size=[input_dim, emb_dim], is_sparse=True
     )
     conv_3 = fluid.nets.sequence_conv_pool(
@@ -54,7 +54,7 @@ def convolution_net(
 def dyn_rnn_lstm(
     data, label, input_dim, class_dim=2, emb_dim=32, lstm_size=128
 ):
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data, size=[input_dim, emb_dim], is_sparse=True
     )
     sentence = fluid.layers.fc(input=emb, size=lstm_size, act='tanh')
@@ -102,7 +102,7 @@ def stacked_lstm_net(
 ):
     assert stacked_num % 2 == 1
 
-    emb = fluid.layers.embedding(
+    emb = paddle.static.nn.embedding(
         input=data, size=[input_dim, emb_dim], is_sparse=True
     )
     # add bias attr
