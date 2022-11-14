@@ -99,6 +99,8 @@ class ProcessGroupBKCL : public ProcessGroupStream {
   std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
+      int64_t offset,  // for compatibility, no use now
+      int64_t numel,   // for compatibility, no use now
       bool sync_op,
       bool use_calc_stream) override;
 
