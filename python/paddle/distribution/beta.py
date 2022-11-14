@@ -20,7 +20,7 @@ from paddle.distribution import dirichlet, exponential_family
 class Beta(exponential_family.ExponentialFamily):
     r"""
     Beta distribution parameterized by alpha and beta.
-
+    Test for Docs Preview CI.
     In probability theory and statistics, the beta distribution is a family of
     continuous probability distributions defined on the interval [0, 1]
     parameterized by two positive shape parameters, denoted by alpha and beta,
