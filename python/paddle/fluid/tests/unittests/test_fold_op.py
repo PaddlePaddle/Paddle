@@ -74,7 +74,7 @@ class TestFoldOp(OpTest):
             + 1
         )
         output = np.zeros(output_shape).astype(np.float64)
-        ############ calculate output ##############
+        # ------------- calculate output ------------- #
         for b in range(output_shape[0]):
             for c in range(self.input_channels):
                 w_offset = int(c % self.kernel_sizes[1])

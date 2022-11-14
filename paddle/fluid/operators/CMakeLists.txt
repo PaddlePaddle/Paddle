@@ -1,5 +1,7 @@
 include(operators)
 
+add_subdirectory(generator)
+
 # solve "math constants not defined" problems caused by the order of inclusion
 # of <cmath> and the definition of macro _USE_MATH_DEFINES
 add_definitions(-D_USE_MATH_DEFINES)
@@ -244,10 +246,6 @@ if(WITH_UNITY_BUILD)
     # the unity library to lose some symbols.
     # The specified link dependency needs to be displayed here.
     target_link_libraries(paddle_operators_unity ${OP_HEADER_DEPS} ${COMMON_OP_DEPS})
-endif()
-
-if(WITH_ASCEND_CL)
-cc_test(gelu_op_npu_test SRCS gelu_op_npu_test.cc DEPS op_registry gelu_op scope device_context enforce executor)
 endif()
 
 if (WITH_GPU OR WITH_ASCEND_CL)

@@ -183,9 +183,9 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     Args:
         x (Tensor): The input tensor which is a Tensor.
         y (Tensor): The input tensor which is a Tensor.
-        transpose_x (bool): Whether to transpose :math:`x` before multiplication.
-        transpose_y (bool): Whether to transpose :math:`y` before multiplication.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication.
+        transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication.
+        name(str, optional): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
     Returns:
@@ -202,35 +202,35 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             y = paddle.rand([10])
             z = paddle.matmul(x, y)
             print(z.shape)
-            # [1]
+            # (1,)
 
             # matrix * vector
             x = paddle.rand([10, 5])
             y = paddle.rand([5])
             z = paddle.matmul(x, y)
             print(z.shape)
-            # [10]
+            # (10,)
 
             # batched matrix * broadcasted vector
             x = paddle.rand([10, 5, 2])
             y = paddle.rand([2])
             z = paddle.matmul(x, y)
             print(z.shape)
-            # [10, 5]
+            # (10, 5)
 
             # batched matrix * batched matrix
             x = paddle.rand([10, 5, 2])
             y = paddle.rand([10, 2, 5])
             z = paddle.matmul(x, y)
             print(z.shape)
-            # [10, 5, 5]
+            # (10, 5, 5)
 
             # batched matrix * broadcasted matrix
             x = paddle.rand([10, 1, 5, 2])
             y = paddle.rand([1, 3, 2, 5])
             z = paddle.matmul(x, y)
             print(z.shape)
-            # [10, 3, 5, 5]
+            # (10, 3, 5, 5)
 
     """
     if in_dygraph_mode():
@@ -639,9 +639,9 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 def dist(x, y, p=2, name=None):
     r"""
 
-    This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
+    Returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
     of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
-    details, please refer to the `numpy's broadcasting <https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`_:
+    details, please refer to the `Introduction to Tensor <../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor>`_:
 
     - Each input has at least one dimension.
     - Match the two input dimensions from back to front, the dimension sizes must either be equal, one of them is 1, or one of them does not exist.
@@ -695,6 +695,8 @@ def dist(x, y, p=2, name=None):
         x (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
         y (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
         p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
+        name (str, optional): The default value is `None`. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Tensor that is the p-norm of (x - y).
