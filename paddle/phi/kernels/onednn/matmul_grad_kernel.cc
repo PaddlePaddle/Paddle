@@ -133,24 +133,24 @@ void MatmulGradKernel(const Context &dev_ctx,
 
   if (trans_x && trans_y) {
     funcs::ExecuteMatMulV2<T, T>(
-        dev_ctx, y, y_dims, true, dout, dout_dims, true, &dx_tmp);
+        dev_ctx, y, dout, y_dims, dout_dims, true, true, &dx_tmp);
     funcs::ExecuteMatMulV2<T, T>(
-        dev_ctx, dout, dout_dims, true, x, x_dims, true, &dy_tmp);
+        dev_ctx, dout, x, dout_dims, x_dims, true, true, &dy_tmp);
   } else if (trans_x) {
     funcs::ExecuteMatMulV2<T, T>(
-        dev_ctx, y, y_dims, false, dout, dout_dims, true, &dx_tmp);
+        dev_ctx, y, dout, y_dims, dout_dims, false, true, &dx_tmp);
     funcs::ExecuteMatMulV2<T, T>(
-        dev_ctx, x, x_dims, false, dout, dout_dims, false, &dy_tmp);
+        dev_ctx, x, dout, x_dims, dout_dims, false, false, &dy_tmp);
   } else if (trans_y) {
     funcs::ExecuteMatMulV2<T, T>(
-        dev_ctx, dout, dout_dims, false, y, y_dims, false, &dx_tmp);
+        dev_ctx, dout, y, dout_dims, y_dims, false, false, &dx_tmp);
     funcs::ExecuteMatMulV2<T, T>(
-        dev_ctx, dout, dout_dims, true, x, x_dims, false, &dy_tmp);
+        dev_ctx, dout, x, dout_dims, x_dims, true, false, &dy_tmp);
   } else {
     funcs::ExecuteMatMulV2<T, T>(
-        dev_ctx, dout, dout_dims, false, y, y_dims, true, &dx_tmp);
+        dev_ctx, dout, y, dout_dims, y_dims, false, true, &dx_tmp);
     funcs::ExecuteMatMulV2<T, T>(
-        dev_ctx, x, x_dims, true, dout, dout_dims, false, &dy_tmp);
+        dev_ctx, x, dout, x_dims, dout_dims, true, false, &dy_tmp);
   }
 
   if (x_dims != dx_bd_dims) {
