@@ -371,14 +371,9 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
     auto& input_rows = input->rows();
 
 #ifdef PADDLE_WITH_MKLDNN
-
-    auto& pool = paddle::platform::DeviceContextPool::Instance();
-    auto cpu_place = paddle::platform::CPUPlace();
-    auto* dev_ctx = dynamic_cast<OneDNNContext*>(pool.Get(cpu_place));
-    auto& onednn_engine = dev_ctx->GetEngine();
-
+    OneDNNContext onednn_context(context.GetPlace());
     funcs::OneDNNAXPYHandler<T> axpy_handler(
-        input_width, T(1.f), onednn_engine);
+        input_width, T(1.f), onednn_context.GetEngine());
     for (size_t i = 0; i < input_rows.size(); i++) {
       size_t out_i = rows_to_id.at(input_rows[i]);
       axpy_handler(&input_data[i * input_width],
