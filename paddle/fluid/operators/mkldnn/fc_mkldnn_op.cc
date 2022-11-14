@@ -443,7 +443,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
           std::make_shared<dnnl::memory>(inner_product_cache->dst_mem);
       if (ctx.HasAttr("fuse_residual_connection") &&
           ctx.Attr<bool>("fuse_residual_connection")) {
-        auto* residual_param = ctx.Output<phi::DenseTensor>("ResidualData");
+        auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
         out->ShareDataWith(*residual_param);
       }
       auto out_ptr = out->mutable_data<T_out>(
