@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
+import paddle
 
 
 def bcast(x, target_tensor):
@@ -110,7 +111,7 @@ class TestExpandAsDygraphAPI(unittest.TestCase):
         np_data_y = np.array([1, 2, 3, 1, 2, 3]).astype('int32')
         data_x = paddle.to_tensor(np_data_x)
         data_y = paddle.to_tensor(np_data_y)
-        out = fluid.layers.expand_as(data_x, data_y)
+        out = paddle.expand_as(data_x, data_y)
         np_out = out.numpy()
         assert np.array_equal(np_out, np.tile(np_data_x, (2)))
         paddle.enable_static()
@@ -132,7 +133,7 @@ class TestExpandAsAPI(unittest.TestCase):
             dtype="float32",
         )
 
-        out_1 = fluid.layers.expand_as(x, target_tensor=y)
+        out_1 = paddle.expand_as(x, target_tensor=y)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         res_1 = exe.run(
