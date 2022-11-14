@@ -172,7 +172,8 @@ interpreter::CostInfo InterpreterCore::DryRun(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    ExecuteInstructionList(vec_instruction_);
+    // ExecuteInstructionList(vec_instruction_);
+    TraceInstructionList(vec_instruction_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
 
@@ -206,7 +207,8 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    ExecuteInstructionList(vec_instruction_);
+    // ExecuteInstructionList(vec_instruction_);
+    TraceInstructionList(vec_instruction_);
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(place_)) {
       platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -268,7 +270,8 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    ExecuteInstructionList(vec_instruction_);
+    // ExecuteInstructionList(vec_instruction_);
+    TraceInstructionList(vec_instruction_);
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(place_)) {
       platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -796,6 +799,94 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
         *op,
         *local_scope_,
         place);  // TODO(xiongkun03) change it to inner scope.
+  }
+}
+
+void InterpreterCore::TraceInstructionList(
+    const std::vector<Instruction>& vec_instr) {
+  VLOG(1) << "Tracing Instruction List ...";
+  unfinished_op_number_ = vec_instr.size();
+  if (unfinished_op_number_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+
+  exception_holder_.Clear();
+
+  for (size_t instr_id = 0; instr_id < unfinished_op_number_; instr_id++) {
+    auto& instr_node = vec_instruction_.at(instr_id);
+
+    VLOG(5) << __func__ << " OP id:" << instr_node.Id()
+            << " name:" << instr_node.OpBase()->Type() << " runs on "
+            << platform::GetCurrentThreadName();
+
+    auto* op = instr_node.OpBase();
+    platform::RecordEvent instruction_event(
+        op->Type(), platform::TracerEventType::Operator, 1);
+
+    try {
+      interpreter::WaitEvent(instr_node, place_);
+
+      if (!instr_node.IsArtificial()) {
+        RunInstruction(instr_node);
+        CheckGC(instr_node);
+        interpreter::LogDeviceMemoryStats(place_);
+      }
+
+      interpreter::RecordEvent(instr_node, place_);
+    } catch (platform::EnforceNotMet& ex) {
+      framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+      exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
+    } catch (platform::EOFException&) {
+      exception_holder_.Catch(std::current_exception());
+    } catch (std::exception& ex) {
+      LOG(WARNING) << op->Type() << " raises an exception "
+                   << platform::demangle(typeid(ex).name()) << ", "
+                   << ex.what();
+      exception_holder_.Catch(std::current_exception());
+    } catch (...) {
+      LOG(WARNING) << op->Type() << " raises an unknown exception";
+      exception_holder_.Catch(std::current_exception());
+    }
+
+    if (UNLIKELY(exception_holder_.IsCaught())) {
+      VLOG(4) << "Exception caught";
+      // if (exception_notifier_ != nullptr) {
+      //   exception_notifier_->NotifyEvent();
+      // }
+      break;
+    }
+
+    // VLOG(4) << "unfinished_op_number_: " << unfinished_op_number_;
+    // if (UNLIKELY(unfinished_op_number_.fetch_sub(
+    //                  1, std::memory_order_relaxed) == 1)) {
+    //   VLOG(1) << "unfinished_op_number_ - 1 == 1";
+    //   if (completion_notifier_ != nullptr) {
+    //     VLOG(1) << "completion_notifier_ Notify.";
+    //     completion_notifier_->NotifyEvent();
+    //   }
+    // }
+  }
+
+  // auto event_name = main_thread_blocker_.WaitEvent();
+  // VLOG(1) << "main_thread_blocker_(" << &main_thread_blocker_
+  //         << ") got event_name: " << event_name;
+
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(1) << "Exception caught " << exception_holder_.Type();
+    // Graceful exit when the executor encountered a fatal error.
+    // EOF is not a fatal error.
+    if (exception_holder_.Type() != "EOF") {
+      async_work_queue_->Cancel();
+    }
+    VLOG(4) << "Cancel ok";
+    PADDLE_ENFORCE_EQ(
+        main_thread_blocker_.Clear(),
+        0,
+        platform::errors::PreconditionNotMet(
+            "main_thread_blocker_.Clear() return -1, clear failed"));
+    VLOG(4) << "clear ok";
+    exception_holder_.ReThrow();
   }
 }
 
