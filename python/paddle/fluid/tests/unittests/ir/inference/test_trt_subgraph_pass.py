@@ -17,6 +17,8 @@ import shutil
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
@@ -225,7 +227,7 @@ class TensorRTSubgraphPassTransposeTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_transpose(self, data):
-        return fluid.layers.transpose(data, [0, 3, 1, 2])
+        return paddle.transpose(data, [0, 3, 1, 2])
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():

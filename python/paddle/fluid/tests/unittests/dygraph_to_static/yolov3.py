@@ -344,7 +344,7 @@ class YOLOv3(fluid.dygraph.Layer):
                 )
                 self.boxes.append(boxes)
                 self.scores.append(
-                    fluid.layers.transpose(scores, perm=[0, 2, 1])
+                    paddle.transpose(scores, perm=[0, 2, 1])
                 )
             self.downsample //= 2
 

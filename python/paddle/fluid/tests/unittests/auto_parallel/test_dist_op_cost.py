@@ -151,7 +151,7 @@ class TestDistOpCost(unittest.TestCase):
                             auto.ProcessMesh([0, 1], dim_names=["x"]),
                             ["x", None],
                         )
-                out = paddle.fluid.layers.transpose(
+                out = paddle.transpose(
                     out, [1, 0]
                 )  # [8, 2] [-1, 0]
 
@@ -188,7 +188,7 @@ class TestDistOpCost(unittest.TestCase):
                     tmp_out, param2
                 )  # [8, 4] [-1, 0]
 
-                out8 = paddle.fluid.layers.transpose(
+                out8 = paddle.transpose(
                     out2, [1, 0]
                 )  # [4, 8] [0, -1]
 
@@ -266,7 +266,7 @@ class TestDistOpCost(unittest.TestCase):
                             auto.ProcessMesh([0, 1], dim_names=["x"]),
                             ["x", None],
                         )
-                out = paddle.fluid.layers.transpose(
+                out = paddle.transpose(
                     out, [1, 0]
                 )  # [8, 2] [-1, 0]
 
@@ -300,7 +300,7 @@ class TestDistOpCost(unittest.TestCase):
                 tmp_out = paddle.matmul(out1, tmp_param)
                 out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
 
-                out8 = paddle.fluid.layers.transpose(
+                out8 = paddle.transpose(
                     out2, [1, 0]
                 )  # [4, 8] [0, -1]
 
@@ -377,7 +377,7 @@ class TestDistOpCost(unittest.TestCase):
                             auto.ProcessMesh([0, 1], dim_names=["x"]),
                             ["x", None],
                         )
-                out = paddle.fluid.layers.transpose(
+                out = paddle.transpose(
                     out, [1, 0]
                 )  # [8, 2] [-1, 0]
 
@@ -414,7 +414,7 @@ class TestDistOpCost(unittest.TestCase):
                     tmp_out, param2
                 )  # [8, 4] [-1, 0]
 
-                out8 = paddle.fluid.layers.transpose(
+                out8 = paddle.transpose(
                     out2, [1, 0]
                 )  # [4, 8] [0, -1]
 

@@ -14,6 +14,7 @@
 
 from ..wrapped_decorator import signature_safe_contextmanager
 
+import paddle
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
@@ -636,7 +637,7 @@ class StaticRNN:
                 dtype='float32',
                 is_sparse=False)
             # transform batch size to dim 1
-            x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+            x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
             rnn = fluid.layers.StaticRNN()
             with rnn.step():
@@ -725,7 +726,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -752,7 +753,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
                 boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -853,7 +854,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -904,7 +905,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -964,7 +965,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():

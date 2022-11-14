@@ -14,6 +14,7 @@
 
 import copy
 
+import paddle
 from paddle.fluid import layers, unique_name
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
@@ -324,7 +325,7 @@ def basic_gru(
             )
 
     if batch_first:
-        input = layers.transpose(input, [1, 0, 2])
+        input = paddle.transpose(input, [1, 0, 2])
 
     mask = None
     if sequence_length:
@@ -332,7 +333,7 @@ def basic_gru(
         mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
-        mask = layers.transpose(mask, [1, 0])
+        mask = paddle.transpose(mask, [1, 0])
 
     direc_num = 1
     if bidirectional:
@@ -423,7 +424,7 @@ def basic_gru(
         )
 
         if batch_first:
-            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
         return rnn_out, last_hidden
     else:
 
@@ -431,7 +432,7 @@ def basic_gru(
         last_hidden = fw_last_hidden
 
         if batch_first:
-            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
 
         return rnn_out, last_hidden
 
@@ -608,7 +609,7 @@ def basic_lstm(
             )
 
     if batch_first:
-        input = layers.transpose(input, [1, 0, 2])
+        input = paddle.transpose(input, [1, 0, 2])
 
     mask = None
     if sequence_length:
@@ -617,7 +618,7 @@ def basic_lstm(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
 
-        mask = layers.transpose(mask, [1, 0])
+        mask = paddle.transpose(mask, [1, 0])
 
     direc_num = 1
     if bidirectional:
@@ -738,7 +739,7 @@ def basic_lstm(
         )
 
         if batch_first:
-            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
         return rnn_out, last_hidden, last_cell
     else:
 
@@ -747,7 +748,7 @@ def basic_lstm(
         last_cell = fw_last_cell
 
         if batch_first:
-            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
 
         return rnn_out, last_hidden, last_cell
 

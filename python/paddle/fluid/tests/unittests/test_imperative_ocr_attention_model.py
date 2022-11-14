@@ -268,7 +268,7 @@ class EncoderNet(fluid.dygraph.Layer):
         #    stride=[1, 1],
         #    filter_size=[conv_features.shape[2], 1])
 
-        transpose_conv_features = fluid.layers.transpose(
+        transpose_conv_features = paddle.transpose(
             conv_features, perm=[0, 3, 1, 2]
         )
         sliced_feature = fluid.layers.reshape(
