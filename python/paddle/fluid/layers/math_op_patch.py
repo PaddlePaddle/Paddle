@@ -99,7 +99,7 @@ def monkey_patch_variable():
         return var
 
     def create_scalar(block, value, dtype):
-        return create_tensor(block, value, dtype, shape=[])
+        return create_tensor(block, value, dtype, shape=[1])
 
     def create_tensor_with_batchsize(ref_var, value, dtype):
         assert isinstance(ref_var, Variable)
