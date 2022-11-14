@@ -16,6 +16,7 @@ import sys
 from functools import partial, reduce
 import warnings
 
+
 import paddle
 from paddle.utils import deprecated
 from . import nn
@@ -1560,7 +1561,9 @@ def _dynamic_decode_imperative(
 
     if not output_time_major:
         final_outputs = map_structure(
-            lambda x: paddle.transpose(x, [1, 0] + list(range(2, len(x.shape)))),
+            lambda x: paddle.transpose(
+                x, [1, 0] + list(range(2, len(x.shape)))
+            ),
             final_outputs,
         )
 

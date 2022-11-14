@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 
 import paddle
+
 import paddle.fluid as fluid
 from inference_pass_test import InferencePassTest
 
@@ -104,9 +105,7 @@ class TestMKLDNNMatmulOpNotFusedBreakPattern(TestMKLDNNMatmulFuseOp):
             )
             out = fluid.layers.matmul(x, y)
             out = paddle.transpose(out, perm=[0, 2, 1, 3])
-            out = paddle.transpose(
-                out, perm=[0, 1, 2, 3]
-            )  # breaks pattern
+            out = paddle.transpose(out, perm=[0, 1, 2, 3])  # breaks pattern
             out = fluid.layers.reshape(
                 out, [0, 0, self.shape_y[0] * self.shape_y[2]]
             )
