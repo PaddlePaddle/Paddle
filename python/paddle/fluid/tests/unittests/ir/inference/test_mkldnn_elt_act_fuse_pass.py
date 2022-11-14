@@ -92,7 +92,6 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Swish(
 ):
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
-        self.act_alpha = 4
         self.act = paddle.nn.functional.swish
 
 
