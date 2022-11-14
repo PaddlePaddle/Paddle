@@ -32,7 +32,7 @@ __forceinline__ __device__ float copysignf_pos(float a, float b) {
  *@brief the tanh functor
  */
 __inline__ __device__ float tanh_opt(float x) {
-#if (__CUDA_ARCH__ >= 750)
+#if (__CUDA_ARCH__ >= 750 && CUDART_VERSION >= 11000)
   float r;
   asm("tanh.approx.f32 %0,%1; \n\t" : "=f"(r) : "f"(x));
   return r;
