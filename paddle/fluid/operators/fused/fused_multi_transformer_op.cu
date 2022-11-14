@@ -193,14 +193,23 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         dev_ctx.Alloc<T>(&ffn1_out, ffn1_out.numel() * sizeof(T));
 
 #if CUDA_VERSION >= 11060  // Use CublasLt
-    auto ffn1_linear_bias_gelu = CublasFusedMLP<T>(dev_ctx,
-                                                   false,
-                                                   false,
-                                                   bsz_seq,
-                                                   dim_ffn,
-                                                   dim_embed,
-                                                   "gelu",
-                                                   true /*compute_bias*/);
+    // auto ffn1_linear_bias_gelu = CublasFusedMLP<T>(dev_ctx,
+    //                                                false,
+    //                                                false,
+    //                                                bsz_seq,
+    //                                                dim_ffn,
+    //                                                dim_embed,
+    //                                                "gelu",
+    //                                                true /*compute_bias*/);
+
+    auto ffn1_linear_bias_gelu = CublasFusedMLP<T>(dev_ctx);
+    ffn1_linear_bias_gelu.Setup(false,
+                                false,
+                                bsz_seq,
+                                dim_ffn,
+                                dim_embed,
+                                "gelu",
+                                true /*compute_bias*/);
 #else
     auto ffn1_linear_compute = AttnMatMul<T>(
         dev_ctx, false, false, bsz_seq, dim_ffn, dim_embed, false);
@@ -471,11 +480,21 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
       // step8. ffn matmul2
       if (pre_layer_norm) {
+#if CUDA_VERSION >= 11060
+        ffn2_linear_compute.ComputeForward(
+            ffn2_weights[i], &ffn1_out, nullptr, buf1, nullptr);
+#else
         ffn2_linear_compute.ComputeForward(
             ffn2_weights[i], &ffn1_dropout_out, nullptr, buf1, nullptr);
+#endif
       } else {
+#if CUDA_VERSION >= 11060
+        ffn2_linear_compute.ComputeForward(
+            ffn2_weights[i], &ffn1_out, nullptr, buf0, nullptr);
+#else
         ffn2_linear_compute.ComputeForward(
             ffn2_weights[i], &ffn1_dropout_out, nullptr, buf0, nullptr);
+#endif
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step8.0";

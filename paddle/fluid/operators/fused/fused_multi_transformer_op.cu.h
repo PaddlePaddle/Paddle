@@ -1162,19 +1162,7 @@ template <typename T>
 class CublasFusedMLP {
  public:
   // (m, n, k) = bsz_seq, hidden_feature, in_feature
-  CublasFusedMLP(const phi::GPUContext &dev_ctx,
-                 bool transA,
-                 bool transB,
-                 int bsz_seq,
-                 int hidden_feature,
-                 int in_feature,
-                 const std::string &activation,
-                 bool compute_bias)
-      : dev_ctx_(dev_ctx) {
-    int64_t M = bsz_seq;
-    int64_t K = in_feature;
-    int64_t N = hidden_feature;
-
+  explicit CublasFusedMLP(const phi::GPUContext &dev_ctx) : dev_ctx_(dev_ctx) {
     // Set Math Type
     cudaDataType_t mat_type = CUDA_R_32F;
     cudaDataType_t scale_type = CUDA_R_32F;
@@ -1191,47 +1179,15 @@ class CublasFusedMLP {
       compute_type = CUBLAS_COMPUTE_64F;
     }
 
-    cublasOperation_t cublas_transA = transA ? CUBLAS_OP_T : CUBLAS_OP_N;
-    cublasOperation_t cublas_transB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
-
+    // Just for init.
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatmulDescCreate(
         &operation_desc_, compute_type, scale_type));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            operation_desc_,
-            CUBLASLT_MATMUL_DESC_TRANSB,
-            &cublas_transA,
-            sizeof(cublas_transA)));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            operation_desc_,
-            CUBLASLT_MATMUL_DESC_TRANSA,
-            &cublas_transB,
-            sizeof(cublas_transB)));
-
-    cublasLtEpilogue_t epiloque_func =
-        get_epilogue_type_(activation, compute_bias);
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            operation_desc_,
-            CUBLASLT_MATMUL_DESC_EPILOGUE,
-            &epiloque_func,
-            sizeof(epiloque_func)));
-
-    if (transA)
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-          &x_desc_, mat_type, M, K, M));
-    else
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-          &x_desc_, mat_type, K, M, K));
-    if (transB)
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-          &w_desc_, mat_type, K, N, K));
-    else
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-          &w_desc_, mat_type, N, K, N));
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
-        &out_desc_, mat_type, N, M, N));
+        &x_desc_, mat_type, 1, 1, 1));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &w_desc_, mat_type, 1, 1, 1));
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cublasLtMatrixLayoutCreate(
+        &out_desc_, mat_type, 1, 1, 1));
   }
 
   ~CublasFusedMLP() {
@@ -1254,23 +1210,66 @@ class CublasFusedMLP {
             sizeof(bias_data)));
   }
 
+  void Setup(bool transA,
+             bool transB,
+             int bsz_seq,
+             int hidden_feature,
+             int in_feature,
+             const std::string &activation,
+             bool compute_bias) {
+    int64_t M = bsz_seq;
+    int64_t K = in_feature;
+    int64_t N = hidden_feature;
+
+    cublasOperation_t cublas_transA = transA ? CUBLAS_OP_T : CUBLAS_OP_N;
+    cublasOperation_t cublas_transB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            operation_desc_,
+            CUBLASLT_MATMUL_DESC_TRANSB,
+            &cublas_transA,
+            sizeof(cublas_transA)));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            operation_desc_,
+            CUBLASLT_MATMUL_DESC_TRANSA,
+            &cublas_transB,
+            sizeof(cublas_transB)));
+
+    cublasLtEpilogue_t epiloque_func =
+        get_epilogue_type_(activation, compute_bias);
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            operation_desc_,
+            CUBLASLT_MATMUL_DESC_EPILOGUE,
+            &epiloque_func,
+            sizeof(epiloque_func)));
+
+    /*
+    cublas use col major: x(M, K) matmul w(K, N) = out(M, N) equals to w_t(N, K)
+    * x_t(K, M) = out(N, M)
+    */
+    SetCublasMatrixLayout(x_desc_, cublas_transA, K, M);
+    SetCublasMatrixLayout(w_desc_, cublas_transB, N, K);
+    SetCublasMatrixLayout(out_desc_, CUBLAS_OP_N, N, M);
+  }
+
   void ComputeForward(const phi::DenseTensor *weight,
                       const phi::DenseTensor *input,
                       phi::DenseTensor *output) {
-    // Note: for blas.GEMM API in Paddle, it treats all inputs as row-major.
     // here: (transa, transb): nt, input * weight.
     // (M * K) * (K * N)
-    cublasLtHandle_t lt_handle = dev_ctx.cublaslt_handle();
+    cublasLtHandle_t lt_handle = dev_ctx_.cublaslt_handle();
     size_t workspace_size = static_cast<size_t>(16) * 1024 * 1024;
-    cudaStream_t stream = dev_ctx.stream();
-    memory::allocation::AllocationPtr workspace = memory::Alloc(
-        dev_ctx.GetPlace(),
-        workspace_size,
-        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    cudaStream_t stream = dev_ctx_.stream();
+    memory::allocation::AllocationPtr workspace =
+        memory::Alloc(dev_ctx_.GetPlace(),
+                      workspace_size,
+                      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
     const auto *w_data = weight->data<T>();
     const auto *x_data = input->data<T>();
-    const auto *out_data = output->data<T>();
+    auto *out_data = output->data<T>();
 
     double alpha64 = 1.0, beta64 = 0.0;
     float alpha32 = 1.0f, beta32 = 0.0f;
@@ -1297,9 +1296,9 @@ class CublasFusedMLP {
                                           out_data,
                                           out_desc_,
                                           nullptr /*algo*/,
-                                          workspace /*workspace->ptr()*/,
+                                          workspace->ptr() /*workspace*/,
                                           workspace_size,
-                                          dev_ctx.stream()));
+                                          stream));
   }
 
  private:
@@ -1335,8 +1334,33 @@ class CublasFusedMLP {
     }
   }
 
-  const phi::GPUContext &dev_ctx_;
+  void SetCublasMatrixLayout(cublasLtMatrixLayout_t layout_desc,
+                             cublasOperation_t cublas_trans,
+                             const size_t cublas_m,
+                             const size_t cublas_n) {
+    // if (transA)
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            layout_desc,
+            CUBLASLT_MATRIX_LAYOUT_ROWS,
+            cublas_trans == CUBLAS_OP_N ? &cublas_m : &cublas_n,
+            sizeof(cublas_m)));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            layout_desc,
+            CUBLASLT_MATRIX_LAYOUT_COLS,
+            cublas_trans == CUBLAS_OP_N ? &cublas_n : &cublas_m,
+            sizeof(cublas_m)));
+    const size_t cublas_ld = cublas_trans == CUBLAS_OP_N ? cublas_m : cublas_n;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatrixLayoutSetAttribute(
+            layout_desc,
+            CUBLASLT_MATRIX_LAYOUT_LD,
+            &cublas_ld,
+            sizeof(cublas_ld)));
+  }
 
+  const phi::GPUContext &dev_ctx_;
   cublasLtMatmulDesc_t operation_desc_;
   cublasLtMatrixLayout_t x_desc_;
   cublasLtMatrixLayout_t w_desc_;
