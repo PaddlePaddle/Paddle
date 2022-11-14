@@ -85,7 +85,6 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   ProcessGroupNCCL(const std::shared_ptr<Store>& store,
                    int rank,
                    int size,
-                   const platform::Place& place,
                    int gid);
 
   std::string GetBackendName() const override { return "NCCL"; }

@@ -98,15 +98,11 @@ bool ProcessGroupCustom::CustomTask::Wait(std::chrono::milliseconds timeout) {
 void ProcessGroupCustom::CustomTask::Synchronize() { Wait(kWaitTimeout); }
 
 ProcessGroupCustom::ProcessGroupCustom(const std::shared_ptr<Store>& store,
+                                       const std::string& device_type,
                                        int rank,
                                        int size,
-                                       const platform::Place& place,
                                        int gid)
-    : ProcessGroup(rank, size, place, gid),
-      store_(store),
-      device_type_(place.GetDeviceType()) {
-  phi::DeviceManager::SetDevice(place_);
-}
+    : ProcessGroup(rank, size, gid), store_(store), device_type_(device_type) {}
 
 void ProcessGroupCustom::BroadcastUniqueCustomID(
     std::vector<phi::ccl::CCLRootId>& ccl_ids) {  // NOLINT
@@ -379,7 +375,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
     const BarrierOptions& opts) {
   // Only support single card single process
-  std::vector<phi::CustomPlace> places = {place_};
+  PADDLE_ENFORCE_GE(opts.device_id,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "The barrier device id must greater or equal than 0."));
+  platform::CustomPlace place(device_type_, opts.device_id);
+  std::vector<phi::CustomPlace> places = {place};
   std::vector<phi::DenseTensor> barrierTensors;
   barrierTensors.reserve(places.size());
 

@@ -64,9 +64,9 @@ class ProcessGroupCustom : public ProcessGroup {
   };
 
   ProcessGroupCustom(const std::shared_ptr<Store>& store,
+                     const std::string& device_type,
                      int rank,
                      int size,
-                     const platform::Place& place,
                      int gid);
 
   std::string GetBackendName() const override { return "XCCL_" + device_type_; }

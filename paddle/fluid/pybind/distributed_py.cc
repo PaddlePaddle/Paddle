@@ -110,7 +110,7 @@ void BindDistributed(py::module *m) {
 
   py::class_<distributed::BarrierOptions>(*m, "BarrierOptions")
       .def(py::init<>())
-      .def_readwrite("place_ids", &distributed::BarrierOptions::place_ids);
+      .def_readwrite("device_id", &distributed::BarrierOptions::device_id);
 
   py::class_<distributed::ReduceOptions>(*m, "ReduceOptions")
       .def(py::init<>())
@@ -513,12 +513,12 @@ void BindDistributed(py::module *m) {
 
           .def(
               "barrier",
-              [](distributed::ProcessGroup &self, std::vector<int> place_ids) {
+              [](distributed::ProcessGroup &self, int8_t device_id) {
                 distributed::BarrierOptions opts;
-                opts.place_ids = place_ids;
+                opts.device_id = device_id;
                 return self.Barrier(opts);
               },
-              py::arg("place_ids") = std::vector<int>{},
+              py::arg("device_id") = -1,
               py::call_guard<py::gil_scoped_release>())
 
           // TODO(liyurui): Interface below will be removed in the future.
@@ -1214,12 +1214,10 @@ void BindDistributed(py::module *m) {
           .def(py::init<const std::shared_ptr<distributed::Store> &,
                         int,
                         int,
-                        const platform::CUDAPlace &,
                         int>(),
                py::arg("store"),
                py::arg("rank"),
                py::arg("world_size"),
-               py::arg("place"),
                py::arg("group_id") = 0,
                py::call_guard<py::gil_scoped_release>());
 
@@ -1254,14 +1252,14 @@ void BindDistributed(py::module *m) {
              std::shared_ptr<distributed::ProcessGroupCustom>>(
       *m, "ProcessGroupCustom", ProcessGroup)
       .def(py::init<const std::shared_ptr<distributed::Store> &,
+                    const std::string &,
                     int,
                     int,
-                    const platform::CustomPlace &,
                     int>(),
            py::arg("store"),
+           py::arg("device_type"),
            py::arg("rank"),
            py::arg("world_size"),
-           py::arg("place"),
            py::arg("group_id") = 0,
            py::call_guard<py::gil_scoped_release>());
 
@@ -1275,12 +1273,10 @@ void BindDistributed(py::module *m) {
           .def(py::init<const std::shared_ptr<distributed::Store> &,
                         int,
                         int,
-                        const platform::XPUPlace &,
                         int>(),
                py::arg("store"),
                py::arg("rank"),
                py::arg("world_size"),
-               py::arg("place"),
                py::arg("group_id") = 0,
                py::call_guard<py::gil_scoped_release>());
 #endif
@@ -1303,14 +1299,12 @@ void BindDistributed(py::module *m) {
       .def(py::init<const std::shared_ptr<paddle::distributed::Store> &,
                     int,
                     int,
-                    const platform::CPUPlace &,
                     int,
                     std::shared_ptr<GlooOptions> &>(),
            py::call_guard<py::gil_scoped_release>())
       .def(py::init([](const std::shared_ptr<paddle::distributed::Store> &store,
                        int rank,
                        int world_size,
-                       const platform::CPUPlace &place,
                        int gid) {
              auto opts = GlooOptions::create();
              char *ifname = getenv(GLOO_SOCKET_IFNAME_ENV.c_str());
@@ -1321,12 +1315,11 @@ void BindDistributed(py::module *m) {
                opts->device = ProcessGroupGloo::createDefaultDevice();
              }
              return std::make_shared<ProcessGroupGloo>(
-                 store, rank, world_size, place, gid, opts);
+                 store, rank, world_size, gid, opts);
            }),
            py::arg("store"),
            py::arg("rank"),
            py::arg("world_size"),
-           py::arg("place"),
            py::arg("group_id") = 0,
            py::call_guard<py::gil_scoped_release>())
       .def_static("create_default_device",

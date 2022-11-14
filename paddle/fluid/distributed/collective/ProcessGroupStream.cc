@@ -17,11 +17,8 @@
 namespace paddle {
 namespace distributed {
 
-ProcessGroupStream::ProcessGroupStream(int rank,
-                                       int size,
-                                       const platform::Place& place,
-                                       int gid)
-    : ProcessGroup(rank, size, place, gid) {}
+ProcessGroupStream::ProcessGroupStream(int rank, int size, int gid)
+    : ProcessGroup(rank, size, gid) {}
 
 const phi::DeviceContext& ProcessGroupStream::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
