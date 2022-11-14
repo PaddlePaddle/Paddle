@@ -619,46 +619,27 @@ class GroupShardedStage2(nn.Layer):
 
     def _dp_allreduce(self):
         # do dp allreduce here for gradient merge.
-        grad_storage_has_done = []
         if self._dp_group and self._dp_group.nranks > 1:
-            for index, param in enumerate(self._trainable_params):
-                dst_rank = self._trainable_param2rank[param.name]
-                assert not self._grad_reduced[
-                    index
-                ], 'the grad_reduce of the param({}) must be False when dp allreduce.'.format(
-                    param.name
-                )
-
-                if (
-                    not self._use_grad_storage
-                    or not self._has_grad_storage[index]
+            for dtype in self._grad_storages.keys():
+                for rank, g in sorted(
+                    self._grad_storages[dtype].items(), key=lambda x: x[0]
                 ):
-                    if self._group.ranks[dst_rank] == dist.get_rank():
-                        assert (
-                            param.grad._is_initialized()
-                        ), "params must be initialized when dp allreduce!"
-                        dist.all_reduce(
-                            tensor=param.grad,
-                            group=self._dp_group,
-                            sync_op=True,
-                        )
-                else:
-                    if dst_rank in grad_storage_has_done:
-                        continue
-                    g = self._grad_storages[param.dtype][dst_rank]
-
-                    if self._group.ranks[g.destination] == dist.get_rank():
-                        assert (
-                            g.buffer._is_initialized() and g.all_checked_in
-                        ), "grad_storages must be initialized when dp allreduce!"
+                    if g.destination == self._rank:
+                        assert g.buffer._is_initialized()
                         dist.all_reduce(
                             tensor=g.buffer,
                             group=self._dp_group,
                             sync_op=True,
                         )
-                        grad_storage_has_done.append(dst_rank)
-
-        del grad_storage_has_done
+            for param in self._trainable_params:
+                if param.name in self._param_grads and param.grad is not None:
+                    dst_rank = self._trainable_param2rank[param.name]
+                    if dst_rank == self._rank:
+                        dist.all_reduce(
+                            tensor=param.grad,
+                            group=self._dp_group,
+                            sync_op=True,
+                        )
 
     def _redefine_opt_step(self):
         grad_func = self._grad_scale
@@ -673,8 +654,8 @@ class GroupShardedStage2(nn.Layer):
                     assert self._comm_task is not None
                     self._comm_task.wait()
 
-                grad_func()
                 dp_allreduce_func()
+                grad_func()
                 opt_step()
 
             opt.step = MethodType(_opt_step, opt)
