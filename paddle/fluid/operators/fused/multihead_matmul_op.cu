@@ -256,10 +256,24 @@ __global__ void broadcast(const T *src,
   }
 }
 
+template <typename T>
+__global__ void broadcast_batch_head_number(const T *src,
+                          T *dst,
+                          const int batch_size,
+                          const int seq_len,
+                          const int head_num) {
+  int batch_id = blockIdx.x % seq_len;
+  int dst_offset = blockIdx.x * seq_len;
+  if (threadIdx.x < seq_len) {
+    dst[threadIdx.x + dst_offset] = src[threadIdx.x + batch_id * seq_len];
+  }
+}
+
 template <typename DeviceContext, typename T>
 class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+    VLOG(1)<<"@@@ call multiheadmatmul v2 compute";
     using Tensor = phi::DenseTensor;
     auto *input = context.Input<phi::DenseTensor>("Input");
     auto *w = context.Input<phi::DenseTensor>("W");
@@ -285,7 +299,14 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     int hidden = input_dims[2];
     Tensor temp_bias_tensor;
     // if bias_qk is[batch, 1, 1, seq_len], the bias_qk_d need to be broadcasted
+    VLOG(1)<<"bias_qk_dim:"
+           <<bias_qk->dims()[0]<<","
+           <<bias_qk->dims()[1]<<","
+           <<bias_qk->dims()[2]<<","
+           <<bias_qk->dims()[3];
+    VLOG(1)<<"batch:"<<batch<<", head_number:"<<head_number<<", seq_len:"<<seq_len<<", seq_len:"<<seq_len;
     if (bias_qk && bias_qk->numel() == (batch * seq_len)) {
+      VLOG(1)<<"do broadcasted bias_qk";
       temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
       auto *temp_qk_bias = device_ctx.template Alloc<T>(
           &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
@@ -295,6 +316,22 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
           bias_qk_d, temp_qk_bias, seq_len, head_number);
       bias_qk_d = static_cast<const T *>(temp_qk_bias);
     }
+    if (bias_qk && bias_qk->numel() == (1*seq_len*seq_len)) {
+      VLOG(1)<<"do broadcasted bias_qk for 1, 1, seq_len, seq_len";
+      temp_bias_tensor.Resize({batch * head_number * seq_len * seq_len});
+      auto *temp_qk_bias = device_ctx.template Alloc<T>(
+          &temp_bias_tensor, temp_bias_tensor.numel() * sizeof(T));
+      int grid = batch * head_number * seq_len;
+      int block = round_up(seq_len);
+      broadcast_batch_head_number<<<grid, block, 0, stream>>>(
+          bias_qk_d, temp_qk_bias,
+          batch,
+          seq_len, 
+          head_number);
+      bias_qk_d = static_cast<const T *>(temp_qk_bias);
+    }
+    VLOG(1)<<"@@@ temp_bias_tensor";
+    VLOG(1)<<temp_bias_tensor;
     if (!bias_qk) {
       int size = batch * head_number * seq_len * seq_len;
       temp_bias_tensor.Resize({size});
@@ -333,7 +370,8 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     // (B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(device_ctx);
     blas.MatMul(input_matrix, w_matrix, &temp_out_tensor);
-
+    VLOG(2)<<"(B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)";
+    VLOG(2)<<temp_out_tensor;
     // temp_out_tensor.Resize(temp_out_dims);
 
     Tensor multihead_temp_tensor;
