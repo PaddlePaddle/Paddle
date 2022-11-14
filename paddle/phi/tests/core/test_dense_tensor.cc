@@ -157,12 +157,12 @@ TEST(dense_tensor, storage_properties) {
   EXPECT_FALSE(tensor.storage_properties_initialized());
   auto npu_properties = std::make_unique<NPUStorageProperties>();
   npu_properties->storage_format = 3;
-  npu_properties->storage_shape = {1, 1, 1, 1, 16};
+  npu_properties->storage_dims = {1, 1, 1, 1, 16};
   tensor.set_storage_properties(std::move(npu_properties));
   EXPECT_TRUE(tensor.storage_properties_initialized());
   auto get_npu_properties = tensor.storage_properties<NPUStorageProperties>();
   CHECK_EQ(get_npu_properties.storage_format, 3);
-  CHECK_EQ(get_npu_properties.storage_shape.size(), 5UL);
+  CHECK_EQ(get_npu_properties.storage_dims.size(), 5);
 
   // test error type storage properties
 #ifdef PADDLE_WITH_MKLDNN
@@ -180,7 +180,7 @@ TEST(dense_tensor, storage_properties) {
   auto get_cp_npu_properties =
       cp_tensor.storage_properties<NPUStorageProperties>();
   CHECK_EQ(get_cp_npu_properties.storage_format, 3);
-  CHECK_EQ(get_cp_npu_properties.storage_shape.size(), 5UL);
+  CHECK_EQ(get_cp_npu_properties.storage_dims.size(), 5);
 }
 
 }  // namespace tests
