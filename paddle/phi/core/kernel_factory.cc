@@ -383,7 +383,7 @@ std::string kernel_message(const std::string& kernel_name) {
         message += ", ";
       }
     }
-    message += "]; ";
+    message += "]); ";
   }
   message += "}";
   return message;
