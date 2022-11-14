@@ -39,6 +39,7 @@ const std::unordered_set<std::string> cudnn_white_list = {
     "conv2d_grad",
     "conv2d_grad_grad",
     "conv2d_transpose_double_grad",
+    "conv2d_transpose_grad_grad",
     "conv2d_transpose_grad",
     "conv3d_double_grad",
     "conv3d_grad",
@@ -145,10 +146,10 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           {Backend::GPUDNN, DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     }
     if (kernel_iter != iter->second.end()) {
+      LOG(WARNING) << "The GPUDNN kernel for [" << kernel_name
+                   << "] is selected. directly";
       return {kernel_iter->second, false};
     }
-    LOG(WARNING) << "The cudnn kernel for [" << kernel_name
-                 << "] is not registered.";
   }
 #endif
   if (kernel_key.backend() == Backend::GPUDNN) {
@@ -204,6 +205,9 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
             << ", expected_kernel_key:" << kernel_key
             << ", fallbacking to CPU one!";
 
+    LOG(WARNING) << "The CPU kernel for [" << kernel_name
+                 << "] is selected. fallback";
+
     return {kernel_iter->second, true};
   }
 
@@ -217,6 +221,17 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           " to CPU one, please set the flag true before run again.",
           kernel_key,
           kernel_name));
+
+  if (kernel_key.backend() == Backend::GPU) {
+    LOG(WARNING) << "The GPU kernel for [" << kernel_name
+                 << "] is selected. without fallback";
+  } else if (kernel_key.backend() == Backend::CPU) {
+    LOG(WARNING) << "The CPU kernel for [" << kernel_name
+                 << "] is selected. without fallback";
+  } else if (kernel_key.backend() == Backend::GPUDNN) {
+    LOG(WARNING) << "The GPUDNN kernel for [" << kernel_name
+                 << "] is selected. without fallback";
+  }
 
   return {kernel_iter->second, false};
 }
