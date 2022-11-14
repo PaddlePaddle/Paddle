@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 void FusedBatchNormActOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
@@ -190,18 +190,10 @@ framework::OpKernelType FusedBatchNormActOp::GetExpectedKernelType(
                         "Variance input should be of float type"));
 
   framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
   return framework::OpKernelType(
       input_data_type, ctx.GetPlace(), layout, library);
-}
-
-framework::OpKernelType FusedBatchNormActOp::GetKernelTypeForVar(
-    const std::string &var_name,
-    const Tensor &tensor,
-    const framework::OpKernelType &expected_kernel_type) const {
-  return framework::OpKernelType(
-      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
 
 void FusedBatchNormActOpMaker::Make() {
@@ -326,7 +318,7 @@ framework::OpKernelType FusedBatchNormActGradOp::GetExpectedKernelType(
   }
 
   framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"),

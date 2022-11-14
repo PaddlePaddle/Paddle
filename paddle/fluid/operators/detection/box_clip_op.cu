@@ -23,7 +23,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTenso = framework::LoDTensor;
+using LoDTenso = phi::DenseTensor;
 
 static constexpr int ImInfoSize = 3;
 

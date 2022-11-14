@@ -129,7 +129,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
-      auto x = ctx.Input<framework::LoDTensor>("X");
+      auto x = ctx.Input<phi::DenseTensor>("X");
 
       if (dynamic_shape) {
         // dynamic shape for switch send/recv
@@ -185,7 +185,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
       }
       return;
     }
-    auto x = ctx.Input<framework::LoDTensor>("X");
+    auto x = ctx.Input<phi::DenseTensor>("X");
     int numel = x->numel();
 
     if (dynamic_shape) {
@@ -221,7 +221,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(send_v2,
                         ops::SendOpV2CUDAKernel<float>,
                         ops::SendOpV2CUDAKernel<double>,
-#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000
                         ops::SendOpV2CUDAKernel<plat::bfloat16>,
 #endif
                         ops::SendOpV2CUDAKernel<int>,

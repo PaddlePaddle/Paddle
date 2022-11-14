@@ -49,7 +49,7 @@ class DGCClipByNormKernel : public framework::OpKernel<T> {
     auto max_norm = ctx.Attr<float>("max_norm");
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
-    if (in_var->IsType<framework::LoDTensor>()) {
+    if (in_var->IsType<phi::DenseTensor>()) {
       auto* x = ctx.Input<phi::DenseTensor>("X");
       auto* y = ctx.Output<phi::DenseTensor>("Out");
       return phi::ClipByNormKernel<T>(

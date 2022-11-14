@@ -609,7 +609,7 @@ void SetStringTensorFromPyArray(phi::StringTensor *self,
 
 template <typename T>
 void SetUVATensorFromPyArrayImpl(
-    framework::LoDTensor *self_tensor,
+    phi::DenseTensor *self_tensor,
     const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
     int device_id) {
 #if defined(PADDLE_WITH_CUDA)
@@ -652,7 +652,7 @@ void SetUVATensorFromPyArray(
     int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for VarBase.";
-  auto *self_tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto *self_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
   SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
 #endif
 }
@@ -672,8 +672,7 @@ void SetUVATensorFromPyArray(
           .get(),
       meta);
   self.get()->set_impl(tmp_t);
-  auto *self_tensor =
-      static_cast<paddle::framework::LoDTensor *>(self.get()->impl().get());
+  auto *self_tensor = static_cast<phi::DenseTensor *>(self.get()->impl().get());
 
   SetUVATensorFromPyArrayImpl<T>(self_tensor, array, device_id);
 #endif

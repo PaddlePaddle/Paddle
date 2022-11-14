@@ -77,8 +77,8 @@ tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e,
 }
 
 inline void MatchShapeToLayout(phi::DenseTensor* tensor_in,
-                               framework::DataLayout from,
-                               framework::DataLayout to) {
+                               phi::DataLayout from,
+                               phi::DataLayout to) {
   auto print_dims = [](const std::vector<int>& dims) {
     std::ostringstream oss;
 
@@ -105,9 +105,8 @@ inline void MatchShapeToLayout(phi::DenseTensor* tensor_in,
   }
 
   switch (from) {
-    case framework::DataLayout::kMKLDNN:
-      if ((to == framework::DataLayout::kNHWC) ||
-          (to == framework::DataLayout::kNDHWC)) {
+    case phi::DataLayout::kMKLDNN:
+      if ((to == phi::DataLayout::kNHWC) || (to == phi::DataLayout::kNDHWC)) {
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
@@ -115,9 +114,9 @@ inline void MatchShapeToLayout(phi::DenseTensor* tensor_in,
                 << print_dims(dims);
       }
       break;
-    case framework::DataLayout::kNHWC:
-    case framework::DataLayout::kNDHWC:
-      if (to == framework::DataLayout::kMKLDNN) {
+    case phi::DataLayout::kNHWC:
+    case phi::DataLayout::kNDHWC:
+      if (to == phi::DataLayout::kMKLDNN) {
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
@@ -202,164 +201,6 @@ inline void Reorder(dnnl::memory src,
   astream.wait();
 }
 
-inline dnnl::memory::format_tag GetMKLDNNFormat(dnnl::memory::desc mem_desc) {
-  auto ndims = mem_desc.data.ndims;
-  auto strides = mem_desc.data.format_desc.blocking.strides;
-  auto inner_nblks = mem_desc.data.format_desc.blocking.inner_nblks;
-  auto inner_blks = mem_desc.data.format_desc.blocking.inner_blks;
-  auto inner_idxs = mem_desc.data.format_desc.blocking.inner_idxs;
-
-  if (ndims == 1) {
-    return dnnl::memory::format_tag::x;
-  } else if (ndims == 2) {
-    if (inner_nblks == 0) {
-      if (strides[0] >= strides[1]) {
-        return dnnl::memory::format_tag::nc;
-      } else {
-        return dnnl::memory::format_tag::cn;
-      }
-    }
-  } else if (ndims == 3) {
-    if (inner_nblks == 0) {
-      if (strides[0] >= strides[1] && strides[1] >= strides[2]) {
-        return dnnl::memory::format_tag::ncw;
-      } else if (strides[1] >= strides[0] && strides[0] >= strides[2]) {
-        return dnnl::memory::format_tag::ntc;
-      } else {
-        return dnnl::memory::format_tag::nwc;
-      }
-    }
-  } else if (ndims == 4) {
-    if (inner_nblks == 0) {
-      if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-          strides[2] >= strides[3]) {
-        return dnnl::memory::format_tag::abcd;
-      } else if (strides[2] >= strides[3] && strides[3] >= strides[1] &&
-                 strides[1] >= strides[0]) {
-        return dnnl::memory::format_tag::cdba;
-      } else if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
-                 strides[3] >= strides[1]) {
-        return dnnl::memory::format_tag::acdb;
-      } else if (strides[0] >= strides[1] && strides[1] >= strides[3] &&
-                 strides[3] >= strides[2]) {
-        return dnnl::memory::format_tag::abdc;
-      } else if (strides[2] >= strides[3] && strides[3] >= strides[1] &&
-                 strides[1] >= strides[0]) {
-        return dnnl::memory::format_tag::cdba;
-      } else {
-        return dnnl::memory::format_tag::dcab;
-      }
-    } else if (inner_nblks == 1) {
-      if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
-        return dnnl::memory::format_tag::nChw16c;
-      } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
-        return dnnl::memory::format_tag::nChw8c;
-      } else if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
-        if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
-            strides[3] >= strides[1]) {
-          return dnnl::memory::format_tag::Acdb8a;
-        }
-      } else if (inner_blks[0] == 4 && inner_idxs[0] == 1) {
-        return dnnl::memory::format_tag::nChw4c;
-      } else if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
-        if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
-            strides[3] >= strides[1]) {
-          return dnnl::memory::format_tag::Acdb16a;
-        }
-      }
-    } else if (inner_nblks == 2) {
-      if (inner_blks[0] == 16 && inner_blks[1] == 16) {
-        if (inner_idxs[0] == 1 && inner_idxs[1] == 0) {
-          return dnnl::memory::format_tag::OIhw16i16o;
-        }
-      } else if (inner_blks[0] == 8 && inner_blks[1] == 8) {
-        if (inner_idxs[0] == 1 && inner_idxs[1] == 0) {
-          return dnnl::memory::format_tag::OIhw8i8o;
-        }
-      }
-    }
-  } else if (ndims == 5) {
-    if (inner_nblks == 0) {
-      if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-          strides[2] >= strides[3] && strides[3] >= strides[4]) {
-        return dnnl::memory::format_tag::abcde;
-      } else if (strides[0] >= strides[2] && strides[2] >= strides[1] &&
-                 strides[1] >= strides[3] && strides[3] >= strides[4]) {
-        return dnnl::memory::format_tag::acbde;
-      } else if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
-                 strides[3] >= strides[4] && strides[4] >= strides[1]) {
-        return dnnl::memory::format_tag::acdeb;
-      }
-    } else if (inner_nblks == 1) {
-      if (inner_blks[0] == 4 && inner_idxs[0] == 1) {
-        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-            strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return dnnl::memory::format_tag::aBcde4b;
-        }
-      } else if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
-        if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
-            strides[3] >= strides[4] && strides[4] >= strides[1]) {
-          return dnnl::memory::format_tag::Acdeb8a;
-        }
-        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-            strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return dnnl::memory::format_tag::Abcde8a;
-        }
-      } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
-        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-            strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return dnnl::memory::format_tag::aBcde8b;
-        }
-      } else if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
-        if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
-            strides[3] >= strides[4] && strides[4] >= strides[1]) {
-          return dnnl::memory::format_tag::Acdeb16a;
-        }
-        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-            strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return dnnl::memory::format_tag::Abcde16a;
-        }
-      } else if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
-        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-            strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return dnnl::memory::format_tag::aBcde16b;
-        }
-      }
-    }
-  } else if (ndims == 6) {
-    if (inner_nblks == 0) {
-      if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-          strides[2] >= strides[3] && strides[3] >= strides[4] &&
-          strides[4] >= strides[5]) {
-        return dnnl::memory::format_tag::abcdef;
-      } else if (strides[0] >= strides[2] && strides[2] >= strides[1] &&
-                 strides[1] >= strides[3] && strides[3] >= strides[4] &&
-                 strides[4] >= strides[5]) {
-        return dnnl::memory::format_tag::acbdef;
-      }
-    }
-  }
-  // DEBUG CODE - KEEP UNTILL TENSOR.MEMORY_DESC IMPLEMENTED
-  // std::cout<<"@@@@@@@@@@ UNDEFINED FORMAT @@@@@@@@@@@@@@@@@@@"<<std::endl;
-  // std::cout<<"NDIMS: "<<ndims<<std::endl;
-  // std::cout<<"INNER_NBLKS: "<<inner_nblks<<std::endl;
-  // for (int i=0;i<ndims;++i) {
-  //   std::cout<<"STRIDE["<<i<<"]: "<<strides[i]<<std::endl;
-  // }
-  // for (int i=0;i<inner_nblks;++i) {
-  //   std::cout<<"INNER_BLKS["<<i<<"]: "<<inner_blks[i]<<std::endl;
-  // }
-  // for (int i=0;i<inner_nblks;++i) {
-  //   std::cout<<"INNER_IDXS["<<i<<"]: "<<inner_idxs[i]<<std::endl;
-  // }
-  return dnnl::memory::format_tag::undef;
-}
-
-inline dnnl::memory::format_tag GetMKLDNNFormat(const dnnl::memory memory) {
-  auto mem_desc = memory.get_desc();
-  return GetMKLDNNFormat(mem_desc);
-}
-
 inline dnnl::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
   switch (tensor_rank) {
     case 1:
@@ -423,10 +264,10 @@ inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
 
 inline MKLDNNMemoryFormat data_format_to_memory_format(
     const std::string& data_format) {
-  switch (framework::StringToDataLayout(data_format)) {
-    case framework::DataLayout::kNHWC:
+  switch (phi::StringToDataLayout(data_format)) {
+    case phi::DataLayout::kNHWC:
       return MKLDNNMemoryFormat::nhwc;
-    case framework::DataLayout::kNCHW:
+    case phi::DataLayout::kNCHW:
       return MKLDNNMemoryFormat::nchw;
     default:
       return MKLDNNMemoryFormat::any;
@@ -583,7 +424,7 @@ inline void RegisterModelLayout(
     // If there is already registered NHWC then quit this call
     // not to overwrite setting with analysis of internal "while" op block
     if (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
-        framework::DataLayout::kNHWC)
+        phi::DataLayout::kNHWC)
       return;
 
     VLOG(4) << "RegisterModelLayout for mkldnn";
@@ -592,8 +433,8 @@ inline void RegisterModelLayout(
       if (op->HasAttr(attrib_name)) {
         auto data_format = op->Attr<std::string>(attrib_name);
         platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-            data_format.compare("NHWC") == 0 ? framework::DataLayout::kNHWC
-                                             : framework::DataLayout::kNCHW);
+            data_format.compare("NHWC") == 0 ? phi::DataLayout::kNHWC
+                                             : phi::DataLayout::kNCHW);
         return true;
       } else {
         return false;
@@ -632,4 +473,22 @@ bool constexpr is_int8() {
 }
 
 }  // namespace platform
+
+inline std::string FindInputNameByVarName(framework::OpDesc* op,
+                                          const std::string& searched_name) {
+  std::string ret;
+  for (const auto& name : op->InputNames())
+    for (const auto& input_name : op->Input(name))
+      if (input_name == searched_name) ret = name;
+  return ret;
+}
+
+inline std::string FindOutputNameByVarName(framework::OpDesc* op,
+                                           const std::string& searched_name) {
+  std::string ret;
+  for (const auto& name : op->OutputNames())
+    for (const auto& output_name : op->Output(name))
+      if (output_name == searched_name) ret = name;
+  return ret;
+}
 }  // namespace paddle

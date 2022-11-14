@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 import paddle.fluid as fluid
 import paddle
 
@@ -23,7 +22,6 @@ paddle.enable_static()
 
 
 class TestReduceScatterAPI(TestDistBase):
-
     def _setup_config(self):
         pass
 

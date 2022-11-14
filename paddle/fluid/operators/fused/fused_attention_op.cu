@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -50,13 +50,10 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
 
   if (map->has(ring_id)) {
     paddle::distributed::ProcessGroup *pg = map->get(ring_id);
-    std::vector<phi::DenseTensor> in_tensor;
-    std::vector<phi::DenseTensor> out_tensor;
-    in_tensor.push_back(tensor);
-    out_tensor.push_back(tensor);
+    auto pg_nccl = static_cast<distributed::ProcessGroupNCCL *>(pg);
     paddle::distributed::AllreduceOptions opts;
     opts.reduce_op = distributed::ReduceOp::SUM;
-    auto task = pg->AllReduce(in_tensor, out_tensor, opts);
+    auto task = pg_nccl->AllReduce(&tensor, tensor, opts, true, true);
     task->Wait();
   } else {
     auto dtype = platform::ToNCCLDataType(
@@ -414,13 +411,11 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     auto *fmha_out = ctx.Input<phi::DenseTensor>("FMHAOut");
     auto *transpose_out_2 = ctx.Input<phi::DenseTensor>("TransposeOut2");
     auto *qk_out = ctx.Input<phi::DenseTensor>("QKOut");
-    auto *qktv_out = ctx.Input<phi::DenseTensor>("QKTVOut");
     auto *softmax_out = ctx.Input<phi::DenseTensor>("SoftmaxOut");
     auto *attn_dropout_mask_out =
         ctx.Input<phi::DenseTensor>("AttnDropoutMaskOut");
     auto *attn_dropout_out = ctx.Input<phi::DenseTensor>("AttnDropoutOut");
     auto *src_mask_out = ctx.Input<phi::DenseTensor>("SrcMaskOut");
-    auto *out_linear_out = ctx.Input<phi::DenseTensor>("OutLinearOut");
     auto *ln_2_mean = ctx.Input<phi::DenseTensor>("Ln2Mean");
     auto *ln_2_var = ctx.Input<phi::DenseTensor>("Ln2Variance");
     auto *dropout_mask_out = ctx.Input<phi::DenseTensor>("DropoutMaskOut");
@@ -428,12 +423,9 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
         ctx.Input<phi::DenseTensor>("BiasDropoutResidualOut");
     auto *fmha_out_data = fmha_out->data<T>();
     auto *transpose_out_2_data = transpose_out_2->data<T>();
-    auto *qk_out_data = qk_out->data<T>();
-    auto *qktv_out_data = qktv_out->data<T>();
     auto *softmax_out_data = softmax_out->data<T>();
     auto *src_mask_out_data =
         (src_mask == nullptr) ? nullptr : src_mask_out->data<T>();
-    auto *out_linear_out_data = out_linear_out->data<T>();
     auto *dropout_mask_out_data = dropout_mask_out->data<uint8_t>();
 
     // output's grad

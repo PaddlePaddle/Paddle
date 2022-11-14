@@ -44,7 +44,8 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
         feed_list.end();
     if (is_feed) {
       auto input_shape = node->Var()->GetShape();
-      if (input_shape[0] <= -1) {
+      // NOTE: some tensors may be 0-dim tensors
+      if (!input_shape.empty() && input_shape[0] <= -1) {
         input_shape[0] = micro_batch_size;
         node->Var()->SetShape(input_shape);
         need_infer_shape = true;
@@ -72,7 +73,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
       auto* ptr = scope->Var(var_desc->Name());
       paddle::framework::InitializeVariable(ptr, var_desc->GetType());
 
-      auto tensor = ptr->GetMutable<paddle::framework::LoDTensor>();
+      auto tensor = ptr->GetMutable<phi::DenseTensor>();
       tensor->Resize(phi::make_ddim(var_desc->GetShape()));
     }
 
@@ -92,8 +93,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
       for (auto it = ctx.outputs.begin(); it != ctx.outputs.end(); it++) {
         for (int i = 0; i < it->second.size(); i++) {
           auto output_name = op_desc->Output(it->first)[i];
-          auto dim =
-              it->second[i]->GetMutable<paddle::framework::LoDTensor>()->dims();
+          auto dim = it->second[i]->GetMutable<phi::DenseTensor>()->dims();
           auto new_shape = phi::vectorize(dim);
           for (auto output_node : node->outputs) {
             if (output_node->Name() == output_name) {

@@ -12,18 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-import numpy as np
 
-import paddle
-from ps_pass_test_base import *
+from ps_pass_test_base import remove_path_if_exists, PsPassTestBase
 from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
-from paddle.fluid.tests.unittests.ps.ps_dnn_trainer import DnnTrainer
 
 
 class TestPsTrainerPass(PsPassTestBase):
-
     def setUp(self):
         pass
 
@@ -146,7 +141,7 @@ class TestPsTrainerPass(PsPassTestBase):
         self.config['debug_new_minimize'] = '0'
         self.config['log_dir'] = ps_log_root_dir + "gpubox_log_old_minimize"
         remove_path_if_exists(self.config['log_dir'])
-        #self.ps_launch("gpu-ps")
+        # self.ps_launch("gpu-ps")
 
         self.config['debug_new_minimize'] = '1'
         self.config['log_dir'] = ps_log_root_dir + "gpubox_log_new_minimize"
@@ -167,19 +162,25 @@ class TestPsTrainerPass(PsPassTestBase):
         self.config['applied_pass_name'] = "append_send_ops_pass"
 
         self.config['debug_new_pass'] = '0'
-        self.config['log_dir'] = ps_log_root_dir + "log_old_" + self.config[
-            'applied_pass_name']
+        self.config['log_dir'] = (
+            ps_log_root_dir + "log_old_" + self.config['applied_pass_name']
+        )
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch("cpu-ps")
 
         self.config['debug_new_pass'] = '1'
-        self.config['log_dir'] = ps_log_root_dir + "log_new_" + self.config[
-            'applied_pass_name']
+        self.config['log_dir'] = (
+            ps_log_root_dir + "log_new_" + self.config['applied_pass_name']
+        )
         remove_path_if_exists(self.config['log_dir'])
         self.ps_launch("cpu-ps")
 
-        file1 = './ps_log/async_append_send_ops_pass_debug:_0_worker_main.prototxt'
-        file2 = './ps_log/async_append_send_ops_pass_debug:_1_worker_main.prototxt'
+        file1 = (
+            './ps_log/async_append_send_ops_pass_debug:_0_worker_main.prototxt'
+        )
+        file2 = (
+            './ps_log/async_append_send_ops_pass_debug:_1_worker_main.prototxt'
+        )
         if self.check(file1, file2):
             logger.info('test_append_send_ops_pass passed!')
         else:

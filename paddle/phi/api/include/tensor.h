@@ -211,7 +211,7 @@ class PADDLE_API Tensor final {
    *
    * @return DataLayout
    */
-  DataLayout layout() const;
+  phi::DataLayout layout() const;
 
   /**
    * @brief Determine whether tensor is DenseTensor

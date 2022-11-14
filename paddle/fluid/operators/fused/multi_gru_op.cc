@@ -22,9 +22,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -146,7 +143,7 @@ framework::OpKernelType MultiGRUOp::GetExpectedKernelType(
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"),
       ctx.GetPlace(),
-      framework::DataLayout::kMKLDNN,
+      phi::DataLayout::kMKLDNN,
       framework::LibraryType::kMKLDNN);
 }
 

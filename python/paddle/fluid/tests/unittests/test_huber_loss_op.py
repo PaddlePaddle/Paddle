@@ -17,7 +17,7 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
 import paddle
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
 
 def huber_loss_forward(val, delta):
@@ -29,7 +29,6 @@ def huber_loss_forward(val, delta):
 
 
 class TestHuberLossOp(OpTest):
-
     def setUp(self):
         self.op_type = 'huber_loss'
         self.python_api = paddle.fluid.layers.huber_loss
@@ -38,16 +37,17 @@ class TestHuberLossOp(OpTest):
         self.init_input()
         shape = self.set_shape()
         residual = self.inputs['Y'] - self.inputs['X']
-        loss = np.vectorize(huber_loss_forward)(residual,
-                                                self.delta).astype('float32')
+        loss = np.vectorize(huber_loss_forward)(residual, self.delta).astype(
+            'float32'
+        )
         self.attrs = {'delta': self.delta}
         self.outputs = {'Residual': residual, 'Out': loss.reshape(shape)}
 
     def init_input(self):
         shape = self.set_shape()
         self.inputs = {
-            'X': np.random.uniform(0, 1., shape).astype('float32'),
-            'Y': np.random.uniform(0, 1., shape).astype('float32'),
+            'X': np.random.uniform(0, 1.0, shape).astype('float32'),
+            'Y': np.random.uniform(0, 1.0, shape).astype('float32'),
         }
 
     def set_shape(self):
@@ -60,38 +60,32 @@ class TestHuberLossOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'],
-                        'Out',
-                        max_relative_error=0.008,
-                        no_grad_set=set("residual"))
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.008, no_grad_set=set("residual")
+        )
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'],
-                        'Out',
-                        max_relative_error=0.008,
-                        no_grad_set=set('residual'))
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.008, no_grad_set=set('residual')
+        )
 
 
 def TestHuberLossOp1(TestHuberLossOp):
-
     def set_shape(self):
-        return (64)
+        return 64
 
 
 def TestHuberLossOp2(TestHuberLossOp):
-
     def set_shape(self):
         return (6, 6)
 
 
 def TestHuberLossOp3(TestHuberLossOp):
-
     def set_shape(self):
         return (6, 6, 1)
 
 
 class TestHuberLossOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input and label must be Variable
@@ -106,10 +100,12 @@ class TestHuberLossOpError(unittest.TestCase):
             # the dtype of input and label must be float32 or float64
             xw2 = fluid.data(name='xw2', shape=[None, 6], dtype="int32")
             lw2 = fluid.data(name='lw2', shape=[None, 6], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.huber_loss, xw2, lr,
-                              delta)
-            self.assertRaises(TypeError, fluid.layers.huber_loss, xr, lw2,
-                              delta)
+            self.assertRaises(
+                TypeError, fluid.layers.huber_loss, xw2, lr, delta
+            )
+            self.assertRaises(
+                TypeError, fluid.layers.huber_loss, xr, lw2, delta
+            )
 
 
 if __name__ == '__main__':

@@ -434,13 +434,13 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto x = *context.Input<phi::DenseTensor>("X");
     auto y = *context.Input<phi::DenseTensor>("Y");
-    auto dout = *context.Input<framework::LoDTensor>("DOut");
-    auto *ddx = context.Input<framework::LoDTensor>("DDX");
-    auto *ddy = context.Input<framework::LoDTensor>("DDY");
+    auto dout = *context.Input<phi::DenseTensor>("DOut");
+    auto *ddx = context.Input<phi::DenseTensor>("DDX");
+    auto *ddy = context.Input<phi::DenseTensor>("DDY");
 
-    auto *dx = context.Output<framework::LoDTensor>("DX");
-    auto *dy = context.Output<framework::LoDTensor>("DY");
-    auto *ddout = context.Output<framework::LoDTensor>("DDOut");
+    auto *dx = context.Output<phi::DenseTensor>("DX");
+    auto *dy = context.Output<phi::DenseTensor>("DY");
+    auto *ddout = context.Output<phi::DenseTensor>("DDOut");
 
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");
@@ -588,7 +588,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     bool channelwise_onednn =
         context->IsRunMKLDNNKernel() &&
         (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
-         framework::DataLayout::kNHWC);
+         phi::DataLayout::kNHWC);
     if (channelwise_onednn) {
       std::swap(dim_x, dim_y);
     }
@@ -697,15 +697,6 @@ class MatMulOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -724,15 +715,13 @@ class MatMulOp : public framework::OperatorWithKernel {
       // When matmul is first oneDNN op in a chain (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ ==
-           framework::DataLayout::kMKLDNN) &&
-          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+      if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+          (tensor.layout() != phi::DataLayout::kMKLDNN) &&
           paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() ==
-              framework::DataLayout::kNHWC) {
+                  .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,
                                        tensor.place(),
-                                       framework::DataLayout::kNHWC);
+                                       phi::DataLayout::kNHWC);
       }
 #endif
       return framework::OpKernelType(
@@ -780,13 +769,13 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>(
         "fused_reshape_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
-              "it's a shape atribute of fused reshape for `Out` output.)DOC")
+              "it's a shape attribute of fused reshape for `Out` output.)DOC")
         .SetDefault({})
         .AsExtra();
     AddAttr<std::vector<int>>(
         "fused_transpose_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
-              "it's a axis atribute of fused transpose for `Out` output.)DOC")
+              "it's a axis attribute of fused transpose for `Out` output.)DOC")
         .SetDefault({})
         .AsExtra();
     AddAttr<bool>(
@@ -889,15 +878,6 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };

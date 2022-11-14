@@ -26,11 +26,10 @@ SEED = 2021
 
 
 def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
-    return np.maximum(np.minimum(x * slope + offset, 1.), 0.).astype(x.dtype)
+    return np.maximum(np.minimum(x * slope + offset, 1.0), 0.0).astype(x.dtype)
 
 
 class TestNPUHardSigmoid(OpTest):
-
     def setUp(self):
         paddle.enable_static()
 
@@ -41,7 +40,7 @@ class TestNPUHardSigmoid(OpTest):
 
         x = np.random.uniform(-5, 5, [10, 12]).astype(self.dtype)
         lower_threshold = -self.offset / self.slope
-        upper_threshold = (1. - self.offset) / self.slope
+        upper_threshold = (1.0 - self.offset) / self.slope
 
         # Same reason as TestAbs
         delta = 0.005
@@ -73,21 +72,18 @@ class TestNPUHardSigmoid(OpTest):
 
 
 class TestNPUHardSigmoid2(TestNPUHardSigmoid):
-
     def set_attrs(self):
         self.slope = 0.2
         self.offset = 0.5
 
 
 class TestNPUHardSigmoid3(TestNPUHardSigmoid):
-
     def set_attrs(self):
         self.slope = 0.2
         self.offset = 0.4
 
 
 class TestNPUHardSigmoidFp16(TestNPUHardSigmoid):
-
     def test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-3)
 
@@ -144,14 +140,14 @@ class TestHardsigmoidAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardsigmoid, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32',
-                                        shape=[12, 10],
-                                        dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
             self.assertRaises(TypeError, F.hardsigmoid, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16',
-                                       shape=[12, 10],
-                                       dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16'
+            )
             F.hardsigmoid(x_fp16)
 
 

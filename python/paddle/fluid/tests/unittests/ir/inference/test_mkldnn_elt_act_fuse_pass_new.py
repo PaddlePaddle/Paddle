@@ -15,17 +15,13 @@
 from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
 class TestElementWiseAddReluFusePass(PassAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -33,29 +29,24 @@ class TestElementWiseAddReluFusePass(PassAutoScanTest):
         batch_size = draw(st.integers(min_value=1, max_value=4))
 
         def generate_input():
-            return np.random.random([batch_size, 3, 100,
-                                     100]).astype(np.float32)
+            return np.random.random([batch_size, 3, 100, 100]).astype(
+                np.float32
+            )
 
-        ops_config = [{
-            "op_type": "elementwise_add",
-            "op_inputs": {
-                "X": ["A"],
-                "Y": ["B"]
+        ops_config = [
+            {
+                "op_type": "elementwise_add",
+                "op_inputs": {"X": ["A"], "Y": ["B"]},
+                "op_outputs": {"Out": ["add_output"]},
+                "op_attrs": {},
             },
-            "op_outputs": {
-                "Out": ["add_output"]
+            {
+                "op_type": "relu",
+                "op_inputs": {"X": ["add_output"]},
+                "op_outputs": {"Out": ["relu_output"]},
+                "op_attrs": {},
             },
-            "op_attrs": {}
-        }, {
-            "op_type": "relu",
-            "op_inputs": {
-                "X": ["add_output"]
-            },
-            "op_outputs": {
-                "Out": ["relu_output"]
-            },
-            "op_attrs": {}
-        }]
+        ]
 
         ops = self.generate_op_config(ops_config)
 
@@ -64,9 +55,10 @@ class TestElementWiseAddReluFusePass(PassAutoScanTest):
             weights={},
             inputs={
                 "A": TensorConfig(data_gen=partial(generate_input)),
-                "B": TensorConfig(data_gen=partial(generate_input))
+                "B": TensorConfig(data_gen=partial(generate_input)),
             },
-            outputs=["relu_output"])
+            outputs=["relu_output"],
+        )
 
         return program_config
 
@@ -75,9 +67,9 @@ class TestElementWiseAddReluFusePass(PassAutoScanTest):
         yield config, ["elementwise_add"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            passes=["elt_act_mkldnn_fuse_pass"],
-                            min_success_num=4)
+        self.run_and_statis(
+            quant=False, passes=["elt_act_mkldnn_fuse_pass"], min_success_num=4
+        )
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ namespace operators {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 
 template <class T>

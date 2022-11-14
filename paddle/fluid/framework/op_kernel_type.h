@@ -25,6 +25,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+using DataLayout = phi::DataLayout;
+
 class OpKernelType {
  public:
   constexpr static int kDefaultCustomizedTypeValue = 0;

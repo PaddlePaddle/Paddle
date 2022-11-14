@@ -47,8 +47,8 @@ class NPUUniformRandomKernel : public framework::OpKernel<T> {
       if (!new_shape.empty()) shape = new_shape;
       tensor->Resize(phi::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
-    } else if (out_var->IsType<framework::LoDTensor>()) {
-      tensor = out_var->GetMutable<framework::LoDTensor>();
+    } else if (out_var->IsType<phi::DenseTensor>()) {
+      tensor = out_var->GetMutable<phi::DenseTensor>();
       if (!new_shape.empty()) tensor->Resize(phi::make_ddim(new_shape));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(

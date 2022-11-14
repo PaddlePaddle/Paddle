@@ -23,9 +23,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -153,14 +150,6 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType FusionGRUOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-  if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-    return framework::OpKernelType(data_type,
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN);
-  }
-#endif
   return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 

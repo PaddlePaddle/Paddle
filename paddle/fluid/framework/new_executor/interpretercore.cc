@@ -16,9 +16,11 @@
 
 #include <unordered_set>
 
+#include "gflags/gflags.h"
+
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
-#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/os_info.h"
@@ -47,6 +49,9 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             true,
                             "Use local_scope in new executor(especially used "
                             "in UT), can turn off for better performance");
+PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
+                            false,
+                            "Use new executor in control flow op");
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
@@ -57,13 +62,58 @@ constexpr const char* kTaskCompletion = "TaskCompletion";
 namespace paddle {
 namespace framework {
 
-// TODO(Ruibia): Pass skip_gc_vars, used_for_jit, and other config messages by
+inline void SetDeviceId(const platform::Place& place) {
+  // TODO(zhiqiu): reduce the cost
+  if (platform::is_gpu_place(place)) {
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Cannot run operator on place %s, please recompile paddle or "
+        "reinstall Paddle with CUDA support.",
+        place));
+#else
+    auto dev_id = place.device;
+    platform::SetDeviceId(dev_id);
+#endif
+  } else if (platform::is_xpu_place(place)) {
+#ifndef PADDLE_WITH_XPU
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Cannot run operator on place %s, please recompile paddle or "
+        "reinstall Paddle with XPU support.",
+        place));
+#else
+    auto dev_id = place.device;
+    platform::SetXPUDeviceId(dev_id);
+#endif
+  } else if (platform::is_npu_place(place)) {
+#ifndef PADDLE_WITH_ASCEND_CL
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Cannot run operator on place %s, please recompile paddle or "
+        "reinstall Paddle with NPU support.",
+        place));
+#else
+    auto dev_id = place.device;
+    platform::SetNPUDeviceId(dev_id);
+#endif
+  } else if (platform::is_custom_place(place)) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Cannot run operator on place %s, please recompile paddle or "
+        "reinstall Paddle with CustomDevice support.",
+        place));
+#else
+    phi::DeviceManager::SetDevice(place);
+#endif
+  }
+}
+
+// TODO(Ruibiao): Pass skip_gc_vars, used_for_jit, and other config messages by
 // constructing an interpreter::ExecutionConfig
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
                                  const std::set<std::string>& skip_gc_vars,
                                  framework::Scope* scope,
-                                 bool used_for_jit)
+                                 bool used_for_jit,
+                                 bool used_for_control_flow_op)
     : place_(place),
       block_(block),
       execution_config_(place, block.OpSize()),
@@ -71,14 +121,14 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       stream_analyzer_(place) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
-  is_build_ = false;
-
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
   execution_config_.used_for_jit = used_for_jit;
-  execution_config_.create_local_scope =
-      !used_for_jit && FLAGS_new_executor_use_local_scope;
+  execution_config_.used_for_control_flow_op = used_for_control_flow_op;
+  execution_config_.create_local_scope = !used_for_jit &&
+                                         FLAGS_new_executor_use_local_scope &&
+                                         !used_for_control_flow_op;
   execution_config_.skip_gc_vars = skip_gc_vars;
   execution_config_.Log(/*log_level=*/8);
 
@@ -87,12 +137,6 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     local_scope_ = local_scope;
   }
   var_scope_.SetLocalScope(local_scope_);
-
-  // prune
-
-  // optmize graph pass
-
-  // convert to run graph
 }
 
 InterpreterCore::~InterpreterCore() {
@@ -110,12 +154,9 @@ InterpreterCore::~InterpreterCore() {
 
 interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place_)) {
-    platform::SetDeviceId(place_.device);
-  }
-#endif
+    const std::vector<phi::DenseTensor>& feed_tensors) {
+  SetDeviceId(place_);
+
   Prepare(feed_names, feed_tensors, true);
   interpreter::CostInfo cost_info;
   {
@@ -135,7 +176,7 @@ interpreter::CostInfo InterpreterCore::DryRun(
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
 
-  if (execution_config_.create_local_scope) {
+  if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
 
@@ -144,12 +185,8 @@ interpreter::CostInfo InterpreterCore::DryRun(
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place_)) {
-    platform::SetDeviceId(place_.device);
-  }
-#endif
+    const std::vector<phi::DenseTensor>& feed_tensors) {
+  SetDeviceId(place_);
 
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
@@ -181,7 +218,7 @@ paddle::framework::FetchList InterpreterCore::Run(
     }
 #endif
   }
-  if (execution_config_.create_local_scope) {
+  if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
 
@@ -195,12 +232,8 @@ paddle::framework::FetchList InterpreterCore::Run(
 }
 
 paddle::framework::FetchList InterpreterCore::Run(
-    const std::vector<std::string>& feed_names) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place_)) {
-    platform::SetDeviceId(place_.device);
-  }
-#endif
+    const std::vector<std::string>& feed_names, bool need_fetch) {
+  SetDeviceId(place_);
 
 #ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
@@ -208,22 +241,22 @@ paddle::framework::FetchList InterpreterCore::Run(
 
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
-    paddle::framework::interpreter::build_variable_scope(
-        block_, &var_scope_, execution_config_.create_local_scope);
+    paddle::framework::interpreter::BuildVariableScope(
+        block_, &var_scope_, HasLocalScope());
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    paddle::framework::interpreter::build_op_func_list(
+    paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
-        execution_config_.create_local_scope,
-        execution_config_.used_for_jit);
-    is_build_ = true;
+        execution_config_,
+        HasLocalScope());
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
+    is_build_ = true;
   } else {
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
@@ -248,15 +281,15 @@ paddle::framework::FetchList InterpreterCore::Run(
 #endif
   }
 
-  if (execution_config_.create_local_scope) {
+  if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
+
   // return Fetch Tensors
-  Scope* inner_scope = execution_config_.create_local_scope
-                           ? local_scope_
-                           : var_scope_.GetMutableScope();
+  Scope* inner_scope =
+      HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-  if (fetch_var) {
+  if (fetch_var && need_fetch) {
     return std::move(*fetch_var->GetMutable<framework::FetchList>());
   } else {
     return {};
@@ -286,9 +319,18 @@ void InterpreterCore::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
   auto& var_list = var_scope_.MutableVarList();
   for (size_t i = 0; i < var_list.size(); i++) {
-    var_list[i] = new_scope->FindVar(var_scope_.GetNameById(i));
+    const auto& var_name = var_scope_.GetNameById(i);
+    var_list[i] = new_scope->FindVar(var_name);
   }
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+  // The index should assured valid, cause the InterpreterCore may not be fully
+  // built, but was still cached and used. For example, see unit test
+  // `test_assert.py`, it may exit before `InterpreterCore::Convert`, but still
+  // was cached and used by later tests.
+  for (size_t i = 0; i < std::min(refs_.size(), var_list.size()); i++) {
+    refs_[i]->ResetVariable(var_list[i]);
+  }
+
+  for (size_t i = 0; i < vec_instruction_.size(); i++) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
   }
 }
@@ -321,16 +363,14 @@ std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
     async_work_queue_ = std::make_shared<interpreter::AsyncWorkQueue>(
         execution_config_.host_num_threads,
         execution_config_.deivce_num_threads,
-        execution_config_.prepare_num_threads,
         &main_thread_blocker_);
   }
   return async_work_queue_;
 }
 
 void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
-  Scope* inner_scope = execution_config_.create_local_scope
-                           ? local_scope_
-                           : var_scope_.GetMutableScope();
+  Scope* inner_scope =
+      HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
   VariableValueMap ins_map;
   for (auto& var_name_item : instr_node->Inputs()) {
     std::vector<Variable*> input_vars;
@@ -356,9 +396,8 @@ void InterpreterCore::BuildAndCacheInstructionCtx(Instruction* instr_node) {
   // set runtime_ctx and infershape_ctx_
   if (instr_node->OpBase()->Type() == "cinn_launch") {  // OP use scope in
                                                         // kernel
-    Scope* local_scope = execution_config_.create_local_scope
-                             ? var_scope_.GetMutableLocalScope()
-                             : var_scope_.GetMutableScope();
+    Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
+                                         : var_scope_.GetMutableScope();
     instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
   } else {
     instr_node->ResetContext(ins_map, outs_map);
@@ -381,16 +420,15 @@ void InterpreterCore::BuildInplace() {
   std::set<std::string> skip_inplace_outvars;
   for (Instruction& instr : vec_instruction_) {
     OperatorBase* op = instr.OpBase();
-    if (op->Type() == "coalesce_tensor") {
+    if (op->Type() == kCoalesceTensor) {
       const std::vector<std::string>& outputs =
           op->OutputVars(/*has_intermediate=*/false);
       skip_inplace_outvars.insert(outputs.begin(), outputs.end());
     }
   }
 
-  Scope* local_scope = execution_config_.create_local_scope
-                           ? var_scope_.GetMutableLocalScope()
-                           : var_scope_.GetMutableScope();
+  Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
+                                       : var_scope_.GetMutableScope();
   std::vector<std::vector<size_t>> input_var2op(var_scope_.VarSize());
   for (Instruction& instr : vec_instruction_) {
     for (auto& item : instr.Inputs()) {
@@ -434,8 +472,8 @@ void InterpreterCore::BuildInplace() {
             auto invar = local_scope->FindVar(invar_name);
             auto outvar = local_scope->FindVar(outvar_name);
 
-            if (invar && outvar && invar->IsType<LoDTensor>() &&
-                outvar->IsType<LoDTensor>() &&
+            if (invar && outvar && invar->IsType<phi::DenseTensor>() &&
+                outvar->IsType<phi::DenseTensor>() &&
                 skip_inplace_outvars.find(outvar_name) ==
                     skip_inplace_outvars.end()) {
               instr.AddInplace(invar, outvar);
@@ -490,7 +528,12 @@ void InterpreterCore::Convert(
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-    vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
+    Priority priority =
+        interpreter::IsCommunicationOp(op_func_node.operator_base_->Type())
+            ? Priority::kLowest
+            : Priority::kNormal;
+    vec_instruction_.emplace_back(
+        op_idx, std::move(op_func_node), *dev_ctx_, priority);
   }
 
   BuildOperatorDependences();
@@ -519,18 +562,21 @@ void InterpreterCore::Convert(
         if (var_desc && ins.count(item.first) &&
             !info.IsInArgBufferNeeded(var_desc->Name())) {
           continue;
+        } else if (!block_.HasVar(var_scope_.GetNameById(id))) {
+          VLOG(10) << "[gc_check_inputs] skip gc: "
+                   << var_scope_.GetNameById(id);
+          continue;
         }
         gc_check_vars.insert(id);
       }
     }
 
     for (auto var_id : gc_check_vars) {
-      Scope* inner_scope = execution_config_.create_local_scope
-                               ? local_scope_
-                               : var_scope_.GetMutableScope();
+      Scope* inner_scope =
+          HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
       paddle::framework::Variable* var =
           inner_scope->FindVar(var_scope_.GetNameById(var_id));
-      if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>() ||
+      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>()) {
         last_live_ops_[var_id].insert(op_idx);
       } else {
@@ -601,17 +647,13 @@ void InterpreterCore::Convert(
     BuildInplace();
   }
 
-  // prepare for the first time.
-  std::promise<std::unique_ptr<AtomicVectorSizeT>> deps_promise =
-      std::promise<std::unique_ptr<AtomicVectorSizeT>>();
-  atomic_deps_ = deps_promise.get_future();
-  deps_promise.set_value(interpreter::PrepareAtomicDeps(dependecy_count_));
-
-  std::promise<std::unique_ptr<AtomicVectorSizeT>> var_ref_promise =
-      std::promise<std::unique_ptr<AtomicVectorSizeT>>();
-  atomic_var_ref_ = var_ref_promise.get_future();
-  var_ref_promise.set_value(
-      interpreter::PrepareAtomicVarRef(var_scope_.VecMetaInfo()));
+  for (auto& dep : dependecy_count_) {
+    deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
+  }
+  for (size_t i = 0; i < vec_meta_info.size(); ++i) {
+    refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
+        vec_meta_info[i].var_ref_count_, var_scope_.VarRef(i)));
+  }
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {
@@ -619,8 +661,8 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
     bool can_skip_lod = true;
     for (auto& input : vec_instruction_[i].InnerRuntimeContext()->inputs) {
       for (auto& var : input.second) {
-        if (var->IsType<LoDTensor>()) {
-          if (var->Get<LoDTensor>().lod().size() != 0) {
+        if (var->IsType<phi::DenseTensor>()) {
+          if (var->Get<phi::DenseTensor>().lod().size() != 0) {
             can_skip_lod = false;
             break;
           }
@@ -634,65 +676,20 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
   }
 }
 
-inline void SetDeviceId(const platform::Place& place) {
-  // TODO(zhiqiu): reduce the cost
-  if (platform::is_gpu_place(place)) {
-#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Cannot run operator on place %s, please recompile paddle or "
-        "reinstall Paddle with CUDA support.",
-        place));
-#else
-    auto dev_id = place.device;
-    platform::SetDeviceId(dev_id);
-#endif
-  } else if (platform::is_xpu_place(place)) {
-#ifndef PADDLE_WITH_XPU
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Cannot run operator on place %s, please recompile paddle or "
-        "reinstall Paddle with XPU support.",
-        place));
-#else
-    auto dev_id = place.device;
-    platform::SetXPUDeviceId(dev_id);
-#endif
-  } else if (platform::is_npu_place(place)) {
-#ifndef PADDLE_WITH_ASCEND_CL
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Cannot run operator on place %s, please recompile paddle or "
-        "reinstall Paddle with NPU support.",
-        place));
-#else
-    auto dev_id = place.device;
-    platform::SetNPUDeviceId(dev_id);
-#endif
-  } else if (platform::is_custom_place(place)) {
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Cannot run operator on place %s, please recompile paddle or "
-        "reinstall Paddle with CustomDevice support.",
-        place));
-#else
-    phi::DeviceManager::SetDevice(place);
-#endif
-  }
-}
-
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
-  Scope* local_scope = execution_config_.create_local_scope
-                           ? var_scope_.GetMutableLocalScope()
-                           : var_scope_.GetMutableScope();
+  Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
+                                       : var_scope_.GetMutableScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope_);
 
   SetDeviceId(place);
 
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place)) {
-    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
-    // values, but only through special `float_status` to checks whether
-    // the operation is overflow. More about `float_status`, see:
+    // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the
+    // variable values, but only through special `float_status` to checks
+    // whether the operation is overflow. More about `float_status`, see:
     // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
     if (FLAGS_check_nan_inf) {
       framework::details::NPUAllocAndClearFloatStatus(*op, *local_scope, place);
@@ -763,7 +760,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     }
   }
 
-  VLOG(4) << "End run " << place << " " << op->DebugStringEx(local_scope_);
+  VLOG(4) << "End run " << place << " " << op->DebugStringEx(local_scope);
 
   if (!instr_node.InplaceBackMap().empty()) {
     platform::RecordEvent inplaceback_event(
@@ -804,45 +801,19 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
-  unfinished_op_numer_ = vec_instr.size();
-  if (unfinished_op_numer_ == 0) {
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+  unfinished_op_number_ = vec_instr.size();
+  if (unfinished_op_number_ == 0) {
     VLOG(4) << "No op to run, return";
     return;
   }
-
-  platform::RecordEvent record_prepare(
-      "PrepareAtomic", platform::TracerEventType::UserDefined, 1);
-
-  std::unique_ptr<std::vector<std::atomic<size_t>>> atomic_deps = nullptr;
-  std::unique_ptr<std::vector<std::atomic<size_t>>> atomic_var_ref = nullptr;
-
-  if (async_work_queue_->QueueNumThreads(kPrepareWorkQueueIdx)) {
-    // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
-    // those for the next step
-    atomic_deps = atomic_deps_.get();
-    atomic_var_ref = atomic_var_ref_.get();
-
-    atomic_deps_ = async_work_queue_->PrepareAtomicDeps(dependecy_count_);
-    atomic_var_ref_ =
-        async_work_queue_->PrepareAtomicVarRef(var_scope_.VecMetaInfo());
-  } else {
-    atomic_deps = interpreter::PrepareAtomicDeps(dependecy_count_);
-    atomic_var_ref = interpreter::PrepareAtomicVarRef(var_scope_.VecMetaInfo());
-  }
-  record_prepare.End();
 
   exception_holder_.Clear();
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
       async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
-                                 [this,
-                                  i,
-                                  atomic_deps = atomic_deps.get(),
-                                  atomic_var_ref = atomic_var_ref.get()] {
-                                   RunInstructionAsync(
-                                       i, atomic_deps, atomic_var_ref);
-                                 });
+                                 [this, i] { RunInstructionAsync(i); });
     }
   }
 
@@ -869,41 +840,43 @@ void InterpreterCore::ExecuteInstructionList(
 }
 
 void InterpreterCore::RunNextInstructions(
-    const Instruction& instr,
-    std::queue<size_t>* reserved_next_ops,
-    std::vector<std::atomic<size_t>>* atomic_deps,
-    std::vector<std::atomic<size_t>>* atomic_var_ref) {
+    const Instruction& instr, std::deque<size_t>* reserved_next_ops) {
   platform::RecordEvent record(
       "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
-  VLOG(4) << "atomic 1:" << atomic_deps;
   auto& next_instr = instr.NextInstructions();
 
-  auto IsReady = [atomic_deps](size_t next_id) {
-    VLOG(4) << "atomic:" << atomic_deps << " op_id: " << next_id
-            << ", remain deps: " << (*atomic_deps)[next_id];
-    return (*atomic_deps)[next_id].fetch_sub(1, std::memory_order_relaxed) == 1;
+  auto IsReady = [this](size_t next_id) {
+    VLOG(4) << "op_id: " << next_id
+            << ", remain deps: " << deps_[next_id]->DynamicDep();
+    return deps_[next_id]->CheckAndDecrease();
   };
 
   if (instr.KernelType() == OpFuncType::kQueueAsync) {
     // move all sync_ops into other threads
-    for (auto next_id : next_instr.SyncRunIds()) {
+    for (size_t next_id : next_instr.SyncRunIds()) {
       if (IsReady(next_id)) {
         async_work_queue_->AddTask(
             vec_instruction_[next_id].KernelType(),
-            [this, next_id, atomic_deps, atomic_var_ref]() {
-              RunInstructionAsync(next_id, atomic_deps, atomic_var_ref);
-            });
+            [this, next_id]() { RunInstructionAsync(next_id); });
       }
     }
     // keep all async_ops running in current thread
-    for (auto next_id : next_instr.DirectRunIds()) {
+    for (size_t next_id : next_instr.DirectRunIds()) {
       if (IsReady(next_id)) {
-        reserved_next_ops->push(next_id);
+        if (vec_instruction_[next_id].GetPriority() == Priority::kLowest) {
+          reserved_next_ops->push_back(next_id);
+        } else {
+          reserved_next_ops->push_front(next_id);
+        }
       }
     }
-    for (auto next_id : next_instr.EventRunIds()) {
+    for (size_t next_id : next_instr.EventRunIds()) {
       if (IsReady(next_id)) {
-        reserved_next_ops->push(next_id);
+        if (vec_instruction_[next_id].GetPriority() == Priority::kLowest) {
+          reserved_next_ops->push_back(next_id);
+        } else {
+          reserved_next_ops->push_front(next_id);
+        }
       }
     }
   } else {
@@ -912,42 +885,42 @@ void InterpreterCore::RunNextInstructions(
       if (IsReady(next_id)) {
         async_work_queue_->AddTask(
             vec_instruction_[next_id].KernelType(),
-            [this, next_id, atomic_deps, atomic_var_ref] {
-              RunInstructionAsync(next_id, atomic_deps, atomic_var_ref);
-            });
+            [this, next_id] { RunInstructionAsync(next_id); });
       }
     }
-    auto direct_run_ops = interpreter::merge_vector(next_instr.SyncRunIds(),
-                                                    next_instr.DirectRunIds());
+
+    std::vector<size_t> direct_run_ops = next_instr.SyncRunIds();
+    direct_run_ops.insert(direct_run_ops.end(),
+                          next_instr.DirectRunIds().begin(),
+                          next_instr.DirectRunIds().end());
+
     int64_t first_op = -1;
     for (auto next_id : direct_run_ops) {
       if (IsReady(next_id)) {
-        // only keep one op running in current thread
-        if (first_op == -1) {
+        // only keep one sync op running in current thread
+        if (first_op == -1 &&
+            vec_instruction_[next_id].KernelType() == OpFuncType::kQueueSync) {
           first_op = next_id;
           continue;
         }
         // move rest ops into other threads
         async_work_queue_->AddTask(
             vec_instruction_[next_id].KernelType(),
-            [this, next_id, atomic_deps, atomic_var_ref] {
-              RunInstructionAsync(next_id, atomic_deps, atomic_var_ref);
-            });
+            [this, next_id] { RunInstructionAsync(next_id); });
       }
     }
-    if (first_op != -1) reserved_next_ops->push(first_op);
+    if (first_op != -1) {
+      reserved_next_ops->push_front(first_op);
+    }
   }
 }
 
-void InterpreterCore::RunInstructionAsync(
-    size_t instr_id,
-    std::vector<std::atomic<size_t>>* atomic_deps,
-    std::vector<std::atomic<size_t>>* atomic_var_ref) {
-  std::queue<size_t> ready_ops;
-  ready_ops.push(instr_id);
+void InterpreterCore::RunInstructionAsync(size_t instr_id) {
+  std::deque<size_t> ready_ops;
+  ready_ops.push_back(instr_id);
   while (!ready_ops.empty()) {
     instr_id = ready_ops.front();
-    ready_ops.pop();
+    ready_ops.pop_front();
     auto& instr_node = vec_instruction_.at(instr_id);
     VLOG(5) << __func__ << " OP id:" << instr_node.Id()
             << " name:" << instr_node.OpBase()->Type() << " type:"
@@ -963,11 +936,11 @@ void InterpreterCore::RunInstructionAsync(
     try {
       interpreter::WaitEvent(instr_node, place_);
 
-      RunInstruction(instr_node);
-
-      CheckGC(instr_node, atomic_var_ref);
-
-      interpreter::LogDeviceMemoryStats(place_);
+      if (!instr_node.IsArtificial()) {
+        RunInstruction(instr_node);
+        CheckGC(instr_node);
+        interpreter::LogDeviceMemoryStats(place_);
+      }
 
       interpreter::RecordEvent(instr_node, place_);
     } catch (platform::EnforceNotMet& ex) {
@@ -993,20 +966,23 @@ void InterpreterCore::RunInstructionAsync(
       return;
     }
 
-    VLOG(4) << "unfinished_op_numer_: " << unfinished_op_numer_;
-    if (UNLIKELY(unfinished_op_numer_.fetch_sub(1, std::memory_order_relaxed) ==
-                 1)) {
+    VLOG(4) << "unfinished_op_number_: " << unfinished_op_number_;
+    if (UNLIKELY(unfinished_op_number_.fetch_sub(
+                     1, std::memory_order_relaxed) == 1)) {
       if (completion_notifier_ != nullptr) {
         completion_notifier_->NotifyEvent();
       }
     }
 
-    RunNextInstructions(instr_node, &ready_ops, atomic_deps, atomic_var_ref);
+    RunNextInstructions(instr_node, &ready_ops);
   }
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "RecordStreamForGC is only implemented when compiled with GPU."));
+#else
   if (!IsInterpretercoreFastGCEnabled() ||
       instr.KernelType() != OpFuncType::kQueueAsync) {
     return;
@@ -1026,9 +1002,9 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
     if (platform::is_gpu_place(place)) {
       memory::RecordStream(allocation, stream);
     } else if (platform::is_cuda_pinned_place(place)) {
-      // TODO(Ruibiao): Here should do something to make sure that the tensor is
-      // not freed until the H2D copies done. However, simplely launch a CUDA
-      // runtime callback to the H2D stream may lead a high performance
+      // TODO(Ruibiao): Here should do something to make sure that the tensor
+      // is not freed until the H2D copies done. However, simplely launch a
+      // CUDA runtime callback to the H2D stream may lead a high performance
       // overhead. As all the cases we meet in H2D are copies from CPUPlace at
       // present, we just log a WARNING here. A better design is required.
       LOG(WARNING) << "Copy data from a CUDAPinned tensor in an asynchronous "
@@ -1045,8 +1021,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
    * instr.GCCheckVars.
    * 2. The stream which initializes this tensor is different from the stream
    * which the instruction run in.
-   * 3. The tensor is the instruction's input, cause we assume that instruction
-   * will initialize all output tensors with its running stream.
+   * 3. The tensor is the instruction's input, cause we assume that
+   * instruction will initialize all output tensors with its running stream.
    * 4. In the OP function of this instruction, the tensor is an input of a
    * async CUDA kernel.
    *
@@ -1056,8 +1032,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
    * initialized this tensor has less time overhead. Conversely, it may take
    * more time if we try to extract those cross-stream input vars from
    * instr.GCCheckVars.
-   * 2. Now the instruction has no idea of which vars involving async running in
-   * OP function, and thus we can not recognize condition 4. It should be
+   * 2. Now the instruction has no idea of which vars involving async running
+   * in OP function, and thus we can not recognize condition 4. It should be
    * supported later.
    */
   for (int var_id : instr.GCCheckVars()) {
@@ -1075,8 +1051,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
       continue;
     }
 
-    if (var->IsType<LoDTensor>()) {
-      TensorRecordStream(*(var->GetMutable<LoDTensor>()));
+    if (var->IsType<phi::DenseTensor>()) {
+      TensorRecordStream(*(var->GetMutable<phi::DenseTensor>()));
     } else if (var->IsType<
                    operators::reader::
                        OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
@@ -1097,12 +1073,10 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
           framework::ToTypeName(var->Type())));
     }
   }
-}
 #endif
+}
 
-void InterpreterCore::CheckGC(
-    const Instruction& instr,
-    std::vector<std::atomic<size_t>>* atomic_var_ref) {
+void InterpreterCore::CheckGC(const Instruction& instr) {
   platform::RecordEvent record(
       "CheckGC", platform::TracerEventType::UserDefined, 10);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1111,12 +1085,9 @@ void InterpreterCore::CheckGC(
   auto& var_scope = var_scope_;
 
   for (auto var_id : instr.GCCheckVars()) {
-    VLOG(4) << "GC " << var_scope_.GetNameById(var_id) << " "
-            << var_scope.VarDesc(var_id);
-    VLOG(4) << "atomic:" << atomic_var_ref << " " << &(*atomic_var_ref)[var_id]
-            << " " << var_id;
-    bool is_ready =
-        (*atomic_var_ref)[var_id].fetch_sub(1, std::memory_order_relaxed) == 1;
+    VLOG(4) << "GC:" << var_scope_.GetNameById(var_id) << ", id:" << var_id
+            << ", ref:" << refs_[var_id]->DynamicRef();
+    bool is_ready = refs_[var_id]->CheckAndDecrease();
     // ignore all persistable var while GC
     if (var_scope.VarDesc(var_id) && var_scope.VarDesc(var_id)->Persistable()) {
       continue;
@@ -1124,15 +1095,14 @@ void InterpreterCore::CheckGC(
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : "
               << var_scope.GetNameById(var_id);
-      gc_->Add(var_scope_.VarRef(var_id), instr);
+      gc_->Add(refs_[var_id]->Var(), instr);
     }
   }
 }
 
-void InterpreterCore::Prepare(
-    const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors,
-    bool prepare_feed) {
+void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
+                              const std::vector<phi::DenseTensor>& feed_tensors,
+                              bool prepare_feed) {
   PADDLE_ENFORCE_EQ(feed_names.size(),
                     feed_tensors.size(),
                     platform::errors::PreconditionNotMet(
@@ -1149,32 +1119,32 @@ void InterpreterCore::Prepare(
           platform::errors::NotFound("Variable %s should not be nullptr.",
                                      feed_names[i]));
 
-      auto feed_tensor = feed_var->GetMutable<framework::LoDTensor>();
+      auto feed_tensor = feed_var->GetMutable<phi::DenseTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
       feed_tensor->set_lod(feed_tensors[i].lod());
     }
   };
 
   if (!is_build_) {
-    paddle::framework::interpreter::build_variable_scope(
-        block_, &var_scope_, execution_config_.create_local_scope);
+    paddle::framework::interpreter::BuildVariableScope(
+        block_, &var_scope_, HasLocalScope());
     FeedInput();
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    paddle::framework::interpreter::build_op_func_list(
+    paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
-        execution_config_.create_local_scope,
-        execution_config_.used_for_jit);
-    is_build_ = true;
+        execution_config_,
+        HasLocalScope());
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
+    is_build_ = true;
   }
   // NOTE: Because feed_tensor will be GC after
-  // paddle::framework::build_op_func_list, so we should
+  // paddle::framework::BuildOpFuncList, so we should
   // call FeedInput again.
   if (prepare_feed) {
     FeedInput();
@@ -1188,6 +1158,8 @@ void InterpreterCore::SetFeedVarsInplaceSkip(
   }
 }
 
+bool InterpreterCore::HasLocalScope() const { return local_scope_ != nullptr; }
+
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(
     const platform::Place& place,
     const ProgramDesc& prog,
@@ -1195,11 +1167,11 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCore(
     const std::vector<std::string>& fetch_names,
     const std::set<std::string>& skip_gc_vars) {
   std::shared_ptr<InterpreterCore> core = nullptr;
-  // NOTE(Aurelius84): `add_fetch` will modify BlockDesc, so we should copy
+  // NOTE(Aurelius84): `AddFetch` will modify BlockDesc, so we should copy
   // a new program.
   auto new_prog = std::make_shared<framework::ProgramDesc>(prog);
   auto* block = new_prog->MutableBlock(0);
-  interpreter::add_fetch(fetch_names, block);
+  interpreter::AddFetch(fetch_names, block);
 
   core = std::make_shared<InterpreterCore>(place, *block, skip_gc_vars, scope);
   core->SetCopyProgram(new_prog);

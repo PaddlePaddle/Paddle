@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/ir/mkldnn/compute_propagate_scales_mkldnn_pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -91,11 +92,16 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
         graph, scope, wx_name, wh_name, var_quant_scales);
   }
 
+  void UpdateReluOutputScales(ir::Graph* graph,
+                              StringPairMap* var_quant_scales) const {
+    pass->UpdateReluOutputScales(graph, var_quant_scales);
+  }
+
   void InitTensorHolder(Scope* scope,
                         const paddle::platform::Place& place,
                         const std::string& var_name) {
     auto x = scope->Var(var_name);
-    auto tensor = x->GetMutable<LoDTensor>();
+    auto tensor = x->GetMutable<phi::DenseTensor>();
     auto tensor_size = 1;
     if (var_name == "filter") {
       tensor_size = positive_and_negative_values.size();
@@ -124,7 +130,6 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
   }
 
   void ComputeRnnWeightScalesTest(const std::string& type,
-                                  const std::initializer_list<std::string>& ops,
                                   const framework::ProgramDesc& prog,
                                   std::vector<double> scales) {
     ir::Graph* graph(new ir::Graph(prog));
@@ -140,7 +145,7 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     StringPairMap var_quant_scales;
 
     auto* wx_var = scope.FindVar(wx_var_names);
-    auto* wx_tensor = wx_var->GetMutable<LoDTensor>();
+    auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
     wx_tensor->Resize(phi::make_dim(wx.size(), wx[0].size()));
     for (size_t i = 0; i < wx.size(); i++)
       std::copy(begin(wx[i]),
@@ -149,7 +154,7 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
                     i * wx[0].size());
 
     auto* wh_var = scope.FindVar(wh_var_names);
-    auto* wh_tensor = wh_var->GetMutable<LoDTensor>();
+    auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
     wh_tensor->Resize(phi::make_dim(wh.size(), wh[0].size()));
     for (size_t i = 0; i < wh.size(); i++)
       std::copy(begin(wh[i]),
@@ -174,6 +179,24 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     }
   }
 
+  void UpdateReluOutputScaleTest(
+      const framework::ProgramDesc& prog,
+      StringPairMap* var_quant_scales,
+      const std::initializer_list<std::string>& variable_names) {
+    ir::Graph* graph(new ir::Graph(prog));
+    Scope scope;
+
+    PrepareGraph(graph, prog, &scope, conv_variable_names);
+
+    UpdateReluOutputScales(graph, var_quant_scales);
+
+    for (auto& var_name : variable_names) {
+      auto iter = var_quant_scales->find(var_name);
+      ASSERT_NE(iter, var_quant_scales->end());
+      ASSERT_EQ((*var_quant_scales)[var_name].first, true);
+    }
+  }
+
  private:
   std::unique_ptr<ComputePropagateScalesMkldnnPass> pass;
 };
@@ -182,11 +205,15 @@ void SetOp(ProgramDesc* prog,
            const std::string& type,
            const std::string& name,
            const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs) {
+           const std::vector<std::string>& outputs,
+           const std::unordered_map<std::string, std::string>& attrs = {}) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", true);
   op->SetAttr("name", name);
+  if (!attrs.empty())
+    for (auto& attr : attrs) op->SetAttr(attr.first, attr.second);
+
   if (type == "conv2d") {
     op->SetInput("Input", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Filter", {inputs[1]});
@@ -207,6 +234,23 @@ ProgramDesc BuildConv2dProgramDesc() {
     prog.MutableBlock(0)->Var(v);
   }
   SetOp(&prog, "conv2d", "Conv2d", {"conv_in", "filter", "bias"}, {"conv_out"});
+
+  return prog;
+}
+
+ProgramDesc BuildConv2dReluProgramDesc() {
+  ProgramDesc prog;
+  for (auto& v : conv_variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  std::unordered_map<std::string, std::string> attrs = {
+      {"fuse_activation", "relu"}};
+  SetOp(&prog,
+        "conv2d",
+        "Conv2d",
+        {"conv_in", "filter", "bias"},
+        {"conv_out"},
+        attrs);
 
   return prog;
 }
@@ -262,7 +306,7 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, compute_var_scales) {
   StringPairMap var_quant_scales;
 
   auto* var = scope.FindVar(weight_var_name);
-  auto* weight_tensor = var->GetMutable<LoDTensor>();
+  auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
   weight_tensor->Resize(phi::make_dim(1, values.size()));
   std::copy(begin(values),
             end(values),
@@ -283,15 +327,24 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, compute_var_scales) {
 }
 
 TEST_F(ComputePropagateScalesMkldnnPassTest, compute_gru_weight_scales) {
-  ComputeRnnWeightScalesTest("gru",
-                             {"fusion_gru", "multi_gru"},
-                             BuildFusionGruProgramDesc(),
-                             gru_scales);
+  ComputeRnnWeightScalesTest("gru", BuildFusionGruProgramDesc(), gru_scales);
 }
 
 TEST_F(ComputePropagateScalesMkldnnPassTest, compute_lstm_weight_scales) {
-  ComputeRnnWeightScalesTest(
-      "lstm", {"fusion_lstm"}, BuildFusionLstmProgramDesc(), lstm_scales);
+  ComputeRnnWeightScalesTest("lstm", BuildFusionLstmProgramDesc(), lstm_scales);
+}
+
+TEST_F(ComputePropagateScalesMkldnnPassTest, update_relu_output_scales) {
+  StringPairMap var_quant_scales;
+  for (auto& var_name : conv_variable_names) {
+    phi::DenseTensor tensor;
+    auto* data = tensor.mutable_data<float>({1}, platform::CPUPlace());
+    data[0] = 10;
+    auto pair = std::make_pair(false, tensor);
+    var_quant_scales.insert(std::make_pair(var_name, pair));
+  }
+  UpdateReluOutputScaleTest(
+      BuildConv2dReluProgramDesc(), &var_quant_scales, {"conv_out"});
 }
 
 }  // namespace ir

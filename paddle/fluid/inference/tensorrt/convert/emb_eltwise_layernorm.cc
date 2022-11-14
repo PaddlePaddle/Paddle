@@ -41,7 +41,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     auto GetWeight = [&](const std::string& var_name,
                          framework::DDim* dim) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       *dim = temp_tensor->dims();
       auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
       return weight;
@@ -50,7 +50,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     auto GetFp16Weight = [&](const std::string& var_name,
                              framework::DDim* dim) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       *dim = temp_tensor->dims();
       auto weight = engine_->GetFp16TrtWeight(var_name, *temp_tensor);
       return weight;
@@ -59,7 +59,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     auto GetFp32Weight = [&](const std::string& var_name,
                              framework::DDim* dim) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       *dim = temp_tensor->dims();
       auto weight = engine_->GetFp32TrtWeight(var_name, *temp_tensor);
       return weight;
@@ -210,14 +210,14 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
           "max_seqlen_tensor"));  // max_seqlen, eval_placeholder_3
 
       auto creator = GetPluginRegistry()->getPluginCreator(
-          "ManyEmbLayerNormPluginDynamic", "2");
+          "ManyEmbLayerNormPluginDynamic", "1");
       auto plugin_obj =
           creator->createPlugin("ManyEmbLayerNormPluginDynamic", plugin_ptr);
 
       auto plugin_layer = engine_->network()->addPluginV2(
           plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
 
-      plugin_layer->setName(("ManyEmbLayerNormPluginDynamic_V2(Output: " +
+      plugin_layer->setName(("ManyEmbLayerNormPluginDynamic_V1(Output: " +
                              op_desc.Output("Out")[0] + ")")
                                 .c_str());
       free(plugin_ptr);
@@ -248,7 +248,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         layer = plugin_layer;
         auto output_name = op_desc.Output("Out")[0];
         RreplenishLayerAndOutput(layer,
-                                 "ManyEmbLayerNormPluginDynamic_V2",
+                                 "ManyEmbLayerNormPluginDynamic_V1",
                                  {output_name, std::string("qkv_plugin_mask")},
                                  test_mode);
       }

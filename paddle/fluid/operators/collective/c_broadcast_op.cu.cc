@@ -29,8 +29,8 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto x = ctx.Input<framework::LoDTensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto x = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     int numel = x->numel();
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
@@ -108,7 +108,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(c_broadcast,
                         ops::CBroadcastOpCUDAKernel<float>,
                         ops::CBroadcastOpCUDAKernel<double>,
-#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000
                         ops::CBroadcastOpCUDAKernel<plat::bfloat16>,
 #endif
                         ops::CBroadcastOpCUDAKernel<int>,

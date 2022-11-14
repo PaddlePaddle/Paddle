@@ -56,9 +56,9 @@ class IndexSampleNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* input = ctx.Input<framework::LoDTensor>("X");
-    auto* index = ctx.Input<framework::LoDTensor>("Index");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* index = ctx.Input<phi::DenseTensor>("Index");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     const auto& index_type = framework::TransToProtoVarType(index->dtype());
@@ -108,11 +108,9 @@ class IndexSampleGradNPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::NPUDeviceContext>();
-    auto* index = ctx.Input<framework::LoDTensor>("Index");
-    auto* out_grad =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto* x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* index = ctx.Input<phi::DenseTensor>("Index");
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     x_grad->mutable_data<T>(ctx.GetPlace());
 
     const auto& index_type = framework::TransToProtoVarType(index->dtype());

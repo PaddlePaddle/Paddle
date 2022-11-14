@@ -23,7 +23,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 bool GT_E(T a, T b) {
@@ -250,7 +250,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<phi::DenseTensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto* mask = ctx.Output<phi::DenseTensor>("Mask");
     auto* out_transform_matrix =
@@ -398,7 +398,7 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<phi::DenseTensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 

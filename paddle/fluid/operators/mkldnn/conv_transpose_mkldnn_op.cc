@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using framework::DataLayout;
+using phi::DataLayout;
 
 inline dnnl::memory::dims GetWeightsTz(const phi::DenseTensor* filter,
                                        const int groups) {
@@ -292,7 +292,7 @@ class ConvTransposeMKLDNNHandlerT
         platform::RecordEvent record_reorder(
             "int_reorder",
             platform::TracerEventType::UserDefined,
-            2,
+            1,
             platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
@@ -318,7 +318,7 @@ class ConvTransposeMKLDNNHandlerT
         platform::RecordEvent record_reorder(
             "int_reorder",
             platform::TracerEventType::UserDefined,
-            2,
+            1,
             platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,

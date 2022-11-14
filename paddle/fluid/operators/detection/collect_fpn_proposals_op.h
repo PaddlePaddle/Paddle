@@ -62,15 +62,15 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto multi_layer_rois =
-        context.MultiInput<paddle::framework::LoDTensor>("MultiLevelRois");
+        context.MultiInput<phi::DenseTensor>("MultiLevelRois");
 
     auto multi_layer_scores =
-        context.MultiInput<paddle::framework::LoDTensor>("MultiLevelScores");
+        context.MultiInput<phi::DenseTensor>("MultiLevelScores");
     auto multi_rois_num =
         context.MultiInput<phi::DenseTensor>("MultiLevelRoIsNum");
     int num_size = multi_rois_num.size();
 
-    auto* fpn_rois = context.Output<paddle::framework::LoDTensor>("FpnRois");
+    auto* fpn_rois = context.Output<phi::DenseTensor>("FpnRois");
 
     int post_nms_topN = context.Attr<int>("post_nms_topN");
 

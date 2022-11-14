@@ -17,12 +17,10 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTriuIndicesOp(OpTest):
-
     def setUp(self):
         self.op_type = "triu_indices"
         self.inputs = {}
@@ -35,13 +33,13 @@ class TestTriuIndicesOp(OpTest):
 
     def init_config(self):
         self.attrs = {'row': 4, 'col': 4, 'offset': -1}
-        self.target = np.triu_indices(self.attrs['row'], self.attrs['offset'],
-                                      self.attrs['col'])
+        self.target = np.triu_indices(
+            self.attrs['row'], self.attrs['offset'], self.attrs['col']
+        )
         self.target = np.array(self.target)
 
 
 class TestTriuIndicesOpCase1(TestTriuIndicesOp):
-
     def init_config(self):
         self.attrs = {'row': 0, 'col': 0, 'offset': 0}
         self.target = np.triu_indices(0, 0, 0)
@@ -49,23 +47,23 @@ class TestTriuIndicesOpCase1(TestTriuIndicesOp):
 
 
 class TestTriuIndicesOpCase2(TestTriuIndicesOp):
-
     def init_config(self):
         self.attrs = {'row': 4, 'col': 4, 'offset': 2}
-        self.target = np.triu_indices(self.attrs['row'], self.attrs['offset'],
-                                      self.attrs['col'])
+        self.target = np.triu_indices(
+            self.attrs['row'], self.attrs['offset'], self.attrs['col']
+        )
         self.target = np.array(self.target)
 
 
 class TestTriuIndicesAPICaseStatic(unittest.TestCase):
-
     def test_static(self):
         if fluid.core.is_compiled_with_cuda():
             place = paddle.fluid.CUDAPlace(0)
         else:
             place = paddle.CPUPlace()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data = paddle.triu_indices(4, 4, -1)
             exe = paddle.static.Executor(place)
             result = exe.run(feed={}, fetch_list=[data])
@@ -74,7 +72,6 @@ class TestTriuIndicesAPICaseStatic(unittest.TestCase):
 
 
 class TestTriuIndicesAPICaseDygraph(unittest.TestCase):
-
     def test_dygraph(self):
         if fluid.core.is_compiled_with_cuda():
             place = paddle.fluid.CUDAPlace(0)
@@ -91,9 +88,7 @@ class TestTriuIndicesAPICaseDygraph(unittest.TestCase):
 
 
 class TestTriuIndicesAPICaseError(unittest.TestCase):
-
     def test_case_error(self):
-
         def test_num_rows_type_check():
             out1 = paddle.triu_indices(1.0, 1, 2)
 
@@ -111,11 +106,11 @@ class TestTriuIndicesAPICaseError(unittest.TestCase):
 
 
 class TestTriuIndicesAPICaseDefault(unittest.TestCase):
-
     def test_default_CPU(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data = paddle.triu_indices(4, None, 2)
             exe = paddle.static.Executor(paddle.CPUPlace())
             result = exe.run(feed={}, fetch_list=[data])

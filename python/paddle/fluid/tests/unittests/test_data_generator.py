@@ -10,18 +10,12 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-import paddle
 import unittest
 import paddle.distributed.fleet as fleet
-import os
-import sys
-import platform
 
 
 class MyMultiSlotDataGenerator(fleet.MultiSlotDataGenerator):
-
     def generate_sample(self, line):
-
         def data_iter():
             for i in range(40):
                 if i == 1:
@@ -32,9 +26,7 @@ class MyMultiSlotDataGenerator(fleet.MultiSlotDataGenerator):
 
 
 class MyMultiSlotStringDataGenerator(fleet.MultiSlotStringDataGenerator):
-
     def generate_sample(self, line):
-
         def data_iter():
             for i in range(40):
                 if i == 1:
@@ -45,9 +37,7 @@ class MyMultiSlotStringDataGenerator(fleet.MultiSlotStringDataGenerator):
 
 
 class MyMultiSlotDataGenerator_error(fleet.MultiSlotDataGenerator):
-
     def generate_sample(self, line):
-
         def data_iter():
             for i in range(40):
                 if i == 1:
@@ -58,9 +48,7 @@ class MyMultiSlotDataGenerator_error(fleet.MultiSlotDataGenerator):
 
 
 class MyMultiSlotDataGenerator_error_2(fleet.MultiSlotStringDataGenerator):
-
     def generate_sample(self, line):
-
         def data_iter():
             for i in range(40):
                 if i == 1:
@@ -71,9 +59,7 @@ class MyMultiSlotDataGenerator_error_2(fleet.MultiSlotStringDataGenerator):
 
 
 class MyMultiSlotDataGenerator_error_3(fleet.MultiSlotDataGenerator):
-
     def generate_sample(self, line):
-
         def data_iter():
             for i in range(40):
                 if i == 1:
@@ -84,9 +70,7 @@ class MyMultiSlotDataGenerator_error_3(fleet.MultiSlotDataGenerator):
 
 
 class MyMultiSlotDataGenerator_error_4(fleet.MultiSlotDataGenerator):
-
     def generate_sample(self, line):
-
         def data_iter():
             for i in range(40):
                 if i == 1:
@@ -97,9 +81,7 @@ class MyMultiSlotDataGenerator_error_4(fleet.MultiSlotDataGenerator):
 
 
 class MyMultiSlotDataGenerator_error_5(fleet.MultiSlotDataGenerator):
-
     def generate_sample(self, line):
-
         def data_iter():
             for i in range(40):
                 if i == 1:
@@ -110,9 +92,7 @@ class MyMultiSlotDataGenerator_error_5(fleet.MultiSlotDataGenerator):
 
 
 class MyMultiSlotStringDataGenerator_zip(fleet.MultiSlotStringDataGenerator):
-
     def generate_sample(self, line):
-
         def data_iter():
             for i in range(40):
                 if i == 1:
@@ -125,9 +105,7 @@ class MyMultiSlotStringDataGenerator_zip(fleet.MultiSlotStringDataGenerator):
 
 
 class MyMultiSlotDataGenerator_zip(fleet.MultiSlotDataGenerator):
-
     def generate_sample(self, line):
-
         def data_iter():
             for i in range(40):
                 if i == 1:
@@ -140,7 +118,6 @@ class MyMultiSlotDataGenerator_zip(fleet.MultiSlotDataGenerator):
 
 
 class TestMultiSlotDataGenerator(unittest.TestCase):
-
     def test_MultiSlotDataGenerator_basic(self):
         my_ms_dg = MyMultiSlotDataGenerator()
         my_ms_dg.set_batch(1)
@@ -148,7 +125,6 @@ class TestMultiSlotDataGenerator(unittest.TestCase):
 
 
 class TestMultiSlotStringDataGenerator(unittest.TestCase):
-
     def test_MyMultiSlotStringDataGenerator_basic(self):
         my_ms_dg = MyMultiSlotStringDataGenerator()
         my_ms_dg.set_batch(1)
@@ -156,7 +132,6 @@ class TestMultiSlotStringDataGenerator(unittest.TestCase):
 
 
 class TestMultiSlotDataGenerator_error(unittest.TestCase):
-
     def test_MultiSlotDataGenerator_error(self):
         with self.assertRaises(ValueError):
             my_ms_dg = MyMultiSlotDataGenerator_error()
@@ -165,7 +140,6 @@ class TestMultiSlotDataGenerator_error(unittest.TestCase):
 
 
 class TestMultiSlotDataGenerator_error_2(unittest.TestCase):
-
     def test_MultiSlotDataGenerator_error(self):
         with self.assertRaises(ValueError):
             my_ms_dg = MyMultiSlotDataGenerator_error_2()
@@ -174,7 +148,6 @@ class TestMultiSlotDataGenerator_error_2(unittest.TestCase):
 
 
 class TestMultiSlotDataGenerator_error_3(unittest.TestCase):
-
     def test_MultiSlotDataGenerator_error(self):
         with self.assertRaises(ValueError):
             my_ms_dg = MyMultiSlotDataGenerator_error_3()
@@ -183,7 +156,6 @@ class TestMultiSlotDataGenerator_error_3(unittest.TestCase):
 
 
 class TestMultiSlotDataGenerator_error_4(unittest.TestCase):
-
     def test_MultiSlotDataGenerator_error(self):
         with self.assertRaises(ValueError):
             my_ms_dg = MyMultiSlotDataGenerator_error_4()
@@ -192,7 +164,6 @@ class TestMultiSlotDataGenerator_error_4(unittest.TestCase):
 
 
 class TestMultiSlotDataGenerator_error_5(unittest.TestCase):
-
     def test_MultiSlotDataGenerator_error(self):
         with self.assertRaises(ValueError):
             my_ms_dg = MyMultiSlotDataGenerator_error_5()
@@ -201,7 +172,6 @@ class TestMultiSlotDataGenerator_error_5(unittest.TestCase):
 
 
 class TestMultiSlotStringDataGeneratorZip(unittest.TestCase):
-
     def test_MultiSlotStringDataGenerator_zip(self):
         my_ms_dg = MyMultiSlotStringDataGenerator_zip()
         my_ms_dg.set_batch(1)
@@ -209,7 +179,6 @@ class TestMultiSlotStringDataGeneratorZip(unittest.TestCase):
 
 
 class TestMultiSlotDataGeneratorZip(unittest.TestCase):
-
     def test_MultiSlotDataGenerator_zip(self):
         my_ms_dg = MyMultiSlotDataGenerator_zip()
         my_ms_dg.set_batch(1)

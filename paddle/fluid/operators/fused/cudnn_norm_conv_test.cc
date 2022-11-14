@@ -101,9 +101,9 @@ void ComputeConv2DForward(const phi::GPUContext &ctx,
                           int stride,
                           int padding) {
   framework::Scope scope;
-  auto *input = scope.Var("Input")->GetMutable<framework::LoDTensor>();
-  auto *filter = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
-  auto *output = scope.Var("Output")->GetMutable<framework::LoDTensor>();
+  auto *input = scope.Var("Input")->GetMutable<phi::DenseTensor>();
+  auto *filter = scope.Var("Filter")->GetMutable<phi::DenseTensor>();
+  auto *output = scope.Var("Output")->GetMutable<phi::DenseTensor>();
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorCopySync(cpu_input, place, input);
@@ -140,14 +140,11 @@ void ComputeConv2DBackward(const phi::GPUContext &ctx,
                            int padding,
                            int dilation) {
   framework::Scope scope;
-  auto *input = scope.Var("Input")->GetMutable<framework::LoDTensor>();
-  auto *filter = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
-  auto *output_grad =
-      scope.Var("Output@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *input_grad =
-      scope.Var("Input@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *filter_grad =
-      scope.Var("Filter@GRAD")->GetMutable<framework::LoDTensor>();
+  auto *input = scope.Var("Input")->GetMutable<phi::DenseTensor>();
+  auto *filter = scope.Var("Filter")->GetMutable<phi::DenseTensor>();
+  auto *output_grad = scope.Var("Output@GRAD")->GetMutable<phi::DenseTensor>();
+  auto *input_grad = scope.Var("Input@GRAD")->GetMutable<phi::DenseTensor>();
+  auto *filter_grad = scope.Var("Filter@GRAD")->GetMutable<phi::DenseTensor>();
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorCopySync(cpu_input, place, input);

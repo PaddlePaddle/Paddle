@@ -14,7 +14,6 @@
 
 # TODO: define framework api
 from paddle.fluid.layer_helper_base import LayerHelperBase
-from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.framework import _dygraph_tracer
 import numpy as np
 from contextlib import contextmanager
@@ -41,27 +40,26 @@ def set_default_dtype(d):
 
     """
     if isinstance(d, type):
+        # This branch is for NumPy scalar types
         if d in [np.float16, np.float32, np.float64]:
             d = d.__name__
         else:
             raise TypeError(
                 "set_default_dtype only supports [float16, float32, float64] "
-                ", but received %s" % d.__name__)
+                ", but received %s" % d.__name__
+            )
     else:
-        if d in [
-                'float16', 'float32', 'float64', u'float16', u'float32',
-                u'float64'
-        ]:
-            # this code is a little bit dangerous, since error could happen
-            # when casting no-ascii code to str in python2.
-            # but since the set itself is limited, so currently, it is good.
-            # however, jointly supporting python2 and python3, (as well as python4 maybe)
-            # may still be a long-lasting problem.
+        # This branch is for np.dtype and str
+        if d in ['float16', 'float32', 'float64']:
+            # NOTE(SigureMo): Since the np.dtype object is not an instance of
+            # type, so it will not be handled by the previous branch. We need
+            # to convert it to str here.
             d = str(d)
         else:
             raise TypeError(
                 "set_default_dtype only supports [float16, float32, float64] "
-                ", but received %s" % str(d))
+                ", but received %s" % str(d)
+            )
 
     LayerHelperBase.set_default_dtype(d)
 
@@ -73,7 +71,7 @@ def get_default_dtype():
     Args:
         None.
     Returns:
-        The default dtype.
+        String, this global dtype only supports float16, float32, float64.
 
     Examples:
         .. code-block:: python

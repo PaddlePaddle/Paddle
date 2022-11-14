@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -26,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
 namespace funcs {

@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::LoDTensor;
-
 using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
@@ -34,7 +32,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
                    const platform::MKLDNNDeviceContext& dev_ctx,
                    const dnnl::engine mkldnn_engine,
                    platform::Place cpu_place,
-                   const LoDTensor* input,
+                   const phi::DenseTensor* input,
                    const phi::DenseTensor* weight_h,
                    const phi::DenseTensor* h0,
                    const bool is_reverse,
@@ -79,9 +77,12 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
     }
   }
 
-  bool is_NTC() {
-    return (platform::GetMKLDNNFormat(this->fwd_pd_->dst_desc()) ==
-            dnnl::memory::format_tag::ntc);
+  bool is_NTC() { return this->is_NTC(this->fwd_pd_->dst_desc()); }
+
+  bool is_NTC(const dnnl::memory::desc& md) {
+    auto ntc_md = dnnl::memory::desc(
+        md.dims(), md.data_type(), dnnl::memory::format_tag::ntc);
+    return md == ntc_md;
   }
 
   void reorderRNNdata(void* input_data,
@@ -150,7 +151,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
   }
 
   std::shared_ptr<dnnl::memory> AcquireInputMemoryWithReorder(
-      const LoDTensor* input, const bool is_reverse) {
+      const phi::DenseTensor* input, const bool is_reverse) {
     const auto name = this->key_ + "@input_mem";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(name));
@@ -167,8 +168,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
     auto* x_onednn_data = memory_p->get_data_handle();
     memset(x_onednn_data, 0, sizeof(T) * N * Ti * IC);
 
-    if (platform::GetMKLDNNFormat(this->fwd_pd_->src_desc()) ==
-        dnnl::memory::format_tag::ntc) {
+    if (is_NTC(this->fwd_pd_->src_desc())) {
       reorderRNNdata(x_data,
                      x_onednn_data,
                      input_lod,

@@ -326,12 +326,13 @@ void CommonElementwiseBroadcastForward(const CPUContext &dev_ctx,
       phi::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis,
-                    max_dim,
-                    phi::errors::InvalidArgument(
-                        "Axis should be less than %d, but received axis is %d.",
-                        max_dim,
-                        axis));
+  PADDLE_ENFORCE_LE(
+      axis,
+      max_dim,
+      phi::errors::InvalidArgument(
+          "Axis should be less than or equal to %d, but received axis is %d.",
+          max_dim,
+          axis));
   std::vector<int> x_dims_array(max_dim);
   std::vector<int> y_dims_array(max_dim);
   std::vector<int> out_dims_array(max_dim);
@@ -394,12 +395,13 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
       errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis,
-                    max_dim,
-                    errors::InvalidArgument(
-                        "Axis should be less than %d, but received axis is %d.",
-                        max_dim,
-                        axis));
+  PADDLE_ENFORCE_LE(
+      axis,
+      max_dim,
+      errors::InvalidArgument(
+          "Axis should be less than or equal to %d, but received axis is %d.",
+          max_dim,
+          axis));
 
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
@@ -760,8 +762,10 @@ __global__ void VectorizedElementwiseKernel(
     kps::IndexType main_offset,
     int read_lens,
     Functor func) {
-  kps::IndexType data_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
-  kps::IndexType stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
+  kps::IndexType data_offset =
+      static_cast<kps::IndexType>(BLOCK_ID_X) * BLOCK_NUM_X * read_lens;
+  kps::IndexType stride =
+      static_cast<kps::IndexType>(BLOCK_NUM_X) * GRID_NUM_X * read_lens;
   for (; data_offset < main_offset; data_offset += stride) {
     VectorizedElementwiseKernelImpl<OutT,
                                     Functor,

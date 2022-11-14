@@ -17,13 +17,11 @@ import itertools
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 from op_test import OpTest
 
 
 class TestQrOp(OpTest):
-
     def setUp(self):
         paddle.enable_static()
         self.python_api = paddle.linalg.qr
@@ -74,38 +72,36 @@ class TestQrOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], ['Q', 'R'],
-                        check_eager=True,
-                        numeric_grad_delta=1e-5,
-                        max_relative_error=1e-6)
+        self.check_grad(
+            ['X'],
+            ['Q', 'R'],
+            check_eager=True,
+            numeric_grad_delta=1e-5,
+            max_relative_error=1e-6,
+        )
 
 
 class TestQrOpCase1(TestQrOp):
-
     def get_shape(self):
         return (10, 12)
 
 
 class TestQrOpCase2(TestQrOp):
-
     def get_shape(self):
         return (16, 15)
 
 
 class TestQrOpCase3(TestQrOp):
-
     def get_shape(self):
         return (2, 12, 16)
 
 
 class TestQrOpCase4(TestQrOp):
-
     def get_shape(self):
         return (3, 16, 15)
 
 
 class TestQrOpCase5(TestQrOp):
-
     def get_mode(self):
         return "complete"
 
@@ -114,7 +110,6 @@ class TestQrOpCase5(TestQrOp):
 
 
 class TestQrOpCase6(TestQrOp):
-
     def get_mode(self):
         return "complete"
 
@@ -123,7 +118,6 @@ class TestQrOpCase6(TestQrOp):
 
 
 class TestQrAPI(unittest.TestCase):
-
     def test_dygraph(self):
         paddle.disable_static()
         np.random.seed(7)
@@ -181,12 +175,13 @@ class TestQrAPI(unittest.TestCase):
             (4, 5, 3),  # 3-dim Tensors
             (2, 5, 3, 5),
             (3, 5, 5, 5),
-            (4, 5, 5, 3)  # 4-dim Tensors
+            (4, 5, 5, 3),  # 4-dim Tensors
         ]
         modes = ["reduced", "complete", "r"]
         dtypes = ["float32", "float64"]
         for tensor_shape, mode, dtype in itertools.product(
-                tensor_shapes, modes, dtypes):
+            tensor_shapes, modes, dtypes
+        ):
             run_qr_dygraph(tensor_shape, mode, dtype)
 
     def test_static(self):
@@ -228,33 +223,34 @@ class TestQrAPI(unittest.TestCase):
                             tmp_q, tmp_r = np.linalg.qr(a[coord], mode=mode)
                             np_q[coord] = tmp_q
                             np_r[coord] = tmp_r
-                    x = paddle.fluid.data(name="input",
-                                          shape=shape,
-                                          dtype=dtype)
+                    x = paddle.fluid.data(
+                        name="input", shape=shape, dtype=dtype
+                    )
                     if mode == "r":
                         r = paddle.linalg.qr(x, mode=mode)
                         exe = fluid.Executor(place)
-                        fetches = exe.run(fluid.default_main_program(),
-                                          feed={"input": a},
-                                          fetch_list=[r])
-                        np.testing.assert_allclose(fetches[0],
-                                                   np_r,
-                                                   rtol=1e-05,
-                                                   atol=1e-05)
+                        fetches = exe.run(
+                            fluid.default_main_program(),
+                            feed={"input": a},
+                            fetch_list=[r],
+                        )
+                        np.testing.assert_allclose(
+                            fetches[0], np_r, rtol=1e-05, atol=1e-05
+                        )
                     else:
                         q, r = paddle.linalg.qr(x, mode=mode)
                         exe = fluid.Executor(place)
-                        fetches = exe.run(fluid.default_main_program(),
-                                          feed={"input": a},
-                                          fetch_list=[q, r])
-                        np.testing.assert_allclose(fetches[0],
-                                                   np_q,
-                                                   rtol=1e-05,
-                                                   atol=1e-05)
-                        np.testing.assert_allclose(fetches[1],
-                                                   np_r,
-                                                   rtol=1e-05,
-                                                   atol=1e-05)
+                        fetches = exe.run(
+                            fluid.default_main_program(),
+                            feed={"input": a},
+                            fetch_list=[q, r],
+                        )
+                        np.testing.assert_allclose(
+                            fetches[0], np_q, rtol=1e-05, atol=1e-05
+                        )
+                        np.testing.assert_allclose(
+                            fetches[1], np_r, rtol=1e-05, atol=1e-05
+                        )
 
         tensor_shapes = [
             (3, 5),
@@ -265,12 +261,13 @@ class TestQrAPI(unittest.TestCase):
             (4, 5, 3),  # 3-dim Tensors
             (2, 5, 3, 5),
             (3, 5, 5, 5),
-            (4, 5, 5, 3)  # 4-dim Tensors
+            (4, 5, 5, 3),  # 4-dim Tensors
         ]
         modes = ["reduced", "complete", "r"]
         dtypes = ["float32", "float64"]
         for tensor_shape, mode, dtype in itertools.product(
-                tensor_shapes, modes, dtypes):
+            tensor_shapes, modes, dtypes
+        ):
             run_qr_static(tensor_shape, mode, dtype)
 
 

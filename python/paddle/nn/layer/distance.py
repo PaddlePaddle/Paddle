@@ -59,8 +59,8 @@ class PairwiseDistance(Layer):
 
     """
 
-    def __init__(self, p=2., epsilon=1e-6, keepdim=False, name=None):
-        super(PairwiseDistance, self).__init__()
+    def __init__(self, p=2.0, epsilon=1e-6, keepdim=False, name=None):
+        super().__init__()
         self.p = p
         self.epsilon = epsilon
         self.keepdim = keepdim
@@ -68,15 +68,16 @@ class PairwiseDistance(Layer):
 
     def forward(self, x, y):
 
-        return F.pairwise_distance(x, y, self.p, self.epsilon, self.keepdim,
-                                   self.name)
+        return F.pairwise_distance(
+            x, y, self.p, self.epsilon, self.keepdim, self.name
+        )
 
     def extra_repr(self):
         main_str = 'p={p}'
         if self.epsilon != 1e-6:
             main_str += ', epsilon={epsilon}'
-        if self.keepdim != False:
+        if self.keepdim is not False:
             main_str += ', keepdim={keepdim}'
-        if self.name != None:
+        if self.name is not None:
             main_str += ', name={name}'
         return main_str.format(**self.__dict__)

@@ -23,7 +23,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using DDim = framework::DDim;
 
 template <typename DeviceContext, typename T, typename IndexT = int>
@@ -83,8 +83,8 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   input->Resize(phi::make_ddim({outer_nums, input_dim[dim], slice_size}));
   output->Resize(phi::make_ddim({outer_nums, index_size, slice_size}));
 
-  auto input_tensor = framework::EigenTensor<T, 3>::From(*input);
-  auto output_tensor = framework::EigenTensor<T, 3>::From(*output);
+  auto input_tensor = phi::EigenTensor<T, 3>::From(*input);
+  auto output_tensor = phi::EigenTensor<T, 3>::From(*output);
 
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();

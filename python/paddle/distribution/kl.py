@@ -21,6 +21,7 @@ from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
 from paddle.distribution.normal import Normal
+from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.uniform import Uniform
 from paddle.distribution.laplace import Laplace
 from paddle.distribution.multivariate_normal import MultivariateNormal
@@ -164,9 +165,6 @@ def _kl_categorical_categorical(p, q):
 def _kl_normal_normal(p, q):
     return p.kl_divergence(q)
 
-@register_kl(MultivariateNormal,MultivariateNormal)
-def _kl_multnormal_multnormal(p, q):
-    return p.kl_divergence(q)
 
 @register_kl(Uniform, Uniform)
 def _kl_uniform_uniform(p, q):

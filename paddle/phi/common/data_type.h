@@ -34,7 +34,7 @@ using float16 = ::phi::dtype::float16;
 using bfloat16 = ::phi::dtype::bfloat16;
 using pstring = ::phi::dtype::pstring;
 
-// The enum valuea are consistent with jit/property.proto
+// The enum value are consistent with jit/property.proto
 enum class DataType {
   UNDEFINED = 0,
 

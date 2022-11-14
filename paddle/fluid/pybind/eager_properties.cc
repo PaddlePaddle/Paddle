@@ -184,6 +184,40 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
     }
   }
 
+  auto desired_layout =
+      paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
+  auto default_layout =
+      paddle::imperative::LayoutAutoTune::Instance().GetDefaultLayout();
+  bool change_dim =
+      (desired_layout != default_layout &&
+       self->tensor.layout() == desired_layout && value.size() == 4);
+  VLOG(6) << "eager_properties 'Shape' method, layout autotune "
+          << " desired_layout: " << desired_layout
+          << " default_layout: " << default_layout
+          << " tensor layout: " << self->tensor.layout()
+          << " tensor's shape size is : " << value.size();
+  std::vector<int64_t> dims = value;
+  if (change_dim && phi::DataLayoutToString(desired_layout) == "NCHW") {
+    // NCHW -> NHWC
+    VLOG(6) << "layout autotune get Shape from NCHW -> NHWC " << value[0] << " "
+            << value[1] << " " << value[2] << " " << value[3] << " to "
+            << dims[0] << " " << dims[2] << " " << dims[3] << " " << dims[1];
+    value[0] = dims[0];
+    value[1] = dims[2];
+    value[2] = dims[3];
+    value[3] = dims[1];
+  } else if (change_dim && phi::DataLayoutToString(desired_layout) == "NHWC") {
+    // NHWC -> NCHW
+    VLOG(6) << "layout autotune get Shape from NHWC -> NCHW " << value[0] << " "
+            << value[1] << " " << value[2] << " " << value[3] << " to "
+            << dims[0] << " " << dims[3] << " " << dims[1] << " " << dims[2]
+            << " " << dims[1];
+    value[0] = dims[0];
+    value[1] = dims[3];
+    value[2] = dims[1];
+    value[3] = dims[2];
+  }
+
   return ToPyObject(value);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -199,8 +233,7 @@ PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
     VLOG(3) << "VariableCompatTensor does not support `layout` method.";
     return ToPyObject(layout);
   } else {
-    return ToPyObject(
-        paddle::framework::DataLayoutToString(self->tensor.layout()));
+    return ToPyObject(phi::DataLayoutToString(self->tensor.layout()));
   }
 
   return ToPyObject(layout);

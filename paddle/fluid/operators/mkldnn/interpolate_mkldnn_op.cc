@@ -24,8 +24,7 @@ using dnnl::primitive;
 using dnnl::reorder;
 using dnnl::resampling_forward;
 using dnnl::stream;
-using framework::DataLayout;
-using platform::GetMKLDNNFormat;
+using phi::DataLayout;
 using platform::to_void_cast;
 
 template <typename T = float>

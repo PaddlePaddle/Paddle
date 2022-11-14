@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import paddle
 from paddle.fluid.dygraph.dygraph_to_static.utils import GetterSetterHelper
 
 vars = [1, 2, 3, 4, 5]
@@ -29,10 +28,10 @@ def setter(values):
 
 
 class TestGetterSetterHelper(unittest.TestCase):
-
     def test_1(self):
-        helper = GetterSetterHelper(getter, setter, ['a', 'b', 'e'],
-                                    ['d', 'f', 'e'])
+        helper = GetterSetterHelper(
+            getter, setter, ['a', 'b', 'e'], ['d', 'f', 'e']
+        )
         print(helper.union())
         expect_union = ['a', 'b', 'd', 'e', 'f']
         assert helper.union() == expect_union

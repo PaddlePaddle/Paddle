@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 inline std::vector<size_t> GetNmsLodFromRoisNum(
     const phi::DenseTensor* rois_num) {
