@@ -202,38 +202,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
   return task;
 }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCustomPlace(in_tensors, device_type_),
-      true,
-      platform::errors::InvalidArgument(
-          "All inputs should be in CustomPlace(%s).", device_type_));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCustomPlace(out_tensors, device_type_),
-      true,
-      platform::errors::InvalidArgument(
-          "All outputs should be in CustomPlace(%s).", device_type_));
-  return Collective(
-      in_tensors,
-      out_tensors,
-      [&](phi::DenseTensor& input,
-          phi::DenseTensor& output,
-          phi::ccl::CCLComm comm,
-          const phi::stream::Stream& stream) {
-        return phi::DeviceManager::CCLAllGather(
-            device_type_,
-            input.data(),
-            output.data(),
-            input.numel(),
-            phi::ccl::ToCCLDataType(input.dtype()),
-            comm,
-            stream);
-      },
-      CommType::ALLGATHER);
-}
-
 void* XcclGetPointerByOffset(void* raw_pointer,
                              size_t offset,
                              experimental::DataType type) {
@@ -259,13 +227,13 @@ void* XcclGetPointerByOffset(void* raw_pointer,
   return nullptr;
 }
 
-// NOTE: this is ONLY for compatibility
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
     int64_t offset,
     int64_t numel,
-    bool sync_op) {
+    bool sync_op  // for compatibility, no use now
+) {
   std::vector<phi::DenseTensor> in_wrapper{in_tensor};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
   return Collective(
@@ -288,22 +256,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
-    std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-    std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-    const AllreduceOptions& opts) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCustomPlace(in_tensors, device_type_),
-      true,
-      platform::errors::InvalidArgument(
-          "All inputs should be in CustomPlace(%s).", device_type_));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCustomPlace(out_tensors, device_type_),
-      true,
-      platform::errors::InvalidArgument(
-          "All outputs should be in CustomPlace(%s).", device_type_));
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const AllreduceOptions& opts,
+    bool sync_op  // for compatibility, no use now
+) {
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
   return Collective(
-      in_tensors,
-      out_tensors,
+      in_wrapper,
+      out_wrapper,
       [&](phi::DenseTensor& input,
           phi::DenseTensor& output,
           phi::ccl::CCLComm comm,
@@ -322,27 +284,21 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
-    std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-    std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-    const BroadcastOptions& opts) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCustomPlace(in_tensors, device_type_),
-      true,
-      platform::errors::InvalidArgument(
-          "All inputs should be in CustomPlace(%s).", device_type_));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCustomPlace(out_tensors, device_type_),
-      true,
-      platform::errors::InvalidArgument(
-          "All outputs should be in CustomPlace(%s).", device_type_));
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const BroadcastOptions& opts,
+    bool sync_op  // for compatibility, no use now
+) {
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
   return Collective(
-      in_tensors,
-      out_tensors,
+      in_wrapper,
+      out_wrapper,
       [&](phi::DenseTensor& input,
           phi::DenseTensor& output,
           phi::ccl::CCLComm comm,
           const phi::stream::Stream& stream) {
-        int root = opts.source_rank * in_tensors.size() + opts.source_root;
+        int root = opts.source_rank + opts.source_root;
         if (rank_ == root) {
           return phi::DeviceManager::CCLBroadcast(
               device_type_,
@@ -374,20 +330,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
                     platform::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
   platform::CustomPlace place(device_type_, opts.device_id);
-  std::vector<phi::CustomPlace> places = {place};
-  std::vector<phi::DenseTensor> barrierTensors;
-  barrierTensors.reserve(places.size());
+  auto allocator = std::unique_ptr<phi::Allocator>(
+      new paddle::experimental::DefaultAllocator(place));
+  phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
+  phi::DenseTensor barrier_tensor{allocator.get(), meta};
 
-  for (auto& place : places) {
-    phi::DeviceGuard guard(place);
-    phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim({1}));
-    auto allocator = std::unique_ptr<phi::Allocator>(
-        new paddle::experimental::DefaultAllocator(place));
-    barrierTensors.emplace_back(allocator.get(), meta);
-  }
-  auto task = ProcessGroupCustom::AllReduce(barrierTensors, barrierTensors);
+  auto task = ProcessGroupCustom::AllReduce(&barrier_tensor,
+                                            barrier_tensor,
+                                            {},
+                                            /*sync_op*/ true);
   auto xccl_task = dynamic_cast<ProcessGroupCustom::CustomTask*>(task.get());
-  xccl_task->barrierTensors_ = std::move(barrierTensors);
+  xccl_task->barrierTensors_ = {barrier_tensor};
   return task;
 }
 
