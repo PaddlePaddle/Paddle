@@ -44,12 +44,15 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
   dnnl::post_ops post_operations;
   funcs::AppendActivation(dev_ctx, post_operations);
 
+  auto* non_const_x = &x;
+  auto* non_const_y = &y;
+
   funcs::BinaryOneDNNHandler<T> handler(BINARY_OP,
                                         axis,
                                         onednn_engine,
                                         dev_ctx.GetPlace(),
-                                        &x,
-                                        &y,
+                                        non_const_x,
+                                        non_const_y,
                                         out,
                                         scale_x,
                                         scale_y,
@@ -59,8 +62,6 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
 
   // oneDNN's binary is optimized for broadcasting y into x, so in other case
   // we have to swap tensors to achieve optimal performance
-  auto* non_const_x = &x;
-  auto* non_const_y = &y;
   if (x.numel() < y.numel()) {
     std::swap(non_const_x, non_const_y);
   }
