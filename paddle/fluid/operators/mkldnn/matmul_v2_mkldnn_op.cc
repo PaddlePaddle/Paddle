@@ -923,9 +923,3 @@ REGISTER_OP_KERNEL(matmul_v2,
                    MatMulV2MKLDNNKernel<paddle::platform::bfloat16>,
                    MatMulV2MKLDNNKernel<int8_t>,
                    MatMulV2MKLDNNKernel<uint8_t>);
-
-REGISTER_OP_KERNEL(matmul_v2_grad,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   MatMulV2GradMKLDNNKernel<float>,
-                   MatMulV2GradMKLDNNKernel<paddle::platform::bfloat16>);
