@@ -61,6 +61,35 @@ def _dropout_flops(input_shapes, attrs):
     return 0
 
 
+@register_flops("elementwise_add")
+def _elementwise_add_flops(input_shapes, **attrs):
+    input_x = input_shapes[0]
+    input_y = input_shapes[1]
+    dim_x = len(input_x)
+    dim_y = len(input_y)
+    dim_output = max(dim_x, dim_y)
+    output = []
+    for i in range(dim_output):
+        in_x = input_x[dim_x - 1 - i] if i < dim_x else 1
+        in_y = input_y[dim_y - 1 - i] if i < dim_y else 1
+        output.append(max(in_x, in_y))
+    return prod(output)
+
+
+@register_flops("gelu")
+def _gelu_flops(input_shapes, **attrs):
+    return prod(input_shapes[0]) * 5
+
+
+@register_flops("layer_norm")
+def _layer_norm_flops(input_shapes, **attrs):
+    input = input_shapes[3]
+    flops = prod(input) * 7
+    if attrs['epsilon']:
+        flops += prod(input)
+    return flops
+
+
 @register_flops("matmul")
 def _matmul_flops(input_shapes, **attrs):
     x_shape = input_shapes[0]
@@ -106,3 +135,17 @@ def _matmul_v2_flops(input_shapes, **attrs):
 @register_flops("relu")
 def _relu_flops(input_shapes, attrs):
     return prod(input_shapes.get('X')[0])
+
+@register_flops("reshape2")
+def _reshape2_flops(input_shapes, **attrs):
+    return 0
+
+
+@register_flops("soft_max")
+def _soft_max_flops(input_shapes, **attrs):
+    return prod(input_shapes[0]) * 3
+
+
+@register_flops("transpose2")
+def _transpose2_flops(input_shapes, **attrs):
+    return 0
