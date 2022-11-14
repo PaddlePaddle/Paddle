@@ -33,7 +33,7 @@ per-file-ignores =
     python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py:E101,W191
     # Ignore unused imports in __init__.py
     __init__.py: F401
-    # Ignore unused variables in CMake config and some dygraph_to_static tests
+    # Ignore undefined variables in CMake config and some dygraph_to_static tests
     .cmake-format.py: F821
     python/paddle/fluid/tests/unittests/dygraph_to_static/test_loop.py: F821
     python/paddle/fluid/tests/unittests/dygraph_to_static/test_closure_analysis.py: F821
