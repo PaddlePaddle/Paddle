@@ -148,19 +148,18 @@ bool InstanceNormPluginDynamic::supportsFormatCombination(
     int pos,
     const nvinfer1::PluginTensorDesc *inOut,
     int nbInputs,
-    int nbOutputs) const TRT_NOEXCEPT {
+    int nbOutputs) TRT_NOEXCEPT {
   assert(inOut && pos < (nbInputs + nbOutputs));
   return ((inOut[pos].type == nvinfer1::DataType::kFLOAT ||
            inOut[pos].type == nvinfer1::DataType::kHALF) &&
-          (inOut[pos].format == nvinfer1::PluginFormat::kNCHW) &&
+          (inOut[pos].format == nvinfer1::PluginFormat::kLINEAR) &&
           inOut[pos].type == inOut[0].type);
 }
 
 int InstanceNormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *inputDesc,
     const nvinfer1::PluginTensorDesc *outputDesc,
-    void **outputs,
-    void *workspace,
+    const void *const *inputs,
     void *const *outputs,
     void *workspace,
     cudaStream_t stream) TRT_NOEXCEPT {
@@ -193,7 +192,7 @@ int InstanceNormPluginDynamic::enqueue(
       b_desc_, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, n * c, 1, 1);
 
   cudnnDataType_t cudnn_dtype;
-  nvinfer1::DataType data_type = getDataType();
+  auto data_type = inputDesc[0].type;
   convert_trt2cudnn_dtype(data_type, &cudnn_dtype);
   platform::dynload::cudnnSetTensor4dDescriptor(
       x_desc_, CUDNN_TENSOR_NCHW, cudnn_dtype, 1, n * c, h, w);
@@ -227,7 +226,9 @@ int InstanceNormPluginDynamic::enqueue(
 }
 
 nvinfer1::DataType InstanceNormPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType *inputTypes, int nbInputs) const {
+    int index,
+    const nvinfer1::DataType *inputTypes,
+    int nbInputs) const TRT_NOEXCEPT {
   assert(inputTypes && nbInputs > 0 && index == 0);
   return inputTypes[0];
 }
