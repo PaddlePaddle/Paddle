@@ -17,6 +17,7 @@ import logging
 import random
 import numpy as np
 from collections import defaultdict
+import time
 
 import paddle
 import paddle.utils as utils
