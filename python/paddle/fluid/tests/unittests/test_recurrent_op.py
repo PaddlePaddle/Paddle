@@ -555,7 +555,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
 
             new_mem = np.expand_dims(new_mem, 1)
             new_mem, _ = dot_attention(new_mem, self.oy)
-            new_mem = paddle.squeeze(new_mem, 1)
+            new_mem = np.squeeze(new_mem, 1)
 
             self.mems[step_id] = new_mem
             self.y[step_id] = self.mems[step_id]
