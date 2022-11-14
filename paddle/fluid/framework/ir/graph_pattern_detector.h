@@ -532,9 +532,11 @@ struct LayerNormShiftScale : public PatternBase {
 
   PDNode* operator()();
 
+  PATTERN_DECL_NODE(layer_norm_in);
   PATTERN_DECL_NODE(layer_norm_op);
   PATTERN_DECL_NODE(layer_norm_bias);
   PATTERN_DECL_NODE(layer_norm_scale);
+  PATTERN_DECL_NODE(layer_norm_out);
 };
 
 struct OperatorActivation : public PatternBase {
