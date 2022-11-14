@@ -1315,7 +1315,7 @@ class TestLayer(LayerTest):
                 embs.append(emb)
 
             embs = layers.concat(input=embs, axis=1)
-            wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+            wl = paddle.unsqueeze(words[label_word], axes=[0])
             nce_loss = layers.nce(
                 input=embs,
                 label=wl,
@@ -1371,7 +1371,7 @@ class TestLayer(LayerTest):
                 sample_weight=sample_weights,
             )
 
-            wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+            wl = paddle.unsqueeze(words[label_word], axes=[0])
             nce_loss2 = nce(embs2, wl)
             feed_dict = dict()
             for i in range(len(words)):
@@ -1418,7 +1418,7 @@ class TestLayer(LayerTest):
                     sample_weight=sample_weights,
                 )
 
-                wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+                wl = paddle.unsqueeze(words[label_word], axes=[0])
                 dy_eager_rlt = nce(embs3, wl)
                 dy_eager_rlt_value = dy_eager_rlt.numpy()
 
@@ -1455,7 +1455,7 @@ class TestLayer(LayerTest):
                 sample_weight=sample_weights,
             )
 
-            wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+            wl = paddle.unsqueeze(words[label_word], axes=[0])
             dy_rlt = nce(embs3, wl)
             dy_rlt_value = dy_rlt.numpy()
 
@@ -1520,7 +1520,7 @@ class TestLayer(LayerTest):
                     sample_weight=sample_weights,
                 )
 
-                wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+                wl = paddle.unsqueeze(words[label_word], axes=[0])
                 nce1_loss = nce1(embs3, wl)
                 nce2_loss = nce2(embs3, wl)
                 self.assertFalse(
@@ -1594,7 +1594,7 @@ class TestLayer(LayerTest):
                 sample_weight=sample_weights,
             )
 
-            wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+            wl = paddle.unsqueeze(words[label_word], axes=[0])
             nce1_loss = nce1(embs3, wl)
             nce2_loss = nce2(embs3, wl)
             self.assertFalse(
@@ -4334,7 +4334,7 @@ class TestBook(LayerTest):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = layers.data(name='x', shape=[8, 2], dtype='float32')
-            out = layers.unsqueeze(input=x, axes=[1])
+            out = paddle.unsqueeze(input=x, axes=[1])
             return out
 
     def test_sequence_scatter(self):

@@ -16,6 +16,7 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import unittest
+import paddle
 
 
 def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
@@ -42,7 +43,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
             bs = layers.cast(bs, 'int64')
         bs.stop_gradient = stop_gradient
         batch_pos = layers.expand(
-            layers.unsqueeze(layers.range(0, bs, 1, dtype=bs.dtype), [1]),
+            paddle.unsqueeze(layers.range(0, bs, 1, dtype=bs.dtype), [1]),
             [1, beam_size],
         )
         topk_coordinates = layers.stack([batch_pos, indices], axis=2)

@@ -1031,7 +1031,7 @@ class BeamSearchDecoder(Decoder):
         check_type(
             x, 'x', (Variable), 'BeamSearchDecoder.tile_beam_merge_with_batch'
         )
-        x = nn.unsqueeze(x, [1])  # [batch_size, 1, ...]
+        x = paddle.unsqueeze(x, [1])  # [batch_size, 1, ...]
         expand_times = [1] * len(x.shape)
         expand_times[1] = beam_size
         x = paddle.tile(x, expand_times)  # [batch_size, beam_size, ...]
@@ -1098,7 +1098,7 @@ class BeamSearchDecoder(Decoder):
                 data type is same as `x`.
         """
         check_type(x, 'x', (Variable), 'BeamSearchDecoder._expand_to_beam_size')
-        x = nn.unsqueeze(x, [1])
+        x = paddle.unsqueeze(x, [1])
         expand_times = [1] * len(x.shape)
         expand_times[1] = self.beam_size
         x = paddle.tile(x, expand_times)
@@ -1128,7 +1128,9 @@ class BeamSearchDecoder(Decoder):
         # TODO: use where_op
         finished = tensor.cast(finished, dtype=probs.dtype)
         probs = nn.elementwise_mul(
-            paddle.tile(nn.unsqueeze(finished, [2]), [1, 1, self.vocab_size]),
+            paddle.tile(
+                paddle.unsqueeze(finished, [2]), [1, 1, self.vocab_size]
+            ),
             self.noend_mask_tensor,
             axis=-1,
         ) - nn.elementwise_mul(probs, (finished - 1), axis=0)
@@ -1162,7 +1164,7 @@ class BeamSearchDecoder(Decoder):
         )
         batch_size.stop_gradient = True  # TODO: remove this
         batch_pos = paddle.tile(
-            nn.unsqueeze(
+            paddle.unsqueeze(
                 tensor.range(0, batch_size, 1, dtype=indices.dtype), [1]
             ),
             [1, self.beam_size],

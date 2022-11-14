@@ -73,7 +73,7 @@ class DecoderCell(layers.RNNCell):
             hidden, size=encoder_output.shape[-1], bias_attr=False
         )
         attn_scores = layers.matmul(
-            layers.unsqueeze(query, [1]), encoder_output, transpose_y=True
+            paddle.unsqueeze(query, [1]), encoder_output, transpose_y=True
         )
         if encoder_padding_mask is not None:
             attn_scores = layers.elementwise_add(
@@ -254,7 +254,7 @@ class Seq2SeqModel:
             src_length, maxlen=layers.shape(src)[1], dtype="float32"
         )
         encoder_padding_mask = (src_mask - 1.0) * 1e9
-        encoder_padding_mask = layers.unsqueeze(encoder_padding_mask, [1])
+        encoder_padding_mask = paddle.unsqueeze(encoder_padding_mask, [1])
 
         # decoder
         decoder_kwargs = (
