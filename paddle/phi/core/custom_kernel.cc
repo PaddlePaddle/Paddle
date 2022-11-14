@@ -16,8 +16,8 @@
 
 #include "glog/logging.h"
 
-static std::vector<std::string> gpu_exclusive_kernels({"sync_batch_norm",
-                                                       "sync_batch_norm_grad"});
+static std::vector<std::string> gpu_exclusive_kernels(
+    {"sync_batch_norm", "sync_batch_norm_grad", "conv2d_transpose_grad_grad"});
 
 namespace phi {
 
