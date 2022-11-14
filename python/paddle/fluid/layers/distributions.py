@@ -555,7 +555,7 @@ class Categorical(Distribution):
           Variable: Shannon entropy of Categorical distribution. The data type is float32.
 
         """
-        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keepdim=True)
+        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
         e_logits = ops.exp(logits)
         z = paddle.sum(e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
