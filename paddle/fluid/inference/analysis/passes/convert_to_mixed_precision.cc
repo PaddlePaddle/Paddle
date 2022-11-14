@@ -372,6 +372,9 @@ void ConvertToMixedPrecisionPass::ProcessCircleCases() {
   std::vector<std::string> vars_in_circles;
   for (size_t idx = 0; idx < program_desc_->Size(); ++idx) {
     for (auto* op : program_desc_->Block(idx).AllOps()) {
+      // TODO(inference): batch_norm has circle, but we need to fuse it in conv
+      // op.
+      if (op->Type() == "batch_norm") continue;
       const auto& in_names = op->InputArgumentNames();
       const auto& out_names = op->OutputArgumentNames();
       std::set<std::string> in_names_set(in_names.begin(), in_names.end());
@@ -388,8 +391,8 @@ void ConvertToMixedPrecisionPass::ProcessCircleCases() {
     var_names_in_circles_.insert(name);
   }
   for (auto& name : var_names_in_circles_) {
-    VLOG(1) << name
-            << " in circles, so we will skip process those vars and ops.";
+    LOG(INFO) << name
+              << " in circles, so we will skip process those vars and ops.";
   }
 }
 

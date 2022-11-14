@@ -24,7 +24,6 @@ void InferenceOpReplacePass::RunImpl(Argument* argument) {
   std::unordered_map<std::string, std::string> replaced_map{
       {"conditional_block", "conditional_block_infer"},
       {"merge_lod_tensor", "merge_lod_tensor_infer"},
-      {"depthwise_conv2d", "conv2d"},
   };
 
   auto& graph = argument->main_graph();
