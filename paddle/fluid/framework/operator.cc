@@ -2117,7 +2117,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 #ifdef PADDLE_WITH_ASCEND_CL
   if (kernel_iter == kernels.end() &&
       platform::is_npu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "missing NPU kernel: " << type_
+    LOG(INFO) << "missing NPU kernel: " << type_
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();

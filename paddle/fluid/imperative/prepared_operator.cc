@@ -490,7 +490,7 @@ PreparedOp PrepareImpl(
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (kernel_iter == kernels.end() &&
       paddle::platform::is_custom_place(expected_kernel_key.place_)) {
-    VLOG(3) << "missing " << place.GetDeviceType() << " kernel: " << op.Type()
+    LOG(INFO) << "missing " << place.GetDeviceType() << " kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();

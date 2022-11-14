@@ -142,7 +142,7 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (platform::is_custom_place(expected_kernel_key.place_)) {
-    VLOG(3) << "phi missing " << expected_kernel_key.place_.GetDeviceType()
+    LOG(INFO) << "phi missing " << expected_kernel_key.place_.GetDeviceType()
             << " kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";
