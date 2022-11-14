@@ -482,7 +482,7 @@ def get_geo_trainer_send_context(attrs):
     if attrs['ps_mode'] != DistributedMode.GEO:
         raise ValueError(
             "ps mode: {} not matched {}",
-            format(ps_mode, "get_geo_trainer_send_context"),
+            format(attrs['ps_mode'], "get_geo_trainer_send_context"),
         )
     send_ctx = {}
     trainer_id = get_role_id(attrs['role_maker'])

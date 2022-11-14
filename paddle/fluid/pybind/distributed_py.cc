@@ -41,17 +41,8 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/ProcessGroupMPI.h"
 #endif
 
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/distributed/collective/ProcessGroupHCCL.h"
-#endif
-
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/fluid/distributed/collective/ProcessGroupCustom.h"
-#endif
-
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
-#include "paddle/fluid/distributed/collective/ProcessGroupHeter.h"
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
@@ -1256,62 +1247,6 @@ void BindDistributed(py::module *m) {
       .def("get_world_size",
            &distributed::ProcessGroup::GetSize,
            py::call_guard<py::gil_scoped_release>());
-#endif
-
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_PSCORE) && \
-    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_ASCEND_CL))
-  py::class_<distributed::ProcessGroupHeter,
-             std::shared_ptr<distributed::ProcessGroupHeter>>(
-      *m, "ProcessGroupHeter", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &,
-                    int,
-                    int,
-#if defined(PADDLE_WITH_ASCEND_CL)
-                    const platform::NPUPlace &,
-#else
-                    const platform::CUDAPlace &,
-#endif
-                    int,
-                    int,
-                    int,
-                    int,
-                    int,
-                    bool,
-                    std::string,
-                    int,
-                    int>(),
-           py::arg("store"),
-           py::arg("rank"),
-           py::arg("world_size"),
-           py::arg("place"),
-           py::arg("gid") = 0,
-           py::arg("local_rank") = 0,
-           py::arg("local_size") = 1,
-           py::arg("gloo_rank") = 0,
-           py::arg("gloo_size") = 1,
-           py::arg("with_switch") = false,
-           py::arg("switch_endpoint") = "",
-           py::arg("src_rank") = "",
-           py::arg("dst_rank") = "",
-           py::call_guard<py::gil_scoped_release>());
-#endif
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-  py::class_<distributed::ProcessGroupHCCL,
-             std::shared_ptr<distributed::ProcessGroupHCCL>>(
-      *m, "ProcessGroupHCCL", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &,
-                    int,
-                    int,
-                    const platform::NPUPlace &,
-                    int>(),
-           py::arg("store"),
-           py::arg("rank"),
-           py::arg("world_size"),
-           py::arg("place"),
-           py::arg("group_id") = 0,
-           py::call_guard<py::gil_scoped_release>());
-
 #endif
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
