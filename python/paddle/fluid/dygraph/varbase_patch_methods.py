@@ -881,6 +881,11 @@ def monkey_patch_varbase():
         self.get_tensor()._clear()
 
     @framework.dygraph_only
+    def _set_use_cudnn(self, use_cudnn=True):
+        print("DEBUG, Tensor method ")
+        self._tensor_set_use_cudnn(use_cudnn)
+
+    @framework.dygraph_only
     def _uva(self, device_id=0):
         '''
         Returns self tensor with the UVA(unified virtual addressing).
@@ -1064,6 +1069,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "_uva", _uva)
         setattr(core.eager.Tensor, "_clear_data", _clear_data)
         setattr(core.eager.Tensor, "__hash__", __hash__)
+        setattr(core.eager.Tensor, "_set_use_cudnn", _set_use_cudnn)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

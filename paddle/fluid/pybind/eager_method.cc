@@ -2029,7 +2029,7 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor__copy_gradient_from,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
-    {"_set_use_cudnn",
+    {"_tensor_set_use_cudnn",
      (PyCFunction)(void (*)(void))tensor__set_use_cudnn,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
