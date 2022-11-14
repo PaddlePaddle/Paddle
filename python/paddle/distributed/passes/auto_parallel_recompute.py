@@ -415,10 +415,6 @@ class RecomputePass(PassBase):
                         )
 
                     ckpt_ops_dict[fwd_op_id][0] = False
-                    print()
-                    print(str(main_block.ops[rc_op.idx - 1]))
-                    print(str(rc_op))
-                    print()
                     if rc_op:
                         insert_dependencies_for_two_ops(
                             main_block,
