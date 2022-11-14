@@ -116,7 +116,7 @@ following codes there.
 #ifdef PADDLE_WITH_MKLDNN
 
 public:
-  dnnl::memory::desc mem_desc() const;
+  const dnnl::memory::desc& mem_desc() const;
 
 inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
   mem_desc_ = mem_desc;

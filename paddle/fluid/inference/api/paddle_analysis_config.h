@@ -415,6 +415,12 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_onnxruntime() const { return use_onnxruntime_; }
   ///
+  /// \brief A boolean state telling whether the Lite OpenCL is turned on.
+  ///
+  /// \return bool Whether the Lite OpenCL is turned on.
+  ///
+  bool use_opencl() const { return use_opencl_; }
+  ///
   /// \brief A boolean state telling whether the ONNXRuntime Optimization is
   /// turned on.
   ///
@@ -723,6 +729,11 @@ struct PD_INFER_DECL AnalysisConfig {
       bool zero_copy = false,
       const std::vector<std::string>& passes_filter = {},
       const std::vector<std::string>& ops_filter = {});
+
+  ///
+  /// \brief Turn on the usage of Lite sub-graph engine with opencl.
+  ///
+  void EnableOpenCL();
 
   ///
   /// \brief A boolean state indicating whether the Lite sub-graph engine is
@@ -1117,6 +1128,9 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
   bool xpu_enable_multi_stream_;
+
+  // LITE OPENCL SETTINGS
+  bool use_opencl_{false};
 
   // NNAdapter related
   LiteNNAdapterConfig nnadapter_config_;

@@ -1817,13 +1817,14 @@ class TestFftShift(unittest.TestCase):
         paddle.enable_static()
         mp, sp = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
-            input = paddle.static.data('input', x.shape, dtype=x.dtype)
-            output = paddle.fft.fftshift(input, axes)
+            input = paddle.static.data(
+                'input', self.x.shape, dtype=self.x.dtype
+            )
+            output = paddle.fft.fftshift(input, self.axes)
 
-        exe = paddle.static.Executor(place)
+        exe = paddle.static.Executor(self.place)
         exe.run(sp)
-        [output] = exe.run(mp, feed={'input': x}, fetch_list=[output])
-        yield output
+        [output] = exe.run(mp, feed={'input': self.x}, fetch_list=[output])
         paddle.disable_static()
 
 
@@ -1848,13 +1849,14 @@ class TestIfftShift(unittest.TestCase):
         paddle.enable_static()
         mp, sp = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
-            input = paddle.static.data('input', x.shape, dtype=x.dtype)
-            output = paddle.fft.ifftshift(input, axes)
+            input = paddle.static.data(
+                'input', self.x.shape, dtype=self.x.dtype
+            )
+            output = paddle.fft.ifftshift(input, self.axes)
 
-        exe = paddle.static.Executor(place)
+        exe = paddle.static.Executor(self.place)
         exe.run(sp)
-        [output] = exe.run(mp, feed={'input': x}, fetch_list=[output])
-        yield output
+        [output] = exe.run(mp, feed={'input': self.x}, fetch_list=[output])
         paddle.disable_static()
 
 
