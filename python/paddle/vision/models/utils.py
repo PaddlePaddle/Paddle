@@ -57,7 +57,7 @@ class IntermediateLayerGetter(nn.LayerDict):
 
         >>> m = paddle.vision.models.resnet18(pretrained=True)
         >>> # extract layer1 and layer3, giving as names `feat1` and feat2`
-        >>> new_m = paddle.vision.utils.IntermediateLayerGetter(m,
+        >>> new_m = paddle.vision.models.utils.IntermediateLayerGetter(m,
         >>>     {'layer1': 'feat1', 'layer3': 'feat2'})
         >>> out = new_m(paddle.rand([1, 3, 224, 224]))
         >>> print([(k, v.shape) for k, v in out.items()])
