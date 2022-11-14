@@ -44,6 +44,7 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
                     "elementwise_pow",
                     "elementwise_min",
                     "elementwise_max",
+                    "elementwise_floordiv",
                 ]:
                     for axis in [-1]:
                         self.dims = len(shape)
@@ -157,6 +158,7 @@ class TrtConvertElementwiseTest_one_input_special_case1(TrtLayerAutoScanTest):
                 "elementwise_pow",
                 "elementwise_min",
                 "elementwise_max",
+                "elementwise_floordiv",
             ]:
                 for axis in [-1]:
                     self.dims = len(shape)
@@ -266,6 +268,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
                     "elementwise_pow",
                     "elementwise_min",
                     "elementwise_max",
+                    "elementwise_floordiv",
                 ]:
                     for axis in [-1 if len(shape) == 1 else 1]:
                         self.dims = len(shape)
@@ -391,6 +394,7 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
                 "elementwise_pow",
                 "elementwise_min",
                 "elementwise_max",
+                "elementwise_floordiv",
             ]:
                 for axis in [0, -1]:
                     self.dims = len(shape)
@@ -575,6 +579,7 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
                     "elementwise_pow",
                     "elementwise_min",
                     "elementwise_max",
+                    "elementwise_floordiv",
                 ]:
                     for axis in axis_list[j][i]:
                         self.shape1 = input1_shape
@@ -698,6 +703,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                     "elementwise_pow",
                     "elementwise_min",
                     "elementwise_max",
+                    "elementwise_floordiv",
                 ]:
                     self.op_type = op_type
                     for axis in [-1 if len(shape) == 1 else 1]:
