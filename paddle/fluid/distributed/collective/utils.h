@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-namespace phi {
+#include "paddle/phi/core/dense_tensor.h"
 
-KernelSignature GeluOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("gelu", {"X"}, {"approximate"}, {"Out"});
+namespace paddle {
+namespace distributed {
+
+inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor &tensor,
+                                         int64_t offset,
+                                         int64_t numel) {
+  phi::DenseTensor tensor_flattened;
+  tensor_flattened.ShareDataWith(tensor);
+  tensor_flattened.Resize({tensor.numel()});
+  return tensor_flattened.Slice(offset, offset + numel);
 }
 
-KernelSignature GeluGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "gelu_grad", {"X", "Out@GRAD"}, {"approximate"}, {"X@GRAD"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(gelu_grad, phi::GeluGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(gelu, phi::GeluOpArgumentMapping);
+}  //  namespace distributed
+}  //  namespace paddle
