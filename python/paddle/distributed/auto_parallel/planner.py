@@ -437,7 +437,7 @@ class SearchAlgorithm:
 
     @property
     def name(self):
-        self.name = name
+        self.name = self._name
 
     def search(self):
         raise NotImplementedError("Please Implement this method in subclass.")
