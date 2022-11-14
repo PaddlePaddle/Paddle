@@ -47,7 +47,7 @@ class HybridParallelClipGrad:
         self._clip = clip
         self._hcg = hcg
 
-    @no_grad
+    @no_grad()
     def _dygraph_clip(self, params_grads):
         sum_square_dist_fp16 = []
         sum_square_dist_fp32 = []
@@ -229,7 +229,7 @@ class HybridParallelOptimizer:
                                 self._inner_opt._grad_clip, hcg
                             )
 
-    @no_grad
+    @no_grad()
     @framework.dygraph_only
     def step(self):
         parameters_list = _obtain_optimizer_parameters_list(self._inner_opt)
@@ -241,7 +241,7 @@ class HybridParallelOptimizer:
 
         self._inner_opt.step()
 
-    @no_grad
+    @no_grad()
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):
