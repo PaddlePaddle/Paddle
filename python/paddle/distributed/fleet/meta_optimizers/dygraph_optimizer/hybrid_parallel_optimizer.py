@@ -19,7 +19,7 @@ from ...utils.hybrid_parallel_util import (
     sharding_reduce_gradients,
 )
 from ...base.topology import ParallelMode
-import paddle.autograd as imperative_base
+from paddle.autograd import no_grad
 from paddle import framework
 from ...utils.log_util import logger
 from paddle.framework import core
@@ -47,7 +47,7 @@ class HybridParallelClipGrad:
         self._clip = clip
         self._hcg = hcg
 
-    @imperative_base.no_grad
+    @no_grad
     def _dygraph_clip(self, params_grads):
         sum_square_dist_fp16 = []
         sum_square_dist_fp32 = []
@@ -229,7 +229,7 @@ class HybridParallelOptimizer:
                                 self._inner_opt._grad_clip, hcg
                             )
 
-    @imperative_base.no_grad
+    @no_grad
     @framework.dygraph_only
     def step(self):
         parameters_list = _obtain_optimizer_parameters_list(self._inner_opt)
@@ -241,7 +241,7 @@ class HybridParallelOptimizer:
 
         self._inner_opt.step()
 
-    @imperative_base.no_grad
+    @no_grad
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):
