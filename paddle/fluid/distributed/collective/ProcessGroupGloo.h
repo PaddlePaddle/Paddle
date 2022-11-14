@@ -102,7 +102,6 @@ class ProcessGroupGloo : public ProcessGroup {
       const std::shared_ptr<paddle::distributed::Store>& store,
       int rank,
       int world_size,
-      const platform::Place& place,
       int gid,
       std::shared_ptr<GlooOptions> options);
 

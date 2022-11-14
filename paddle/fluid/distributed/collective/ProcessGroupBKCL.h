@@ -71,7 +71,6 @@ class ProcessGroupBKCL : public ProcessGroupStream {
   ProcessGroupBKCL(const std::shared_ptr<Store>& store,
                    int rank,
                    int size,
-                   const platform::Place& place,
                    int gid);
 
   std::string GetBackendName() const override {

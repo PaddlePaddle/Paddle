@@ -55,7 +55,7 @@ class ProcessGroupStream : public ProcessGroup {
   };
 
  public:
-  ProcessGroupStream(int rank, int size, const platform::Place& place, int gid);
+  ProcessGroupStream(int rank, int size, int gid);
   virtual ~ProcessGroupStream() = default;
 
   virtual const phi::DeviceContext& GetDeviceContext(
