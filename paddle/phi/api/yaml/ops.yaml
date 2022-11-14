@@ -34,6 +34,24 @@
     func : argsort
   backward : argsort_grad
 
+- op : as_complex
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : AsComplexInferMeta
+  kernel :
+    func : as_complex
+  backward : as_complex_grad
+
+- op : as_real
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : AsRealInferMeta
+  kernel :
+    func : as_real
+  backward : as_real_grad
+
 - op : asin
   args : (Tensor x)
   output : Tensor
@@ -180,6 +198,14 @@
     func : diag
   backward : diag_grad
 
+- op : diag_embed
+  args : (Tensor input, int offset = 0, int dim1 = -2, int dim2 = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : DiagEmbedInferMeta
+  kernel :
+    func : diag_embed
+
 - op : diagonal
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
   output : Tensor
@@ -217,6 +243,32 @@
     data_type : x
   backward : dot_grad
 
+- op : eig
+  args: (Tensor x)
+  output: Tensor(out_w), Tensor(out_v)
+  infer_meta:
+    func: EigInferMeta
+  kernel:
+    func: eig
+  backward: eig_grad
+
+- op : eigh
+  args : (Tensor x, str UPLO = "L")
+  output : Tensor(out_w), Tensor(out_v)
+  infer_meta :
+    func : EighInferMeta
+  kernel :
+    func : eigh
+  backward : eigh_grad
+
+- op : eigvals
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : EigvalsInferMeta
+  kernel :
+    func : eigvals
+
 - op : elu
   args : (Tensor x, float alpha = 1.0f)
   output : Tensor(out)
@@ -227,6 +279,14 @@
     func : elu
   inplace : (x -> out)
   backward : elu_grad
+
+- op : equal_all
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareAllInferMeta
+  kernel :
+    func : equal_all
 
 - op : erf
   args : (Tensor x)
@@ -294,6 +354,16 @@
     func : fft_r2c
   backward : fft_r2c_grad
 
+- op : fill_diagonal_tensor
+  args : (Tensor x, Tensor y, int64_t offset = 0, int dim1 = 0, int dim2 = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : FillDiagonalTensorInferMeta
+  kernel :
+    func : fill_diagonal_tensor
+  inplace : (x -> out)
+  backward : fill_diagonal_tensor_grad
+
 - op : flip
   args : (Tensor x, int[] axis)
   output : Tensor (out)
@@ -312,6 +382,43 @@
     func : floor
   inplace : (x -> out)
   backward : floor_grad
+
+- op : fold
+  args: (Tensor x, int[] output_sizes, int[] kernel_sizes,  int[] strides, int[] paddings, int[] dilations)
+  output: Tensor(out)
+  infer_meta:
+    func: FoldInferMeta
+  kernel:
+    func: fold
+  backward: fold_grad
+
+- op : gather_tree
+  args : (Tensor ids, Tensor parents)
+  output : Tensor(out)
+  infer_meta :
+    func : GatherTreeMeta
+  kernel :
+    func : gather_tree
+    data_type : ids
+
+- op : gelu
+  args : (Tensor x,  bool approximate = false)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : gelu
+  backward : gelu_grad
+
+- op : gumbel_softmax
+  args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
+  output : Tensor
+  infer_meta :
+    func : GumbelSoftmaxInferMeta
+  kernel :
+    func : gumbel_softmax
+  backward : gumbel_softmax_grad
 
 - op : hardshrink
   args : (Tensor x, float threshold = 0.5)
@@ -627,3 +734,12 @@
   kernel :
     func : trunc
   backward : trunc_grad
+
+- op : unfold
+  args : (Tensor x, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations)
+  output : Tensor(out)
+  infer_meta :
+    func : UnfoldInferMeta
+  kernel :
+    func : unfold
+  backward : unfold_grad

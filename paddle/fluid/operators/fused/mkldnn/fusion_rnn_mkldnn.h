@@ -77,9 +77,12 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
     }
   }
 
-  bool is_NTC() {
-    return (platform::GetMKLDNNFormat(this->fwd_pd_->dst_desc()) ==
-            dnnl::memory::format_tag::ntc);
+  bool is_NTC() { return this->is_NTC(this->fwd_pd_->dst_desc()); }
+
+  bool is_NTC(const dnnl::memory::desc& md) {
+    auto ntc_md = dnnl::memory::desc(
+        md.dims(), md.data_type(), dnnl::memory::format_tag::ntc);
+    return md == ntc_md;
   }
 
   void reorderRNNdata(void* input_data,
@@ -165,8 +168,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
     auto* x_onednn_data = memory_p->get_data_handle();
     memset(x_onednn_data, 0, sizeof(T) * N * Ti * IC);
 
-    if (platform::GetMKLDNNFormat(this->fwd_pd_->src_desc()) ==
-        dnnl::memory::format_tag::ntc) {
+    if (is_NTC(this->fwd_pd_->src_desc())) {
       reorderRNNdata(x_data,
                      x_onednn_data,
                      input_lod,

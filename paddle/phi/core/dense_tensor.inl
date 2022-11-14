@@ -116,17 +116,11 @@ following codes there.
 #ifdef PADDLE_WITH_MKLDNN
 
 public:
-  dnnl::memory::desc mem_desc() const;
+  const dnnl::memory::desc& mem_desc() const;
 
 inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
   mem_desc_ = mem_desc;
   meta_.layout = DataLayout::kMKLDNN;
-}
-
-dnnl::memory::format_tag format() const;
-
-inline void set_format(const dnnl::memory::format_tag format) {
-  format_ = format;
 }
 
 #endif

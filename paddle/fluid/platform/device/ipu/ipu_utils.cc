@@ -84,6 +84,32 @@ const popart::DataType PhiDType2PopartDType(const phi::DataType type) {
   }
 }
 
+const phi::DataType PopefDtype2PhiDtype(const popef::DataType type) {
+  switch (type) {
+    case popef::DataType::U8:
+      return phi::DataType::UINT8;
+    case popef::DataType::S8:
+      return phi::DataType::INT8;
+    case popef::DataType::S16:
+      return phi::DataType::INT16;
+    case popef::DataType::S32:
+      return phi::DataType::INT32;
+    case popef::DataType::S64:
+      return phi::DataType::INT64;
+    case popef::DataType::BOOL:
+      return phi::DataType::BOOL;
+    case popef::DataType::F64:
+      return phi::DataType::FLOAT64;
+    case popef::DataType::F32:
+      return phi::DataType::FLOAT32;
+    case popef::DataType::F16:
+      return phi::DataType::FLOAT16;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported phi::DataType when converting to popef data type."));
+  }
+}
+
 const VarType::Type PopartDType2VarType(const popart::DataType type) {
   switch (type) {
     case popart::DataType::UINT8:
@@ -110,6 +136,32 @@ const VarType::Type PopartDType2VarType(const popart::DataType type) {
       return VarType::COMPLEX64;
     case popart::DataType::COMPLEX128:
       return VarType::COMPLEX128;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported popart::DataType when converting to var type."));
+  }
+}
+
+const VarType::Type PopefDType2VarType(const popef::DataType type) {
+  switch (type) {
+    case popef::DataType::U8:
+      return VarType::UINT8;
+    case popef::DataType::S8:
+      return VarType::INT8;
+    case popef::DataType::S16:
+      return VarType::INT16;
+    case popef::DataType::S32:
+      return VarType::INT32;
+    case popef::DataType::S64:
+      return VarType::INT64;
+    case popef::DataType::BOOL:
+      return VarType::BOOL;
+    case popef::DataType::F64:
+      return VarType::FP64;
+    case popef::DataType::F32:
+      return VarType::FP32;
+    case popef::DataType::F16:
+      return VarType::FP16;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported popart::DataType when converting to var type."));
@@ -221,6 +273,16 @@ const bool GetBoolEnv(const std::string& str) {
 
 const int RequestIpus(const int num_ipus) {
   return std::pow(2, ceil(log2(num_ipus)));
+}
+
+std::shared_ptr<popef::Model> PopartSessionToPopefModel(
+    popart::Session* session) {
+  VLOG(10) << "Converting popart session to popef model";
+  auto temp_stream = std::make_shared<std::stringstream>();
+  session->compileAndExport(*temp_stream);
+  auto reader = std::make_shared<popef::Reader>();
+  reader->parseStream(temp_stream);
+  return popef::ModelBuilder(reader).createModel();
 }
 
 }  // namespace ipu

@@ -56,7 +56,7 @@ class TestPSPassWithBow(unittest.TestCase):
                 cos_q_pt,
             )
             loss_op2 = fluid.layers.elementwise_add(loss_op1, cos_q_nt)
-            loss_op3 = fluid.layers.elementwise_max(
+            loss_op3 = paddle.maximum(
                 fluid.layers.fill_constant_batch_size_like(
                     input=loss_op2, shape=[-1, 1], value=0.0, dtype='float32'
                 ),

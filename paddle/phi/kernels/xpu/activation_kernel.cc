@@ -356,10 +356,10 @@ struct XPUMishFunctor : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T, typename Context>
-void SwishKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 float beta,
-                 DenseTensor* out) {
+void SwishRawKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    float beta,
+                    DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
   int r = xpu::swish(dev_ctx.x_context(),
@@ -415,7 +415,9 @@ DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, XPUMishFunctor, threshold)
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu,
                                             XPULeakyReluFunctor,
                                             alpha)
-DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Relu6, XPURelu6Functor, threshold)
+DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Relu6Raw,
+                                            XPURelu6Functor,
+                                            threshold)
 
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus,
                                             XPUSoftplusFunctor,
@@ -423,12 +425,12 @@ DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus,
                                             threshold)
 
 template <typename T, typename Context>
-void HardSwishKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     float threshold,
-                     float scale,
-                     float offset,
-                     DenseTensor* out) {
+void HardSwishRawKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        float threshold,
+                        float scale,
+                        float offset,
+                        DenseTensor* out) {
   XPUHardSwishFunctor<T> functor;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = threshold;
@@ -452,13 +454,13 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hard_swish, HardSwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hard_swish_raw, HardSwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(pow, PowKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
-PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
 PD_REGISTER_ACTIVATION_KERNEL(square, SquareKernel)

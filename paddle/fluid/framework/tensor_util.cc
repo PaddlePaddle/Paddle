@@ -1245,11 +1245,6 @@ std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
   os << "  - shape: [" << t.dims() << "]\n";
   os << "  - layout: " << phi::DataLayoutToString(t.layout()) << "\n";
 
-#ifdef PADDLE_WITH_MKLDNN
-  os << "  - format: "
-     << dnnl_fmt_tag2str(static_cast<dnnl_format_tag_t>(t.format())) << "\n";
-#endif
-
   DenseTensor tensor;
   tensor.Resize(t.dims());
   if (paddle::platform::is_cpu_place(t.place())) {
