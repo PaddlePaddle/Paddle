@@ -18,7 +18,7 @@
 import numpy as np
 
 
-class TunableVariable(object):
+class TunableVariable:
     """
     Tunablevariable base class.
     """
@@ -45,7 +45,7 @@ class Fixed(TunableVariable):
     """
 
     def __init__(self, name, default):
-        super(Fixed, self).__init__(name=name, default=default)
+        super().__init__(name=name, default=default)
         self.name = name
         if not isinstance(default, (str, int, float, bool)):
             raise ValueError(
@@ -68,7 +68,7 @@ class Boolean(TunableVariable):
     """
 
     def __init__(self, name, default=False):
-        super(Boolean, self).__init__(name=name, default=default)
+        super().__init__(name=name, default=default)
         if default not in {True, False}:
             raise ValueError(
                 "default must be a Python boolean, but got {}".format(default)
@@ -86,7 +86,7 @@ class Boolean(TunableVariable):
 
 class Choice(TunableVariable):
     def __init__(self, name, values, default=None):
-        super(Choice, self).__init__(name=name, default=default)
+        super().__init__(name=name, default=default)
 
         types = set(type(v) for v in values)
         if len(types) > 1:
@@ -143,7 +143,7 @@ class Choice(TunableVariable):
             return rng.choice(self.values)
 
     def get_state(self):
-        state = super(Choice, self).get_state()
+        state = super().get_state()
         state["values"] = self.values
         return state
 
@@ -159,7 +159,7 @@ class IntRange(TunableVariable):
     """
 
     def __init__(self, name, start, stop, step=1, default=None, endpoint=False):
-        super(IntRange, self).__init__(name=name, default=default)
+        super().__init__(name=name, default=default)
         self.start = self._check_int(start)
         self.stop = self._check_int(stop)
         self.step = self._check_int(step)
@@ -185,7 +185,7 @@ class IntRange(TunableVariable):
         return int(value)
 
     def get_state(self):
-        state = super(IntRange, self).get_state()
+        state = super().get_state()
         state["start"] = self.start
         state["stop"] = self.stop
         state["step"] = self.step
@@ -214,7 +214,7 @@ class FloatRange(TunableVariable):
     def __init__(
         self, name, start, stop, step=None, default=None, endpoint=False
     ):
-        super(FloatRange, self).__init__(name=name, default=default)
+        super().__init__(name=name, default=default)
         self.stop = float(stop)
         self.start = float(start)
         if step is not None:
@@ -243,7 +243,7 @@ class FloatRange(TunableVariable):
         return value
 
     def get_state(self):
-        state = super(FloatRange, self).get_state()
+        state = super().get_state()
         state["start"] = self.start
         state["stop"] = self.stop
         state["step"] = self.step

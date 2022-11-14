@@ -503,7 +503,8 @@ if(WITH_XPU)
          phi_utils
          kernel_factory
          infershape_utils
-         op_utils)
+         op_utils
+         op_compat_infos)
 else()
   cc_library(
     operator
@@ -528,7 +529,8 @@ else()
          phi_utils
          kernel_factory
          infershape_utils
-         op_utils)
+         op_utils
+         op_compat_infos)
 endif()
 
 cc_test(
@@ -1156,19 +1158,16 @@ cc_library(
   op_compatible_info
   SRCS op_compatible_info.cc
   DEPS string_helper proto_desc)
-cc_test(
+cc_test_old(
   op_compatible_info_test
-  SRCS op_compatible_info_test.cc
-  DEPS op_compatible_info proto_desc string_helper glog)
+  SRCS
+  op_compatible_info_test.cc
+  DEPS
+  op_compatible_info
+  proto_desc
+  string_helper
+  glog)
 
-cc_library(
-  save_load_util
-  SRCS save_load_util.cc
-  DEPS tensor scope layer)
-cc_test(
-  save_load_util_test
-  SRCS save_load_util_test.cc
-  DEPS save_load_util tensor scope layer)
 cc_library(
   generator
   SRCS generator.cc

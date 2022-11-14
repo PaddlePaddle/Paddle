@@ -191,6 +191,17 @@ class TestAbsTransform(unittest.TestCase):
     def test_inverse_shape(self, shape, expected_shape):
         self.assertEqual(self._t.forward_shape(shape), expected_shape)
 
+    @param.param_func([(np.array(1.0), np.array(1.0))])
+    def test_zerodim(self, input, expected):
+        x = paddle.to_tensor(input).astype('float32')
+        self.assertEqual(self._t.forward(x).shape, [])
+        self.assertEqual(self._t.inverse(x)[0].shape, [])
+        self.assertEqual(self._t.inverse(x)[1].shape, [])
+        self.assertEqual(self._t.inverse_log_det_jacobian(x)[0].shape, [])
+        self.assertEqual(self._t.inverse_log_det_jacobian(x)[1].shape, [])
+        self.assertEqual(self._t.forward_shape(x.shape), [])
+        self.assertEqual(self._t.inverse_shape(x.shape), [])
+
 
 @param.place(config.DEVICES)
 @param.param_cls(
@@ -297,6 +308,18 @@ class TestAffineTransform(unittest.TestCase):
             np.broadcast(np.random.random(shape), self.loc, self.scale).shape,
         )
 
+    @param.param_func([(np.array(1.0), np.array(1.0))])
+    def test_zerodim(self, input, expected):
+        affine = transform.AffineTransform(paddle.zeros([]), paddle.ones([]))
+
+        x = paddle.to_tensor(input).astype('float32')
+        self.assertEqual(affine.forward(x).shape, [])
+        self.assertEqual(affine.inverse(x).shape, [])
+        self.assertEqual(affine.forward_log_det_jacobian(x).shape, [])
+        self.assertEqual(affine.inverse_log_det_jacobian(x).shape, [])
+        self.assertEqual(affine.forward_shape(x.shape), ())
+        self.assertEqual(affine.inverse_shape(x.shape), ())
+
 
 @param.place(config.DEVICES)
 class TestExpTransform(unittest.TestCase):
@@ -394,6 +417,16 @@ class TestExpTransform(unittest.TestCase):
     @param.param_func([((), ()), ((2, 3, 5), (2, 3, 5))])
     def test_inverse_shape(self, shape, expected_shape):
         self.assertEqual(self._t.forward_shape(shape), expected_shape)
+
+    @param.param_func([(np.array(1.0), np.array(1.0))])
+    def test_zerodim(self, input, expected):
+        x = paddle.to_tensor(input).astype('float32')
+        self.assertEqual(self._t.forward(x).shape, [])
+        self.assertEqual(self._t.inverse(x).shape, [])
+        self.assertEqual(self._t.forward_log_det_jacobian(x).shape, [])
+        self.assertEqual(self._t.inverse_log_det_jacobian(x).shape, [])
+        self.assertEqual(self._t.forward_shape(x.shape), [])
+        self.assertEqual(self._t.inverse_shape(x.shape), [])
 
 
 @param.place(config.DEVICES)
@@ -785,6 +818,18 @@ class TestPowerTransform(unittest.TestCase):
     def test_inverse_shape(self, shape, expected_shape):
         self.assertEqual(self._t.forward_shape(shape), expected_shape)
 
+    @param.param_func([(np.array(2.0), np.array(1.0))])
+    def test_zerodim(self, input, expected):
+        power = transform.PowerTransform(paddle.full([], 2.0))
+
+        x = paddle.to_tensor(input).astype('float32')
+        self.assertEqual(power.forward(x).shape, [])
+        self.assertEqual(power.inverse(x).shape, [])
+        self.assertEqual(power.forward_log_det_jacobian(x).shape, [])
+        self.assertEqual(power.inverse_log_det_jacobian(x).shape, [])
+        self.assertEqual(power.forward_shape(x.shape), ())
+        self.assertEqual(power.inverse_shape(x.shape), ())
+
 
 @param.place(config.DEVICES)
 class TestTanhTransform(unittest.TestCase):
@@ -892,6 +937,16 @@ class TestTanhTransform(unittest.TestCase):
     def test_inverse_shape(self, shape, expected_shape):
         self.assertEqual(self._t.forward_shape(shape), expected_shape)
 
+    @param.param_func([(np.array(1.0), np.array(1.0))])
+    def test_zerodim(self, input, expected):
+        x = paddle.to_tensor(input).astype('float32')
+        self.assertEqual(self._t.forward(x).shape, [])
+        self.assertEqual(self._t.inverse(x).shape, [])
+        self.assertEqual(self._t.forward_log_det_jacobian(x).shape, [])
+        self.assertEqual(self._t.inverse_log_det_jacobian(x).shape, [])
+        self.assertEqual(self._t.forward_shape(x.shape), [])
+        self.assertEqual(self._t.inverse_shape(x.shape), [])
+
 
 @param.place(config.DEVICES)
 @param.param_cls(
@@ -965,6 +1020,20 @@ class TestReshapeTransform(unittest.TestCase):
         with self.assertRaises(exc):
             self._t.inverse_shape(shape)
 
+    @param.param_func([(np.array(2.0), np.array(1.0))])
+    def test_zerodim(self, input, expected):
+        reshape = transform.ReshapeTransform((), (1, 1))
+
+        x = paddle.to_tensor(input).astype('float32')
+        out = reshape.forward(x)
+
+        self.assertEqual(out.shape, [1, 1])
+        self.assertEqual(reshape.inverse(out).shape, [])
+        # self.assertEqual(reshape.forward_log_det_jacobian(x).shape, [])
+        # self.assertEqual(reshape.inverse_log_det_jacobian(out).shape, [])
+        self.assertEqual(reshape.forward_shape(x.shape), (1, 1))
+        self.assertEqual(reshape.inverse_shape(out.shape), ())
+
 
 def _np_softplus(x, beta=1.0, threshold=20.0):
     if np.any(beta * x > threshold):
@@ -1030,6 +1099,16 @@ class TestSigmoidTransform(unittest.TestCase):
     @param.param_func([((), ()), ((2, 3, 5), (2, 3, 5))])
     def test_inverse_shape(self, shape, expected_shape):
         self.assertEqual(self._t.forward_shape(shape), expected_shape)
+
+    @param.param_func([(np.array(1.0), np.array(1.0))])
+    def test_zerodim(self, input, expected):
+        x = paddle.to_tensor(input).astype('float32')
+        self.assertEqual(self._t.forward(x).shape, [])
+        self.assertEqual(self._t.inverse(x).shape, [])
+        self.assertEqual(self._t.forward_log_det_jacobian(x).shape, [])
+        self.assertEqual(self._t.inverse_log_det_jacobian(x).shape, [])
+        self.assertEqual(self._t.forward_shape(x.shape), [])
+        self.assertEqual(self._t.inverse_shape(x.shape), [])
 
 
 class TestSoftmaxTransform(unittest.TestCase):

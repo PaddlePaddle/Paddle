@@ -16,7 +16,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
+from paddle.fluid.dygraph.nn import Linear, Pool2D
 from paddle.fluid.dygraph.base import to_variable
 import math
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
@@ -85,12 +85,12 @@ class ConvBNLayer(fluid.dygraph.Layer):
         groups=1,
         act=None,
     ):
-        super(ConvBNLayer, self).__init__()
+        super().__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=groups,
@@ -111,7 +111,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
 class SqueezeExcitation(fluid.dygraph.Layer):
     def __init__(self, num_channels, reduction_ratio):
 
-        super(SqueezeExcitation, self).__init__()
+        super().__init__()
         self._num_channels = num_channels
         self._pool = Pool2D(pool_size=0, pool_type='avg', global_pooling=True)
         stdv = 1.0 / math.sqrt(num_channels * 1.0)
@@ -152,7 +152,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         reduction_ratio,
         shortcut=True,
     ):
-        super(BottleneckBlock, self).__init__()
+        super().__init__()
 
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
@@ -208,7 +208,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
 class SeResNeXt(fluid.dygraph.Layer):
     def __init__(self, layers=50, class_dim=102):
-        super(SeResNeXt, self).__init__()
+        super().__init__()
 
         self.layers = layers
         supported_layers = [50, 101, 152]

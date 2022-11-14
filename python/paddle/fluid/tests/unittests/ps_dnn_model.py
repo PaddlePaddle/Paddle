@@ -27,7 +27,7 @@ class DNNLayer(nn.Layer):
         layer_sizes,
         sync_mode=None,
     ):
-        super(DNNLayer, self).__init__()
+        super().__init__()
         self.sync_mode = sync_mode
         self.sparse_feature_number = sparse_feature_number
         self.sparse_feature_dim = sparse_feature_dim
@@ -107,7 +107,7 @@ class FlDNNLayer(nn.Layer):
         sparse_number,
         sync_mode=None,
     ):
-        super(FlDNNLayer, self).__init__()
+        super().__init__()
 
         self.PART_A_DEVICE_FlAG = 'gpu:0'
         self.PART_A_JOINT_OP_DEVICE_FlAG = 'gpu:2'

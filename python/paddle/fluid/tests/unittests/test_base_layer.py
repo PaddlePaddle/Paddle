@@ -25,7 +25,7 @@ from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
 
 class L1(fluid.Layer):
     def __init__(self):
-        super(L1, self).__init__()
+        super().__init__()
         self._param_attr = fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.1)
         )
@@ -42,7 +42,7 @@ class L1(fluid.Layer):
 
 class L2(fluid.Layer):
     def __init__(self):
-        super(L2, self).__init__()
+        super().__init__()
         self.layer1 = L1()
         self.layer2 = L1()
 
@@ -52,7 +52,7 @@ class L2(fluid.Layer):
 
 class L3(fluid.Layer):
     def __init__(self):
-        super(L3, self).__init__()
+        super().__init__()
         self.layer1 = L2()
         self.layer2 = L2()
 
@@ -139,7 +139,7 @@ class TestBaseLayer(unittest.TestCase):
 
 class BufferLayer(fluid.Layer):
     def __init__(self):
-        super(BufferLayer, self).__init__()
+        super().__init__()
         buffer_var = to_variable(np.zeros([2, 4]).astype('int32'))
         self.register_buffer("layer_buffer", buffer_var)
 
@@ -149,7 +149,7 @@ class BufferLayer(fluid.Layer):
 
 class BufferNet(fluid.Layer):
     def __init__(self):
-        super(BufferNet, self).__init__()
+        super().__init__()
         self.buffer_layer = BufferLayer()
         self.w1 = self.create_parameter(
             shape=[2, 2], dtype='float32', is_bias=False
@@ -381,7 +381,7 @@ class TestBuffer(unittest.TestCase):
 
 class BufferNetWithModification(paddle.nn.Layer):
     def __init__(self, shape):
-        super(BufferNetWithModification, self).__init__()
+        super().__init__()
 
         self.buffer1 = paddle.zeros(shape, 'int32')
         self.buffer2 = paddle.zeros(shape, 'int32')
@@ -606,7 +606,7 @@ class TestLayerTo(unittest.TestCase):
         buffer = None
         model.register_buffer("buf_name", buffer, persistable=True)
         model.to(dtype='float64')
-        self.assertEqual(model._buffers['buf_name'], None)
+        self.assertIsNone(model._buffers['buf_name'])
 
     def test_main(self):
         with _test_eager_guard():

@@ -60,7 +60,7 @@ class DeviceMode:
     MLU = 4
 
 
-class Cluster(object):
+class Cluster:
     def __init__(self, hdfs):
         self.job_server = None
         self.pods = []
@@ -120,7 +120,7 @@ class Cluster(object):
         for pod in self.pods:
             ep = "{}:{}".format(pod.addr, pod.port)
             assert (
-                pod.port != None and pod.addr != None
+                pod.port is not None and pod.addr is not None
             ), "{} not a valid endpoint".format(ep)
             r.append(ep)
         return r
@@ -133,7 +133,7 @@ class Cluster(object):
         return None
 
 
-class JobServer(object):
+class JobServer:
     def __init__(self):
         self.endpoint = None
 
@@ -147,7 +147,7 @@ class JobServer(object):
         return not self == j
 
 
-class Trainer(object):
+class Trainer:
     def __init__(self):
         self.accelerators = []
         self.endpoint = None
@@ -179,7 +179,7 @@ class Trainer(object):
         return self.rank
 
 
-class Pod(object):
+class Pod:
     def __init__(self):
         self.rank = None
         self.id = None
@@ -483,7 +483,7 @@ def pretty_print_envs(envs, header=None):
     return _str
 
 
-class TrainerProc(object):
+class TrainerProc:
     def __init__(self):
         self.proc = None
         self.log_fn = None
@@ -979,7 +979,7 @@ def get_custom_endpoints(origin_endpoints, offset=0):
     origin_endpoint: ip:port
     user_define_endpoint: ip:(port+offset)
     """
-    assert origin_endpoints != None
+    assert origin_endpoints is not None
     paddle_user_define_endpoints_list = []
     for ip_port in origin_endpoints.split(","):
         ip = ip_port.split(":")[0]
@@ -1278,7 +1278,7 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
     )
 
 
-class ParameterServerLauncher(object):
+class ParameterServerLauncher:
     def __init__(self, args, distribute_mode):
         self.args = args
         self.distribute_mode = distribute_mode
@@ -1412,7 +1412,7 @@ class ParameterServerLauncher(object):
             assert (
                 args.heter_devices != ""
             ), "The setting of Parameter-Server heter mode must has heter_devices."
-            self.stage_device_map[1] = "cpu"  #  for cpu trainer
+            self.stage_device_map[1] = "cpu"  # for cpu trainer
             heter_devices_list = args.heter_devices.split(";")
             for i in range(len(heter_devices_list)):
                 self.stage_device_map[i + 2] = heter_devices_list[i]
@@ -1582,7 +1582,7 @@ class ParameterServerLauncher(object):
             x.strip().split(":")[0] for x in self.worker_endpoints.split(",")
         ]
 
-        if self.with_coordinator == True:
+        if self.with_coordinator:
             self.coordinator_endpoints_ips = [
                 x.strip().split(":")[0]
                 for x in self.coordinator_endpoints.split(",")
@@ -1625,7 +1625,7 @@ class ParameterServerLauncher(object):
         else:
             self.is_local = False
             pod_ip = os.getenv("POD_IP", None)
-            if pod_ip == None:
+            if pod_ip is None:
                 _, self.current_node_ip = get_host_name_ip()
             else:
                 self.current_node_ip = pod_ip

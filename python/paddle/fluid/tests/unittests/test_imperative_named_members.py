@@ -21,9 +21,9 @@ from paddle.fluid.framework import _test_eager_guard
 
 class MyLayer(fluid.Layer):
     def __init__(self, num_channel, dim, num_filter=5):
-        super(MyLayer, self).__init__()
+        super().__init__()
         self.fc = fluid.dygraph.Linear(dim, dim)
-        self.conv = fluid.dygraph.Conv2D(num_channel, num_channel, num_filter)
+        self.conv = paddle.nn.Conv2D(num_channel, num_channel, num_filter)
 
     def forward(self, x):
         x = self.fc(x)
@@ -95,10 +95,10 @@ class TestImperativeNamedParameters(unittest.TestCase):
 
             class Mymodel(fluid.dygraph.Layer):
                 def __init__(self):
-                    super(Mymodel, self).__init__()
+                    super().__init__()
                     self.linear1 = fluid.dygraph.Linear(10, 10)
                     self.linear2 = fluid.dygraph.Linear(5, 5)
-                    self.conv2d = fluid.dygraph.Conv2D(3, 2, 3)
+                    self.conv2d = paddle.nn.Conv2D(3, 2, 3)
                     self.embedding = fluid.dygraph.Embedding(size=[128, 16])
                     self.h_0 = fluid.dygraph.to_variable(
                         np.zeros([10, 10]).astype('float32')

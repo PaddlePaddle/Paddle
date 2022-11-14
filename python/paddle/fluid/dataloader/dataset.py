@@ -26,7 +26,7 @@ __all__ = [
 ]
 
 
-class Dataset(object):
+class Dataset:
     """
     An abstract class to encapsulate methods and behaviors of datasets.
 

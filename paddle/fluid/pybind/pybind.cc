@@ -56,7 +56,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -93,6 +92,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/jit.h"
+#include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -610,6 +610,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindEager(&m);
   BindEagerStringTensor(&m);
   BindCudaStream(&m);
+  BindXpuStream(&m);
   BindJit(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -703,11 +704,11 @@ PYBIND11_MODULE(libpaddle, m) {
     phi::DenseTensor tensor;
 
     if (dl.device.device_type == kDLCPU) {
-      paddle::framework::TensorFromDLPack(dl, &tensor);
+      paddle::framework::TensorFromDLPack(dmt, &tensor);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (dl.device.device_type == kDLGPU) {
-      paddle::framework::TensorFromDLPack(dl, &tensor);
+      paddle::framework::TensorFromDLPack(dmt, &tensor);
     }
 #endif
     return tensor;

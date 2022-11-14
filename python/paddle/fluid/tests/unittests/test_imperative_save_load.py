@@ -29,7 +29,7 @@ class SimpleLSTMRNN(fluid.Layer):
     def __init__(
         self, hidden_size, num_steps, num_layers=2, init_scale=0.1, dropout=None
     ):
-        super(SimpleLSTMRNN, self).__init__()
+        super().__init__()
         self._hidden_size = hidden_size
         self._num_layers = num_layers
         self._init_scale = init_scale
@@ -154,7 +154,7 @@ class PtbModel(fluid.Layer):
         init_scale=0.1,
         dropout=None,
     ):
-        super(PtbModel, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -1003,7 +1003,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 os.path.join('saved_dy', 'emb_dy')
             )
 
-            self.assertTrue(opti_state_dict == None)
+            self.assertIsNone(opti_state_dict)
 
             para_state_dict, opti_state_dict = fluid.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy.pdparams')
@@ -1022,8 +1022,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             para_state_dict, opti_state_dict = fluid.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy'), keep_name_table=True
             )
-            self.assertTrue(para_state_dict != None)
-            self.assertTrue(opti_state_dict == None)
+            self.assertIsNotNone(para_state_dict)
+            self.assertIsNone(opti_state_dict)
 
     def test_main(self):
         self.func_setUp()

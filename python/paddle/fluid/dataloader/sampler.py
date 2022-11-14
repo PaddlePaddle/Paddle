@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-class Sampler(object):
+class Sampler:
     """
     An abstract class to encapsulate methods and behaviors of samplers.
 

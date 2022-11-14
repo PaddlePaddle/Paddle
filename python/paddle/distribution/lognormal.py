@@ -85,7 +85,7 @@ class LogNormal(TransformedDistribution):
         self._base = Normal(loc=loc, scale=scale)
         self.loc = self._base.loc
         self.scale = self._base.scale
-        super(LogNormal, self).__init__(self._base, [ExpTransform()])
+        super().__init__(self._base, [ExpTransform()])
 
     @property
     def mean(self):

@@ -21,7 +21,7 @@ from ..utils import deprecated
 __all__ = ['DatasetFactory', 'InMemoryDataset', 'QueueDataset']
 
 
-class DatasetFactory(object):
+class DatasetFactory:
     """
     DatasetFactory is a factory which create dataset by its name,
     you can create "QueueDataset" or "InMemoryDataset", or "FileInstantDataset",
@@ -64,7 +64,7 @@ class DatasetFactory(object):
             )
 
 
-class DatasetBase(object):
+class DatasetBase:
     """Base dataset class."""
 
     def __init__(self):
@@ -376,7 +376,7 @@ class InMemoryDataset(DatasetBase):
     @deprecated(since="2.0.0", update_to="paddle.distributed.InMemoryDataset")
     def __init__(self):
         """Init."""
-        super(InMemoryDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
         self.is_user_set_queue_num = False
@@ -1132,7 +1132,7 @@ class QueueDataset(DatasetBase):
         Initialize QueueDataset
         This class should be created by DatasetFactory
         """
-        super(QueueDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
 
     @deprecated(
@@ -1220,7 +1220,7 @@ class FileInstantDataset(DatasetBase):
         Initialize FileInstantDataset
         This class should be created by DatasetFactory
         """
-        super(FileInstantDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotFileInstantDataFeed"
 
     def local_shuffle(self):
@@ -1260,7 +1260,7 @@ class BoxPSDataset(InMemoryDataset):
         Initialize BoxPSDataset
         This class should be created by DatasetFactory
         """
-        super(BoxPSDataset, self).__init__()
+        super().__init__()
         self.boxps = core.BoxPS(self.dataset)
         self.proto_desc.name = "PaddleBoxDataFeed"
 

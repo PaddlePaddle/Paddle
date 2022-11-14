@@ -45,7 +45,7 @@ from paddle.fluid.dygraph.amp.auto_cast import (
 from paddle import _legacy_C_ops
 
 
-class NestSequence(object):
+class NestSequence:
     """
     A wrapper class that easily to flatten and restore the nest structure of
     given sequence.
@@ -108,7 +108,7 @@ class NestSequence(object):
         return self.__input_list[item]
 
 
-class LazyInitialized(object):
+class LazyInitialized:
     """
     Descriptor to implement lazy initialization of property.
     """
@@ -155,7 +155,7 @@ class PartialProgramLayer:
     def __init__(
         self, main_program, inputs, outputs, parameters=None, **kwargs
     ):
-        super(PartialProgramLayer, self).__init__()
+        super().__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []

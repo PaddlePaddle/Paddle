@@ -35,7 +35,7 @@ class Role:
     XPU = 3
 
 
-class MockBarrier(object):
+class MockBarrier:
     """
     MockBarrier is a empty impletation for barrier
     mock as a real barrier for never-barrier in a specific scenario
@@ -70,7 +70,7 @@ class MockBarrier(object):
         return [obj]
 
 
-class RoleMakerBase(object):
+class RoleMakerBase:
     """
     RoleMakerBase is a base class for assigning a role to current process
     in distributed training.
@@ -202,7 +202,7 @@ class MPIRoleMaker(RoleMakerBase):
 
     def __init__(self):
         """Init."""
-        super(MPIRoleMaker, self).__init__()
+        super().__init__()
         from mpi4py import MPI
 
         self.MPI = MPI
@@ -280,7 +280,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
 
     def __init__(self):
         """Init."""
-        super(MPISymetricRoleMaker, self).__init__()
+        super().__init__()
         self._node_type = None
         self._proc_per_node = 2
         self._pserver_rand_port = 0
@@ -494,7 +494,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     """
 
     def __init__(self, is_collective=False):
-        super(PaddleCloudRoleMaker, self).__init__()
+        super().__init__()
         self._role_is_generated = False
         self._is_collective = is_collective
 
@@ -607,7 +607,7 @@ class GeneralRoleMaker(RoleMakerBase):
     """
 
     def __init__(self, **kwargs):
-        super(GeneralRoleMaker, self).__init__()
+        super().__init__()
         self._role_is_generated = False
         self._hdfs_name = kwargs.get("hdfs_name", "")
         self._hdfs_ugi = kwargs.get("hdfs_ugi", "")
@@ -1010,7 +1010,7 @@ class GeneralRoleMaker(RoleMakerBase):
             if "Gateway" in item and "Iface" in item:
                 gateway_idx = item.index("Gateway")
                 iface_idx = item.index("Iface")
-            elif gateway_idx != None and iface_idx != None:
+            elif gateway_idx is not None and iface_idx is not None:
                 gateway = None
                 if len(item) > gateway_idx:
                     gateway = item[gateway_idx]
@@ -1246,7 +1246,7 @@ class UserDefinedRoleMaker(RoleMakerBase):
         worker_num=0,
         server_endpoints=None,
     ):
-        super(UserDefinedRoleMaker, self).__init__()
+        super().__init__()
 
         if not isinstance(server_endpoints, list):
             raise TypeError("server_endpoints must be as string list")
@@ -1320,7 +1320,7 @@ class UserDefinedCollectiveRoleMaker(RoleMakerBase):
     """
 
     def __init__(self, current_id=0, worker_endpoints=None):
-        super(UserDefinedCollectiveRoleMaker, self).__init__()
+        super().__init__()
 
         if not isinstance(worker_endpoints, list):
             raise TypeError("worker_endpoints must be as string list")

@@ -45,11 +45,11 @@ def _supported_check():
     return True
 
 
-class LRUSharedCache(OrderedDict):
+class _LRUSharedCache(OrderedDict):
     def __init__(self):
         self.limit = 128
         self._after_fork()
-        register_after_fork(self, LRUSharedCache._after_fork)
+        register_after_fork(self, _LRUSharedCache._after_fork)
 
     def _after_fork(self):
         self.lock = threading.Lock()
@@ -73,25 +73,25 @@ class LRUSharedCache(OrderedDict):
             super().__setitem__(key, value)
 
 
-shared_cache = LRUSharedCache()
+shared_cache = _LRUSharedCache()
 
 
-def cuda_from_cache(key):
+def _cuda_from_cache(key):
     lodtensor = shared_cache.get(key)
     if lodtensor is None:
         return None
     return lodtensor
 
 
-def rebuild_tensor(cls, lodtensor, metadata):
-    if cls == paddle.fluid.framework.ParamBase:
-        tensor = paddle.fluid.framework.ParamBase(
+def _rebuild_tensor(cls, lodtensor, metadata):
+    if cls == paddle.fluid.framework.EagerParamBase:
+        tensor = paddle.fluid.framework.EagerParamBase(
             lodtensor.shape(), lodtensor._dtype(), **metadata
         )
         tensor.value().get_tensor()._share_data_with(lodtensor)
     else:
         size, stop_gradient = metadata
-        tensor = paddle.fluid.core.VarBase()
+        tensor = paddle.fluid.core.eager.Tensor()
         if lodtensor._is_initialized():
             tensor.value().get_tensor()._share_data_with(lodtensor)
         else:
@@ -100,7 +100,7 @@ def rebuild_tensor(cls, lodtensor, metadata):
     return tensor
 
 
-def reduce_tensor(tensor):
+def _reduce_tensor(tensor):
     lodtensor = tensor.value().get_tensor()
 
     if not tensor.stop_gradient and not tensor.is_leaf:
@@ -113,12 +113,12 @@ def reduce_tensor(tensor):
         or tensor.place.is_gpu_place()
         or tensor.place.is_cuda_pinned_place()
     ):
-        if type(tensor) == paddle.fluid.framework.ParamBase:
+        if type(tensor) == paddle.fluid.framework.EagerParamBase:
             metadata = copy.deepcopy(tensor.__dict__)
         else:
             metadata = (tensor.size, tensor.stop_gradient)
 
-        return (rebuild_tensor, (type(tensor), lodtensor, metadata))
+        return (_rebuild_tensor, (type(tensor), lodtensor, metadata))
     else:
         raise ValueError(
             "Only support tensors of CPU/CUDA/CUDAPinned Place, Not support %s for now!"
@@ -126,16 +126,16 @@ def reduce_tensor(tensor):
         )
 
 
-def rebuild_lodtensor_filename(cls, ipc_name, size, type_idx, dims, lod):
+def _rebuild_lodtensor_filename(cls, ipc_name, size, type_idx, dims, lod):
     lodtensor = cls._new_shared_filename((ipc_name, size, type_idx, dims, lod))
     lodtensor._shared_decref()
     return lodtensor
 
 
-def rebuild_cuda_tensor(
+def _rebuild_cuda_tensor(
     cls, handle, offset_bytes, size, type_idx, dims, lod, device_idx
 ):
-    cache_tensor = cuda_from_cache((handle, offset_bytes))
+    cache_tensor = _cuda_from_cache((handle, offset_bytes))
     if cache_tensor is None:
         lodtensor = cls._new_shared_cuda(
             (handle, offset_bytes, size, type_idx, dims, lod, device_idx)
@@ -155,13 +155,13 @@ def rebuild_cuda_tensor(
     return lodtensor
 
 
-def rebuild_lodtensor_empty(cls):
+def _rebuild_lodtensor_empty(cls):
     # TODO: check if tensor initialized
     # TODO: handle the dtype of empty tensor
     return cls()
 
 
-def reduce_lodtensor(lodtensor):
+def _reduce_lodtensor(lodtensor):
     if (
         lodtensor._place().is_cpu_place()
         or lodtensor._place().is_cuda_pinned_place()
@@ -169,19 +169,19 @@ def reduce_lodtensor(lodtensor):
         for dim in lodtensor.shape():
             if dim == 0:
                 # Empty tensors have nothing be mmapped.
-                return (rebuild_lodtensor_empty, (type(lodtensor),))
+                return (_rebuild_lodtensor_empty, (type(lodtensor),))
 
         # Default use share filename stratege
         metadata = (
             lodtensor._share_filename()
         )  # ipc_name, size, type_idx, dims, lod
-        rebuild = rebuild_lodtensor_filename
+        rebuild = _rebuild_lodtensor_filename
         lodtensor._shared_incref()
         # TODO, maintain reference for lodtensor
         # TODO: support file_discriptor stratege
     elif lodtensor._place().is_gpu_place():
         metadata = lodtensor._share_cuda()
-        rebuild = rebuild_cuda_tensor
+        rebuild = _rebuild_cuda_tensor
     else:
         raise RuntimeError("We only support pass cpu/gpu lodtensor for now!")
 
@@ -192,7 +192,9 @@ def init_reductions():
     if not _supported_check():
         return
 
-    ForkingPickler.register(paddle.Tensor, reduce_tensor)
-    ForkingPickler.register(paddle.fluid.core.VarBase, reduce_tensor)
-    ForkingPickler.register(paddle.fluid.framework.ParamBase, reduce_tensor)
-    ForkingPickler.register(paddle.fluid.core.LoDTensor, reduce_lodtensor)
+    ForkingPickler.register(paddle.Tensor, _reduce_tensor)
+    ForkingPickler.register(paddle.fluid.core.eager.Tensor, _reduce_tensor)
+    ForkingPickler.register(
+        paddle.fluid.framework.EagerParamBase, _reduce_tensor
+    )
+    ForkingPickler.register(paddle.fluid.core.LoDTensor, _reduce_lodtensor)
