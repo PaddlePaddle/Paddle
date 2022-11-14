@@ -161,11 +161,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
     target = fluid.layers.data(
         name='target', shape=[1], dtype='int64', lod_level=1
     )
-    crf_cost = fluid.layers.linear_chain_crf(
-        input=feature_out,
-        label=target,
-        param_attr=fluid.ParamAttr(name='crfw', learning_rate=mix_hidden_lr),
-    )
+    crf_cost = paddle.cross_entropy(input=feature_out, label=target)
     avg_cost = paddle.mean(crf_cost)
 
     # TODO(qiao)
