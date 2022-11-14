@@ -2874,27 +2874,6 @@ class TestPow_factor_tensor(TestActivation):
         assert np.allclose(res_2, np.power(input, 3))
         assert np.allclose(res_6, np.power(input, 3))
 
-    def test_error(self):
-        in1 = fluid.layers.data(
-            name="in1", shape=[11, 17], append_batch_size=False, dtype="int32"
-        )
-        in2 = fluid.layers.data(
-            name="in2", shape=[11, 17], append_batch_size=False, dtype="int64"
-        )
-        in3 = fluid.layers.data(
-            name="in3", shape=[11, 17], append_batch_size=False, dtype="float32"
-        )
-        in4 = fluid.layers.data(
-            name="in4", shape=[11, 17], append_batch_size=False, dtype="float64"
-        )
-
-        factor_1 = fluid.layers.fill_constant([1], "float64", 3.0)
-
-        self.assertRaises(TypeError, paddle.pow, in1, factor_1)
-        self.assertRaises(TypeError, paddle.pow, in2, factor_1)
-        self.assertRaises(TypeError, paddle.pow, in3, factor_1)
-        self.assertRaises(TypeError, paddle.pow, in4, factor_1)
-
 
 def ref_stanh(x, scale_a=0.67, scale_b=1.7159):
     out = scale_b * np.tanh(x * scale_a)
