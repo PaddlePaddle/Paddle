@@ -399,7 +399,7 @@ if(WITH_MKLDNN)
       im2col
       vol2col
       batch_norm_op
-      gelu_op
+      generated_op
       activation_op
       elementwise_add_op
       concat_and_split
