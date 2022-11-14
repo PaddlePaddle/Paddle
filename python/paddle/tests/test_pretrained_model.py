@@ -59,7 +59,7 @@ class TestPretrainedModel(unittest.TestCase):
         # 'resnet18', 'vgg16', 'alexnet', 'resnext50_32x4d', 'inception_v3',
         # 'densenet121', 'googlenet', 'wide_resnet50_2', 'wide_resnet101_2'
         arches = [
-            'shufflenet_v2_x0_25',
+            'shufflenet_v2_x0_25',  # bug model
         ]
         for arch in arches:
             self.infer(arch)
