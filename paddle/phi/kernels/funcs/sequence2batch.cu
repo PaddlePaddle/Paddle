@@ -43,7 +43,7 @@ class CopyMatrixRowsFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
                   const phi::DenseTensor& src,
-                  paddle::framework::Vector<size_t> index_lod,
+                  std::vector<size_t> index_lod,
                   phi::DenseTensor* dst,
                   bool is_src_index) {
     auto src_dims = src.dims();
