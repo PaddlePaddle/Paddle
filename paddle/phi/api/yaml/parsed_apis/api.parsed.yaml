@@ -1,0 +1,438 @@
+- name: atan2
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: Atan2InferMeta
+    param: [x, y]
+  kernel:
+    func: [atan2]
+    param: [x, y]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: atan2_grad
+- name: bernoulli
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [bernoulli]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: null
+- name: cholesky
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: bool, name: upper, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: CholeskyInferMeta
+    param: [x, upper]
+  kernel:
+    func: [cholesky]
+    param: [x, upper]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: cholesky_grad
+- name: cholesky_solve
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: bool, name: upper, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: CholeskySolveInferMeta
+    param: [x, y, upper]
+  kernel:
+    func: [cholesky_solve]
+    param: [x, y, upper]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: cholesky_solve_grad
+- name: cross
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: int, name: axis, default_value: '9'}
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: CrossInferMeta
+    param: [x, y, axis]
+  kernel:
+    func: [cross]
+    param: [x, y, axis]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+  inplace: null
+  backward: cross_grad
+- name: diag
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: int, name: offset, default_value: '0'}
+  - {typename: float, name: padding_value, default_value: '0.0'}
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: DiagInferMeta
+    param: [x, offset, padding_value]
+  kernel:
+    func: [diag]
+    param: [x, offset, padding_value]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: diag_grad
+- name: diagonal
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: int, name: offset, default_value: '0'}
+  - {typename: int, name: axis1, default_value: '0'}
+  - {typename: int, name: axis2, default_value: '1'}
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: DiagonalInferMeta
+    param: [x, offset, axis1, axis2]
+  kernel:
+    func: [diagonal]
+    param: [x, offset, axis1, axis2]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: diagonal_grad
+- name: digamma
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [digamma]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: digamma_grad
+- name: dist
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: float, name: p, default_value: '2.0'}
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: DistInferMeta
+    param: [x, y, p]
+  kernel:
+    func: [dist]
+    param: [x, y, p]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: dist_grad
+- name: dot
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: DotInferMeta
+    param: [x, y]
+  kernel:
+    func: [dot]
+    param: [x, y]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+  inplace: null
+  backward: dot_grad
+- name: erf
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [erf]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: erf_grad
+- name: erfinv
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [erfinv]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: {out: x}
+  backward: erfinv_grad
+- name: fft_c2c
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: 'int64_t[]', name: axes}
+  - {typename: str, name: normalization}
+  - {typename: bool, name: forward}
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: FFTC2CInferMeta
+    param: [x, axes, normalization, forward]
+  kernel:
+    func: [fft_c2c]
+    param: [x, axes, normalization, forward]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: fft_c2c_grad
+- name: fft_c2r
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: 'int64_t[]', name: axes}
+  - {typename: str, name: normalization}
+  - {typename: bool, name: forward}
+  - {typename: int64_t, name: last_dim_size, default_value: 0L}
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: FFTC2RInferMeta
+    param: [x, axes, normalization, forward, last_dim_size]
+  kernel:
+    func: [fft_c2r]
+    param: [x, axes, normalization, forward, last_dim_size]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: fft_c2r_grad
+- name: fft_r2c
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: 'int64_t[]', name: axes}
+  - {typename: str, name: normalization}
+  - {typename: bool, name: forward}
+  - {typename: bool, name: onesided}
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: FFTR2CInferMeta
+    param: [x, axes, normalization, forward, onesided]
+  kernel:
+    func: [fft_r2c]
+    param: [x, axes, normalization, forward, onesided]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: fft_r2c_grad
+- name: graph_send_uv
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: src_index, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: dst_index, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: str, name: message_op, default_value: '"ADD"'}
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: GraphSendUVInferMeta
+    param: [x, y, src_index, dst_index, message_op]
+  kernel:
+    func: [graph_send_uv]
+    param: [x, y, src_index, dst_index, message_op]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+  inplace: null
+  backward: graph_send_uv_grad
+- name: lgamma
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [lgamma]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: lgamma_grad
+- name: mv
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: vec, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: MvInferMeta
+    param: [x, vec]
+  kernel:
+    func: [mv]
+    param: [x, vec]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: mv_grad
+- name: poisson
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [poisson]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: poisson_grad
+- name: solve
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: SolveInferMeta
+    param: [x, y]
+  kernel:
+    func: [solve]
+    param: [x, y]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+  inplace: null
+  backward: solve_grad
+- name: trace
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: int, name: offset, default_value: '0'}
+  - {typename: int, name: axis1, default_value: '0'}
+  - {typename: int, name: axis2, default_value: '1'}
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: TraceInferMeta
+    param: [x, offset, axis1, axis2]
+  kernel:
+    func: [trace]
+    param: [x, offset, axis1, axis2]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: trace_grad
+- name: trunc
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [trunc]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+  inplace: null
+  backward: trunc_grad

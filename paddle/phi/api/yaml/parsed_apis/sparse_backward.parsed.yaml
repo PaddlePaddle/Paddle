@@ -1,0 +1,1500 @@
+- name: abs_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [abs_coo_grad, abs_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      abs_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      abs_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: abs
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: acos_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [acos_coo_grad, acos_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      acos_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      acos_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: acos
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: acosh_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [acosh_coo_grad, acosh_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      acosh_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      acosh_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: acosh
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: add_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  - {typename: Tensor, name: y_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel:
+    func: [add_coo_coo_grad, add_csr_csr_grad, add_coo_dense_grad]
+    param: [x, y, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      add_coo_coo_grad:
+      - [sparse_coo, sparse_coo, sparse_coo]
+      - [sparse_coo, sparse_coo]
+      add_csr_csr_grad:
+      - [sparse_csr, sparse_csr, sparse_csr]
+      - [sparse_csr, sparse_csr]
+      add_coo_dense_grad:
+      - [sparse_coo, dense, sparse_coo]
+      - [sparse_coo, dense]
+  inplace: null
+  backward: null
+  forward:
+    name: add
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: addmm_grad
+  inputs:
+  - {typename: Tensor, name: input, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: float, name: alpha, default_value: '1.0'}
+  - {typename: float, name: beta, default_value: '1.0'}
+  outputs:
+  - {typename: Tensor, name: input_grad, intermediate: false}
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  - {typename: Tensor, name: y_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: GeneralTernaryGradInferMeta
+    param: [input, x, y]
+  kernel:
+    func: [addmm_csr_dense_grad, addmm_csr_csr_grad, addmm_coo_dense_grad, addmm_coo_coo_grad]
+    param: [input, x, y, out_grad, alpha, beta]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      addmm_csr_dense_grad:
+      - [dense, sparse_csr, dense, dense]
+      - [dense, sparse_csr, dense]
+      addmm_csr_csr_grad:
+      - [sparse_csr, sparse_csr, sparse_csr, sparse_csr]
+      - [sparse_csr, sparse_csr, sparse_csr]
+      addmm_coo_dense_grad:
+      - [dense, sparse_coo, dense, dense]
+      - [dense, sparse_coo, dense]
+      addmm_coo_coo_grad:
+      - [sparse_coo, sparse_coo, sparse_coo, sparse_coo]
+      - [sparse_coo, sparse_coo, sparse_coo]
+  inplace: null
+  backward: null
+  forward:
+    name: addmm
+    inputs:
+    - {name: input, typename: Tensor}
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    attrs:
+    - {name: beta, typename: float}
+    - {name: alpha, typename: float}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: asin_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [asin_coo_grad, asin_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      asin_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      asin_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: asin
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: asinh_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [asinh_coo_grad, asinh_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      asinh_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      asinh_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: asinh
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: atan_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [atan_coo_grad, atan_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      atan_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      atan_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: atan
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: atanh_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [atanh_coo_grad, atanh_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      atanh_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      atanh_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: atanh
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: batch_norm_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: scale, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: bias, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: mean_out, optional: true, no_need_buffer: false}
+  - {typename: Tensor, name: variance_out, optional: true, no_need_buffer: false}
+  - {typename: Tensor, name: saved_mean, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: saved_variance, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: reserve_space, optional: true, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: float, name: momentum}
+  - {typename: float, name: epsilon}
+  - {typename: str, name: data_layout}
+  - {typename: bool, name: is_test}
+  - {typename: bool, name: use_global_stats}
+  - {typename: bool, name: trainable_statistics}
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  - {typename: Tensor, name: scale_grad, intermediate: false}
+  - {typename: Tensor, name: bias_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: GeneralTernaryGradInferMeta
+    param: [x, scale, bias]
+  kernel:
+    func: [batch_norm_coo_grad]
+    param: [x, scale, bias, mean_out, variance_out, saved_mean, saved_variance, reserve_space,
+      out_grad, momentum, epsilon, data_layout, is_test, use_global_stats, trainable_statistics]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+    dispatch:
+      batch_norm_coo_grad:
+      - [sparse_coo, dense, dense, dense, dense, dense, dense, dense, sparse_coo]
+      - [sparse_coo, dense, dense]
+  inplace: null
+  backward: null
+  forward:
+    name: batch_norm
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: mean, typename: Tensor}
+    - {name: variance, typename: Tensor}
+    - {name: scale, typename: Tensor}
+    - {name: bias, typename: Tensor}
+    attrs:
+    - {name: is_test, typename: bool}
+    - {name: momentum, typename: float}
+    - {name: epsilon, typename: float}
+    - {name: data_layout, typename: str}
+    - {name: use_global_stats, typename: bool}
+    - {name: trainable_statistics, typename: bool}
+    outputs:
+    - {name: out, typename: Tensor}
+    - {name: mean_out, typename: Tensor}
+    - {name: variance_out, typename: Tensor}
+    - {name: saved_mean, typename: Tensor}
+    - {name: saved_variance, typename: Tensor}
+    - {name: reserve_space, typename: Tensor}
+- name: cast_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: DataType, name: value_dtype}
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [cast_coo_grad, cast_csr_grad]
+    param: [x, out_grad, value_dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+    dispatch:
+      cast_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      cast_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: cast
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: index_dtype, typename: DataType}
+    - {name: value_dtype, typename: DataType}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: conv3d_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: kernel, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: rulebook, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: counter, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: 'int[]', name: paddings}
+  - {typename: 'int[]', name: dilations}
+  - {typename: 'int[]', name: strides}
+  - {typename: int, name: groups}
+  - {typename: bool, name: subm}
+  - {typename: str, name: key}
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  - {typename: Tensor, name: kernel_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: GeneralBinaryGradInferMeta
+    param: [x, kernel]
+  kernel:
+    func: [conv3d_coo_grad]
+    param: [x, kernel, out, rulebook, counter, out_grad, paddings, dilations, strides,
+      groups, subm, key]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      conv3d_coo_grad:
+      - [sparse_coo, dense, sparse_coo, dense, dense, sparse_coo]
+      - [sparse_coo, dense]
+  inplace: null
+  backward: null
+  forward:
+    name: conv3d
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: kernel, typename: Tensor}
+    attrs:
+    - {name: paddings, typename: 'int[]'}
+    - {name: dilations, typename: 'int[]'}
+    - {name: strides, typename: 'int[]'}
+    - {name: groups, typename: int}
+    - {name: subm, typename: bool}
+    - {name: key, typename: str}
+    outputs:
+    - {name: out, typename: Tensor}
+    - {name: rulebook, typename: Tensor}
+    - {name: counter, typename: Tensor}
+- name: divide_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  - {typename: Tensor, name: y_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel:
+    func: [divide_coo_coo_grad, divide_csr_csr_grad]
+    param: [x, y, out, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      divide_coo_coo_grad:
+      - [sparse_coo, sparse_coo, sparse_coo, sparse_coo]
+      - [sparse_coo, sparse_coo]
+      divide_csr_csr_grad:
+      - [sparse_csr, sparse_csr, sparse_csr, sparse_csr]
+      - [sparse_csr, sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: divide
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: divide_scalar_grad
+  inputs:
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: float, name: scalar}
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  invoke: {func: divide_scalar, args: 'out_grad, scalar'}
+  backward: null
+  forward:
+    name: divide_scalar
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: scalar, typename: float}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: expm1_grad
+  inputs:
+  - {typename: Tensor, name: out, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [out]
+  kernel:
+    func: [expm1_coo_grad, expm1_csr_grad]
+    param: [out, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      expm1_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      expm1_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: expm1
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: leaky_relu_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: float, name: alpha}
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [leaky_relu_coo_grad, leaky_relu_csr_grad]
+    param: [x, out_grad, alpha]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      leaky_relu_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      leaky_relu_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: leaky_relu
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: alpha, typename: float}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: log1p_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [log1p_coo_grad, log1p_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      log1p_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      log1p_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: log1p
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: masked_matmul_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  - {typename: Tensor, name: y_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel:
+    func: [masked_matmul_csr_grad]
+    param: [x, y, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      masked_matmul_csr_grad:
+      - [dense, dense, sparse_csr]
+      - [dense, dense]
+  inplace: null
+  backward: null
+  forward:
+    name: masked_matmul
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    - {name: mask, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: matmul_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  - {typename: Tensor, name: y_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel:
+    func: [matmul_csr_dense_grad, matmul_csr_csr_grad, matmul_coo_dense_grad, matmul_coo_coo_grad]
+    param: [x, y, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      matmul_csr_dense_grad:
+      - [sparse_csr, dense, dense]
+      - [sparse_csr, dense]
+      matmul_csr_csr_grad:
+      - [sparse_csr, sparse_csr, sparse_csr]
+      - [sparse_csr, sparse_csr]
+      matmul_coo_dense_grad:
+      - [sparse_coo, dense, dense]
+      - [sparse_coo, dense]
+      matmul_coo_coo_grad:
+      - [sparse_coo, sparse_coo, sparse_coo]
+      - [sparse_coo, sparse_coo]
+  inplace: null
+  backward: null
+  forward:
+    name: matmul
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: maxpool_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: rulebook, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: counter, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: 'int[]', name: kernel_sizes}
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [maxpool_coo_grad]
+    param: [x, rulebook, counter, out, out_grad, kernel_sizes]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      maxpool_coo_grad:
+      - [sparse_coo, dense, dense, sparse_coo, sparse_coo]
+      - [sparse_coo]
+  inplace: null
+  backward: null
+  forward:
+    name: maxpool
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: kernel_sizes, typename: 'int[]'}
+    - {name: paddings, typename: 'int[]'}
+    - {name: dilations, typename: 'int[]'}
+    - {name: strides, typename: 'int[]'}
+    outputs:
+    - {name: out, typename: Tensor}
+    - {name: rulebook, typename: Tensor}
+    - {name: counter, typename: Tensor}
+- name: multiply_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  - {typename: Tensor, name: y_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel:
+    func: [multiply_coo_coo_grad, multiply_csr_csr_grad]
+    param: [x, y, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      multiply_coo_coo_grad:
+      - [sparse_coo, sparse_coo, sparse_coo]
+      - [sparse_coo, sparse_coo]
+      multiply_csr_csr_grad:
+      - [sparse_csr, sparse_csr, sparse_csr]
+      - [sparse_csr, sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: multiply
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: mv_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: vec, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  - {typename: Tensor, name: vec_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: GeneralBinaryGradInferMeta
+    param: [x, vec]
+  kernel:
+    func: [mv_coo_grad, mv_csr_grad]
+    param: [x, vec, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      mv_coo_grad:
+      - [sparse_coo, dense, dense]
+      - [sparse_coo, dense]
+      mv_csr_grad:
+      - [sparse_csr, dense, dense]
+      - [sparse_csr, dense]
+  inplace: null
+  backward: null
+  forward:
+    name: mv
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: vec, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: pow_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: float, name: factor}
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [pow_coo_grad, pow_csr_grad]
+    param: [x, out_grad, factor]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      pow_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      pow_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: pow
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: factor, typename: float}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: relu6_grad
+  inputs:
+  - {typename: Tensor, name: out, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: float, name: threshold}
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [out]
+  kernel:
+    func: [relu6_coo_grad, relu6_csr_grad]
+    param: [out, out_grad, threshold]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      relu6_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      relu6_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: relu6
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: threshold, typename: float}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: relu_grad
+  inputs:
+  - {typename: Tensor, name: out, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [out]
+  kernel:
+    func: [relu_coo_grad, relu_csr_grad]
+    param: [out, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      relu_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      relu_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: relu
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: reshape_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [reshape_coo_grad, reshape_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      reshape_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      reshape_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: reshape
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: shape, typename: IntArray}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: scale_grad
+  inputs:
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: float, name: scale}
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  invoke: {func: scale, args: 'out_grad, scale, 0.0, true'}
+  backward: null
+  forward:
+    name: scale
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: scale, typename: float}
+    - {name: bias, typename: float}
+    - {name: bias_after_scale, typename: bool}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: sin_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [sin_coo_grad, sin_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      sin_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      sin_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: sin
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: sinh_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [sinh_coo_grad, sinh_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      sinh_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      sinh_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: sinh
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: softmax_grad
+  inputs:
+  - {typename: Tensor, name: out, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: int, name: axis}
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [out]
+  kernel:
+    func: [softmax_csr_grad]
+    param: [out, out_grad, axis]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      softmax_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: softmax
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: axis, typename: int}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: sparse_coo_tensor_grad
+  inputs:
+  - {typename: Tensor, name: indices, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: values_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [out_grad]
+  kernel:
+    func: [sparse_coo_tensor_grad]
+    param: [indices, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      sparse_coo_tensor_grad:
+      - [dense, sparse_coo]
+      - [dense]
+  inplace: null
+  backward: null
+  forward:
+    name: sparse_coo_tensor
+    inputs:
+    - {name: values, typename: Tensor}
+    - {name: indices, typename: Tensor}
+    attrs:
+    - {name: shape, typename: 'int64_t[]'}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: sqrt_grad
+  inputs:
+  - {typename: Tensor, name: out, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [out]
+  kernel:
+    func: [sqrt_coo_grad, sqrt_csr_grad]
+    param: [out, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      sqrt_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      sqrt_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: sqrt
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: square_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [square_coo_grad, square_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      square_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      square_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: square
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: subtract_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: y, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  - {typename: Tensor, name: y_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel:
+    func: [subtract_coo_coo_grad, subtract_csr_csr_grad]
+    param: [x, y, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      subtract_coo_coo_grad:
+      - [sparse_coo, sparse_coo, sparse_coo]
+      - [sparse_coo, sparse_coo]
+      subtract_csr_csr_grad:
+      - [sparse_csr, sparse_csr, sparse_csr]
+      - [sparse_csr, sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: subtract
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: sync_batch_norm_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: scale, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: bias, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: saved_mean, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: saved_variance, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: reserve_space, optional: true, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: float, name: momentum}
+  - {typename: float, name: epsilon}
+  - {typename: str, name: data_layout}
+  - {typename: bool, name: is_test}
+  - {typename: bool, name: use_global_stats}
+  - {typename: bool, name: trainable_statistics}
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  - {typename: Tensor, name: scale_grad, intermediate: false}
+  - {typename: Tensor, name: bias_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: GeneralTernaryGradInferMeta
+    param: [x, scale, bias]
+  kernel:
+    func: [sync_batch_norm_coo_grad]
+    param: [x, scale, bias, saved_mean, saved_variance, reserve_space, out_grad, momentum,
+      epsilon, data_layout, is_test, use_global_stats, trainable_statistics]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+    dispatch:
+      sync_batch_norm_coo_grad:
+      - [sparse_coo, dense, dense, dense, dense, dense, sparse_coo]
+      - [sparse_coo, dense, dense]
+  inplace: null
+  backward: null
+  forward:
+    name: sync_batch_norm_
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: mean, typename: Tensor}
+    - {name: variance, typename: Tensor}
+    - {name: scale, typename: Tensor}
+    - {name: bias, typename: Tensor}
+    attrs:
+    - {name: is_test, typename: bool}
+    - {name: momentum, typename: float}
+    - {name: epsilon, typename: float}
+    - {name: data_layout, typename: str}
+    - {name: use_global_stats, typename: bool}
+    - {name: trainable_statistics, typename: bool}
+    outputs:
+    - {name: out, typename: Tensor}
+    - {name: mean_out, typename: Tensor}
+    - {name: variance_out, typename: Tensor}
+    - {name: saved_mean, typename: Tensor}
+    - {name: saved_variance, typename: Tensor}
+    - {name: reserve_space, typename: Tensor}
+- name: tan_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [tan_coo_grad, tan_csr_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      tan_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      tan_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: tan
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: tanh_grad
+  inputs:
+  - {typename: Tensor, name: out, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [out]
+  kernel:
+    func: [tanh_coo_grad, tanh_csr_grad]
+    param: [out, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      tanh_coo_grad:
+      - [sparse_coo, sparse_coo]
+      - [sparse_coo]
+      tanh_csr_grad:
+      - [sparse_csr, sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: tanh
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: to_dense_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [coo_to_dense_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      coo_to_dense_grad:
+      - [sparse_coo, dense]
+      - [sparse_coo]
+  inplace: null
+  backward: null
+  forward:
+    name: to_dense
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: to_sparse_coo_grad
+  inputs:
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [out_grad]
+  kernel:
+    func: [coo_to_dense]
+    param: [out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      coo_to_dense:
+      - [sparse_coo]
+      - [dense]
+  inplace: null
+  backward: null
+  forward:
+    name: to_sparse_coo
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: sparse_dim, typename: int64_t}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: transpose_grad
+  inputs:
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs:
+  - {typename: 'int[]', name: perm}
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: TransposeGradInferMeta
+    param: [out_grad, perm]
+  kernel:
+    func: [transpose_coo_grad, transpose_csr_grad]
+    param: [out_grad, perm]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      transpose_coo_grad:
+      - [sparse_coo]
+      - [sparse_coo]
+      transpose_csr_grad:
+      - [sparse_csr]
+      - [sparse_csr]
+  inplace: null
+  backward: null
+  forward:
+    name: transpose
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: perm, typename: 'int[]'}
+    outputs:
+    - {name: out, typename: Tensor}
+- name: values_grad
+  inputs:
+  - {typename: Tensor, name: x, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: x_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [values_coo_grad]
+    param: [x, out_grad]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch:
+      values_coo_grad:
+      - [sparse_coo, dense]
+      - [sparse_coo]
+  inplace: null
+  backward: null
+  forward:
+    name: values
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+- name: fused_attention_grad
+  inputs:
+  - {typename: Tensor, name: query, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: key, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: value, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: softmax, optional: false, no_need_buffer: false}
+  - {typename: Tensor, name: out_grad, optional: false, no_need_buffer: false}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: query_grad, intermediate: false}
+  - {typename: Tensor, name: key_grad, intermediate: false}
+  - {typename: Tensor, name: value_grad, intermediate: false}
+  no_need_buffer: null
+  infer_meta:
+    func: sparse::FusedAttentionGradInferMeta
+    param: [query, key, value, softmax, out_grad]
+  kernel:
+    func: [fused_attention_csr_grad]
+    param: [query, key, value, softmax, out_grad]
+    backend: null
+    layout:
+      ordered: false
+      candidates: [softmax]
+    data_type:
+      ordered: false
+      candidates: [query]
+    dispatch:
+      fused_attention_csr_grad:
+      - [dense, dense, dense, sparse_csr, dense]
+      - [dense, dense, dense]
+  inplace: null
+  backward: null
+  forward:
+    name: fused_attention
+    inputs:
+    - {name: query, typename: Tensor}
+    - {name: key, typename: Tensor}
+    - {name: value, typename: Tensor}
+    - {name: sparse_mask, typename: Tensor}
+    - {name: key_padding_mask, typename: Tensor}
+    - {name: attn_mask, typename: Tensor}
+    attrs: []
+    outputs:
+    - {name: out, typename: Tensor}
+    - {name: softmax, typename: Tensor}
