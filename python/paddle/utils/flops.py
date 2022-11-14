@@ -61,8 +61,7 @@ def _dropout_flops(input_shapes, attrs):
     return 0
 
 
-@register_flops("elementwise_add")
-def _elementwise_add_flops(input_shapes, **attrs):
+def _elementwise_flops_compute(input_shapes, **attrs):
     input_x = input_shapes[0]
     input_y = input_shapes[1]
     dim_x = len(input_x)
@@ -76,6 +75,21 @@ def _elementwise_add_flops(input_shapes, **attrs):
     return prod(output)
 
 
+@register_flops("elementwise_add")
+def _elementwise_add_flops(input_shapes, **attrs):
+    return _elementwise_flops_compute(input_shapes, **attrs)
+
+
+@register_flops("elementwise_mul")
+def _elementwise_mul_flops(input_shapes, **attrs):
+    return _elementwise_flops_compute(input_shapes, **attrs)
+
+
+@register_flops("elementwise_div")
+def _elementwise_mul_flops(input_shapes, **attrs):
+    return _elementwise_flops_compute(input_shapes, **attrs)
+
+
 @register_flops("gelu")
 def _gelu_flops(input_shapes, **attrs):
     return prod(input_shapes[0]) * 5
@@ -83,7 +97,7 @@ def _gelu_flops(input_shapes, **attrs):
 
 @register_flops("layer_norm")
 def _layer_norm_flops(input_shapes, **attrs):
-    input = input_shapes[3]
+    input = input_shapes[2]
     flops = prod(input) * 7
     if attrs['epsilon']:
         flops += prod(input)

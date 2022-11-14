@@ -252,6 +252,12 @@ class TestFLOPSAPI(unittest.TestCase):
             flops('elementwise_add', ([12, 12, 12], [2, 2, 12])) == 12 * 12 * 12
         )
         self.assertTrue(
+            flops('elementwise_mul', ([12, 12, 12], [2, 2, 12])) == 12 * 12 * 12
+        )
+        self.assertTrue(
+            flops('elementwise_div', ([12, 12, 12], [2, 2, 12])) == 12 * 12 * 12
+        )
+        self.assertTrue(
             flops(
                 'layer_norm',
                 ([12, 12, 12], [12, 12, 12], [12, 12, 12]),
