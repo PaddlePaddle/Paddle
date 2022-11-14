@@ -97,6 +97,28 @@ class TestCase4(TestIndexSampleOp):
         self.index_type = "int64"
 
 
+class TestCase5(TestIndexSampleOp):
+    def config(self):
+        """
+        For float16 x type
+        """
+        self.x_shape = (10, 128)
+        self.x_type = "float16"
+        self.index_shape = (10, 64)
+        self.index_type = "int32"
+
+
+class TestCase6(TestIndexSampleOp):
+    def config(self):
+        """
+        For float16 x type
+        """
+        self.x_shape = (10, 128)
+        self.x_type = "float16"
+        self.index_shape = (10, 64)
+        self.index_type = "int64"
+
+
 class TestIndexSampleShape(unittest.TestCase):
     def test_shape(self):
         paddle.enable_static()
@@ -122,6 +144,33 @@ class TestIndexSampleShape(unittest.TestCase):
 
         feed = {'x': x_np, 'index': index_np}
         res = exe.run(feed=feed, fetch_list=[output])
+
+
+# class TestIndexSampleShapeFp16(unittest.TestCase):
+#     def test_shape(self):
+#         paddle.enable_static()
+#         # create x value
+#         x_shape = (2, 5)
+#         x_type = "float16"
+#         x_np = np.random.random(x_shape).astype(x_type)
+
+#         # create index value
+#         index_shape = (2, 3)
+#         index_type = "int32"
+#         index_np = np.random.randint(
+#             low=0, high=x_shape[1], size=index_shape
+#         ).astype(index_type)
+
+#         x_2 = fluid.data(name='x_fp16', shape=[-1, 5], dtype='float16')
+#         index_2 = fluid.data(name='index_fp16', shape=[-1, 3], dtype='int32')
+#         output = paddle.index_sample(x=x_2, index=index_2)
+
+#         place = fluid.CUDAPlace(0)
+#         exe = fluid.Executor(place=place)
+#         exe.run(fluid.default_startup_program())
+
+#         feed = {'x_fp16': x_np, 'index_fp16': index_np}
+#         res = exe.run(feed=feed, fetch_list=[output])
 
 
 class TestIndexSampleDynamic(unittest.TestCase):
