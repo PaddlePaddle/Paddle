@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
@@ -48,7 +49,7 @@ class TRTRoiAlignTest(InferencePassTest):
                 name='rois', shape=[-1, 4], dtype='float32', lod_level=1
             )
             roi_align_out = fluid.layers.roi_align(data, rois)
-            out = fluid.layers.batch_norm(roi_align_out, is_test=True)
+            out = paddle.static.nn.batch_norm(roi_align_out, is_test=True)
 
         rois_lod = fluid.create_lod_tensor(
             np.random.random([self.bs * self.num_rois, 4]).astype('float32'),

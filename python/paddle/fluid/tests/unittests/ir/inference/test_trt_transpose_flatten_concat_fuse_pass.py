@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
@@ -37,7 +38,7 @@ class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
             # There is no parameters for above structure.
             # Hence, append a batch_norm to avoid failure caused by load_combined.
             reshape_out = fluid.layers.reshape(concat_out, [-1, 0, 1, 1])
-            out = fluid.layers.batch_norm(reshape_out, is_test=True)
+            out = paddle.static.nn.batch_norm(reshape_out, is_test=True)
 
         self.feeds = {
             "data1": np.random.random([8, 32, 128]).astype("float32"),

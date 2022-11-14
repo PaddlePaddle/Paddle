@@ -1987,7 +1987,7 @@ def fused_bn_add_act(
                         act=None,
                         bias_attr=False,
                         data_format='NHWC')
-                    bn = fluid.layers.batch_norm(
+                    bn = paddle.static.nn.batch_norm(
                         input=conv1_1,
                         act=None,
                         data_layout='NHWC')

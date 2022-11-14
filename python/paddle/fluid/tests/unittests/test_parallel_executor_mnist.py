@@ -58,7 +58,7 @@ def fc_with_batchnorm(use_feed):
                 ),
             )
 
-            hidden = fluid.layers.batch_norm(input=hidden)
+            hidden = paddle.static.nn.batch_norm(input=hidden)
     with fluid.name_scope("fc_layer"):
         prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     with fluid.name_scope("loss"):

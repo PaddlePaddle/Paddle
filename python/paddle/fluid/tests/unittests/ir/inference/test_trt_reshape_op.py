@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
@@ -37,7 +38,7 @@ class TRTReshapeTest(InferencePassTest):
                 name='data', shape=self.data_shape, dtype='float32'
             )
             reshape_out = self.append_reshape(data, self.reshape)
-            out = fluid.layers.batch_norm(reshape_out, is_test=True)
+            out = paddle.static.nn.batch_norm(reshape_out, is_test=True)
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32'),
         }
@@ -75,7 +76,7 @@ class TRTReshapeTest1(TRTReshapeTest):
                 name='data', shape=self.data_shape, dtype='float32'
             )
             reshape_out = self.append_reshape(data, self.reshape)
-            out = fluid.layers.batch_norm(reshape_out, is_test=True)
+            out = paddle.static.nn.batch_norm(reshape_out, is_test=True)
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32'),
         }
@@ -102,7 +103,7 @@ class TRTReshapeTest2(TRTReshapeTest):
                 name='data', shape=self.data_shape, dtype='float32'
             )
             reshape_out = fluid.layers.reshape(x=data, shape=self.reshape)
-            out = fluid.layers.batch_norm(reshape_out, is_test=True)
+            out = paddle.static.nn.batch_norm(reshape_out, is_test=True)
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32')
         }
@@ -128,7 +129,7 @@ class TRTReshapeTest3(TRTReshapeTest):
             data = fluid.data(
                 name='data', shape=self.data_shape, dtype='float32'
             )
-            bn_out = fluid.layers.batch_norm(data, is_test=True)
+            bn_out = paddle.static.nn.batch_norm(data, is_test=True)
             out = self.append_reshape(bn_out, self.reshape)
         self.feeds = {
             'data': np.random.random(self.data_shape).astype('float32'),

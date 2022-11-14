@@ -66,7 +66,7 @@ void TestMain(const std::string& conv_type) {
   auto* bias_1 = layers.data("bias_1", {3}, true);
   auto* mean = layers.data("mean", {3}, true);
   auto* variance = layers.data("variance", {3}, true);
-  layers.batch_norm(conv_out, scale, bias_1, mean, variance);
+  paddle.static.nn.batch_norm(conv_out, scale, bias_1, mean, variance);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());

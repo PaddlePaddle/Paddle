@@ -21,7 +21,7 @@ import unittest
 
 
 def norm(*args, **kargs):
-    return fluid.layers.batch_norm(*args, **kargs)
+    return paddle.static.nn.batch_norm(*args, **kargs)
 
 
 def sep_conv(input, channel, stride, filter, dilation=1, act=None):

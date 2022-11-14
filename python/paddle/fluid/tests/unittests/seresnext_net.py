@@ -80,7 +80,7 @@ def conv_bn_layer(
     return (
         conv
         if remove_bn
-        else fluid.layers.batch_norm(input=conv, act=act, momentum=0.1)
+        else paddle.static.nn.batch_norm(input=conv, act=act, momentum=0.1)
     )
 
 

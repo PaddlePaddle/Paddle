@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
@@ -29,7 +30,7 @@ class ShuffleChannelFuseTRTPassTest(InferencePassTest):
             reshape1 = fluid.layers.reshape(x=data, shape=[-1, 2, 3, 64, 64])
             trans = fluid.layers.transpose(x=reshape1, perm=[0, 2, 1, 3, 4])
             reshape2 = fluid.layers.reshape(x=trans, shape=[-1, 6, 64, 64])
-            out = fluid.layers.batch_norm(reshape2, is_test=True)
+            out = paddle.static.nn.batch_norm(reshape2, is_test=True)
 
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),

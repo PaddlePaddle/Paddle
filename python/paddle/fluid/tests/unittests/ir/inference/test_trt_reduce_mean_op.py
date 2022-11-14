@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
@@ -30,7 +31,7 @@ class TRTReduceMeanTest(InferencePassTest):
             reduce_mean = fluid.layers.reduce_mean(
                 data, dim=[2, -1], keep_dim=True
             )
-            out = fluid.layers.batch_norm(reduce_mean, is_test=True)
+            out = paddle.static.nn.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
             "data": np.random.random([3, 3, 56, 56]).astype("float32"),
@@ -63,7 +64,7 @@ class TRTReduceMeanAllNoBatchTest(InferencePassTest):
                 name="data", shape=[-1, 3, -1, -1], dtype="float32"
             )
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
-            out = fluid.layers.batch_norm(reduce_mean, is_test=True)
+            out = paddle.static.nn.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
             "data": np.random.random([3, 3, 56, 56]).astype("float32"),
@@ -100,7 +101,7 @@ class TRTReduceMeanTestFP16(InferencePassTest):
             reduce_mean = fluid.layers.reduce_mean(
                 data, dim=[2, -1], keep_dim=True
             )
-            out = fluid.layers.batch_norm(reduce_mean, is_test=True)
+            out = paddle.static.nn.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
             "data": np.random.random([3, 3, 56, 56]).astype("float32"),
@@ -133,7 +134,7 @@ class TRTReduceMeanAllTest(InferencePassTest):
                 name="data", shape=[-1, 3, 56, 56], dtype="float32"
             )
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
-            out = fluid.layers.batch_norm(reduce_mean, is_test=True)
+            out = paddle.static.nn.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
             "data": np.random.random([3, 3, 56, 56]).astype("float32"),
@@ -168,7 +169,7 @@ class TRTReduceMeanTestStatic(InferencePassTest):
             reduce_mean = fluid.layers.reduce_mean(
                 data, dim=[2, -1], keep_dim=True
             )
-            out = fluid.layers.batch_norm(reduce_mean, is_test=True)
+            out = paddle.static.nn.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
             "data": np.random.random([3, 3, 56, 56]).astype("float32"),
@@ -195,7 +196,7 @@ class TRTReduceMeanStaticAllTest(InferencePassTest):
                 name="data", shape=[4, 3, 56, 56], dtype="float32"
             )
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
-            out = fluid.layers.batch_norm(reduce_mean, is_test=True)
+            out = paddle.static.nn.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
             "data": np.random.random([4, 3, 56, 56]).astype("float32"),
@@ -222,7 +223,7 @@ class TRTReduceMeanStaticFP16(InferencePassTest):
                 name="data", shape=[4, 3, 56, 56], dtype="float32"
             )
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
-            out = fluid.layers.batch_norm(reduce_mean, is_test=True)
+            out = paddle.static.nn.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
             "data": np.random.random([4, 3, 56, 56]).astype("float32"),
@@ -251,7 +252,7 @@ class TRTReduceMeanFP16Static(InferencePassTest):
                 name="data", shape=[4, 3, 56, 56], dtype="float32"
             )
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
-            out = fluid.layers.batch_norm(reduce_mean, is_test=True)
+            out = paddle.static.nn.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
             "data": np.random.random([4, 3, 56, 56]).astype("float32"),

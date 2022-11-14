@@ -81,7 +81,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     bias_attr=False,
                     use_cudnn=use_cudnn,
                 )
-                bn = fluid.layers.batch_norm(
+                bn = paddle.static.nn.batch_norm(
                     conv,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
                     bias_attr=fluid.ParamAttr(name='bn_bias'),

@@ -86,7 +86,7 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                 )
                 if self.bn_dtype == np.float16:
                     conv = fluid.layers.cast(conv, 'float16')
-                bn = fluid.layers.batch_norm(
+                bn = paddle.static.nn.batch_norm(
                     conv,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
                     bias_attr=fluid.ParamAttr(name='bn_bias'),

@@ -4012,7 +4012,7 @@ class TestBook(LayerTest):
             data = self._get_data(
                 name='data', shape=[32, 128, 128], dtype="float32"
             )
-            out = layers.batch_norm(data)
+            out = paddle.static.nn.batch_norm(data)
             return out
 
     def make_batch_norm_momentum_variable(self):
@@ -4028,7 +4028,7 @@ class TestBook(LayerTest):
                 dtype='float32',
                 append_batch_size=False,
             )
-            out = layers.batch_norm(data, momentum=momentum)
+            out = paddle.static.nn.batch_norm(data, momentum=momentum)
             return out
 
     def make_inplace_abn(self):

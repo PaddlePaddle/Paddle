@@ -16,6 +16,7 @@ import unittest
 import itertools
 import numpy as np
 from inference_pass_test import InferencePassTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
@@ -67,7 +68,7 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
                 [self.bs, 1, self.keep_top_k, 6],
                 name='reshape',
             )
-            out = fluid.layers.batch_norm(multiclass_nms_out, is_test=True)
+            out = paddle.static.nn.batch_norm(multiclass_nms_out, is_test=True)
 
         boxes_data = (
             np.arange(self.num_boxes * 4)

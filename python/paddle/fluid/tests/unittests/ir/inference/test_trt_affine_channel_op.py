@@ -16,6 +16,7 @@ import unittest
 import itertools
 import numpy as np
 from inference_pass_test import InferencePassTest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
@@ -61,7 +62,7 @@ class TRTAffineChannelTest(InferencePassTest):
             affine_channel_out = fluid.layers.affine_channel(
                 data, scale=scale, bias=bias, data_layout=self.data_layout
             )
-            out = fluid.layers.batch_norm(affine_channel_out, is_test=True)
+            out = paddle.static.nn.batch_norm(affine_channel_out, is_test=True)
 
         shape[0] = self.bs
         self.feeds = {
