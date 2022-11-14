@@ -84,7 +84,7 @@ class TestPSPassWithBow(unittest.TestCase):
             ),
             is_sparse=is_sparse,
         )
-        q_emb = fluid.layers.reshape(q_emb, [-1, emb_dim])
+        q_emb = paddle.reshape(q_emb, [-1, emb_dim])
         # vsum
         q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
         q_ss = fluid.layers.softsign(q_sum)
@@ -116,7 +116,7 @@ class TestPSPassWithBow(unittest.TestCase):
             ),
             is_sparse=is_sparse,
         )
-        pt_emb = fluid.layers.reshape(pt_emb, [-1, emb_dim])
+        pt_emb = paddle.reshape(pt_emb, [-1, emb_dim])
         # vsum
         pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
         pt_ss = fluid.layers.softsign(pt_sum)
@@ -147,7 +147,7 @@ class TestPSPassWithBow(unittest.TestCase):
             ),
             is_sparse=is_sparse,
         )
-        nt_emb = fluid.layers.reshape(nt_emb, [-1, emb_dim])
+        nt_emb = paddle.reshape(nt_emb, [-1, emb_dim])
         # vsum
         nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
         nt_ss = fluid.layers.softsign(nt_sum)

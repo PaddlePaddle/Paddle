@@ -138,11 +138,11 @@ class MultiHeadAttention(Layer):
         k = self.k_fc(keys)
         v = self.v_fc(values)
         # split head
-        q = layers.reshape(x=q, shape=[0, 0, self.n_head, self.d_key])
+        q = paddle.reshape(x=q, shape=[0, 0, self.n_head, self.d_key])
         q = layers.transpose(x=q, perm=[0, 2, 1, 3])
-        k = layers.reshape(x=k, shape=[0, 0, self.n_head, self.d_key])
+        k = paddle.reshape(x=k, shape=[0, 0, self.n_head, self.d_key])
         k = layers.transpose(x=k, perm=[0, 2, 1, 3])
-        v = layers.reshape(x=v, shape=[0, 0, self.n_head, self.d_value])
+        v = paddle.reshape(x=v, shape=[0, 0, self.n_head, self.d_value])
         v = layers.transpose(x=v, perm=[0, 2, 1, 3])
 
         if cache is not None:
@@ -161,7 +161,7 @@ class MultiHeadAttention(Layer):
             weights = layers.dropout(weights, dropout_prob=self.dropout_rate)
             out = layers.matmul(weights, v)
         out = layers.transpose(out, perm=[0, 2, 1, 3])
-        out = layers.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+        out = paddle.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
         out = self.proj_fc(out)
         return out
 
@@ -557,7 +557,7 @@ class WrapDecoder(Layer):
         dec_output = self.decoder(
             dec_input, enc_output, trg_slf_attn_bias, trg_src_attn_bias, caches
         )
-        dec_output = layers.reshape(
+        dec_output = paddle.reshape(
             dec_output,
             shape=[-1, dec_output.shape[-1]],
         )
@@ -694,7 +694,7 @@ class Transformer(Layer):
         max_len=256,
     ):
         def expand_to_beam_size(tensor, beam_size):
-            tensor = layers.reshape(
+            tensor = paddle.reshape(
                 tensor, [tensor.shape[0], 1] + list(tensor.shape[1:])
             )
             tile_dims = [1] * len(tensor.shape)
@@ -709,7 +709,7 @@ class Transformer(Layer):
                 + list(range(0, var_dim_in_state)),
             )
 
-            tensor = layers.reshape(
+            tensor = paddle.reshape(
                 tensor,
                 [0] * (len(tensor.shape) - var_dim_in_state)
                 + [batch_size * beam_size],
@@ -733,7 +733,7 @@ class Transformer(Layer):
                 list(range(var_dim_in_state, len(tensor.shape)))
                 + list(range(0, var_dim_in_state)),
             )
-            tensor = layers.reshape(
+            tensor = paddle.reshape(
                 tensor,
                 [0] * (len(tensor.shape) - var_dim_in_state)
                 + [batch_size, beam_size],
@@ -849,7 +849,7 @@ class Transformer(Layer):
             log_probs = layers.elementwise_add(
                 x=step_log_probs, y=log_probs, axis=0
             )
-            log_probs = layers.reshape(
+            log_probs = paddle.reshape(
                 log_probs, [-1, beam_size * self.trg_vocab_size]
             )
             scores = log_probs
@@ -872,7 +872,7 @@ class Transformer(Layer):
             finished = layers.logical_or(
                 finished, layers.equal(token_indices, end_token_tensor)
             )
-            trg_word = layers.reshape(token_indices, [-1, 1])
+            trg_word = paddle.reshape(token_indices, [-1, 1])
 
             predict_ids.append(token_indices)
             parent_ids.append(beam_indices)

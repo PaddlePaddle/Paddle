@@ -26,6 +26,7 @@ import tarfile
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
+import paddle
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
@@ -1141,7 +1142,7 @@ def multi_head_attention(
         hidden_size = x.shape[-1]
         # The value 0 in shape attr means copying the corresponding dimension
         # size of the input as the output dimension size.
-        reshaped = layers.reshape(
+        reshaped = paddle.reshape(
             x=x, shape=[0, 0, n_head, hidden_size // n_head]
         )
 
@@ -1162,7 +1163,7 @@ def multi_head_attention(
         trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
         # The value 0 in shape attr means copying the corresponding dimension
         # size of the input as the output dimension size.
-        return layers.reshape(
+        return paddle.reshape(
             x=trans_x,
             shape=list(map(int, [0, 0, trans_x.shape[2] * trans_x.shape[3]])),
         )
@@ -1584,7 +1585,7 @@ def transformer(
         )
 
     cost = layers.softmax_with_cross_entropy(
-        logits=layers.reshape(predict, shape=[-1, trg_vocab_size]),
+        logits=paddle.reshape(predict, shape=[-1, trg_vocab_size]),
         label=label,
         soft_label=True if label_smooth_eps else False,
     )
@@ -1764,7 +1765,7 @@ def fast_decode(
         while_op = layers.While(cond)
         # array states will be stored for each step.
         ids = layers.array_write(
-            layers.reshape(start_tokens, (-1, 1)), step_idx
+            paddle.reshape(start_tokens, (-1, 1)), step_idx
         )
         scores = layers.array_write(init_scores, step_idx)
         # cell states will be overwrited at each step.
@@ -1789,7 +1790,7 @@ def fast_decode(
         ]
         with while_op.block():
             pre_ids = layers.array_read(array=ids, i=step_idx)
-            pre_ids = layers.reshape(pre_ids, (-1, 1, 1))
+            pre_ids = paddle.reshape(pre_ids, (-1, 1, 1))
             pre_scores = layers.array_read(array=scores, i=step_idx)
             # sequence_expand can gather sequences according to lod thus can be
             # used in beam search to sift states corresponding to selected ids.
@@ -1829,14 +1830,14 @@ def fast_decode(
                 enc_output=pre_enc_output,
                 caches=pre_caches,
             )
-            logits = layers.reshape(logits, (-1, trg_vocab_size))
+            logits = paddle.reshape(logits, (-1, trg_vocab_size))
 
             topk_scores, topk_indices = layers.topk(
                 input=layers.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
                 x=layers.log(topk_scores),
-                y=layers.reshape(pre_scores, shape=[-1]),
+                y=paddle.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )
             # beam_search op uses lod to distinguish branches.

@@ -41,7 +41,7 @@ def func_error_in_compile_time(x):
 @paddle.jit.to_static
 def func_error_in_compile_time_2(x):
     x = fluid.dygraph.to_variable(x)
-    x = fluid.layers.reshape(x, shape=[1, 2])
+    x = paddle.reshape(x, shape=[1, 2])
     return x
 
 
@@ -49,7 +49,7 @@ def func_error_in_compile_time_2(x):
 def func_error_in_runtime(x):
     x = fluid.dygraph.to_variable(x)
     two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
-    x = fluid.layers.reshape(x, shape=[1, two])
+    x = paddle.reshape(x, shape=[1, two])
     return x
 
 
@@ -101,7 +101,7 @@ def func_error_in_runtime_with_empty_line(x):
     x = fluid.dygraph.to_variable(x)
     two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
 
-    x = fluid.layers.reshape(x, shape=[1, two])
+    x = paddle.reshape(x, shape=[1, two])
 
     return x
 

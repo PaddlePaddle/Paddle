@@ -48,9 +48,7 @@ def squeeze_excitation(input, num_channels, reduction_ratio):
     #    input=input, pool_size=0, pool_type='avg', global_pooling=True)
     conv = input
     shape = conv.shape
-    reshape = fluid.layers.reshape(
-        x=conv, shape=[-1, shape[1], shape[2] * shape[3]]
-    )
+    reshape = paddle.reshape(x=conv, shape=[-1, shape[1], shape[2] * shape[3]])
     pool = fluid.layers.reduce_mean(input=reshape, dim=2)
 
     squeeze = fluid.layers.fc(
@@ -161,9 +159,7 @@ def SE_ResNeXt50Small(use_feed):
             )
 
     shape = conv.shape
-    reshape = fluid.layers.reshape(
-        x=conv, shape=[-1, shape[1], shape[2] * shape[3]]
-    )
+    reshape = paddle.reshape(x=conv, shape=[-1, shape[1], shape[2] * shape[3]])
     pool = fluid.layers.reduce_mean(input=reshape, dim=2)
     dropout = (
         pool

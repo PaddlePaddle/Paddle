@@ -14,7 +14,7 @@
 
 from functools import partial
 import numpy as np
-
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 
@@ -114,7 +114,7 @@ def multi_head_attention(
 
         hidden_size = x.shape[-1]
         # FIXME(guosheng): Decouple the program desc with batch_size.
-        reshaped = layers.reshape(
+        reshaped = paddle.reshape(
             x=x, shape=[batch_size, -1, n_head, hidden_size // n_head]
         )
 
@@ -134,7 +134,7 @@ def multi_head_attention(
 
         trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
         # FIXME(guosheng): Decouple the program desc with batch_size.
-        return layers.reshape(
+        return paddle.reshape(
             x=trans_x,
             shape=list(
                 map(int, [batch_size, -1, trans_x.shape[2] * trans_x.shape[3]])
@@ -280,7 +280,7 @@ def prepare_encoder(
     enc_input = src_word_emb + src_pos_enc
 
     # FIXME(guosheng): Decouple the program desc with batch_size.
-    enc_input = layers.reshape(x=enc_input, shape=[batch_size, -1, src_emb_dim])
+    enc_input = paddle.reshape(x=enc_input, shape=[batch_size, -1, src_emb_dim])
     return (
         layers.dropout(enc_input, dropout_prob=dropout, is_test=False)
         if dropout
@@ -580,7 +580,7 @@ def transformer(
 
     # TODO(guosheng): Share the weight matrix between the embedding layers and
     # the pre-softmax linear transformation.
-    predict = layers.reshape(
+    predict = paddle.reshape(
         x=layers.fc(
             input=dec_output,
             size=trg_vocab_size,
@@ -589,8 +589,8 @@ def transformer(
             num_flatten_dims=2,
         ),
         shape=[-1, trg_vocab_size],
-        act="softmax",
     )
+    predict = paddle.nn.functional.softmax(predict)
 
     cost = layers.cross_entropy(input=predict, label=gold)
     weighted_cost = cost * weights

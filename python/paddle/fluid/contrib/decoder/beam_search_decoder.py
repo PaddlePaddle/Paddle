@@ -28,6 +28,7 @@ from ...framework import Variable
 from ... import core
 from ... import framework, unique_name
 from ...layer_helper import LayerHelper
+import paddle
 
 __all__ = ['InitState', 'StateCell', 'TrainingDecoder', 'BeamSearchDecoder']
 
@@ -750,7 +751,7 @@ class BeamSearchDecoder:
             topk_scores, topk_indices = layers.topk(scores, k=self._topk_size)
             accu_scores = layers.elementwise_add(
                 x=layers.log(x=topk_scores),
-                y=layers.reshape(prev_scores, shape=[-1]),
+                y=paddle.reshape(prev_scores, shape=[-1]),
                 axis=0,
             )
             selected_ids, selected_scores = layers.beam_search(

@@ -502,10 +502,10 @@ class BOW(Layer):
         # embedding layer
         left_emb = self.emb_layer(left)
         right_emb = self.emb_layer(right)
-        left_emb = fluid.layers.reshape(
+        left_emb = paddle.reshape(
             left_emb, shape=[-1, self.seq_len, self.bow_dim]
         )
-        right_emb = fluid.layers.reshape(
+        right_emb = paddle.reshape(
             right_emb, shape=[-1, self.seq_len, self.bow_dim]
         )
 

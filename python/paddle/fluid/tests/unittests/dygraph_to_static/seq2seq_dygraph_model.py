@@ -177,10 +177,10 @@ class BaseModel(fluid.dygraph.Layer):
         return fluid.layers.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _merge_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, x.shape[2]))
+        return paddle.reshape(x, shape=(-1, x.shape[2]))
 
     def _split_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
+        return paddle.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
 
     def _expand_to_beam_size(self, x):
         x = fluid.layers.unsqueeze(x, [1])
@@ -452,7 +452,7 @@ class BaseModel(fluid.dygraph.Layer):
             log_probs = fluid.layers.elementwise_add(
                 x=step_log_probs, y=beam_state_log_probs, axis=0
             )
-            scores = fluid.layers.reshape(
+            scores = paddle.reshape(
                 log_probs, [-1, self.beam_size * self.tar_vocab_size]
             )
             topk_scores, topk_indices = fluid.layers.topk(
@@ -648,7 +648,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return fluid.layers.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _merge_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, x.shape[2]))
+        return paddle.reshape(x, shape=(-1, x.shape[2]))
 
     def tile_beam_merge_with_batch(self, x):
         x = fluid.layers.unsqueeze(x, [1])  # [batch_size, 1, ...]
@@ -659,7 +659,7 @@ class AttentionModel(fluid.dygraph.Layer):
             x, list(range(2, len(x.shape))) + [0, 1]
         )  # [..., batch_size, beam_size]
         # use 0 to copy to avoid wrong shape
-        x = fluid.layers.reshape(
+        x = paddle.reshape(
             x, shape=[0] * (len(x.shape) - 2) + [-1]
         )  # [..., batch_size * beam_size]
         x = fluid.layers.transpose(
@@ -668,7 +668,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return x
 
     def _split_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
+        return paddle.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
 
     def _expand_to_beam_size(self, x):
         x = fluid.layers.unsqueeze(x, [1])

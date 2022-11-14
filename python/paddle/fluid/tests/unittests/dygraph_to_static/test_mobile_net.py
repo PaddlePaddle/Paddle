@@ -271,7 +271,7 @@ class MobileNetV1(fluid.dygraph.Layer):
         for dws in self.dwsl:
             y = dws(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, 1024])
+        y = paddle.reshape(y, shape=[-1, 1024])
         y = self.out(y)
         return y
 
@@ -438,7 +438,7 @@ class MobileNetV2(fluid.dygraph.Layer):
             y = inv(y)
         y = self._conv9(y, if_act=True)
         y = self._pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self._out_c])
+        y = paddle.reshape(y, shape=[-1, self._out_c])
         y = self._fc(y)
         return y
 
