@@ -209,24 +209,6 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
             paddle::framework::DataTypeToString(filter_data_type)));
   }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx)) {
-#if PADDLE_WITH_CUDA
-    if (input_data_type == framework::proto::VarType::BF16) {
-      PADDLE_ENFORCE_GE(
-          platform::DnnVersion(),
-          8100,
-          platform::errors::InvalidArgument(
-              "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
-    }
-#endif  // PADDLE_WITH_CUDA
-    return framework::OpKernelType(input_data_type,
-                                   ctx.GetPlace(),
-                                   phi::DataLayout::kAnyLayout,
-                                   framework::LibraryType::kCUDNN);
-  }
-#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
-
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 
@@ -476,16 +458,6 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx)) {
-    return framework::OpKernelType(data_type,
-                                   ctx.GetPlace(),
-                                   phi::DataLayout::kAnyLayout,
-                                   framework::LibraryType::kCUDNN);
-  }
-#endif
-
   return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
@@ -657,14 +629,6 @@ void ConvOpDoubleGrad::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx)) {
-    return framework::OpKernelType(data_type,
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout,
-                                   framework::LibraryType::kCUDNN);
-  }
-#endif
   return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 

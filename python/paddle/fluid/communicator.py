@@ -38,7 +38,7 @@ from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 __all__ = ['Communicator', 'FLCommunicator', 'LargeScaleKV']
 
 
-class Communicator(object):
+class Communicator:
     def __init__(self, mode, kwargs=None, envs=None):
         """
         Communicator is used for async distribute training in distribute_transpiler mode.
@@ -246,7 +246,7 @@ class FLCommunicator(Communicator):  ## only for coordinator
         return info_mp
 
 
-class LargeScaleKV(object):
+class LargeScaleKV:
     def __init__(self):
         self.scale_kv = core.LargeScaleKV()
 
@@ -260,7 +260,7 @@ class LargeScaleKV(object):
         return self.scale_kv.size(varname)
 
 
-class HeterClient(object):
+class HeterClient:
     def __init__(self, endpoint, previous_endpoint, trainer_id):
         self.heter_client_ = core.HeterClient(
             endpoint, previous_endpoint, trainer_id

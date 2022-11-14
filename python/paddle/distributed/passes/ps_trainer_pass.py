@@ -1222,8 +1222,8 @@ class SplitTrainerOpsPass(PassBase):
             # runtime attribute
             "endpoint": get_trainer_endpoint(
                 role_maker
-            ),  ## get trainer endpoint
-            "fanin": 0,  ## get heter worker
+            ),  # get trainer endpoint
+            "fanin": 0,  # get heter worker
             "pserver_id": get_role_id(role_maker),
             "distributed_mode": attrs['ps_mode'],
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
@@ -1238,7 +1238,7 @@ class SplitTrainerOpsPass(PassBase):
             attrs=attrs,
         )
 
-        ## TODO add check for bp block
+        # TODO add check for bp block
         # check_op_device(program.global_block(), DEFAULT_DEVICE)
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
@@ -1296,7 +1296,7 @@ class SetHeterPipelineOptPass(PassBase):
         main_program._heter_pipeline_opt = {
             "trainer": "HeterPipelineTrainer",
             "device_worker": "HeterSection",
-            "trainers": role_maker._get_stage_trainers(),  ## trainer num in each stage
+            "trainers": role_maker._get_stage_trainers(),  # trainer num in each stage
             "trainer_id": int(role_maker._role_id()),
             "pipeline_stage": int(role_maker._get_stage_id()) - 1,
             "num_pipeline_stages": int(role_maker._get_num_stage()),
@@ -1524,7 +1524,7 @@ class SplitFlOpsPass(PassBase):
         attrs = {
             "message_to_block_id": [grad_to_block_id],
             "optimize_blocks": [second_block],
-            "endpoint": get_trainer_endpoint(self.role_maker),  ##
+            "endpoint": get_trainer_endpoint(self.role_maker),
             "fanin": 0,
             "pserver_id": get_role_id(self.role_maker),
             "distributed_mode": self.ps_mode,
@@ -1584,7 +1584,7 @@ class SplitFlOpsPass(PassBase):
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
         attrs = {
             "message_to_block_id": [grad_to_block_id],
-            "optimize_blocks": [second_block],  ## what to do?
+            "optimize_blocks": [second_block],  # what to do?
             "endpoint": get_heter_worker_endpoint(self.role_maker),
             "fanin": len(get_previous_stage_trainers(self.role_maker)),
             "pserver_id": 1,  # TODO

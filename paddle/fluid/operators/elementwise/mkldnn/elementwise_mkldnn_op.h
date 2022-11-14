@@ -60,10 +60,6 @@ inline void AddSubNonBroadcast(platform::ReorderMKLDNNHandler* reorder_handler,
   reorder_attr.set_output_scales(0, scales);
   auto reorder_p =
       reorder_handler->AcquireReorder(dst_memory, src_memory, reorder_attr);
-  platform::RecordEvent record_reorder("int_reorder",
-                                       platform::TracerEventType::UserDefined,
-                                       2,
-                                       platform::EventRole::kUniqueOp);
 
   reorder_p->execute(platform::MKLDNNDeviceContext::tls().get_stream(),
                      *src_memory,

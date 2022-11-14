@@ -415,6 +415,12 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_onnxruntime() const { return use_onnxruntime_; }
   ///
+  /// \brief A boolean state telling whether the Lite OpenCL is turned on.
+  ///
+  /// \return bool Whether the Lite OpenCL is turned on.
+  ///
+  bool use_opencl() const { return use_opencl_; }
+  ///
   /// \brief A boolean state telling whether the ONNXRuntime Optimization is
   /// turned on.
   ///
@@ -725,6 +731,11 @@ struct PD_INFER_DECL AnalysisConfig {
       const std::vector<std::string>& ops_filter = {});
 
   ///
+  /// \brief Turn on the usage of Lite sub-graph engine with opencl.
+  ///
+  void EnableOpenCL();
+
+  ///
   /// \brief A boolean state indicating whether the Lite sub-graph engine is
   /// used.
   ///
@@ -819,6 +830,18 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   ///
   void EnableMkldnnBfloat16();
+
+  ///
+  /// \brief Turn off MKLDNN fc passes.
+  ///
+  void DisableMkldnnFcPasses();
+
+  ///
+  /// \brief A boolean state telling whether to disable the MKLDNN Fc passes.
+  ///
+  /// \return bool Whether to disable the MKLDNN Fc passes.
+  ///
+  bool mkldnn_fc_passes_disabled() const { return disable_mkldnn_fc_passes_; }
 
   ///
   /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
@@ -1106,6 +1129,9 @@ struct PD_INFER_DECL AnalysisConfig {
   bool xpu_adaptive_seqlen_;
   bool xpu_enable_multi_stream_;
 
+  // LITE OPENCL SETTINGS
+  bool use_opencl_{false};
+
   // NNAdapter related
   LiteNNAdapterConfig nnadapter_config_;
 
@@ -1134,7 +1160,10 @@ struct PD_INFER_DECL AnalysisConfig {
       "fusion_gru",
       "fusion_lstm",
       "multi_gru",
-      "slice"};
+      "slice",
+      "split"};
+
+  bool disable_mkldnn_fc_passes_{false};
 
   // ipu related.
   bool use_ipu_{false};

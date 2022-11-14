@@ -21,7 +21,7 @@ import unittest
 from decorator_helper import prog_scope
 
 
-class Memory(object):
+class Memory:
     def __init__(self, shape, dtype='float32'):
         self.ex = np.zeros(shape=shape, dtype=dtype)
         self.cur = None
@@ -43,7 +43,7 @@ class Memory(object):
         self.cur = None
 
 
-class Output(object):
+class Output:
     def __init__(self):
         self.outs = []
 
@@ -57,7 +57,7 @@ class Output(object):
         return self.outs[-1][-1]
 
 
-class BaseRNN(object):
+class BaseRNN:
     def __init__(self, ins, mems, params, outs, num_seq=5, max_seq_len=15):
         self.num_seq = num_seq
         self.inputs = collections.defaultdict(list)

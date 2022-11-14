@@ -321,6 +321,9 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
     return OpFuncType::kQueueSync;
   }
 
+  if (op->Type() == "shape") {
+    return OpFuncType::kQueueSync;
+  }
   return OpFuncType::kQueueAsync;
 }
 
@@ -635,6 +638,12 @@ void BuildOpFuncList(const platform::Place& place,
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
         auto expected_kernel_key =
             op_with_kernel->GetExpectedKernelType(exec_ctx);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        if (op_with_kernel->CanCUDNNBeUsed(exec_ctx,
+                                           expected_kernel_key.data_type_)) {
+          expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+        }
+#endif
         VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
         // change device by the device_guard()
         ApplyDeviceGuard(op, place, &expected_kernel_key);
@@ -804,12 +813,6 @@ void BuildOpFuncList(const platform::Place& place,
 
     interpreter::LogDeviceMemoryStats(place);
   }
-
-  // NOTE(Ruibiao): Release memory cache to avoid memory fragments in Allocator.
-  // It reduce about 10% memory usage for V100 8-GPU training of
-  // transformer_base_bs4096_amp_fp16 and transformer_base_bs4096_pure_fp16
-  // model.
-  memory::Release(place);
 }
 
 void LogDeviceMemoryStats(const platform::Place& place) {

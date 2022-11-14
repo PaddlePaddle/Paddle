@@ -112,13 +112,13 @@ DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      CudaThresholdedReluFunctor,
                                      threshold)
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Relu6, CudaRelu6Functor, threshold)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Relu6Raw, CudaRelu6Functor, threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      CudaHardShrinkFunctor,
                                      threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, CudaSoftShrinkFunctor, lambda)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, CudaELUFunctor, alpha)
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Swish, CudaSwishFunctor, beta)
+DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SwishRaw, CudaSwishFunctor, beta)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CudaCELUFunctor, alpha)
 
@@ -138,12 +138,12 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Selu, CudaSeluFunctor, scale, alpha)
 
 template <typename T, typename Context>
-void HardSwishKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     float threshold,
-                     float scale,
-                     float offset,
-                     DenseTensor* out) {
+void HardSwishRawKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        float threshold,
+                        float scale,
+                        float offset,
+                        DenseTensor* out) {
   funcs::CudaHardSwishFunctor<T> functor;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = threshold;
@@ -198,7 +198,7 @@ PD_REGISTER_ACTIVATION_KERNEL(atanh, AtanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_tanh, HardTanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(stanh, StanhKernel)
@@ -254,8 +254,8 @@ PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(log2, Log2Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(log10, Log10Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(log1p, Log1pKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hard_swish, HardSwishKernel)
-PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hard_swish_raw, HardSwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)

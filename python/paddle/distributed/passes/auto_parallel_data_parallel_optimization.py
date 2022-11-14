@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from collections import OrderedDict
-import numpy as np
 
 import paddle
 from paddle.fluid import unique_name
 from paddle.fluid.framework import default_main_program
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from .pass_base import PassBase, PassType, register_pass
 from paddle.distributed.auto_parallel.operators.common import (
     is_data_parallel_scale_op,
     is_data_parallel_reduce_op,
@@ -28,8 +28,8 @@ from paddle.distributed.auto_parallel.utils import (
     is_loss_grad_op,
     is_optimize_op,
     ring_id_to_process_group,
+    get_var_numel,
 )
-from .pass_base import PassBase, PassType, register_pass
 
 # add new optimizers supporting rescale_grad here
 __rescale_grad_supported_opts__ = [
@@ -42,10 +42,6 @@ __rescale_grad_supported_opts__ = [
 
 # a heuristic number
 __max_stream_num_allow__ = 16
-
-
-def numel(var):
-    return np.prod(list(var.shape))
 
 
 @register_pass("auto_parallel_data_parallel_optimization")
@@ -430,7 +426,7 @@ class DataParallelOptimizationPass(PassBase):
                 ring_id = op.attr("ring_id")
                 grad_name = op.output_arg_names[0]
                 grad_var = block.var(grad_name)
-                grad_numel = numel(grad_var)
+                grad_numel = get_var_numel(grad_var)
 
                 if cur_group.acceptable(grad_var, ring_id):
                     assert grad_name not in grouped_grad_names
@@ -498,7 +494,9 @@ class DataParallelOptimizationPass(PassBase):
             for idx in sorted(remove_op_indices, reverse=True):
                 assert (
                     block.ops[idx].type in remove_op_types
-                ), "Unexception: try to remove op {}".format(str(op))
+                ), "Unexception: try to remove op {}".format(
+                    str(block.ops[idx])
+                )
                 block._remove_op(idx)
 
             # insert coalecse op
@@ -572,7 +570,7 @@ class DataParallelOptimizationPass(PassBase):
             self._logger.info("individual gradient {}".format(individual_grads))
 
 
-class GradientsGroup(object):
+class GradientsGroup:
     def __init__(self, ops, max_group_size):
         self.max_group_size = max_group_size
         self.ops = ops
@@ -594,7 +592,7 @@ class GradientsGroup(object):
             return True
         if ring_id != self.ring_id:
             return False
-        if numel(grad_var) + self.numel > self.max_group_size:
+        if get_var_numel(grad_var) + self.numel > self.max_group_size:
             return False
         if grad_var.dtype != self.dtype:
             return False
@@ -605,7 +603,7 @@ class GradientsGroup(object):
         self.gradients.append(grad_var)
         self.ring_id = ring_id
         self.dtype = grad_var.dtype
-        self.numel += numel(grad_var)
+        self.numel += get_var_numel(grad_var)
 
         # remove auxiliary ops in non-fuse dp allreduce
         self.remove_allreduce_op_indices.append(i)

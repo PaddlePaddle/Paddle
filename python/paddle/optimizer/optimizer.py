@@ -98,7 +98,7 @@ def append_backward_new(
     return params_and_grads
 
 
-class Optimizer(object):
+class Optimizer:
     r"""Optimizer Base class.
 
     Define the common interface of an optimizer.
@@ -1028,14 +1028,25 @@ class Optimizer(object):
         if framework._non_static_mode():
             parameter_list = parameters if parameters else self._parameter_list
 
-            params_grads = []
-            for param in parameter_list:
-                if param.stop_gradient:
-                    continue
-                if param._grad_ivar() is not None:
-                    # create gradient tensor
-                    grad_var = param._grad_ivar()
-                    params_grads.append((param, grad_var))
+            if framework.in_dygraph_mode():
+                # It is very time-consuming to call c++ functions in a loop on the python side.
+                # We put this part of the code on the c++ side to improve the speed in eager mode.
+                params_grads = []
+                grads = core.eager.get_all_grads(parameter_list)
+                for index, grad in enumerate(grads):
+                    if grad is not None:
+                        params_grads.append((parameter_list[index], grad))
+            else:
+                # Keep the original code to support legacy mode.
+                # Delete the else branch when the legacy mode exits.
+                params_grads = []
+                for param in parameter_list:
+                    if param.stop_gradient:
+                        continue
+                    if param._grad_ivar() is not None:
+                        # create gradient tensor
+                        grad_var = param._grad_ivar()
+                        params_grads.append((param, grad_var))
         else:
             if callbacks is None:
                 callbacks = [error_clip_callback]

@@ -35,7 +35,7 @@ __all__ = [
 ]
 
 
-class LearningRateDecay(object):
+class LearningRateDecay:
     """
     Base class of learning rate decay
 
