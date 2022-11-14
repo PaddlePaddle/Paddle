@@ -18,8 +18,7 @@ import collections
 import os
 import warnings
 import logging
-import paddle.fluid as fluid
-from paddle.fluid import core
+from paddle.framework import core
 import paddle.fluid.framework as framework
 
 # logging.basicConfig(
@@ -391,7 +390,7 @@ def get_dense_send_context(
         aggregate = True
         # print("public get_dense_send_context dense_table:", grad_name,
         #      var_numel, origin_varnames)
-        from paddle.fluid.core import CommContext
+        from core import CommContext
 
         dense_ctx = CommContext(
             grad_name,
@@ -427,7 +426,7 @@ def get_dense_send_context(
         aggregate = True
         # print("public get_dense_send_context data_norm table:", grad_name,
         #      var_numel, origin_varnames)
-        from paddle.fluid.core import CommContext
+        from core import CommContext
 
         data_norm_ctx = CommContext(
             grad_name,
@@ -455,7 +454,7 @@ def get_dense_send_context(
             var_numel = reduce(lambda x, y: x * y, var.shape)
             grad_name = origin_varname
             aggregate = True
-            from paddle.fluid.core import CommContext
+            from core import CommContext
 
             dense_ctx = CommContext(
                 grad_name,
@@ -504,7 +503,7 @@ def get_geo_trainer_send_context(attrs):
             )
             var = program.global_block().vars[grad.merged_var.name]
             var_numel = reduce(lambda x, y: x * y, var.shape[1:])
-            from paddle.fluid.core import CommContext
+            from core import CommContext
 
             print(
                 "public get_the_geo_send_context sparse: ", grad_name, var_numel
@@ -544,7 +543,7 @@ def _step_ctx(idx, role_maker):
     endpoints = get_ps_endpoints(role_maker)
     sections = [1] * len(endpoints)
     names = [name] * len(endpoints)
-    from paddle.fluid.core import CommContext
+    from core import CommContext
 
     ctx = CommContext(
         name,
@@ -602,7 +601,7 @@ def get_the_one_send_context(attrs, split_dense_table=False, ep_list=None):
 
             if grad_name in send_ctx:
                 continue
-            from paddle.fluid.core import CommContext
+            from core import CommContext
 
             print(
                 "public get_the_one_send_context sparse: ",
@@ -896,7 +895,7 @@ def find_heter_ops(program, default_device="cpu"):
     if len(heter_ops) == 0:
         warnings.warn(
             "No heterogeneous OP was found in your program , "
-            " please using fluid.device_guard() to run OPs on different device."
+            " please using static.device_guard() to run OPs on different device."
         )
 
     total_heter_ops = 0
