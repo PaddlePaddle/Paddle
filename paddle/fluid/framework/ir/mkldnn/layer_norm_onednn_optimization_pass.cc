@@ -87,7 +87,7 @@ void LayerNormOneDNNOptimizationPass::ApplyImpl(Graph *graph) const {
 
     layer_norm_op->Op()->SetInput("ScaleShift", {scale_shift_node->Name()});
 
-    IR_OP_VAR_LINK(scale_shift_node, layer_norm_op);
+    IR_NODE_LINK_TO(scale_shift_node, layer_norm_op);
     found_layer_norm++;
   };
 
