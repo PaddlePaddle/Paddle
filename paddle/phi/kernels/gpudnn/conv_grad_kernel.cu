@@ -54,7 +54,6 @@ void ConvCudnnGradKernelImplV7(
     const std::vector<int>& dilations,
     paddle::platform::DataLayout compute_format,
     paddle::platform::DataLayout layout,
-    cudnnTensorFormat_t layout_tensor,
     bool use_addto,
     bool exhaustive_search,
     bool deterministic,
@@ -72,6 +71,8 @@ void ConvCudnnGradKernelImplV7(
   auto workspace_handle = ctx.cudnn_workspace_handle();
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
+  auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
+
   ConvArgs args1{handle,
                  transformed_input_grad,
                  transformed_filter_channel,
@@ -346,9 +347,7 @@ void ConvCudnnGradKernelImplV8(
     const std::vector<int>& strides,
     const std::vector<int>& padding_common,
     const std::vector<int>& dilations,
-    cudnnDataType_t dtype,
-    paddle::platform::DataLayout compute_format,
-    cudnnTensorFormat_t layout_format,
+    paddle::platform::DataLayout layout,
     bool use_addto,
     bool exhaustive_search,
     bool deterministic,
@@ -364,6 +363,9 @@ void ConvCudnnGradKernelImplV8(
   cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
   auto workspace_handle = ctx.cudnn_workspace_handle();
 
+  auto dtype = paddle::platform::CudnnDataType<T>::type;
+  auto layout_format = paddle::platform::GetCudnnTensorFormat(layout);
+
   if (input_grad) {
     CudnnConvBwdDataV8<T>(transformed_output_grad_channel,
                           transformed_filter_channel,
@@ -373,7 +375,6 @@ void ConvCudnnGradKernelImplV8(
                           padding_common,
                           dilations,
                           dtype,
-                          compute_format,
                           layout_format,
                           use_addto,
                           exhaustive_search,
@@ -390,7 +391,6 @@ void ConvCudnnGradKernelImplV8(
                             padding_common,
                             dilations,
                             dtype,
-                            compute_format,
                             layout_format,
                             use_addto,
                             exhaustive_search,
@@ -628,7 +628,6 @@ void ConvCudnnGradKernel(const Context& ctx,
                  ? paddle::platform::DataLayout::kNDHWC
                  : paddle::platform::DataLayout::kNCDHW;
   }
-  auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   if (dynload::IsCudnnFrontendEnabled() && (groups == 1))
@@ -641,9 +640,7 @@ void ConvCudnnGradKernel(const Context& ctx,
                                  strides,
                                  padding_common,
                                  dilations,
-                                 dtype,
-                                 compute_format,
-                                 layout_tensor,
+                                 layout,
                                  use_addto,
                                  exhaustive_search,
                                  deterministic,
@@ -662,7 +659,6 @@ void ConvCudnnGradKernel(const Context& ctx,
                                  dilations,
                                  compute_format,
                                  layout,
-                                 layout_tensor,
                                  use_addto,
                                  exhaustive_search,
                                  deterministic,
@@ -681,7 +677,6 @@ void ConvCudnnGradKernel(const Context& ctx,
                                dilations,
                                compute_format,
                                layout,
-                               layout_tensor,
                                use_addto,
                                exhaustive_search,
                                deterministic,

@@ -51,7 +51,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                            const std::vector<int>& padding_common,
                            const std::vector<int>& dilations,
                            paddle::platform::DataLayout compute_format,
-                           cudnnTensorFormat_t layout_format,
+                           paddle::platform::DataLayout layout,
                            bool exhaustive_search,
                            bool deterministic,
                            int groups,
@@ -63,6 +63,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   auto handle = ctx.cudnn_handle();
   auto workspace_handle = ctx.cudnn_workspace_handle();
 
+  auto layout_format = paddle::platform::GetCudnnTensorFormat(layout);
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
   // ------------------- cudnn descriptors ---------------------
@@ -226,8 +227,7 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
                            const std::vector<int>& strides,
                            const std::vector<int>& padding_common,
                            const std::vector<int>& dilations,
-                           cudnnDataType_t dtype,
-                           cudnnTensorFormat_t layout_format,
+                           paddle::platform::DataLayout layout,
                            bool exhaustive_search,
                            bool deterministic,
                            int groups,
@@ -246,6 +246,9 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
   T* output_data = output_tensor->data<T>();
   cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
   auto workspace_handle = ctx.cudnn_workspace_handle();
+
+  auto layout_format = paddle::platform::GetCudnnTensorFormat(layout);
+  auto dtype = paddle::platform::CudnnDataType<T>::type;
 
   float alpha = 1.0f;
   float beta = 0.0f;
@@ -511,7 +514,6 @@ void ConvCudnnKernel(const Context& ctx,
                  ? paddle::platform::DataLayout::kNDHWC
                  : paddle::platform::DataLayout::kNCDHW;
   }
-  auto layout_format = paddle::platform::GetCudnnTensorFormat(layout);
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   if (dynload::IsCudnnFrontendEnabled() && (groups == 1))
@@ -521,8 +523,7 @@ void ConvCudnnKernel(const Context& ctx,
                              strides,
                              padding_common,
                              dilations,
-                             dtype,
-                             layout_format,
+                             layout,
                              exhaustive_search,
                              deterministic,
                              groups,
@@ -535,7 +536,7 @@ void ConvCudnnKernel(const Context& ctx,
                              padding_common,
                              dilations,
                              compute_format,
-                             layout_format,
+                             layout,
                              exhaustive_search,
                              deterministic,
                              groups,
@@ -548,7 +549,7 @@ void ConvCudnnKernel(const Context& ctx,
                            padding_common,
                            dilations,
                            compute_format,
-                           layout_format,
+                           layout,
                            exhaustive_search,
                            deterministic,
                            groups,
