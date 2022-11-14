@@ -33,6 +33,7 @@ from paddle.fluid.dygraph import nn
 from paddle.fluid.dygraph import base
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _test_eager_guard
+import paddle.nn.functional as F
 
 
 class LayerTest(unittest.TestCase):
@@ -3502,7 +3503,7 @@ class TestBook(LayerTest):
         with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
             label = self._get_data(name="label", shape=[1], dtype="int32")
             one_hot_label = layers.one_hot(input=label, depth=10)
-            smooth_label = layers.label_smooth(
+            smooth_label = F.label_smooth(
                 label=one_hot_label, epsilon=0.1, dtype="int32"
             )
             return smooth_label

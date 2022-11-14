@@ -26,6 +26,7 @@ import tarfile
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
+import paddle.nn.functional as F
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
@@ -1578,7 +1579,7 @@ def transformer(
     # cancel padding index in calculating the loss.
     label, weights = make_all_inputs(label_data_input_fields)
     if label_smooth_eps:
-        label = layers.label_smooth(
+        label = F.label_smooth(
             label=layers.one_hot(input=label, depth=trg_vocab_size),
             epsilon=label_smooth_eps,
         )
