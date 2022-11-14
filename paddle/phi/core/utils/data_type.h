@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <iostream>
+#include <map>
 #include <string>
 #include <typeindex>
 
@@ -22,6 +23,23 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace phi {
+
+// Here we can't depend on the fluid proto::VarType, so we use the dtype enum
+// value directly. See also `assign_value_sig.cc`.
+// proto::VarType::INT16 -> 1  -> phi::DataType::INT16
+// proto::VarType::INT32 -> 2  -> phi::DataType::INT32
+// proto::VarType::INT64 -> 3  -> phi::DataType::INT64
+// proto::VarType::FP16 ->  4  -> phi::DataType::FLOAT16
+// proto::VarType::FP32 ->  5  -> phi::DataType::FLOAT32
+// proto::VarType::FP64 ->  6  -> phi::DataType::FLOAT64
+// proto::VarType::UINT8 -> 20 -> phi::DataType::UINT8
+static std::map<int, phi::DataType> var_type_map{{1, phi::DataType::INT16},
+                                                 {2, phi::DataType::INT32},
+                                                 {3, phi::DataType::INT64},
+                                                 {4, phi::DataType::FLOAT16},
+                                                 {5, phi::DataType::FLOAT32},
+                                                 {6, phi::DataType::FLOAT64},
+                                                 {20, phi::DataType::UINT8}};
 
 #define _PhiForEachDataTypeHelper_(callback, cpp_type, data_type) \
   callback(cpp_type, data_type);

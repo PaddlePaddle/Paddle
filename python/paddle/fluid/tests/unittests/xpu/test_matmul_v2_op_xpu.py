@@ -101,7 +101,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
         def test_check_grad(self):
             if (
                 hasattr(self.__class__, "no_need_check_grad")
-                and self.__class__.no_need_check_grad == True
+                and self.__class__.no_need_check_grad
             ):
                 return
             place = paddle.XPUPlace(0)
@@ -292,6 +292,30 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.x_shape = (8, 111, 4, 17)
             self.y_shape = 17
             self.trans_x = False
+            self.trans_y = False
+
+    class TestMatMulOp19(TestMatMulV2Op):
+        """
+        case 19 : (x.ndim <= 2) && (y.ndim >= 3),
+                  x need to broadcast and trans_y is false
+        """
+
+        def config(self):
+            self.x_shape = (10, 20)
+            self.y_shape = (2, 20, 4)
+            self.trans_x = False
+            self.trans_y = False
+
+    class TestMatMulOp20(TestMatMulV2Op):
+        """
+        case 20 : (x.ndim <= 2) && (y.ndim >= 3),
+                  x need to broadcast and trans_y is false
+        """
+
+        def config(self):
+            self.x_shape = (20, 10)
+            self.y_shape = (2, 20, 4)
+            self.trans_x = True
             self.trans_y = False
 
 

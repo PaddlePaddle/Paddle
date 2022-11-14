@@ -66,9 +66,7 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
       const std::string &var_name,
       const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   expected_kernel_type.data_layout_);
+    return expected_kernel_type;
   }
 };
 

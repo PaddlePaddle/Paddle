@@ -1105,6 +1105,10 @@ void OpDesc::InferVarType(BlockDesc *block) const {
   }
 }
 
+const OperatorDistAttr *OpDesc::DistAttr() const {
+  return dist_attr_ ? dist_attr_.get() : nullptr;
+}
+
 OperatorDistAttr *OpDesc::MutableDistAttr() {
   if (dist_attr_) {
     return dist_attr_.get();

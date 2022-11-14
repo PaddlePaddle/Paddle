@@ -124,15 +124,15 @@ lambda_fun = lambda x: x
 
 class MyConvLayer(fluid.dygraph.Layer):
     def __init__(self):
-        super(MyConvLayer, self).__init__()
-        self._conv = fluid.dygraph.Conv2D(
-            num_channels=3,
-            num_filters=2,
-            filter_size=3,
-            param_attr=fluid.ParamAttr(
+        super().__init__()
+        self._conv = paddle.nn.Conv2D(
+            in_channels=3,
+            out_channels=2,
+            kernel_size=3,
+            weight_attr=paddle.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.99)
             ),
-            bias_attr=fluid.ParamAttr(
+            bias_attr=paddle.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.5)
             ),
         )
@@ -152,7 +152,7 @@ class MyConvLayer(fluid.dygraph.Layer):
 
 class MyLayer(fluid.dygraph.Layer):
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
 
         self.conv = MyConvLayer()
         self.fc = fluid.dygraph.Linear(

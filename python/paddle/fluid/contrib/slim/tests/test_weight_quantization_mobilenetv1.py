@@ -40,7 +40,7 @@ def _set_variable_data(scope, place, var_name, np_value):
         np_value, np.ndarray
     ), 'The type of value should be numpy array.'
     var_node = scope.find_var(var_name)
-    if var_node != None:
+    if var_node is not None:
         tensor = var_node.get_tensor()
         tensor.set(np_value, place)
 

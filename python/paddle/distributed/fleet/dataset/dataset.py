@@ -20,7 +20,7 @@ import paddle.fluid.core as core
 __all__ = []
 
 
-class DatasetBase(object):
+class DatasetBase:
     """Base dataset class."""
 
     def __init__(self):
@@ -363,7 +363,7 @@ class InMemoryDataset(DatasetBase):
 
     def __init__(self):
         """Init."""
-        super(InMemoryDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
         self.is_user_set_queue_num = False
@@ -514,7 +514,7 @@ class InMemoryDataset(DatasetBase):
                 self._set_fleet_send_batch_size(kwargs[key])
             elif key == "fleet_send_sleep_seconds":
                 self._set_fleet_send_sleep_seconds(kwargs[key])
-            elif key == "fea_eval" and kwargs[key] == True:
+            elif key == "fea_eval" and kwargs[key]:
                 candidate_size = kwargs.get("candidate_size", 10000)
                 self._set_fea_eval(candidate_size, True)
 
@@ -597,7 +597,7 @@ class InMemoryDataset(DatasetBase):
             data_feed_type = "MultiSlotInMemoryDataFeed"
         self._set_feed_type(data_feed_type)
 
-        super(InMemoryDataset, self).init(
+        super().init(
             batch_size=batch_size,
             thread_num=thread_num,
             use_var=use_var,
@@ -1288,7 +1288,7 @@ class QueueDataset(DatasetBase):
         """
         Initialize QueueDataset
         """
-        super(QueueDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
 
     def init(self, **kwargs):
@@ -1297,7 +1297,7 @@ class QueueDataset(DatasetBase):
 
         should be called only once in user's python scripts to initialize setings of dataset instance
         """
-        super(QueueDataset, self).init(**kwargs)
+        super().init(**kwargs)
 
     def _prepare_to_run(self):
         """
@@ -1329,14 +1329,14 @@ class FileInstantDataset(DatasetBase):
         """
         Initialize FileInstantDataset
         """
-        super(FileInstantDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotFileInstantDataFeed"
 
     def init(self, **kwargs):
         """
         should be called only once in user's python scripts to initialize setings of dataset instance
         """
-        super(FileInstantDataset, self).init(**kwargs)
+        super().init(**kwargs)
 
 
 class BoxPSDataset(InMemoryDataset):
@@ -1354,7 +1354,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         Initialize BoxPSDataset
         """
-        super(BoxPSDataset, self).__init__()
+        super().__init__()
         self.boxps = core.BoxPS(self.dataset)
         self.proto_desc.name = "PaddleBoxDataFeed"
 
@@ -1362,7 +1362,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         should be called only once in user's python scripts to initialize setings of dataset instance
         """
-        super(BoxPSDataset, self).init(**kwargs)
+        super().init(**kwargs)
 
         rank_offset = kwargs.get("rank_offset", "")
         self._set_rank_offset(rank_offset)

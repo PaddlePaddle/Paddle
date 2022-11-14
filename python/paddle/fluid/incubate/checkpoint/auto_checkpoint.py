@@ -46,7 +46,7 @@ g_program_attr = {}  # program_name->can_be_auto_checkpoint
 
 def _get_logger(log_level, name="auto_checkpoint"):
     global logger
-    if logger != None:
+    if logger is not None:
         return logger
 
     logger = logging.getLogger(name)
@@ -69,7 +69,7 @@ def _thread_checker():
     ), "auto checkpoint must run under main thread"
 
 
-class AutoCheckpointChecker(object):
+class AutoCheckpointChecker:
     def __init__(self):
         self._run_env = None
         self._platform = None
@@ -683,12 +683,12 @@ def _get_valid_program(prog):
 def _auto_checkpoint(exe, prog):
     _get_checker()
 
-    assert exe._auto_checkpoint_name != None
+    assert exe._auto_checkpoint_name is not None
     if not _can_auto_checkpoint(prog):
         return
 
     program = _get_valid_program(prog)
-    assert program._auto_checkpoint_name != None
+    assert program._auto_checkpoint_name is not None
 
     exe_status = g_train_epoch_range._exe_status
     key = _get_running_key(

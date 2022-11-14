@@ -18,6 +18,7 @@ from types import MethodType
 from collections import OrderedDict
 
 import paddle
+import paddle.distributed as dist
 from paddle import nn
 from paddle.autograd import PyLayer
 import paddle.fluid.core as core
@@ -196,7 +197,7 @@ class GroupShardedStage3(nn.Layer):
         """
 
         for p in self._layer.parameters():
-            collective.broadcast(
+            dist.broadcast(
                 p, src=self._global_root_rank, group=self._group, sync_op=True
             )
 
@@ -493,7 +494,7 @@ class GroupShardedStage3(nn.Layer):
         """
 
         for buffer in self._layer.buffers(include_sublayers=True):
-            collective.broadcast(
+            dist.broadcast(
                 buffer, self._global_root_rank, self._group, sync_op=True
             )
 
@@ -536,7 +537,7 @@ class GroupShardedStage3(nn.Layer):
         # 2.Handle unslice param
         for grad_storage in self._grad_storages.values():
             grad_storage.buffer.scale_(scale=self._world_size_scaling)
-            collective.all_reduce(tensor=grad_storage.buffer, group=self._group)
+            dist.all_reduce(tensor=grad_storage.buffer, group=self._group)
         if self._offload:
             for param in list(self._unslice_params):
                 param._clear_data()
@@ -600,7 +601,7 @@ class GroupShardedStage3(nn.Layer):
             if param.name in self._task_flow.full_grad.keys():
                 full_grad = self._task_flow.full_grad[param.name]
                 # Only support sync allreduce current rank's layer now
-                collective.all_reduce(tensor=full_grad, group=self._group)
+                dist.all_reduce(tensor=full_grad, group=self._group)
 
                 start, end = self._param2buffer[param.name][self._rank]
                 if param.bw_storage is None:

@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/isfinite_op.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -55,6 +56,10 @@ class DenseTensor;
 
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
 
 DECLARE_bool(benchmark);
@@ -1357,6 +1362,39 @@ bool OperatorWithKernel::SupportsMKLDNN(
   }
 }
 
+bool OperatorWithKernel::SupportsCUDNN(
+    const proto::VarType::Type data_type) const {
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  paddle::experimental::DataType phi_data_type =
+      framework::TransToPhiDataType(data_type);
+  auto has_phi_kernel = std::any_of(
+      phi_kernels.begin(),
+      phi_kernels.end(),
+      [phi_data_type](phi::KernelKeyMap::const_reference kern_pair) {
+        return kern_pair.first.backend() == phi::Backend::GPUDNN &&
+               kern_pair.first.dtype() == phi_data_type;
+      });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = op_kernel_iter->second;
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [data_type](OpKernelMap::const_reference kern_pair) {
+            return platform::is_gpu_place(kern_pair.first.place_) &&
+                   kern_pair.first.library_type_ == LibraryType::kCUDNN &&
+                   kern_pair.first.data_type_ == data_type;
+          });
+    }
+  }
+}
+
 bool OperatorWithKernel::SupportsKernelType(
     const OpKernelType& kernel_type, const ExecutionContext& exe_ctx) const {
   auto& all_op_kernels = AllOpKernels();
@@ -1408,21 +1446,47 @@ bool OperatorWithKernel::SupportsKernelType(
   }
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (this->CanCUDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
+    auto tmp_kernel_type = kernel_type;
+    tmp_kernel_type.library_type_ = framework::LibraryType::kCUDNN;
+    return kernels.find(tmp_kernel_type) != kernels.end();
+  }
+#endif
+
   return kernel_iter != kernels.end();
 }
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  // NOTE(jiahongyu): Only mkldnn kernels need to check "use_mkldnn" attribute,
-  // hence we first call function SupportsMKLDNN. If we check "use_mkldnn"
-  // attribute first, it will cause error because some codes add "use_mkldnn"
-  // attribute to non-mkldnn ops.
-  if (!this->SupportsMKLDNN(data_type)) {
-    return false;
+  return ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn") &&
+         platform::is_cpu_place(ctx.GetPlace()) &&
+         this->SupportsMKLDNN(data_type);
+}
+
+bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                                        proto::VarType::Type data_type) const {
+  bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
+                   paddle::platform::is_gpu_place(ctx.GetPlace());
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (use_cudnn) {
+    auto& dev_ctx = ctx.device_context<phi::GPUContext>();
+    use_cudnn &= (dev_ctx.cudnn_handle() != nullptr);
   }
-  const std::string use_mkldnn_attr = "use_mkldnn";
-  return ctx.HasAttr(use_mkldnn_attr) && ctx.Attr<bool>(use_mkldnn_attr) &&
-         platform::is_cpu_place(ctx.GetPlace());
+#endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
+
+#if defined(PADDLE_WITH_CUDA)
+  if (use_cudnn && data_type == framework::proto::VarType::BF16) {
+    PADDLE_ENFORCE_GE(
+        platform::DnnVersion(),
+        8100,
+        platform::errors::InvalidArgument(
+            "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
+  }
+#endif  // PADDLE_WITH_CUDA
+
+  return use_cudnn && this->SupportsCUDNN(data_type);
 }
 
 void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
@@ -1585,6 +1649,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
+      }
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (this->CanCUDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
+        kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
       }
 #endif
 
@@ -1828,6 +1898,12 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
+  }
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (this->CanCUDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
 #endif
 
@@ -2269,7 +2345,8 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       std::unique_ptr<OpKernelType> new_expected_kernel_key = nullptr;
-      if (run_phi_kernel_ && in_def->backend != phi::Backend::ALL_BACKEND) {
+      if (run_phi_kernel_ && in_def != nullptr &&
+          in_def->backend != phi::Backend::ALL_BACKEND) {
         auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
         if ((in_def->backend != tensor_backend &&
              (in_def->backend != phi::Backend::GPUDNN ||
@@ -2388,7 +2465,6 @@ Scope* OperatorWithKernel::PrepareData(
                           input_names.size(),
                           input_defs.size()));
     for (size_t i = 0; i < input_defs.size(); ++i) {
-      const auto& input_defs = phi_kernel_->args_def().input_defs();
       auto& in_def = input_defs.at(i);
       std::string input_name = input_names[i];
       auto iter = ctx->inputs.find(input_name);
@@ -2400,6 +2476,22 @@ Scope* OperatorWithKernel::PrepareData(
           no_buffer_ins && no_buffer_ins->count(input_name) > 0;
       prepare_input_data(input_name, &ins_vector, &in_def, should_skip_input);
     }
+#ifdef PADDLE_WITH_MKLDNN
+    // For input that is Extra, only MKLDNN will use Extra Inputs
+    auto& extra_input_names =
+        paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(
+            Type());
+    for (const auto& input_name : extra_input_names) {
+      auto iter = ctx->inputs.find(input_name);
+      if (iter == ctx->inputs.end()) {
+        continue;
+      }
+      bool should_skip_input =
+          no_buffer_ins && no_buffer_ins->count(input_name) > 0;
+      std::vector<Variable*>& input_vars = iter->second;
+      prepare_input_data(input_name, &input_vars, nullptr, should_skip_input);
+    }
+#endif
   } else {
     for (auto& var_name_item : Inputs()) {
       bool should_skip_input =
@@ -2461,13 +2553,6 @@ void OperatorWithKernel::ParseInputDataType(
       }
     }
     if (t != nullptr) {
-      PADDLE_ENFORCE_EQ(t->IsInitialized(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "The %s Op's Input Variable `%s` "
-                            "contains uninitialized phi::DenseTensor.",
-                            Type(),
-                            name));
       *data_type = paddle::framework::TransToProtoVarType(t->dtype());
     }
   }
@@ -2699,6 +2784,65 @@ phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
   return (*arg_map_fn_)(arg_mapping_ctx);
 }
 
+static void SetDnnAttrIntoDeviceContext(
+    phi::DeviceContext* dev_ctx,
+    const Attribute& attr,
+    const std::string& attr_name,
+    const operators::ExtraAttrPropertySet& attr_propertys) {
+#ifdef PADDLE_WITH_MKLDNN
+  if (phi::OneDNNContext::classof(dev_ctx) &&
+      attr_propertys.Support(operators::ExtraAttrProperty::ONEDNN)) {
+    VLOG(4) << "Runtime attr `" << attr_name << "` is passed to OneDNNContext.";
+    phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
+    switch (AttrTypeID(attr)) {
+      case proto::AttrType::FLOAT:
+        one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(float, attr));
+        break;
+      case proto::AttrType::INT:
+        one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int, attr));
+        break;
+      case proto::AttrType::STRING:
+        one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(std::string, attr));
+        break;
+      case proto::AttrType::INTS:
+        one_dnn_ctx->SetDnnAttr(attr_name,
+                                PADDLE_GET_CONST(std::vector<int>, attr));
+        break;
+      case proto::AttrType::FLOATS:
+        one_dnn_ctx->SetDnnAttr(attr_name,
+                                PADDLE_GET_CONST(std::vector<float>, attr));
+        break;
+      case proto::AttrType::BOOLEAN:
+        one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
+        break;
+      default:
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported Attribute value type `%s` for phi.",
+            platform::demangle(attr.type().name())));
+    }
+  }
+#endif
+#ifdef PADDLE_WITH_CUDA
+  if (phi::GPUContext::classof(dev_ctx) &&
+      attr_propertys.Support(operators::ExtraAttrProperty::GPUDNN)) {
+    VLOG(4) << "Runtime attr `" << attr_name << "` is passed to GPUDNNContext.";
+    phi::GPUContext* gpu_dnn_ctx = static_cast<phi::GPUContext*>(dev_ctx);
+    switch (AttrTypeID(attr)) {
+      case proto::AttrType::INT:
+        gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int, attr));
+        break;
+      case proto::AttrType::BOOLEAN:
+        gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
+        break;
+      default:
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported Attribute value type `%s` for phi.",
+            platform::demangle(attr.type().name())));
+    }
+  }
+#endif
+}
+
 void OperatorWithKernel::BuildPhiKernelContext(
     const RuntimeContext& ctx,
     platform::DeviceContext* dev_ctx,
@@ -2712,6 +2856,15 @@ void OperatorWithKernel::BuildPhiKernelContext(
   auto input_defs = phi_kernel_->args_def().input_defs();
   auto attr_defs = phi_kernel_->args_def().attribute_defs();
   auto output_defs = phi_kernel_->args_def().output_defs();
+
+#if defined(PADDLE_WITH_MKLDNN)
+  if (phi::OneDNNContext::classof(dev_ctx)) {
+    // Onednn holds this op's variable's name and init them here.
+    phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
+    one_dnn_ctx->SetInputsName(Inputs());
+    one_dnn_ctx->SetOutputsName(Outputs());
+  }
+#endif
 
   PADDLE_ENFORCE_EQ(input_names.size(),
                     input_defs.size(),
@@ -2992,6 +3145,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
       } break;
       default: {
         if (attr_iter == Attrs().end()) {
+          // TODO(chenweihang): remove this backup searching later
           attr_iter = RuntimeAttrs().find(attr_names[i]);
           PADDLE_ENFORCE_NE(attr_iter,
                             RuntimeAttrs().end(),
@@ -3075,6 +3229,63 @@ void OperatorWithKernel::BuildPhiKernelContext(
     }
   }
   VLOG(4) << "Done attributes";
+
+  // For compatible with Op with extra attrs for specific backend
+#if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
+  auto& runtime_attrs = RuntimeAttrs();
+  for (const auto& attr_iter : runtime_attrs) {
+    auto& attr_name = attr_iter.first;
+    auto& attr = attr_iter.second;
+    auto attr_propertys = paddle::operators::GetExtraAttrPropertys(attr_name);
+    SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_propertys);
+  }
+  // TODO(chenweihang): Since the pass will still `SetAttr` in the OpDesc,
+  // we try to add these Attrs to the RuntimeAttrs, but these OpDesc will lose
+  // the RuntimeAttrs information in the process of converting the Graph to
+  // the Program, so additional record configuration will be introduced,
+  // which increases the The cost of development and understanding, so we
+  // still use Attrs to get and the attributes set by these passes from Attrs
+  // for the time being. In the future, it is necessary to clarify the
+  // positioning of RuntimeAttrs and expand related functions.
+  auto& attrs = Attrs();
+  for (const auto& attr_iter : attrs) {
+    auto& attr_name = attr_iter.first;
+    auto& attr = attr_iter.second;
+    auto attr_propertys = paddle::operators::GetExtraAttrPropertys(attr_name);
+    SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_propertys);
+  }
+  VLOG(4) << "Done runtime attributes";
+#endif
+
+// For compatible with Op with extra input for onednn backend
+#ifdef PADDLE_WITH_MKLDNN
+  if (phi::OneDNNContext::classof(dev_ctx)) {
+    phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
+    auto& extra_input_names =
+        paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(
+            Type());
+    for (const auto& input_name : extra_input_names) {
+      auto it = ctx.inputs.find(input_name);
+      if (it == ctx.inputs.end() || it->second.size() == 0) {
+        one_dnn_ctx->SetDnnInput(input_name, nullptr);
+      } else {
+        auto ins_vector = it->second;
+        PADDLE_ENFORCE_EQ(
+            ins_vector.size(),
+            1UL,
+            phi::errors::InvalidArgument(
+                "OneDNN's extra input only allows one input tensor."));
+        auto* var = ins_vector[0];
+        PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "OneDNN's extra input only can be DenseTensor."));
+        one_dnn_ctx->SetDnnInput(input_name, &(var->Get<phi::DenseTensor>()));
+      }
+    }
+  }
+  VLOG(4) << "Done runtime extra inputs";
+#endif
 }
 
 }  // namespace framework

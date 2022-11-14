@@ -110,7 +110,14 @@ class ConvertToMixedPrecisionPass {
         keep_io_types_(keep_io_types),
         black_list_(black_list),
         place_(paddle::CPUPlace()),
-        executor_(place_) {}
+        executor_(place_) {
+    // black_list_.insert("assign");
+    black_list_.insert("fill_constant");
+    black_list_.insert("assign_value");
+    black_list_.insert("eye");
+    black_list_.insert("fill_any_like");
+    black_list_.insert("fill_constant_batch_size_like");
+  }
 
   void Run();
 
@@ -409,8 +416,7 @@ void ConvertToMixedPrecisionPass::LoadAndPrepare() {
 
 void ConvertToMixedPrecisionPass::FindVarsInMultiBlock() {
   std::unordered_set<std::string> all_var_names_set;
-  std::vector<std::unordered_set<std::string>> block_var_names_set(
-      program_desc_->Size());
+  std::vector<std::set<std::string>> block_var_names_set(program_desc_->Size());
   for (BlockID idx = 0; idx < program_desc_->Size(); ++idx) {
     for (auto* op : program_desc_->Block(idx).AllOps()) {
       const auto& in_names = op->InputArgumentNames();
@@ -442,7 +448,7 @@ void ConvertToMixedPrecisionPass::FindVarsInMultiBlock() {
 
       for (const auto& name : vars_in_multi_block) {
         vars_in_multi_block_with_pair_.emplace(
-            name, std::make_pair(VarType::FP32, idx));
+            name, std::make_pair(VarType::Type(), idx));
       }
     }
   }
@@ -587,10 +593,10 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(BlockID block_idx) {
       bool support_precision =
           OpSupportPrecision(op_type, backend_, mixed_precision_, black_list_);
 
-      // If the op has no input and output of float type, we will not choose the
+      // If the op has no input of float type, we will not choose the
       // low precision kernel.
       {
-        bool has_float_input_and_output{false};
+        bool has_float_input{false};
         for (auto* in_node : op_node->inputs) {
           if (!in_node->IsVar()) continue;
           auto* real_node = GetRealVarNode(block_idx, in_node);
@@ -598,24 +604,14 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(BlockID block_idx) {
               real_node->Var()->GetDataType() == VarType::FP32 ||
               real_node->Var()->GetDataType() == VarType::FP64 ||
               real_node->Var()->GetDataType() == VarType::BF16) {
-            has_float_input_and_output = true;
+            has_float_input = true;
             break;
           }
         }
-        for (auto* out_node : op_node->outputs) {
-          if (!out_node->IsVar()) continue;
-          auto* real_node = GetRealVarNode(block_idx, out_node);
-          if (real_node->Var()->GetDataType() == VarType::FP16 ||
-              real_node->Var()->GetDataType() == VarType::FP32 ||
-              real_node->Var()->GetDataType() == VarType::FP64 ||
-              real_node->Var()->GetDataType() == VarType::BF16) {
-            has_float_input_and_output = true;
-            break;
-          }
-        }
-        if (!has_float_input_and_output) {
+
+        if (!has_float_input) {
           support_precision = false;
-          VLOG(2) << " op doesn't has float input and output, just skip.";
+          VLOG(2) << " op doesn't has float input, just skip.";
         }
       }
       VLOG(2) << "op type: " << op_type
@@ -727,7 +723,9 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(BlockID block_idx) {
 
     if (vars_in_multi_block_with_pair_.count(real_node->Name()) &&
         vars_in_multi_block_with_pair_.at(real_node->Name()).second ==
-            block_idx) {
+            block_idx &&
+        vars_in_multi_block_with_pair_.at(real_node->Name()).first ==
+            VarType::Type()) {
       vars_in_multi_block_with_pair_.at(real_node->Name()).first =
           real_node->Var()->GetDataType();
     }

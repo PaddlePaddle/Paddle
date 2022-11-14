@@ -78,7 +78,7 @@ class MLPLayer(nn.Layer):
         dropout_ratio=0.1,
         initializer_range=0.02,
     ):
-        super(MLPLayer, self).__init__()
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
         weight_attr = paddle.ParamAttr(

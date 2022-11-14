@@ -13,13 +13,16 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import core
 from .process_mesh import ProcessMesh
 from .process_mesh import get_current_process_mesh
 from .dist_context import get_default_distributed_context
 from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperatorHelper
-from .utils import verify_shard_spec, convert_to_dims_mapping
+from .utils import (
+    verify_shard_spec,
+    convert_to_dims_mapping,
+    __no_shape_var_type__,
+)
 
 
 def shard_tensor(x, process_mesh=None, shard_spec=None):
@@ -79,11 +82,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     dist_tensor = DistributedTensor(x)
     serial_tensor = dist_tensor.serial_tensor
     dist_tensor.dist_attr.process_mesh = process_mesh
-    if (
-        serial_tensor.type == core.VarDesc.VarType.READER
-        or serial_tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-        or serial_tensor.type == core.VarDesc.VarType.STEP_SCOPES
-    ):
+    if serial_tensor.type in __no_shape_var_type__:
         tensor_shape = []
     else:
         tensor_shape = serial_tensor.shape
@@ -220,7 +219,7 @@ def recompute(op):
 _g_collections = {}
 
 
-class CollectionNames(object):
+class CollectionNames:
     FETCHES = "fetches"
     LOGGING = "logging"
 

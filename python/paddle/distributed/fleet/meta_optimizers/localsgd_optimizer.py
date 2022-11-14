@@ -23,7 +23,7 @@ __all__ = []
 
 class LocalSGDOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(LocalSGDOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
@@ -205,7 +205,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
 
 class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(AdaptiveLocalSGDOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
@@ -468,7 +468,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 next_local_steps = layers.elementwise_min(
                     next_local_steps, max_local_steps
                 )
-                next_local_steps = layers.elementwise_max(
+                next_local_steps = paddle.maximum(
                     next_local_steps, min_local_steps
                 )
                 layers.assign(next_local_steps, k_steps)
