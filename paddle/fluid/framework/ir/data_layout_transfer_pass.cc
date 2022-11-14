@@ -90,7 +90,11 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       auto &&data_format = op_desc->GetAttrIfExists<std::string>("data_format");
       if (data_format == "NCHW") {
         for (auto *in_node : node->inputs) {
-          if (!in_node->IsVar() || in_node->Var()->Persistable()) continue;
+          if (!in_node->IsVar()) continue;
+          auto from_shape = in_node->Var()->GetShape();
+          in_node->Var()->SetShape(
+              {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
+          if (in_node->Var()->Persistable()) continue;
           if (in_node->inputs[0]->Name() == target_op_type) continue;
           insertLayoutTransOp(graph,
                               in_node,
@@ -104,6 +108,7 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
         auto nhwc_attr = framework::Attribute(std::string("NHWC"));
         op_desc->SetAttr("data_format", nhwc_attr);
 
+        // transfer weights
         auto filter_names = op_desc->Input("Filter");
         for (const auto &filter_name : filter_names) {
           auto *filter_var = scope->FindLocalVar(filter_name);
