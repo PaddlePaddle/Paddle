@@ -16,6 +16,7 @@ import paddle.nn as nn
 from collections import OrderedDict
 from typing import Dict
 
+
 def _make_divisible(v, divisor=8, min_value=None):
     """
     This function ensures that all layers have a channel number that is divisible by divisor
@@ -39,17 +40,17 @@ class IntermediateLayerGetter(nn.LayerDict):
     """
     Layer wrapper that returns intermediate layers from a model.
 
-    It has a strong assumption that the layers have been registered into the model in the 
+    It has a strong assumption that the layers have been registered into the model in the
     same order as they are used. This means that one should **not** reuse the same nn.Layer
     twice in the forward if you want this to work.
 
-    Additionally, it is only able to query sublayer that are directly assigned to the model. 
+    Additionally, it is only able to query sublayer that are directly assigned to the model.
     So if `model` is passed, `model.feature1` can be returned, but not `model.feature1.layer2`.
 
     Args:
         model (nn.Layer): model on which we will extract the features
-        return_layers (Dict[name, new_name]): a dict containing the names of the layers for 
-        which the activations will be returned as the key of the dict, and the value of the 
+        return_layers (Dict[name, new_name]): a dict containing the names of the layers for
+        which the activations will be returned as the key of the dict, and the value of the
         dict is the name of the returned activation (which the user can specify).
 
     Examples:
@@ -61,7 +62,7 @@ class IntermediateLayerGetter(nn.LayerDict):
         >>>     {'layer1': 'feat1', 'layer3': 'feat2'})
         >>> out = new_m(paddle.rand([1, 3, 224, 224]))
         >>> print([(k, v.shape) for k, v in out.items()])
-        >>>     [('feat1', [1, 64, 56, 56]), 
+        >>>     [('feat1', [1, 64, 56, 56]),
         >>>      ('feat2', [1, 256, 14, 14])]
     """
 
@@ -70,7 +71,9 @@ class IntermediateLayerGetter(nn.LayerDict):
     }
 
     def __init__(self, model: nn.Layer, return_layers: Dict[str, str]) -> None:
-        if not set(return_layers).issubset([name for name, _ in model.named_children()]):
+        if not set(return_layers).issubset(
+            [name for name, _ in model.named_children()]
+        ):
             raise ValueError("return_layers are not present in model")
         orig_return_layers = return_layers
         return_layers = {str(k): str(v) for k, v in return_layers.items()}
