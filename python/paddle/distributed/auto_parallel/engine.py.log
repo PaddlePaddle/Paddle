@@ -941,7 +941,7 @@ class Engine:
                 lr = auto_utils.get_lr(self._optimizer)
                 train_run_cost = time.time() - train_start
                 speed = 1 / (train_reader_cost + train_run_cost)
-                print("step: [{}], reader cost: [{}], trainer cost: [{}], ips: [{}] step/s".format(
+                print("step: {}, reader cost: {}, trainer cost: {}, ips: {} step/s".format(
                     step, train_reader_cost, train_run_cost, speed
                 ))
                 # logs = self._prepare_logger(
