@@ -15,7 +15,6 @@
 #pragma once
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include <cuda.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
