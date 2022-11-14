@@ -1448,29 +1448,17 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self,
 static PyObject* tensor__set_use_cudnn(TensorObject* self,
                                        PyObject* args,
                                        PyObject* kwargs) {
-  LOG(WARNING) << "DEBUG Call tensor__set_use_cudnn before EAGER_TRY";
-
   EAGER_TRY
-
-  LOG(WARNING) << "DEBUG Call tensor__set_use_cudnn begin";
-
   PADDLE_ENFORCE(
       self->tensor.defined() && self->tensor.is_dense_tensor(),
       paddle::platform::errors::Fatal(
           "function _set_use_cudnn is only effective for DenseTensor"));
 
-  LOG(WARNING) << "DEBUG Check tensor__set_use_cudnn";
-
   bool use_cudnn = pybind::CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
-
-  LOG(WARNING) << "DEBUG Get use_cudnn value";
-
   phi::DenseTensorMeta* dense_tensor_meta =
       phi::DenseTensorUtils::GetMutableMeta(
           static_cast<phi::DenseTensor*>(self->tensor.impl().get()));
   dense_tensor_meta->use_cudnn = use_cudnn;
-  LOG(WARNING) << "DEBUG Successfully set use_cudnn " << use_cudnn
-               << " set value " << dense_tensor_meta->use_cudnn;
 
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL

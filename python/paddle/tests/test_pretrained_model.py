@@ -22,39 +22,15 @@ import paddle
 from paddle.static import InputSpec
 import paddle.vision.models as models
 
-from paddle.fluid.framework import (  # noqa: F401
-    convert_np_dtype_to_dtype_,
-    _non_static_mode,
-    _varbase_creator,
-    in_dygraph_mode,
-    _in_legacy_dygraph,
-)
-from paddle.fluid import core
 
 # test the predicted resutls of static graph and dynamic graph are equal
 # when used pretrained model
-
-
 class TestPretrainedModel(unittest.TestCase):
     def infer(self, arch):
         path = os.path.join(tempfile.mkdtemp(), '.cache_test_pretrained_model')
         if not os.path.exists(path):
             os.makedirs(path)
         x = np.array(np.random.random((2, 3, 224, 224)), dtype=np.float32)
-
-        if _in_legacy_dygraph():
-            print("legacy")
-            x_without_holder = core.VarBase()
-        else:
-            print("dygraph")
-            x_without_holder = core.eager.Tensor()
-            x_without_holder._set_use_cudnn(False)
-
-        print("is dygraph", in_dygraph_mode())
-        test_x = paddle.to_tensor(x)
-        print("is dense", test_x.is_dense())
-        test_x._set_use_cudnn(False)
-
         res = {}
         for dygraph in [True, False]:
             if not dygraph:
@@ -83,7 +59,12 @@ class TestPretrainedModel(unittest.TestCase):
         # 'resnet18', 'vgg16', 'alexnet', 'resnext50_32x4d', 'inception_v3',
         # 'densenet121', 'googlenet', 'wide_resnet50_2', 'wide_resnet101_2'
         arches = [
-            'shufflenet_v2_x0_25',  # bug model
+            'mobilenet_v1',
+            'mobilenet_v2',
+            'mobilenet_v3_small',
+            'mobilenet_v3_large',
+            'squeezenet1_0',
+            'shufflenet_v2_x0_25',
         ]
         for arch in arches:
             self.infer(arch)

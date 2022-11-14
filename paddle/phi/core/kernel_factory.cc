@@ -123,8 +123,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           {Backend::GPUDNN, DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     }
     if (kernel_iter != iter->second.end()) {
-      LOG(WARNING) << "The GPUDNN kernel for [" << kernel_name
-                   << "] is selected. directly";
       return {kernel_iter->second, false};
     }
     kernel_key =
@@ -180,9 +178,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
             << ", expected_kernel_key:" << kernel_key
             << ", fallbacking to CPU one!";
 
-    LOG(WARNING) << "The CPU kernel for [" << kernel_name
-                 << "] is selected. fallback";
-
     return {kernel_iter->second, true};
   }
 
@@ -196,17 +191,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           " to CPU one, please set the flag true before run again.",
           kernel_key,
           kernel_name));
-
-  if (kernel_key.backend() == Backend::GPU) {
-    LOG(WARNING) << "The GPU kernel for [" << kernel_name
-                 << "] is selected. without fallback";
-  } else if (kernel_key.backend() == Backend::CPU) {
-    LOG(WARNING) << "The CPU kernel for [" << kernel_name
-                 << "] is selected. without fallback";
-  } else if (kernel_key.backend() == Backend::GPUDNN) {
-    LOG(WARNING) << "The GPUDNN kernel for [" << kernel_name
-                 << "] is selected. without fallback";
-  }
 
   return {kernel_iter->second, false};
 }
