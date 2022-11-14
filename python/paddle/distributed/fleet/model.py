@@ -12,67 +12,161 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import paddle
-from .meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
+from .base.topology import ParallelMode
+from .meta_parallel import TensorParallel
+from .meta_parallel import (
+    PipelineParallel,
+    ShardingParallel,
+    PipelineParallelWithInterleave,
+    PipelineLayer,
+)
+from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 from paddle.distributed import fleet
-from .utils.log_util import logger
+
+_grad_scalar = None
 
 
-def _dygraph_distributed_optimizer(optimizer, strategy=None):
+def distributed_model(model):
     """
-    Optimizer for distributed training.
-    For the distributed training, this method would rebuild a new instance of DistributedOptimizer.
-    Which has basic Optimizer function and special features for distributed training.
+    Return distributed data parallel model (Only work in dygraph mode)
+
     Args:
-        optimizer(Optimizer): The executor to run for init server.
-        strategy(DistributedStrategy): Extra properties for distributed optimizer.
-            It is recommended to use DistributedStrategy in fleet.init(). The strategy
-            here is for compatibility. If the strategy in fleet.distributed_optimizer()
-            is not None, then it will overwrite the DistributedStrategy in fleet.init(),
-            which will take effect in distributed training.
+        model (Layer): the user-defind model which inherits Layer.
+
     Returns:
-        Fleet: instance of fleet.
+        distributed data parallel model which inherits Layer.
+
     Examples:
+
         .. code-block:: python
+
             import paddle
-            import paddle.distributed.fleet as fleet
+            import paddle.nn as nn
+            from paddle.distributed import fleet
+
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super().__init__()
+                    self._linear1 = nn.Linear(10, 10)
+                    self._linear2 = nn.Linear(10, 1)
+
+                def forward(self, x):
+                    return self._linear2(self._linear1(x))
+
+            # 1. initialize fleet environment
             fleet.init(is_collective=True)
-            strategy = fleet.DistributedStrategy()
-            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-            optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+
+            # 2. create layer & optimizer
+            layer = LinearNet()
+            loss_fn = nn.MSELoss()
+            adam = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=layer.parameters())
+
+            # 3. get data_parallel model using fleet
+            adam = fleet.distributed_optimizer(adam)
+            dp_layer = fleet.distributed_model(layer)
+
+            # 4. run layer
+            inputs = paddle.randn([10, 10], 'float32')
+            outputs = dp_layer(inputs)
+            labels = paddle.randn([10, 1], 'float32')
+            loss = loss_fn(outputs, labels)
+
+            print("loss:", loss.numpy())
+
+            loss.backward()
+
+            adam.step()
+            adam.clear_grad()
+
+
     """
     fleet_env = fleet.fleet
-    fleet_env.user_defined_optimizer = optimizer
 
-    if strategy is not None:
-        if fleet_env._is_collective:
-            logger.warning(
-                "It is recommended to use DistributedStrategy "
-                "in fleet_env.init(). The strategy here is only for compatibility. "
-                "If the strategy in fleet_env.distributed_optimizer() is "
-                "not None, then it will overwrite the DistributedStrategy in fleet_env.init(), "
-                "which will take effect in distributed training."
+    assert model is not None, "model should not be None"
+    if fleet_env.worker_num() <= 1:
+        return model
+
+    amp_enable = False
+    strategy = fleet_env._user_defined_strategy
+    if strategy.amp:
+        amp_enable = True
+        amp_level = "O2" if strategy.amp_configs['use_pure_fp16'] else "O1"
+        if amp_level.upper() == "O2":
+            model = paddle.amp.decorate(
+                models=model,
+                optimizers=None,
+                level="O2",
+                master_weight=None,
+                save_dtype=None,
             )
-        fleet_env._user_defined_strategy = copy.deepcopy(strategy)
+        init_loss_scaling = strategy.amp_configs['init_loss_scaling']
+        incr_ratio = strategy.amp_configs['incr_ratio']
+        decr_ratio = strategy.amp_configs['decr_ratio']
+        incr_every_n_steps = strategy.amp_configs['incr_every_n_steps']
+        decr_every_n_nan_or_inf = strategy.amp_configs[
+            'decr_every_n_nan_or_inf'
+        ]
+        use_dynamic_loss_scaling = strategy.amp_configs[
+            'use_dynamic_loss_scaling'
+        ]
 
-    fleet_env._context = {}
+        global _grad_scalar
+        _grad_scalar = paddle.amp.GradScaler(
+            init_loss_scaling=init_loss_scaling,
+            incr_ratio=incr_ratio,
+            decr_ratio=decr_ratio,
+            incr_every_n_steps=incr_every_n_steps,
+            decr_every_n_nan_or_inf=decr_every_n_nan_or_inf,
+            use_dynamic_loss_scaling=use_dynamic_loss_scaling,
+        )
 
-    if fleet_env.worker_num() > 1:
-        if not fleet_env._user_defined_strategy.heter_ccl_mode:
-            return HybridParallelOptimizer(
-                optimizer, fleet_env._hcg, fleet_env._user_defined_strategy
+    if strategy.heter_ccl_mode:
+        distributed_model = paddle.DataParallel(
+            model,
+            comm_buffer_size=strategy.fuse_grad_size_in_MB,
+            last_comm_buffer_size=strategy.last_comm_group_size_MB,
+            find_unused_parameters=strategy.find_unused_parameters,
+        )
+        return distributed_model
+
+    if fleet_env._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
+        model = ShardingParallel(model, fleet_env._hcg, strategy=strategy)
+    elif fleet_env._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
+
+        # NOTE (JZ-LIANG) init parameters broadcast within sharding group
+        # normally it should be done inside DataParallel
+        if fleet_env.sharding_degree > 1:
+            from paddle.distributed.fleet.utils.hybrid_parallel_util import (
+                broadcast_sharding_parameters,
             )
+
+            assert (
+                fleet_env.sharding_degree
+                == fleet_env._hcg.get_sharding_parallel_world_size()
+            )
+            broadcast_sharding_parameters(model, fleet_env._hcg)
+        model = paddle.DataParallel(
+            model,
+            comm_buffer_size=strategy.fuse_grad_size_in_MB,
+            last_comm_buffer_size=strategy.last_comm_group_size_MB,
+            find_unused_parameters=strategy.find_unused_parameters,
+            group=fleet_env._hcg.get_data_parallel_group(),
+        )
+    elif fleet_env._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
+        model = TensorParallel(model, fleet_env._hcg, strategy=strategy)
+    elif fleet_env._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
+        assert isinstance(
+            model, PipelineLayer
+        ), "For pipeline parallel, the model should an instance of PipelineLayer"
+        if model.get_num_virtual_stages() == 1:
+            # 1f1b pipeline
+            model = PipelineParallel(model, fleet_env._hcg, strategy=strategy)
         else:
-            return HeterParallelOptimizer(
-                optimizer, fleet_env._user_defined_strategy
+            # interleave pipeline
+            model = PipelineParallelWithInterleave(
+                model, fleet_env._hcg, strategy=strategy
             )
-    else:
-        return optimizer
 
-
-def distributed_optimizer(*args, **kwargs):
-    if paddle.framework._non_static_mode():
-        return _dygraph_distributed_optimizer(*args, **kwargs)
-    else:
-        return fleet.fleet.distributed_optimizer(*args, **kwargs)
+    return model
