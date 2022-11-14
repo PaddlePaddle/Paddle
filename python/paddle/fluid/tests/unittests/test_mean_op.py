@@ -140,7 +140,7 @@ def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
     return np.mean(x, axis=axis, keepdims=keepdim)
 
 
-def ref_reduce_mean_grad(x, axis, dtype):
+def ref_reduce_mean_grad(x, axis, dtype, reduce_all):
     if reduce_all:
         axis = list(range(x.ndim))
 
@@ -191,7 +191,6 @@ class TestReduceMeanOp(OpTest):
         if self.dtype != 'float16':
             self.check_grad(['X'], ['Out'], check_eager=True)
         else:
-            return
             if not core.is_compiled_with_cuda():
                 return
             place = paddle.CUDAPlace(0)
@@ -204,7 +203,10 @@ class TestReduceMeanOp(OpTest):
                 )
                 dx = paddle.grad(y, x)[0].numpy()
                 dx_expected = ref_reduce_mean_grad(
-                    self.inputs['X'], self.attrs['dim'], self.dtype
+                    self.inputs['X'],
+                    self.attrs['dim'],
+                    self.dtype,
+                    self.attrs['reduce_all'],
                 )
                 np.testing.assert_array_equal(dx, dx_expected)
 
