@@ -951,14 +951,15 @@ PDNode *patterns::LayerNormShiftScale::operator()() {
                               ->AsInput()
                               ->assert_is_op_input("layer_norm", "Scale");
 
-  auto layer_norm_op = pattern->NewNode(layer_norm_op_repr())
-                           ->assert_is_op("layer_norm");
+  auto layer_norm_op =
+      pattern->NewNode(layer_norm_op_repr())->assert_is_op("layer_norm");
 
   auto layer_norm_out = pattern->NewNode(layer_norm_out_repr())
-                           ->assert_is_op_output("layer_norm", "Y")
-                           ->AsOutput();
+                            ->assert_is_op_output("layer_norm", "Y")
+                            ->AsOutput();
 
-  layer_norm_op->LinksFrom({layer_norm_in, layer_norm_bias, layer_norm_scale}).LinksTo({layer_norm_out});
+  layer_norm_op->LinksFrom({layer_norm_in, layer_norm_bias, layer_norm_scale})
+      .LinksTo({layer_norm_out});
   return layer_norm_out;
 }
 
