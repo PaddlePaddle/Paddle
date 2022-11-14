@@ -59,7 +59,7 @@ def _get_item(t, i, np_dtype):
         raise ValueError("Not supported data type " + str(np_dtype))
 
 
-def _set_item(t, i, e, np_dtype):
+def _set_item(t, i, e, np_dtype, place):
     if np_dtype == np.float16:
         np_t = np.array(t).astype(np.float16)
         shape = np_t.shape
@@ -145,14 +145,14 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
     for i in range(x_size):
         orig = _get_item(x_t, i, np_type)
         x_pos = orig + delta
-        _set_item(x_t, i, x_pos, np_type)
+        _set_item(x_t, i, x_pos, np_type, place)
         y_pos = run()
 
         x_neg = orig - delta
-        _set_item(x_t, i, x_neg, np_type)
+        _set_item(x_t, i, x_neg, np_type, place)
         y_neg = run()
 
-        _set_item(x_t, i, orig, np_type)
+        _set_item(x_t, i, orig, np_type, place)
 
         for j in range(len(y)):
             jacobian[j][i, :] = (y_pos[j] - y_neg[j]) / delta / 2.0

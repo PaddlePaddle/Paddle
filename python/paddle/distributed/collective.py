@@ -193,7 +193,9 @@ def _new_process_group_impl(
         )
         global_rank = cluster_offset + rank
         global_world_size = cluster_size_cumsum[-1]
-        global_rank, global_world_size = _get_global_config(backend, rank)
+        global_rank, global_world_size = _get_global_config(  # noqa: F821
+            backend, rank
+        )
         pg = core.ProcessGroupHeter(
             store,
             rank=global_rank,
