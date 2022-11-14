@@ -954,6 +954,7 @@ class Engine:
                 #     self._mode,
                 # )
                 cbks.on_batch_end('train', step, logs)
+                reader_start = time.time()
 
             if valid_data and (epoch + 1) % valid_freq == 0:
                 val_logs = self.evaluate(
@@ -975,7 +976,6 @@ class Engine:
                 self._reset_metrics()
 
             cbks.on_epoch_end(epoch, logs)
-            reader_start = time.time()
         cbks.on_end('train', logs)
         return self.history
 
