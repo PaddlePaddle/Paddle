@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from .container import Container
 
 from .status import Status
@@ -27,8 +29,8 @@ class PodSepc:
         )
 
         # by controller
-        self._init_containers: List[Container] = []
-        self._containers: List[Container] = []
+        self._init_containers: list[Container] = []
+        self._containers: list[Container] = []
 
         # self.resource: Resource = None
         # self.status: Status = None

@@ -23,6 +23,7 @@ from .dist_default import DistributedDefaultImpl0
 from ..cost import build_comp_desc_from_dist_op, build_comp_costs_from_descs
 from ..cost import Reshape2OpCost
 from ..cost import Reshape2GradOpCost
+from ..cost import build_dp_costs
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
