@@ -23,6 +23,9 @@ from typing import List
 
 class TrtConvertActivationTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8415:
+            return False
         return True
 
     def sample_program_configs(self):
