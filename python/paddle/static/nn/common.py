@@ -594,7 +594,6 @@ def deform_conv2d(
         )
 
 
-@deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
 def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
     r"""
     prelu activation.
