@@ -11257,68 +11257,6 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod, out_val_if_empty=0):
     return [out, loss_weight]
 
 
-def unstack(x, axis=0, num=None):
-    """
-    :alias_main: paddle.unstack
-        :alias: paddle.unstack,paddle.tensor.unstack,paddle.tensor.manipulation.unstack
-        :old_api: paddle.fluid.layers.unstack
-
-    **UnStack Layer**
-
-    This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
-
-    If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
-    If :code:`num` is None, it would be inferred from :code:`x.shape[axis]`,
-    and if :code:`x.shape[axis]` <= 0 or is unknown, :code:`ValueError` is
-    raised.
-
-    Args:
-        x (Tensor): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
-        axis (int): The axis along which the input is unstacked.
-        num (int|None): The number of output variables.
-
-    Returns:
-        list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
-
-    Raises:
-        ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            x = paddle.ones(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
-            y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
-
-    """
-
-    if _non_static_mode():
-        if num is None:
-            num = x.shape[axis]
-        if num == 0:
-            return []
-        return _legacy_C_ops.unstack(x, num, 'axis', int(axis), 'num', num)
-
-    helper = LayerHelper('unstack', **locals())
-    if num is None:
-        if axis is None or x.shape[axis] <= 0:
-            raise ValueError('unknown unstack number')
-        else:
-            num = x.shape[axis]
-
-    outs = []
-    for _ in range(num):
-        outs.append(helper.create_variable_for_type_inference(x.dtype))
-
-    helper.append_op(
-        type='unstack',
-        inputs={'X': [x]},
-        outputs={'Y': outs},
-        attrs={'axis': axis, 'num': num},
-    )
-    return outs
-
-
 @deprecated(since='2.0.0', update_to="paddle.expand")
 def expand(x, expand_times, name=None):
     """
