@@ -841,7 +841,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
   VLOG(6) << "Calling greater_than_ad_func in tensor__gt__method";
   {
     eager_gil_scoped_release guard;
-    ret = greater_than_ad_func(self_tensor, other_tensor, -1);
+    ret = greater_than_ad_func(self_tensor, other_tensor);
   }
 
   return ToPyObject(ret);
@@ -927,7 +927,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
   VLOG(6) << "Calling greater_equal_ad_func in tensor__ge__method";
   {
     eager_gil_scoped_release guard;
-    ret = greater_equal_ad_func(self_tensor, other_tensor, -1);
+    ret = greater_equal_ad_func(self_tensor, other_tensor);
   }
 
   return ToPyObject(ret);
@@ -1204,7 +1204,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
   VLOG(6) << "Calling less_than_ad_func in tensor__lt__method";
   {
     eager_gil_scoped_release guard;
-    ret = less_than_ad_func(self_tensor, other_tensor, -1);
+    ret = less_than_ad_func(self_tensor, other_tensor);
   }
 
   return ToPyObject(ret);
@@ -1290,7 +1290,7 @@ static PyObject* tensor__le__method(TensorObject* self,
   VLOG(6) << "Calling less_equal_ad_func in tensor__le__method";
   {
     eager_gil_scoped_release guard;
-    ret = less_equal_ad_func(self_tensor, other_tensor, -1);
+    ret = less_equal_ad_func(self_tensor, other_tensor);
   }
 
   return ToPyObject(ret);
@@ -1636,7 +1636,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
   VLOG(6) << "Calling not_equal_ad_func in tensor__ne__method";
   {
     eager_gil_scoped_release guard;
-    ret = not_equal_ad_func(self_tensor, other_tensor, -1);
+    ret = not_equal_ad_func(self_tensor, other_tensor);
   }
 
   return ToPyObject(ret);
@@ -1722,7 +1722,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
   VLOG(6) << "Calling equal_ad_func in tensor__eq__method";
   {
     eager_gil_scoped_release guard;
-    ret = equal_ad_func(self_tensor, other_tensor, -1);
+    ret = equal_ad_func(self_tensor, other_tensor);
   }
 
   return ToPyObject(ret);

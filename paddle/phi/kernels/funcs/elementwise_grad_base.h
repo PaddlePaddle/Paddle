@@ -25,7 +25,7 @@ limitations under the License. */
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 #endif
@@ -287,12 +287,13 @@ void ElemwiseGradComputeWithBroadcast(const CPUContext &ctx,
       errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LE(axis,
-                    max_dim,
-                    errors::InvalidArgument(
-                        "Axis should be less than %d, but received axis is %d.",
-                        max_dim,
-                        axis));
+  PADDLE_ENFORCE_LE(
+      axis,
+      max_dim,
+      errors::InvalidArgument(
+          "Axis should be less than or equal to %d, but received axis is %d.",
+          max_dim,
+          axis));
 
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
@@ -982,7 +983,7 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
     auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
     auto *ctx = static_cast<GPUContext *>(
         paddle::platform::DeviceContextPool::Instance().Get(gplace));
-    paddle::platform::LimitGridDim(*ctx, &grid_size);
+    phi::backends::gpu::LimitGridDim(*ctx, &grid_size);
     FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
         x, y, out, dout, h, w, is_xsize_larger, dx_op, dy_op, dx, dy);
   }
@@ -1007,7 +1008,7 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
   auto gplace = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
   auto *ctx = static_cast<GPUContext *>(
       paddle::platform::DeviceContextPool::Instance().Get(gplace));
-  paddle::platform::LimitGridDim(*ctx, &grid_size);
+  phi::backends::gpu::LimitGridDim(*ctx, &grid_size);
   ElemwiseGradBroadcast2CUDAKernel<<<grid_size, block_size, 0, stream>>>(
       x, y, out, dout, pre, n, post, is_xsize_larger, dx_op, dy_op, dx, dy);
 }
@@ -1210,7 +1211,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       } else {
         dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
         dim3 grid_size = dim3((w + BLOCK_X - 1) / BLOCK_X);
-        paddle::platform::LimitGridDim(ctx, &grid_size);
+        phi::backends::gpu::LimitGridDim(ctx, &grid_size);
         FastCommonGradBroadcastCUDAKernelHeight<<<grid_size,
                                                   block_size,
                                                   0,
@@ -1247,7 +1248,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       } else {
         dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
         dim3 grid_size = dim3((w + BLOCK_X - 1) / BLOCK_X);
-        paddle::platform::LimitGridDim(ctx, &grid_size);
+        phi::backends::gpu::LimitGridDim(ctx, &grid_size);
         FastCommonGradBroadcastCUDAKernelHeight<<<grid_size,
                                                   block_size,
                                                   0,
@@ -1345,7 +1346,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
 
     int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, mid);
     dim3 grid_size = dim3(pre * post);
-    paddle::platform::LimitGridDim(ctx, &grid_size);
+    phi::backends::gpu::LimitGridDim(ctx, &grid_size);
 
     FastCommonGradBroadcastAllCUDAKernel<<<grid_size, block_size, 0, stream>>>(
         x_data,
@@ -1387,7 +1388,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                                    std::multiplies<int>());
           int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, mid);
           dim3 grid_size = dim3(pre * post);
-          paddle::platform::LimitGridDim(ctx, &grid_size);
+          phi::backends::gpu::LimitGridDim(ctx, &grid_size);
           // we need to calc y offset with blockid, so do x_pre/y_pre to get
           // left size.
           if (k_pre != pre) k_pre = pre / k_pre;
@@ -1418,7 +1419,7 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                                    std::multiplies<int>());
           int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, mid);
           dim3 grid_size = dim3(pre * post);
-          paddle::platform::LimitGridDim(ctx, &grid_size);
+          phi::backends::gpu::LimitGridDim(ctx, &grid_size);
           if (k_pre != pre) k_pre = pre / k_pre;
 
           FastCommonGradBroadcastOneCUDAKernel<<<grid_size,
@@ -1725,12 +1726,13 @@ void ElemwiseGradComputeWithBroadcast(const GPUContext &ctx,
       errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LE(axis,
-                    max_dim,
-                    errors::InvalidArgument(
-                        "Axis should be less than %d, but received axis is %d.",
-                        max_dim,
-                        axis));
+  PADDLE_ENFORCE_LE(
+      axis,
+      max_dim,
+      errors::InvalidArgument(
+          "Axis should be less than or equal to %d, but received axis is %d.",
+          max_dim,
+          axis));
 
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
