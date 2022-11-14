@@ -537,13 +537,13 @@ class Categorical(Distribution):
         )
         e_logits = ops.exp(logits)
         other_e_logits = ops.exp(other_logits)
-        z = paddle.sum(e_logits, axis=-1, keep_dim=True)
-        other_z = paddle.sum(other_e_logits, axis=-1, keep_dim=True)
+        z = paddle.sum(e_logits, axis=-1, keepdim=True)
+        other_z = paddle.sum(other_e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
         kl = paddle.sum(
             prob * (logits - nn.log(z) - other_logits + nn.log(other_z)),
             axis=-1,
-            keep_dim=True,
+            keepdim=True,
         )
 
         return kl
@@ -555,12 +555,12 @@ class Categorical(Distribution):
           Variable: Shannon entropy of Categorical distribution. The data type is float32.
 
         """
-        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
+        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keepdim=True)
         e_logits = ops.exp(logits)
         z = paddle.sum(e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
         entropy = -1.0 * paddle.sum(
-            prob * (logits - nn.log(z)), axis=-1, keep_dim=True
+            prob * (logits - nn.log(z)), axis=-1, keepdim=True
         )
 
         return entropy

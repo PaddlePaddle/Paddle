@@ -153,7 +153,7 @@ class TestReduceSumNet(unittest.TestCase):
 class TestReduceSumNet2(TestReduceSumNet):
     def set_reduce_sum_function(self, x):
         # keep_dim = True
-        return paddle.sum(x, axis=-1, keep_dim=True)
+        return paddle.sum(x, axis=-1, keepdim=True)
 
 
 class TestReduceSumNet3(TestReduceSumNet):
