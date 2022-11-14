@@ -377,7 +377,7 @@ std::string kernel_message(const std::string& kernel_name) {
   for (auto iter = m.begin(); iter != m.end(); ++iter) {
     message += "(" + iter->first + ", [";
     std::vector<std::string>& dtype_vec = iter->second;
-    for (int i = 0; i < dtype_vec.size(); ++i) {
+    for (std::size_t i = 0; i < dtype_vec.size(); ++i) {
       message += dtype_vec[i];
       if (i + 1 != dtype_vec.size()) {
         message += ", ";
