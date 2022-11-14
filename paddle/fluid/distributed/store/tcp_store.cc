@@ -196,7 +196,6 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
 }
 
 void MasterDaemon::run() {
-  VLOG(4) << "begin to run run _stop:" << _stop << " _has_stop:" << _has_stop;
   std::vector<struct pollfd> fds;
 #ifdef _WIN32
   fds.push_back({_listen_socket, POLLIN});
@@ -238,32 +237,6 @@ void MasterDaemon::run() {
       VLOG(0)
           << "receive shutdown event and so quit from MasterDaemon run loop";
       finished = true;
-      break;
-    }
-#endif
-
-    for (size_t i = 0; i < fds.size(); i++) {
-      fds[i].revents = 0;
-    }
-
-    VLOG(9) << "begin to poll fds_size:"
-            << paddle::string::Sprintf("%d", fds.size());
-#ifdef _WIN32
-    ::WSAPoll(fds.data(), fds.size(), INFTIME);
-#else
-    ::poll(fds.data(), fds.size(), INFTIME);
-
-    VLOG(9) << "begin to fds[1].revents:"
-            << paddle::string::Sprintf("%d", fds[1].revents);
-    // The control pipe receive shutdown event, and begin to close it.
-    if (fds[1].revents != 0) {
-      if (fds[1].revents & ~(POLLIN | POLLHUP)) {
-        PADDLE_THROW(paddle::platform::errors::Fatal("Undefined event type:%d",
-                                                     fds[1].revents));
-      }
-      VLOG(0)
-          << "receive shutdown event and so quit from MasterDaemon run loop";
-      _stop = true;
       break;
     }
 #endif
