@@ -89,7 +89,7 @@ class IntermediateLayerGetter(nn.LayerDict):
         out = OrderedDict()
         for name, module in self.items():
             x = module(x)
-            if name in self.return_layers: # 如果在, 则返回
+            if name in self.return_layers:
                 out_name = self.return_layers[name]
                 out[out_name] = x
         return out
