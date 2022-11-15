@@ -474,7 +474,7 @@ def lm_model(
         projection, shape=[-1, vocab_size], inplace=True
     )
 
-    loss = layers.softmax_with_cross_entropy(
+    loss = paddle.nn.functional.softmax_with_cross_entropy(
         logits=projection, label=y, soft_label=False
     )
 

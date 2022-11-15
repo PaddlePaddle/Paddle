@@ -1448,7 +1448,7 @@ class SGDOptimizer(Optimizer):
                 x = fluid.layers.data(name='x', shape=[13], dtype='float32')
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
                 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
@@ -1649,7 +1649,7 @@ class MomentumOptimizer(Optimizer):
                 x = fluid.layers.data(name='x', shape=[13], dtype='float32')
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
                 moment_optimizer = fluid.optimizer.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
@@ -2694,7 +2694,7 @@ class AdamOptimizer(Optimizer):
                 x = fluid.data(name='x', shape=[None, 13], dtype='float32')
                 y = fluid.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
                 adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)
@@ -2722,7 +2722,7 @@ class AdamOptimizer(Optimizer):
                 x = fluid.data(name='x', shape=[None, 13], dtype='float32')
                 y = fluid.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
                 # define beta decay variable
@@ -3751,7 +3751,7 @@ class RMSPropOptimizer(Optimizer):
                 x = fluid.layers.data(name='x', shape=[13], dtype='float32')
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
                 rms_optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
@@ -3968,7 +3968,7 @@ class FtrlOptimizer(Optimizer):
                 x = fluid.layers.data(name='x', shape=[13], dtype='float32')
                 y = fluid.layers.data(name='y', shape=[1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = fluid.layers.mean(cost)
 
                 ftrl_optimizer = fluid.optimizer.Ftrl(learning_rate=0.1)

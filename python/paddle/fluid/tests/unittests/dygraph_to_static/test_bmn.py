@@ -395,7 +395,7 @@ def bmn_loss_func(
 
         weights = u_hmask + u_smmask + u_slmask
         weights.stop_gradient = True
-        loss = fluid.layers.square_error_cost(pred_score, gt_iou_map)
+        loss = paddle.nn.functional.square_error_cost(pred_score, gt_iou_map)
         loss = fluid.layers.elementwise_mul(loss, weights)
         loss = (
             0.5

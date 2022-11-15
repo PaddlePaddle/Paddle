@@ -886,7 +886,7 @@ def binary_cross_entropy_with_logits(
     if reduction == 'none' and pos_weight is None and weight is None:
         sigmoid_name = name
 
-    out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
+    out = paddle.paddle.nn.functional.sigmoid_cross_entropy_with_logits(
         logit, label, name=sigmoid_name
     )
 
@@ -1821,7 +1821,7 @@ def ctc_loss(
 
     """
 
-    loss_out = fluid.layers.warpctc(
+    loss_out = warpctc(
         log_probs, labels, blank, norm_by_times, input_lengths, label_lengths
     )
 
@@ -4048,3 +4048,245 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
         return paddle.mean(out, name=name)
     else:
         return out
+
+
+def warpctc(
+    input,
+    label,
+    blank=0,
+    norm_by_times=False,
+    input_length=None,
+    label_length=None,
+):
+    """
+    An operator integrating the open source Warp-CTC library
+    (https://github.com/baidu-research/warp-ctc)
+    to compute Connectionist Temporal Classification (CTC) loss.
+    It can be aliased as softmax with CTC, since a native softmax activation is
+    interated to the Warp-CTC library to normalize values for each row of the
+    input tensor.
+
+    Args:
+       input (Variable): The unscaled probabilities of variable-length sequences,
+         which is a 2-D Tensor with LoD information, or a 3-D Tensor without Lod
+         information. When it is a 2-D LodTensor, its shape is
+         `[Lp, num_classes + 1]`, where `Lp` is the sum of all input
+         sequences' length and `num_classes` is the true number of classes.
+         (not including the blank label). When it is a 3-D Tensor, its shape
+         is `[max_logit_length, batch_size, num_classes + 1]`,
+         where `max_logit_length` is the longest length of
+         input logit sequence. The data type should be float32 or float64.
+       label (Variable): The ground truth of variable-length sequence,
+         which must be a 2-D Tensor with LoD information or a 3-D Tensor without
+         LoD information, needs to be consistent with the coressponding input.
+         When it is a 2-D LoDTensor, its shape is `[Lg, 1]`, where `Lg` is the sum
+         of all labels' length. When it is a 3-D Tensor, its shape is
+         `[batch_size, max_label_length]`, where `max_label_length` is the longest
+         length of label sequence. Data type must be int32.
+       blank (int, default 0): The blank label index of Connectionist
+         Temporal Classification (CTC) loss, which is in the
+         half-opened interval `[0, num_classes + 1)`. The data type must be int32.
+       norm_by_times(bool, default false): Whether to normalize the gradients
+         by the number of time-step, which is also the sequence's length.
+         There is no need to normalize the gradients if warpctc layer was
+         followed by a mean_op.
+       input_length(Variable): The length for each input sequence if it is
+         of Tensor type, it should have shape `[batch_size]` and dtype int64.
+       label_length(Variable): The length for each label sequence if it is
+         of Tensor type, it should have shape `[batch_size]` and dtype int64.
+
+    Returns:
+        Variable: The Connectionist Temporal Classification (CTC) loss,
+        which is a 2-D Tensor with the shape `[batch_size, 1]`.
+        The date type is the same as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            # using LoDTensor
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            # lengths of logit sequences
+            seq_lens = [2,6]
+            # lengths of label sequences
+            label_lens = [2,3]
+            # class num
+            class_num = 5
+
+            paddle.enable_static()
+            logits = fluid.data(name='logits',shape=[None, class_num+1],
+                                 dtype='float32',lod_level=1)
+            label = fluid.data(name='label', shape=[None, 1],
+                               dtype='int32', lod_level=1)
+            cost = paddle.nn.functional.warpctc(input=logits, label=label)
+            place = fluid.CPUPlace()
+            x = fluid.create_lod_tensor(
+                     np.random.rand(np.sum(seq_lens), class_num+1).astype("float32"),
+                     [seq_lens], place)
+            y = fluid.create_lod_tensor(
+                     np.random.randint(0, class_num, [np.sum(label_lens), 1]).astype("int32"),
+                     [label_lens], place)
+            exe = fluid.Executor(place)
+            output= exe.run(fluid.default_main_program(),
+                            feed={"logits": x,"label": y},
+                            fetch_list=[cost.name])
+            print(output)
+
+        .. code-block:: python
+
+            # using Tensor
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            # length of the longest logit sequence
+            max_seq_length = 5
+            #length of the longest label sequence
+            max_label_length = 3
+            # number of logit sequences
+            batch_size = 16
+            # class num
+            class_num = 5
+            paddle.enable_static()
+            logits = fluid.data(name='logits',
+                           shape=[max_seq_length, batch_size, class_num+1],
+                           dtype='float32')
+            logits_length = fluid.data(name='logits_length', shape=[None],
+                             dtype='int64')
+            label = fluid.data(name='label', shape=[batch_size, max_label_length],
+                           dtype='int32')
+            label_length = fluid.data(name='labels_length', shape=[None],
+                             dtype='int64')
+            cost = paddle.nn.functional.warpctc(input=logits, label=label,
+                            input_length=logits_length,
+                            label_length=label_length)
+            place = fluid.CPUPlace()
+            x = np.random.rand(max_seq_length, batch_size, class_num+1).astype("float32")
+            y = np.random.randint(0, class_num, [batch_size, max_label_length]).astype("int32")
+            exe = fluid.Executor(place)
+            output= exe.run(fluid.default_main_program(),
+                            feed={"logits": x,
+                                  "label": y,
+                                  "logits_length": np.array([max_seq_length]*batch_size).astype("int64"),
+                                  "labels_length": np.array([max_label_length]*batch_size).astype("int64")},
+                                  fetch_list=[cost.name])
+            print(output)
+    """
+    if in_dygraph_mode():
+        if input_length is None or label_length is None:
+            raise ValueError(
+                "input_length and label_length must not be None in dygraph mode!"
+            )
+        loss_out = _C_ops.warpctc(
+            input, label, input_length, label_length, blank, norm_by_times
+        )
+        return loss_out
+    if _non_static_mode():
+        if input_length is None or label_length is None:
+            raise ValueError(
+                "input_length and label_length must not be None in dygraph mode!"
+            )
+        grad, loss_out = _legacy_C_ops.warpctc(
+            input,
+            label,
+            input_length,
+            label_length,
+            'blank',
+            blank,
+            'norm_by_times',
+            norm_by_times,
+        )
+        return loss_out
+    helper = LayerHelper('warpctc', **locals())
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], "warpctc")
+    check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
+    this_inputs = {'Logits': [input], 'Label': [label]}
+    if input_length is not None and label_length is not None:
+        check_variable_and_dtype(
+            input_length, 'LogitsLength', ['int64'], "warpctc"
+        )
+        check_variable_and_dtype(
+            label_length, 'LabelLength', ['int64'], "warpctc"
+        )
+        this_inputs['LogitsLength'] = [input_length]
+        this_inputs['LabelLength'] = [label_length]
+
+    loss_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    grad_out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+    helper.append_op(
+        type='warpctc',
+        inputs=this_inputs,
+        outputs={'WarpCTCGrad': [grad_out], 'Loss': [loss_out]},
+        attrs={
+            'blank': blank,
+            'norm_by_times': norm_by_times,
+        },
+    )
+    return loss_out
+
+
+@templatedoc()
+def sigmoid_cross_entropy_with_logits(
+    x, label, ignore_index=kIgnoreIndex, name=None, normalize=False
+):
+    """
+
+    ${comment}
+
+    Args:
+        x(Tensor): a 2-D tensor with shape N x D, where N is the batch size and
+                D is the number of classes. This input is a tensor of logits computed
+                by the previous operator. Logits are unscaled log probabilities given
+                as log(p/(1-p)) The data type should be float32 or float64.
+        label (Tensor): a 2-D tensor of the same type and shape as X.
+                This input is a tensor of probabalistic labels for each logit.
+        ignore_index(int): Specifies a target value that is ignored and
+                does not contribute to the input gradient.
+        name(str|None): The default value is None.  Normally there is
+            no need for user to set this property.  For more information,
+            please refer to :ref:`api_guide_Name`
+        normalize(bool): If true, divide the output by the number of
+            targets != ignore_index.
+
+    Returns:
+        out(Tensor): ${out_comment}
+
+    Examples:
+        .. code-block:: python
+
+
+            import paddle
+
+            input = paddle.rand(shape=[10], dtype='float32')
+            label = paddle.rand(shape=[10], dtype='float32')
+            loss = paddle.paddle.nn.functional.sigmoid_cross_entropy_with_logits(input, label,
+                                                            ignore_index=-1, normalize=True)
+            print(loss)
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.sigmoid_cross_entropy_with_logits(
+            x, label, normalize, int(ignore_index)
+        )
+    check_variable_and_dtype(
+        x,
+        'input',
+        ['float16', 'float32', 'float64'],
+        'sigmoid_cross_entropy_with_logits',
+    )
+
+    helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="sigmoid_cross_entropy_with_logits",
+        inputs={"X": x, "Label": label},
+        attrs={"ignore_index": ignore_index, 'normalize': normalize},
+        outputs={"Out": out},
+    )
+    return out

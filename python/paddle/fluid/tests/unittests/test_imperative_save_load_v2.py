@@ -230,7 +230,7 @@ class PtbModel(fluid.Layer):
         projection = fluid.layers.reshape(
             projection, shape=[-1, self.vocab_size]
         )
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
         loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
