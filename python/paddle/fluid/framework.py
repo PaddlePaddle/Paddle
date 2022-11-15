@@ -6168,15 +6168,15 @@ class Program:
                     for output_proto in proto.outputs:
                         if output_proto.name != name:
                             continue
-                        if output_proto.extra:
+                        if output_proto.extra or output_proto.intermediate:
                             remove_output_list.append(name)
                         find = True
                         break
                     if not find:
                         remove_output_list.append(name)
                 # The extra output of op will be removed in the future
-                # for name in remove_output_list:
-                #     op.remove_output(name)
+                for name in remove_output_list:
+                    op.remove_output(name)
 
                 op_quant_name = (
                     core.op_proto_and_checker_maker.kOpWithQuantAttrName()

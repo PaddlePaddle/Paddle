@@ -25,7 +25,7 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import _non_static_mode, OpProtoHolder
 from paddle.fluid.executor import (
     _is_enable_standalone_executor,
     _is_dy2st_enable_standalone_executor,
@@ -548,21 +548,48 @@ class _ProgramHolder:
         for block_idx in range(program.num_blocks):
             block = program.block(block_idx)
             for op in block.ops:
-                if op.type == "batch_norm":
-                    if (
-                        "ReserveSpace" not in op.output_names
-                        or len(op.output("ReserveSpace")) == 0
-                    ):
-                        reserve_space = block.create_var(
-                            name=unique_name.generate_with_ignorable_key(
-                                ".".join(["reserve_space", 'tmp'])
-                            ),
-                            dtype=block.var(op.input("X")[0]).dtype,
-                            type=core.VarDesc.VarType.LOD_TENSOR,
-                            persistable=False,
-                            stop_gradient=True,
-                        )
-                        op.desc.set_output("ReserveSpace", [reserve_space.name])
+                # if op.type == "batch_norm":
+                #     if (
+                #         "ReserveSpace" not in op.output_names
+                #         or len(op.output("ReserveSpace")) == 0
+                #     ):
+                #         reserve_space = block.create_var(
+                #             name=unique_name.generate_with_ignorable_key(
+                #                 ".".join(["reserve_space", 'tmp'])
+                #             ),
+                #             dtype=block.var(op.input("X")[0]).dtype,
+                #             type=core.VarDesc.VarType.LOD_TENSOR,
+                #             persistable=False,
+                #             stop_gradient=True,
+                #         )
+                #         op.desc.set_output("ReserveSpace", [reserve_space.name])
+                proto = OpProtoHolder.instance().get_op_proto(op.type)
+                has_create_intermediate_out = False
+                for output_proto in proto.outputs:
+                    if output_proto.intermediate:
+                        intermediate_name = output_proto.name
+                        if intermediate_name not in op.output_names:
+                            has_create_intermediate_out = True
+                            intermediate_var = block.create_var(
+                                name=unique_name.generate_with_ignorable_key(
+                                    ".".join(
+                                        [
+                                            op.type + '_' + intermediate_name,
+                                            'tmp',
+                                        ]
+                                    )
+                                ),
+                                type=core.VarDesc.VarType.LOD_TENSOR,
+                                persistable=False,
+                                stop_gradient=True,
+                            )
+                            op.desc.set_output(
+                                intermediate_name, [intermediate_var.name]
+                            )
+                if has_create_intermediate_out:
+                    op.desc.infer_var_type(block.desc)
+                    op.desc.infer_shape(block.desc)
+
         return program
 
     @switch_to_static_graph
@@ -573,8 +600,12 @@ class _ProgramHolder:
         for out in self._output_descs:
             targets.append(program.global_block().var(out.name()))
 
+        print("########## _get_train_forward_program ##########\n")
+        print(program)
         # 3. append backward
         backward.gradients(targets=targets, inputs=[])
+        print("########## _train_program_desc ##########\n")
+        print(program)
         return program.desc
 
 
