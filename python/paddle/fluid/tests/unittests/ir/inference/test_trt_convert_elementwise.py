@@ -39,7 +39,7 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
 
         def generate_weight(op_type):
             if op_type == "elementwise_floordiv":
-                np.random.randint(
+                return np.random.randint(
                     low=1, high=10000, size=[1, 32, 1, 1], dtype=np.int32
                 )
             else:
