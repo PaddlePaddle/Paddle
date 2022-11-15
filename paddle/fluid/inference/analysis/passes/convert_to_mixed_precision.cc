@@ -532,6 +532,12 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(BlockID block_idx) {
         bool has_float_in_out{false};
         for (auto* in_node : op_node->inputs) {
           if (!in_node->IsVar()) continue;
+          if (in_node->Var()->GetType() != VarType::LOD_TENSOR) {
+            support_precision = false;
+            VLOG(2) << " op has tensor array input[" << in_node->Name()
+                    << "], just skip.";
+            break;
+          }
           auto* real_node = GetRealVarNode(in_node);
           if (real_node->Var()->GetDataType() == VarType::FP16 ||
               real_node->Var()->GetDataType() == VarType::FP32 ||
