@@ -37,13 +37,7 @@ struct GeluFunctor {
 template <typename T>
 struct FastGeluFunctor {
   inline __device__ T operator()(const T x) const {
-    using U = LayerNormParamType<T>;
-    U casted_x = static_cast<U>(x);
-    U casted_pow3 = casted_x * casted_x * casted_x;
-    casted_x = 0.5f * (1.0f + phi::FP32FastTanh<true>(
-                                  (0.7978845608028654f *
-                                   (casted_x + 0.044715f * casted_pow3))));
-    return x * static_cast<T>(casted_x);
+    return phi::GeluFwd<T, true>(x);
   }
 };
 

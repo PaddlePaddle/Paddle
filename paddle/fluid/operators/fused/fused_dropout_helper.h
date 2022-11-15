@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
 #include "paddle/phi/kernels/funcs/functors.h"
 
-DECLARE_bool(use_fast_gelu);
+DECLARE_bool(use_fast_math);
 
 namespace paddle {
 namespace operators {
@@ -218,7 +218,7 @@ class FusedDropoutHelper {
                       const float quant_min_bound = -127.0) {
     auto increment = GetIncrement(ctx);
     if (act_method == "gelu") {
-      if (FLAGS_use_fast_gelu) {
+      if (FLAGS_use_fast_math) {
         FastGeluFunctor<T> fast_gelu;
         LaunchDropoutActBias<T, MaskType, FastGeluFunctor<T>, InType, OutType>(
             fast_gelu,

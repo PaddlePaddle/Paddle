@@ -1054,19 +1054,3 @@ PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
  */
 PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
 #endif  // PADDLE_WITH_CUDNN_FRONTEND
-
-#if defined(PADDLE_WITH_CUDA)
-/**
- * Use fast gelu FLAG
- * Name: FLAGS_use_fast_gelu
- * Since Version: 2.5.0
- * Value Range: bool, default=false
- * Example:
- * Note: Enable tanh approximate gelu function.
- */
-PADDLE_DEFINE_EXPORTED_bool(
-    use_fast_gelu,
-    false,
-    "It controls whether use tanh to approximate gelu activation. ");
-
-#endif
