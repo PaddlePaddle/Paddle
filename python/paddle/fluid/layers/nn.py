@@ -106,7 +106,6 @@ __all__ = [
     'autoincreased_step_counter',
     'reshape',
     'squeeze',
-    'unsqueeze',
     'lod_reset',
     'lod_append',
     'lrn',

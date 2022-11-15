@@ -2121,7 +2121,7 @@ class NCE(layers.Layer):
                              param_attr='nce.w',
                              bias_attr='nce.b')
 
-                wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+                wl = paddle.unsqueeze(words[label_word], axes=[0])
                 nce_loss3 = nce(embs3, wl)
 
     """
