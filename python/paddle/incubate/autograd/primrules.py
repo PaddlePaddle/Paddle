@@ -70,7 +70,6 @@ from .primreg import (
 from .utils import INT_DTYPE_2_STRING, get_output_var_list
 
 
-
 def _orig2prim(op, *args):
     _lowerrule = lookup_orig2prim(op.type)
     return _lowerrule(op, *args)
