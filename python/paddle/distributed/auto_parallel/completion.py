@@ -1239,7 +1239,7 @@ class Completer:
                                 input_var
                             ).dims_mapping
                     else:
-                        if fwd_op_dist_attr.get_input_dims_mapping(input_name):
+                        if input_name in forward_op.input_arg_names:
                             ref_dims_mapping = (
                                 fwd_op_dist_attr.get_input_dims_mapping(
                                     input_name
@@ -1544,7 +1544,7 @@ class Completer:
                                 input_var
                             ).dims_mapping
                     else:
-                        if fwd_op_dist_attr.get_input_dims_mapping(input_name):
+                        if input_name in forward_op.input_arg_names:
                             ref_dims_mapping = (
                                 fwd_op_dist_attr.get_input_dims_mapping(
                                     input_name
