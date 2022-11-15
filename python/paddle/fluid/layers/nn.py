@@ -92,7 +92,6 @@ __all__ = [
     'split',
     'ctc_greedy_decoder',
     'l2_normalize',
-    'matmul',
     'topk',
     'transpose',
     'im2sequence',
