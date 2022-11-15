@@ -19,24 +19,12 @@ from paddle.fluid.framework import _varbase_creator
 from paddle import _legacy_C_ops
 from paddle.nn.initializer import Constant
 from ..quanter import BaseQuanter
-from ..factory import QuanterFactory
+from ..factory import quanter
 
-__all__ = ["FakeQuanterWithAbsMaxObserver"]
-
-
-class FakeQuanterWithAbsMaxObserver(QuanterFactory):
-    def __init__(
-        self, moving_rate=0.9, quant_bits=8, dtype='float32', reduce_type=None
-    ):
-        args = locals()
-        args.pop("self")
-        args.pop("__class__")
-        super(FakeQuanterWithAbsMaxObserver, self).__init__(**args)
-
-    def get_class(self):
-        return FakeQuanterWithAbsMaxObserverLayer
+__all__ = []
 
 
+@quanter("FakeQuanterWithAbsMaxObserver")
 class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
     r"""
     FakeQuantMovingAverageAbsMax layer does the moving_average_abs_max quant and then dequant.

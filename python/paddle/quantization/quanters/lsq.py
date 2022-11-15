@@ -343,6 +343,8 @@ class FakeQuantWeightLSQPlus(BaseQuanter):
         self.s.stop_gradient = False
 
     def cal_channel_num(self, layer):
+        if not self.per_channel:
+            return 1
         layer_type = type(layer)
         assert layer_type in CHANNEL_AXIS, ""
         return layer.weight.shape[CHANNEL_AXIS[type(layer)]]
