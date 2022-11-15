@@ -39,10 +39,10 @@ class FloatToMixedPass : public FusePassBase {
   ~FloatToMixedPass() = default;
 
  protected:
-  void ApplyImpl(framework::ir::Graph* graph) const override;
+  void ApplyImpl(Graph* graph) const override;
 
  private:
-  void Init(framework::ir::Graph* graph) const;
+  void Init(Graph* graph) const;
 
   void SetDefaultBlacklist() const;
 
@@ -54,8 +54,6 @@ class FloatToMixedPass : public FusePassBase {
 
   void RestoreOpOriginType() const;
 
-  void GetVarInputOps() const;
-
   void GetOpPrecision() const;
 
   void UpdateOpPrecision() const;
@@ -63,6 +61,10 @@ class FloatToMixedPass : public FusePassBase {
   void InsertCastOp() const;
 
   void ProcessOpWithDtypeAttr() const;
+
+  bool InputVarsNotConvert(Node* op_node, const std::string& var_name) const;
+
+  bool OutputVarsNotConvert(Node* op_node, const std::string& var_name) const;
 
   void SetVarPrecision() const;
 
@@ -76,20 +78,17 @@ class FloatToMixedPass : public FusePassBase {
   mutable std::unordered_set<std::string> black_list_;
 
   // subgraph id -> pointer to subgraph
-  mutable std::vector<framework::ir::Graph*> subgraphes_;
+  mutable std::vector<Graph*> subgraphes_;
   // var name -> real var node
-  mutable std::unordered_map<std::string, framework::ir::Node*> real_vars_;
-  // subgraph id -> all nodes in subgraph
-  mutable std::vector<std::vector<framework::ir::Node*>> all_op_nodes_;
+  mutable std::unordered_map<std::string, Node*> real_vars_;
+  // subgraph id -> all op nodes in subgraph
+  mutable std::vector<std::vector<Node*>> all_op_nodes_;
   // op's unique type -> the op's origin type
   mutable std::unordered_map<std::string, std::string> op_original_type_;
   // op's unique type -> whether the op run at mixed precision
-  mutable std::unordered_map<std::string, bool> op_run_mixed_;
-  // var -> the var's all input op
-  mutable std::unordered_map<std::string, std::vector<framework::ir::Node*>>
-      var_input_ops_;
+  mutable std::unordered_set<std::string> op_run_mixed_;
 
-  mutable std::unordered_set<std::string> weights_convert_to_mixed_;
+  mutable std::unordered_set<std::string> vars_convert_to_mixed_;
 };
 
 }  // namespace ir

@@ -1257,11 +1257,16 @@ void AnalysisPredictor::PrepareArgument() {
     if (config_.enable_gpu_fp16_) {
       argument_.SetEnableAnalysisOptim(true);
       std::vector<std::string>({"float_to_mixed_pass"}).swap(passes);
+      if (config_.ir_debug_) {
+        passes.push_back("graph_viz_pass");
+      }
       LOG(INFO) << "This model run in Paddle-GPU float16 mode with no ir "
                    "optimization.";
     } else {
       LOG(INFO) << "ir_optim is turned off, no IR pass will be executed.";
     }
+  } else if (config_.enable_gpu_fp16_) {
+    LOG(INFO) << "This model run in Paddle-GPU float16 mode.";
   }
   argument_.SetDisableLogs(config_.glog_info_disabled());
   argument_.SetIrAnalysisPasses(passes);
