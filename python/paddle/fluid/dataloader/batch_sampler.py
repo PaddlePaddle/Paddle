@@ -37,8 +37,8 @@ class BatchSampler(Sampler):
 
 
     Args:
-        dataset(Dataset, optional): this should be an instance of a subclass of :ref:`api_paddle_io_Dataset` or :ref:`api_paddle_io_IterableDataset`
-                 or other python object which implemented. Default None, disabled.
+        dataset(Dataset, optional): this should be an instance of a subclass of :ref:`api_paddle_io_Dataset` or 
+                :ref:`api_paddle_io_IterableDataset` or other python object which implemented
                 :code:`__len__` for BatchSampler to get indices as the
                 range of :attr:`dataset` length. Default None, disabled.
         sampler (Sampler, optional): this should be a :ref:`api_paddle_io_Sample`
@@ -182,9 +182,9 @@ class DistributedBatchSampler(BatchSampler):
         Dataset is assumed to be of constant size.
 
     Args:
-        dataset(Dataset, optional): this could be an instance of subclass of :ref:`api_paddle_io_Dataset`
+        dataset(Dataset): this could be an instance of subclass of :ref:`api_paddle_io_Dataset`
                      or other python object which implemented
-                     `__len__` for BatchSampler to get indices of samples. default None.
+                     `__len__` for BatchSampler to get indices of samples.
         batch_size(int): sample size of each mini-batch.
         num_replicas(int, optional): porcess number in distributed training.
             If :attr:`num_replicas` is None, :attr:`num_replicas` will be
@@ -192,11 +192,11 @@ class DistributedBatchSampler(BatchSampler):
             Default None.
         rank(int, optional): the rank of the current process among :attr:`num_replicas`
             processes. If :attr:`rank` is None, :attr:`rank` is retrieved from
-           :ref:`api_paddle_distributed_ParallelEnv` . Default None.
+            :ref:`api_paddle_distributed_ParallelEnv`. Default None.
         shuffle(bool, optional): whther to shuffle indices order before genrating
             batch indices. Default False.
         drop_last(bool, optional): whether drop the last incomplete(less than a mini-batch) batch dataset size.
-             Default False.
+            Default False.
 
     Returns:
         DistributedBatchSampler, return an iterable object for indices iterating.
