@@ -37,7 +37,7 @@ class BatchSampler(Sampler):
 
 
     Args:
-        dataset(Dataset, optional): this should be an instance of a subclass of :ref:`api_paddle_io_Dataset` or 
+        dataset(Dataset, optional): this should be an instance of a subclass of :ref:`api_paddle_io_Dataset` or
                 :ref:`api_paddle_io_IterableDataset` or other python object which implemented
                 :code:`__len__` for BatchSampler to get indices as the
                 range of :attr:`dataset` length. Default None, disabled.
