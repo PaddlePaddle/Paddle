@@ -14,9 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <vector>
 
-#include <algorithm>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -24,18 +25,20 @@ namespace paddle {
 namespace operators {
 
 struct FillOpVisitor {
-  FillOpVisitor(framework::LoDTensor *tensor, const std::vector<float> &value)
+  FillOpVisitor(phi::DenseTensor *tensor, const std::vector<float> &value)
       : tensor_(tensor), value_(value) {}
 
   template <typename T>
   void apply() const {
     platform::CPUPlace cpu;
     auto *data = tensor_->mutable_data<T>(cpu);
-    std::transform(value_.data(), value_.data() + tensor_->numel(), data,
-                   [](float dat) { return static_cast<T>(dat); });
+    std::transform(
+        value_.data(), value_.data() + tensor_->numel(), data, [](float dat) {
+          return static_cast<T>(dat);
+        });
   }
 
-  framework::LoDTensor *tensor_;
+  phi::DenseTensor *tensor_;
   const std::vector<float> &value_;
 };
 
@@ -43,23 +46,24 @@ template <typename T>
 class FillKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto &out = GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Out"),
-                                "Output", "Out", "Fill");
-    out.Resize(framework::make_ddim(ctx.Attr<std::vector<int>>("shape")));
+    auto &out = GET_DATA_SAFELY(
+        ctx.Output<phi::DenseTensor>("Out"), "Output", "Out", "Fill");
+    out.Resize(phi::make_ddim(ctx.Attr<std::vector<int>>("shape")));
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
+    auto phi_dtype = framework::TransToPhiDataType(dtype);
     platform::CPUPlace cpu;
     auto force_cpu = ctx.Attr<bool>("force_cpu");
-    out.mutable_data(force_cpu ? cpu : ctx.GetPlace(), dtype);
+    out.mutable_data(force_cpu ? cpu : ctx.GetPlace(), phi_dtype);
 
-    framework::LoDTensor tensor;
+    phi::DenseTensor tensor;
 
     if (force_cpu || platform::is_cpu_place(ctx.GetPlace())) {
       tensor.ShareDataWith(out);
     } else {
       // Always make tensor in CPU memory.
       tensor.Resize(out.dims());
-      tensor.mutable_data(cpu, dtype);
+      tensor.mutable_data(cpu, phi_dtype);
     }
 
     framework::VisitDataType(
@@ -68,8 +72,10 @@ class FillKernel : public framework::OpKernel<T> {
     if (!force_cpu && platform::is_gpu_place(ctx.GetPlace())) {
       // Copy tensor to out
       framework::TensorCopy(
-          tensor, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &out);
+          tensor,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          &out);
     }
   }
 };

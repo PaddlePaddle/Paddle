@@ -17,7 +17,7 @@ limitations under the License. */
 #include <stdlib.h>
 
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -84,8 +84,14 @@ struct CosSimFunctor {
 
 template <typename T>
 struct CosSimGradFunctor {
-  CosSimGradFunctor(const T* x_norm, const T* y_norm, const T* x, const T* y,
-                    const T* z, const T* dz, T* dx, int cols)
+  CosSimGradFunctor(const T* x_norm,
+                    const T* y_norm,
+                    const T* x,
+                    const T* y,
+                    const T* z,
+                    const T* dz,
+                    T* dx,
+                    int cols)
       : x_norm_(x_norm),
         y_norm_(y_norm),
         x_(x),
@@ -125,8 +131,14 @@ struct CosSimGradFunctor {
 
 template <typename T>
 struct CosSimDxFunctor {
-  CosSimDxFunctor(const T* x_norm, const T* y_norm, const T* x, const T* y,
-                  const T* z, const T* dz, T* dx, int cols)
+  CosSimDxFunctor(const T* x_norm,
+                  const T* y_norm,
+                  const T* x,
+                  const T* y,
+                  const T* z,
+                  const T* dz,
+                  T* dx,
+                  int cols)
       : x_norm_(x_norm),
         y_norm_(y_norm),
         x_(x),
@@ -163,9 +175,16 @@ struct CosSimDxFunctor {
 
 template <typename DeviceContext, typename T>
 struct CosSimDyFunctor {
-  void operator()(const DeviceContext& ctx, const T* x_norm, const T* y_norm,
-                  const T* x, const T* y, const T* z, const T* dz,
-                  const size_t rows, const size_t cols, T* dy) const;
+  void operator()(const DeviceContext& ctx,
+                  const T* x_norm,
+                  const T* y_norm,
+                  const T* x,
+                  const T* y,
+                  const T* z,
+                  const T* dz,
+                  const size_t rows,
+                  const size_t cols,
+                  T* dy) const;
 };
 
 }  // namespace math

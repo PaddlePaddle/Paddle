@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/naive_executor.h"
+
 #include <gtest/gtest.h>
+
 #include <algorithm>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 
@@ -67,4 +70,4 @@ TEST(NaiveExecutor, Basic) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_OP(elementwise_add);
+USE_OP_ITSELF(elementwise_add);

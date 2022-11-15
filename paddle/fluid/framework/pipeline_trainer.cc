@@ -45,11 +45,11 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   auto this_worker =
       std::dynamic_pointer_cast<paddle::framework::SectionWorker>(worker_);
   this_worker->SetPlace(place_);
-  this_worker->Initialize(trainer_desc);
   this_worker->SetMicrobatchNum(num_microbatches_);
   this_worker->SetPipelineStageNum(num_pipeline_stages_);
   this_worker->SetPipelineStage(pipeline_stage_);
   this_worker->SetScheduleMode(schedule_mode_);
+  this_worker->Initialize(trainer_desc);
 }
 
 void PipelineTrainer::InitOtherEnv(const ProgramDesc& main_program) {
@@ -94,8 +94,9 @@ void PipelineTrainer::CopyParameters(int microbatch_id,
 
 void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                      const platform::Place& place) {
-  PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
-                                           "root_scope_ can not be nullptr"));
+  PADDLE_ENFORCE_NOT_NULL(
+      root_scope_,
+      platform::errors::InvalidArgument("root_scope_ can not be nullptr"));
   microbatch_scopes_.resize(num_microbatches_);
 
   VLOG(3) << "Create minibatch and microbatch scopes...";
@@ -113,19 +114,28 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   this_worker->SetRootScope(root_scope_);
   this_worker->SetMinibatchScope(minibatch_scope_);
   this_worker->SetMicrobatchScopes(microbatch_scopes_);
+  this_worker->PrepareUnusedVar();
 }
 
 void PipelineTrainer::Run() {
   VLOG(5) << "Going to run PipelineTrainer::Run()";
-  section_thread_ = std::async(&DeviceWorker::TrainFiles, worker_.get());
-}
-
-void PipelineTrainer::Finalize() {
   try {
-    section_thread_.get();
+    worker_->TrainFiles();
   } catch (platform::EOFException& e) {
     std::rethrow_exception(std::current_exception());
   }
+  for (auto* micro_scop : microbatch_scopes_) {
+    // By default, we should delete all kid scopes after run executor because
+    // some operators may create local scope when running, such as while_op.
+    // But when while_op also create a local executor to run it's sub block,
+    // the sub scopes it created should not be dropped immediately, because
+    // while_grad_op will use some variables created during while_op run, so
+    // we need to keep the kids and wait for the outer executor to drop them.
+    micro_scop->DropKids();
+  }
+}
+
+void PipelineTrainer::Finalize() {
   if (need_dump_field_) {
     FinalizeDumpEnv();
   }

@@ -12,18 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/bind_threaded_ssa_graph_executor.h"
+
 #include <deque>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #if defined(PADDLE_WITH_XPU)
 namespace paddle {
@@ -31,9 +33,11 @@ namespace framework {
 namespace details {
 
 BindThreadedSSAGraphExecutor::BindThreadedSSAGraphExecutor(
-    const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const ExecutionStrategy &strategy,
+    const std::vector<Scope *> &local_scopes,
     const std::vector<Scope *> &local_exec_scopes,
-    const std::vector<platform::Place> &places, ir::Graph *graph)
+    const std::vector<platform::Place> &places,
+    ir::Graph *graph)
     : strategy_(strategy),
       local_scopes_(local_scopes),
       local_exec_scopes_(local_exec_scopes),
@@ -46,7 +50,7 @@ BindThreadedSSAGraphExecutor::BindThreadedSSAGraphExecutor(
   }
   int index = 0;
   for (uint32_t i = 0; i < places.size(); i++) {
-    int id = BOOST_GET_CONST(platform::XPUPlace, places_[i]).device;
+    int id = places_[i].device;
     if (place_to_index_.find(id) == place_to_index_.end()) {
       place_to_index_[id] = index;
       index++;
@@ -59,7 +63,8 @@ BindThreadedSSAGraphExecutor::BindThreadedSSAGraphExecutor(
       bootstrap_ops_.emplace_back(op);
     }
   }
-  PADDLE_ENFORCE_GT(op_deps_.size(), 0,
+  PADDLE_ENFORCE_GT(op_deps_.size(),
+                    0,
                     platform::errors::PreconditionNotMet(
                         "The graph doesn't have operators."));
   PrepareAtomicOpDeps();
@@ -69,8 +74,8 @@ static std::vector<OpHandleBase *> get_children(OpHandleBase *op) {
   auto &outputs = op->Outputs();
   std::vector<OpHandleBase *> ret;
   for (auto &output : outputs) {
-    ret.insert(ret.end(), output->PendingOps().begin(),
-               output->PendingOps().end());
+    ret.insert(
+        ret.end(), output->PendingOps().begin(), output->PendingOps().end());
   }
   return ret;
 }
@@ -114,8 +119,13 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
   auto ready_ops = std::make_shared<BlockingQueue<OpHandleBase *>>();
   exception_.Clear();
 
-  InsertFetchOps(fetch_tensors, &fetches, &fetched_vars, op_deps.get(),
-                 &fetch_ops, &ready_fetch_ops, return_merged);
+  InsertFetchOps(fetch_tensors,
+                 &fetches,
+                 &fetched_vars,
+                 op_deps.get(),
+                 &fetch_ops,
+                 &ready_fetch_ops,
+                 return_merged);
   for (auto cur_op : bootstrap_ops_) {
     ready_ops->Push(cur_op);
   }
@@ -145,8 +155,7 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
       RunMultiDeviceOpAsync(cur_op, op_deps.get(), ready_ops);
       continue;
     } else {
-      cur_place =
-          BOOST_GET_CONST(platform::XPUPlace, dev_ctxes_.begin()->first);
+      cur_place = dev_ctxes_.begin()->first;
       int cur_index = place_to_index_[cur_place.device];
       RunOpAsyncMainStream(cur_op, op_deps.get(), ready_ops, cur_index);
     }
@@ -166,11 +175,13 @@ FetchResultType BindThreadedSSAGraphExecutor::RunMainStream(
 }
 
 void BindThreadedSSAGraphExecutor::InsertFetchOps(
-    const std::vector<std::string> &fetch_tensors, FetchResultType *fetches,
+    const std::vector<std::string> &fetch_tensors,
+    FetchResultType *fetches,
     std::unordered_map<std::string, std::vector<VarHandleBase *>> *fetched_vars,
     std::unordered_map<OpHandleBase *, struct RunningItem> *op_deps,
     std::vector<OpHandleBase *> *fetch_ops,
-    std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged) {
+    std::vector<OpHandleBase *> *ready_fetch_ops,
+    bool return_merged) {
   std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
                                                    fetch_tensors.end());
   for (auto &fetch_var_name : fetch_tensor_set) {
@@ -186,7 +197,8 @@ void BindThreadedSSAGraphExecutor::InsertFetchOps(
     auto &var_name = fetch_tensors.at(i);
     auto fetched_var_it = fetched_vars->find(var_name);
     PADDLE_ENFORCE_NE(
-        fetched_var_it, fetched_vars->end(),
+        fetched_var_it,
+        fetched_vars->end(),
         platform::errors::PreconditionNotMet(
             "Cannot find fetched variable(%s) in current computation graph. "
             "Possible reasons are:\n"
@@ -198,14 +210,19 @@ void BindThreadedSSAGraphExecutor::InsertFetchOps(
             "when using `executor.run` method. In other words, the format of "
             "`executor.run(fetch_list=[fetch_var])`(fetch_var is a Variable) "
             "is recommended.",
-            var_name, var_name));
+            var_name,
+            var_name));
 
     auto &vars = fetched_var_it->second;
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
-    auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_,
-                                 &local_exec_scopes_, return_merged);
+    auto *op = new FetchOpHandle(fetch_node,
+                                 fetches,
+                                 i,
+                                 &local_scopes_,
+                                 &local_exec_scopes_,
+                                 return_merged);
     fetch_ops->emplace_back(op);
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -271,7 +288,8 @@ void BindThreadedSSAGraphExecutor::RunMultiDeviceOpAsync(
 void BindThreadedSSAGraphExecutor::RunOpAsyncMainStream(
     OpHandleBase *op,
     std::unordered_map<OpHandleBase *, struct RunningItem> *op_deps,
-    std::shared_ptr<BlockingQueue<OpHandleBase *>> ready_ops, int index) {
+    std::shared_ptr<BlockingQueue<OpHandleBase *>> ready_ops,
+    int index) {
   pool_[index]->enqueue([=] {
     try {
       if (error_state == 0 && LIKELY(!strategy_.dry_run_)) {

@@ -14,10 +14,9 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/hostdevice.h"
-
 #include "math.h"  // NOLINT
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace paddle {
 namespace operators {

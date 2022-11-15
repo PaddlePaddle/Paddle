@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
+
+os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -23,6 +23,7 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 
 from test_dist_fleet_base import TestFleetBase
 from dist_fleet_simnet_bow import train_network
+
 paddle.enable_static()
 
 
@@ -32,17 +33,17 @@ class TestDistGeoCtr_2x2(TestFleetBase):
         self._reader = "pyreader"
         self._geo_sgd_need_push_nums = 5
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
-            "http_proxy": ""
+            "http_proxy": "",
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)
@@ -55,7 +56,8 @@ class TestDistGeoCtr_2x2(TestFleetBase):
 
     def test_dist_train(self):
         self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
+        )
 
 
 class TestGeoSgdTranspiler(unittest.TestCase):
@@ -64,7 +66,8 @@ class TestGeoSgdTranspiler(unittest.TestCase):
             current_id=0,
             role=role_maker.Role.SERVER,
             worker_num=2,
-            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"],
+        )
 
         fleet.init(role)
 

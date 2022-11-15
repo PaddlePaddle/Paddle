@@ -17,14 +17,13 @@ from math import log
 from math import exp
 from op_test import OpTest
 from scipy.special import logit
-from scipy.special import expit
 import unittest
 import paddle.fluid as fluid
 
 
 class TestTeacherStudentSigmoidLossOp(OpTest):
     """
-        Test teacher_student_sigmoid_loss with discrete one-hot labels.
+    Test teacher_student_sigmoid_loss with discrete one-hot labels.
     """
 
     def setUp(self):
@@ -33,10 +32,13 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
         num_classes = 1
         self.inputs = {
             'X': logit(
-                np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float64")),
-            'Label': np.random.uniform(0, 2, (batch_size, num_classes))
-            .astype("float64")
+                np.random.uniform(0, 1, (batch_size, num_classes)).astype(
+                    "float64"
+                )
+            ),
+            'Label': np.random.uniform(0, 2, (batch_size, num_classes)).astype(
+                "float64"
+            ),
         }
         outs = []
         for index, label in enumerate(self.inputs["Label"]):
@@ -46,11 +48,22 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
             elif label < 0.0:
                 outs.append(max(x, 0.0) - x + log(1.0 + exp(-abs(x))))
             elif label < 1.0:
-                outs.append(max(x, 0.0) + log(1.0 + exp(-abs(x))) + \
-                            max(x, 0.0) - x * label + log(1.0 + exp(-abs(x))))
+                outs.append(
+                    max(x, 0.0)
+                    + log(1.0 + exp(-abs(x)))
+                    + max(x, 0.0)
+                    - x * label
+                    + log(1.0 + exp(-abs(x)))
+                )
             else:
-                outs.append(max(x, 0.0) - x + log(1.0 + exp(-abs(x))) + \
-                            max(x, 0.0) - x * (label - 1.0) + log(1.0 + exp(-abs(x))))
+                outs.append(
+                    max(x, 0.0)
+                    - x
+                    + log(1.0 + exp(-abs(x)))
+                    + max(x, 0.0)
+                    - x * (label - 1.0)
+                    + log(1.0 + exp(-abs(x)))
+                )
         self.outputs = {'Y': np.array(outs)}
 
     def test_check_output(self):

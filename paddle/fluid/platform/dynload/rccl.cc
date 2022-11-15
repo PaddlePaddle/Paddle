@@ -18,9 +18,6 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-std::once_flag rccl_dso_flag;
-void *rccl_dso_handle;
-
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 RCCL_RAND_ROUTINE_EACH(DEFINE_WRAP);

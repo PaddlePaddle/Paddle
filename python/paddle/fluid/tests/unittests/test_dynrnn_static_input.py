@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid.core as core
@@ -59,12 +57,14 @@ class TestDyRnnStaticInput(unittest.TestCase):
         self.static_input_tensor.set(self.static_input_data, self.place)
 
     def fetch_value(self, var):
-        fetch_outs = self.exe.run(feed={
-            'x_tensor': self.x_tensor,
-            'static_input_tensor': self.static_input_tensor
-        },
-                                  fetch_list=[var],
-                                  return_numpy=False)
+        fetch_outs = self.exe.run(
+            feed={
+                'x_tensor': self.x_tensor,
+                'static_input_tensor': self.static_input_tensor,
+            },
+            fetch_list=[var],
+            return_numpy=False,
+        )
         return self._lodtensor_to_ndarray(fetch_outs[0])
 
     def _lodtensor_to_ndarray(self, lod_tensor):
@@ -79,21 +79,24 @@ class TestDyRnnStaticInput(unittest.TestCase):
             name='x_tensor',
             shape=[self.x_tensor_dim],
             dtype='float32',
-            lod_level=1)
+            lod_level=1,
+        )
         x_tensor.stop_gradient = False
 
         static_input_tensor = fluid.layers.data(
             name='static_input_tensor',
             shape=[self.static_input_tensor_dim],
             dtype='float32',
-            lod_level=1)
+            lod_level=1,
+        )
         static_input_tensor.stop_gradient = False
 
         if only_forward:
             static_input_out_array = self._program.global_block().create_var(
                 name='static_input_out_array',
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-                dtype='float32')
+                dtype='float32',
+            )
             static_input_out_array.stop_gradient = True
 
         rnn = fluid.layers.DynamicRNN()
@@ -104,22 +107,27 @@ class TestDyRnnStaticInput(unittest.TestCase):
                 fluid.layers.array_write(
                     x=step_static_input,
                     i=rnn.step_idx,
-                    array=static_input_out_array)
+                    array=static_input_out_array,
+                )
             last = fluid.layers.sequence_pool(
-                input=step_static_input, pool_type='last')
-            projected = fluid.layers.fc(input=[step_x, last],
-                                        size=self.output_dim)
+                input=step_static_input, pool_type='last'
+            )
+            projected = fluid.layers.fc(
+                input=[step_x, last], size=self.output_dim
+            )
             rnn.output(projected)
 
         if only_forward:
             static_input_step_outs = []
             step_idx = fluid.layers.fill_constant(
-                shape=[1], dtype='int64', value=0)
+                shape=[1], dtype='int64', value=0
+            )
             step_idx.stop_gradient = True
 
             for i in range(self._max_sequence_len):
-                step_out = fluid.layers.array_read(static_input_out_array,
-                                                   step_idx)
+                step_out = fluid.layers.array_read(
+                    static_input_out_array, step_idx
+                )
                 step_out.stop_gradient = True
                 static_input_step_outs.append(step_out)
                 fluid.layers.increment(x=step_idx, value=1.0, in_place=True)
@@ -128,10 +136,11 @@ class TestDyRnnStaticInput(unittest.TestCase):
             return static_input_step_outs
 
         last = fluid.layers.sequence_pool(input=rnn(), pool_type='last')
-        loss = fluid.layers.mean(last)
+        loss = paddle.mean(last)
         append_backward(loss)
         static_input_grad = self._program.global_block().var(
-            framework.grad_var_name('static_input_tensor'))
+            framework.grad_var_name('static_input_tensor')
+        )
         return static_input_grad, loss
 
     def get_expected_static_step_outs(self):
@@ -144,8 +153,11 @@ class TestDyRnnStaticInput(unittest.TestCase):
         static_sliced = []
         cur_offset = 0
         for i in range(len(static_lod[0])):
-            static_sliced.append(self.static_input_data[cur_offset:(
-                cur_offset + static_lod[0][i])])
+            static_sliced.append(
+                self.static_input_data[
+                    cur_offset : (cur_offset + static_lod[0][i])
+                ]
+            )
             cur_offset += static_lod[0][i]
         static_seq_len = static_lod[0]
         static_reordered = []
@@ -169,7 +181,8 @@ class TestDyRnnStaticInput(unittest.TestCase):
             static_step_lods.append([lod])
             end = total_len
             static_step_outs.append(
-                np.array(static_reordered[:end]).astype('float32'))
+                np.array(static_reordered[:end]).astype('float32')
+            )
 
         return static_step_outs, static_step_lods
 
@@ -179,8 +192,8 @@ class TestDyRnnStaticInput(unittest.TestCase):
         expected_outs, expected_lods = self.get_expected_static_step_outs()
         for i in range(self._max_sequence_len):
             step_out, lod = self.fetch_value(static_step_outs[i])
-            self.assertTrue(np.allclose(step_out, expected_outs[i]))
-            self.assertTrue(np.allclose(lod, expected_lods[i]))
+            np.testing.assert_allclose(step_out, expected_outs[i], rtol=1e-05)
+            np.testing.assert_allclose(lod, expected_lods[i], rtol=1e-05)
 
     def test_network_gradient(self):
         static_input_grad, loss = self.build_graph()
@@ -202,10 +215,14 @@ class TestDyRnnStaticInput(unittest.TestCase):
             y_neg = self.fetch_value(loss)[0][0]
             self.static_input_tensor._set_float_element(i, origin)
             numeric_gradients.ravel()[i] = (y_pos - y_neg) / self._delta / 2
-        self.assertTrue(np.allclose(actual_gradients, numeric_gradients, 0.001))
-        self.assertTrue(
-            np.allclose(actual_lod,
-                        self.static_input_tensor.recursive_sequence_lengths()))
+        np.testing.assert_allclose(
+            actual_gradients, numeric_gradients, rtol=0.001
+        )
+        np.testing.assert_allclose(
+            actual_lod,
+            self.static_input_tensor.recursive_sequence_lengths(),
+            rtol=1e-05,
+        )
 
 
 if __name__ == '__main__':

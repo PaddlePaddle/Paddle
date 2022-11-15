@@ -15,11 +15,13 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include <fstream>
 #include <iosfwd>
 #include <memory>
 #include <ostream>
 #include <string>
+
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 
 namespace paddle {

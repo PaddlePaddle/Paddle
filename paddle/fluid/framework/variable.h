@@ -18,7 +18,7 @@
 #include <typeindex>
 #include <typeinfo>
 
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 namespace paddle {
 namespace framework {
@@ -33,10 +33,12 @@ class Variable {
     PADDLE_ENFORCE_NOT_NULL(
         holder_, platform::errors::NotFound("Variable is not initialized."));
     PADDLE_ENFORCE_EQ(
-        holder_->Type(), VarTypeTrait<T>::kId,
+        holder_->Type(),
+        VarTypeTrait<T>::kId,
         platform::errors::InvalidArgument(
             "The Variable type must be %s, but the type it holds is %s.",
-            ToTypeName(VarTypeTrait<T>::kId), ToTypeName(holder_->Type())));
+            ToTypeName(VarTypeTrait<T>::kId),
+            ToTypeName(holder_->Type())));
     return *static_cast<const T*>(holder_->Ptr());
   }
 
@@ -48,10 +50,12 @@ class Variable {
       holder_.reset(new PlaceholderImpl<T>());
     } else {
       PADDLE_ENFORCE_EQ(
-          holder_->Type(), VarTypeTrait<T>::kId,
+          holder_->Type(),
+          VarTypeTrait<T>::kId,
           platform::errors::InvalidArgument(
               "The Variable type must be %s, but the type it holds is %s.",
-              ToTypeName(VarTypeTrait<T>::kId), ToTypeName(holder_->Type())));
+              ToTypeName(VarTypeTrait<T>::kId),
+              ToTypeName(holder_->Type())));
     }
     return static_cast<T*>(holder_->Ptr());
   }
@@ -72,9 +76,10 @@ class Variable {
  private:
   // This method hides type T, so it doesn't appear as a template parameter of
   // Variable.
-  framework::TensorInplaceVersion* InplaceVersionCounter();
+  phi::DenseTensor::InplaceVersion* InplaceVersionCounter();
 
  public:
+  void SetInplaceVersionToZero();
   uint32_t CurrentInplaceVersion();
   void BumpInplaceVersion();
 
@@ -113,25 +118,32 @@ class Variable {
   std::shared_ptr<Placeholder> holder_;
 };
 
-inline framework::TensorInplaceVersion* Variable::InplaceVersionCounter() {
-  framework::TensorInplaceVersion* version_counter_ptr(nullptr);
-  if (IsType<framework::LoDTensor>()) {
+inline phi::DenseTensor::InplaceVersion* Variable::InplaceVersionCounter() {
+  phi::DenseTensor::InplaceVersion* version_counter_ptr(nullptr);
+  if (IsType<phi::DenseTensor>()) {
     version_counter_ptr =
-        &GetMutable<framework::LoDTensor>()->InplaceVersionCounter();
-  } else if (IsType<framework::Tensor>()) {
+        &GetMutable<phi::DenseTensor>()->InplaceVersionCounter();
+  } else if (IsType<phi::DenseTensor>()) {
     version_counter_ptr =
-        &GetMutable<framework::Tensor>()->InplaceVersionCounter();
+        &GetMutable<phi::DenseTensor>()->InplaceVersionCounter();
 
-  } else if (IsType<framework::SelectedRows>()) {
-    version_counter_ptr = &GetMutable<framework::SelectedRows>()
+  } else if (IsType<phi::SelectedRows>()) {
+    version_counter_ptr = &GetMutable<phi::SelectedRows>()
                                ->mutable_value()
                                ->InplaceVersionCounter();
   } else {
-    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
+    VLOG(4) << "Only supports phi::DenseTensor, phi::DenseTensor, SelectedRows "
+               "to have "
                "TensorInplaceVersion, but received type "
             << platform::demangle(framework::ToTypeName(Type()));
   }
   return version_counter_ptr;
+}
+
+inline void Variable::SetInplaceVersionToZero() {
+  auto inplace_version_counter = this->InplaceVersionCounter();
+  if (inplace_version_counter)
+    inplace_version_counter->SetInplaceVersionToZero();
 }
 
 inline uint32_t Variable::CurrentInplaceVersion() {
@@ -148,7 +160,8 @@ inline void Variable::BumpInplaceVersion() {
   if (version_counter_ptr) {
     return version_counter_ptr->Bump();
   } else {
-    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
+    VLOG(4) << "Only supports phi::DenseTensor, phi::DenseTensor, SelectedRows "
+               "to have "
                "TensorInplaceVersion, but received type "
             << platform::demangle(framework::ToTypeName(Type()));
   }

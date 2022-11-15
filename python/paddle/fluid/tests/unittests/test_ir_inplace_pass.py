@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
@@ -33,12 +32,14 @@ def fc_with_batchnorm(use_feed):
             size=200,
             act='tanh',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)))
+                initializer=fluid.initializer.Constant(value=1.0)
+            ),
+        )
 
         hidden = fluid.layers.batch_norm(input=hidden)
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
+    loss = paddle.mean(loss)
     return loss
 
 
@@ -56,11 +57,11 @@ class TestIrInplace(TestParallelExecutorBase):
         label = np.ones(shape=[32, 1], dtype='int64')
         self.check_network_convergence(
             fc_with_batchnorm,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict={"image": img, "label": label},
             use_device=DeviceType.CUDA,
             use_ir_memory_optimize=ir_memory_optimize,
-            enable_inplace=enable_inplace)
+            enable_inplace=enable_inplace,
+        )
 
     def test_fc_with_batchnorm(self, delta=1e-3):
         loss00 = self._fc_with_batchnorm(False, False)

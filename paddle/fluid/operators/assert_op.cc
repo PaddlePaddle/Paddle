@@ -16,10 +16,13 @@
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/tensor_formatter.h"
 
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+
 namespace paddle {
 namespace framework {
 class InferShapeContext;
-class LoDTensor;
 class OpDesc;
 class Scope;
 class Variable;
@@ -38,11 +41,12 @@ const char kSummarize[] = "summarize";
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 class AssertOp : public framework::OperatorBase {
  public:
-  AssertOp(const std::string &type, const framework::VariableNameMap &inputs,
+  AssertOp(const std::string &type,
+           const framework::VariableNameMap &inputs,
            const framework::VariableNameMap &outputs,
            const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -56,7 +60,8 @@ class AssertOp : public framework::OperatorBase {
                                 "Input(Condition) of AssertOp is not found."));
     const LoDTensor &cond = cond_var_ptr->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(
-        cond.dims(), paddle::framework::make_ddim({1}),
+        cond.dims(),
+        phi::make_ddim({1}),
         platform::errors::InvalidArgument(
             "The numel of Input(Condition) of AssertOp must be 1. But now "
             "the Condition's shape is %s.",
@@ -73,7 +78,7 @@ class AssertOp : public framework::OperatorBase {
     const std::vector<std::string> &x_names = Inputs(kData);
     for (const std::string &name : x_names) {
       const framework::Variable *x_var_ptr = scope.FindVar(name);
-      const framework::LoDTensor &x_tensor = x_var_ptr->Get<LoDTensor>();
+      const phi::DenseTensor &x_tensor = x_var_ptr->Get<LoDTensor>();
       formatter.Print(x_tensor, name);
     }
 
@@ -117,6 +122,9 @@ class AssertOpInferShape : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    assert, ops::AssertOp, ops::AssertOpProtoMaker, ops::AssertOpInferShape,
+    assert,
+    ops::AssertOp,
+    ops::AssertOpProtoMaker,
+    ops::AssertOpInferShape,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

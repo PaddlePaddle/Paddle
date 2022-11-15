@@ -14,12 +14,11 @@
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import unittest
 
 
 class TestAscendTriggerOP(unittest.TestCase):
-    """ TestCases for ascend_trigger op"""
+    """TestCases for ascend_trigger op"""
 
     def test_ascend_trigger_op(self):
         paddle.enable_static()
@@ -32,7 +31,8 @@ class TestAscendTriggerOP(unittest.TestCase):
                 type="ascend_trigger",
                 inputs={"FeedList": [x]},
                 outputs={"FetchList": [y]},
-                attrs={'graph_idx': 0})
+                attrs={'graph_idx': 0},
+            )
 
         exe = paddle.static.Executor(paddle.CPUPlace())
         try:

@@ -15,6 +15,7 @@
 from collections import OrderedDict
 from ..framework import Parameter
 from .layers import Layer
+from .base import param_guard
 
 __all__ = [
     'Sequential',
@@ -58,7 +59,7 @@ class Sequential(Layer):
     """
 
     def __init__(self, *layers):
-        super(Sequential, self).__init__()
+        super().__init__()
         if len(layers) > 0 and isinstance(layers[0], (list, tuple)):
             for name, layer in layers:
                 self.add_sublayer(name, layer)
@@ -78,7 +79,7 @@ class Sequential(Layer):
                 name += len(self._sub_layers)
             elif name < -len(self._sub_layers):
                 raise IndexError('index {} is out of range'.format(name))
-            return self._sub_layers[str(name)]
+            return list(self._sub_layers.values())[name]
 
     def __setitem__(self, name, layer):
         assert isinstance(layer, Layer)
@@ -114,7 +115,7 @@ class ParameterList(Layer):
 
             class MyLayer(paddle.nn.Layer):
                 def __init__(self, num_stacked_param):
-                    super(MyLayer, self).__init__()
+                    super().__init__()
                     # create ParameterList with iterable Parameters
                     self.params = paddle.nn.ParameterList(
                         [paddle.create_parameter(
@@ -152,14 +153,15 @@ class ParameterList(Layer):
     """
 
     def __init__(self, parameters=None):
-        super(ParameterList, self).__init__()
+        super().__init__()
         if parameters is not None:
             for idx, param in enumerate(parameters):
                 assert isinstance(param, Parameter)
                 self.add_parameter(str(idx), param)
 
     def __getitem__(self, idx):
-        return self._parameters[str(idx)]
+        with param_guard(self._parameters):
+            return self._parameters[str(idx)]
 
     def __setitem__(self, idx, param):
         assert isinstance(param, Parameter)
@@ -169,7 +171,8 @@ class ParameterList(Layer):
         return len(self._parameters)
 
     def __iter__(self):
-        return iter(self._parameters.values())
+        with param_guard(self._parameters):
+            return iter(self._parameters.values())
 
     def append(self, parameter):
         """Appends a given parameter at the end of the list.
@@ -198,7 +201,7 @@ class LayerList(Layer):
 
             class MyLayer(paddle.nn.Layer):
                 def __init__(self):
-                    super(MyLayer, self).__init__()
+                    super().__init__()
                     self.linears = paddle.nn.LayerList(
                         [paddle.nn.Linear(10, 10) for i in range(10)])
 
@@ -210,7 +213,7 @@ class LayerList(Layer):
     """
 
     def __init__(self, sublayers=None):
-        super(LayerList, self).__init__()
+        super().__init__()
         if sublayers is not None:
             for idx, layer in enumerate(sublayers):
                 self.add_sublayer(str(idx), layer)
@@ -219,8 +222,10 @@ class LayerList(Layer):
         if isinstance(idx, int):
             if not (-len(self) <= idx < len(self)):
                 raise IndexError(
-                    'index {} is out of range, should be an integer in range [{}, {})'.
-                    format(idx, -len(self), len(self)))
+                    'index {} is out of range, should be an integer in range [{}, {})'.format(
+                        idx, -len(self), len(self)
+                    )
+                )
             if idx < 0:
                 idx += len(self)
         return idx
@@ -245,7 +250,8 @@ class LayerList(Layer):
             delattr(self, str(idx))
         str_indices = [str(i) for i in range(len(self._sub_layers))]
         self._sub_layers = OrderedDict(
-            list(zip(str_indices, self._sub_layers.values())))
+            list(zip(str_indices, self._sub_layers.values()))
+        )
 
     def __len__(self):
         return len(self._sub_layers)
@@ -294,9 +300,11 @@ class LayerList(Layer):
                 linears.insert(-1, another)
                 print(linears[-2] is another) # True
         """
-        assert isinstance(index, int) and \
-               -len(self._sub_layers) <= index < len(self._sub_layers), \
-            "index should be an integer in range [{}, {})".format(-len(self), len(self))
+        assert isinstance(index, int) and -len(self._sub_layers) <= index < len(
+            self._sub_layers
+        ), "index should be an integer in range [{}, {})".format(
+            -len(self), len(self)
+        )
 
         index = self._get_abs_idx(index)
         for i in range(len(self._sub_layers), index, -1):

@@ -12,18 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
-
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-
-namespace paddle {
-namespace platform {
-struct complex128;
-struct complex64;
-}  // namespace platform
-}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -32,42 +23,11 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-struct CPUPlace;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct SameDimsElemwiseSub<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-    blas.VSUB(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
-  }
-};
-
-template <typename T>
-struct SameDimsElemwiseSub<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
-    eigen_z.device(place) = eigen_x - eigen_y;
-  }
-};
 class ElementwiseSubOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Sub"; }
@@ -113,54 +73,28 @@ class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_sub, Sub);
-REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_sub, Sub);
 
 namespace ops = paddle::operators;
 
+REGISTER_OPERATOR(elementwise_sub,
+                  ::paddle::operators::ElementwiseOp,
+                  ::paddle::operators::ElementwiseSubOpMaker,
+                  ::paddle::operators::ElementwiseOpInferVarType,
+                  elementwise_subGradMaker<::paddle::framework::OpDesc>,
+                  elementwise_subGradMaker<::paddle::imperative::OpBase>,
+                  ::paddle::operators::ElementwiseOpInplaceInferer);
+
 REGISTER_OPERATOR(
-    elementwise_sub_grad, ops::ElementwiseOpGrad,
-    ops::ElementwiseGradOpInplaceInferer, ops::ElementwiseGradNoBufVarsInferer,
+    elementwise_sub_grad,
+    ops::ElementwiseOpGrad,
+    ops::ElementwiseGradOpInplaceInferer,
+    ops::ElementwiseGradNoBufVarsInferer,
     ops::ElementwiseSubDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseSubDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(elementwise_sub_grad_grad,
                   ops::ElementwiseOpDoubleGradWithoutDXDY,
                   ops::ElementwiseDoubleGradOpInplaceInferer,
                   ops::ElementwiseDoubleGradNoBufVarsInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex64>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex128>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub_grad,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex64>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex128>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub_grad_grad,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex64>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex128>);
 
 REGISTER_OP_VERSION(elementwise_sub)
     .AddCheckpoint(

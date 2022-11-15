@@ -22,5 +22,13 @@ constexpr int kRootBlockIndex = 0;
 // The Parent Index of root Block, this block does not exist.
 constexpr int kNoneBlockIndex = -1;
 
+// The Parent Index of root ProcessMesh, this ProcessMesh does not exist.
+constexpr int kNoneProcessMeshIndex = -1;
+
+// If a attribute name has a certain suffix, it means that the
+// atrribute is a distributed-related attribute for auto parallel.
+// e.g., "mesh_id@AUTO_PARALLEL".
+constexpr char kAutoParallelSuffix[] = "@AUTO_PARALLEL";
+
 }  // namespace framework
 }  // namespace paddle

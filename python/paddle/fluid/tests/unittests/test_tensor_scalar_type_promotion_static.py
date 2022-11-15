@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import unittest
 import numpy as np
 
@@ -25,7 +23,7 @@ from paddle.static import Program
 # - Related paddle dtypes:
 #  - int type: int64, (no test here: uint8, int8, int16, int32)
 #  - float type: float32, (no test here: float64)
-# - Python scalar dtypes: 
+# - Python scalar dtypes:
 #  - int(64)
 #  - float(64)
 
@@ -57,7 +55,7 @@ class TestTensorScalarTypePromotionStatic(unittest.TestCase):
         rlt = exe.run(fetch_list=[c_rlt.name, c.name])
 
         self.assertEqual(rlt[0].dtype, rlt[1].dtype)
-        self.assertTrue(np.array_equal(rlt[0], rlt[1]))
+        np.testing.assert_array_equal(rlt[0], rlt[1])
 
     def test_tensor_add_scalar(self):
         # tensor(int64) + scalar(int)

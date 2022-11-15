@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
@@ -24,9 +25,9 @@ TEST(elementwise_op, add_weight) {
   std::unordered_set<std::string> parameters({"elementwise_add-Y"});
   framework::Scope scope;
   TRTConvertValidation validator(10, parameters, scope, 1 << 15);
-  validator.DeclInputVar("elementwise_add-X", nvinfer1::DimsCHW(10, 3, 3));
+  validator.DeclInputVar("elementwise_add-X", nvinfer1::Dims3(10, 3, 3));
   validator.DeclParamVar("elementwise_add-Y", nvinfer1::Dims3(10, 1, 1));
-  validator.DeclOutputVar("elementwise_add-Out", nvinfer1::DimsCHW(10, 3, 3));
+  validator.DeclOutputVar("elementwise_add-Out", nvinfer1::Dims3(10, 3, 3));
 
   // Prepare Op description
   framework::OpDesc desc;
@@ -50,11 +51,11 @@ TEST(elementwise_op, native) {
     framework::Scope scope;
     TRTConvertValidation validator(batch_size, parameters, scope, 1 << 15);
     validator.DeclInputVar("elementwise_" + type + "-X",
-                           nvinfer1::DimsCHW(10, 3, 3));
+                           nvinfer1::Dims3(10, 3, 3));
     validator.DeclInputVar("elementwise_" + type + "-Y",
                            nvinfer1::Dims3(10, 3, 3));
     validator.DeclOutputVar("elementwise_" + type + "-Out",
-                            nvinfer1::DimsCHW(10, 3, 3));
+                            nvinfer1::Dims3(10, 3, 3));
 
     // Prepare Op description
     framework::OpDesc desc;
@@ -78,11 +79,11 @@ TEST(elementwise_op, plugin) {
     framework::Scope scope;
     TRTConvertValidation validator(batch_size, parameters, scope, 1 << 15);
     validator.DeclInputVar("elementwise_" + type + "-X",
-                           nvinfer1::DimsCHW(10, 3, 3));
+                           nvinfer1::Dims3(10, 3, 3));
     validator.DeclInputVar("elementwise_" + type + "-Y",
                            nvinfer1::Dims3(10, 1, 1));
     validator.DeclOutputVar("elementwise_" + type + "-Out",
-                            nvinfer1::DimsCHW(10, 3, 3));
+                            nvinfer1::Dims3(10, 3, 3));
 
     // Prepare Op description
     framework::OpDesc desc;
@@ -103,5 +104,5 @@ TEST(elementwise_op, plugin) {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(elementwise_add);
-USE_OP(elementwise_mul);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(elementwise_mul);

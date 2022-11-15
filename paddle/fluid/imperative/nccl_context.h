@@ -18,7 +18,7 @@
 #include <vector>
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/cuda_resource_pool.h"
+#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #endif
 
 #ifdef PADDLE_WITH_NCCL
@@ -49,7 +49,8 @@ class NCCLParallelContext : public ParallelContext {
 
   ~NCCLParallelContext() override = default;
 
-  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids, int root,  // NOLINT
+  void BcastNCCLId(std::vector<ncclUniqueId>& nccl_ids,
+                   int root,  // NOLINT
                    int server_fd);
 
   void Init() override;
@@ -57,8 +58,11 @@ class NCCLParallelContext : public ParallelContext {
   void InitWithRingID(int ring_id) override;
 
   void AllReduceByStream(const framework::Variable& src,
-                         framework::Variable* dst, int ring_id,
+                         framework::Variable* dst,
+                         int ring_id,
                          bool use_calc_stream) override;
+
+  void Broadcast(framework::Variable* src, int ring_id) override;
 
   paddle::platform::DeviceContext* GetDeviceContext(int ring_id) override;
 

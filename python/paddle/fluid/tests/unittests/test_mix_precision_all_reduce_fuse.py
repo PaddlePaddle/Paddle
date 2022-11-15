@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle.fluid.core as core
-import math
-import os
-import sys
 import unittest
 
 import numpy as np
@@ -33,7 +28,7 @@ img_shape = [1, 28, 28]
 def loss_net(hidden, label):
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_loss = fluid.layers.mean(loss)
+    avg_loss = paddle.mean(loss)
     return avg_loss
 
 
@@ -47,7 +42,8 @@ def conv_net(use_feed):
         num_filters=20,
         pool_size=2,
         pool_stride=2,
-        act="relu")
+        act="relu",
+    )
     conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
 
     conv_pool_1 = fluid.layers.cast(conv_pool_1, np.float32)
@@ -57,7 +53,8 @@ def conv_net(use_feed):
         num_filters=50,
         pool_size=2,
         pool_stride=2,
-        act="relu")
+        act="relu",
+    )
     hidden = fluid.layers.cast(conv_pool_2, np.float32)
     return loss_net(hidden, label)
 
@@ -70,7 +67,8 @@ def _optimizer(learning_rate=1e-6):
 class TestResnet(TestParallelExecutorBase):
     def check_model(self, use_device):
         img, label = init_data(
-            batch_size=batch_size, img_shape=img_shape, label_range=9)
+            batch_size=batch_size, img_shape=img_shape, label_range=9
+        )
         img = np.float16(img)
         feed_dict = {"image": img, "label": label}
 
@@ -80,7 +78,8 @@ class TestResnet(TestParallelExecutorBase):
             iter=10,
             use_device=use_device,
             fuse_all_reduce_ops=True,
-            optimizer=_optimizer)
+            optimizer=_optimizer,
+        )
 
     def test_model(self):
         if core.is_compiled_with_cuda():

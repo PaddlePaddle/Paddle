@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -23,11 +23,12 @@ template <typename DeviceContext, typename T>
 class FillZerosLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
-    math::SetConstant<DeviceContext, T> setter;
-    setter(context.template device_context<DeviceContext>(), out,
+    phi::funcs::SetConstant<DeviceContext, T> setter;
+    setter(context.template device_context<DeviceContext>(),
+           out,
            static_cast<T>(0));
   }
 };

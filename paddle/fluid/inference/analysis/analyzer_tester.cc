@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/analyzer.h"
-
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
+
+#include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "paddle/fluid/platform/port.h"
+#include "paddle/phi/backends/dynload/port.h"
 
 namespace paddle {
 namespace inference {
@@ -33,7 +33,8 @@ TEST(Analyzer, analysis_without_tensorrt) {
   argument.SetModelDir(FLAGS_inference_model_dir);
   argument.SetEnableAnalysisOptim(false);
   argument.SetUseGPU(false);
-  argument.SetAnalysisPasses({"ir_graph_build_pass", "ir_analysis_pass",
+  argument.SetAnalysisPasses({"ir_graph_build_pass",
+                              "ir_analysis_pass",
                               "ir_params_sync_among_devices_pass"});
 
   Analyzer analyser;
@@ -48,7 +49,8 @@ TEST(Analyzer, analysis_with_tensorrt) {
   argument.SetTensorRtWorkspaceSize(1 << 20);
   argument.SetModelDir(FLAGS_inference_model_dir);
   argument.SetUseGPU(false);
-  argument.SetAnalysisPasses({"ir_graph_build_pass", "ir_analysis_pass",
+  argument.SetAnalysisPasses({"ir_graph_build_pass",
+                              "ir_analysis_pass",
                               "ir_params_sync_among_devices_pass"});
 
   Analyzer analyser;
@@ -75,24 +77,26 @@ void TestWord2vecPrediction(const std::string& model_path) {
   std::vector<PaddleTensor> outputs;
   CHECK(predictor->Run(slots, &outputs));
 
-  PADDLE_ENFORCE_EQ(outputs.size(), 1UL,
+  PADDLE_ENFORCE_EQ(outputs.size(),
+                    1UL,
                     platform::errors::PreconditionNotMet(
                         "Output size should be 1, but got %d", outputs.size()));
   // Check the output buffer size and result of each tid.
-  PADDLE_ENFORCE_EQ(outputs.front().data.length(), 33168UL,
+  PADDLE_ENFORCE_EQ(outputs.front().data.length(),
+                    33168UL,
                     platform::errors::PreconditionNotMet(
                         "Output's data length should be 33168 but got %d",
                         outputs.front().data.length()));
-  float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
-                     0.000932706};
+  float result[5] = {
+      0.00129761, 0.00151112, 0.000423564, 0.00108815, 0.000932706};
   const size_t num_elements = outputs.front().data.length() / sizeof(float);
   // The outputs' buffers are in CPU memory.
   for (size_t i = 0; i < std::min(static_cast<size_t>(5UL), num_elements);
        i++) {
     LOG(INFO) << "data: " << static_cast<float*>(outputs.front().data.data())[i]
               << " result: " << result[i];
-    EXPECT_NEAR(static_cast<float*>(outputs.front().data.data())[i], result[i],
-                1e-3);
+    EXPECT_NEAR(
+        static_cast<float*>(outputs.front().data.data())[i], result[i], 1e-3);
   }
 }
 

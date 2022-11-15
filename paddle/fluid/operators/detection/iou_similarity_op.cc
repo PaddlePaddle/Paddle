@@ -29,26 +29,30 @@ class IOUSimilarityOp : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 2UL,
+        x_dims.size(),
+        2UL,
         platform::errors::InvalidArgument(
             "The rank of Input(X) must be 2, but got dimension = %d.",
             x_dims.size()));
     PADDLE_ENFORCE_EQ(
-        x_dims[1], 4UL,
+        x_dims[1],
+        4UL,
         platform::errors::InvalidArgument(
             "The shape of X is [N, 4], bug got dimension = %d.", x_dims[1]));
     PADDLE_ENFORCE_EQ(
-        y_dims.size(), 2UL,
+        y_dims.size(),
+        2UL,
         platform::errors::InvalidArgument(
             "The rank of Input(Y) must be 2, but got dimension = %d.",
             y_dims.size()));
     PADDLE_ENFORCE_EQ(
-        y_dims[1], 4UL,
+        y_dims[1],
+        4UL,
         platform::errors::InvalidArgument(
             "The shape of Y is [M, 4], but got dimension = %d.", y_dims[1]));
 
     ctx->ShareLoD("X", /*->*/ "Out");
-    ctx->SetOutputDim("Out", framework::make_ddim({x_dims[0], y_dims[0]}));
+    ctx->SetOutputDim("Out", phi::make_ddim({x_dims[0], y_dims[0]}));
   }
 };
 
@@ -91,7 +95,7 @@ boxes in 'Y' are shared by all instance of the batched inputs of X.
 Given two boxes A and B, the calculation of IOU is as follows:
 
 $$
-IOU(A, B) = 
+IOU(A, B) =
 \\frac{area(A\\cap B)}{area(A)+area(B)-area(A\\cap B)}
 $$
 
@@ -103,11 +107,12 @@ $$
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    iou_similarity, ops::IOUSimilarityOp, ops::IOUSimilarityOpMaker,
+    iou_similarity,
+    ops::IOUSimilarityOp,
+    ops::IOUSimilarityOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    iou_similarity,
-    ops::IOUSimilarityKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::IOUSimilarityKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(iou_similarity,
+                       ops::IOUSimilarityKernel<phi::CPUContext, float>,
+                       ops::IOUSimilarityKernel<phi::CPUContext, double>);

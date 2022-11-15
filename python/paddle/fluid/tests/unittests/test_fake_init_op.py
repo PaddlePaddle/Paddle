@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle.fluid.core as core
@@ -26,7 +24,8 @@ class TestFakeInitOpSelectedRows(unittest.TestCase):
 
         out_var_name = 'Out'
         if is_selected_rows:
-            out_tensor = scope.var(out_var_name).get_selected_rows().get_tensor(
+            out_tensor = (
+                scope.var(out_var_name).get_selected_rows().get_tensor()
             )
         else:
             out_tensor = scope.var(out_var_name).get_tensor()

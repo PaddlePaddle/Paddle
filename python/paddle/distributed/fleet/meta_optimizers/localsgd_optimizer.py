@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 from paddle.fluid import program_guard, layers, default_main_program
+from paddle.fluid import default_startup_program
 from .meta_optimizer_base import MetaOptimizerBase
-from .common import OpRole, OP_ROLE_KEY, CollectiveHelper, is_update_op
+from .common import CollectiveHelper, OP_ROLE_KEY, OpRole
 
 __all__ = []
 
 
 class LocalSGDOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(LocalSGDOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
@@ -43,10 +42,12 @@ class LocalSGDOptimizer(MetaOptimizerBase):
         if self.role_maker._worker_num() <= 1:
             return False
 
-        return isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum) \
-            or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum) \
-            or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD) \
+        return (
+            isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum)
+            or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum)
+            or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD)
             or isinstance(self.inner_opt, paddle.fluid.optimizer.SGD)
+        )
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.localsgd = False
@@ -74,7 +75,8 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                 shape=param.shape,
                 persistable=True,
                 stop_gradient=True,
-                dtype=param.dtype)
+                dtype=param.dtype,
+            )
             p2s.append([param, snapshot])
         return p2s
 
@@ -83,17 +85,17 @@ class LocalSGDOptimizer(MetaOptimizerBase):
             for param, snapshot in param2snapshot:
                 layers.assign(param, snapshot)
 
-    def minimize_impl(self,
-                      loss,
-                      startup_program=None,
-                      parameter_list=None,
-                      no_grad_set=None):
+    def minimize_impl(
+        self, loss, startup_program=None, parameter_list=None, no_grad_set=None
+    ):
         minimized = self.inner_opt.minimize(
-            loss, startup_program=startup_program)
+            loss, startup_program=startup_program
+        )
 
         k_steps_value = self.user_defined_strategy.localsgd_configs['k_steps']
         begin_step_value = self.user_defined_strategy.localsgd_configs[
-            'begin_step']
+            'begin_step'
+        ]
 
         if startup_program is None:
             startup_program = default_startup_program()
@@ -113,21 +115,24 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                 shape=[1],
                 value=k_steps_value,
                 dtype='int64',
-                persistable=True)
+                persistable=True,
+            )
 
             begin_step = layers.create_global_var(
                 name="begin_step",
                 shape=[1],
                 value=begin_step_value,
                 dtype='int64',
-                persistable=True)
+                persistable=True,
+            )
 
             last_step = layers.create_global_var(
                 name="last_step",
                 shape=[1],
                 value=begin_step_value,
                 dtype='int64',
-                persistable=True)
+                persistable=True,
+            )
 
             def communicate():
                 sub_block = default_main_program().current_block()
@@ -135,15 +140,16 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                 for param, snapshot in p2s:
                     sub_block.append_op(
                         type='elementwise_sub',
-                        inputs={'X': [snapshot],
-                                'Y': [param]},
+                        inputs={'X': [snapshot], 'Y': [param]},
                         outputs={'Out': [param]},
-                        attrs={OP_ROLE_KEY: OpRole.Optimize})
+                        attrs={OP_ROLE_KEY: OpRole.Optimize},
+                    )
                     sub_block.append_op(
                         type='c_sync_calc_stream',
                         inputs={'X': param},
                         outputs={'Out': param},
-                        attrs={OP_ROLE_KEY: OpRole.Optimize})
+                        attrs={OP_ROLE_KEY: OpRole.Optimize},
+                    )
                     ring_id = (ring_id + 1) % self.nrings
                     sub_block.append_op(
                         type='c_allreduce_sum',
@@ -151,8 +157,9 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                         outputs={'Out': [param]},
                         attrs={
                             'ring_id': ring_id,
-                            OP_ROLE_KEY: OpRole.Optimize
-                        })
+                            OP_ROLE_KEY: OpRole.Optimize,
+                        },
+                    )
 
                 for ring_id in range(self.nrings):
                     sub_block.append_op(
@@ -161,8 +168,9 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                         outputs={'Out': param},
                         attrs={
                             'ring_id': ring_id,
-                            OP_ROLE_KEY: OpRole.Optimize
-                        })
+                            OP_ROLE_KEY: OpRole.Optimize,
+                        },
+                    )
 
                 for param, snapshot in p2s:
                     sub_block.append_op(
@@ -171,19 +179,21 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                         outputs={'Out': [param]},
                         attrs={
                             'scale': 1.0 / self.role_maker._worker_num(),
-                            OP_ROLE_KEY: OpRole.Optimize
-                        })
+                            OP_ROLE_KEY: OpRole.Optimize,
+                        },
+                    )
                     sub_block.append_op(
                         type='elementwise_sub',
-                        inputs={'X': [snapshot],
-                                'Y': [param]},
+                        inputs={'X': [snapshot], 'Y': [param]},
                         outputs={'Out': [param]},
-                        attrs={OP_ROLE_KEY: OpRole.Optimize})
+                        attrs={OP_ROLE_KEY: OpRole.Optimize},
+                    )
                     sub_block.append_op(
                         type='assign',
                         inputs={'X': [param]},
                         outputs={'Out': [snapshot]},
-                        attrs={OP_ROLE_KEY: OpRole.Optimize})
+                        attrs={OP_ROLE_KEY: OpRole.Optimize},
+                    )
                 layers.assign(step, last_step)
 
             def begin_localsgd():
@@ -195,11 +205,12 @@ class LocalSGDOptimizer(MetaOptimizerBase):
 
 class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(AdaptiveLocalSGDOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = ['AMPOptimizer']
         self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer", "LocalSGDOptimizer"
+            "GraphExecutionOptimizer",
+            "LocalSGDOptimizer",
         ]
         self.snapshot_key = '@SNAPSHOT'
 
@@ -213,10 +224,12 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
         if self.role_maker._worker_num() <= 1:
             return False
 
-        return isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum) \
-            or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum) \
-            or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD) \
+        return (
+            isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum)
+            or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum)
+            or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD)
             or isinstance(self.inner_opt, paddle.fluid.optimizer.SGD)
+        )
 
     def _disable_strategy(self, dist_strategy):
         dist_strategy.adaptive_localsgd = False
@@ -226,7 +239,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
         dist_strategy.adaptive_localsgd = True
         dist_strategy.adaptive_localsgd_configs = {
             "init_k_steps": 1,
-            "begin_step": 1
+            "begin_step": 1,
         }
 
     def snapshot_name(self, param_name):
@@ -247,7 +260,8 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 shape=param.shape,
                 persistable=True,
                 stop_gradient=True,
-                dtype=param.dtype)
+                dtype=param.dtype,
+            )
             p2s.append([param, snapshot])
         return p2s
 
@@ -264,13 +278,15 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
             attrs={
                 'ring_id': 0,
                 OP_ROLE_KEY: OpRole.Optimize,
-                'use_calc_stream': True
-            })
+                'use_calc_stream': True,
+            },
+        )
         program_block.append_op(
             type='c_sync_calc_stream',
             inputs={'X': [avg_loss]},
             outputs={'Out': [avg_loss]},
-            attrs={OP_ROLE_KEY: OpRole.Optimize})
+            attrs={OP_ROLE_KEY: OpRole.Optimize},
+        )
 
         program_block.append_op(
             type='scale',
@@ -278,21 +294,23 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
             outputs={'Out': [avg_loss]},
             attrs={
                 'scale': 1.0 / self.role_maker._worker_num(),
-                OP_ROLE_KEY: OpRole.Optimize
-            })
+                OP_ROLE_KEY: OpRole.Optimize,
+            },
+        )
 
-    def minimize_impl(self,
-                      loss,
-                      startup_program=None,
-                      parameter_list=None,
-                      no_grad_set=None):
+    def minimize_impl(
+        self, loss, startup_program=None, parameter_list=None, no_grad_set=None
+    ):
         minimized = self.inner_opt.minimize(
-            loss, startup_program=startup_program)
+            loss, startup_program=startup_program
+        )
 
         init_k_steps = self.user_defined_strategy.adaptive_localsgd_configs[
-            'init_k_steps']
+            'init_k_steps'
+        ]
         begin_step_value = self.user_defined_strategy.adaptive_localsgd_configs[
-            'begin_step']
+            'begin_step'
+        ]
 
         if startup_program is None:
             startup_program = default_startup_program()
@@ -313,42 +331,48 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 shape=[1],
                 value=int(init_k_steps),
                 dtype='int64',
-                persistable=True)
+                persistable=True,
+            )
 
             begin_step = layers.create_global_var(
                 name="begin_step",
                 shape=[1],
                 value=int(begin_step_value),
                 dtype='int64',
-                persistable=True)
+                persistable=True,
+            )
 
             last_step = layers.create_global_var(
                 name="last_step",
                 shape=[1],
                 value=int(0),
                 dtype='int64',
-                persistable=True)
+                persistable=True,
+            )
 
             avg_loss = layers.create_global_var(
                 name="avg_loss",
                 shape=[1],
                 value=float(0),
                 dtype=loss.dtype,
-                persistable=True)
+                persistable=True,
+            )
 
             lr_0 = layers.create_global_var(
                 name="lr_0",
                 shape=[1],
                 value=float(0),
                 dtype='float32',
-                persistable=True)
+                persistable=True,
+            )
 
             loss_0 = layers.create_global_var(
                 name="loss_0",
                 shape=[1],
                 value=float(0),
                 dtype='float32',
-                persistable=True)
+                persistable=True,
+            )
 
             global_lr = self.inner_opt._global_learning_rate()
 
@@ -365,15 +389,16 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 for param, snapshot in p2s:
                     sub_block.append_op(
                         type='elementwise_sub',
-                        inputs={'X': [snapshot],
-                                'Y': [param]},
+                        inputs={'X': [snapshot], 'Y': [param]},
                         outputs={'Out': [param]},
-                        attrs={OP_ROLE_KEY: OpRole.Optimize})
+                        attrs={OP_ROLE_KEY: OpRole.Optimize},
+                    )
                     sub_block.append_op(
                         type='c_sync_calc_stream',
                         inputs={'X': param},
                         outputs={'Out': param},
-                        attrs={OP_ROLE_KEY: OpRole.Optimize})
+                        attrs={OP_ROLE_KEY: OpRole.Optimize},
+                    )
                     ring_id = (ring_id + 1) % self.nrings
                     sub_block.append_op(
                         type='c_allreduce_sum',
@@ -381,8 +406,9 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                         outputs={'Out': [param]},
                         attrs={
                             'ring_id': ring_id,
-                            OP_ROLE_KEY: OpRole.Optimize
-                        })
+                            OP_ROLE_KEY: OpRole.Optimize,
+                        },
+                    )
 
                 for ring_id in range(self.nrings):
                     sub_block.append_op(
@@ -391,8 +417,9 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                         outputs={'Out': param},
                         attrs={
                             'ring_id': ring_id,
-                            OP_ROLE_KEY: OpRole.Optimize
-                        })
+                            OP_ROLE_KEY: OpRole.Optimize,
+                        },
+                    )
 
                 for param, snapshot in p2s:
                     sub_block.append_op(
@@ -401,19 +428,21 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                         outputs={'Out': [param]},
                         attrs={
                             'scale': 1.0 / self.role_maker._worker_num(),
-                            OP_ROLE_KEY: OpRole.Optimize
-                        })
+                            OP_ROLE_KEY: OpRole.Optimize,
+                        },
+                    )
                     sub_block.append_op(
                         type='elementwise_sub',
-                        inputs={'X': [snapshot],
-                                'Y': [param]},
+                        inputs={'X': [snapshot], 'Y': [param]},
                         outputs={'Out': [param]},
-                        attrs={OP_ROLE_KEY: OpRole.Optimize})
+                        attrs={OP_ROLE_KEY: OpRole.Optimize},
+                    )
                     sub_block.append_op(
                         type='assign',
                         inputs={'X': [param]},
                         outputs={'Out': [snapshot]},
-                        attrs={OP_ROLE_KEY: OpRole.Optimize})
+                        attrs={OP_ROLE_KEY: OpRole.Optimize},
+                    )
                 layers.assign(step, last_step)
 
             def communicate_avg_loss():
@@ -421,17 +450,27 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 self._generate_avg_loss(main_block, loss, avg_loss)
                 next_local_steps = layers.cast(
                     layers.ceil(
-                        layers.sqrt(lr_0 * avg_loss / (global_lr * loss_0) *
-                                    float(init_k_steps))),
-                    dtype='int64')
+                        layers.sqrt(
+                            lr_0
+                            * avg_loss
+                            / (global_lr * loss_0)
+                            * float(init_k_steps)
+                        )
+                    ),
+                    dtype='int64',
+                )
                 max_local_steps = layers.fill_constant(
-                    shape=[1], dtype='int64', value=16)
+                    shape=[1], dtype='int64', value=16
+                )
                 min_local_steps = layers.fill_constant(
-                    shape=[1], dtype='int64', value=1)
-                next_local_steps = layers.elementwise_min(next_local_steps,
-                                                          max_local_steps)
-                next_local_steps = layers.elementwise_max(next_local_steps,
-                                                          min_local_steps)
+                    shape=[1], dtype='int64', value=1
+                )
+                next_local_steps = layers.elementwise_min(
+                    next_local_steps, max_local_steps
+                )
+                next_local_steps = paddle.maximum(
+                    next_local_steps, min_local_steps
+                )
                 layers.assign(next_local_steps, k_steps)
 
             def begin_localsgd():

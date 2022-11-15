@@ -1,13 +1,13 @@
 #!/usr/bin/env python3.7
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,10 +16,8 @@
 
 # pylint: skip-file
 
-import functools
 import numpy as np
 from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import AnalysisPredictor
 from paddle.fluid.core import create_paddle_predictor
 
 
@@ -53,7 +51,7 @@ def set_config():
 
 
 def parse_data():
-    """ parse input and output data """
+    """parse input and output data"""
     with open('data/data.txt', 'r') as fr:
         data = np.array([float(_) for _ in fr.read().split()])
 

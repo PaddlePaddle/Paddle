@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest, check_out_dtype
@@ -27,15 +25,17 @@ class TestPadConstantLikeOp(OpTest):
         self.op_type = "pad_constant_like"
         self.inputs = {
             'X': np.random.random(self.x_shape).astype("float64"),
-            'Y': np.random.random(self.y_shape).astype("float64")
+            'Y': np.random.random(self.y_shape).astype("float64"),
         }
         self.attrs = {}
         self.attrs['pad_value'] = self.pad_value
         self.outputs = {
-            'Out': np.pad(self.inputs['Y'],
-                          self.paddings,
-                          mode='constant',
-                          constant_values=self.pad_value)
+            'Out': np.pad(
+                self.inputs['Y'],
+                self.paddings,
+                mode='constant',
+                constant_values=self.pad_value,
+            )
         }
 
     def test_check_output(self):
@@ -75,14 +75,16 @@ class TestPadConstantLikeOpError(unittest.TestCase):
 
             def test_Variable_x():
                 var_y = fluid.data(
-                    name="data_y", shape=[2, 2, 2, 2], dtype="float32")
+                    name="data_y", shape=[2, 2, 2, 2], dtype="float32"
+                )
                 fluid.layers.pad_constant_like(x=x_data, y=var_y)
 
             self.assertRaises(TypeError, test_Variable_x)
 
             def test_Variable_y():
                 var_x = fluid.data(
-                    name="data_x", shape=[2, 2, 2, 2], dtype="float32")
+                    name="data_x", shape=[2, 2, 2, 2], dtype="float32"
+                )
                 fluid.layers.pad_constant_like(x=var_x, y=y_data)
 
             self.assertRaises(TypeError, test_Variable_y)
@@ -93,10 +95,11 @@ class TestOutDtype(unittest.TestCase):
         api_fn = fluid.layers.pad_constant_like
         check_out_dtype(
             api_fn,
-            in_specs=[([2, 3, 2, 3], 'float64'), ([1, 3, 1, 3], )],
+            in_specs=[([2, 3, 2, 3], 'float64'), ([1, 3, 1, 3],)],
             expect_dtypes=['float32', 'float64', 'int32', 'int64'],
             target_index=1,
-            pad_value=0.)
+            pad_value=0.0,
+        )
 
 
 if __name__ == '__main__':

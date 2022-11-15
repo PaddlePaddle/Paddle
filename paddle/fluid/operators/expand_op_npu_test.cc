@@ -24,13 +24,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/dropout_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-namespace m = paddle::operators::math;
 
 USE_OP(expand);
 USE_OP_DEVICE_KERNEL(expand, NPU);
@@ -41,23 +39,26 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto in = scope->Var("X");
   auto expand_times = scope->Var("ExpandTimes");
   auto out = scope->Var("Out");
-  auto in_t = in->GetMutable<f::LoDTensor>();
-  auto out_t = out->GetMutable<f::LoDTensor>();
-  auto expand_times_t = expand_times->GetMutable<f::LoDTensor>();
+  auto in_t = in->GetMutable<phi::DenseTensor>();
+  auto out_t = out->GetMutable<phi::DenseTensor>();
+  auto expand_times_t = expand_times->GetMutable<phi::DenseTensor>();
 
   auto place = ctx.GetPlace();
-  TensorFromVector(std::vector<T>(3 * 1 * 7, 1), ctx, in_t);
-  TensorFromVector(std::vector<int>({1, 10, 1}), ctx, expand_times_t);
+  paddle::framework::TensorFromVector(std::vector<T>(3 * 1 * 7, 1), ctx, in_t);
+  paddle::framework::TensorFromVector(
+      std::vector<int>({1, 10, 1}), ctx, expand_times_t);
 
-  in_t->Resize(f::make_ddim({3, 1, 7}));
-  expand_times_t->Resize(f::make_ddim({3}));
-  out_t->Resize(f::make_ddim({3, 10, 7}));
+  in_t->Resize(phi::make_ddim({3, 1, 7}));
+  expand_times_t->Resize(phi::make_ddim({3}));
+  out_t->Resize(phi::make_ddim({3, 10, 7}));
   out_t->mutable_data<T>(place);
 
   f::AttributeMap attrs = {{}};
-  auto op = f::OpRegistry::CreateOp(
-      "expand", {{"X", {"X"}}, {"ExpandTimes", {"ExpandTimes"}}},
-      {{"Out", {"Out"}}}, attrs);
+  auto op =
+      f::OpRegistry::CreateOp("expand",
+                              {{"X", {"X"}}, {"ExpandTimes", {"ExpandTimes"}}},
+                              {{"Out", {"Out"}}},
+                              attrs);
   op->Run(*scope, place);
   ctx.Wait();
 

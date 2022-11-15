@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/seqconv_eltadd_relu_fuse_pass.h"
+
 #include <string>
 
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -27,21 +28,73 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+SeqConvEltAddReluFusePass::SeqConvEltAddReluFusePass() {
+  AddOpCompat(OpCompat("sequence_conv"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("PaddingData")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("contextLength")
+      .IsNumGT(0)
+      .End()
+      .AddAttr("contextStart")  // the contextStart attribute can be negative,
+                                // unconstrained
+      .End()
+      .AddAttr("contextStride")
+      .IsNumEQ(1)
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+
+  AddOpCompat(OpCompat("relu"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+}
+
 class Node;
 
-int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
+void SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
-  PDNode* x = pattern->NewNode(patterns::PDNodeName(name_scope, "X"))
+  PDNode* x = pattern->NewNode(patterns::PDNodeName(name_scope_, "X"))
                   ->assert_is_op_input("sequence_conv")
                   ->assert_var_not_persistable();
-  patterns::SeqConvEltAddRelu fuse_pattern(pattern, name_scope);
+  patterns::SeqConvEltAddRelu fuse_pattern(pattern, name_scope_);
   fuse_pattern(x);
 
   // Create New OpDesc
-  auto fuse_creator = [&](Node* seqconv, Node* input, Node* seqconv_weight,
-                          Node* eltadd_bias, Node* relu_out) {
+  auto fuse_creator = [&](Node* seqconv,
+                          Node* input,
+                          Node* seqconv_weight,
+                          Node* eltadd_bias,
+                          Node* relu_out) {
     OpDesc op_desc;
     op_desc.SetType("fusion_seqconv_eltadd_relu");
     op_desc.SetInput("X", {input->Name()});
@@ -70,6 +123,10 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     VLOG(4) << "handle SeqConv EltAdd Relu fuse";
     GET_IR_NODE_FROM_SUBGRAPH(seqconv, seqconv, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(seqconv_weight, seqconv_weight, fuse_pattern);
@@ -80,8 +137,8 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
     GET_IR_NODE_FROM_SUBGRAPH(relu, relu, fuse_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(relu_out, relu_out, fuse_pattern);
 
-    fuse_creator(seqconv, subgraph.at(x), seqconv_weight, eltadd_bias,
-                 relu_out);
+    fuse_creator(
+        seqconv, subgraph.at(x), seqconv_weight, eltadd_bias, relu_out);
     std::unordered_set<const Node*> marked_nodes(
         {seqconv, seqconv_out, eltadd, eltadd_out, relu});
     GraphSafeRemoveNodes(graph, marked_nodes);
@@ -89,14 +146,6 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope) {
   };
 
   gpd(graph, handler);
-
-  return fusion_count;
-}
-
-void SeqConvEltAddReluFusePass::ApplyImpl(ir::Graph* graph) const {
-  FusePassBase::Init(name_scope_, graph);
-
-  int fusion_count = BuildFusion(graph, name_scope_, param_scope());
   AddStatis(fusion_count);
 }
 

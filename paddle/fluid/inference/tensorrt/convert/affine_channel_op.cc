@@ -35,7 +35,8 @@ namespace tensorrt {
 class AffineChannelOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(3) << "convert a fluid affine_channel op to tensorrt scale nd layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -48,40 +49,38 @@ class AffineChannelOpConverter : public OpConverter {
     auto idim = input_tensor->getDimensions();
 
     auto* scale_v = scope.FindVar(scale_name);
-    auto* scale_t = scale_v->GetMutable<framework::LoDTensor>();
-    float* scale_ptr = engine_->GetWeightCPUData(scale_name, scale_t, false);
+    auto* scale_t = scale_v->GetMutable<phi::DenseTensor>();
+    float* scale_ptr = const_cast<float*>(static_cast<const float*>(
+        engine_->GetFp32TrtWeight(scale_name, *scale_t).get().values));
 
     auto* bias_v = scope.FindVar(bias_name);
-    auto* bias_t = bias_v->GetMutable<framework::LoDTensor>();
-    float* bias_ptr = engine_->GetWeightCPUData(bias_name, bias_t, false);
-
-    auto data_layout = framework::StringToDataLayout(
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
-
-    PADDLE_ENFORCE_EQ(
-        data_layout, framework::DataLayout::kNCHW,
-        platform::errors::InvalidArgument(
-            "TensorRT affine channel converter can only convert NCHW format. "
-            "Other format should be run in fluid mode. Report a bug on github "
-            "issue if you see this line."));
+    auto* bias_t = bias_v->GetMutable<phi::DenseTensor>();
+    float* bias_ptr = const_cast<float*>(static_cast<const float*>(
+        engine_->GetFp32TrtWeight(bias_name, *bias_t).get().values));
 
     // tensorrt scalend layer only support spatial dims >= 2,
     // so nhwc is not availabe (spatial dims == 0)
     const int channel_axis = engine_->with_dynamic_shape();
 
-    TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT,
-                                         static_cast<void*>(scale_ptr),
-                                         (size_t)idim.d[channel_axis]};
-    TensorRTEngine::Weight bias_weights{nvinfer1::DataType::kFLOAT,
-                                        static_cast<void*>(bias_ptr),
-                                        (size_t)idim.d[channel_axis]};
-    TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
-                                         0};
+    TensorRTEngine::Weight scale_weights{
+        nvinfer1::DataType::kFLOAT,
+        static_cast<void*>(scale_ptr),
+        static_cast<size_t>(idim.d[channel_axis])};
+    TensorRTEngine::Weight bias_weights{
+        nvinfer1::DataType::kFLOAT,
+        static_cast<void*>(bias_ptr),
+        static_cast<size_t>(idim.d[channel_axis])};
+    TensorRTEngine::Weight power_weights{
+        nvinfer1::DataType::kFLOAT, nullptr, 0};
 
-    auto layer = TRT_ENGINE_ADD_LAYER(engine_, ScaleNd, *input_tensor,
+    auto layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                      ScaleNd,
+                                      *input_tensor,
                                       nvinfer1::ScaleMode::kCHANNEL,
-                                      bias_weights.get(), scale_weights.get(),
-                                      power_weights.get(), channel_axis);
+                                      bias_weights.get(),
+                                      scale_weights.get(),
+                                      power_weights.get(),
+                                      channel_axis);
 
     RreplenishLayerAndOutput(layer, "affine_channel", {output_name}, test_mode);
   }

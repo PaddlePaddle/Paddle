@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import shutil
 import os
 import unittest
@@ -78,12 +77,14 @@ class TestDistMnistFleetSave(TestDistBase):
         self._rm_temp_files(dirname)
         return True
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={},
-                         log_name=""):
+    def check_with_place(
+        self,
+        model_file,
+        delta=1e-3,
+        check_error_log=False,
+        need_envs={},
+        log_name="",
+    ):
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
         tr0_losses, tr1_losses = self._run_cluster_nccl2(
@@ -91,13 +92,15 @@ class TestDistMnistFleetSave(TestDistBase):
             required_envs,
             update_method='nccl2',
             check_error_log=check_error_log,
-            log_name=log_name)
+            log_name=log_name,
+        )
 
         dirname = '/tmp'
         self._test_saved_files(dirname)
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
 

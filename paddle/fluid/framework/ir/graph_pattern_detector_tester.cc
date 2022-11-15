@@ -152,12 +152,12 @@ TEST(GraphPatternDetecter, MultiSubgraph) {
   x.mutable_pattern()->AddEdge(any_var, any_op1);
 
   int count = 0;
-  GraphPatternDetector::handle_t handle = [&](
-      const GraphPatternDetector::subgraph_t& s, Graph* g) {
-    LOG(INFO) << "Detect " << s.at(any_op)->Name() << " -> "
-              << s.at(any_var)->Name() << " -> " << s.at(any_op1)->Name();
-    count++;
-  };
+  GraphPatternDetector::handle_t handle =
+      [&](const GraphPatternDetector::subgraph_t& s, Graph* g) {
+        LOG(INFO) << "Detect " << s.at(any_op)->Name() << " -> "
+                  << s.at(any_var)->Name() << " -> " << s.at(any_op1)->Name();
+        count++;
+      };
 
   x(&graph, handle);
 
@@ -192,14 +192,18 @@ TEST(GraphPatternDetector, IntermediateCheck) {
   v2->LinksFrom({op2}).LinksTo({op3});
 
   int count = 0;
-  detector(&graph, [&](const GraphPatternDetector::subgraph_t& g,
-                       Graph* graph) { ++count; });
+  detector(&graph,
+           [&](const GraphPatternDetector::subgraph_t& g, Graph* graph) {
+             ++count;
+           });
   EXPECT_EQ(count, 0);
 
   count = 0;
   v2->AsInput();
-  detector(&graph, [&](const GraphPatternDetector::subgraph_t& g,
-                       Graph* graph) { ++count; });
+  detector(&graph,
+           [&](const GraphPatternDetector::subgraph_t& g, Graph* graph) {
+             ++count;
+           });
   ASSERT_EQ(count, 1);
 }
 

@@ -40,7 +40,7 @@ class LoDRankTableOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
+    auto x = scope.FindVar(Input("X"))->Get<phi::DenseTensor>();
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDRankTable>();
     VLOG(10) << "Level = " << static_cast<size_t>(Attr<int>("level"));
@@ -72,7 +72,8 @@ class LoDRankTableInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(
-        context->HasInput("X"), true,
+        context->HasInput("X"),
+        true,
         platform::errors::NotFound("LoDRankTable must have input X."));
   }
 };
@@ -80,7 +81,8 @@ class LoDRankTableInferShape : public framework::InferShapeBase {
 class LoDRankTableInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SetOutputType("Out", framework::proto::VarType::LOD_RANK_TABLE,
+    ctx->SetOutputType("Out",
+                       framework::proto::VarType::LOD_RANK_TABLE,
                        framework::ALL_ELEMENTS);
   }
 };
@@ -89,7 +91,8 @@ class LoDRankTableInferVarType : public framework::VarTypeInference {
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    lod_rank_table, paddle::operators::LoDRankTableOp,
+    lod_rank_table,
+    paddle::operators::LoDRankTableOp,
     paddle::operators::LoDRankTableOpProtoMaker,
     paddle::operators::LoDRankTableInferShape,
     paddle::operators::LoDRankTableInferVarType,

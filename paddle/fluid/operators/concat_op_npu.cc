@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -22,8 +22,8 @@ template <typename T>
 class ConcatNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
-    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
     PADDLE_ENFORCE_NOT_NULL(ins[0],
                             platform::errors::NotFound(
                                 "The first input tensor is not initalized."));
@@ -39,7 +39,7 @@ class ConcatNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
-    std::vector<framework::Tensor> inputs;
+    std::vector<phi::DenseTensor> inputs;
     std::vector<std::string> names;
     for (size_t i = 0; i < ins.size(); ++i) {
       if (ins[i] && ins[i]->numel() > 0) {
@@ -52,9 +52,11 @@ class ConcatNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    auto runner = NpuOpRunner(
-        "ConcatD", {inputs}, {*out},
-        {{"concat_dim", axis}, {"N", static_cast<int>(inputs.size())}});
+    NpuOpRunner runner{
+        "ConcatD",
+        {inputs},
+        {*out},
+        {{"concat_dim", axis}, {"N", static_cast<int>(inputs.size())}}};
     runner.AddInputNames(names);
     runner.Run(stream);
   }
@@ -64,12 +66,10 @@ template <typename T>
 class ConcatGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
     auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
-    auto outs =
-        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+    auto outs = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
 
     PADDLE_ENFORCE_NOT_NULL(ins[0],
                             platform::errors::NotFound(
@@ -101,8 +101,11 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
             sizes.push_back(ins[j]->dims()[dim]);
           }
         }
-        auto runner = NpuOpRunner("SliceD", {*out_grad}, {*outs[j]},
-                                  {{"offsets", offsets}, {"size", sizes}});
+        const auto& runner =
+            NpuOpRunner("SliceD",
+                        {*out_grad},
+                        {*outs[j]},
+                        {{"offsets", offsets}, {"size", sizes}});
         runner.Run(stream);
       }
       if (ins[j]->numel() != 0UL) {
@@ -117,10 +120,18 @@ class ConcatGradNPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_NPU_KERNEL(concat, ops::ConcatNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(concat,
+                       ops::ConcatNPUKernel<float>,
                        ops::ConcatNPUKernel<paddle::platform::float16>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ConcatNPUKernel<int64_t>,
+#endif
                        ops::ConcatNPUKernel<int>);
 
-REGISTER_OP_NPU_KERNEL(concat_grad, ops::ConcatGradNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(concat_grad,
+                       ops::ConcatGradNPUKernel<float>,
                        ops::ConcatGradNPUKernel<paddle::platform::float16>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::ConcatGradNPUKernel<int64_t>,
+#endif
                        ops::ConcatGradNPUKernel<int>);

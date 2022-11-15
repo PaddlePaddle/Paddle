@@ -31,17 +31,51 @@ class GarbageCollector;
 class OperatorBase;
 class Scope;
 
+struct OpInOutInfo {
+ public:
+  void Build(const OperatorBase *op);
+
+  bool IsBuilt() const { return is_built_; }
+
+  bool IsInArgBufferNeeded(const std::string &in_arg_name) const;
+
+ private:
+  // A set to record unused buffer input vars of op
+  std::unordered_set<std::string> no_need_buffer_ins_;
+  // A set to record other args of op (including in, out)
+  std::unordered_set<std::string> other_args_set_;
+  bool is_built_{false};
+};
+
 std::unordered_map<const OperatorBase *, std::vector<std::string>>
 GetUnusedVars(const BlockDesc &block,
               const std::vector<std::unique_ptr<OperatorBase>> &ops,
               const std::vector<std::string> &skip_vars);
 
+// Collect unused tensors
+void DeleteUnusedTensors(const Scope &scope,
+                         const std::vector<std::string> &delete_vars,
+                         GarbageCollector *gc);
+
 // Collect unused tensors after op runs
 void DeleteUnusedTensors(
-    const Scope &scope, const OperatorBase *op,
+    const Scope &scope,
+    const OperatorBase *op,
     const std::unordered_map<const OperatorBase *, std::vector<std::string>>
         &delete_vars_map,
     GarbageCollector *gc);
+
+// Get the clean vars of GC after each op runs. This function is used for
+// analysis statically.
+// result is in the format: result[block_idx][op_idx][delete_var_idx]
+std::vector<std::vector<std::vector<std::string>>> GetEagerDeletionCleanVars(
+    const ProgramDesc &program, const std::vector<std::string> &skip_vars = {});
+
+std::vector<std::vector<std::vector<std::string>>>
+GetEagerDeletionCleanVarsForPartial(
+    const ProgramDesc &program,
+    const std::vector<std::string> &skip_vars = {},
+    const bool &for_partial_block = false);
 
 }  // namespace framework
 }  // namespace paddle

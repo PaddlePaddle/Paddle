@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from . import amp_lists
 from .amp_lists import *
 from . import amp_utils
@@ -21,6 +19,7 @@ from .amp_utils import *
 from . import decorator
 from .decorator import *
 
-__all__ = decorator.__all__
+__all__ = []
+__all__ += decorator.__all__
 __all__ += amp_lists.__all__
 __all__ += amp_utils.__all__

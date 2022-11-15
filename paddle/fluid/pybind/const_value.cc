@@ -13,9 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/const_value.h"
+
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/proto_desc.h"
 
 #if defined(PADDLE_WITH_DGC)
 #include "paddle/fluid/framework/details/dgc_const_values.h"
@@ -33,6 +35,9 @@ void BindConstValue(pybind11::module* m) {
   m->def("kControlDepVarName",
          [] { return framework::ir::Node::kControlDepVarName; });
   m->def("kNewGradSuffix", [] { return framework::kNewGradSuffix; });
+  m->def("kAutoParallelSuffix", [] { return framework::kAutoParallelSuffix; });
+  m->def("kNoneProcessMeshIndex",
+         [] { return framework::kNoneProcessMeshIndex; });
 
   auto op_proto_and_checker_maker =
       m->def_submodule("op_proto_and_checker_maker");
@@ -59,6 +64,9 @@ void BindConstValue(pybind11::module* m) {
       framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName);
   op_proto_and_checker_maker.def(
       "kOpDeviceAttrName", framework::OpProtoAndCheckerMaker::OpDeviceAttrName);
+  op_proto_and_checker_maker.def(
+      "kOpWithQuantAttrName",
+      framework::OpProtoAndCheckerMaker::OpWithQuantAttrName);
 #if defined(PADDLE_WITH_DGC)
   auto dgc = m->def_submodule("dgc");
   dgc.def("kDGCKName", [] { return framework::details::g_dgc_k; });

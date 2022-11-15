@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from collections import OrderedDict
-from ...fluid.dygraph.layers import Layer
-from six.moves import collections_abc
+from .. import Layer
+from collections.abc import Iterable, Mapping
 
 __all__ = []
 
@@ -22,7 +22,7 @@ __all__ = []
 class LayerDict(Layer):
     """
     LayerDict holds sublayers in the ordered dictionary, and sublayers it contains are properly registered.
-    Holded sublayers can be accessed like a regular ordered python dictionary. 
+    Holded sublayers can be accessed like a regular ordered python dictionary.
 
     Parameters:
         sublayers (LayerDict|OrderedDict|list[(key,Layer)...], optional): iterable of key/value pairs, the type of value is 'paddle.nn.Layer' .
@@ -65,7 +65,7 @@ class LayerDict(Layer):
     """
 
     def __init__(self, sublayers=None):
-        super(LayerDict, self).__init__()
+        super().__init__()
         if sublayers is not None:
             self.update(sublayers)
 
@@ -155,7 +155,7 @@ class LayerDict(Layer):
 
         Parameters:
             None.
-        
+
         Examples:
             .. code-block:: python
 
@@ -171,7 +171,7 @@ class LayerDict(Layer):
                 layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
                 for k in layer_dict.keys():
                     print(k)
-                
+
                 #conv1d
                 #conv2d
                 #conv3d
@@ -185,7 +185,7 @@ class LayerDict(Layer):
 
         Parameters:
             None.
-        
+
         Examples:
             .. code-block:: python
 
@@ -215,7 +215,7 @@ class LayerDict(Layer):
 
         Parameters:
             None.
-        
+
         Examples:
             .. code-block:: python
 
@@ -245,7 +245,7 @@ class LayerDict(Layer):
 
         Parameters:
             sublayers (LayerDict|OrderedDict|list[(key,Layer)...]): iterable of key/value pairs, the type of value is 'paddle.nn.Layer' .
-        
+
         Examples:
             .. code-block:: python
 
@@ -265,7 +265,7 @@ class LayerDict(Layer):
                 layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
 
                 layer_dict.update(new_sublayers)
-                
+
                 for k, v in layer_dict.items():
                     print(k, ":", v)
                 #conv1d : Conv1D(3, 2, kernel_size=[3], data_format=NCL)
@@ -275,20 +275,23 @@ class LayerDict(Layer):
 
         """
 
-        assert isinstance(
-            sublayers, collections_abc.Iterable
-        ), "The type of sublayers is not iterable of key/value pairs, the type of sublayers is " + type(
-            sublayers).__name__
+        assert isinstance(sublayers, Iterable), (
+            "The type of sublayers is not iterable of key/value pairs, the type of sublayers is "
+            + type(sublayers).__name__
+        )
 
-        if isinstance(sublayers,
-                      (OrderedDict, LayerDict, collections_abc.Mapping)):
+        if isinstance(sublayers, (OrderedDict, LayerDict, Mapping)):
             for key, layer in sublayers.items():
                 self.add_sublayer(key, layer)
         else:
             # handle this format [(key1, layer1), (key2, layer2)...]
             for i, kv in enumerate(sublayers):
                 if len(kv) != 2:
-                    raise ValueError("The length of the " + str(i) +
-                                     "'s element in sublayers is " + str(
-                                         len(kv)) + ", which must be 2.")
+                    raise ValueError(
+                        "The length of the "
+                        + str(i)
+                        + "'s element in sublayers is "
+                        + str(len(kv))
+                        + ", which must be 2."
+                    )
                 self.add_sublayer(kv[0], kv[1])

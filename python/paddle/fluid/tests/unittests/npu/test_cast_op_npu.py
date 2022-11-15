@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
+
 sys.path.append("..")
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -27,8 +26,7 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+@skip_check_grad_ci(reason="[skip NPU cast grad check] not implemented yet.")
 class TestCast1(OpTest):
     def setUp(self):
         self.set_npu()
@@ -41,16 +39,17 @@ class TestCast1(OpTest):
 
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP32),
-            'out_dtype': int(core.VarDesc.VarType.FP16)
+            'out_dtype': int(core.VarDesc.VarType.FP16),
         }
 
     def set_npu(self):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
+@skip_check_grad_ci(reason="[skip NPU cast grad check] not implemented yet.")
 class TestCast2(OpTest):
     def setUp(self):
         self.set_npu()
@@ -63,16 +62,17 @@ class TestCast2(OpTest):
 
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP16),
-            'out_dtype': int(core.VarDesc.VarType.FP32)
+            'out_dtype': int(core.VarDesc.VarType.FP32),
         }
 
     def set_npu(self):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+        self.check_output_with_place(self.place, atol=1e-3)
 
 
+@skip_check_grad_ci(reason="[skip NPU cast grad check] not implemented yet.")
 class TestCast3(OpTest):
     def setUp(self):
         self.set_npu()
@@ -85,14 +85,14 @@ class TestCast3(OpTest):
 
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.INT32),
-            'out_dtype': int(core.VarDesc.VarType.INT32)
+            'out_dtype': int(core.VarDesc.VarType.INT32),
         }
 
     def set_npu(self):
         self.__class__.use_npu = True
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+        self.check_output_with_place(self.place, atol=1e-3)
 
 
 if __name__ == '__main__':

@@ -13,18 +13,23 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/capi_exp/pd_config.h"
+
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/capi_exp/pd_types.h"
+#include "paddle/fluid/inference/capi_exp/utils_internal.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#define CHECK_NULL_POINTER_PARM(param)                  \
-  PADDLE_ENFORCE_NOT_NULL(                              \
-      param, paddle::platform::errors::InvalidArgument( \
-                 "The pointer of " #param " shouldn't be nullptr"))
+#define CHECK_NULL_POINTER_PARM(param)                                   \
+  PADDLE_ENFORCE_NOT_NULL(                                               \
+      param,                                                             \
+      paddle::platform::errors::InvalidArgument("The pointer of " #param \
+                                                " shouldn't be nullptr"))
 
-#define CHECK_AND_CONVERT_PD_CONFIG                                         \
-  PADDLE_ENFORCE_NOT_NULL(                                                  \
-      pd_config, paddle::platform::errors::InvalidArgument(                 \
-                     "The pointer of paddle config shouldn't be nullptr")); \
+#define CHECK_AND_CONVERT_PD_CONFIG                              \
+  PADDLE_ENFORCE_NOT_NULL(                                       \
+      pd_config,                                                 \
+      paddle::platform::errors::InvalidArgument(                 \
+          "The pointer of paddle config shouldn't be nullptr")); \
   Config* config = reinterpret_cast<Config*>(pd_config)
 
 using paddle_infer::Config;
@@ -124,14 +129,57 @@ PD_Bool PD_ConfigUseGpu(__pd_keep PD_Config* pd_config) {
   return config->use_gpu();
 }
 
-void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
-                        int32_t l3_workspace_size) {
+void PD_ConfigEnableONNXRuntime(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableXpu(l3_workspace_size);
+  config->EnableONNXRuntime();
 }
+
+void PD_ConfigDisableONNXRuntime(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->DisableONNXRuntime();
+}
+
+PD_Bool PD_ConfigONNXRuntimeEnabled(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->use_onnxruntime();
+}
+
+void PD_ConfigEnableORTOptimization(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->EnableORTOptimization();
+}
+
+void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
+                        int32_t l3_workspace_size,
+                        PD_Bool locked,
+                        PD_Bool autotune,
+                        const char* autotune_file,
+                        const char* precision,
+                        PD_Bool adaptive_seqlen,
+                        PD_Bool enable_multi_stream) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->EnableXpu(l3_workspace_size,
+                    locked,
+                    autotune,
+                    autotune_file,
+                    precision,
+                    adaptive_seqlen,
+                    enable_multi_stream);
+}
+
+void PD_ConfigEnableNpu(__pd_keep PD_Config* pd_config, int32_t device_id) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->EnableNpu(device_id);
+}
+
 PD_Bool PD_ConfigUseXpu(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->use_xpu();
+}
+
+PD_Bool PD_ConfigUseNpu(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->use_npu();
 }
 
 int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
@@ -141,6 +189,10 @@ int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
 int32_t PD_ConfigXpuDeviceId(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->xpu_device_id();
+}
+int32_t PD_ConfigNpuDeviceId(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->npu_device_id();
 }
 int32_t PD_ConfigMemoryPoolInitSizeMb(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -169,15 +221,19 @@ PD_Bool PD_ConfigIrOptim(__pd_keep PD_Config* pd_config) {
 }
 
 void PD_ConfigEnableTensorRtEngine(__pd_keep PD_Config* pd_config,
-                                   int32_t workspace_size,
+                                   int64_t workspace_size,
                                    int32_t max_batch_size,
                                    int32_t min_subgraph_size,
                                    PD_PrecisionType precision,
-                                   PD_Bool use_static, PD_Bool use_calib_mode) {
+                                   PD_Bool use_static,
+                                   PD_Bool use_calib_mode) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableTensorRtEngine(
-      workspace_size, max_batch_size, min_subgraph_size,
-      ConvertToCxxPrecisionType(precision), use_static, use_calib_mode);
+  config->EnableTensorRtEngine(workspace_size,
+                               max_batch_size,
+                               min_subgraph_size,
+                               ConvertToCxxPrecisionType(precision),
+                               use_static,
+                               use_calib_mode);
 }
 PD_Bool PD_ConfigTensorRtEngineEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -187,8 +243,10 @@ PD_Bool PD_ConfigTensorRtEngineEnabled(__pd_keep PD_Config* pd_config) {
 void PD_ConfigSetTrtDynamicShapeInfo(__pd_keep PD_Config* pd_config,
                                      size_t tensor_num,
                                      const char** tensor_name,
-                                     size_t* shapes_num, int32_t** min_shape,
-                                     int32_t** max_shape, int32_t** optim_shape,
+                                     size_t* shapes_num,
+                                     int32_t** min_shape,
+                                     int32_t** max_shape,
+                                     int32_t** optim_shape,
                                      PD_Bool disable_trt_plugin_fp16) {
   CHECK_AND_CONVERT_PD_CONFIG;
   std::map<std::string, std::vector<int>> min_input_shapes;
@@ -207,11 +265,56 @@ void PD_ConfigSetTrtDynamicShapeInfo(__pd_keep PD_Config* pd_config,
     max_input_shapes[name] = std::move(max_input_shape);
     optim_input_shapes[name] = std::move(optim_input_shape);
   }
-  config->SetTRTDynamicShapeInfo(min_input_shapes, max_input_shapes,
-                                 optim_input_shapes, disable_trt_plugin_fp16);
+  config->SetTRTDynamicShapeInfo(min_input_shapes,
+                                 max_input_shapes,
+                                 optim_input_shapes,
+                                 disable_trt_plugin_fp16);
 }
 
-void PD_ConfigDisableTensorRtOPs(__pd_keep PD_Config* pd_config, size_t ops_num,
+PD_Bool PD_ConfigTensorRtDynamicShapeEnabled(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->tensorrt_dynamic_shape_enabled();
+}
+
+void PD_ConfigEnableTunedTensorRtDynamicShape(__pd_keep PD_Config* pd_config,
+                                              const char* shape_range_info_path,
+                                              PD_Bool allow_build_at_runtime) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->EnableTunedTensorRtDynamicShape(shape_range_info_path,
+                                          allow_build_at_runtime);
+}
+
+PD_Bool PD_ConfigTunedTensorRtDynamicShape(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->tuned_tensorrt_dynamic_shape();
+}
+
+PD_Bool PD_ConfigTrtAllowBuildAtRuntime(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->trt_allow_build_at_runtime();
+}
+
+void PD_ConfigCollectShapeRangeInfo(__pd_keep PD_Config* pd_config,
+                                    const char* shape_range_info_path) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->CollectShapeRangeInfo(shape_range_info_path);
+}
+
+const char* PD_ConfigShapeRangeInfoPath(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  auto shape_str = config->shape_range_info_path();
+  char* c = reinterpret_cast<char*>(malloc(shape_str.length() + 1));
+  snprintf(c, shape_str.length() + 1, "%s", shape_str.c_str());
+  return c;
+}
+
+PD_Bool PD_ConfigShapeRangeInfoCollected(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->shape_range_info_collected();
+}
+
+void PD_ConfigDisableTensorRtOPs(__pd_keep PD_Config* pd_config,
+                                 size_t ops_num,
                                  const char** ops_name) {
   CHECK_AND_CONVERT_PD_CONFIG;
   std::vector<std::string> ops_list;
@@ -221,13 +324,13 @@ void PD_ConfigDisableTensorRtOPs(__pd_keep PD_Config* pd_config, size_t ops_num,
   config->Exp_DisableTensorRtOPs(ops_list);
 }
 
-void PD_ConfigEnableTensorRtOSS(__pd_keep PD_Config* pd_config) {
+void PD_ConfigEnableVarseqlen(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableTensorRtOSS();
+  config->EnableVarseqlen();
 }
 PD_Bool PD_ConfigTensorRtOssEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->tensorrt_oss_enabled();
+  return config->tensorrt_varseqlen_enabled();
 }
 
 void PD_ConfigEnableTensorRtDla(__pd_keep PD_Config* pd_config,
@@ -241,10 +344,12 @@ PD_Bool PD_ConfigTensorRtDlaEnabled(__pd_keep PD_Config* pd_config) {
 }
 
 void PD_ConfigEnableLiteEngine(__pd_keep PD_Config* pd_config,
-                               PD_PrecisionType precision, PD_Bool zero_copy,
+                               PD_PrecisionType precision,
+                               PD_Bool zero_copy,
                                size_t passes_filter_num,
                                const char** passes_filter,
-                               size_t ops_filter_num, const char** ops_filter) {
+                               size_t ops_filter_num,
+                               const char** ops_filter) {
   CHECK_AND_CONVERT_PD_CONFIG;
   std::vector<std::string> passes_filters, ops_filters;
   for (size_t index = 0; index < passes_filter_num; ++index) {
@@ -253,8 +358,10 @@ void PD_ConfigEnableLiteEngine(__pd_keep PD_Config* pd_config,
   for (size_t index = 0; index < ops_filter_num; ++index) {
     ops_filters.emplace_back(ops_filter[index]);
   }
-  config->EnableLiteEngine(ConvertToCxxPrecisionType(precision), zero_copy,
-                           passes_filters, ops_filters);
+  config->EnableLiteEngine(ConvertToCxxPrecisionType(precision),
+                           zero_copy,
+                           passes_filters,
+                           ops_filters);
 }
 PD_Bool PD_ConfigLiteEngineEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -288,7 +395,8 @@ int32_t PD_ConfigGetCpuMathLibraryNumThreads(__pd_keep PD_Config* pd_config) {
   return config->cpu_math_library_num_threads();
 }
 
-void PD_ConfigSetMkldnnOp(__pd_keep PD_Config* pd_config, size_t ops_num,
+void PD_ConfigSetMkldnnOp(__pd_keep PD_Config* pd_config,
+                          size_t ops_num,
                           const char** op_list) {
   CHECK_AND_CONVERT_PD_CONFIG;
   std::unordered_set<std::string> op_names;
@@ -309,7 +417,8 @@ PD_Bool PD_ConfigMkldnnBfloat16Enabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->mkldnn_bfloat16_enabled();
 }
-void PD_ConfigSetBfloat16Op(__pd_keep PD_Config* pd_config, size_t ops_num,
+void PD_ConfigSetBfloat16Op(__pd_keep PD_Config* pd_config,
+                            size_t ops_num,
                             const char** op_list) {
   CHECK_AND_CONVERT_PD_CONFIG;
   std::unordered_set<std::string> op_names;
@@ -327,20 +436,21 @@ PD_Bool PD_ConfigMkldnnQuantizerEnabled(__pd_keep PD_Config* pd_config) {
   return config->mkldnn_quantizer_enabled();
 }
 void PD_ConfigSetModelBuffer(__pd_keep PD_Config* pd_config,
-                             const char* prog_buffer, size_t prog_buffer_size,
+                             const char* prog_buffer,
+                             size_t prog_buffer_size,
                              const char* params_buffer,
                              size_t params_buffer_size) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->SetModelBuffer(prog_buffer, prog_buffer_size, params_buffer,
-                         params_buffer_size);
+  config->SetModelBuffer(
+      prog_buffer, prog_buffer_size, params_buffer, params_buffer_size);
 }
 PD_Bool PD_ConfigModelFromMemory(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->model_from_memory();
 }
-void PD_ConfigEnableMemoryOptim(__pd_keep PD_Config* pd_config) {
+void PD_ConfigEnableMemoryOptim(__pd_keep PD_Config* pd_config, PD_Bool x) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableMemoryOptim();
+  config->EnableMemoryOptim(x);
 }
 PD_Bool PD_ConfigMemoryOptimEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -377,6 +487,31 @@ void PD_ConfigEnableGpuMultiStream(__pd_keep PD_Config* pd_config) {
 void PD_ConfigPartiallyRelease(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->PartiallyRelease();
+}
+void PD_ConfigDeletePass(__pd_keep PD_Config* pd_config, const char* pass) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->pass_builder()->DeletePass(pass);
+}
+void PD_ConfigInsertPass(__pd_keep PD_Config* pd_config,
+                         size_t idx,
+                         const char* pass) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->pass_builder()->InsertPass(idx, pass);
+}
+void PD_ConfigAppendPass(__pd_keep PD_Config* pd_config, const char* pass) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->pass_builder()->AppendPass(pass);
+}
+__pd_give PD_OneDimArrayCstr* PD_ConfigAllPasses(
+    __pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  std::vector<std::string> passes = config->pass_builder()->AllPasses();
+  return paddle_infer::CvtVecToOneDimArrayCstr(passes);
+}
+__pd_give PD_Cstr* PD_ConfigSummary(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  auto sum_str = config->Summary();
+  return paddle_infer::CvtStrToCstr(sum_str);
 }
 
 }  // extern "C"

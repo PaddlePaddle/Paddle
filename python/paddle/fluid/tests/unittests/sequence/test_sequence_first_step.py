@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle.fluid as fluid
-from paddle.fluid.framework import convert_np_dtype_to_dtype_, Program, program_guard
-import paddle.fluid.core as core
+from paddle.fluid.framework import Program, program_guard
 import numpy as np
-import copy
 import unittest
 import sys
+
 sys.path.append("../")
-from op_test import OpTest
 
 
 class TestSequenceFirstStepOpError(unittest.TestCase):
@@ -40,7 +38,8 @@ class TestSequenceFirstStepOpError(unittest.TestCase):
                     shape=[7, 1],
                     append_batch_size=False,
                     dtype='int64',
-                    lod_level=1)
+                    lod_level=1,
+                )
                 fluid.layers.sequence_last_step(type_data)
 
             self.assertRaises(TypeError, test_input_dtype)

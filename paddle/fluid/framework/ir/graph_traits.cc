@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
 
+#include <list>
+#include <map>
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -23,26 +26,74 @@ namespace ir {
 //
 class Node;
 
+bool IsReachable(ir::Graph *graph, Node *from, Node *to) {
+  if (from == to) {
+    return true;
+  }
+
+  std::map<Node *, bool> visited;
+
+  for (auto &node : GraphTraits::DFS(*graph)) {
+    visited[&node] = false;
+  }
+
+  visited[from] = true;
+
+  std::list<Node *> queue;
+  queue.push_back(from);
+
+  while (!queue.empty()) {
+    auto cur = FindNode(graph, queue.front());
+    queue.pop_front();
+
+    if (!cur) return false;
+
+    for (const auto &n : cur->outputs) {
+      if (n == to) {
+        return true;
+      }
+
+      if (!visited[n]) {
+        visited[n] = true;
+        queue.push_back(n);
+      }
+    }
+  }
+  return false;
+}
+
+Node *FindNode(ir::Graph *graph, const Node *node) {
+  for (const auto &n : graph->Nodes()) {
+    if (n == node) {
+      return n;
+    }
+  }
+  return nullptr;
+}
+
 NodesDFSIterator::NodesDFSIterator(const std::vector<Node *> &source) {
   for (auto *x : source) stack_.push(x);
 }
 
 NodesDFSIterator::NodesDFSIterator(NodesDFSIterator &&other) noexcept
-    : stack_(std::move(other.stack_)),
-      visited_(std::move(other.visited_)) {}
+    : stack_(std::move(other.stack_)), visited_(std::move(other.visited_)) {}
 
 NodesDFSIterator::NodesDFSIterator(const NodesDFSIterator &other)
     : stack_(other.stack_), visited_(other.visited_) {}
 
 Node &NodesDFSIterator::operator*() {
-  PADDLE_ENFORCE_EQ(stack_.empty(), false, platform::errors::OutOfRange(
-                                               "The iterator exceeds range."));
+  PADDLE_ENFORCE_EQ(
+      stack_.empty(),
+      false,
+      platform::errors::OutOfRange("The iterator exceeds range."));
   return *stack_.top();
 }
 
 NodesDFSIterator &NodesDFSIterator::operator++() {
-  PADDLE_ENFORCE_EQ(stack_.empty(), false, platform::errors::OutOfRange(
-                                               "The iterator exceeds range."));
+  PADDLE_ENFORCE_EQ(
+      stack_.empty(),
+      false,
+      platform::errors::OutOfRange("The iterator exceeds range."));
   visited_.insert(stack_.top());
   auto *cur = stack_.top();
   stack_.pop();
@@ -74,13 +125,15 @@ inline bool CheckNodeIndegreeEquals(const Node &node, size_t n) {
 
 NodesTSIterator::NodesTSIterator(const std::vector<Node *> &source) {
   PADDLE_ENFORCE_EQ(
-      source.empty(), false,
+      source.empty(),
+      false,
       platform::errors::InvalidArgument(
           "Start points of topological sorting should not be empty!"));
   // CHECK all the inputs' in-degree is 0
   for (auto *node : source) {
     PADDLE_ENFORCE_EQ(
-        CheckNodeIndegreeEquals(*node, 0), true,
+        CheckNodeIndegreeEquals(*node, 0),
+        true,
         platform::errors::InvalidArgument(
             "In start points of topological sorting, the indegree of each "
             "point should be 0. Node(%s)'s indegree is not 0.",
@@ -96,8 +149,10 @@ NodesTSIterator::NodesTSIterator(const std::vector<Node *> &source) {
       sorted_.push_back(p);
       for (auto *out : p->outputs) {
         inlink_sorted.clear();
-        std::copy_if(out->inputs.begin(), out->inputs.end(),
-                     std::back_inserter(inlink_sorted), [&](Node *x) -> bool {
+        std::copy_if(out->inputs.begin(),
+                     out->inputs.end(),
+                     std::back_inserter(inlink_sorted),
+                     [&](Node *x) -> bool {
                        return std::find(sorted_.begin(), sorted_.end(), x) !=
                               sorted_.end();
                      });
@@ -114,10 +169,12 @@ NodesTSIterator::NodesTSIterator(const NodesTSIterator &other)
 
 Node &NodesTSIterator::operator*() {
   PADDLE_ENFORCE_LT(
-      cursor_, sorted_.size(),
+      cursor_,
+      sorted_.size(),
       platform::errors::OutOfRange(
           "The iterator exceeds range. Container size is %d, but index is %d.",
-          sorted_.size(), cursor_));
+          sorted_.size(),
+          cursor_));
   return *sorted_[cursor_];
 }
 
@@ -140,10 +197,12 @@ bool NodesTSIterator::operator==(const NodesTSIterator &other) {
 
 Node *NodesTSIterator::operator->() {
   PADDLE_ENFORCE_LT(
-      cursor_, sorted_.size(),
+      cursor_,
+      sorted_.size(),
       platform::errors::OutOfRange(
           "The iterator exceeds range. Container size is %d, but index is %d.",
-          sorted_.size(), cursor_));
+          sorted_.size(),
+          cursor_));
   return sorted_[cursor_];
 }
 

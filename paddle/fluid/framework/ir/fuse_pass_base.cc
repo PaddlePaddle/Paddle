@@ -34,7 +34,8 @@ void FusePassBase::Init(const std::string& repr, Graph* graph) const {
 }
 
 Scope* FusePassBase::param_scope() const {
-  PADDLE_ENFORCE_EQ(graph_->Has(kParamScopeAttr), true,
+  PADDLE_ENFORCE_EQ(graph_->Has(kParamScopeAttr),
+                    true,
                     platform::errors::InvalidArgument(
                         "Graph must have kParamScopeAttr attribute."));
   auto& scope = graph_->Get<framework::Scope>(kParamScopeAttr);
@@ -44,7 +45,8 @@ Scope* FusePassBase::param_scope() const {
 void FusePassBase::AddStatis(int count_of_fused) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph_, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  PADDLE_ENFORCE_EQ(repr_.empty(), false,
+  PADDLE_ENFORCE_EQ(repr_.empty(),
+                    false,
                     platform::errors::InvalidArgument(
                         "Fuse pass must be initialized with a name."));
   if (!graph_->Has(kFuseStatisAttr)) {
@@ -53,15 +55,17 @@ void FusePassBase::AddStatis(int count_of_fused) const {
   auto& info =
       graph_->Get<std::unordered_map<std::string, int>>(kFuseStatisAttr);
   info[repr_] = count_of_fused;
+  if (count_of_fused > 0)
+    LOG(INFO) << "---  detected " << count_of_fused << " subgraphs";
 }
 
 FuseOptions FusePassBase::FindFuseOption(const Node& node1,
                                          const Node& node2) const {
 #ifdef PADDLE_WITH_MKLDNN
   bool node1_mkldnn = node1.Op()->HasAttr("use_mkldnn") &&
-                      BOOST_GET_CONST(bool, node1.Op()->GetAttr("use_mkldnn"));
+                      PADDLE_GET_CONST(bool, node1.Op()->GetAttr("use_mkldnn"));
   bool node2_mkldnn = node2.Op()->HasAttr("use_mkldnn") &&
-                      BOOST_GET_CONST(bool, node2.Op()->GetAttr("use_mkldnn"));
+                      PADDLE_GET_CONST(bool, node2.Op()->GetAttr("use_mkldnn"));
   if (node1_mkldnn && node2_mkldnn)
     return FUSE_MKLDNN;
   else if (!node1_mkldnn && !node2_mkldnn)

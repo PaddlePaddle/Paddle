@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import argparse
 import json
 import logging
@@ -32,21 +30,26 @@ except ImportError:
         'Cannot import graphviz, which is required for drawing a network. This '
         'can usually be installed in python with "pip install graphviz". Also, '
         'pydot requires graphviz to convert dot files to pdf: in ubuntu, this '
-        'can usually be installed with "sudo apt-get install graphviz".')
-    print('net_drawer will not run correctly. Please install the correct '
-          'dependencies.')
+        'can usually be installed with "sudo apt-get install graphviz".'
+    )
+    print(
+        'net_drawer will not run correctly. Please install the correct '
+        'dependencies.'
+    )
     exit(0)
 
 OP_STYLE = {
     'shape': 'oval',
     'color': '#0F9D58',
     'style': 'filled',
-    'fontcolor': '#FFFFFF'
+    'fontcolor': '#FFFFFF',
 }
 
 VAR_STYLE = {}
 
-GRAPH_STYLE = {"rankdir": "TB", }
+GRAPH_STYLE = {
+    "rankdir": "TB",
+}
 
 GRAPH_ID = 0
 
@@ -84,7 +87,8 @@ def parse_graph(program, graph, var_dict, **kwargs):
 
     temp_id = 0
     proto = framework_pb2.ProgramDesc.FromString(
-        program.desc.serialize_to_string())
+        program.desc.serialize_to_string()
+    )
     for block in proto.blocks:
         for op in block.ops:
             op.type = op.type + "_" + str(temp_id)
@@ -102,15 +106,15 @@ def parse_graph(program, graph, var_dict, **kwargs):
 
 def draw_graph(startup_program, main_program, **kwargs):
     if "graph_attr" in kwargs:
-        GRAPH_STYLE.update(kwargs[graph_attr])
+        GRAPH_STYLE.update(kwargs["graph_attr"])
     if "node_attr" in kwargs:
-        OP_STYLE.update(kwargs[node_attr])
+        OP_STYLE.update(kwargs["node_attr"])
     if "edge_attr" in kwargs:
-        VAR_STYLE.update(kwargs[edge_attr])
+        VAR_STYLE.update(kwargs["edge_attr"])
 
     graph_id = unique_id()
     filename = kwargs.get("filename")
-    if filename == None:
+    if filename is None:
         filename = str(graph_id) + ".gv"
     g = Graph(
         name=str(graph_id),
@@ -118,12 +122,13 @@ def draw_graph(startup_program, main_program, **kwargs):
         graph_attr=GRAPH_STYLE,
         node_attr=OP_STYLE,
         edge_attr=VAR_STYLE,
-        **kwargs)
+        **kwargs
+    )
 
     var_dict = {}
     parse_graph(startup_program, g, var_dict)
     parse_graph(main_program, g, var_dict)
 
-    if filename != None:
+    if filename is not None:
         g.save()
     return g

@@ -13,13 +13,8 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
-from timeit import default_timer as timer
-import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.dataset.wmt16 as wmt16
 
 os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
 
@@ -38,14 +33,16 @@ class TestTransformerWithIR(TestParallelExecutorBase):
                 use_device=DeviceType.CUDA,
                 feed_data_reader=get_feed_data_reader(),
                 use_ir_memory_optimize=False,
-                iter=2)
+                iter=2,
+            )
             # check IR memory optimize
             self.check_network_convergence(
                 transformer,
                 use_device=DeviceType.CUDA,
                 feed_data_reader=get_feed_data_reader(),
                 use_ir_memory_optimize=True,
-                iter=2)
+                iter=2,
+            )
 
 
 if __name__ == '__main__':

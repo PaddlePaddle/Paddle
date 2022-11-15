@@ -16,7 +16,6 @@
 #include <memory>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
@@ -28,10 +27,14 @@ namespace ir {
 // structure.
 class TransposeFlattenConcatFusePass : public FusePassBase {
  public:
+  TransposeFlattenConcatFusePass();
   virtual ~TransposeFlattenConcatFusePass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
+
+ private:
+  void RunTransposeFlattenConcatFuse(ir::Graph* graph, int times) const;
 };
 
 }  // namespace ir

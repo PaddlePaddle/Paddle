@@ -12,27 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/selu_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
 
 class SeluOp : public framework::OperatorWithKernel {
  public:
-  SeluOp(const std::string &type, const framework::VariableNameMap &inputs,
+  SeluOp(const std::string &type,
+         const framework::VariableNameMap &inputs,
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    return UnaryOpUnchangedInferShape(ctx);
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -103,8 +101,10 @@ class SeluGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "selu_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "selu_grad");
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "selu_grad");
     auto x_grad_name = framework::GradVarName("X");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("Out"));
@@ -123,13 +123,16 @@ class SeluGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(selu, ops::SeluOp, ops::SeluOpMaker, ops::SeluOpInferVarType,
+DECLARE_INFER_SHAPE_FUNCTOR(selu,
+                            SeluInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
+REGISTER_OPERATOR(selu,
+                  ops::SeluOp,
+                  ops::SeluOpMaker,
+                  ops::SeluOpInferVarType,
                   ops::SeluGradMaker<paddle::framework::OpDesc>,
-                  ops::SeluGradMaker<paddle::imperative::OpBase>);
+                  ops::SeluGradMaker<paddle::imperative::OpBase>,
+                  SeluInferShapeFunctor);
+
 REGISTER_OPERATOR(selu_grad, ops::SeluGradOp);
-REGISTER_OP_CPU_KERNEL(
-    selu, ops::SeluKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SeluKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    selu_grad, ops::SeluGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SeluGradKernel<paddle::platform::CPUDeviceContext, double>);

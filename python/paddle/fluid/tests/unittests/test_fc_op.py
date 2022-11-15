@@ -66,7 +66,7 @@ class TestFCOp(OpTest):
             self.inputs = {
                 'Input': self.matrix.input,
                 'W': self.matrix.weights,
-                'Bias': self.matrix.bias
+                'Bias': self.matrix.bias,
             }
         else:
             self.inputs = {'Input': self.matrix.input, 'W': self.matrix.weights}
@@ -138,6 +138,7 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
     def test_api(self):
         def run_program(num_flatten_dims):
             paddle.seed(SEED)
+            np.random.seed(SEED)
             startup_program = Program()
             main_program = Program()
 
@@ -147,21 +148,26 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
                     name="x",
                     shape=[2, 2, 25],
                     append_batch_size=False,
-                    dtype="float32")
+                    dtype="float32",
+                )
 
-                out = paddle.static.nn.fc(x=x,
-                                          size=1,
-                                          num_flatten_dims=num_flatten_dims)
+                out = paddle.static.nn.fc(
+                    x=x, size=1, num_flatten_dims=num_flatten_dims
+                )
 
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = (
+                fluid.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else fluid.CUDAPlace(0)
+            )
             exe = fluid.Executor(place=place)
             exe.run(startup_program)
             out = exe.run(main_program, feed={"x": input}, fetch_list=[out])
+            return out
 
         res_1 = run_program(-1)
         res_2 = run_program(2)
-        self.assertTrue(np.array_equal(res_1, res_2))
+        np.testing.assert_array_equal(res_1, res_2)
 
 
 class TestFCOpError(unittest.TestCase):

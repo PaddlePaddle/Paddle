@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -35,7 +33,7 @@ class TestRankLossOp(OpTest):
         self.inputs = {
             'Label': label.reshape(label_shape),
             'Left': left.reshape(left_shape),
-            'Right': right.reshape(right_shape)
+            'Right': right.reshape(right_shape),
         }
         self.outputs = {'Out': loss.reshape(label_shape)}
 

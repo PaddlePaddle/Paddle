@@ -24,33 +24,39 @@ namespace operators {
 
 class MinusOp : public framework::OperatorWithKernel {
  public:
-  MinusOp(const std::string &type, const framework::VariableNameMap &inputs,
+  MinusOp(const std::string &type,
+          const framework::VariableNameMap &inputs,
           const framework::VariableNameMap &outputs,
           const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
+        ctx->HasInput("X"),
+        true,
         platform::errors::NotFound("Input(X) of MinusOp is not found."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
+        ctx->HasInput("Y"),
+        true,
         platform::errors::NotFound("Input(Y) of MinusOp is not found."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::NotFound("Output(Out) of MinusOp is not found."));
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
     if (ctx->IsRuntime() ||
-        (framework::product(x_dims) > 0 && framework::product(y_dims) > 0)) {
+        (phi::product(x_dims) > 0 && phi::product(y_dims) > 0)) {
       PADDLE_ENFORCE_EQ(
-          x_dims, y_dims,
+          x_dims,
+          y_dims,
           platform::errors::InvalidArgument(
               "Minus operator must take two tensor with same dim, but received "
               "input X dim is:[%s], Y dim is:[%s]",
-              x_dims, y_dims));
+              x_dims,
+              y_dims));
     }
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -124,6 +130,7 @@ class MinusGradMaker : public imperative::GradOpBaseMakerBase {
       op.SetInput("X", this->OutputGrad("Out"));
       op.SetOutput("Out", x_g);
       op.SetAttr("scale", 1.0f);
+      op.SetDefaultAttrsMap(DefaultAttrsMap());
     }
 
     if (!y_g.empty()) {
@@ -132,6 +139,7 @@ class MinusGradMaker : public imperative::GradOpBaseMakerBase {
       op.SetInput("X", this->OutputGrad("Out"));
       op.SetOutput("Out", y_g);
       op.SetAttr("scale", -1.0f);
+      op.SetDefaultAttrsMap(DefaultAttrsMap());
     }
 
     return node;
@@ -142,7 +150,11 @@ class MinusGradMaker : public imperative::GradOpBaseMakerBase {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(minus, ops::MinusOp, ops::MinusOpMaker,
-                  ops::MinusGradDescMaker, ops::MinusGradMaker);
-REGISTER_OP_CPU_KERNEL(
-    minus, ops::MinusKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OPERATOR(minus,
+                  ops::MinusOp,
+                  ops::MinusOpMaker,
+                  ops::MinusGradDescMaker,
+                  ops::MinusGradMaker);
+REGISTER_OP_CPU_KERNEL(minus, ops::MinusKernel<phi::CPUContext, float>);
+
+REGISTER_OP_CUDA_KERNEL(minus, ops::MinusKernel<phi::GPUContext, float>);

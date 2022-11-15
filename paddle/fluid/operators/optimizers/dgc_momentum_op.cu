@@ -15,6 +15,5 @@
 #include "paddle/fluid/operators/optimizers/dgc_momentum_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    dgc_momentum,
-    ops::DGCMomentumKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(dgc_momentum,
+                        ops::DGCMomentumKernel<phi::GPUContext, float>);

@@ -62,7 +62,8 @@ bool OpGraphView::HasOp(details::OpHandleBase *op) const {
 }
 
 void OpGraphView::EnforceHasOp(details::OpHandleBase *op) const {
-  PADDLE_ENFORCE_EQ(HasOp(op), true,
+  PADDLE_ENFORCE_EQ(HasOp(op),
+                    true,
                     platform::errors::NotFound(
                         "Cannot find op %s in OpGraphView.",
                         op == nullptr ? "nullptr" : op->DebugString()));

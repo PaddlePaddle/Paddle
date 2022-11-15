@@ -24,6 +24,12 @@
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(matmul_with_flatten_grad, CPU, ALL_LAYOUT);
 
 namespace platform = paddle::platform;
 namespace framework = paddle::framework;
@@ -47,8 +53,8 @@ std::shared_ptr<imperative::VariableWrapper> DoubleHook(
   out_var->InnerSetOverridedStopGradient(var->InnerOverridedStopGradient());
 
   // 2. get input and output var's tensor
-  auto* out_tensor = out_var->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto& tensor = var->Var().Get<framework::LoDTensor>();
+  auto* out_tensor = out_var->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto& tensor = var->Var().Get<phi::DenseTensor>();
   out_tensor->Resize(tensor.dims());
 
   // 3. double calc
@@ -75,17 +81,23 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   std::vector<int64_t> x_dims = {2, 5};
   std::vector<int64_t> y_dims = {5, 2};
 
-  auto* x_tensor = x->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto* y_tensor = y->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* x_tensor = x->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* y_tensor = y->MutableVar()->GetMutable<phi::DenseTensor>();
 
-  x_tensor->Resize(framework::make_ddim(x_dims));
+  x_tensor->Resize(phi::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
-  memory::Copy(place, mutable_x, place, src_data.data(),
+  memory::Copy(place,
+               mutable_x,
+               place,
+               src_data.data(),
                sizeof(float) * src_data.size());
 
-  y_tensor->Resize(framework::make_ddim(y_dims));
+  y_tensor->Resize(phi::make_ddim(y_dims));
   auto* mutable_y = y_tensor->mutable_data<float>(place);
-  memory::Copy(place, mutable_y, place, src_data.data(),
+  memory::Copy(place,
+               mutable_y,
+               place,
+               src_data.data(),
                sizeof(float) * src_data.size());
 
   var_pair x_pair = var_pair("X", vb_vector(1, x));
@@ -107,7 +119,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
       std::make_shared<std::function<void()>>([&]() { hook_value = 10; }));
 
   // 2. forward
-  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
   ASSERT_EQ(x->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(y->GradVarBase()->GradOpNum(), 0UL);
@@ -121,18 +133,18 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   engine.Execute();
 
   // verify VariableWrapper hook result
-  framework::LoDTensor x_grad;
-  framework::TensorCopySync(x->GradVar().Get<framework::LoDTensor>(), place,
-                            &x_grad);
+  phi::DenseTensor x_grad;
+  framework::TensorCopySync(
+      x->GradVar().Get<phi::DenseTensor>(), place, &x_grad);
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 8.0);
   }
   // verify Void hook result
   ASSERT_EQ(hook_value, 10);
 
-  framework::LoDTensor y_grad;
-  framework::TensorCopySync(y->GradVar().Get<framework::LoDTensor>(), place,
-                            &y_grad);
+  phi::DenseTensor y_grad;
+  framework::TensorCopySync(
+      y->GradVar().Get<phi::DenseTensor>(), place, &y_grad);
 
   for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 4.0);
@@ -158,23 +170,32 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   std::vector<int64_t> y_dims = {5, 2};
   std::vector<int64_t> z_dims = {5, 2};
 
-  auto* x_tensor = x->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto* y_tensor = y->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto* z_tensor = z->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* x_tensor = x->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* y_tensor = y->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* z_tensor = z->MutableVar()->GetMutable<phi::DenseTensor>();
 
-  x_tensor->Resize(framework::make_ddim(x_dims));
+  x_tensor->Resize(phi::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
-  memory::Copy(place, mutable_x, place, src_data.data(),
+  memory::Copy(place,
+               mutable_x,
+               place,
+               src_data.data(),
                sizeof(float) * src_data.size());
 
-  y_tensor->Resize(framework::make_ddim(y_dims));
+  y_tensor->Resize(phi::make_ddim(y_dims));
   auto* mutable_y = y_tensor->mutable_data<float>(place);
-  memory::Copy(place, mutable_y, place, src_data.data(),
+  memory::Copy(place,
+               mutable_y,
+               place,
+               src_data.data(),
                sizeof(float) * src_data.size());
 
-  z_tensor->Resize(framework::make_ddim(z_dims));
+  z_tensor->Resize(phi::make_ddim(z_dims));
   auto* mutable_z = z_tensor->mutable_data<float>(place);
-  memory::Copy(place, mutable_z, place, src_data.data(),
+  memory::Copy(place,
+               mutable_z,
+               place,
+               src_data.data(),
                sizeof(float) * src_data.size());
 
   // add VariableWrapper hook
@@ -194,13 +215,13 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   NameVarBaseMap outs = {out_xy_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
   var_pair z_pair = var_pair("Y", vb_vector(1, z));
   var_pair out_xz_pair = var_pair("Out", vb_vector(1, out_xz));
   ins = {x_pair, z_pair};
   outs = {out_xz_pair};
-  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
 
   var_pair xy_pair = var_pair("X", vb_vector(1, out_xy));
   var_pair xz_pair = var_pair("Y", vb_vector(1, out_xz));
@@ -208,7 +229,8 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   ins = {xy_pair, xz_pair};
   outs = {out_pair};
   framework::AttributeMap add_attr_map;
-  tracer.TraceOp("elementwise_add", ins, outs, add_attr_map, place, true);
+  tracer.TraceOp<VarBase>(
+      "elementwise_add", ins, outs, add_attr_map, place, true);
 
   ASSERT_EQ(x->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(y->GradVarBase()->GradOpNum(), 0UL);
@@ -223,26 +245,26 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   engine.Execute();
 
   // verify VariableWrapper hook result
-  framework::LoDTensor x_grad;
-  framework::TensorCopySync(x->GradVar().Get<framework::LoDTensor>(), place,
-                            &x_grad);
+  phi::DenseTensor x_grad;
+  framework::TensorCopySync(
+      x->GradVar().Get<phi::DenseTensor>(), place, &x_grad);
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 16.0);
   }
   // verify Void hook result
   ASSERT_EQ(hook_value, 100);
 
-  framework::LoDTensor y_grad;
-  framework::TensorCopySync(y->GradVar().Get<framework::LoDTensor>(), place,
-                            &y_grad);
+  phi::DenseTensor y_grad;
+  framework::TensorCopySync(
+      y->GradVar().Get<phi::DenseTensor>(), place, &y_grad);
 
   for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 4.0);
   }
 
-  framework::LoDTensor z_grad;
-  framework::TensorCopySync(z->GradVar().Get<framework::LoDTensor>(), place,
-                            &z_grad);
+  phi::DenseTensor z_grad;
+  framework::TensorCopySync(
+      z->GradVar().Get<phi::DenseTensor>(), place, &z_grad);
 
   for (int i = 0; i < z_grad.numel(); ++i) {
     ASSERT_EQ(z_grad.data<float>()[i], 4.0);
@@ -262,7 +284,7 @@ TEST(TestHooks, TestGradVarLeafBackwardHookWithSortedGradAccmulated) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP(mul);
-USE_OP(mul_grad);
-USE_OP(elementwise_add);
-USE_OP(elementwise_add_grad);
+USE_OP_ITSELF(mul);
+USE_OP_ITSELF(mul_grad);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(elementwise_add_grad);

@@ -14,21 +14,17 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/rocm_driver.h"
 
+#include "paddle/phi/backends/dynload/rocm_driver.h"
+
 namespace paddle {
 namespace platform {
 namespace dynload {
-
-std::once_flag rocm_dso_flag;
-void* rocm_dso_handle = nullptr;
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 ROCM_ROUTINE_EACH(DEFINE_WRAP);
 
-bool HasCUDADriver() {
-  std::call_once(rocm_dso_flag, []() { rocm_dso_handle = GetCUDADsoHandle(); });
-  return rocm_dso_handle != nullptr;
-}
+bool HasCUDADriver() { return phi::dynload::HasCUDADriver(); }
 
 }  // namespace dynload
 }  // namespace platform

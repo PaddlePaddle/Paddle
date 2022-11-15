@@ -15,9 +15,8 @@
 Unit testing for affine_channel_op
 """
 
-from __future__ import print_function
-
 import sys
+
 sys.path.append("..")
 
 import unittest
@@ -71,14 +70,16 @@ class TestAffineChannelOp(XPUOpTest):
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place, ['Scale', 'Bias'], 'Out', no_grad_set=set('X'))
+                place, ['Scale', 'Bias'], 'Out', no_grad_set=set('X')
+            )
 
     def test_check_grad_stopgrad_dscale_dbias(self):
         if core.is_compiled_with_xpu():
             paddle.enable_static()
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
-                place, ['X'], 'Out', no_grad_set=set(['Scale', 'Bias']))
+                place, ['X'], 'Out', no_grad_set=set(['Scale', 'Bias'])
+            )
 
     def init_test_case(self):
         self.shape = [2, 100, 3, 3]
@@ -98,21 +99,24 @@ class TestAffineChannelOpError(unittest.TestCase):
 
             def test_x_dtype():
                 x2 = fluid.layers.data(
-                    name='x2', shape=[None, 1, 2, 2], dtype='int32')
+                    name='x2', shape=[None, 1, 2, 2], dtype='int32'
+                )
                 fluid.layers.affine_channel(x2)
 
             self.assertRaises(TypeError, test_x_dtype)
 
             def test_scale_type():
                 x3 = fluid.layers.data(
-                    name='x3', shape=[None, 1, 2, 2], dtype='float32')
+                    name='x3', shape=[None, 1, 2, 2], dtype='float32'
+                )
                 fluid.layers.affine_channel(x3, scale=1)
 
             self.assertRaises(TypeError, test_scale_type)
 
             def test_bias_type():
                 x4 = fluid.layers.data(
-                    name='x4', shape=[None, 1, 2, 2], dtype='float32')
+                    name='x4', shape=[None, 1, 2, 2], dtype='float32'
+                )
                 fluid.layers.affine_channel(x4, bias=1)
 
             self.assertRaises(TypeError, test_bias_type)

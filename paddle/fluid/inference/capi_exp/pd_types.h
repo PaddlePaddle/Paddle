@@ -34,6 +34,11 @@ typedef struct PD_OneDimArrayCstr {
   char** data;
 } PD_OneDimArrayCstr;  // std::vector<std::string>
 
+typedef struct PD_Cstr {
+  size_t size;
+  char* data;
+} PD_Cstr;  // std::string
+
 typedef struct PD_TwoDimArraySize {
   size_t size;
   PD_OneDimArraySize** data;

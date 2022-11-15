@@ -53,7 +53,7 @@ std::unique_ptr<Dataset> DatasetFactory::CreateDataset(
     std::string dataset_class) {
   if (g_dataset_map.count(dataset_class) < 1) {
     LOG(WARNING) << "Your Dataset " << dataset_class
-                 << "is not supported currently";
+                 << " is not supported currently";
     LOG(WARNING) << "Supported Dataset: " << DatasetTypeList();
     exit(-1);
   }
@@ -61,5 +61,6 @@ std::unique_ptr<Dataset> DatasetFactory::CreateDataset(
 }
 
 REGISTER_DATASET_CLASS(MultiSlotDataset);
+REGISTER_DATASET_CLASS(SlotRecordDataset);
 }  // namespace framework
 }  // namespace paddle

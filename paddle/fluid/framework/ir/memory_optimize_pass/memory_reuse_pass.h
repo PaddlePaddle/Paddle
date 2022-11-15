@@ -107,11 +107,15 @@ class MemoryReusePass : public Pass {
 
   int64_t GetMemorySize(const details::VarHandle &var) const;
 
-  void AddReuseVar(details::ComputationOpHandle *op, details::VarHandle *in_var,
-                   details::VarHandle *out_var, bool share_dims = false) const;
+  void AddReuseVar(details::ComputationOpHandle *op,
+                   details::VarHandle *in_var,
+                   details::VarHandle *out_var,
+                   bool share_dims = false) const;
   virtual void UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
                                      details::VarHandle *in_var,
                                      details::VarHandle *out_var) const;
+
+  bool SupportApplyProgramViaGraph() const override { return false; }
 
  private:
   VarDesc *GetVarDesc(const details::VarHandle &var) const;

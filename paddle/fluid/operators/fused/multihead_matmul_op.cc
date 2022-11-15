@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/errors.h"
 
@@ -26,28 +27,29 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(
-        context->HasInput("Input"), true,
+        context->HasInput("Input"),
+        true,
         platform::errors::InvalidArgument(
             "Input(Input) of MultiHeadMatMul should not be null."));
-    PADDLE_ENFORCE_EQ(context->HasInput("W"), true,
+    PADDLE_ENFORCE_EQ(context->HasInput("W"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(W) of MultiHeadMatMul should not be null."));
     PADDLE_ENFORCE_EQ(
-        context->HasInput("Bias"), true,
+        context->HasInput("Bias"),
+        true,
         platform::errors::InvalidArgument(
             "Input(Bias) of MultiHeadMatMul should not be null."));
     PADDLE_ENFORCE_EQ(
-        context->HasInput("BiasQK"), true,
-        platform::errors::InvalidArgument(
-            "Input(BiasQK) of MultiHeadMatMul should not be null."));
-    PADDLE_ENFORCE_EQ(
-        context->HasOutput("Out"), true,
+        context->HasOutput("Out"),
+        true,
         platform::errors::InvalidArgument(
             "Output(Out) of MultiHeadMatMul should not be null."));
 
     auto dim_w = context->GetInputDim("W");
     PADDLE_ENFORCE_GT(
-        dim_w.size(), 2,
+        dim_w.size(),
+        2,
         platform::errors::InvalidArgument(
             "Multihead input is expected at least a 3-D tensor, but "
             "it's %d-D tensor now.",
@@ -55,19 +57,12 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
 
     auto dim_bias_q = context->GetInputDim("Bias");
     PADDLE_ENFORCE_GT(
-        dim_bias_q.size(), 1,
+        dim_bias_q.size(),
+        1,
         platform::errors::InvalidArgument(
             "Multihead input should be at least 2-D tensor, but it's "
             "%d-D tensor now.",
             dim_bias_q.size()));
-
-    auto dim_bias_qk = context->GetInputDim("BiasQK");
-    PADDLE_ENFORCE_GT(
-        dim_bias_qk.size(), 3,
-        platform::errors::InvalidArgument(
-            "Multihead input bias qk should be at least 4-D tensor, "
-            "but it's %d-D tensor now.",
-            dim_bias_qk.size()));
 
     auto dim_input = context->GetInputDim("Input");
     context->SetOutputDim("Out", dim_input);
@@ -81,7 +76,8 @@ class MultiHeadMatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Input", "The input of MultiHeadMatMul op");
     AddInput("W", "The weight input of MultiHeadMatMul op");
     AddInput("Bias", "The bias input of MultiHeadMatMul op");
-    AddInput("BiasQK", "The QK bias input of MultiHeadMatMul op");
+    AddInput("BiasQK", "The QK bias input of MultiHeadMatMul op")
+        .AsDispensable();
     AddOutput("Out", "The output of MultiHeadMatMul op");
     AddAttr<bool>("transpose_Q",
                   R"DOC(If true, use the transpose of `Q`.
@@ -115,5 +111,6 @@ Example of matrix multiplication with head_number of B
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(multihead_matmul, ops::MultiHeadMatMulV2Op,
+REGISTER_OP_WITHOUT_GRADIENT(multihead_matmul,
+                             ops::MultiHeadMatMulV2Op,
                              ops::MultiHeadMatMulV2OpMaker);

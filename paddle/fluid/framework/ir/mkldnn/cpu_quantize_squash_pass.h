@@ -19,9 +19,6 @@
 #include <unordered_map>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
@@ -30,10 +27,10 @@ namespace ir {
 /*
  * Squash dequantize->quantize pair pattern into requantize op
  */
-class Graph;
 
 class CPUQuantizeSquashPass : public FusePassBase {
  public:
+  CPUQuantizeSquashPass();
   virtual ~CPUQuantizeSquashPass() {}
 
  protected:
@@ -45,6 +42,16 @@ class CPUQuantizeSquashPass : public FusePassBase {
   void FindNodesToKeep(
       Graph* graph,
       std::unordered_map<const Node*, int>* nodes_keep_counter) const;
+
+  /*
+   * Don't squash unsigned dequantize with signed quantize.
+   * This is important for concat and elementwise ops.
+   * When inputs have different sign, concat will assume signed type and
+   * elementwise assumes first input type.
+   */
+  bool IsDequantizeQuantizeIncompatible(Node* quant_op,
+                                        Node* dequant_op,
+                                        Node* next_op) const;
 
   /*
    * Squash dequantize-quantize ops pairs into requantize or nothing

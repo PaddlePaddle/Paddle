@@ -101,7 +101,8 @@ class NoNeedBufferVarsInference {
 class InferNoNeedBufferVarsFN {
  public:
   inline const std::unordered_set<std::string> &operator()(
-      const VariableNameMap &inputs, const VariableNameMap &outputs,
+      const VariableNameMap &inputs,
+      const VariableNameMap &outputs,
       const AttributeMap &attrs) const {
     PADDLE_ENFORCE_NOT_NULL(
         inferer_,
@@ -129,11 +130,13 @@ class InferNoNeedBufferVarsFN {
 
   inline void Reset(const std::shared_ptr<NoNeedBufferVarsInference> &inferer) {
     PADDLE_ENFORCE_NOT_NULL(
-        inferer, platform::errors::InvalidArgument("The input inferer of "
-                                                   "InferNoNeedBufferVarsFN::"
-                                                   "Reset is nullptr."));
+        inferer,
+        platform::errors::InvalidArgument("The input inferer of "
+                                          "InferNoNeedBufferVarsFN::"
+                                          "Reset is nullptr."));
     PADDLE_ENFORCE_EQ(
-        inferer_, nullptr,
+        inferer_,
+        nullptr,
         platform::errors::AlreadyExists(
             "The `inferer_` of InferNoNeedBufferVarsFN has been initialized."));
     inferer_ = inferer;

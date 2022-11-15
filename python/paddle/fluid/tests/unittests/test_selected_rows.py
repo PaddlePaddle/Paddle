@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle.fluid.core as core
 import unittest
 import numpy as np
@@ -41,13 +39,16 @@ class TestSelectedRows(unittest.TestCase):
         self.assertEqual(10, selected_rows.height())
 
         # compare tensor
-        self.assertAlmostEqual(2.0,
-                               selected_rows.get_tensor()._get_float_element(0))
-        self.assertAlmostEqual(1.0,
-                               selected_rows.get_tensor()._get_float_element(1))
+        self.assertAlmostEqual(
+            2.0, selected_rows.get_tensor()._get_float_element(0)
+        )
+        self.assertAlmostEqual(
+            1.0, selected_rows.get_tensor()._get_float_element(1)
+        )
         self.assertAlmostEqual(
             4.0,
-            selected_rows.get_tensor()._get_float_element(2 * row_numel + 8))
+            selected_rows.get_tensor()._get_float_element(2 * row_numel + 8),
+        )
 
 
 if __name__ == "__main__":

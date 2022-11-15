@@ -69,15 +69,20 @@ class TestSizeAPI(unittest.TestCase):
             out_1 = paddle.fluid.layers.size(x_1)
             out_2 = paddle.fluid.layers.size(x_2)
             exe = paddle.static.Executor(place=paddle.CPUPlace())
-            res_1, res_2 = exe.run(feed={
-                "x_1": input_1,
-                "x_2": input_2,
-            },
-                                   fetch_list=[out_1, out_2])
-            assert (np.array_equal(
-                res_1, np.array([np.size(input_1)]).astype("int64")))
-            assert (np.array_equal(
-                res_2, np.array([np.size(input_2)]).astype("int64")))
+            res_1, res_2 = exe.run(
+                feed={
+                    "x_1": input_1,
+                    "x_2": input_2,
+                },
+                fetch_list=[out_1, out_2],
+            )
+            # TODO(zhouwei): will change shape [1] to [] to support zero-dim
+            assert np.array_equal(
+                res_1, np.array([np.size(input_1)]).astype("int64")
+            )
+            assert np.array_equal(
+                res_2, np.array([np.size(input_2)]).astype("int64")
+            )
 
     def test_size_imperative(self):
         paddle.disable_static(paddle.CPUPlace())
@@ -87,8 +92,8 @@ class TestSizeAPI(unittest.TestCase):
         x_2 = paddle.to_tensor(input_2)
         out_1 = paddle.fluid.layers.size(x_1)
         out_2 = paddle.fluid.layers.size(x_2)
-        assert (np.array_equal(out_1.numpy().item(0), np.size(input_1)))
-        assert (np.array_equal(out_2.numpy().item(0), np.size(input_2)))
+        assert np.array_equal(out_1.numpy().item(0), np.size(input_1))
+        assert np.array_equal(out_2.numpy().item(0), np.size(input_2))
         paddle.enable_static()
 
     def test_error(self):

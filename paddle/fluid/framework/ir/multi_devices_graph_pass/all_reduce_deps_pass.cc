@@ -89,7 +89,8 @@ class AllReduceDepsPass : public ir::Pass {
       }
 
       PADDLE_ENFORCE_NE(
-          next_ready_ops.size(), 0,
+          next_ready_ops.size(),
+          0,
           platform::errors::InvalidArgument("There may be a cycle."));
       ready_ops.clear();
       std::swap(ready_ops, next_ready_ops);
@@ -126,11 +127,13 @@ class AllReduceDepsPass : public ir::Pass {
               details::DynamicCast<details::VarHandle>(left->Inputs());
           auto right_in_vars =
               details::DynamicCast<details::VarHandle>(right->Inputs());
-          PADDLE_ENFORCE_GT(left_in_vars.size(), 0,
+          PADDLE_ENFORCE_GT(left_in_vars.size(),
+                            0,
                             platform::errors::InvalidArgument(
                                 "OpHandle(%s) inputs size must greater than 0.",
                                 left->Name()));
-          PADDLE_ENFORCE_GT(right_in_vars.size(), 0,
+          PADDLE_ENFORCE_GT(right_in_vars.size(),
+                            0,
                             platform::errors::InvalidArgument(
                                 "OpHandle(%s) inputs size must greater than 0.",
                                 right->Name()));
@@ -173,7 +176,8 @@ class AllReduceDepsPass : public ir::Pass {
         }
       }
       PADDLE_ENFORCE_EQ(
-          find_valid_input, true,
+          find_valid_input,
+          true,
           platform::errors::NotFound(
               "In OpHandle(%s) Doesn't find valid input.", op->Name()));
     }

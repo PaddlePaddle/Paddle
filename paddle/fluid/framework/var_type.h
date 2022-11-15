@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/variable.h"
 
@@ -33,6 +33,7 @@ inline proto::VarType::Type ToVarType(int type) {
   switch (type) {
     case proto::VarType::LOD_TENSOR:
     case proto::VarType::SELECTED_ROWS:
+    case proto::VarType::SPARSE_COO:
     case proto::VarType::LOD_RANK_TABLE:
     case proto::VarType::LOD_TENSOR_ARRAY:
     case proto::VarType::FETCH_LIST:
@@ -48,7 +49,7 @@ template <typename Visitor>
 inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
   switch (var.Type()) {
     case proto::VarType::LOD_TENSOR:
-      visitor(var.Get<LoDTensor>());
+      visitor(var.Get<phi::DenseTensor>());
       return;
     case proto::VarType::LOD_RANK_TABLE:
       visitor(var.Get<LoDRankTable>());
@@ -57,7 +58,10 @@ inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
       visitor(var.Get<LoDTensorArray>());
       return;
     case proto::VarType::SELECTED_ROWS:
-      visitor(var.Get<SelectedRows>());
+      visitor(var.Get<phi::SelectedRows>());
+      return;
+    case proto::VarType::SPARSE_COO:
+      visitor(var.Get<phi::SparseCooTensor>());
       return;
     case proto::VarType::READER:
       visitor(var.Get<ReaderHolder>());

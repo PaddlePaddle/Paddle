@@ -21,6 +21,7 @@
 #include <random>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -50,7 +51,7 @@ class TestElementwiseOpGradGrad {
 
   void InitVarInScope(std::string var_name) {
     in_out_tensors_[var_name] =
-        scope_.Var(var_name)->template GetMutable<framework::LoDTensor>();
+        scope_.Var(var_name)->template GetMutable<phi::DenseTensor>();
     in_out_tensors_[var_name]->Resize(dims_);
     in_out_tensors_[var_name]->template mutable_data<T>(place_);
   }
@@ -68,7 +69,7 @@ class TestElementwiseOpGradGrad {
   }
 
   void Setup() {
-    size_t numel = static_cast<size_t>(framework::product(dims_));
+    size_t numel = static_cast<size_t>(phi::product(dims_));
     // init vars in scope and feed inputs
     for (auto in_name : inputs_) {
       InitVarInScope(in_name);
@@ -85,11 +86,11 @@ class TestElementwiseOpGradGrad {
       auto src = feed_datas_[in_name].data();
       auto src_place = platform::CPUPlace();
       if (platform::is_cpu_place(place_)) {
-        auto dst_place = BOOST_GET_CONST(platform::CPUPlace, place_);
+        auto dst_place = place_;
         memory::Copy(dst_place, dst, src_place, src, bytes);
       } else if (platform::is_gpu_place(place_)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        auto dst_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+        auto dst_place = place_;
         memory::Copy(dst_place, dst, src_place, src, bytes, nullptr);
 #else
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -108,8 +109,9 @@ class TestElementwiseOpGradGrad {
     auto op = CreateTestOp();
     op->Run(scope_, place_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
-    framework::LoDTensor cpu_out;
-    PADDLE_ENFORCE_EQ(scope_.kids().empty(), true,
+    phi::DenseTensor cpu_out;
+    PADDLE_ENFORCE_EQ(scope_.kids().empty(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The scope can not have the child scopes,"
                           "please check your code."));
@@ -118,17 +120,19 @@ class TestElementwiseOpGradGrad {
     bool all_equal = true;
     for (auto &out_name : outputs_) {
       auto &out_tensor =
-          scope_.FindVar(out_name)->template Get<framework::LoDTensor>();
+          scope_.FindVar(out_name)->template Get<phi::DenseTensor>();
       if (platform::is_gpu_place(place_)) {
         framework::TensorCopySync(out_tensor, platform::CPUPlace(), &cpu_out);
       } else {
         cpu_out = out_tensor;
       }
       auto *out_ptr = cpu_out.data<T>();
-      size_t numel = static_cast<size_t>(framework::product(dims_));
+      size_t numel = static_cast<size_t>(phi::product(dims_));
 #ifdef PADDLE_WITH_HIP
       auto is_equal = std::equal(
-          out_ptr, out_ptr + numel, expected_outs_[out_name].data(),
+          out_ptr,
+          out_ptr + numel,
+          expected_outs_[out_name].data(),
           [](const float &l, const float &r) { return fabs(l - r) < 1e-8; });
 #else
       auto is_equal =
@@ -152,7 +156,7 @@ class TestElementwiseOpGradGrad {
   framework::DDim dims_;
   std::vector<std::string> inputs_;
   std::vector<std::string> outputs_;
-  std::map<std::string, paddle::framework::LoDTensor *> in_out_tensors_;
+  std::map<std::string, phi::DenseTensor *> in_out_tensors_;
   std::map<std::string, std::vector<T>> feed_datas_;
   std::map<std::string, std::vector<T>> expected_outs_;
   framework::Scope scope_;

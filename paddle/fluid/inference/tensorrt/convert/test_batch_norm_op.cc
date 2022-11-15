@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
@@ -21,19 +22,20 @@ namespace inference {
 namespace tensorrt {
 
 TEST(batch_norm_op, test) {
-  std::unordered_set<std::string> parameters(
-      {"batch_norm_scale", "batch_norm_bias", "batch_norm_mean",
-       "batch_norm_variance"});
+  std::unordered_set<std::string> parameters({"batch_norm_scale",
+                                              "batch_norm_bias",
+                                              "batch_norm_mean",
+                                              "batch_norm_variance"});
   framework::Scope scope;
   TRTConvertValidation validator(5, parameters, scope, 1 << 15);
   std::vector<int> param_shape{2};
 
-  validator.DeclInputVar("batch_norm_X", nvinfer1::DimsCHW(2, 5, 5));
+  validator.DeclInputVar("batch_norm_X", nvinfer1::Dims3(2, 5, 5));
   validator.DeclParamVar("batch_norm_scale", param_shape);
   validator.DeclParamVar("batch_norm_bias", param_shape);
   validator.DeclParamVar("batch_norm_mean", param_shape);
   validator.DeclParamVar("batch_norm_variance", param_shape);
-  validator.DeclOutputVar("batch_norm_Y", nvinfer1::DimsCHW(2, 5, 5));
+  validator.DeclOutputVar("batch_norm_Y", nvinfer1::Dims3(2, 5, 5));
   validator.DeclOutputVar("batch_norm_save_mean", param_shape);
   validator.DeclOutputVar("batch_norm_save_variance", param_shape);
 
@@ -60,7 +62,9 @@ TEST(batch_norm_op, test) {
   validator.SetOp(*desc.Proto());
 
   std::unordered_set<std::string> neglected_output = {
-      "batch_norm_save_mean", "batch_norm_save_variance", "batch_norm_mean",
+      "batch_norm_save_mean",
+      "batch_norm_save_variance",
+      "batch_norm_mean",
       "batch_norm_variance"};
   validator.Execute(3, neglected_output);
 }

@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/conj_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
+
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -28,16 +28,6 @@ namespace operators {
 class ConjOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "conj");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "conj");
-
-    auto in_dims = ctx->GetInputDim("X");
-
-    ctx->SetOutputDim("Out", in_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 };
 
 class ConjOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -72,16 +62,12 @@ class ConjGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(conj, ops::ConjOp, ops::ConjOpMaker,
+DECLARE_INFER_SHAPE_FUNCTOR(conj,
+                            ConjInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+REGISTER_OPERATOR(conj,
+                  ops::ConjOp,
+                  ops::ConjOpMaker,
                   ops::ConjGradMaker<paddle::framework::OpDesc>,
-                  ops::ConjGradMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(
-    conj, ops::ConjKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex64>,
-    ops::ConjKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::complex128>,
-    ops::ConjKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ConjKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ConjKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConjKernel<paddle::platform::CPUDeviceContext, int64_t>);
+                  ops::ConjGradMaker<paddle::imperative::OpBase>,
+                  ConjInferShapeFunctor);

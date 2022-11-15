@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -106,6 +104,7 @@ class TestExpandAsOpRank4(OpTest):
 class TestExpandAsDygraphAPI(unittest.TestCase):
     def test_api(self):
         import paddle
+
         paddle.disable_static()
         np_data_x = np.array([1, 2, 3]).astype('int32')
         np_data_y = np.array([1, 2, 3, 1, 2, 3]).astype('int32')
@@ -123,21 +122,24 @@ class TestExpandAsAPI(unittest.TestCase):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([48, 14]).astype("float32")
         x = fluid.layers.data(
-            name='x', shape=[12, 14], append_batch_size=False, dtype="float32")
+            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
+        )
 
         y = fluid.layers.data(
             name='target_tensor',
             shape=[48, 14],
             append_batch_size=False,
-            dtype="float32")
+            dtype="float32",
+        )
 
         out_1 = fluid.layers.expand_as(x, target_tensor=y)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1 = exe.run(fluid.default_main_program(),
-                        feed={"x": input1,
-                              "target_tensor": input2},
-                        fetch_list=[out_1])
+        res_1 = exe.run(
+            fluid.default_main_program(),
+            feed={"x": input1, "target_tensor": input2},
+            fetch_list=[out_1],
+        )
         assert np.array_equal(res_1[0], np.tile(input1, (4, 1)))
 
 

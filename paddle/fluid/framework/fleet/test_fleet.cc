@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/string/string_helper.h"

@@ -30,7 +30,8 @@ class CReduceScatterOp : public framework::OperatorWithKernel {
     framework::DDim dim = ctx->GetInputDim("X");
     if (dim[0] > 0 || dim[0] < -1) {
       PADDLE_ENFORCE_EQ(
-          dim[0] % nranks, 0,
+          dim[0] % nranks,
+          0,
           platform::errors::InvalidArgument(
               "dim[0] (%d) is not divisible by nranks(%d)", dim[0], nranks));
       dim[0] /= nranks;
@@ -65,30 +66,18 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
   }
 };
 
-template <typename T>
-class CReduceScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> retv) const override {
-    retv->SetType("c_allgather");
-    retv->SetInput("X", this->OutputGrad("Out"));
-    retv->SetOutput("Out", this->InputGrad("X"));
-    retv->SetAttrMap(this->Attrs());
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(c_reducescatter, ops::CReduceScatterOp,
-                  ops::CReduceScatterOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(c_reducescatter,
+                             ops::CReduceScatterOp,
+                             ops::CReduceScatterOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_reducescatter, ops::CReduceScatterOpCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(c_reducescatter,
+                       ops::CReduceScatterOpCPUKernel<float>,
                        ops::CReduceScatterOpCPUKernel<double>,
                        ops::CReduceScatterOpCPUKernel<int>,
                        ops::CReduceScatterOpCPUKernel<int64_t>,

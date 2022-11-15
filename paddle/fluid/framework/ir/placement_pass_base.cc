@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/placement_pass_base.h"
+
 #include <string>
+
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
@@ -34,7 +36,8 @@ void PlacementPassBase::ApplyImpl(ir::Graph* graph) const {
           IsSupport(op->Type())) {
         if (op_types_list.empty() && IsDefaultOpTypes(op->Type())) {
           op->SetAttr(attr_name, true);
-        } else if (std::find(op_types_list.begin(), op_types_list.end(),
+        } else if (std::find(op_types_list.begin(),
+                             op_types_list.end(),
                              n->Name()) != op_types_list.end()) {
           op->SetAttr(attr_name, true);
         }
@@ -75,13 +78,16 @@ bool PlacementPassBase::IsDefaultOpTypes(const std::string& op_type) const {
     // MKLDNN.
     // If run MKLDNN interpolate ops, manual set AnalysisConfig and apply
     // the corresponding pass.
-    const std::vector<std::string> not_default_op_types = {
-        "bilinear_interp", "nearest_interp", "trilinear_interp",
-        "bicubic_interp",  "linear_interp",  "bilinear_interp_v2",
-        "linear_interp_v2"};
-    bool is_interpolate_op =
-        std::find(not_default_op_types.begin(), not_default_op_types.end(),
-                  op_type) != not_default_op_types.end();
+    const std::vector<std::string> not_default_op_types = {"bilinear_interp",
+                                                           "nearest_interp",
+                                                           "trilinear_interp",
+                                                           "bicubic_interp",
+                                                           "linear_interp",
+                                                           "bilinear_interp_v2",
+                                                           "linear_interp_v2"};
+    bool is_interpolate_op = std::find(not_default_op_types.begin(),
+                                       not_default_op_types.end(),
+                                       op_type) != not_default_op_types.end();
     return !is_interpolate_op;
   }
   return false;

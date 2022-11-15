@@ -1,0 +1,16 @@
+type: "concat"
+def {
+  inputs {
+    name: "X"
+  }
+  inputs {
+    name: "AxisTensor"
+  }
+  outputs {
+    name: "Out"
+  }
+  attrs {
+    name: "axis"
+    type: INT
+  }
+}

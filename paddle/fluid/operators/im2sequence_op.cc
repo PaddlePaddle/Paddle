@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/im2sequence_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -26,20 +27,24 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::NotFound(
                           "The input 'X' of Im2SequenceOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "The output 'Out' of Im2SequenceOp is not found."));
     auto in_dim = ctx->GetInputDim("X");
 
     PADDLE_ENFORCE_EQ(
-        in_dim.size(), 4,
+        in_dim.size(),
+        4,
         platform::errors::InvalidArgument(
             "The dimesions size of input 'X' in Im2SequenceOp should be 4. But "
             "received dimesions size=[%d], dimesions=[%s].",
-            in_dim.size(), in_dim));
+            in_dim.size(),
+            in_dim));
     auto img_channels = in_dim[1];
 
     auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
@@ -48,7 +53,7 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     if (!ctx->IsRuntime()) {
       // set lod level for compile-time
       framework::VarDesc* out_desc =
-          BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
+          PADDLE_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
       out_desc->SetLoDLevel(1);
     }
 
@@ -152,10 +157,12 @@ class Im2SequenceGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::NotFound(
                           "The input 'X' of Im2SequenceGradOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::NotFound(
                           "The input %s of Im2SequenceGradOp is not found.",
                           framework::GradVarName("Out")));
@@ -182,13 +189,18 @@ class Im2SequenceGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(im2sequence, ops::Im2SequenceOp, ops::Im2SequenceOpMaker,
+REGISTER_OPERATOR(im2sequence,
+                  ops::Im2SequenceOp,
+                  ops::Im2SequenceOpMaker,
                   ops::Im2SequenceGradMaker<paddle::framework::OpDesc>,
                   ops::Im2SequenceGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(im2sequence_grad, ops::Im2SequenceGradOp);
-REGISTER_OP_CPU_KERNEL(
-    im2sequence,
-    ops::Im2SequenceKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    im2sequence_grad,
-    ops::Im2SequenceGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(im2sequence,
+                       ops::Im2SequenceKernel<phi::CPUContext, float>);
+REGISTER_OP_CPU_KERNEL(im2sequence_grad,
+                       ops::Im2SequenceGradKernel<phi::CPUContext, float>);
+
+REGISTER_OP_CUDA_KERNEL(im2sequence,
+                        ops::Im2SequenceKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(im2sequence_grad,
+                        ops::Im2SequenceGradKernel<phi::GPUContext, float>);

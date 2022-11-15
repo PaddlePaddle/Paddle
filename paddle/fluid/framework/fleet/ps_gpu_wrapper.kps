@@ -1,0 +1,225 @@
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#ifdef PADDLE_WITH_HETERPS
+#include <xpu/runtime.h>  // NOLINT
+#include <algorithm>
+#include <ctime>
+#include <memory>
+#include <numeric>
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "xpu/kernel/cluster_header.h"  // NOLINT
+#include "xpu/kernel/debug.h"           // NOLINT
+#include "xpu/kernel/math.h"            // NOLINT
+#include "xpu/kernel/simd.h"
+
+namespace paddle {
+namespace framework {
+
+__global__ void PullCopy(float* dest,
+                         const FeatureValue* src,
+                         const long long* len,
+                         int hidden,
+                         int slot_num,
+                         int total_len,
+                         unsigned long long* keys) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+  __local__ int64_t local_len[slot_num];
+  GM2LM(len, local_len, slot_num * sizeof(int64_t));
+
+  __global_ptr__ unsigned long long* local_keys[slot_num];
+  GM2LM(
+      keys, local_keys, slot_num * sizeof(__global_ptr__ unsigned long long*));
+
+  __global_ptr__ float* local_dest[slot_num];
+  GM2LM(dest, local_dest, slot_num * sizeof(__global_ptr__ float*));
+
+  int read_len = 30;
+
+  for (int i = thread_id; i < slot_num; i += nthreads) {
+    // max core local memory = 8KB
+    // slot's max memory size = slot_len * sizeof(FeatureValue)
+    int slot_len = i ? local_len[i] - local_len[i - 1] : local_len[0];
+    // int read_len = min(roundup_div(1024 * 8, sizeof(FeatureValue)),
+    // slot_len);
+    int dest_len = i ? local_len[i - 1] : 0;
+    __local__ FeatureValue local_slot_vals[read_len];
+    __local__ float local_dest_vals[read_len * hidden];
+    __local__ uint64_t local_slot_keys[read_len];
+
+    // copy read_len (length) of slots' val to LM
+    for (int k = 0; k < slot_len; k += read_len) {
+      int real_read_len = min(read_len, slot_len - k);
+      GM2LM(src + dest_len + k,
+            local_slot_vals,
+            real_read_len * sizeof(FeatureValue));
+      GM2LM(
+          local_keys[i] + k, local_slot_keys, real_read_len * sizeof(uint64_t));
+      for (int j = 0; j < real_read_len; j++) {
+        if (local_slot_keys[j] == 0) {
+          local_dest_vals[j * hidden] = 0;
+          local_dest_vals[j * hidden + 1] = 0;
+          local_dest_vals[j * hidden + 2] = 0;
+        } else {
+          local_dest_vals[j * hidden] = local_slot_vals[j].show;
+          local_dest_vals[j * hidden + 1] = local_slot_vals[j].clk;
+          local_dest_vals[j * hidden + 2] = local_slot_vals[j].lr;
+        }
+
+        if (local_slot_vals[j].mf_size == 0 || local_slot_keys[j] == 0) {
+          for (int m = 0; m < hidden - 3; m++) {
+            local_dest_vals[j * hidden + 3 + m] = 0;
+          }
+        } else {
+          for (int m = 0; m < hidden - 3; m++) {
+            local_dest_vals[j * hidden + 3 + m] = local_slot_vals[j].mf[1 + m];
+          }
+        }
+      }
+      LM2GM(local_dest_vals,
+            local_dest[i] + k * hidden,
+            real_read_len * hidden * sizeof(float));
+    }
+  }
+}
+
+__global__ void CopyKeysKernel(unsigned long long* src_keys,
+                               unsigned long long* dest_total_keys,
+                               const long long* len,
+                               int slot_num,
+                               int total_len) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+  __local__ long long local_len[slot_num];
+  GM2LM(len, local_len, slot_num * sizeof(long long));
+
+  __global_ptr__ unsigned long long* local_keys[slot_num];
+  GM2LM(src_keys,
+        local_keys,
+        slot_num * sizeof(__global_ptr__ unsigned long long*));
+
+  for (int i = thread_id; i < slot_num; i += nthreads) {
+    // max core local memory = 8KB
+    int slot_len = i ? local_len[i] - local_len[i - 1] : local_len[0];
+    // int read_len = min(slot_len, 1024);
+    int read_len = 100;
+    int dest_len = i ? local_len[i - 1] : 0;
+    __local__ unsigned long long local_slot_keys[read_len];
+
+    for (int k = 0; k < slot_len; k += read_len) {
+      int real_read_len = min(read_len, slot_len - k);
+      GM2LM(local_keys[i] + k,
+            local_slot_keys,
+            real_read_len * sizeof(unsigned long long));
+      LM2GM(local_slot_keys,
+            dest_total_keys + dest_len + k,
+            real_read_len * sizeof(unsigned long long));
+    }
+  }
+}
+
+__global__ void PushCopy(FeaturePushValue* dest,
+                         float* src,
+                         long long* len,
+                         int hidden,
+                         int slot_num,
+                         int total_len,
+                         int bs,
+                         int* slot_vector) {
+  int cid = core_id();
+  int ncores = core_num();
+  if (cid >= ncores) {
+    return;
+  }
+  int thread_id = ncores * cluster_id() + cid;
+  int nthreads = ncores * cluster_num();
+  __local__ int64_t local_len[slot_num];
+  __local__ int local_slot[slot_num];
+  GM2LM(len, local_len, slot_num * sizeof(int64_t));
+  GM2LM(slot_vector, local_slot, slot_num * sizeof(int));
+
+  __global_ptr__ float* local_src[slot_num];
+  GM2LM(src, local_src, slot_num * sizeof(__global_ptr__ float*));
+
+  for (int i = thread_id; i < slot_num; i += nthreads) {
+    int slot_len = i ? local_len[i] - local_len[i - 1] : local_len[0];
+
+    // max core local memory = 8KB
+    // slot's max memory size = slot_len * hidden * 8
+    // int read_len = min(roundup_div(1024, hidden), slot_len);
+    int read_len = 40;
+    int dest_len = i ? local_len[i - 1] : 0;
+    __local__ float local_slot_grads[read_len * hidden];
+    __local__ FeaturePushValue local_dest_grads[read_len];
+
+    // copy read_len(length) of slots' grad to LM
+    for (int k = 0; k < slot_len; k += read_len) {
+      int real_read_len = min(read_len, slot_len - k);
+      GM2LM(local_src[i] + k * hidden,
+            local_slot_grads,
+            real_read_len * hidden * sizeof(float));
+      // copy from slots' grad to total grad
+      for (int j = 0; j < real_read_len; j++) {
+        local_dest_grads[j].slot = local_slot[i];
+        local_dest_grads[j].show = local_slot_grads[j * hidden];
+        local_dest_grads[j].clk = local_slot_grads[j * hidden + 1];
+        local_dest_grads[j].lr_g = local_slot_grads[j * hidden + 2] * -1. * bs;
+        for (int m = 0; m < hidden - 3; m++) {
+          local_dest_grads[j].mf_g[m] =
+              local_slot_grads[j * hidden + 3 + m] * -1. * bs;
+        }
+      }
+      LM2GM(local_dest_grads,
+            dest + dest_len + k,
+            real_read_len * sizeof(FeaturePushValue));
+    }
+  }
+}
+
+PSGPUWrapper::~PSGPUWrapper() { delete HeterPs_; }
+
+void PSGPUWrapper::CopyKeys(const paddle::platform::Place& place,
+                            uint64_t** origin_keys,
+                            uint64_t* total_keys,
+                            const int64_t* gpu_len,
+                            int slot_num,
+                            int total_len) {
+  XPUStream stream = nullptr;
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
+               ->x_context()
+               ->xpu_stream;
+  unsigned long long* o_keys =
+      reinterpret_cast<unsigned long long*>(origin_keys);
+  unsigned long long* t_keys = (unsigned long long*)total_keys;
+  const long long* c_len = (const long long*)gpu_len;
+  CopyKeysKernel<<<2, 64, stream>>>(o_keys, t_keys, c_len, slot_num, total_len);
+  xpu_wait(stream);
+}
+
+}  // end namespace framework
+}  // end namespace paddle
+#endif

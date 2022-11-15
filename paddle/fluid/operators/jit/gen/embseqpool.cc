@@ -93,8 +93,8 @@ void EmbSeqPoolJitCode::genCode() {
         size_t w_offset = 0;
         for (int reg_i = 0; reg_i < num_regs; ++reg_i) {
           vmovups(ymm_t(reg_i), ptr[reg_ptr_tbl_i + w_offset]);
-          vaddps(ymm_t(reg_i + num_regs), ymm_t(reg_i + num_regs),
-                 ymm_t(reg_i));
+          vaddps(
+              ymm_t(reg_i + num_regs), ymm_t(reg_i + num_regs), ymm_t(reg_i));
           w_offset += block_size;
         }
         add(reg_ptr_idx_i, reg_idx_width_in_byte);
@@ -131,27 +131,32 @@ class EmbSeqPoolCreator : public JitCodeCreator<emb_seq_pool_attr_t> {
   }
   std::unique_ptr<GenBase> CreateJitCode(
       const emb_seq_pool_attr_t& attr) const override {
-    PADDLE_ENFORCE_GT(attr.table_height, 0,
+    PADDLE_ENFORCE_GT(attr.table_height,
+                      0,
                       platform::errors::InvalidArgument(
                           "The attribute table_height of EmbSeqPool should "
                           "be larger than 0. But it is %d.",
                           attr.table_height));
-    PADDLE_ENFORCE_GT(attr.table_width, 0,
+    PADDLE_ENFORCE_GT(attr.table_width,
+                      0,
                       platform::errors::InvalidArgument(
                           "The attribute table_width of EmbSeqPool should "
                           "be larger than 0. But it is %d.",
                           attr.table_width));
-    PADDLE_ENFORCE_GT(attr.index_height, 0,
+    PADDLE_ENFORCE_GT(attr.index_height,
+                      0,
                       platform::errors::InvalidArgument(
                           "The attribute index_height of EmbSeqPool should "
                           "be larger than 0. But it is %d.",
                           attr.index_height));
-    PADDLE_ENFORCE_GT(attr.index_width, 0,
+    PADDLE_ENFORCE_GT(attr.index_width,
+                      0,
                       platform::errors::InvalidArgument(
                           "The attribute index_width of EmbSeqPool should "
                           "be larger than 0. But it is %d.",
                           attr.index_width));
-    PADDLE_ENFORCE_GT(attr.out_width, 0,
+    PADDLE_ENFORCE_GT(attr.out_width,
+                      0,
                       platform::errors::InvalidArgument(
                           "The attribute out_width of EmbSeqPool should be "
                           "larger than 0. But it is %d.",

@@ -12,41 +12,76 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
-#include "unsupported/Eigen/CXX11/Tensor"
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename EigenDevice, typename T, int Rank>
-struct EigenBroadcast {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using InType32BitIndex =
-      Eigen::TensorMap<Eigen::Tensor<const T, Rank, Eigen::RowMajor, int>,
-                       Eigen::Aligned>;
-  using OutType = Eigen::TensorMap<
-      Eigen::Tensor<T, Rank, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType32BitIndex =
-      Eigen::TensorMap<Eigen::Tensor<T, Rank, Eigen::RowMajor, int>,
-                       Eigen::Aligned>;
-  static void Eval(const EigenDevice& dev, OutType out, InType in,
-                   const Array& bcast);
-  static void Eval(const EigenDevice& dev, OutType32BitIndex out,
-                   InType32BitIndex in, const Array& bcast);
-};
+using EigenBroadcast = phi::funcs::EigenBroadcast<EigenDevice, T, Rank>;
 
 template <typename EigenDevice, typename T, int Rank>
-struct EigenBroadcastGrad {
-  using Array = Eigen::DSizes<Eigen::DenseIndex, Rank>;
-  using Array2 = Eigen::DSizes<Eigen::DenseIndex, Rank * 2>;
-  using InType = Eigen::TensorMap<
-      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  using OutType =
-      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
-  static void Eval(const EigenDevice& dev, OutType out, InType in,
-                   const Array& reduce_dims, const Array2& reshape_dims);
-};
+using EigenBroadcastGrad = phi::funcs::EigenBroadcastGrad<EigenDevice, T, Rank>;
+
+template <typename EigenDevice, typename T, int Rank>
+using EigenConstant = phi::funcs::EigenConstant<EigenDevice, T, Rank>;
+
+template <typename EigenDevice, typename T>
+using EigenSign = phi::funcs::EigenSign<EigenDevice, T>;
+
+template <typename EigenDevice, typename T, int Rank>
+using EigenReverse = phi::funcs::EigenReverse<EigenDevice, T, Rank>;
+
+template <typename EigenDevice, typename T>
+using EigenAdd = phi::funcs::EigenAdd<EigenDevice, T>;
+
+template <typename EigenDevice, typename T>
+using EigenSub = phi::funcs::EigenSub<EigenDevice, T>;
+
+template <typename EigenDevice, typename T, int Rank>
+using EigenSlice = phi::funcs::EigenSlice<EigenDevice, T, Rank>;
+
+template <typename EigenDevice, typename T, int Rank>
+using EigenPad = phi::funcs::EigenPad<EigenDevice, T, Rank>;
+
+template <typename EigenDevice, typename T>
+using EigenScale = phi::funcs::EigenScale<EigenDevice, T>;
+
+template <typename EigenDevice, typename T>
+using EigenErf = phi::funcs::EigenErf<EigenDevice, T>;
+
+template <typename EigenDevice, typename T>
+using EigenErfGrad = phi::funcs::EigenErfGrad<EigenDevice, T>;
+
+template <typename EigenDevice, typename T>
+using EigenRankLoss = phi::funcs::EigenRankLoss<EigenDevice, T>;
+
+template <typename EigenDevice, typename T>
+using EigenRankLossGrad = phi::funcs::EigenRankLossGrad<EigenDevice, T>;
+
+template <typename EigenDevice, typename T>
+using EigenLogLoss = phi::funcs::EigenLogLoss<EigenDevice, T>;
+
+template <typename EigenDevice, typename T>
+using EigenLogLossGrad = phi::funcs::EigenLogLossGrad<EigenDevice, T>;
+
+template <typename EigenDevice, typename T>
+using EigenHingeLoss = phi::funcs::EigenHingeLoss<EigenDevice, T>;
+
+template <typename EigenDevice, typename T>
+using EigenHingeLossGrad = phi::funcs::EigenHingeLossGrad<EigenDevice, T>;
+
+template <typename EigenDevice, typename T>
+using EigenL1Norm = phi::funcs::EigenL1Norm<EigenDevice, T>;
+
+template <typename EigenDevice, typename T>
+using EigenL1NormGrad = phi::funcs::EigenL1NormGrad<EigenDevice, T>;
 
 }  // namespace operators
 }  // namespace paddle

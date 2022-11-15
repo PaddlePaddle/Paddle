@@ -1,0 +1,70 @@
+type: "batch_norm"
+def {
+  inputs {
+    name: "X"
+  }
+  inputs {
+    name: "Scale"
+  }
+  inputs {
+    name: "Bias"
+  }
+  inputs {
+    name: "Mean"
+  }
+  inputs {
+    name: "Variance"
+  }
+  inputs {
+    name: "MomentumTensor"
+  }
+  outputs {
+    name: "Y"
+  }
+  outputs {
+    name: "MeanOut"
+  }
+  outputs {
+    name: "VarianceOut"
+  }
+  outputs {
+    name: "SavedMean"
+  }
+  outputs {
+    name: "SavedVariance"
+  }
+  outputs {
+    name: "ReserveSpace"
+  }
+  attrs {
+    name: "epsilon"
+    type: FLOAT
+  }
+}
+extra {
+  attrs {
+    name: "momentum"
+    type: FLOAT
+  }
+  attrs {
+    name: "Y0_threshold"
+    type: FLOAT
+  }
+  attrs {
+    name: "data_layout"
+    type: STRING
+  }
+  attrs {
+    name: "fuse_with_relu"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "use_global_stats"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "trainable_statistics"
+    type: BOOLEAN
+  }
+}
+

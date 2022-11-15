@@ -1,0 +1,8 @@
+add_executable(print_phi_kernels print_phi_kernels.cc)
+target_link_libraries(print_phi_kernels phi phi_api_utils)
+if(WIN32)
+  target_link_libraries(print_phi_kernels shlwapi.lib)
+endif()
+if(WITH_ROCM)
+  target_link_libraries(print_phi_kernels ${ROCM_HIPRTC_LIB})
+endif()

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -23,7 +24,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 /*
  * \brief Converts the feature data of four dimensions(CDHW) into a colData of
@@ -70,20 +71,24 @@ using DataLayout = framework::DataLayout;
 template <typename DeviceContext, typename T>
 class Vol2ColFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& vol,
+  void operator()(const DeviceContext& context,
+                  const phi::DenseTensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, framework::Tensor* col,
+                  const std::vector<int>& paddings,
+                  phi::DenseTensor* col,
                   const DataLayout data_layout = DataLayout::kNCHW) const;
 };
 
 template <typename DeviceContext, typename T>
 class Col2VolFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& col,
+  void operator()(const DeviceContext& context,
+                  const phi::DenseTensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings, framework::Tensor* vol,
+                  const std::vector<int>& paddings,
+                  phi::DenseTensor* vol,
                   const DataLayout data_layout = DataLayout::kNCHW) const;
 };
 

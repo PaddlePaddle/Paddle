@@ -1,0 +1,17 @@
+type: "cvm"
+def {
+  inputs {
+    name: "X"
+  }
+  inputs {
+    name: "CVM"
+  }
+  outputs {
+    name: "Y"
+  }
+  attrs {
+    name: "use_cvm"
+    type: BOOLEAN
+  }
+}
+

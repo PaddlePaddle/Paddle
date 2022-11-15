@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 
 import numpy as np
@@ -28,8 +25,9 @@ from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.vision.models import LeNet
 
 
-@unittest.skipIf(not fluid.is_compiled_with_cuda(),
-                 'CPU testing is not supported')
+@unittest.skipIf(
+    not fluid.is_compiled_with_cuda(), 'CPU testing is not supported'
+)
 class TestDistTraningWithPureFP16(unittest.TestCase):
     def test_amp_training_purefp16(self):
         if not fluid.is_compiled_with_cuda():
@@ -47,12 +45,14 @@ class TestDistTraningWithPureFP16(unittest.TestCase):
         optim = paddle.optimizer.Adam(
             learning_rate=0.001,
             parameters=model.parameters(),
-            multi_precision=True)
+            multi_precision=True,
+        )
         amp_configs = {"level": amp_level, "use_fp16_guard": False}
         model.prepare(
             optimizer=optim,
             loss=CrossEntropyLoss(reduction="sum"),
-            amp_configs=amp_configs)
+            amp_configs=amp_configs,
+        )
         model.train_batch([data], [label])
 
 

@@ -66,7 +66,8 @@ class TestWMT14Gen(unittest.TestCase):
 class TestWMT16Train(unittest.TestCase):
     def test_main(self):
         wmt16 = WMT16(
-            mode='train', src_dict_size=50, trg_dict_size=50, lang='en')
+            mode='train', src_dict_size=50, trg_dict_size=50, lang='en'
+        )
         self.assertTrue(len(wmt16) == 29000)
 
         # traversal whole dataset may cost a
@@ -82,7 +83,8 @@ class TestWMT16Train(unittest.TestCase):
 class TestWMT16Test(unittest.TestCase):
     def test_main(self):
         wmt16 = WMT16(
-            mode='test', src_dict_size=50, trg_dict_size=50, lang='en')
+            mode='test', src_dict_size=50, trg_dict_size=50, lang='en'
+        )
         self.assertTrue(len(wmt16) == 1000)
 
         # traversal whole dataset may cost a

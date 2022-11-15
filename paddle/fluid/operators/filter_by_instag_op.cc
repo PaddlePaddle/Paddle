@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/filter_by_instag_op.h"
 
 #include <memory>
+
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 
@@ -25,30 +26,36 @@ class FilterByInstagOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Ins"), true,
+        ctx->HasInput("Ins"),
+        true,
         platform::errors::InvalidArgument("Input(Ins) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Ins_tag"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Ins_tag"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Ins_tag) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Filter_tag"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Filter_tag"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Filter_tag) should be not null."));
 
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
+        ctx->HasOutput("Out"),
+        true,
         platform::errors::InvalidArgument("Output(Out) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("LossWeight"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("LossWeight"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(LossWeight) shoudl not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("IndexMap"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("IndexMap"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(IndexMap) should be not null."));
 
     auto x1_dims = ctx->GetInputDim("Ins");  // batch_size * vec
 
-    ctx->SetOutputDim("Out", framework::make_ddim({-1, x1_dims[1]}));
-    ctx->SetOutputDim("LossWeight", framework::make_ddim({-1, 1}));
-    ctx->SetOutputDim("IndexMap", framework::make_ddim({-1, 2}));
+    ctx->SetOutputDim("Out", phi::make_ddim({-1, x1_dims[1]}));
+    ctx->SetOutputDim("LossWeight", phi::make_ddim({-1, 1}));
+    ctx->SetOutputDim("IndexMap", phi::make_ddim({-1, 2}));
   }
 
  protected:
@@ -73,15 +80,15 @@ class FilterByInstagOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("LossWeight", "(Tensor) loss weight.");
     AddOutput("IndexMap", "(LoDTensor) mapping from Out rows to X1 rows");
     AddComment(R"DOC(
-Filter By Instag Op 
+Filter By Instag Op
 
 This operator is used to filter embeded ins.
 
-There are 3 inputs. First is embeded ins, Second is tags for ins, 
+There are 3 inputs. First is embeded ins, Second is tags for ins,
 Third is tags to filter.
 
 There are 3 outputs. First is filtered embeded ins, Second is Loss Weight,
-Third is the IndexMap from Out line number to X1 line number. 
+Third is the IndexMap from Out line number to X1 line number.
 )DOC");
   }
 };
@@ -90,26 +97,31 @@ class FilterByInstagOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("IndexMap"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("IndexMap"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(IndexMap) should be not null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Grad Input(Out) should be not null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Ins"), true,
+        ctx->HasInput("Ins"),
+        true,
         platform::errors::InvalidArgument("Input(Ins) should be not null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("LossWeight"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("LossWeight"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(LossWeight) should be not null"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Ins")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Ins")),
+                      true,
                       platform::errors::InvalidArgument(
                           "Grad Output(Ins) should be not null"));
 
     auto grad_out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x1_dims = ctx->GetInputDim("Ins");
     ctx->SetOutputDim(framework::GradVarName("Ins"),
-                      framework::make_ddim({x1_dims[0], grad_out_dims[1]}));
+                      phi::make_ddim({x1_dims[0], grad_out_dims[1]}));
   }
 
  protected:
@@ -141,14 +153,16 @@ class FilterByInstagGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(filter_by_instag, ops::FilterByInstagOp,
+REGISTER_OPERATOR(filter_by_instag,
+                  ops::FilterByInstagOp,
                   ops::FilterByInstagOpMaker,
                   ops::FilterByInstagGradOpMaker<paddle::framework::OpDesc>,
                   ops::FilterByInstagGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(filter_by_instag_grad, ops::FilterByInstagOpGrad);
 
-REGISTER_OP_CPU_KERNEL(filter_by_instag, ops::FilterByInstagKernel<float>,
+REGISTER_OP_CPU_KERNEL(filter_by_instag,
+                       ops::FilterByInstagKernel<float>,
                        ops::FilterByInstagKernel<double>,
                        ops::FilterByInstagKernel<int32_t>,
                        ops::FilterByInstagKernel<int64_t>);

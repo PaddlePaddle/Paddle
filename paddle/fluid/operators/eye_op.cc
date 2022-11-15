@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/eye_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,24 +23,6 @@ namespace operators {
 class EyeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Out) of EyeOP should not be null."));
-    auto num_rows = ctx->Attrs().Get<int64_t>("num_rows");
-    PADDLE_ENFORCE_EQ(
-        num_rows >= 0, true,
-        platform::errors::InvalidArgument(
-            "The value of Input(num_rows) should be non-negative int."));
-    auto num_columns = ctx->Attrs().Get<int64_t>("num_columns");
-    if (num_columns == -1) num_columns = num_rows;
-    PADDLE_ENFORCE_EQ(
-        num_columns >= 0, true,
-        platform::errors::InvalidArgument(
-            "The value of Input(num_columns) should be non-negative int."));
-    ctx->SetOutputDim("Out", {num_rows, num_columns});
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -52,7 +37,7 @@ class EyeOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
+        PADDLE_GET_CONST(int, ctx->GetAttr("dtype")));
     ctx->SetOutputDataType("Out", data_type);
   }
 };
@@ -65,11 +50,13 @@ class EyeOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Output data type")
         .SetDefault(framework::proto::VarType::FP32);
     AddAttr<int64_t>("num_rows",
-                     "(int64_t) the number of rows in output tensor");
+                     "(int64_t) the number of rows in output tensor")
+        .SupportTensor();
     AddAttr<int64_t>("num_columns",
                      "(int64_t) the number of columns in output tensor."
                      "Default -1 means that num_columns=num_rows")
-        .SetDefault(-1);
+        .SetDefault(-1)
+        .SupportTensor();
     AddOutput("Out",
               "(Tensor) Construct an identity tensor with "
               "specified shape [num_rows, num_columns]");
@@ -82,14 +69,15 @@ Return an identity tensor whose shape is [num_rows, num_columns].
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+DECLARE_INFER_SHAPE_FUNCTOR(eye,
+                            EyeInferShapeFunctor,
+                            PD_INFER_META(phi::EyeInferMeta));
 
 REGISTER_OPERATOR(
-    eye, ops::EyeOp, ops::EyeOpMaker, ops::EyeOpVarTypeInference,
+    eye,
+    ops::EyeOp,
+    ops::EyeOpMaker,
+    ops::EyeOpVarTypeInference,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(eye, ops::EyeKernel<CPU, float>,
-                       ops::EyeKernel<CPU, double>,
-                       ops::EyeKernel<CPU, int64_t>, ops::EyeKernel<CPU, int>,
-                       ops::EyeKernel<CPU, paddle::platform::float16>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    EyeInferShapeFunctor);

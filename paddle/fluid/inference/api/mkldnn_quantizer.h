@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
@@ -41,7 +42,7 @@ namespace paddle {
  * type.
  */
 using VarQuantScale =
-    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
+    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
 
 class AnalysisPredictor::MkldnnQuantizer {
  public:
@@ -52,7 +53,7 @@ class AnalysisPredictor::MkldnnQuantizer {
   // Execute full quantization procedure.
   bool Quantize();
 
-#if PADDLE_WITH_TESTING
+#ifdef PADDLE_WITH_TESTING
   friend class MkldnnQuantizerTest;
 #endif
 
@@ -65,8 +66,14 @@ class AnalysisPredictor::MkldnnQuantizer {
   void CalculateSingleScale(const std::string& op_name,
                             const std::string& conn_name,
                             const std::string& var_name,
-                            const framework::LoDTensor& var_tensor,
+                            const phi::DenseTensor& var_tensor,
                             bool is_unsigned);
+  void CalculateSingleGRUWeightsScale(const std::string& var_name,
+                                      const phi::DenseTensor& var_tensor);
+  void CalculateScalesForRNNWeights(const paddle::framework::OpDesc* op,
+                                    bool gru);
+  void CalculateScalesForOpOutputs(const paddle::framework::OpDesc* op);
+  void CalculateScalesForOpInputs(const paddle::framework::OpDesc* op);
   void PrepareArgument() const;
   void ClearDeviceContext() const;
   bool RunQuantizePasses() const;
@@ -75,24 +82,37 @@ class AnalysisPredictor::MkldnnQuantizer {
                                        std::vector<int> reference_bins) const;
 
   // Using the KL-divergence method get the most precise scaling factor.
-  std::pair<bool, framework::LoDTensor> GetKLScalingFactor(
-      const framework::LoDTensor& var_tensor, bool is_unsigned) const;
+  std::pair<bool, phi::DenseTensor> GetKLScalingFactor(
+      const phi::DenseTensor& var_tensor, bool is_unsigned) const;
 
-  std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
-      const framework::LoDTensor& var_tensor, bool is_unsigned,
+  std::pair<bool, phi::DenseTensor> GetMaxChScalingFactor(
+      const phi::DenseTensor& var_tensor,
+      bool is_unsigned,
       bool is_transposed) const;
 
-  std::pair<bool, framework::LoDTensor> GetMaxScalingFactor(
-      const framework::LoDTensor& var_tensor, bool is_unsigned) const;
+  std::pair<bool, phi::DenseTensor> GetMaxChGRUScalingFactor(
+      const phi::DenseTensor& wx_tensor,
+      const phi::DenseTensor& wh_tensor) const;
+
+  std::pair<bool, phi::DenseTensor> GetMaxChLSTMScalingFactor(
+      const phi::DenseTensor& wx_tensor,
+      const phi::DenseTensor& wh_tensor) const;
+
+  std::pair<bool, phi::DenseTensor> GetMaxScalingFactor(
+      const phi::DenseTensor& var_tensor, bool is_unsigned) const;
 
   // Returns histogram and bin width
   std::pair<std::vector<int>, float> Histogram(
-      const framework::LoDTensor& var_tensor, float min_val, float max_val,
+      const phi::DenseTensor& var_tensor,
+      float min_val,
+      float max_val,
       size_t num_bins = 2048) const;
 
   // Calculate the entropy.
-  float SafeEntropy(std::vector<int> reference_distr_P, int P_sum,
-                    std::vector<int> candidate_distr_Q, int Q_sum) const;
+  float SafeEntropy(std::vector<int> reference_distr_P,
+                    int P_sum,
+                    std::vector<int> candidate_distr_Q,
+                    int Q_sum) const;
 
  private:
   AnalysisPredictor& predictor_;

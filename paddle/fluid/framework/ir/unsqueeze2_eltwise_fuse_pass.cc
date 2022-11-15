@@ -73,6 +73,46 @@ PDNode *UnsqueezeEltwise::operator()(PDNode *x, PDNode *y) {
 
 }  // namespace patterns
 
+UnsqueezeEltwiseFusePass::UnsqueezeEltwiseFusePass() {
+  AddOpCompat(OpCompat("unsqueeze2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("AxesTensor")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddInput("AxesTensorList")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axes")
+      .IsType<std::vector<int>>()
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      // The attribute value is - 1 before fusion and 0 after fusion
+      .AddAttr("axis")
+      .IsIntIn({-1, 0})
+      .End();
+}
+
 void UnsqueezeEltwiseFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
@@ -100,7 +140,10 @@ void UnsqueezeEltwiseFusePass::ApplyImpl(ir::Graph *graph) const {
       LOG(WARNING) << "The subgraph is empty.";
       return;
     }
-
+    if (!IsCompat(subgraph, graph)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     VLOG(4) << "handle UnsqueezeEltwise fuse";
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_op, elementwise, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(eltwise_out, eltwise_out, fused_pattern);
@@ -110,9 +153,9 @@ void UnsqueezeEltwiseFusePass::ApplyImpl(ir::Graph *graph) const {
     size_t eltwise_in_x_rank = (subgraph.at(x)->Var()->GetShape()).size();
     size_t unsqz_in_rank = (subgraph.at(y)->Var()->GetShape()).size();
     std::vector<int> unsqz_op_axes =
-        BOOST_GET_CONST(std::vector<int>, unsqz_op->Op()->GetAttr("axes"));
+        PADDLE_GET_CONST(std::vector<int>, unsqz_op->Op()->GetAttr("axes"));
     int eltwise_op_axis =
-        BOOST_GET_CONST(int, eltwise_op->Op()->GetAttr("axis"));
+        PADDLE_GET_CONST(int, eltwise_op->Op()->GetAttr("axis"));
 
     if (eltwise_in_x_rank == 4 && unsqz_in_rank == 2 &&
         unsqz_op_axes == std::vector<int>{2, 3} && eltwise_op_axis == -1) {
@@ -123,6 +166,10 @@ void UnsqueezeEltwiseFusePass::ApplyImpl(ir::Graph *graph) const {
       IR_NODE_LINK_TO(eltwise_op, eltwise_out);
       GraphSafeRemoveNodes(graph, {unsqz_op, unsqz_out});
       found_subgraph_count++;
+      if (!IsCompat(*eltwise_op->Op())) {
+        LOG(WARNING) << "unsqueeze2_eltwise_fuse_pass op compat failed.";
+        return;
+      }
     }
   };
 

@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 from op_test import OpTest
 
 
 class TestL1NormOp(OpTest):
-    """Test l1_norm
-    """
+    """Test l1_norm"""
 
     def setUp(self):
         self.op_type = "l1_norm"

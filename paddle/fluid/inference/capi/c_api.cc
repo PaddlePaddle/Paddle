@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/capi/paddle_c_api.h"
 #include "paddle/fluid/platform/enforce.h"

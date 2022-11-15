@@ -18,11 +18,9 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/var_type.h"
 
-namespace paddle {
-namespace framework {
-class LoDTensor;
-}  // namespace framework
-}  // namespace paddle
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace operators {
@@ -31,11 +29,15 @@ class TensorFormatter {
  public:
   TensorFormatter() {}
 
-  std::string Format(const framework::LoDTensor& print_tensor,
+  std::string Format(const phi::DenseTensor& print_tensor,
                      const std::string& tensor_name = "",
                      const std::string& message = "");
 
-  void Print(const framework::LoDTensor& print_tensor,
+  template <typename T>
+  void FormatData(const phi::DenseTensor& print_tensor,
+                  std::stringstream& log_stream);
+
+  void Print(const phi::DenseTensor& print_tensor,
              const std::string& tensor_name = "",
              const std::string& message = "");
 
@@ -46,10 +48,6 @@ class TensorFormatter {
   void SetSummarize(int64_t summarize);
 
  private:
-  template <typename T>
-  void FormatData(const framework::LoDTensor& print_tensor,
-                  std::stringstream& log_stream);
-
   int64_t summarize_ = -1;
   bool print_tensor_type_ = true;
   bool print_tensor_shape_ = true;

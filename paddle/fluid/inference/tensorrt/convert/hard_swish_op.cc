@@ -35,7 +35,8 @@ namespace tensorrt {
 class HardSwishOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert fluid HardSwish op to tensorrt HardSwish plugin";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -45,28 +46,44 @@ class HardSwishOpConverter : public OpConverter {
 
     const float threshold =
         op_desc.HasAttr("threshold")
-            ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
+            ? PADDLE_GET_CONST(float, op_desc.GetAttr("threshold"))
             : 6.0f;
     const float scale = op_desc.HasAttr("scale")
-                            ? BOOST_GET_CONST(float, op_desc.GetAttr("scale"))
+                            ? PADDLE_GET_CONST(float, op_desc.GetAttr("scale"))
                             : 6.0f;
-    const float offset = op_desc.HasAttr("offset")
-                             ? BOOST_GET_CONST(float, op_desc.GetAttr("offset"))
-                             : 3.0f;
+    const float offset =
+        op_desc.HasAttr("offset")
+            ? PADDLE_GET_CONST(float, op_desc.GetAttr("offset"))
+            : 3.0f;
     nvinfer1::ILayer* layer = nullptr;
     if (threshold == scale) {
       auto* hsig_layer = TRT_ENGINE_ADD_LAYER(
           engine_, Activation, *input, nvinfer1::ActivationType::kHARD_SIGMOID);
       hsig_layer->setAlpha(1.0 / scale);
       hsig_layer->setBeta(offset / scale);
-      nvinfer1::IElementWiseLayer* eltwise_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, ElementWise, *input, *(hsig_layer->getOutput(0)),
-          nvinfer1::ElementWiseOperation::kPROD);
+      nvinfer1::IElementWiseLayer* eltwise_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               ElementWise,
+                               *input,
+                               *(hsig_layer->getOutput(0)),
+                               nvinfer1::ElementWiseOperation::kPROD);
       layer = eltwise_layer;
     } else {
-      plugin::HardSwishPlugin* plugin =
-          new plugin::HardSwishPlugin(threshold, scale, offset);
-      layer = engine_->AddPlugin(&input, input_num, plugin);
+      if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+        plugin::HardSwishPluginDynamic* plugin =
+            new plugin::HardSwishPluginDynamic(threshold, scale, offset);
+        layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
+#else
+        PADDLE_THROW(platform::errors::Fatal(
+            "You are running the TRT Dynamic Shape mode, need to confirm that "
+            "your TRT version is no less than 6.0"));
+#endif
+      } else {
+        plugin::HardSwishPlugin* plugin =
+            new plugin::HardSwishPlugin(threshold, scale, offset);
+        layer = engine_->AddPlugin(&input, input_num, plugin);
+      }
     }
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "hard_swish", {output_name}, test_mode);

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the functions to clip gradient of parameter  
+# TODO: define the functions to clip gradient of parameter
 from ..fluid.clip import ClipGradByGlobalNorm  # noqa: F401
 from ..fluid.clip import ClipGradByNorm  # noqa: F401
 from ..fluid.clip import ClipGradByValue  # noqa: F401

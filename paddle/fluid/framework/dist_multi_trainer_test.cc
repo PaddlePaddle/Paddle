@@ -14,7 +14,9 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/trainer.h"
-
+#ifdef PADDLE_WITH_GLOO
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
 #if defined _WIN32 || defined __APPLE__
 #else
 #define _LINUX

@@ -19,26 +19,16 @@ limitations under the License. */
 
 DECLARE_bool(benchmark);
 
-DEFINE_bool(
-    eager_delete_scope, true,
+PADDLE_DEFINE_EXPORTED_bool(
+    eager_delete_scope,
+    true,
     "Delete local scope eagerly. It will reduce GPU memory usage but "
     "slow down the destruction of variables.(around 1% performance harm)");
 
-// When in inference scenario, the scopes will not be written by two threads in
-// a mean time, but a scope may be read by multiple threads concurrently, and
-// the mutex will cause serious performance issue.
-// So the mutex is disabled when `ON_INFER`.
-#ifdef PADDLE_ON_INFERENCE
-#define SCOPE_KIDS_READER_LOCK
-#define SCOPE_KIDS_WRITER_LOCK
-#define SCOPE_VARS_READER_LOCK
-#define SCOPE_VARS_WRITER_LOCK
-#else
-#define SCOPE_KIDS_READER_LOCK AutoRDLock auto_lock(&kids_lock_);
-#define SCOPE_KIDS_WRITER_LOCK AutoWRLock auto_lock(&kids_lock_);
-#define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
-#define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
-#endif
+#define SCOPE_KIDS_READER_LOCK phi::AutoRDLock auto_lock(&kids_lock_);
+#define SCOPE_KIDS_WRITER_LOCK phi::AutoWRLock auto_lock(&kids_lock_);
+#define SCOPE_VARS_READER_LOCK phi::AutoRDLock auto_lock(&vars_lock_);
+#define SCOPE_VARS_WRITER_LOCK phi::AutoWRLock auto_lock(&vars_lock_);
 
 namespace paddle {
 namespace framework {
@@ -59,18 +49,29 @@ std::unique_ptr<Scope> Scope::NewTmpScope() const {
 }
 
 Variable* Scope::Var(const std::string& name) {
-  SCOPE_VARS_WRITER_LOCK
-  return VarInternal(name);
+  // NOTE(xiongkun03): add {} here to unlock. With {}, scope
+  // will do callback after unlock.
+  Variable* ret = nullptr;
+  {
+    SCOPE_VARS_WRITER_LOCK
+    ret = VarInternal(name);
+  }
+  return ret;
 }
 
 Variable* Scope::Var(std::string* name) {
-  SCOPE_VARS_WRITER_LOCK
-  auto new_name = std::to_string(reinterpret_cast<uintptr_t>(this)) + "." +
-                  std::to_string(vars_.size());
-  if (name != nullptr) {
-    *name = new_name;
+  Variable* ret = nullptr;
+  std::string new_name;
+  {
+    SCOPE_VARS_WRITER_LOCK
+    new_name = std::to_string(reinterpret_cast<uintptr_t>(this)) + "." +
+               std::to_string(vars_.size());
+    if (name != nullptr) {
+      *name = new_name;
+    }
+    ret = VarInternal(new_name);
   }
-  return VarInternal(new_name);
+  return ret;
 }
 
 Variable* Scope::FindVar(const std::string& name) const {
@@ -101,9 +102,14 @@ const Scope* Scope::FindScope(const std::string& name) const {
 }
 
 void Scope::DropKids() {
-  SCOPE_KIDS_WRITER_LOCK
-  for (Scope* s : kids_) delete s;
-  kids_.clear();
+  {
+    SCOPE_KIDS_WRITER_LOCK
+    for (Scope* s : kids_) {
+      delete s;
+      s = nullptr;
+    }
+    kids_.clear();
+  }
 }
 
 bool Scope::HasKid(const Scope* scope) const {
@@ -124,43 +130,64 @@ std::vector<std::string> Scope::LocalVarNames() const {
   return known_vars;
 }
 
+std::vector<Variable*> Scope::LocalVars() {
+  std::vector<Variable*> known_vars;
+  {
+    SCOPE_VARS_READER_LOCK
+    known_vars.reserve(this->vars_.size());
+    for (auto& p : vars_) {
+      known_vars.emplace_back(p.second.get());
+    }
+  }
+  return known_vars;
+}
+
 void Scope::DeleteScope(Scope* scope) const {
-  SCOPE_KIDS_WRITER_LOCK
-  auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
-  PADDLE_ENFORCE_NE(it, this->kids_.end(),
-                    platform::errors::NotFound(
-                        "%p is not found in %p as kid scope", scope, this));
-  this->kids_.erase(it);
-  // When making memory benchmark on Fluid, we have to delete scope sync.
-  if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
-    delete scope;
-  } else {
-    Async([scope] { delete scope; });
+  {
+    SCOPE_KIDS_WRITER_LOCK
+    auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
+    PADDLE_ENFORCE_NE(it,
+                      this->kids_.end(),
+                      platform::errors::NotFound(
+                          "%p is not found in %p as kid scope", scope, this));
+    this->kids_.erase(it);
+    // When making memory benchmark on Fluid, we have to delete scope sync.
+    if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
+      delete scope;
+    } else {
+      Async([scope] { delete scope; });
+    }
   }
 }
 
 void Scope::EraseVars(const std::vector<std::string>& var_names) {
-  std::set<std::string> var_set(var_names.begin(), var_names.end());
-  SCOPE_VARS_WRITER_LOCK
-  for (auto it = vars_.begin(); it != vars_.end();) {
-    if (var_set.find(it->first) != var_set.end()) {
-      it = vars_.erase(it);
-    } else {
-      ++it;
+  {
+    std::set<std::string> var_set(var_names.begin(), var_names.end());
+    SCOPE_VARS_WRITER_LOCK
+    for (auto it = vars_.begin(); it != vars_.end();) {
+      if (var_set.find(it->first) != var_set.end()) {
+        it = vars_.erase(it);
+      } else {
+        ++it;
+      }
     }
   }
 }
 
 void Scope::Rename(const std::string& origin_name,
                    const std::string& new_name) const {
-  SCOPE_VARS_WRITER_LOCK
-  RenameInternal(origin_name, new_name);
+  {
+    SCOPE_VARS_WRITER_LOCK
+    RenameInternal(origin_name, new_name);
+  }
 }
 
 std::string Scope::Rename(const std::string& origin_name) const {
-  SCOPE_VARS_WRITER_LOCK
   auto new_name = string::Sprintf("%p.%d", this, vars_.size());
-  RenameInternal(origin_name, new_name);
+  {
+    SCOPE_VARS_WRITER_LOCK
+    RenameInternal(origin_name, new_name);
+  }
   return new_name;
 }
 
@@ -193,13 +220,15 @@ void Scope::RenameInternal(const std::string& origin_name,
                            const std::string& new_name) const {
   auto origin_it = vars_.find(origin_name);
   PADDLE_ENFORCE_NE(
-      origin_it, vars_.end(),
+      origin_it,
+      vars_.end(),
       platform::errors::NotFound(
           "Original variable with name %s is not found in the scope.",
           origin_name));
   auto new_it = vars_.find(new_name);
   PADDLE_ENFORCE_EQ(
-      new_it, vars_.end(),
+      new_it,
+      vars_.end(),
       platform::errors::AlreadyExists(
           "The variable with name %s already exists in the scope.", new_name));
   vars_[new_name].reset(origin_it->second.release());

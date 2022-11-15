@@ -20,24 +20,27 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// For memory address alignment
 class AlignedAllocation : public Allocation {
  public:
-  AlignedAllocation(AllocationPtr underlying_allocation, size_t offset)
+  AlignedAllocation(DecoratedAllocationPtr underlying_allocation, size_t offset)
       : Allocation(
             reinterpret_cast<uint8_t*>(underlying_allocation->ptr()) + offset,
+            underlying_allocation->base_ptr(),
             underlying_allocation->size() - offset,
             underlying_allocation->place()),
         underlying_allocation_(std::move(underlying_allocation)) {}
 
  private:
-  AllocationPtr underlying_allocation_;
+  DecoratedAllocationPtr underlying_allocation_;
 };
 
 AlignedAllocator::AlignedAllocator(
     const std::shared_ptr<Allocator>& underlyning_allocator, size_t alignment)
     : underlying_allocator_(underlyning_allocator), alignment_(alignment) {
   PADDLE_ENFORCE_GT(
-      alignment_, 0,
+      alignment_,
+      0,
       platform::errors::InvalidArgument(
           "Alignment should be larger than 0, but got %d", alignment_));
   if (alignment_ & (alignment_ - 1)) {
@@ -50,13 +53,17 @@ bool AlignedAllocator::IsAllocThreadSafe() const {
   return underlying_allocator_->IsAllocThreadSafe();
 }
 
-Allocation* AlignedAllocator::AllocateImpl(size_t size) {
+phi::Allocation* AlignedAllocator::AllocateImpl(size_t size) {
   auto raw_allocation = underlying_allocator_->Allocate(size + alignment_);
   size_t offset = AlignedPtrOffset(raw_allocation->ptr(), alignment_);
-  return new AlignedAllocation(std::move(raw_allocation), offset);
+  auto* p = new AlignedAllocation(
+      static_unique_ptr_cast<Allocation>(std::move(raw_allocation)), offset);
+  return p;
 }
 
-void AlignedAllocator::FreeImpl(Allocation* allocation) { delete allocation; }
+void AlignedAllocator::FreeImpl(phi::Allocation* allocation) {
+  delete allocation;
+}
 
 }  // namespace allocation
 }  // namespace memory

@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 
 
@@ -27,17 +26,20 @@ class MulLstmFusePassTest(InferencePassTest):
             hidden_dim = 512
 
             data = fluid.data(
-                name='data', shape=[1], dtype='int64', lod_level=1)
+                name='data', shape=[1], dtype='int64', lod_level=1
+            )
             emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             x = fluid.layers.fc(input=emb, size=hidden_dim * 4, bias_attr=False)
             forward, cell = fluid.layers.dynamic_lstm(
-                input=x, size=hidden_dim * 4)
+                input=x, size=hidden_dim * 4
+            )
 
         batch = 16
         lod_tensor = fluid.LoDTensor()
-        lod_tensor.set(np.random.randint(
-            0, dict_dim, size=[batch]).astype("int64"),
-                       fluid.CPUPlace())
+        lod_tensor.set(
+            np.random.randint(0, dict_dim, size=[batch]).astype("int64"),
+            fluid.CPUPlace(),
+        )
         lod_tensor.set_lod([[0, batch]])
         self.feeds = {"data": lod_tensor}
         self.fetch_list = [forward, cell]

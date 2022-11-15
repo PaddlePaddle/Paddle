@@ -15,12 +15,9 @@
 Unit testing for affine_channel_op
 """
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 
 
@@ -80,21 +77,24 @@ class TestAffineChannelOpError(unittest.TestCase):
 
             def test_x_dtype():
                 x2 = fluid.layers.data(
-                    name='x2', shape=[None, 1, 2, 2], dtype='int32')
+                    name='x2', shape=[None, 1, 2, 2], dtype='int32'
+                )
                 fluid.layers.affine_channel(x2)
 
             self.assertRaises(TypeError, test_x_dtype)
 
             def test_scale_type():
                 x3 = fluid.layers.data(
-                    name='x3', shape=[None, 1, 2, 2], dtype='float32')
+                    name='x3', shape=[None, 1, 2, 2], dtype='float32'
+                )
                 fluid.layers.affine_channel(x3, scale=1)
 
             self.assertRaises(TypeError, test_scale_type)
 
             def test_bias_type():
                 x4 = fluid.layers.data(
-                    name='x4', shape=[None, 1, 2, 2], dtype='float32')
+                    name='x4', shape=[None, 1, 2, 2], dtype='float32'
+                )
                 fluid.layers.affine_channel(x4, bias=1)
 
             self.assertRaises(TypeError, test_bias_type)
@@ -127,7 +127,7 @@ class TestAffineChannel2D(TestAffineChannelOp):
 
 
 # TODO(qingqing): disable unit testing for large shape
-#class TestAffineChannelNCHWLargeShape(TestAffineChannelOp):
+# class TestAffineChannelNCHWLargeShape(TestAffineChannelOp):
 #    def init_test_case(self):
 #        self.shape = [4, 128, 112, 112]
 #        self.C = 128
@@ -143,7 +143,7 @@ class TestAffineChannel2D(TestAffineChannelOp):
 #    def test_check_grad_stopgrad_dscale_dbias(self):
 #        pass
 
-#class TestAffineChannelNHWCLargeShape(TestAffineChannelNCHWLargeShape):
+# class TestAffineChannelNHWCLargeShape(TestAffineChannelNCHWLargeShape):
 #    def init_test_case(self):
 #        self.shape = [64, 32, 32, 128]
 #        self.C = 128

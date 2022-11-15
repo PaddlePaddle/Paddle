@@ -15,21 +15,23 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/gelu_op.h"
-#include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class GeluNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
 
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto place = ctx.GetPlace();
 
@@ -39,7 +41,7 @@ class GeluNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto runner = NpuOpRunner("Gelu", {*x}, {*out}, {});
+    const auto& runner = NpuOpRunner("Gelu", {*x}, {*out}, {});
     runner.Run(stream);
   }
 };
@@ -48,10 +50,10 @@ template <typename DeviceContext, typename T>
 class GeluGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto place = ctx.GetPlace();
 
@@ -61,13 +63,15 @@ class GeluGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    Tensor out(x->type());
-    out.mutable_data<T>(x->dims(), place);
-    auto out_runner = NpuOpRunner("Gelu", {*x}, {out}, {});
-    out_runner.Run(stream);
-
-    auto dx_runner = NpuOpRunner("GeluGrad", {*dout, *x, out}, {*dx}, {});
-    dx_runner.Run(stream);
+    // NOTE(pangyoki): In the original implementation of GeluGrad op, the input
+    // is {*dout, *x, out}, where out = Gelu(x). However, we find that variable
+    // `out` was not actually used. In order to improve performance, the
+    // useless GELU operation was deleted.
+    // We directly use `*dout` as a placeholder to replace `out`, it will not
+    // be used in calculations.
+    const auto& runner_dx =
+        NpuOpRunner("GeluGrad", {*dout, *x, *dout}, {*dx}, {});
+    runner_dx.Run(stream);
   }
 };
 
@@ -77,7 +81,8 @@ class GeluGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    gelu, ops::GeluNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    gelu,
+    ops::GeluNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::GeluNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
 

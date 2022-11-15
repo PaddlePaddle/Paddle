@@ -12,7 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/metrics/auc_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -20,49 +24,6 @@ namespace operators {
 class AucOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Predict"), "Input", "Predict", "Auc");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "Auc");
-    auto predict_width = ctx->GetInputDim("Predict")[1];
-    if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_LE(predict_width, 2,
-                        platform::errors::InvalidArgument(
-                            "Only support binary classification,"
-                            "prediction dims[1] should be 1 or 2"));
-    }
-    auto predict_height = ctx->GetInputDim("Predict")[0];
-    auto label_height = ctx->GetInputDim("Label")[0];
-
-    if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(predict_height, label_height,
-                        platform::errors::InvalidArgument(
-                            "Out and Label should have same height."));
-    }
-
-    int num_pred_buckets = ctx->Attrs().Get<int>("num_thresholds") + 1;
-    int slide_steps = ctx->Attrs().Get<int>("slide_steps");
-
-    PADDLE_ENFORCE_GE(
-        num_pred_buckets, 1,
-        platform::errors::InvalidArgument("num_thresholds must larger than 1"));
-    PADDLE_ENFORCE_GE(slide_steps, 0,
-                      platform::errors::InvalidArgument(
-                          "slide_steps must be natural number"));
-
-    ctx->SetOutputDim("AUC", {1});
-
-    if (slide_steps) {
-      ctx->SetOutputDim("StatPosOut",
-                        {(1 + slide_steps) * num_pred_buckets + 1});
-      ctx->SetOutputDim("StatNegOut",
-                        {(1 + slide_steps) * num_pred_buckets + 1});
-    } else {
-      ctx->SetOutputDim("StatPosOut", {1, num_pred_buckets});
-      ctx->SetOutputDim("StatNegOut", {1, num_pred_buckets});
-    }
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -87,6 +48,10 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     // TODO(typhoonzero): support weight input
     AddInput("StatPos", "Statistic value when label = 1");
     AddInput("StatNeg", "Statistic value when label = 0");
+    AddInput("InsTagWeight",
+             "(Tensor, optional) If provided, auc Op will use this "
+             "1 means real data, 0 means false data")
+        .AsDispensable();
 
     AddOutput("AUC",
               "A scalar representing the "
@@ -124,5 +89,17 @@ There are two types of possible curves:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(auc, ops::AucOp, ops::AucOpMaker);
-REGISTER_OP_CPU_KERNEL(auc, ops::AucKernel<paddle::platform::CPUPlace, float>);
+DECLARE_INFER_SHAPE_FUNCTOR(auc,
+                            AucInferShapeFunctor,
+                            PD_INFER_META(phi::AucInferMeta));
+REGISTER_OP_WITHOUT_GRADIENT(auc,
+                             ops::AucOp,
+                             ops::AucOpMaker,
+                             AucInferShapeFunctor);
+
+REGISTER_OP_VERSION(auc).AddCheckpoint(
+    R"ROC(
+      Upgrade auc, add a new input [InsTagWeight].
+    )ROC",
+    paddle::framework::compatible::OpVersionDesc().NewInput(
+        "ValueTensor", "In order to support multi-tag task"));

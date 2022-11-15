@@ -447,7 +447,7 @@ if (MSVC)
   if (CMAKE_SYSTEM_VERSION MATCHES "10\\.0.*")
     list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "_WIN32_WINNT=0x0A00")
   endif ()
-  list(APPEND CRYPTOPP_COMPILE_OPTIONS "/FIwinapifamily.h")
+  list(APPEND CRYPTOPP_COMPILE_OPTIONS "/nologo")
 endif ()
 
 # Enable PIC for all target machines except 32-bit i386 due to register pressures.

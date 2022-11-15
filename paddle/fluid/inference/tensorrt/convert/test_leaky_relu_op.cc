@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
@@ -24,8 +25,8 @@ TEST(leaky_relu_op, test_leaky_relu) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
   TRTConvertValidation validator(10, parameters, scope, 1000);
-  validator.DeclInputVar("leaky_relu_input", nvinfer1::DimsCHW(3, 2, 2));
-  validator.DeclOutputVar("leaky_relu_out", nvinfer1::DimsCHW(3, 2, 2));
+  validator.DeclInputVar("leaky_relu_input", nvinfer1::Dims3(3, 2, 2));
+  validator.DeclOutputVar("leaky_relu_out", nvinfer1::Dims3(3, 2, 2));
 
   // Prepare Op description
   framework::OpDesc desc;
@@ -45,4 +46,4 @@ TEST(leaky_relu_op, test_leaky_relu) {
 }  // namespace paddle
 
 // USE_OP(leaky_relu);
-USE_OP(leaky_relu);
+USE_OP_ITSELF(leaky_relu);

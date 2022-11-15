@@ -18,7 +18,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest
-from paddle.fluid import compiler, Program, program_guard
 
 
 class TestInf(OpTest):
@@ -55,8 +54,9 @@ class TestRaiseError(unittest.TestCase):
         self.assertRaises(TypeError, test_dtype)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFP16Inf(TestInf):
     def init_dtype(self):
         self.dtype = np.float16
@@ -82,8 +82,9 @@ class TestNAN(OpTest):
         self.check_output()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFP16NAN(TestNAN):
     def init_dtype(self):
         self.dtype = np.float16
@@ -110,8 +111,9 @@ class TestIsfinite(OpTest):
         self.check_output()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFP16Isfinite(TestIsfinite):
     def init_dtype(self):
         self.dtype = np.float16

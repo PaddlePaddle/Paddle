@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <fstream>
 #include <iostream>
+
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 DEFINE_string(infer_shape, "", "data shape file");
@@ -57,7 +59,8 @@ void SetConfig(AnalysisConfig *cfg) {
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
-              const std::string &line, const std::string &shape_line) {
+              const std::string &line,
+              const std::string &shape_line) {
   auto record = ProcessALine(line, shape_line);
 
   PaddleTensor input;
@@ -113,8 +116,13 @@ void profile(int cache_capacity = 1) {
   infer_file.close();
 
   auto batch_latency = elapsed_time / (sample * num_times);
-  PrintTime(FLAGS_batch_size, num_times, FLAGS_num_threads, 0, batch_latency,
-            sample, VarType::FP32);
+  PrintTime(FLAGS_batch_size,
+            num_times,
+            FLAGS_num_threads,
+            0,
+            batch_latency,
+            sample,
+            VarType::FP32);
 }
 
 #ifdef PADDLE_WITH_MKLDNN

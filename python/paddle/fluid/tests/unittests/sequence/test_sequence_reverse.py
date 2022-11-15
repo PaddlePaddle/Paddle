@@ -14,9 +14,9 @@
 
 import unittest
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import numpy as np
 import sys
+
 sys.path.append("../")
 from op_test import OpTest
 
@@ -34,8 +34,22 @@ class TestSequenceReverseBase(OpTest):
         self.x = np.random.random(self.size).astype(self.dtype)
         self.y = self.get_output()
 
-        self.inputs = {'X': (self.x, [self.lod, ]), }
-        self.outputs = {'Y': (self.y, [self.lod, ]), }
+        self.inputs = {
+            'X': (
+                self.x,
+                [
+                    self.lod,
+                ],
+            ),
+        }
+        self.outputs = {
+            'Y': (
+                self.y,
+                [
+                    self.lod,
+                ],
+            ),
+        }
 
     def get_output(self):
         tmp_x = np.reshape(self.x, newshape=[self.x.shape[0], -1])
@@ -73,7 +87,7 @@ class TestSequenceReverse3(TestSequenceReverseBase):
         self.lod = [3, 0, 6, 3]
 
 
-class TestSequenceReverse3(TestSequenceReverseBase):
+class TestSequenceReverse4(TestSequenceReverseBase):
     def initParameters(self):
         self.size = (12, 10)
         self.lod = [0, 2, 10, 0]

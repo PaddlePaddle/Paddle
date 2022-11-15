@@ -19,4 +19,4 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     distributed_lookup_table,
-    ops::DistributedLookupTableKernel<plat::CUDADeviceContext, float>);
+    ops::DistributedLookupTableKernel<phi::GPUContext, float>);

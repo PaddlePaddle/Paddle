@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <exception>
 #include <string>
 
@@ -45,7 +46,9 @@ class DemoPredictor : public PaddlePredictor {
     return false;
   }
 
-  std::unique_ptr<PaddlePredictor> Clone() override { return nullptr; }
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override {
+    return nullptr;
+  }
 
   ~DemoPredictor() override {}
 };

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
@@ -28,7 +29,7 @@ void TensorRTSplitTest(const std::vector<int> &in_shape,
   TRTConvertValidation validator(BatchSize + 1, parameters, scope, 10000);
 
   auto make_dim = [](const std::vector<int> &shape) {
-    nvinfer1::DimsCHW dim;
+    nvinfer1::Dims3 dim;
     dim.c() = shape[0];
     dim.h() = shape[1];
     dim.w() = shape[2];

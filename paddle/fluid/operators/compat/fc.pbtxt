@@ -1,0 +1,49 @@
+type: "fc"
+def {
+  inputs {
+    name: "Input"
+  }
+  inputs {
+    name: "W"
+  }
+  inputs {
+    name: "Bias"
+  }
+  outputs {
+    name: "Out"
+  }
+  attrs {
+    name: "in_num_col_dims"
+    type: INT
+  }
+  attrs {
+    name: "activation_type"
+    type: STRING
+  }
+}
+extra {
+  attrs {
+    name: "padding_weights"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "Scale_in"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_weights"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_out"
+    type: FLOAT
+  }
+  attrs {
+    name: "force_fp32_output"
+    type: BOOLEAN
+  }
+}

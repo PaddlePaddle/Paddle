@@ -13,8 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/operators/clip_by_norm_op.h"
 #include <vector>
+
+#include "paddle/fluid/operators/clip_by_norm_op.h"
 
 namespace paddle {
 namespace operators {
@@ -26,12 +27,12 @@ class XPUClipByNormKernel : public framework::OpKernel<T> {
     auto max_norm = context.Attr<T>("max_norm");
     auto in_var = context.InputVar("X");
 
-    Tensor* output = nullptr;
-    const Tensor* input = nullptr;
-    if (in_var->IsType<framework::LoDTensor>()) {
-      input = context.Input<Tensor>("X");
+    phi::DenseTensor* output = nullptr;
+    const phi::DenseTensor* input = nullptr;
+    if (in_var->IsType<phi::DenseTensor>()) {
+      input = context.Input<phi::DenseTensor>("X");
 
-      output = context.Output<Tensor>("Out");
+      output = context.Output<phi::DenseTensor>("Out");
       output->mutable_data<T>(context.GetPlace());
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -52,10 +53,15 @@ class XPUClipByNormKernel : public framework::OpKernel<T> {
       xshape[i] = x_dims[i];
       rdims[i] = i;
     }
-    int r = xpu::clip_by_norm<T>(dev_ctx.x_context(), input->data<T>(),
-                                 output->data<T>(), max_norm, xshape, rdims);
+    int r = xpu::clip_by_norm<T>(dev_ctx.x_context(),
+                                 input->data<T>(),
+                                 output->data<T>(),
+                                 max_norm,
+                                 xshape,
+                                 rdims);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External("XPU API(clip_by_norm) return "
                                    "wrong value[%d], please check whether "
                                    "Baidu Kunlun Card is properly installed.",
