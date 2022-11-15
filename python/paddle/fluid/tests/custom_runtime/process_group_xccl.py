@@ -67,7 +67,7 @@ class TestProcessGroupFp32(unittest.TestCase):
                 task.wait()
                 # assert np.array_equal(tensor_x, sum_result)
             else:
-                task = pg.allreduce(tensor_y, core.ReduceOp.SUM, sync_op=True)
+                task = pg.all_reduce(tensor_y, core.ReduceOp.SUM, sync_op=True)
                 task.wait()
                 # assert np.array_equal(tensor_y, sum_result)
 
