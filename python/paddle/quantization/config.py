@@ -237,12 +237,11 @@ class QuantConfig(object):
         .. code-block:: python
 
             from paddle.nn import Conv2D
-            from paddle.nn.qat import QuantedConv2D
             from paddle.quantization import QuantConfig
             from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
             quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
             q_config = QuantConfig(activation=None, weight=None)
-            q_config.add_qat_layer_mapping(Conv2D, QuantedConv2d)
+            q_config.add_qat_layer_mapping(Conv2D, Conv2D)
         """
         assert isinstance(source, type) and issubclass(
             source, paddle.nn.Layer

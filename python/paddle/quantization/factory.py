@@ -89,8 +89,8 @@ def quanter(class_name):
                     pass
 
             # Used in ./test.py
+            # from .custom_quanter import CustomQuanter
             from paddle.quantization import QuantConfig
-            from .custom_quanter import CustomQuanter
             arg1_value = "test"
             kwarg1_value = 20
             quanter = CustomQuanter(arg1_value, kwarg1=kwarg1_value)
