@@ -168,7 +168,9 @@ interpreter::CostInfo InterpreterCore::DryRun(
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
-    async_work_queue_ = GetWorkQueue();
+    if (!FLAGS_new_executor_trace_run) {
+      async_work_queue_ = GetWorkQueue();
+    }
 
     // lazy initialization of gc, do not create gc is the program only run once
     if (!gc_) {
@@ -205,7 +207,9 @@ paddle::framework::FetchList InterpreterCore::Run(
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
-    async_work_queue_ = GetWorkQueue();
+    if (!FLAGS_new_executor_trace_run) {
+      async_work_queue_ = GetWorkQueue();
+    }
 
     // lazy initialization of gc, do not create gc is the program only run once
     if (!gc_) {
@@ -271,7 +275,9 @@ paddle::framework::FetchList InterpreterCore::Run(
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
-    async_work_queue_ = GetWorkQueue();
+    if (!FLAGS_new_executor_trace_run) {
+      async_work_queue_ = GetWorkQueue();
+    }
 
     // lazy initialization of gc, do not create gc is the program only run once
     if (!gc_) {
@@ -868,12 +874,6 @@ void InterpreterCore::TraceInstructionList(
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(1) << "Exception caught " << exception_holder_.Type();
-    // Graceful exit when the executor encountered a fatal error.
-    // EOF is not a fatal error.
-    if (exception_holder_.Type() != "EOF") {
-      async_work_queue_->Cancel();
-    }
-    VLOG(4) << "Cancel ok";
     PADDLE_ENFORCE_EQ(
         main_thread_blocker_.Clear(),
         0,
