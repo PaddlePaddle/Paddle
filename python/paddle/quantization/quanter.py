@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import abc
 from paddle.nn import Layer
 
 __all__ = ["BaseQuanter"]
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseQuanter(Layer):
+class BaseQuanter(Layer, metaclass=abc.ABCMeta):
     def __init__(self):
         super(BaseQuanter, self).__init__()
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
+
 import abc
 import inspect
 from paddle.nn import Layer
@@ -22,8 +22,7 @@ from .quanter import BaseQuanter
 __all__ = ["QuanterFactory", "quanter"]
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ClassWithArguments(object):
+class ClassWithArguments(metaclass=abc.ABCMeta):
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
