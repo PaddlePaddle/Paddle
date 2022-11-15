@@ -380,3 +380,4 @@ def _reduece_sum_flops(input_shapes, attrs):
     """
     input = input_shapes.get('X')[0]
     return prod(input)
+
