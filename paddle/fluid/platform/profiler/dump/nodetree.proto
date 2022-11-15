@@ -166,25 +166,6 @@ message MemTraceEventProto {
   required uint64 peak_reserved = 11;
 }
 
-enum AttrType {
-  INT = 0;
-  FLOAT = 1;
-  STRING = 2;
-  INTS = 3;
-  FLOATS = 4;
-  STRINGS = 5;
-  BOOLEAN = 6;
-  BOOLEANS = 7;
-  BLOCK = 8;
-  LONG = 9;
-  BLOCKS = 10;
-  LONGS = 11;
-  FLOAT64S = 12;
-  VAR = 13;
-  VARS = 14;
-  FLOAT64 = 15;
-}
-
 message OperatorSupplementEventProto {
   // timestamp of the record
   required uint64 timestamp_ns = 1;
@@ -215,21 +196,6 @@ message OperatorSupplementEventProto {
   required string callstack = 7;
 
   required uint64 op_id = 8;
-
-  message Attr {
-    required string name = 1;
-    required AttrType type = 2;
-    required string comment = 3;
-    // If that attribute is generated, it means the Paddle third
-    // language binding has responsibility to fill that
-    // attribute. End-User should not set that attribute.
-    optional bool generated = 4 [ default = false ];
-    optional bool extra = 5 [ default = false ];
-    optional bool quant = 6 [ default = false ];
-    optional bool support_tensor = 7 [ default = false];
-  }
-
-  repeated Attr attributes = 9;
 }
 
 message CudaRuntimeTraceEventProto {

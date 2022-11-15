@@ -17,6 +17,8 @@ import re
 
 from paddle.fluid.core import TracerEventType, TracerMemEventType
 
+from paddle.utils.flops import flops
+
 from .statistic_helper import (
     intersection_ranges,
     merge_ranges,
@@ -229,6 +231,7 @@ class TimeRangeSummary:
                 )
             )  # device_id/type/stream_id
             for hostnode in hostnodes[1:]:  # skip root node
+
                 CPUTimeRange[hostnode.type].append(
                     (hostnode.start_ns, hostnode.end_ns)
                 )
@@ -407,6 +410,11 @@ class EventSummary:
             self.general_gpu_time = 0
             self.min_general_gpu_time = float('inf')
             self.max_general_gpu_time = 0
+            self._flops = 0
+
+        @property
+        def flops(self):
+            return self._flops
 
         @property
         def avg_cpu_time(self):
@@ -463,6 +471,20 @@ class EventSummary:
                     if name not in self.devices:
                         self.devices[name] = EventSummary.DeviceItem(name)
                     self.devices[name].add_item(devicenode)
+
+            self._flops = flops(
+                self.name.strip(' compute').strip(' dygraph'),
+                node.input_shapes,
+                **node.attributes
+            )
+
+            '''
+            print(self.name, node.name, "---"*20)
+            print("attributes", node.attributes)
+            print("input_shapes", node.input_shapes)
+            print("op_id", node.op_id)
+            print("flops", self._flops)
+            '''
 
     class GeneralItem:
         def __init__(self, name):
@@ -1328,6 +1350,7 @@ def _build_table(
                             ),
                             format_ratio(gpu_ratio),
                         ),
+                        item.flops,
                     ]
                     all_row_values.append(row_values)
                     if op_detail:
@@ -1393,6 +1416,7 @@ def _build_table(
                                     ),
                                     format_ratio(gpu_ratio),
                                 ),
+                                innerop_node.flops,
                             ]
                             all_row_values.append(row_values)
                             for (
@@ -1436,6 +1460,7 @@ def _build_table(
                                         ),
                                         format_ratio(gpu_ratio),
                                     ),
+                                    '-',
                                 ]
                                 all_row_values.append(row_values)
                         for (
@@ -1473,12 +1498,14 @@ def _build_table(
                                     ),
                                     format_ratio(gpu_ratio),
                                 ),
+                                '-',
                             ]
                             all_row_values.append(row_values)
             # Calculate the column width
             calltime_width = 6
             cpu_data_description_width = 40
             gpu_data_description_width = 40
+            flops_width = 10
             for row_values in all_row_values:
                 if isinstance(row_values, str):
                     continue
@@ -1496,6 +1523,7 @@ def _build_table(
                 'Calls',
                 'CPU Total / Avg / Max / Min / Ratio(%)',
                 'GPU Total / Avg / Max / Min / Ratio(%)',
+                'FLOPS',
             ]
             row_format_list = [""]
             header_sep_list = [""]
@@ -1504,6 +1532,7 @@ def _build_table(
             add_column(calltime_width)
             add_column(cpu_data_description_width)
             add_column(gpu_data_description_width)
+            add_column(flops_width)
 
             row_format = row_format_list[0]
             header_sep = header_sep_list[0]
