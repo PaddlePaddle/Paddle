@@ -35,7 +35,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
                 self.input_shape = [1, 1, 4, 6]
                 if self.dtype == 0:
                     return np.random.random([1, 1, 4, 6]).astype(np.bool)
-                elif self.dtype == 2:
+                elif self.dtype == 2 or self.dtype == -1:
                     return np.random.random([1, 1, 4, 6]).astype(np.int32)
                 elif self.dtype == 3:
                     return np.random.random([1, 1, 4, 6]).astype(np.int64)
@@ -64,7 +64,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
 
         for dims in [1, 2, 3, 4]:
             for value in [2]:
-                for dtype in [0, 2, 3, 4, 5]:
+                for dtype in [-1, 0, 2, 3, 4, 5]:
                     dics = [
                         {
                             "value": value,

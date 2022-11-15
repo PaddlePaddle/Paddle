@@ -1167,9 +1167,19 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
-      if (dtype != 2 && dtype != 5) {
+      if (dtype != -1 && dtype != 2 && dtype != 5) {
         VLOG(3) << "the fill_any_like only supports int32 and float32";
         return false;
+      }
+      if (dtype == -1) {
+        auto* block = desc.Block();
+        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+        auto input_type = x_var_desc->GetDataType();
+        if (input_type != framework::proto::VarType::INT32 &&
+            input_type != framework::proto::VarType::FP32) {
+          VLOG(3) << "the fill_any_like only supports int32 and float32";
+          return false;
+        }
       }
     }
 
