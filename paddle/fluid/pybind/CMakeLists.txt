@@ -609,7 +609,7 @@ if(WITH_PYTHON)
   if(APPLE)
     string(REGEX REPLACE ".+/(.+)" "\\1" PYTHON_LIBRARY_NAME
                          ${PYTHON_LIBRARIES})
-    target_link_libraries(${SHARD_LIB_NAME} "-Wl,-rpath,${PYTHON_LIBRARY_NAME}")
+    # target_link_libraries(${SHARD_LIB_NAME} "-Wl,-rpath,${PYTHON_LIBRARY_NAME}")
   else()
     target_link_libraries(${SHARD_LIB_NAME} ${PYTHON_LIBRARIES})
   endif()
