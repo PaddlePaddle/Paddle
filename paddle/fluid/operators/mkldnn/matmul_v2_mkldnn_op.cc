@@ -75,20 +75,6 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext &dev_ctx,
   return output;
 }
 
-// Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
-// original x_dim is returned.
-static paddle::framework::DDim RowMatrixDimsFromVector(
-    const paddle::framework::DDim &x_dim) {
-  return x_dim.size() > 1 ? x_dim : phi::make_ddim({1, x_dim[0]});
-}
-
-// Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
-// original y_dim is returned.
-static paddle::framework::DDim ColumnMatrixDimsFromVector(
-    const paddle::framework::DDim &y_dim) {
-  return y_dim.size() > 1 ? y_dim : phi::make_ddim({y_dim[0], 1});
-}
-
 phi::DDim GetDimForInput(const ExecutionContext &ctx, std::string input_name) {
   auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
   auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
@@ -245,8 +231,8 @@ static void ReshapeTensorToMatrixSequence(
  */
 static void ReshapeXYOutToMatrixSequence(
     Tensor *x, Tensor *y, Tensor *out, bool trans_x, bool trans_y) {
-  auto x_dim = RowMatrixDimsFromVector(x->dims());
-  auto y_dim = ColumnMatrixDimsFromVector(y->dims());
+  auto x_dim = phi::funcs::RowMatrixDimsFromVector(x->dims());
+  auto y_dim = phi::funcs::ColumnMatrixDimsFromVector(y->dims());
   auto mat_dim_x = phi::funcs::CreateMatrixDescriptor(x_dim, 0, trans_x);
   auto mat_dim_y = phi::funcs::CreateMatrixDescriptor(y_dim, 0, trans_y);
   if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
@@ -304,8 +290,9 @@ std::vector<int64_t> GetInputStrides(const ExecutionContext &ctx,
     new_dims = input_dims.reshape(shape).transpose(axis);
   }
 
-  auto &MatrixDimsFromVector =
-      input_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
+  auto &MatrixDimsFromVector = input_name == "X"
+                                   ? phi::funcs::RowMatrixDimsFromVector
+                                   : phi::funcs::ColumnMatrixDimsFromVector;
   phi::funcs::MatDescriptor mat_dim = phi::funcs::CreateMatrixDescriptor(
       MatrixDimsFromVector(new_dims),
       0,
