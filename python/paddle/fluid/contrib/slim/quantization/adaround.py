@@ -74,7 +74,7 @@ class AdaRoundLoss:
             # calculate regularization term - which ensures parameter to converge to exactly zeros and ones
             # at the end of optimization
             reg_term = fluid.layers.reduce_sum(
-                -paddle.pow(fluid.layers.abs(2 * h_v - 1), factor=beta) + 1
+                -paddle.pow(fluid.layers.abs(2 * h_v - 1), beta) + 1
             )
 
             # calculate the rounding loss

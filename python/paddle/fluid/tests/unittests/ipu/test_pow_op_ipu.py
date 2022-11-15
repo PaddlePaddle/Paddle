@@ -85,7 +85,7 @@ class TestCase1(TestBase):
         factor = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
-        out = paddle.pow(x, factor=factor, **self.attrs)
+        out = paddle.pow(x, factor, **self.attrs)
         self.fetch_list = [out.name]
 
 
