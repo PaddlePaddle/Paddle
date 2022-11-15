@@ -987,13 +987,22 @@ void ScatterInferMeta(const MetaTensor& x,
   const auto& updates_dims = updates.dims();
   const auto& ref_dims = x.dims();
   const auto& index_dims = index.dims();
-  PADDLE_ENFORCE_EQ(
-      index_dims.size(),
-      1,
-      phi::errors::InvalidArgument(
-          "The size of Input(Ids)'s shape should be equal to 1, but "
-          "received the rank of Input(Ids) is %d.",
-          index_dims.size()));
+
+  if (index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(index_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The last dim of the index should be 1 when the "
+                          "index is a 2D tensor, but we get %d.",
+                          index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        index_dims.size(),
+        1,
+        phi::errors::InvalidArgument("The index should be a 1D tensor when the "
+                                     "index is not a 2D tensor, but we get %d.",
+                                     index_dims.size()));
+  }
   PADDLE_ENFORCE_EQ(
       ref_dims.size(),
       updates_dims.size(),
