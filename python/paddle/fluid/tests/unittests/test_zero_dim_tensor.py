@@ -498,5 +498,304 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_array_equal(out.numpy(), np.array([]))
 
 
+# Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
+class TestNoBackwardAPI(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.shape = [
+            paddle.full([], 2, 'int32'),
+            paddle.full([], 3, 'int32'),
+            paddle.full([], 4, 'int32'),
+        ]
+
+    def test_slice(self):
+        starts = [paddle.full([], 1, 'int32'), paddle.full([], 1, 'int32')]
+        ends = [paddle.full([], 3, 'int32'), paddle.full([], 3, 'int32')]
+        x = paddle.rand([5, 3, 3])
+        out = paddle.slice(x, [1, 2], starts, ends)
+        self.assertEqual(out.shape, [5, 2, 2])
+
+    def test_strided_slice(self):
+        starts = [paddle.full([], 0, 'int32'), paddle.full([], 0, 'int32')]
+        ends = [paddle.full([], 4, 'int32'), paddle.full([], 4, 'int32')]
+        strides = [paddle.full([], 2, 'int32'), paddle.full([], 2, 'int32')]
+        x = paddle.rand([5, 5, 5])
+        out = paddle.strided_slice(x, [1, 2], starts, ends, strides)
+        self.assertEqual(out.shape, [5, 2, 2])
+
+    def test_linspace(self):
+        start = paddle.full([], 1.0)
+        stop = paddle.full([], 5.0)
+        num = paddle.full([], 5, 'int32')
+        out = paddle.linspace(start, stop, num)
+        np.testing.assert_array_equal(out.numpy(), [1.0, 2.0, 3.0, 4.0, 5.0])
+
+    def test_arange(self):
+        start = paddle.full([], 1.0)
+        stop = paddle.full([], 6.0)
+        step = paddle.full([], 1.0)
+        out = paddle.arange(start, stop, step)
+        np.testing.assert_array_equal(out.numpy(), [1.0, 2.0, 3.0, 4.0, 5.0])
+
+    def test_normal(self):
+        mean = paddle.full([], 0.0)
+        std = paddle.full([], 0.0)
+        out = paddle.normal(mean, std)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.normal(0.0, 1.0, [])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.normal(0.0, 1.0, self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_rand(self):
+        out = paddle.rand([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.rand(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_randn(self):
+        out = paddle.randn([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.randn(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_randint_and_randint_like(self):
+        out = paddle.randint(-10, 10, [])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.randint_like(out, -10, 10)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.randint(-10, 10, self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_standard_normal(self):
+        out = paddle.standard_normal([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.standard_normal(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_uniform(self):
+        out = paddle.uniform([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.uniform(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_empty_and_empty_like(self):
+        out = paddle.empty([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.empty_like(out)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.empty(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_full_and_full_like(self):
+        out = paddle.full([], 0.5)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.full_like(out, 0.5)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.full(self.shape, 0.5)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_ones_and_ones_like(self):
+        out = paddle.ones([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.ones_like(out)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.ones(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+    def test_zeros_and_zeros_like(self):
+        out = paddle.zeros([])
+        self.assertEqual(out.shape, [])
+
+        out = paddle.zeros_like(out)
+        self.assertEqual(out.shape, [])
+
+        out = paddle.zeros(self.shape)
+        self.assertEqual(out.shape, [2, 3, 4])
+
+
+class TestNoBackwardAPIStatic(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.exe = paddle.static.Executor()
+        self.shape = [
+            paddle.full([], 2, 'int32'),
+            paddle.full([], 3, 'int32'),
+            paddle.full([], 4, 'int32'),
+        ]
+
+    def test_slice(self):
+        starts = [paddle.full([], 1, 'int32'), paddle.full([], 1, 'int32')]
+        ends = [paddle.full([], 3, 'int32'), paddle.full([], 3, 'int32')]
+        x = paddle.rand([5, 3, 3])
+        out = paddle.slice(x, [1, 2], starts, ends)
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out]
+        )[0]
+        self.assertEqual(res.shape, (5, 2, 2))
+
+    def test_strided_slice(self):
+        starts = [paddle.full([], 0, 'int32'), paddle.full([], 0, 'int32')]
+        ends = [paddle.full([], 4, 'int32'), paddle.full([], 4, 'int32')]
+        strides = [paddle.full([], 2, 'int32'), paddle.full([], 2, 'int32')]
+        x = paddle.rand([5, 5, 5])
+        out = paddle.strided_slice(x, [1, 2], starts, ends, strides)
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out]
+        )[0]
+        self.assertEqual(res.shape, (5, 2, 2))
+
+    def test_linspace(self):
+        start = paddle.full([], 1.0)
+        stop = paddle.full([], 5.0)
+        num = paddle.full([], 5, 'int32')
+        out = paddle.linspace(start, stop, num)
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out]
+        )[0]
+        np.testing.assert_array_equal(res, [1.0, 2.0, 3.0, 4.0, 5.0])
+
+    def test_arange(self):
+        start = paddle.full([], 1.0)
+        stop = paddle.full([], 6.0)
+        step = paddle.full([], 1.0)
+        out = paddle.arange(start, stop, step)
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out]
+        )[0]
+        np.testing.assert_array_equal(res, [1.0, 2.0, 3.0, 4.0, 5.0])
+
+    def test_normal(self):
+        mean = paddle.full([], 0.0)
+        std = paddle.full([], 0.0)
+        out1 = paddle.normal(mean, std)
+        out2 = paddle.normal(0.0, 1.0, [])
+        out3 = paddle.normal(0.0, 1.0, self.shape)
+
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, (2, 3, 4))
+
+    def test_rand(self):
+        out1 = paddle.rand([])
+        out2 = paddle.rand(self.shape)
+
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out1, out2]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (2, 3, 4))
+
+    def test_randn(self):
+        out1 = paddle.randn([])
+        out2 = paddle.randn(self.shape)
+
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out1, out2]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (2, 3, 4))
+
+    def test_randint_and_randint_like(self):
+        out1 = paddle.randint(-10, 10, [])
+        out2 = paddle.randint_like(out1, -10, 10)
+        out3 = paddle.randint(-10, 10, self.shape)
+
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, (2, 3, 4))
+
+    def test_standard_normal(self):
+        out1 = paddle.standard_normal([])
+        out2 = paddle.standard_normal(self.shape)
+
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out1, out2]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (2, 3, 4))
+
+    def test_uniform(self):
+        out1 = paddle.uniform([])
+        out2 = paddle.uniform(self.shape)
+
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out1, out2]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (2, 3, 4))
+
+    def test_empty_and_empty_like(self):
+        out1 = paddle.empty([])
+        out2 = paddle.empty_like(out1)
+        out3 = paddle.empty(self.shape)
+
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, (2, 3, 4))
+
+    def test_full_and_full_like(self):
+        out1 = paddle.full([], 0.5)
+        out2 = paddle.full_like(out1, 0.5)
+        out3 = paddle.full(self.shape, 0.5)
+        out4 = paddle.full(self.shape, paddle.full([], 0.5))
+
+        res = self.exe.run(
+            paddle.static.default_main_program(),
+            fetch_list=[out1, out2, out3, out4],
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, (2, 3, 4))
+        self.assertEqual(res[3].shape, (2, 3, 4))
+
+    def test_ones_and_ones_like(self):
+        out1 = paddle.ones([])
+        out2 = paddle.ones_like(out1)
+        out3 = paddle.ones(self.shape)
+
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, (2, 3, 4))
+
+    def test_zeros_and_zeros_like(self):
+        out1 = paddle.zeros([])
+        out2 = paddle.zeros_like(out1)
+        out3 = paddle.zeros(self.shape)
+
+        res = self.exe.run(
+            paddle.static.default_main_program(), fetch_list=[out1, out2, out3]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, (2, 3, 4))
+
+
 if __name__ == "__main__":
     unittest.main()
