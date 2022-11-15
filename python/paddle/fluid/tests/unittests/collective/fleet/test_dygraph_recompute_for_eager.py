@@ -26,6 +26,7 @@ import random
 
 class Model(paddle.nn.Layer):
     def __init__(self, block_idx, input_size, is_last=False):
+        super(Model, self).__init__()
         block_name = "block_" + str(block_idx)
         self.block = paddle.nn.Sequential(
             (
@@ -172,7 +173,7 @@ def run_model(
 
         x_data = np.random.randn(batch_size, input_size).astype(np.float32)
         x = paddle.to_tensor(x_data)
-        # x.stop_gradient = False
+        x.stop_gradient = False
         level = 'O2' if pure_fp16 else 'O1'
         with paddle.amp.auto_cast(True, level=level):
             y_pred = model(x)

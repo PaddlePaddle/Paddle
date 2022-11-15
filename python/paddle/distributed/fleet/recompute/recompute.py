@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+import weakref
 from paddle.fluid import core
 from paddle.autograd import PyLayer
 from paddle.autograd.py_layer import LegacyPyLayer
