@@ -630,6 +630,7 @@ class StaticRNN:
             import paddle.fluid.layers as layers
 
             vocab_size, hidden_size=10000, 200
+            paddle.enable_static()
             x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
@@ -720,6 +721,7 @@ class StaticRNN:
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -748,6 +750,7 @@ class StaticRNN:
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -850,6 +853,7 @@ class StaticRNN:
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -902,6 +906,7 @@ class StaticRNN:
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -963,6 +968,7 @@ class StaticRNN:
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
