@@ -23,6 +23,7 @@ import glob
 import random
 import tarfile
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP

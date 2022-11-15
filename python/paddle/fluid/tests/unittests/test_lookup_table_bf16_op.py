@@ -20,6 +20,7 @@ from paddle.fluid.tests.unittests.op_test import (
     convert_uint16_to_float,
     skip_check_grad_ci,
 )
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator

@@ -43,7 +43,7 @@ def encoder(is_sparse):
     src_word_id = pd.data(
         name="src_word_id", shape=[1], dtype='int64', lod_level=1
     )
-    src_embedding = pd.embedding(
+    src_embedding = paddle.static.nn.embedding(
         input=src_word_id,
         size=[dict_size, word_dim],
         dtype='float32',
@@ -62,7 +62,7 @@ def decoder_train(context, is_sparse):
     trg_language_word = pd.data(
         name="target_language_word", shape=[1], dtype='int64', lod_level=1
     )
-    trg_embedding = pd.embedding(
+    trg_embedding = paddle.static.nn.embedding(
         input=trg_language_word,
         size=[dict_size, word_dim],
         dtype='float32',
@@ -119,7 +119,7 @@ def decoder_decode(context, is_sparse):
         # expand the recursive_sequence_lengths of pre_state to be the same with pre_score
         pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
 
-        pre_ids_emb = pd.embedding(
+        pre_ids_emb = paddle.static.nn.embedding(
             input=pre_ids,
             size=[dict_size, word_dim],
             dtype='float32',
