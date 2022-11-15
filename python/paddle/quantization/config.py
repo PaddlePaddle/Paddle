@@ -21,7 +21,7 @@ from typing import Union
 
 __all__ = ["QuantConfig", "TRTQuantConfig"]
 
-# TODO: Implement quanted layer and fill the mapping
+# TODO: Implement quanted layer and fill the mapping dict
 DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {}
 
 DEFAULT_LEAVES = [nn.ReLU, nn.AvgPool2D]
@@ -101,6 +101,8 @@ class QuantConfig(object):
          Examples:
         .. code-block:: python
 
+             import paddle
+             from paddle.nn import Linear
              from paddle.quantization import QuantConfig
              from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
@@ -132,7 +134,8 @@ class QuantConfig(object):
         weight: QuanterFactory = None,
     ):
         r"""
-         Set the quantization config by full name of layer.
+         Set the quantization config by full name of layer. Its priority is
+         lower than `add_layer_config`.
 
          Args:
              layer(Union[str, list]): One or a list of layers' full name.
@@ -142,6 +145,8 @@ class QuantConfig(object):
          Examples:
         .. code-block:: python
 
+             import paddle
+             from paddle.nn import Linear
              from paddle.quantization import QuantConfig
              from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
 
@@ -167,20 +172,73 @@ class QuantConfig(object):
 
     def add_type_config(
         self,
-        group: Union[type, list],
+        layer_type: Union[type, list],
         activation: QuanterFactory = None,
         weight: QuanterFactory = None,
     ):
-        if isinstance(group, type) and issubclass(group, paddle.nn.Layer):
+        r"""
+        Set the quantization config by the type of layer. The `layer_type` should be
+        subclass of `paddle.nn.Layer`. Its priority is lower than `add_layer_config`
+        and `add_prefix_config`.
+
+        Args:
+            layer(Union[str, list]): One or a list of layers' type.
+            activation(QuanterFactory): Quanter used for activations.
+            weight(QuanterFactory): Quanter used for weights.
+
+        Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.nn import Linear
+            from paddle.quantization import QuantConfig
+            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+
+            class Model(paddle.nn.Layer):
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.fc = Linear(576, 120)
+            model = Model()
+            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+            q_config = QuantConfig(activation=None, weight=None)
+            q_config.add_type_config([Linear], activation=quanter, weight=quanter)
+            print(q_config)
+
+        """
+        if isinstance(layer_type, type) and issubclass(
+            layer_type, paddle.nn.Layer
+        ):
             config = SingleLayerConfig(activation, weight)
-            self._type2config[group] = config
-        if isinstance(group, list):
-            for _element in group:
+            self._type2config[layer_type] = config
+        if isinstance(layer_type, list):
+            for _element in layer_type:
                 self.add_type_config(
                     _element, activation=activation, weight=weight
                 )
 
     def add_qat_layer_mapping(self, source: type, target: type):
+        r"""
+        Add rules converting layers to simulated quantization layers
+        before quantization-aware training. It will convert layers
+        with type `source` to layers with type `target`. `source` and
+        `target` should be subclass of `paddle.nn.Layer`. And a default
+        mapping is provided by property `default_qat_layer_mapping`.
+
+        Args:
+            source(type): The type of layers that will be converted.
+            target(type): The type of layers that will be converted to.
+
+        Examples:
+        .. code-block:: python
+
+            from paddle.nn import Conv2D
+            from paddle.nn.qat import QuantedConv2D
+            from paddle.quantization import QuantConfig
+            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+            q_config = QuantConfig(activation=None, weight=None)
+            q_config.add_qat_layer_mapping(Conv2D, QuantedConv2d)
+        """
         assert isinstance(source, type) and issubclass(
             source, paddle.nn.Layer
         ), "The source layer to be placed should be a subclass of paddle.nn.Layer"
@@ -190,6 +248,7 @@ class QuantConfig(object):
         self._qat_layer_mapping[source] = target
 
     def add_costum_leaf(self, layer: type):
+
         self._costum_leaves.append(layer)
 
     @property
