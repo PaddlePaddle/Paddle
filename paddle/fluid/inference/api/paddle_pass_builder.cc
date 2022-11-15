@@ -106,6 +106,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "delete_c_identity_op_pass",            //
       "trt_multihead_matmul_fuse_pass_v2",    //
       "trt_multihead_matmul_fuse_pass_v3",    //
+      "multihead_matmul_roformer_fuse_pass",  //
       "constant_folding_pass",                //
       "vit_attention_fuse_pass",              //
       "trt_skip_layernorm_fuse_pass",         //
@@ -212,6 +213,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "fused_multi_transformer_decoder_fuse_qkv_pass",                //
         "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",  //
         "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",  //
+        "fuse_multi_transformer_layer_pass",                            //
         "gpu_cpu_squeeze2_matmul_fuse_pass",                            //
         "gpu_cpu_reshape2_matmul_fuse_pass",                            //
         "gpu_cpu_flatten2_matmul_fuse_pass",                            //
@@ -263,6 +265,10 @@ void GpuPassStrategy::EnableMkldnnBfloat16() {
 
 void GpuPassStrategy::EnableMkldnnInt8() {
   LOG(ERROR) << "GPU not support MKL-DNN int8";
+}
+
+void GpuPassStrategy::DisableMkldnnFcPasses() {
+  LOG(ERROR) << "GPU not support MKL-DNN fc";
 }
 
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
@@ -333,8 +339,8 @@ void CpuPassStrategy::EnableMKLDNN() {
              "matmul_elementwise_add_mkldnn_fuse_pass",    //
              "matmul_activation_mkldnn_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
-             //  "fc_mkldnn_pass",
-             //  "fc_act_mkldnn_fuse_pass",
+             "fc_mkldnn_pass",
+             "fc_act_mkldnn_fuse_pass",
              "fc_elementwise_add_mkldnn_fuse_pass",   //
              "batch_norm_act_fuse_pass",              //
              "softplus_activation_mkldnn_fuse_pass",  //
@@ -390,9 +396,9 @@ void CpuPassStrategy::EnableMkldnnInt8() {
 #ifdef PADDLE_WITH_MKLDNN
   if (!use_mkldnn_int8_) {
     passes_.clear();
+    passes_.push_back("simplify_with_basic_ops_pass");
     passes_.push_back("quant_dequant_mkldnn_pass");
     passes_.push_back("mkldnn_placement_pass");
-    passes_.push_back("simplify_with_basic_ops_pass");
     passes_.push_back("constant_folding_pass");
     passes_.push_back("squeeze2_transpose2_onednn_fuse_pass");
     passes_.push_back("layer_norm_fuse_pass");
@@ -453,6 +459,30 @@ void CpuPassStrategy::EnableMkldnnInt8() {
 #else
   use_mkldnn_int8_ = false;
 #endif
+}
+
+void CpuPassStrategy::DisableMkldnnFcPasses() {
+#ifdef PADDLE_WITH_MKLDNN
+  if (!disable_mkldnn_fc_passes_) {
+    EraseFcMkldnnPasses();
+  }
+  disable_mkldnn_fc_passes_ = true;
+#else
+  disable_mkldnn_fc_passes_ = false;
+#endif
+}
+
+void CpuPassStrategy::EraseFcMkldnnPasses() {
+  std::vector<std::string> fc_passes_to_erase(
+      {"fc_mkldnn_pass",
+       "fc_act_mkldnn_fuse_pass",
+       "fc_elementwise_add_mkldnn_fuse_pass"});
+  for (const auto &pass : fc_passes_to_erase) {
+    int idx = GetPassIndex(pass);
+    if (idx != -1) {
+      passes_.erase(std::begin(passes_) + idx);
+    }
+  }
 }
 
 IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {

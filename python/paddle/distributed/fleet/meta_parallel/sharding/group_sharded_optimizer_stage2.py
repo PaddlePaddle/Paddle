@@ -498,12 +498,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         with device_guard(self._rank, self.offload_device):
             self.offload_grads.buffer.zero_()
 
-    def step(self):
-        """
-        A wrapper for Optimizer's step function to finish the update operation of the optimizer.
-        """
-        # This method won't be called directly by opt.step()!
-        # The _redefine_opt_step() in class GroupShardedStage2 will wrap this function.
+    def _step(self):
         if self._broadcast_overlap:
             # Clear the pre forward hook in the optimizer step.
             for hook_remove in self._forward_pre_hook_remove_helper:
@@ -535,6 +530,14 @@ class GroupShardedOptimizerStage2(Optimizer):
 
         # Synchronize all the updated shards in between the ranks
         self._broadcast_params()
+
+    def step(self):
+        """
+        A wrapper for Optimizer's step function to finish the update operation of the optimizer.
+        """
+        # This method won't be called directly by opt.step()!
+        # The _redefine_opt_step() in class GroupShardedStage2 will wrap this function.
+        self._step()
 
     def minimize(self):
         raise RuntimeError(
