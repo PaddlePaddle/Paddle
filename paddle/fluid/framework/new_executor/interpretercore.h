@@ -80,6 +80,7 @@ class InterpreterCore {
   void BuildOperatorDependences();
   void BuildAndCacheInstructionCtx(Instruction* instr_node);
   void BuildSkipShareLoDInfo();
+  void UpdateSyncOpNum();
 
   // inplace
   void BuildInplace();
@@ -131,6 +132,8 @@ class InterpreterCore {
   std::vector<VariableMetaInfo> vec_meta_info_;
 
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
+
+  int64_t sync_op_num_{-1};
 
   std::atomic<size_t> unfinished_op_number_{0};
   VariableScope var_scope_;

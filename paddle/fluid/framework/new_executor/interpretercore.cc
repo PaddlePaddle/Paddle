@@ -168,19 +168,14 @@ interpreter::CostInfo InterpreterCore::DryRun(
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
-    if (!FLAGS_new_executor_trace_run) {
-      async_work_queue_ = GetWorkQueue();
-    }
+    async_work_queue_ = GetWorkQueue();
 
     // lazy initialization of gc, do not create gc is the program only run once
     if (!gc_) {
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
-    if (FLAGS_new_executor_trace_run) {
-      TraceInstructionList(vec_instruction_);
-    } else {
-      ExecuteInstructionList(vec_instruction_);
-    }
+
+    ExecuteInstructionList(vec_instruction_);
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
 
@@ -207,7 +202,7 @@ paddle::framework::FetchList InterpreterCore::Run(
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
-    if (!FLAGS_new_executor_trace_run) {
+    if (!(FLAGS_new_executor_trace_run && (sync_op_num_ == 0))) {
       async_work_queue_ = GetWorkQueue();
     }
 
@@ -216,7 +211,10 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    if (FLAGS_new_executor_trace_run) {
+    if (FLAGS_new_executor_trace_run && (sync_op_num_ == 0)) {
+      VLOG(0) << "FLAGS_new_executor_trace_run is: "
+              << FLAGS_new_executor_trace_run;
+      VLOG(0) << "sync_op_num_ is: " << sync_op_num_;
       TraceInstructionList(vec_instruction_);
     } else {
       ExecuteInstructionList(vec_instruction_);
@@ -271,11 +269,12 @@ paddle::framework::FetchList InterpreterCore::Run(
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     is_build_ = true;
+    UpdateSyncOpNum();
   } else {
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
-    if (!FLAGS_new_executor_trace_run) {
+    if (!(FLAGS_new_executor_trace_run && (sync_op_num_ == 0))) {
       async_work_queue_ = GetWorkQueue();
     }
 
@@ -284,7 +283,10 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    if (FLAGS_new_executor_trace_run) {
+    if (FLAGS_new_executor_trace_run && (sync_op_num_ == 0)) {
+      VLOG(0) << "FLAGS_new_executor_trace_run is: "
+              << FLAGS_new_executor_trace_run;
+      VLOG(0) << "sync_op_num_ is: " << sync_op_num_;
       TraceInstructionList(vec_instruction_);
     } else {
       ExecuteInstructionList(vec_instruction_);
@@ -1226,6 +1228,7 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
+    UpdateSyncOpNum();
     is_build_ = true;
   }
   // NOTE: Because feed_tensor will be GC after
@@ -1261,6 +1264,17 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCore(
   core = std::make_shared<InterpreterCore>(place, *block, skip_gc_vars, scope);
   core->SetCopyProgram(new_prog);
   return core;
+}
+
+void InterpreterCore::UpdateSyncOpNum() {
+  int64_t sync_op_num = 0;
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    if (vec_instruction_[i].KernelType() == OpFuncType::kQueueSync) {
+      sync_op_num = sync_op_num + 1;
+    }
+  }
+  sync_op_num_ = sync_op_num;
+  VLOG(0) << "Update sync op num, sync op num is: " << sync_op_num_;
 }
 
 }  // namespace framework
