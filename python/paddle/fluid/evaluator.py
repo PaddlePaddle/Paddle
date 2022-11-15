@@ -23,7 +23,6 @@ from .initializer import Constant
 from .layers import detection
 
 __all__ = [
-    'ChunkEvaluator',
     'EditDistance',
     'DetectionMAP',
 ]
