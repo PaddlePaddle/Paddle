@@ -141,7 +141,10 @@ class API_TestTensorEye(unittest.TestCase):
 
         paddle.disable_static(paddle.NPUPlace(0))
         batch_shape = [2]
-        out = fluid.layers.eye(10, 10, dtype="int32", batch_shape=batch_shape)
+        out = paddle.eye(10, 10, dtype="int32")
+        out = paddle.unsqueeze(out,[0])
+        out = paddle.expand(out,[2,-1,-1])
+
         result = np.eye(10, dtype="int32")
         expected_result = []
         for index in reversed(batch_shape):
@@ -158,7 +161,10 @@ class API_TestTensorEye(unittest.TestCase):
 
         paddle.disable_static(paddle.NPUPlace(0))
         batch_shape = [3, 2]
-        out = fluid.layers.eye(10, 10, dtype="int32", batch_shape=batch_shape)
+        out = paddle.eye(10, 10, dtype="int32")
+        out = paddle.unsqueeze(out,[0,1])
+        out = paddle.expand(out,[3,2,-1,-1])
+
         result = np.eye(10, dtype="int32")
         expected_result = []
         for index in reversed(batch_shape):

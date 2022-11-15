@@ -738,17 +738,17 @@ class TestImperative(unittest.TestCase):
                 name='inp2', shape=[3, 3], dtype=np.float32
             )
 
-            a = fluid.layers.expand(
+            a = paddle.expand(
                 fluid.layers.reshape(
                     fluid.layers.reduce_sum(inp_data1), [1, 1]
                 ),
-                [4, 1],
+                [4, -1],
             )
-            b = fluid.layers.expand(
+            b = paddle.expand(
                 fluid.layers.reshape(
                     fluid.layers.reduce_sum(inp_data2), [1, 1]
                 ),
-                [4, 1],
+                [4, -1],
             )
             cond = fluid.layers.less_than(x=a, y=b)
 

@@ -312,9 +312,7 @@ class Generator(fluid.dygraph.Layer):
         label_trg_e = fluid.layers.reshape(
             label_trg, [-1, label_trg.shape[1], 1, 1]
         )
-        label_trg_e = fluid.layers.expand(
-            x=label_trg_e, expand_times=[1, 1, shape[2], shape[3]]
-        )
+        label_trg_e = paddle.expand(label_trg_e, [-1, -1, shape[2], shape[3]])
 
         input1 = fluid.layers.concat([input, label_trg_e], 1)
 

@@ -111,7 +111,10 @@ class API_TestTensorEye(unittest.TestCase):
 
         paddle.disable_static()
         batch_shape = [2]
-        out = fluid.layers.eye(10, 10, dtype="int64", batch_shape=batch_shape)
+        out = paddle.eye(10, 10, dtype="int64")
+        out = paddle.unsqueeze(out, 0)
+        out = paddle.expand(out, [2, -1, -1])
+
         result = np.eye(10, dtype="int64")
         expected_result = []
         for index in reversed(batch_shape):
@@ -128,7 +131,9 @@ class API_TestTensorEye(unittest.TestCase):
 
         paddle.disable_static()
         batch_shape = [3, 2]
-        out = fluid.layers.eye(10, 10, dtype="int64", batch_shape=batch_shape)
+        out = paddle.eye(10, 10, dtype="int64", batch_shape=batch_shape)
+        out = paddle.unsqueeze(out, [0, 1])
+        out = paddle.expand(out, [3, 2, -1, -1])
         result = np.eye(10, dtype="int64")
         expected_result = []
         for index in reversed(batch_shape):
@@ -216,12 +221,12 @@ class TestEyeRowsCol2(TestEyeRowsCol):
     def call_func(self, x):
         rows = paddle.assign(3)
         cols = paddle.assign(10)
-        out = paddle.fluid.layers.eye(rows, cols)
+        out = paddle.eye(rows, cols)
         return out
 
     def test_error(self):
         with self.assertRaises(TypeError):
-            paddle.fluid.layers.eye(-1)
+            paddle.eye(-1)
 
 
 if __name__ == "__main__":

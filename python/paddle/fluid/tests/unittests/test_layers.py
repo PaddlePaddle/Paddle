@@ -2420,27 +2420,37 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                eager_eye_tensor = layers.eye(num_rows=3, num_columns=2)
-                eager_eye_tensor_rlt1 = layers.eye(
-                    num_rows=3, num_columns=2, batch_shape=[3]
+                eager_eye_tensor = paddle.eye(num_rows=3, num_columns=2)
+                eager_eye_tensor_rlt1 = paddle.eye(num_rows=3, num_columns=2)
+                eager_eye_tensor_rlt1 = paddle.unsqueeze(
+                    eager_eye_tensor_rlt1, [0]
                 )
-                eager_eye_tensor_rlt2 = layers.eye(
-                    num_rows=3, num_columns=2, batch_shape=[4, 3]
+                eager_eye_tensor_rlt1 = paddle.expand(3, -1, -1)
+
+                eager_eye_tensor_rlt2 = paddle.eye(num_rows=3, num_columns=2)
+                eager_eye_tensor_rlt2 = paddle.unsqueeze(
+                    eager_eye_tensor_rlt2, [0, 1]
                 )
-                eager_diag_tensor = layers.eye(20)
+                eager_eye_tensor_rlt2 = paddle.expand(
+                    eager_eye_tensor_rlt2, [4, 3, -1, -1]
+                )
+
+                eager_diag_tensor = paddle.eye(20)
                 eager_eye_tensor_value = eager_eye_tensor.numpy()
                 eager_eye_tensor_rlt1_value = eager_eye_tensor_rlt1.numpy()
                 eager_eye_tensor_rlt2_value = eager_eye_tensor_rlt2.numpy()
                 eager_diag_tensor_value = eager_diag_tensor.numpy()
 
-            eye_tensor = layers.eye(num_rows=3, num_columns=2)
-            eye_tensor_rlt1 = layers.eye(
-                num_rows=3, num_columns=2, batch_shape=[3]
-            )
-            eye_tensor_rlt2 = layers.eye(
-                num_rows=3, num_columns=2, batch_shape=[4, 3]
-            )
-            diag_tensor = layers.eye(20)
+            eye_tensor = paddle.eye(num_rows=3, num_columns=2)
+            eye_tensor_rlt1 = paddle.eye(num_rows=3, num_columns=2)
+            eye_tensor_rlt1 = paddle.unsqueeze(eye_tensor_rlt1, [0])
+            eye_tensor_rlt1 = paddle.expand(3, -1, -1)
+
+            eye_tensor_rlt2 = paddle.eye(num_rows=3, num_columns=2)
+            eye_tensor_rlt2 = paddle.unsqueeze(eye_tensor_rlt2, [0, 1])
+            eye_tensor_rlt2 = paddle.expand(eye_tensor_rlt2, [4, 3, -1, -1])
+
+            diag_tensor = paddle.eye(20)
             eye_tensor_value = eye_tensor.numpy()
             eye_tensor_rlt1_value = eye_tensor_rlt1.numpy()
             eye_tensor_rlt2_value = eye_tensor_rlt2.numpy()
@@ -2467,13 +2477,9 @@ class TestLayer(LayerTest):
         np.testing.assert_allclose(diag_tensor_value, np.eye(20), rtol=1e-05)
 
         with self.assertRaises(TypeError):
-            layers.eye(num_rows=3.1)
+            paddle.eye(num_rows=3.1)
         with self.assertRaises(TypeError):
-            layers.eye(num_rows=3, num_columns=2.2)
-        with self.assertRaises(TypeError):
-            layers.eye(num_rows=3, batch_shape=2)
-        with self.assertRaises(TypeError):
-            layers.eye(num_rows=3, batch_shape=[-1])
+            paddle.eye(num_rows=3, num_columns=2.2)
 
     def func_while_loop(self):
         with self.static_graph():
@@ -3882,7 +3888,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name="input", shape=[10], dtype='int32')
-            out = layers.expand(x, [1, 2])
+            out = paddle.expand(x, [-1, 2 * x.shape[1]])
             return out
 
     def make_uniform_random_batch_size_like(self):

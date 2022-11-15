@@ -208,12 +208,12 @@ class TestExpandError(unittest.TestCase):
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
             expand_times = [2, 2]
-            self.assertRaises(TypeError, fluid.layers.expand, x1, expand_times)
+            self.assertRaises(TypeError, paddle.expand, x1, x1.shape * 2)
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
-            self.assertRaises(TypeError, fluid.layers.expand, x2, expand_times)
+            self.assertRaises(TypeError, paddle.expand, x2, x2.shape * 2)
             x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
             x3.stop_gradient = True
-            self.assertRaises(ValueError, fluid.layers.expand, x3, expand_times)
+            self.assertRaises(ValueError, paddle.expand, x3, x3.shape * 2)
 
 
 # Test python API
@@ -229,9 +229,9 @@ class TestExpandAPI(unittest.TestCase):
             name="expand_times", shape=[2], append_batch_size=False
         )
 
-        out_1 = fluid.layers.expand(x, expand_times=[2, 3])
-        out_2 = fluid.layers.expand(x, expand_times=[positive_2, 3])
-        out_3 = fluid.layers.expand(x, expand_times=expand_times)
+        out_1 = paddle.expand(x, [24, 42])
+        out_2 = paddle.expand(x, [12 * positive_2, 42])
+        out_3 = paddle.expand(x, x.shape * expand_times)
 
         g0 = fluid.backward.calc_gradient(out_2, x)
 
@@ -250,10 +250,8 @@ class TestExpandDygraphAPI(unittest.TestCase):
     def test_expand_times_is_tensor(self):
         with paddle.fluid.dygraph.guard():
             a = paddle.rand([2, 5])
-            b = paddle.fluid.layers.expand(a, expand_times=[2, 3])
-            c = paddle.fluid.layers.expand(
-                a, expand_times=paddle.to_tensor([2, 3], dtype='int32')
-            )
+            b = paddle.paddle.expand(a, [4, 15])
+            c = paddle.paddle.expand(a, [4, 15])
             np.testing.assert_array_equal(b.numpy(), np.tile(a.numpy(), [2, 3]))
             np.testing.assert_array_equal(c.numpy(), np.tile(a.numpy(), [2, 3]))
 

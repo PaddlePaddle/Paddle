@@ -697,9 +697,9 @@ class Transformer(Layer):
             tensor = layers.reshape(
                 tensor, [tensor.shape[0], 1] + list(tensor.shape[1:])
             )
-            tile_dims = [1] * len(tensor.shape)
-            tile_dims[1] = beam_size
-            return layers.expand(tensor, tile_dims)
+            tile_dims = [-1] * len(tensor.shape)
+            tile_dims[1] = beam_size * (-1)
+            return paddle.expand(tensor, tile_dims)
 
         def merge_batch_beams(tensor):
             var_dim_in_state = 2  # count in beam dim
@@ -753,8 +753,9 @@ class Transformer(Layer):
         def mask_probs(probs, finished, noend_mask_tensor):
             finished = layers.cast(finished, dtype=probs.dtype)
             probs = layers.elementwise_mul(
-                layers.expand(
-                    layers.unsqueeze(finished, [2]), [1, 1, self.trg_vocab_size]
+                paddle.expand(
+                    layers.unsqueeze(finished, [2]),
+                    [-1, -1, self.trg_vocab_size],
                 ),
                 noend_mask_tensor,
                 axis=-1,
@@ -781,11 +782,11 @@ class Transformer(Layer):
         noend_array = [-inf] * self.trg_vocab_size
         noend_array[eos_id] = 0
         noend_mask_tensor = to_variable(np.array(noend_array, dtype="float32"))
-        batch_pos = layers.expand(
+        batch_pos = paddle.expand(
             layers.unsqueeze(
                 to_variable(np.arange(0, batch_size, 1, dtype="int64")), [1]
             ),
-            [1, beam_size],
+            [-1, beam_size],
         )
         predict_ids = []
         parent_ids = []
