@@ -117,7 +117,7 @@ struct BroadcastDataLoader<T, VecSize, Arity, IsBoundary, true> {
 
 #pragma unroll
       for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
-        if (i == configs[0].kDims) break;
+        if (i == configs[0].rank) break;
         auto fast_divmoder = configs[0].divmoders[i].Divmod(idx);
         idx = fast_divmoder.val[0];
 #pragma unroll
@@ -877,6 +877,17 @@ void BroadcastKernelForDifferentVecSize(
   // mergedim and get vec_size
   const auto dims_simplifier =
       BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
+  if (VLOG_IS_ON(4)) {
+    for (size_t i = 0; i < dims_simplifier.in_dims.size(); ++i) {
+      VLOG(4) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
+              << "}, simplied_dims={"
+              << phi::make_ddim(dims_simplifier.in_dims[i]) << "}";
+    }
+    VLOG(4) << "output: origin_dims={" << (*outs)[0]->dims()
+            << "}, simplied_dims={" << phi::make_ddim(dims_simplifier.out_dims)
+            << "}";
+  }
+
   phi::Array<kps::details::BroadcastConfig, kArity> configs;
 
 // get vec_size

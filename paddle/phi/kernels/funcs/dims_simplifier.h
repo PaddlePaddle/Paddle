@@ -34,10 +34,22 @@ struct BroadcastDimsSimplifier {
   BroadcastDimsSimplifier(const std::vector<const DenseTensor *> &ins,
                           const phi::DDim &dims,
                           int axis) {
+    if (!NeedBroadcast(ins, dims)) {
+      int64_t numel = phi::product(dims);
+      rank = 1;
+      N = ins.size();
+      out_dims = DimVector{numel};
+      in_dims.resize(N);
+      for (int64_t i = 0; i < N; ++i) {
+        in_dims[i] = DimVector{numel};
+      }
+      return;
+    }
+
     N = std::max(static_cast<int>(ins.size()), 2);
+    in_dims.resize(N);
     rank = dims.size();
     out_dims = phi::vectorize<int64_t>(dims);
-    in_dims.resize(N);
     if (ins.size() == 1) {
       // When ins.size() = 1, broadcast input to output.
       in_dims[0] = phi::vectorize<int64_t>(ins[0]->dims());
@@ -100,6 +112,18 @@ struct BroadcastDimsSimplifier {
   }
 
  private:
+  bool NeedBroadcast(const std::vector<const DenseTensor *> &ins,
+                     const phi::DDim &dims) {
+    bool no_broadcast_flag = true;
+    for (auto *in : ins) {
+      no_broadcast_flag &= ins[0]->dims() == in->dims();
+    }
+    if (ins.size() > 0) {
+      no_broadcast_flag &= dims == ins[0]->dims();
+    }
+    return !no_broadcast_flag;
+  }
+
   // To compensate the lackage of input_tensors' dimension with axis.
   void ExtendInputDimensions(int N, int axis) {
     for (auto &in_dim : in_dims) {
