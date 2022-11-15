@@ -715,6 +715,7 @@ class StaticRNN:
         Examples 1:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
@@ -743,6 +744,7 @@ class StaticRNN:
         Examples 2:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
                 vocab_size, hidden_size=10000, 200
@@ -843,6 +845,7 @@ class StaticRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
@@ -894,6 +897,7 @@ class StaticRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
@@ -954,6 +958,7 @@ class StaticRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
