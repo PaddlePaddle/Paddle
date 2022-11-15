@@ -273,6 +273,7 @@ template <typename DeviceContext, typename T>
 class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+    printf("@@@ call multiheadmatmul v2 compute \n");
     VLOG(1)<<"@@@ call multiheadmatmul v2 compute";
     using Tensor = phi::DenseTensor;
     auto *input = context.Input<phi::DenseTensor>("Input");
@@ -304,6 +305,10 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
            <<bias_qk->dims()[1]<<","
            <<bias_qk->dims()[2]<<","
            <<bias_qk->dims()[3];
+    printf("@@@ bias_qk_dim :%d,%d,%d,%d",bias_qk->dims()[0],
+                                          bias_qk->dims()[1],
+                                          bias_qk->dims()[2],
+                                          bias_qk->dims()[3]);
     VLOG(1)<<"batch:"<<batch<<", head_number:"<<head_number<<", seq_len:"<<seq_len<<", seq_len:"<<seq_len;
     if (bias_qk && bias_qk->numel() == (batch * seq_len)) {
       VLOG(1)<<"do broadcasted bias_qk";
