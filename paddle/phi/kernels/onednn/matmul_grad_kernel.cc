@@ -46,10 +46,10 @@ void CalculateGradMatrixDims(const OneDNNContext &dev_ctx,
     }
   }
 
-  dev_ctx.template Alloc<T>(dx_tmp);
-  dev_ctx.template Alloc<T>(dy_tmp);
   dx_tmp->Resize(phi::make_ddim((*dx_bd_dims)));
+  dev_ctx.template Alloc<T>(dx_tmp);
   dy_tmp->Resize(phi::make_ddim((*dy_bd_dims)));
+  dev_ctx.template Alloc<T>(dy_tmp);
 }
 
 void ReduceSumForMatmulGradOutput(
@@ -109,6 +109,7 @@ void MatmulGradKernel(const Context &dev_ctx,
   //   avoid
   //   // using reduce_sum
   //   if (!is_broadcast) {
+  // MatMulGradMKLDNNKernel<T> matmul_v1_grad_mkldnn_kernel;
   //     matmul_v1_grad_mkldnn_kernel.Compute(ctx);
   //     return;
   //   }
