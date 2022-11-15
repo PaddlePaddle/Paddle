@@ -1510,8 +1510,12 @@ class Completer:
                     self._dist_context.set_op_dist_attr_for_program(
                         grad_op, grad_op_dist_attr
                     )
-                    grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
-                    grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
+                    grad_op_dist_attr.impl_type = (
+                        fwd_op_dist_attr.impl_type  # noqa: F821
+                    )
+                    grad_op_dist_attr.impl_idx = (
+                        fwd_op_dist_attr.impl_idx  # noqa: F821
+                    )
 
                     continue
 
