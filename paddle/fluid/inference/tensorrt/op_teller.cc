@@ -1654,6 +1654,17 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+    if (op_type == "where") {
+#if !IS_TRT_VERSION_GE(8400)
+      VLOG(3) << "where is not supported when TensorRT < 8.4";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the where op does not support static shape yet";
+        return false;
+      }
+    }
+
     if (op_type == "skip_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the skip_layernorm does not support static shape yet";
@@ -2285,6 +2296,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "leaky_relu",
       "fc",
       "shuffle_channel",
+      "where",
       "swish",
       "silu",
       "celu",
@@ -2409,6 +2421,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "leaky_relu",
       "fc",
       "shuffle_channel",
+      "where",
       "swish",
       "silu",
       "celu",
