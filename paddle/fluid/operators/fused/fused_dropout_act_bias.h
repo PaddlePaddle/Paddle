@@ -18,28 +18,10 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
+#include "paddle/phi/kernels/gpu/gelu_funcs.h"
 
 namespace paddle {
 namespace operators {
-
-__forceinline__ __device__ float copysignf_pos(float a, float b) {
-  float r;
-  r = __int_as_float(__float_as_int(a) | (__float_as_int(b) & 0x80000000));
-  return r;
-}
-
-/**
- *@brief the tanh functor
- */
-__inline__ __device__ float tanh_opt(float x) {
-#if (__CUDA_ARCH__ >= 750 && CUDART_VERSION >= 11000)
-  float r;
-  asm("tanh.approx.f32 %0,%1; \n\t" : "=f"(r) : "f"(x));
-  return r;
-#else
-  return tanh(x);
-#endif
-}
 
 template <typename T>
 struct GeluFunctor {
@@ -58,8 +40,9 @@ struct FastGeluFunctor {
     using U = LayerNormParamType<T>;
     U casted_x = static_cast<U>(x);
     U casted_pow3 = casted_x * casted_x * casted_x;
-    casted_x = 0.5f * (1.0f + tanh_opt((0.7978845608028654f *
-                                        (casted_x + 0.044715f * casted_pow3))));
+    casted_x = 0.5f * (1.0f + phi::FP32FastTanh<true>(
+                                  (0.7978845608028654f *
+                                   (casted_x + 0.044715f * casted_pow3))));
     return x * static_cast<T>(casted_x);
   }
 };
