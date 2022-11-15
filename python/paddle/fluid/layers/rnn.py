@@ -623,7 +623,7 @@ def _rnn_dynamic_graph(
         )
 
     final_outputs = map_structure(
-        lambda x: nn.stack(x.array, axis=time_step_index), outputs
+        lambda x: paddle.stack(x.array, axis=time_step_index), outputs
     )
 
     if is_reverse:
@@ -1167,7 +1167,7 @@ class BeamSearchDecoder(Decoder):
             ),
             [1, self.beam_size],
         )
-        topk_coordinates = nn.stack([batch_pos, indices], axis=2)
+        topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = True
         return nn.gather_nd(x, topk_coordinates)
 
@@ -1548,7 +1548,9 @@ def _dynamic_decode_imperative(
         if max_step_num is not None and step_idx > max_step_num:
             break
 
-    final_outputs = map_structure(lambda x: nn.stack(x.array, axis=0), outputs)
+    final_outputs = map_structure(
+        lambda x: paddle.stack(x.array, axis=0), outputs
+    )
     final_states = states
 
     try:
