@@ -157,6 +157,7 @@ class TrtConvertElementwiseTest_one_input_special_case1(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input(shape, op_type):
+            # elementwise_floordiv is integer only
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
@@ -165,6 +166,7 @@ class TrtConvertElementwiseTest_one_input_special_case1(TrtLayerAutoScanTest):
                 return np.random.random(shape).astype(np.float32)
 
         def generate_weight(op_type):
+            # elementwise_floordiv is integer only
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=[1], dtype=np.int32
@@ -271,6 +273,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input(shape, op_type):
+            # elementwise_floordiv is integer only
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
@@ -279,6 +282,7 @@ class TrtConvertElementwiseTest_one_input(TrtLayerAutoScanTest):
                 return np.random.random(shape).astype(np.float32)
 
         def generate_weight(op_type):
+            # elementwise_floordiv is integer only
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=[32], dtype=np.int32
@@ -418,6 +422,7 @@ class TrtConvertElementwiseTest_two_input_without_broadcast(
 
     def sample_program_configs(self):
         def generate_input(shape, op_type):
+            # elementwise_floordiv is integer only
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
@@ -575,6 +580,7 @@ class TrtConvertElementwiseTest_two_input_with_broadcast(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input(shape, op_type):
+            # elementwise_floordiv is integer only
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
@@ -727,6 +733,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input(shape):
+            # elementwise_floordiv is integer only
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
@@ -736,6 +743,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
 
         # use rand not randn to avoiding pow producing `NAN`
         def generate_weight():
+            # elementwise_floordiv is integer only
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=[32], dtype=np.int32
