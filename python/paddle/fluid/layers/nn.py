@@ -11187,7 +11187,7 @@ def stack(x, axis=0, name=None):
     return out
 
 
-def unsack(x, axis=0, num=None):
+def unstack(x, axis=0, num=None):
     """
     :alias_main: paddle.unstack
         :alias: paddle.unstack,paddle.tensor.unstack,paddle.tensor.manipulation.unstack
