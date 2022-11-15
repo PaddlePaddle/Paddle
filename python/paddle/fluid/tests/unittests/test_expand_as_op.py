@@ -108,40 +108,32 @@ class TestExpandAsDygraphAPI(unittest.TestCase):
 
         paddle.disable_static()
         np_data_x = np.array([1, 2, 3]).astype('int32')
-        np_data_y = np.array([1, 2, 3, 1, 2, 3]).astype('int32')
+        np_data_y = np.array([[1, 2, 3], [1, 2, 3]]).astype('int32')
         data_x = paddle.to_tensor(np_data_x)
         data_y = paddle.to_tensor(np_data_y)
         out = paddle.expand_as(data_x, data_y)
         np_out = out.numpy()
-        assert np.array_equal(np_out, np.tile(np_data_x, (2)))
+        assert np.array_equal(np_out, np_data_y)
         paddle.enable_static()
 
 
 # Test python API
 class TestExpandAsAPI(unittest.TestCase):
     def test_api(self):
-        input1 = np.random.random([12, 14]).astype("float32")
-        input2 = np.random.random([48, 14]).astype("float32")
-        x = fluid.layers.data(
-            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
-        )
+        np_data_x = np.array([1, 2, 3]).astype('int32')
+        np_data_y = np.array([[1, 2, 3], [1, 2, 3]]).astype('int32')
+        data_x = paddle.to_tensor(np_data_x)
+        data_y = paddle.to_tensor(np_data_y)
 
-        y = fluid.layers.data(
-            name='target_tensor',
-            shape=[48, 14],
-            append_batch_size=False,
-            dtype="float32",
-        )
-
-        out_1 = paddle.expand_as(x, target_tensor=y)
+        out_1 = paddle.expand_as(data_x, data_y)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         res_1 = exe.run(
             fluid.default_main_program(),
-            feed={"x": input1, "target_tensor": input2},
+            feed={"x": data_x, "y": data_y},
             fetch_list=[out_1],
         )
-        assert np.array_equal(res_1[0], np.tile(input1, (4, 1)))
+        assert np.array_equal(res_1[0], np_data_y)
 
 
 if __name__ == "__main__":
