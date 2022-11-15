@@ -131,7 +131,7 @@ int InstanceNormPlugin::enqueue(int batch_size,
   return cudaGetLastError() != cudaSuccess;
 }
 
-int InstanceNormPluginDynamic::initialize() TRT_NOEXCEPT {}
+int InstanceNormPluginDynamic::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::DimsExprs InstanceNormPluginDynamic::getOutputDimensions(
     int index,
@@ -150,6 +150,7 @@ bool InstanceNormPluginDynamic::supportsFormatCombination(
     int nbInputs,
     int nbOutputs) TRT_NOEXCEPT {
   assert(inOut && pos < (nbInputs + nbOutputs));
+  assert(pos == 0 || pos == 1);
   return ((inOut[pos].type == nvinfer1::DataType::kFLOAT ||
            inOut[pos].type == nvinfer1::DataType::kHALF) &&
           (inOut[pos].format == nvinfer1::PluginFormat::kLINEAR) &&
