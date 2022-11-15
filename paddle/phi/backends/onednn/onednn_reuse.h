@@ -1332,14 +1332,13 @@ class BatchNormOneDNNHandler
                                             diff_scaleshift_data);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireMeanMemory(
-      const phi::DenseTensor* mean) {
+  std::shared_ptr<dnnl::memory> AcquireMeanMemory(const DenseTensor* mean) {
     const T* mean_data = mean->data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
                                             to_void_cast<T>(mean_data));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor* mean) {
+  std::shared_ptr<dnnl::memory> AcquireMeanMemory(DenseTensor* mean) {
     T* mean_data = mean->mutable_data<T>(this->place_,
                                          this->fwd_pd_->mean_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
@@ -1347,14 +1346,13 @@ class BatchNormOneDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
-      const phi::DenseTensor* variance) {
+      const DenseTensor* variance) {
     const T* variance_data = variance->data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
                                             to_void_cast<T>(variance_data));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
-      phi::DenseTensor* variance) {
+  std::shared_ptr<dnnl::memory> AcquireVarianceMemory(DenseTensor* variance) {
     T* variance_data = variance->mutable_data<T>(
         this->place_, this->fwd_pd_->variance_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
@@ -1639,8 +1637,8 @@ static DDim ColumnMatrixDimsFromVector(const DDim& y_dim) {
   return y_dim.size() > 1 ? y_dim : make_ddim({y_dim[0], 1});
 }
 
-static std::vector<int64_t> TTranspose(const std::vector<int64_t>& x,
-                                       const std::vector<int>& axis) {
+static std::vector<int64_t> TransposeAxis(const std::vector<int64_t>& x,
+                                          const std::vector<int>& axis) {
   size_t in_rank = x.size();
   size_t axis_size = axis.size();
 
@@ -1705,7 +1703,7 @@ static std::vector<int64_t> GetInputStrides(const OneDNNContext& dev_ctx,
       strides.insert(strides.begin(),
                      strides.front() * static_cast<int64_t>(shape2[i]));
     }
-    strides = TTranspose(strides, axis);
+    strides = TransposeAxis(strides, axis);
     if (shape.size() == 2)
       strides.insert(strides.begin(),
                      static_cast<int64_t>(shape[0] * shape[1]));
@@ -1894,21 +1892,22 @@ class MatmulOneDNNHandler
     return fake_strides;
   }
 
-  std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor* input) {
+  std::shared_ptr<memory> AcquireWeightsMemory(const DenseTensor* input) {
     const YT* input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
                                             to_void_cast<YT>(input_data));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor* output) {
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(const OneDNNContext& dev_ctx,
+                                                 DenseTensor* output) {
     // We cannot use base AcquireDstMemory as it makes an allocation request
     // base on DST memory primitive size. This is fine in general, but in MatMul
     // we have primitive that covers only one batch of Data and then shift
-    // pointer for every new batch. Hence phi::DenseTensor size is bigger that
+    // pointer for every new batch. Hence DenseTensor size is bigger that
     // dst memory primitive size. So would we request less memory that is there
     // and it triggers an assertion.  So as there is no 'any' format here we can
-    // leave default size of phi::DenseTensor as computed in ComputeInferShape
-    OT* ptr = output->mutable_data<OT>(this->place_);
+    // leave default size of DenseTensor as computed in ComputeInferShape
+    OT* ptr = dev_ctx.template Alloc<OT>(output);
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
@@ -1935,7 +1934,7 @@ void ExecuteMatmul(const OneDNNContext& dev_ctx,
 
   const auto src_memory_p = handler.AcquireSrcMemory(&x);
   const auto weights_memory_p = handler.AcquireWeightsMemory(&y);
-  const auto dst_memory_p = handler.AcquireDstMemory(out);
+  const auto dst_memory_p = handler.AcquireDstMemory(dev_ctx, out);
 
   auto matmul_p = handler.AcquireForwardPrimitive();
 
