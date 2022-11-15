@@ -91,7 +91,7 @@ class TestCase1(TestBase):
         z = paddle.static.data(
             name=self.feed_list[2], shape=self.feed_shape[2], dtype='float32'
         )
-        out = paddle.fluid.layers.sum([x, y, z], **self.attrs)
+        out = paddle.add_n([x, y, z], **self.attrs)
         self.fetch_list = [out.name]
 
 
