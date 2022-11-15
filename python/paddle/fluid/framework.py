@@ -1352,12 +1352,13 @@ class ParameterMetaClass(VariableMetaClass):
 
 class Variable(metaclass=VariableMetaClass):
     """
-    **Notes**:
-        **The constructor of Variable should not be invoked directly.**
 
-        **In Static Graph Mode: Please use** `Block.create_var` **to create a Static variable which has no data until being feed.**
+    Notes:
+        The constructor of Variable should not be invoked directly.
 
-        **In Dygraph Mode: Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph variable with real data**
+        In Static Graph Mode: Please use** `Block.create_var` **to create a Static variable which has no data until being feed.
+
+        In Dygraph Mode: Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph variable with real data.
 
     In Fluid, every input and output of an OP is a variable. In most
     cases, variables are used for holding different kinds of data or training
@@ -1513,6 +1514,7 @@ class Variable(metaclass=VariableMetaClass):
 
     def detach(self):
         """
+
         Returns a new Variable, detached from the current graph.
         It will share data with origin Variable and without tensor copy.
         In addition, the detached Variable doesn't provide gradient propagation.
@@ -1532,6 +1534,7 @@ class Variable(metaclass=VariableMetaClass):
 
                 # create a detached Variable
                 y = x.detach()
+                
         """
 
         assert (
