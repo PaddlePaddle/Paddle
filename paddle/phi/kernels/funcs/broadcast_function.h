@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+#include "paddle/phi/kernels/funcs/dims_simplifier.h"
 
 namespace kps = phi::kps;
 
@@ -26,7 +27,6 @@ namespace phi {
 namespace funcs {
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
-#include "paddle/phi/kernels/funcs/dims_simplifier.h"
 
 template <typename InT, typename OutT>
 int GetVecsize(const std::vector<const DenseTensor *> &ins,
