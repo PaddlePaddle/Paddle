@@ -81,7 +81,7 @@ class TransformerNet(Layer):
         k = self.k_proj(x)
         v = self.v_proj(x)
         product = paddle.matmul(x=q, y=k, transpose_y=True)
-        product = paddle.scale(scale=d_model**-0.5)
+        product = paddle.scale(product, scale=d_model**-0.5)
 
         weights = F.softmax(product + mask)
         tgt = paddle.matmul(weights, v)

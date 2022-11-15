@@ -191,7 +191,7 @@ class TestFusedAttentionOp(OpTest):
         # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
         # --> [B, n_head, seq_len, out_seq_len]
         qk_out = paddle.matmul(x=q_out, y=k_out, transpose_y=True)
-        qk_out = paddle.scale(scale=self.head_dim**-0.5)
+        qk_out = paddle.scale(qk_out, scale=self.head_dim**-0.5)
 
         if attn_mask is not None:
             attn_mask = _convert_attention_mask(attn_mask, qk_out.dtype)

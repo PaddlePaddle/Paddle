@@ -344,7 +344,7 @@ class MultiHeadAttentionLayer(Layer):
             y=transpose_k,
             transpose_y=True,
         )
-        product = paddle.scale(scale=self._d_model**-0.5)
+        product = paddle.scale(product, scale=self._d_model**-0.5)
         if attn_bias is not None:
             product += attn_bias
         weights = fluid.layers.softmax(product)

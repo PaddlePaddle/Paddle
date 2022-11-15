@@ -152,7 +152,7 @@ class MultiHeadAttention(Layer):
             cache["k"], cache["v"] = k, v
         # scale dot product attention
         product = paddle.matmul(x=q, y=k, transpose_y=True)
-        product = paddle.scale(scale=self.d_model**-0.5)
+        product = paddle.scale(product, scale=self.d_model**-0.5)
         if attn_bias is not None:
             product += attn_bias
         weights = layers.softmax(product)

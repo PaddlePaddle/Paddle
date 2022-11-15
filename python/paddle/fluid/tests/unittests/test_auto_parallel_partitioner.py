@@ -695,7 +695,7 @@ class AttentionLayer(nn.Layer):
 
         # scale dot product attention
         product = tensor.matmul(x=q, y=k, transpose_y=True)
-        product = tensor.scale(scale=self.head_dim**-0.5)
+        product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if self.attn_mask is not None:
             product = product + self.attn_mask
@@ -1167,7 +1167,7 @@ class DecoderLayer(nn.Layer):
         product = tensor.matmul(
             x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
         )
-        product = tensor.scale(scale=self.head_dim**-0.5)
+        product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if self.attn_mask is not None:
             product = product + self.attn_mask

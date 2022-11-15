@@ -37,7 +37,7 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
             )
-            matmul_out = paddle.scale(scale=self.alpha)
+            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
             fc_out = fluid.layers.fc(
                 input=matmul_out,
                 size=10,
@@ -133,7 +133,7 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
             )
-            matmul_out = paddle.scale(scale=self.alpha)
+            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
             fc_out = fluid.layers.fc(
                 input=matmul_out,
@@ -229,7 +229,7 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
             )
-            matmul_out = paddle.scale(scale=self.alpha)
+            matmul_out = paddle.scale(matmul_out, scale=self.alpha)
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
             fc_out = fluid.layers.fc(
                 input=matmul_out,
