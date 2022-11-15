@@ -185,6 +185,36 @@ def _save_distributed_persistables(executor, dirname, main_program):
             )
 
 
+def is_persistable(var):
+    """
+    Check whether the given variable is persistable.
+
+    Args:
+        var(Variable): The variable to be checked.
+
+    Returns:
+        bool: True if the given `var` is persistable
+        False if not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+
+            paddle.enable_static()
+            param = fluid.default_main_program().global_block().var('fc.b')
+            res = fluid.io.is_persistable(param)
+    """
+    if (
+        var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH
+        or var.desc.type() == core.VarDesc.VarType.FETCH_LIST
+        or var.desc.type() == core.VarDesc.VarType.READER
+    ):
+        return False
+    return var.persistable
+
+
 @dygraph_not_support
 def save_persistables(executor, dirname, main_program=None, filename=None):
     """
