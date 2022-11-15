@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.fluid.framework import static_only
+from paddle.framework import core
 
 from paddle.common_ops_import import (
     check_type,
@@ -172,6 +173,76 @@ def fc(
         act=activation,
         name=name,
     )
+
+
+def crf_decoding(input, param_attr, label=None, length=None):
+    """
+    :api_attr: Static Graph
+
+    ${comment}
+
+    Args:
+        input(Tensor): ${emission_comment}
+
+        param_attr (ParamAttr|None): To specify the weight parameter attribute.
+            Default: None, which means the default weight parameter property is
+            used. See usage for details in :ref:`api_paddle_fluid_param_attr_ParamAttr` .
+
+        label(${label_type}, optional): ${label_comment}
+
+        length(${length_type}, optional): ${length_comment}
+
+    Returns:
+        Tensor: ${viterbi_path_comment}
+
+    Examples:
+        .. code-block:: python
+
+           import paddle
+           paddle.enable_static()
+
+           # LoDTensor-based example
+           num_labels = 10
+           feature = paddle.static.data(name='word_emb', shape=[-1, 784], dtype='float32', lod_level=1)
+           label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64', lod_level=1)
+           emission = paddle.static.nn.fc(feature, size=num_labels)
+
+           crf_cost = paddle.fluid.layers.linear_chain_crf(input=emission, label=label,
+                     param_attr=paddle.ParamAttr(name="crfw"))
+           crf_decode = paddle.static.nn.common.crf_decoding(input=emission,
+                     param_attr=paddle.ParamAttr(name="crfw"))
+
+           # Common tensor example
+           num_labels, max_len = 10, 20
+           feature = paddle.static.data(name='word_emb_pad', shape=[-1, max_len, 784], dtype='float32')
+           label = paddle.static.data(name='label_pad', shape=[-1, max_len, 1], dtype='int64')
+           length = paddle.static.data(name='length', shape=[-1, 1], dtype='int64')
+           emission = paddle.static.nn.fc(feature, size=num_labels,
+                                      num_flatten_dims=2)
+
+           crf_cost = paddle.fluid.layers.linear_chain_crf(input=emission, label=label, length=length,
+                     param_attr=paddle.ParamAttr(name="crfw_pad"))
+           crf_decode = paddle.static.nn.common.crf_decoding(input=emission, length=length,
+                     param_attr=paddle.ParamAttr(name="crfw_pad"))
+    """
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'crf_decoding'
+    )
+    helper = LayerHelper('crf_decoding', **locals())
+    transition = helper.get_parameter(param_attr.name)
+    viterbi_path = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.INT64
+    )
+    inputs = {"Emission": [input], "Transition": transition, "Label": label}
+    if length:
+        inputs['Length'] = length
+    helper.append_op(
+        type='crf_decoding',
+        inputs=inputs,
+        outputs={"ViterbiPath": [viterbi_path]},
+    )
+
+    return viterbi_path
 
 
 def deformable_conv(

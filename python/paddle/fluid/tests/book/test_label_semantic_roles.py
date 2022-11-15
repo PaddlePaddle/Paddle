@@ -161,8 +161,8 @@ def train(use_cuda, save_dirname=None, is_local=True):
     target = fluid.layers.data(
         name='target', shape=[1], dtype='int64', lod_level=1
     )
-    crf_cost = paddle.cross_entropy(input=feature_out, label=target)
-    avg_cost = paddle.mean(crf_cost)
+    cost = fluid.layers.cross_entropy(input=feature_out, label=target)
+    avg_cost = paddle.mean(cost)
 
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
@@ -178,7 +178,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
 
     # TODO(qiao)
     # add dependency track and move this config before optimizer
-    crf_decode = fluid.layers.crf_decoding(
+    crf_decode = paddle.static.nn.common.crf_decoding(
         input=feature_out, param_attr=fluid.ParamAttr(name='crfw')
     )
 
