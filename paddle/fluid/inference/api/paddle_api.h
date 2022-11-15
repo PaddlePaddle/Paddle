@@ -408,6 +408,7 @@ enum class PaddleEngineKind {
   kAutoMixedTensorRT,  ///< Automatically mix Fluid with TensorRT.
   kAnalysis,           ///< More optimization.
   kONNXRuntime,        ///< Use ONNXRuntime
+  kPaddleLite,         ///< Use PaddleLite
 };
 
 template <typename ConfigT, PaddleEngineKind engine>
@@ -427,6 +428,11 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
 template <>
 PD_INFER_DECL std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kONNXRuntime>(
+    const AnalysisConfig& config);
+
+template <>
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kPaddleLite>(
     const AnalysisConfig& config);
 
 PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
