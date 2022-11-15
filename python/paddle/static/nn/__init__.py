@@ -15,7 +15,6 @@
 from .common import fc  # noqa: F401
 from .common import deform_conv2d  # noqa: F401
 
-from ...fluid.layers import batch_norm  # noqa: F401
 from ...fluid.layers import bilinear_tensor_product  # noqa: F401
 from ...fluid.layers import case  # noqa: F401
 from ...fluid.layers import cond  # noqa: F401
@@ -63,6 +62,7 @@ __all__ = [  # noqa
     'fc',
     'batch_norm',
     'embedding',
+    'batch_norm',
     'bilinear_tensor_product',
     'case',
     'cond',

@@ -75,6 +75,7 @@ from ..fluid.layers import exponential_decay  # noqa: F401
 
 __all__ = [  # noqa
     'append_backward',
+    'batch_norm',
     'gradients',
     'Executor',
     'global_scope',
