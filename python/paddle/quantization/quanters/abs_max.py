@@ -33,6 +33,14 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
     :math:`scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)`
     :math:`range = 2^{bit\_length - 1} - 1`
     :math:`Out = round(X / scale * range) * scale / range`
+
+    Examples:
+       .. code-block:: python
+
+            from paddle.quantization import QuantConfig
+            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            quanter = FakeQuanterWithAbsMaxObserver(name="test", moving_rate=0.99)
+            q_config = QuantConfig(activation=quanter, weight=quanter)
     """
 
     def __init__(

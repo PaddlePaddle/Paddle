@@ -51,11 +51,19 @@ class ClassWithArguments(object):
 
 
 class QuanterFactory(ClassWithArguments):
+    r"""
+    The factory holds the quanter's class information and
+    the arguments used to create quanter instance.
+    """
+
     def __init__(self, *args, **kwargs):
         super(QuanterFactory, self).__init__(*args, **kwargs)
         self.partial_class = None
 
     def instance(self, layer: Layer) -> BaseQuanter:
+        r"""
+        Create an instance of quanter for target layer.
+        """
         if self.partial_class is None:
             self.partial_class = partial(
                 self.get_class(), *self.args, **self.kwargs
@@ -65,16 +73,37 @@ class QuanterFactory(ClassWithArguments):
 
 def quanter(class_name):
     r"""
-    Annotation to create a factory class for quanter.
+    Annotation to declare a factory class for quanter.
 
     Args:
         class_name (str) - The name of factory class to be declared.
+
+    Examples:
+       .. code-block:: python
+
+            # Given codes in ./custom_quanter.py
+            from paddle.quantization.factory import quanter
+            from paddle.quantization.quanter import BaseQuanter
+            @quanter("CustomQuanter")
+            class CustomQuanterLayer(BaseQuanter):
+                def __init__(self, arg1, kwarg1=None):
+                    pass
+
+            # Used in ./test.py
+            from paddle.quantization import QuantConfig
+            from .custom_quanter import CustomQuanter
+            arg1_value = "test"
+            kwarg1_value = 20
+            quanter = CustomQuanter(arg1_value, kwarg1=kwarg1_value)
+            q_config = QuantConfig(activation=quanter, weight=quanter)
+
     """
 
     def wrapper(target_class):
         init_function_str = f"""
 def init_function(self, *args, **kwargs):
     super(type(self), self).__init__(*args, **kwargs)
+    import importlib
     module = importlib.import_module("{target_class.__module__}")
     my_class = getattr(module, "{target_class.__name__}")
     globals()["{target_class.__name__}"] = my_class

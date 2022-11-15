@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import paddle
 import paddle.nn as nn
 from paddle.nn import Layer
-from typing import Dict
+from typing import Dict, Union
 from .factory import QuanterFactory
-from typing import Union
+
 
 __all__ = ["QuantConfig", "TRTQuantConfig"]
 
@@ -75,13 +76,17 @@ class QuantConfig(object):
     """
 
     def __init__(self, activation: QuanterFactory, weight: QuanterFactory):
-        self._global_config = SingleLayerConfig(activation, weight)
+        if activation is None and weight is None:
+            self._global_config = None
+        else:
+            self._global_config = SingleLayerConfig(activation, weight)
         self._layer2config = {}
         self._prefix2config = {}
         self._type2config = {}
         self._model = None
-        self._qat_layer_mapping = DEFAULT_QAT_LAYER_MAPPINGS
-        self._costum_leaves = []
+        self._qat_layer_mapping = copy.deepcopy(DEFAULT_QAT_LAYER_MAPPINGS)
+
+        self._custom_leaves = []
 
     def add_layer_config(
         self,
@@ -247,22 +252,44 @@ class QuantConfig(object):
         ), "The target layer should be a subclass of paddle.nn.qat.Layer"
         self._qat_layer_mapping[source] = target
 
-    def add_costum_leaf(self, layer: type):
+    def add_custom_leaf(self, layer_type: type):
+        r"""
+        Declare the custom layer as leaf of model for quantization.
+        The leaf layer is quantized as one layer. The sublayers of
+        leaf layer will not be quantized.
 
-        self._costum_leaves.append(layer)
+        Args:
+            layer_type(type): The type of layer to be declared as leaf.
+
+        Examples:
+        .. code-block:: python
+
+            from paddle.nn import Sequential
+            from paddle.quantization import QuantConfig
+            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            q_config = QuantConfig(activation=None, weight=None)
+            q_config.add_custom_leaf(Sequential)
+
+        """
+        self._custom_leaves.append(layer_type)
 
     @property
-    def costum_leaves(self):
-        return self._costum_leaves
-
-    # def get_qat_layer(self, layer: Layer):
-    #     q_config = self.get_config_by_layer(layer)
-    #     return self.qat_layer_mappings[type(layer)](layer, q_config)
+    def custom_leaves(self):
+        r"""
+        Get all the custom leaves.
+        """
+        return self._custom_leaves
 
     def need_observe(self, layer: Layer):
+        r"""
+        Whether the layer should be observed by observer.
+        """
         return self.is_leaf(layer) and self.has_observer_config(layer)
 
     def has_observer_config(self, layer: Layer):
+        r"""
+        Whether the layer has been configured for activation quantization.
+        """
         _config = self.get_config_by_layer(layer)
         return _config is not None and _config.activation is not None
 
@@ -277,12 +304,19 @@ class QuantConfig(object):
         return type(layer) in DEFAULT_LEAVES
 
     def is_real_leaf(self, layer: Layer):
+        r"""
+        The leaf is real leaf when it has no sublayers.
+        """
         return layer._sub_layers is None or len(layer._sub_layers) == 0
 
     def is_custom_leaf(self, layer: Layer):
-        return type(layer) in self.costum_leaves
+        return type(layer) in self.custom_leaves
 
-    def get_observer(self, layer):
+    def get_observer(self, layer: Layer):
+        r"""
+        Create an instance of observer or quanter according to the
+        given layer's quantization config.
+        """
         _config = self.get_config_by_layer(layer)
         _observer = None if _config is None else _config.activation
         return None if _observer is None else _observer.instance(layer)
@@ -302,32 +336,69 @@ class QuantConfig(object):
     def get_config_by_layer(self, layer) -> SingleLayerConfig:
         return self._layer2config.get(layer, None)
 
-    def is_quantable(self, layer: Layer):
+    def is_quantifiable(self, layer: Layer):
+        r"""
+        The layer is quantifiable when it configured by activation quanter/observer
+        or weight quanter/observer.
+        """
         return layer in self._layer2config
 
     def specify(self, model: Layer):
-        self._model = model
-        self.specify_helper(self._model)
+        r"""
+        Specify the quantization config of each sublayer in model.
+        For each layer in sublayers of mode,
+        1. Set the config by global config
+        2. Overwrite the config with parents' config
+        3. Overwrite the config with config set by layer's type
+        4. Overwrite the config with config set by layer's full name
+        5. Overwrite the config with config set by layer
 
-    def specify_helper(self, model: Layer):
+        Args:
+            model(Layer): The model to be specified by the config.
+
+        Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.nn import Linear, Sequential
+            from paddle.quantization import QuantConfig
+            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+
+            class Model(paddle.nn.Layer):
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.fc = Sequential(Linear(576, 120),Linear(576, 120))
+            model = Model()
+            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+            q_config = QuantConfig(activation=None, weight=None)
+            q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
+            q_config.specify(model)
+        """
+        self._model = model
+        self._specify_helper(self._model)
+
+    def _specify_helper(self, model: Layer):
         for child in model.children():
             layer_prefix = child.full_name()
             config = self._layer2config.get(model, self.global_config)
             config = self._type2config.get(type(child), config)
-            self._layer2config[child] = self._prefix2config.get(
-                layer_prefix, config
-            )
-            self.specify_helper(child)
+            config = self._prefix2config.get(layer_prefix, config)
+            if config is not None:
+                self._layer2config[child] = config
+            self._specify_helper(child)
         return self
 
-    def details(self):
-        return self.details_helper(self._model)
+    def details(self) -> str:
+        r"""
+        Get the formated details of current config.
+        """
+        return self._details_helper(self._model)
 
-    def details_helper(self, layer: Layer):
+    def _details_helper(self, layer: Layer):
         extra_lines = []
         sublayer_lines = []
         for name, sublayer in layer.named_children():
-            sublayer_str = self.details_helper(sublayer)
+            sublayer_str = self._details_helper(sublayer)
             sublayer_str = self._addindent(sublayer_str, 2)
             sublayer_lines.append(
                 '('
@@ -371,5 +442,11 @@ class QuantConfig(object):
 
 
 class TRTQuantConfig(QuantConfig):
+    r"""
+    Configure how to quantize a model or a part of the model which will be deployed
+    with NVIDIA TensorRT. It will map each layer to an instance of SingleLayerConfig
+    by the settings.
+    """
+
     def __init__(self, activation: QuanterFactory, weight: QuanterFactory):
         super(TRTQuantConfig, self).__init__(activation, weight)
