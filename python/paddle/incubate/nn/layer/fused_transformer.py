@@ -866,7 +866,7 @@ class FusedTransformerEncoderLayer(Layer):
                 as input `cache` argument but `incremental_cache` has an \
                 incremental length. See `MultiHeadAttention.gen_cache` and \
                 `MultiHeadAttention.forward` for more details.
-                
+
         """
         src_mask = _convert_attention_mask(src_mask, src.dtype)
         if cache is None:
