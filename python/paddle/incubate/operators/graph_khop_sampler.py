@@ -28,6 +28,7 @@ def graph_khop_sampler(
     name=None,
 ):
     """
+
     Graph Khop Sampler API.
 
     This API is mainly used in Graph Learning domain, and the main purpose is to
@@ -58,30 +59,29 @@ def graph_khop_sampler(
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        edge_src (Tensor): The src index of the output edges, also means the first column of
+        edge_src (Tensor), The src index of the output edges, also means the first column of
                            the edges. The shape is [num_sample_edges, 1] currently.
-        edge_dst (Tensor): The dst index of the output edges, also means the second column
+        edge_dst (Tensor), The dst index of the output edges, also means the second column
                            of the edges. The shape is [num_sample_edges, 1] currently.
-        sample_index (Tensor): The original id of the input nodes and sampled neighbor nodes.
-        reindex_nodes (Tensor): The reindex id of the input nodes.
-        edge_eids (Tensor): Return the id of the sample edges if `return_eids` is True.
+        sample_index (Tensor), The original id of the input nodes and sampled neighbor nodes.
+        reindex_nodes (Tensor), The reindex id of the input nodes.
+        edge_eids (Tensor), Return the id of the sample edges if `return_eids` is True.
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        row = [3, 7, 0, 9, 1, 4, 2, 9, 3, 9, 1, 9, 7]
-        colptr = [0, 2, 4, 5, 6, 7, 9, 11, 11, 13, 13]
-        nodes = [0, 8, 1, 2]
-        sample_sizes = [2, 2]
-        row = paddle.to_tensor(row, dtype="int64")
-        colptr = paddle.to_tensor(colptr, dtype="int64")
-        nodes = paddle.to_tensor(nodes, dtype="int64")
+            row = [3, 7, 0, 9, 1, 4, 2, 9, 3, 9, 1, 9, 7]
+            colptr = [0, 2, 4, 5, 6, 7, 9, 11, 11, 13, 13]
+            nodes = [0, 8, 1, 2]
+            sample_sizes = [2, 2]
+            row = paddle.to_tensor(row, dtype="int64")
+            colptr = paddle.to_tensor(colptr, dtype="int64")
+            nodes = paddle.to_tensor(nodes, dtype="int64")
 
-        edge_src, edge_dst, sample_index, reindex_nodes = \
-            paddle.incubate.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
+            edge_src, edge_dst, sample_index, reindex_nodes = \
+                paddle.incubate.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
 
     """
 
