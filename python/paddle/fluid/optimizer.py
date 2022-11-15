@@ -2261,6 +2261,7 @@ class LarsMomentumOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
@@ -2519,6 +2520,7 @@ class AdagradOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import numpy as np
             import paddle.fluid as fluid
 

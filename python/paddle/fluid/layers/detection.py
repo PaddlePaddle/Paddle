@@ -584,6 +584,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
     Examples:
         .. code-block:: python
 
+            import paddle
             import numpy as np
             import paddle.fluid as fluid
 
