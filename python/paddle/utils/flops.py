@@ -40,7 +40,12 @@ def flops(op_type: str, input_shapes: dict, attrs: dict) -> int:
         return 0
     else:
         func = _FLOPS_COMPUTE_FUNC_MAP[op_type]
-        return func(input_shapes, attrs)
+        try:
+            flops = func(input_shapes, **attrs)
+        except Exception as e:
+            return 0
+        return flops
+
 
 
 def register_flops(op_type):
@@ -62,23 +67,20 @@ def _dropout_flops(input_shapes, attrs):
 
 
 def _elementwise_flops_compute(input_shapes, **attrs):
-    try:
-        if isinstance(input_shapes, dict):
-            input_x = input_shapes["X"]
-            input_y = input_shapes["Y"]
-        else:
-            input_x = input_shapes[0]
-            input_y = input_shapes[1]
-        dim_x = len(input_x)
-        dim_y = len(input_y)
-        dim_output = max(dim_x, dim_y)
-        output = []
-        for i in range(dim_output):
-            in_x = input_x[dim_x - 1 - i] if i < dim_x else 1
-            in_y = input_y[dim_y - 1 - i] if i < dim_y else 1
-            output.append(max(in_x, in_y))
-    except Exception as e:
-        return 0
+    if isinstance(input_shapes, dict):
+        input_x = input_shapes["X"]
+        input_y = input_shapes["Y"]
+    else:
+        input_x = input_shapes[0]
+        input_y = input_shapes[1]
+    dim_x = len(input_x)
+    dim_y = len(input_y)
+    dim_output = max(dim_x, dim_y)
+    output = []
+    for i in range(dim_output):
+        in_x = input_x[dim_x - 1 - i] if i < dim_x else 1
+        in_y = input_y[dim_y - 1 - i] if i < dim_y else 1
+        output.append(max(in_x, in_y))
     return prod(output)
 
 
@@ -108,74 +110,64 @@ def _gelu_flops(input_shapes, **attrs):
 
 @register_flops("layer_norm")
 def _layer_norm_flops(input_shapes, **attrs):
-    try:
-        if isinstance(input_shapes, dict):
-            input = input_shape['X']
-        else:
-            input = input_shapes[2]
-        flops = prod(input) * 7
-        if attrs['epsilon']:
-            flops += prod(input)
-    except Exception as e:
-        return 0
+    if isinstance(input_shapes, dict):
+        input = input_shape['X']
+    else:
+        input = input_shapes[2]
+    flops = prod(input) * 7
+    if attrs['epsilon']:
+        flops += prod(input)
     return flops
 
 
 @register_flops("matmul")
 def _matmul_flops(input_shapes, **attrs):
-    try:
-        if isinstance(input_shapes, dict):
-            x_shape = input_shapes["X"]
-            y_shape = input_shapes["Y"]
-        else:
-            x_shape = input_shapes[0]
-            y_shape = input_shapes[1]
-        if attrs['transpose_X']:
-            x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
-        if attrs['transpose_Y']:
-            y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
-        dim_x = len(x_shape)
-        dim_y = len(y_shape)
-        output_len = max(dim_x, dim_y)
-        output_shape = []
+    if isinstance(input_shapes, dict):
+        x_shape = input_shapes["X"]
+        y_shape = input_shapes["Y"]
+    else:
+        x_shape = input_shapes[0]
+        y_shape = input_shapes[1]
+    if attrs['transpose_X']:
+        x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
+    if attrs['transpose_Y']:
+        y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
+    dim_x = len(x_shape)
+    dim_y = len(y_shape)
+    output_len = max(dim_x, dim_y)
+    output_shape = []
 
-        for idx in range(output_len, 2, -1):
-            x_idx = x_shape[dim_x - idx] if idx <= dim_x else 1
-            y_idx = y_shape[dim_y - idx] if idx <= dim_y else 1
-            output_shape.append(max(x_idx, y_idx))
+    for idx in range(output_len, 2, -1):
+        x_idx = x_shape[dim_x - idx] if idx <= dim_x else 1
+        y_idx = y_shape[dim_y - idx] if idx <= dim_y else 1
+        output_shape.append(max(x_idx, y_idx))
 
-        macs = prod(output_shape) * x_shape[-2] * x_shape[-1] * y_shape[-1]
-    except Exception as e:
-        return 0
-
+    macs = prod(output_shape) * x_shape[-2] * x_shape[-1] * y_shape[-1]
     return 2 * macs
 
 
 @register_flops("matmul_v2")
 def _matmul_v2_flops(input_shapes, **attrs):
-    try:
-        if isinstance(input_shapes, dict):
-            x_shape = input_shapes["X"]
-            y_shape = input_shapes["Y"]
-        else:
-            x_shape = input_shapes[0]
-            y_shape = input_shapes[1]
-        if attrs['trans_x']:
-            x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
-        if attrs['trans_y']:
-            y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
-        dim_x = len(x_shape)
-        dim_y = len(y_shape)
-        output_len = max(dim_x, dim_y)
-        output_shape = []
-        for idx in range(output_len, 2, -1):
-            x_idx = x_shape[dim_x - idx] if idx <= dim_x else 1
-            y_idx = y_shape[dim_y - idx] if idx <= dim_y else 1
-            output_shape.append(max(x_idx, y_idx))
+    if isinstance(input_shapes, dict):
+        x_shape = input_shapes["X"]
+        y_shape = input_shapes["Y"]
+    else:
+        x_shape = input_shapes[0]
+        y_shape = input_shapes[1]
+    if attrs['trans_x']:
+        x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
+    if attrs['trans_y']:
+        y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
+    dim_x = len(x_shape)
+    dim_y = len(y_shape)
+    output_len = max(dim_x, dim_y)
+    output_shape = []
+    for idx in range(output_len, 2, -1):
+        x_idx = x_shape[dim_x - idx] if idx <= dim_x else 1
+        y_idx = y_shape[dim_y - idx] if idx <= dim_y else 1
+        output_shape.append(max(x_idx, y_idx))
 
-        macs = prod(output_shape) * x_shape[-2] * x_shape[-1] * y_shape[-1]
-    except Exception as e:
-        return 0
+    macs = prod(output_shape) * x_shape[-2] * x_shape[-1] * y_shape[-1]
     return 2 * macs
 
 
