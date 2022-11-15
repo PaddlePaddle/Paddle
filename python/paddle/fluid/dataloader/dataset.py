@@ -376,7 +376,7 @@ class ChainDataset(IterableDataset):
     A Dataset which chains multiple iterable-style datasets.
 
     This dataset is used for assembling multiple datasets which should
-    be :code:`paddle.io.IterableDataset`.
+    be :ref:`api_paddle_io_IterableDataset`.
 
     Args:
         datasets(list of IterableDatasets): List of datasets to be chainned.
