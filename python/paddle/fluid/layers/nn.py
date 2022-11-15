@@ -165,13 +165,10 @@ __all__ = [
     'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
-    'gaussian_random_batch_size_like',
     'sum',
     'slice',
     'strided_slice',
     'shape',
-    'rank',
-    'size',
     'logical_and',
     'logical_or',
     'logical_xor',
@@ -11826,86 +11823,6 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
     return out
 
 
-@deprecated(since='1.8.0', update_to="paddle.normal")
-@templatedoc()
-def gaussian_random_batch_size_like(
-    input,
-    shape,
-    input_dim_idx=0,
-    output_dim_idx=0,
-    mean=0.0,
-    std=1.0,
-    seed=0,
-    dtype='float32',
-):
-    """
-    ${comment}
-
-    Args:
-        input (Variable): ${input_comment}
-        shape (tuple|list): ${shape_comment}
-        input_dim_idx (int): ${input_dim_idx_comment}
-        output_dim_idx (int): ${output_dim_idx_comment}
-        mean (float): ${mean_comment}
-        std (float): ${std_comment}
-        seed (int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data, float32 or float_64.
-
-    Returns:
-        out (Variable): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            input = fluid.data(name="input", shape=[13, 11], dtype='float32')
-
-            out = fluid.layers.gaussian_random_batch_size_like(
-                input, shape=[-1, 11], mean=1.0, std=2.0)
-    """
-
-    helper = LayerHelper('gaussian_random_batch_size_like', **locals())
-    check_type(
-        input,
-        'input',
-        (Variable),
-        'fluid.layers.gaussian_random_batch_size_like',
-    )
-    check_type(
-        shape,
-        'shape',
-        (list, tuple),
-        'fluid.layers.gaussian_random_batch_size_like',
-    )
-    check_dtype(
-        dtype,
-        'dtype',
-        ['float16', 'float32', 'int'],
-        'fluid.layers.gaussian_random_batch_size_like',
-    )
-    out = helper.create_variable_for_type_inference(dtype)
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
-    helper.append_op(
-        type='gaussian_random_batch_size_like',
-        inputs={'Input': input},
-        outputs={'Out': out},
-        attrs={
-            'shape': shape,
-            'input_dim_idx': input_dim_idx,
-            'output_dim_idx': output_dim_idx,
-            'mean': mean,
-            'std': std,
-            'seed': seed,
-            'dtype': c_dtype,
-        },
-    )
-
-    return out
-
-
 @templatedoc()
 def sum(x):
     """
@@ -12539,81 +12456,6 @@ def shape(input):
         outputs={'Out': out},
         stop_gradient=True,
     )
-
-    return out
-
-
-def rank(input):
-    """
-
-    The OP returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
-
-    Args:
-        input (Tensor): The input N-D tensor with shape of :math:`[N_1, N_2, ..., N_k]`, the data type is arbitrary.
-
-    Returns:
-        Tensor, the output data type is int32.: The 0-D tensor with the dimensions of the input Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            input = paddle.rand((3, 100, 100))
-            rank = paddle.rank(input)
-            print(rank)
-            # 3
-    """
-    check_type(input, 'input', (Variable), 'input')
-    ndims = len(input.shape)
-    out = assign(np.array(ndims, 'int32'))
-
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.numel")
-def size(input):
-    """
-    **Size Layer**
-
-    Returns the number of elements for a tensor, which is a int64 Tensor with shape [1].
-
-    Args:
-        input (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
-
-    Returns:
-        Tensor: The number of elements for the input Tensor.
-
-    Raises:
-        TypeError: ``input`` must be a Tensor and the data type of ``input`` must be one of bool, float16, float32, float64, int32, int64.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid.layers as layers
-            paddle.enable_static()
-
-            input = layers.data(
-                name="input", shape=[3, 100], dtype="float32", append_batch_size=False)
-            rank = layers.size(input) # 300
-    """
-
-    if in_dygraph_mode():
-        return _C_ops.numel(input)
-
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.size(input)
-
-    check_variable_and_dtype(
-        input,
-        'input',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-        "size",
-    )
-    helper = LayerHelper('size', **locals())
-    out = helper.create_variable_for_type_inference(dtype='int64')
-    helper.append_op(type='size', inputs={'Input': input}, outputs={'Out': out})
 
     return out
 
