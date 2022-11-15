@@ -59,13 +59,13 @@ def graph_khop_sampler(
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        edge_src (Tensor), The src index of the output edges, also means the first column of
-                           the edges. The shape is [num_sample_edges, 1] currently.
-        edge_dst (Tensor), The dst index of the output edges, also means the second column
-                           of the edges. The shape is [num_sample_edges, 1] currently.
-        sample_index (Tensor), The original id of the input nodes and sampled neighbor nodes.
-        reindex_nodes (Tensor), The reindex id of the input nodes.
-        edge_eids (Tensor), Return the id of the sample edges if `return_eids` is True.
+        - edge_src (Tensor), The src index of the output edges, also means the first column of
+          the edges. The shape is [num_sample_edges, 1] currently.
+        - edge_dst (Tensor), The dst index of the output edges, also means the second column
+          of the edges. The shape is [num_sample_edges, 1] currently.
+        - sample_index (Tensor), The original id of the input nodes and sampled neighbor nodes.
+        - reindex_nodes (Tensor), The reindex id of the input nodes.
+        - edge_eids (Tensor), Return the id of the sample edges if `return_eids` is True.
 
     Examples:
         .. code-block:: python
