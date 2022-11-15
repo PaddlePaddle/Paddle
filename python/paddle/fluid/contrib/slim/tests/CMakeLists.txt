@@ -253,6 +253,8 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_quantize_transpiler_v2)
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_amp)
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_lsq)
+  list(REMOVE_ITEM TEST_OPS test_imperative_qat_matmul)
+
 endif()
 
 if(LINUX AND WITH_MKLDNN)
@@ -507,6 +509,7 @@ if(WIN32)
       test_imperative_qat_channelwise
       test_imperative_qat
       test_imperative_qat_lsq
+      test_imperative_qat_matmul
       test_imperative_out_scale
       test_graph)
   list(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
@@ -547,6 +550,7 @@ set_tests_properties(test_imperative_qat_fuse PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_user_defined PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_lsq PROPERTIES TIMEOUT 300)
+set_tests_properties(test_imperative_qat_matmul PROPERTIES TIMEOUT 300)
 
 if(LINUX AND WITH_MKLDNN)
   set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
