@@ -163,7 +163,6 @@ def _conv_nd(
             return pre_bias
 
     if in_dygraph_mode() and op_type == "depthwise_conv2d":
-        x._set_use_cudnn(use_cudnn)
         pre_bias = _C_ops.depthwise_conv2d(
             x,
             weight,
@@ -484,8 +483,7 @@ def conv1d(
                 conv2d_data_format,
             )
         else:
-            x._set_use_cudnn(use_cudnn)
-            out = getattr(_C_ops, l_type)(
+            out = _C_ops.depthwise_conv2d(
                 x,
                 weight,
                 stride,
