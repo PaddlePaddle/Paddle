@@ -454,6 +454,22 @@ int QkvToContextPluginDynamic::enqueue(
           head_number_);
       qk_bias = temp_qk_bias;
     }
+    // fit to [batch, head_num, length, length] + [1, 1, length, length]
+    if (ProductDim(input_desc[1].dims) == (seq_len * seq_len)) {
+      temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
+      auto *temp_qk_bias =
+          reinterpret_cast<float *>(temp_qk_bias_tensor.mutable_data<float>(
+              platform::CUDAPlace(device_id)));
+      int grid = batch * head_number_ * seq_len;
+      int block = round_up(seq_len);
+      broadcast_batch_head_number<<<grid, block, 0, stream>>>(
+          static_cast<const float *>(inputs[1]),
+          temp_qk_bias,
+          batch,
+          seq_len,
+          head_number_);
+      qk_bias = temp_qk_bias;
+    }
     // fake qk_bias
     if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
       qk_bias = fake_qk_bias_;
