@@ -172,7 +172,6 @@ def _conv_nd(
             groups,
             dilation,
             data_format,
-            use_cudnn,
         )
         if bias is not None:
             channel_dim = (
