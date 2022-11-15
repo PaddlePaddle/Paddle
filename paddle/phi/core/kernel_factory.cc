@@ -402,9 +402,9 @@ std::string kernel_selection_error_message(const std::string& kernel_name,
       error_message += ", ";
     }
     error_message = error_message.substr(0, error_message.length() - 2);
-    return "Selected wrong Backend " +
+    return "Selected wrong Backend `" +
            paddle::experimental::BackendToString(target_key.backend()) +
-           ". Paddle support following Backends: " + error_message + ".";
+           "`. Paddle support following Backends: " + error_message + ".";
   }
   // 2. If target_key not supports target datatype, output "Selected wrong
   // DataType ..."
@@ -415,9 +415,9 @@ std::string kernel_selection_error_message(const std::string& kernel_name,
       error_message += ", ";
     }
     error_message = error_message.substr(0, error_message.length() - 2);
-    return "Selected wrong DataType " +
+    return "Selected wrong DataType `" +
            paddle::experimental::DataTypeToString(target_key.dtype()) +
-           ". Paddle support following DataTypes: " + error_message + ".";
+           "`. Paddle support following DataTypes: " + error_message + ".";
   }
   // 3. `target_key` is still not supported, output all kernel keys of
   // corresponding kernel_name
