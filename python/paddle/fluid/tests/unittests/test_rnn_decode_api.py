@@ -72,7 +72,7 @@ class DecoderCell(layers.RNNCell):
         query = layers.fc(
             hidden, size=encoder_output.shape[-1], bias_attr=False
         )
-        attn_scores = layers.matmul(
+        attn_scores = paddle.matmul(
             layers.unsqueeze(query, [1]), encoder_output, transpose_y=True
         )
         if encoder_padding_mask is not None:
@@ -81,7 +81,7 @@ class DecoderCell(layers.RNNCell):
             )
         attn_scores = layers.softmax(attn_scores)
         attn_out = layers.squeeze(
-            layers.matmul(attn_scores, encoder_output), [1]
+            paddle.matmul(attn_scores, encoder_output), [1]
         )
         attn_out = layers.concat([attn_out, hidden], 1)
         attn_out = layers.fc(attn_out, size=self.hidden_size, bias_attr=False)

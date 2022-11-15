@@ -166,7 +166,7 @@ def lm_model(
                 bias = bias_arr[k]
 
                 nn = layers.concat([input, pre_hidden], 1)
-                gate_input = layers.matmul(x=nn, y=weight_1)
+                gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = layers.elementwise_add(gate_input, bias)
                 i = layers.slice(
@@ -294,7 +294,7 @@ def lm_model(
                 bias = bias_arr[k]
 
                 nn = layers.concat([input, pre_hidden], 1)
-                gate_input = layers.matmul(x=nn, y=weight_1)
+                gate_input = paddle.matmul(x=nn, y=weight_1)
 
                 gate_input = layers.elementwise_add(gate_input, bias)
                 i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
@@ -468,7 +468,7 @@ def lm_model(
         ),
     )
 
-    projection = layers.matmul(rnn_out, softmax_weight)
+    projection = paddle.matmul(rnn_out, softmax_weight)
     projection = layers.elementwise_add(projection, softmax_bias)
     projection = layers.reshape(
         projection, shape=[-1, vocab_size], inplace=True

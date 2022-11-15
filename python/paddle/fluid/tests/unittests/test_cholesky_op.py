@@ -75,7 +75,7 @@ class TestCholeskyOp(OpTest):
                 dtype=root_data.dtype, shape=root_data.shape
             )
             root_t = layers.transpose(root, self.trans_dims)
-            x = layers.matmul(x=root, y=root_t) + 1e-05
+            x = paddle.matmul(x=root, y=root_t) + 1e-05
             out = paddle.cholesky(x, upper=self.attrs["upper"])
             grad_check(root, out, x_init=root_data, place=place)
 

@@ -53,7 +53,7 @@ class SimpleNet(Layer):
 
     def forward(self, x1, x2, y1):
         x_emb = self.word_embeddings(x1)
-        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
+        fc = paddle.matmul(x_emb, self.softmax_weight)
         fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
         projection = fluid.layers.reshape(fc, shape=[-1, vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(
@@ -82,7 +82,7 @@ class MatmulNet(Layer):
 
     def forward(self, args):
         x1, x2 = args
-        fc = fluid.layers.matmul(x1, self.softmax_weight)
+        fc = paddle.matmul(x1, self.softmax_weight)
 
         return fc, x2
 

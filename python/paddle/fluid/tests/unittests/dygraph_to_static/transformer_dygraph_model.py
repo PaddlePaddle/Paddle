@@ -151,15 +151,14 @@ class MultiHeadAttention(Layer):
             v = layers.concat([cache_v, v], axis=2)
             cache["k"], cache["v"] = k, v
         # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.d_model**-0.5
-        )
+        product = paddle.matmul(x=q, y=k, transpose_y=True)
+        product = paddle.scale(scale=self.d_model**-0.5)
         if attn_bias is not None:
             product += attn_bias
         weights = layers.softmax(product)
         if self.dropout_rate:
             weights = layers.dropout(weights, dropout_prob=self.dropout_rate)
-            out = layers.matmul(weights, v)
+            out = paddle.matmul(weights, v)
         out = layers.transpose(out, perm=[0, 2, 1, 3])
         out = layers.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
         out = self.proj_fc(out)
@@ -524,7 +523,7 @@ class WrapDecoder(Layer):
             postprocess_cmd,
         )
         if share_input_output_embed:
-            self.linear = lambda x: layers.matmul(
+            self.linear = lambda x: paddle.matmul(
                 x=x, y=self.word_embedder.word_embedder.weight, transpose_y=True
             )
         else:

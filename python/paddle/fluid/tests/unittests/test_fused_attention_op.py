@@ -21,7 +21,6 @@ from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.common import Linear, Dropout
 from paddle.nn.layer.transformer import _convert_attention_mask
 from paddle import tensor
-from paddle.fluid import layers
 import unittest
 from op_test import OpTest
 from paddle.fluid.framework import default_main_program
@@ -191,9 +190,8 @@ class TestFusedAttentionOp(OpTest):
 
         # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
         # --> [B, n_head, seq_len, out_seq_len]
-        qk_out = layers.matmul(
-            x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        qk_out = paddle.matmul(x=q_out, y=k_out, transpose_y=True)
+        qk_out = paddle.scale(scale=self.head_dim**-0.5)
 
         if attn_mask is not None:
             attn_mask = _convert_attention_mask(attn_mask, qk_out.dtype)

@@ -84,9 +84,7 @@ def matmul_dp2mp2(init_x, init_y, trans_x, trans_y):
         y = init_y(trans_y)
         x.stop_gradient = False
         y.stop_gradient = False
-        out = paddle.fluid.layers.matmul(
-            x, y, transpose_x=trans_x, transpose_y=trans_y
-        )
+        out = paddle.matmul(x, y, transpose_x=trans_x, transpose_y=trans_y)
         loss = paddle.mean(out)
     return main_program, start_program, loss
 

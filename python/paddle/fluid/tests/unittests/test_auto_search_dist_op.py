@@ -19,7 +19,6 @@ import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.fluid.core as core
-from paddle.fluid import layers
 from paddle.distributed.auto_parallel.operators.common import (
     get_distributed_operator_impl_container,
 )
@@ -85,7 +84,7 @@ def mlp_forward(train_program, start_program):
             shape=[hidden_size, hidden_size],
             dtype='float32',
         )
-        input = layers.matmul(x=input, y=matmulinput)
+        input = paddle.matmul(x=input, y=matmulinput)
         label = static.data(
             name="label", shape=[batch_size, 1], dtype='float32'
         )

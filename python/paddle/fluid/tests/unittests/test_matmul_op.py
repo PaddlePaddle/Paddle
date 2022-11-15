@@ -120,16 +120,16 @@ class TestMatmulOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The inputs type of matmul_op must be Variable.
             input1 = 12
-            self.assertRaises(TypeError, fluid.layers.matmul, input1, input1)
+            self.assertRaises(TypeError, paddle.matmul, input1, input1)
             # The inputs dtype of matmul_op must be float32, float64.
             input2 = fluid.layers.data(
                 name='input2', shape=[10, 10], dtype="int32"
             )
-            self.assertRaises(TypeError, fluid.layers.matmul, input2, input2)
+            self.assertRaises(TypeError, paddle.matmul, input2, input2)
             input3 = fluid.layers.data(
                 name='input3', shape=[2, 2], dtype="float16"
             )
-            fluid.layers.matmul(input3, input3)
+            paddle.matmul(input3, input3)
 
 
 # Negative dimension generation
@@ -158,9 +158,7 @@ def test_negative_dims_program(obj):
             with program_guard(Program(), Program()):
                 x = fluid.data(name='x', shape=shape_x, dtype='float32')
                 y = fluid.data(name='y', shape=shape_y, dtype='float32')
-                output = fluid.layers.matmul(
-                    x, y, obj.transpose_X, obj.transpose_Y
-                )
+                output = paddle.matmul(x, y, obj.transpose_X, obj.transpose_Y)
                 obj.assertEqual(len(Ref.shape), len(output.shape))
                 for idx in range(len(Ref.shape)):
                     if output.shape[idx] != -1:

@@ -31,13 +31,13 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
                 name='data', shape=[1, 28, 28], dtype='float32'
             )
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
-            matmul_out = fluid.layers.matmul(
+            matmul_out = paddle.matmul(
                 x=self.data,
                 y=self.data,
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
-                alpha=self.alpha,
             )
+            matmul_out = paddle.scale(scale=self.alpha)
             fc_out = fluid.layers.fc(
                 input=matmul_out,
                 size=10,
@@ -127,13 +127,13 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
             )
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             reshape_out = fluid.layers.reshape(self.data, shape=[1, 4, 14, 14])
-            matmul_out = fluid.layers.matmul(
+            matmul_out = paddle.matmul(
                 x=reshape_out,
                 y=reshape_out,
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
-                alpha=self.alpha,
             )
+            matmul_out = paddle.scale(scale=self.alpha)
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
             fc_out = fluid.layers.fc(
                 input=matmul_out,
@@ -223,13 +223,13 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
                 name='data', shape=[-1, 28, 28], dtype='float32'
             )
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
-            matmul_out = fluid.layers.matmul(
+            matmul_out = paddle.matmul(
                 x=self.data,
                 y=self.data,
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
-                alpha=self.alpha,
             )
+            matmul_out = paddle.scale(scale=self.alpha)
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
             fc_out = fluid.layers.fc(
                 input=matmul_out,

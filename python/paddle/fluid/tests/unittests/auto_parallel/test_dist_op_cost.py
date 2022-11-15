@@ -172,9 +172,7 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     [None, "x"],
                 )
-                out1 = paddle.fluid.layers.matmul(
-                    out, param1
-                )  # [8, 8] [-1, -1]
+                out1 = paddle.matmul(out, param1)  # [8, 8] [-1, -1]
                 tmp_param = paddle.fluid.layers.create_parameter(
                     [8, 8], paddle.float32
                 )  # [8, 8] [-1, -1]
@@ -183,10 +181,8 @@ class TestDistOpCost(unittest.TestCase):
                     auto.ProcessMesh([0, 1], dim_names=["x"]),
                     [None, None],
                 )
-                tmp_out = paddle.fluid.layers.matmul(out1, tmp_param)
-                out2 = paddle.fluid.layers.matmul(
-                    tmp_out, param2
-                )  # [8, 4] [-1, 0]
+                tmp_out = paddle.matmul(out1, tmp_param)
+                out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
 
                 out8 = paddle.fluid.layers.transpose(
                     out2, [1, 0]

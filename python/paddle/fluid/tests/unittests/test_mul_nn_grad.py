@@ -93,7 +93,7 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         y = layers.create_parameter(
             dtype=typename, shape=self.y_shape, name='y'
         )
-        out = layers.matmul(
+        out = paddle.matmul(
             x, y, self.transpose_x, self.transpose_y, name='out'
         )
 

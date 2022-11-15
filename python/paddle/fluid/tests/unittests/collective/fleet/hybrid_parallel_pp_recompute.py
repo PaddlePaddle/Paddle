@@ -18,7 +18,6 @@ import numpy as np
 import random
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from paddle.fluid import layers
 import paddle.nn.functional as F
 from paddle.distributed.fleet.meta_parallel import PipelineLayer, LayerDesc
 from paddle.fluid.dygraph.layers import Layer
@@ -70,13 +69,12 @@ class TransformerNet(Layer):
         q = self.q_proj(x)
         k = self.k_proj(x)
         v = self.v_proj(x)
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=d_model**-0.5
-        )
+        product = paddle.matmul(x=q, y=k, transpose_y=True)
+        product = paddle.scale(scale=d_model**-0.5)
         weights = F.softmax(product)
 
         weights = F.dropout(weights, 0.2)
-        tgt = layers.matmul(weights, v)
+        tgt = paddle.matmul(weights, v)
         residual = tgt
         tgt = self.norm1(tgt)
         tgt = residual + tgt

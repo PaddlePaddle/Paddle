@@ -283,7 +283,7 @@ class BMN(fluid.dygraph.Layer):
         # PEM
         xp = paddle.nn.functional.relu(self.p_conv1(x))
         # BM layer
-        xp = fluid.layers.matmul(xp, self.sample_mask)
+        xp = paddle.matmul(xp, self.sample_mask)
         xp = fluid.layers.reshape(
             xp, shape=[0, 0, -1, self.dscale, self.tscale]
         )
