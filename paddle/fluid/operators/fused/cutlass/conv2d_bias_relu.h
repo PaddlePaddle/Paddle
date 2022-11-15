@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include "conv2d_util.h"
 #include "cutlass/gemm/device/gemm.h"
 #include <cutlass/epilogue/thread/linear_combination_bias_relu.h>
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
@@ -19,27 +20,20 @@
 #include "cutlass/cutlass.h"
 
 
-#define CONV_PARAMS0                                                         \
+#define CONV_PARAMS0               \
+const half *input,  const half *weight,\
+const half *bias, half *output,\
+int batch, int ic, int ih, int iw,\
+int kh, int kw, int oc, int pad_h, int pad_w,\
+int stride_h, int stride_w
+
+#define CONV_ARGS0                                                         \
   input, weight, bias, output, batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, \
       stride_h, stride_w
 
 
-
-cutlass::Status cutlass_nhwc_conv2d_bias_relu1(const half *input,
-                                   const half *weight,
-                                   const half *bias,
-                                   half *output,
-                                   int batch,
-                                   int ic,
-                                   int ih,
-                                   int iw,
-                                   int kh,
-                                   int kw,
-                                   int oc,
-                                   int pad_h,
-                                   int pad_w,
-                                   int stride_h,
-                                   int stride_w) {
+template <typename TShape, typename WShape>
+cutlass::Status cutlass_nhwc_conv2d_bias_relu(CONV_PARAMS0) {
   using ElementAccumulator = float;
   using ElementComputeEpilogue = float;
   using ElementInputA = cutlass::half_t;
@@ -50,8 +44,8 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu1(const half *input,
   using LayoutOutput = cutlass::layout::TensorNHWC;
   using MMAOp = cutlass::arch::OpClassTensorOp;
   using SmArch = cutlass::arch::Sm75;
-  using ThreadblockShape = cutlass::gemm::GemmShape<64, 64, 64>;
-  using WarpShape = cutlass::gemm::GemmShape<32, 32, 64>;
+  using ThreadblockShape = TShape;
+  using WarpShape = WShape;
   using InstructionShape = cutlass::gemm::GemmShape<16, 8, 8>;
   using SwizzleThreadBlock =
       cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<4>;
@@ -119,498 +113,48 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu1(const half *input,
   check(status);
   status = implicit_gemm_op();
   check(status);
+  cudaFree(workspace);
   return status;
 }
 
-cutlass::Status cutlass_nhwc_conv2d_bias_relu2(const half *input,
-                                   const half *weight,
-                                   const half *bias,
-                                   half *output,
-                                   int batch,
-                                   int ic,
-                                   int ih,
-                                   int iw,
-                                   int kh,
-                                   int kw,
-                                   int oc,
-                                   int pad_h,
-                                   int pad_w,
-                                   int stride_h,
-                                   int stride_w) {
-  using ElementAccumulator = float;
-  using ElementComputeEpilogue = float;
-  using ElementInputA = cutlass::half_t;
-  using ElementInputB = cutlass::half_t;
-  using ElementOutput = cutlass::half_t;
-  using LayoutInputA = cutlass::layout::TensorNHWC;
-  using LayoutInputB = cutlass::layout::TensorNHWC;
-  using LayoutOutput = cutlass::layout::TensorNHWC;
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm75;
-  using ThreadblockShape = cutlass::gemm::GemmShape<64, 32, 64>;
-  using WarpShape = cutlass::gemm::GemmShape<32, 32, 64>;
-  using InstructionShape = cutlass::gemm::GemmShape<16, 8, 8>;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<4>;
-  constexpr int NumStages = 2;
-  static cutlass::conv::IteratorAlgorithm const IteratorAlgorithm =
-      cutlass::conv::IteratorAlgorithm::kOptimized;
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombinationRelu<
-      ElementOutput,
-      128 / cutlass::sizeof_bits<ElementOutput>::value,
-      float,
-      ElementComputeEpilogue>;
+// config 1
+template cutlass::Status 
+cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 64, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
+(CONV_PARAMS0);
+// config 2
+template cutlass::Status 
+cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 32, 64>, cutlass::gemm::GemmShape<32, 32, 64>> 
+(CONV_PARAMS0);
+// config 3
+template cutlass::Status 
+cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<128, 32, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
+(CONV_PARAMS0);
+// config 4
+template cutlass::Status 
+cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<128, 64, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
+(CONV_PARAMS0);
+// config 5
+template cutlass::Status 
+cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 64, 32>, cutlass::gemm::GemmShape<32, 32, 32>> 
+(CONV_PARAMS0);
+// config6
+template cutlass::Status 
+cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 128, 32>, cutlass::gemm::GemmShape<32, 64, 32>>
+(CONV_PARAMS0);
+// config 7
+template cutlass::Status
+cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 128, 64>, cutlass::gemm::GemmShape<64, 64, 32>>
+(CONV_PARAMS0);
+// config 8
+template cutlass::Status
+cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 256, 32>, cutlass::gemm::GemmShape<64, 64, 32>>
+(CONV_PARAMS0);
+// config 9
+template cutlass::Status
+cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<128, 64, 32>, cutlass::gemm::GemmShape<64, 32, 32>>
+(CONV_PARAMS0);
 
-  using Conv2dFpropKernel = typename cutlass::conv::kernel::DefaultConv2dFprop<
-      ElementInputA,
-      LayoutInputA,
-      ElementInputB,
-      LayoutInputB,
-      ElementOutput,
-      LayoutOutput,
-      ElementAccumulator,
-      MMAOp,
-      SmArch,
-      ThreadblockShape,
-      WarpShape,
-      InstructionShape,
-      EpilogueOp,
-      SwizzleThreadBlock,
-      NumStages,
-      cutlass::arch::OpMultiplyAdd,
-      IteratorAlgorithm,
-      cutlass::conv::StrideSupport::kStrided,
-      8,
-      8>::Kernel;
-  using ImplicitGemm =
-      cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
-
-  int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
-  int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
-  cutlass::conv::Mode mode = cutlass::conv::Mode::kCrossCorrelation;
-  cutlass::conv::Conv2dProblemSize problem_size({batch, ih, iw, ic},
-                                                {oc, kh, kw, ic},
-                                                {pad_h, pad_w, pad_h, pad_w},
-                                                {stride_h, stride_w},
-                                                {1, 1},
-                                                {batch, oh, ow, oc},
-                                                mode,
-                                                1);
-
-  typename ImplicitGemm::Arguments arguments{
-      problem_size,
-      {(cutlass::half_t *)(input), {ic, ic * iw, ic * iw * ih}},
-      {(cutlass::half_t *)(weight), {ic, ic * kw, ic * kw * kh}},
-      {(cutlass::half_t *)(bias), {0, 0, 0}},
-      {(cutlass::half_t *)(output), {oc, oc * ow, oc * ow * oh}},
-      {1.f, 1.f}};
-
-  ImplicitGemm implicit_gemm_op;
-  size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
-  void *workspace;
-  cudaMalloc((void **)&workspace, bytes);
-
-  cutlass::Status status = implicit_gemm_op.can_implement(arguments);
-  check(status);
-  status = implicit_gemm_op.initialize(arguments, workspace);
-  check(status);
-  status = implicit_gemm_op();
-  check(status);
-  return status;
-}
-
-cutlass::Status cutlass_nhwc_conv2d_bias_relu3(const half *input,
-                                   const half *weight,
-                                   const half *bias,
-                                   half *output,
-                                   int batch,
-                                   int ic,
-                                   int ih,
-                                   int iw,
-                                   int kh,
-                                   int kw,
-                                   int oc,
-                                   int pad_h,
-                                   int pad_w,
-                                   int stride_h,
-                                   int stride_w) {
-  using ElementAccumulator = float;
-  using ElementComputeEpilogue = float;
-  using ElementInputA = cutlass::half_t;
-  using ElementInputB = cutlass::half_t;
-  using ElementOutput = cutlass::half_t;
-  using LayoutInputA = cutlass::layout::TensorNHWC;
-  using LayoutInputB = cutlass::layout::TensorNHWC;
-  using LayoutOutput = cutlass::layout::TensorNHWC;
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm75;
-  using ThreadblockShape = cutlass::gemm::GemmShape<128, 32, 64>;
-  using WarpShape = cutlass::gemm::GemmShape<32, 32, 64>;
-  using InstructionShape = cutlass::gemm::GemmShape<16, 8, 8>;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<4>;
-  constexpr int NumStages = 2;
-  static cutlass::conv::IteratorAlgorithm const IteratorAlgorithm =
-      cutlass::conv::IteratorAlgorithm::kOptimized;
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombinationRelu<
-      ElementOutput,
-      128 / cutlass::sizeof_bits<ElementOutput>::value,
-      float,
-      ElementComputeEpilogue>;
-
-  using Conv2dFpropKernel = typename cutlass::conv::kernel::DefaultConv2dFprop<
-      ElementInputA,
-      LayoutInputA,
-      ElementInputB,
-      LayoutInputB,
-      ElementOutput,
-      LayoutOutput,
-      ElementAccumulator,
-      MMAOp,
-      SmArch,
-      ThreadblockShape,
-      WarpShape,
-      InstructionShape,
-      EpilogueOp,
-      SwizzleThreadBlock,
-      NumStages,
-      cutlass::arch::OpMultiplyAdd,
-      IteratorAlgorithm,
-      cutlass::conv::StrideSupport::kStrided,
-      8,
-      8>::Kernel;
-  using ImplicitGemm =
-      cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
-
-  int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
-  int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
-  cutlass::conv::Mode mode = cutlass::conv::Mode::kCrossCorrelation;
-  cutlass::conv::Conv2dProblemSize problem_size({batch, ih, iw, ic},
-                                                {oc, kh, kw, ic},
-                                                {pad_h, pad_w, pad_h, pad_w},
-                                                {stride_h, stride_w},
-                                                {1, 1},
-                                                {batch, oh, ow, oc},
-                                                mode,
-                                                1);
-
-  typename ImplicitGemm::Arguments arguments{
-      problem_size,
-      {(cutlass::half_t *)(input), {ic, ic * iw, ic * iw * ih}},
-      {(cutlass::half_t *)(weight), {ic, ic * kw, ic * kw * kh}},
-      {(cutlass::half_t *)(bias), {0, 0, 0}},
-      {(cutlass::half_t *)(output), {oc, oc * ow, oc * ow * oh}},
-      {1.f, 1.f}};
-
-  ImplicitGemm implicit_gemm_op;
-  size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
-  void *workspace;
-  cudaMalloc((void **)&workspace, bytes);
-
-  cutlass::Status status = implicit_gemm_op.can_implement(arguments);
-  check(status);
-  status = implicit_gemm_op.initialize(arguments, workspace);
-  check(status);
-  status = implicit_gemm_op();
-  check(status);
-  return status;
-}
-
-cutlass::Status cutlass_nhwc_conv2d_bias_relu4(const half *input,
-                                   const half *weight,
-                                   const half *bias,
-                                   half *output,
-                                   int batch,
-                                   int ic,
-                                   int ih,
-                                   int iw,
-                                   int kh,
-                                   int kw,
-                                   int oc,
-                                   int pad_h,
-                                   int pad_w,
-                                   int stride_h,
-                                   int stride_w) {
-  using ElementAccumulator = float;
-  using ElementComputeEpilogue = float;
-  using ElementInputA = cutlass::half_t;
-  using ElementInputB = cutlass::half_t;
-  using ElementOutput = cutlass::half_t;
-  using LayoutInputA = cutlass::layout::TensorNHWC;
-  using LayoutInputB = cutlass::layout::TensorNHWC;
-  using LayoutOutput = cutlass::layout::TensorNHWC;
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm75;
-  using ThreadblockShape = cutlass::gemm::GemmShape<128, 64, 64>;
-  using WarpShape = cutlass::gemm::GemmShape<32, 32, 64>;
-  using InstructionShape = cutlass::gemm::GemmShape<16, 8, 8>;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<4>;
-  constexpr int NumStages = 2;
-  static cutlass::conv::IteratorAlgorithm const IteratorAlgorithm =
-      cutlass::conv::IteratorAlgorithm::kOptimized;
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombinationRelu<
-      ElementOutput,
-      128 / cutlass::sizeof_bits<ElementOutput>::value,
-      float,
-      ElementComputeEpilogue>;
-
-  using Conv2dFpropKernel = typename cutlass::conv::kernel::DefaultConv2dFprop<
-      ElementInputA,
-      LayoutInputA,
-      ElementInputB,
-      LayoutInputB,
-      ElementOutput,
-      LayoutOutput,
-      ElementAccumulator,
-      MMAOp,
-      SmArch,
-      ThreadblockShape,
-      WarpShape,
-      InstructionShape,
-      EpilogueOp,
-      SwizzleThreadBlock,
-      NumStages,
-      cutlass::arch::OpMultiplyAdd,
-      IteratorAlgorithm,
-      cutlass::conv::StrideSupport::kStrided,
-      8,
-      8>::Kernel;
-  using ImplicitGemm =
-      cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
-
-  int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
-  int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
-  cutlass::conv::Mode mode = cutlass::conv::Mode::kCrossCorrelation;
-  cutlass::conv::Conv2dProblemSize problem_size({batch, ih, iw, ic},
-                                                {oc, kh, kw, ic},
-                                                {pad_h, pad_w, pad_h, pad_w},
-                                                {stride_h, stride_w},
-                                                {1, 1},
-                                                {batch, oh, ow, oc},
-                                                mode,
-                                                1);
-
-  typename ImplicitGemm::Arguments arguments{
-      problem_size,
-      {(cutlass::half_t *)(input), {ic, ic * iw, ic * iw * ih}},
-      {(cutlass::half_t *)(weight), {ic, ic * kw, ic * kw * kh}},
-      {(cutlass::half_t *)(bias), {0, 0, 0}},
-      {(cutlass::half_t *)(output), {oc, oc * ow, oc * ow * oh}},
-      {1.f, 1.f}};
-
-  ImplicitGemm implicit_gemm_op;
-  size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
-  void *workspace;
-  cudaMalloc((void **)&workspace, bytes);
-
-  cutlass::Status status = implicit_gemm_op.can_implement(arguments);
-  check(status);
-  status = implicit_gemm_op.initialize(arguments, workspace);
-  check(status);
-  status = implicit_gemm_op();
-  check(status);
-  return status;
-}
-
-
-cutlass::Status cutlass_nhwc_conv2d_bias_relu5(const half *input,
-                                   const half *weight,
-                                   const half *bias,
-                                   half *output,
-                                   int batch,
-                                   int ic,
-                                   int ih,
-                                   int iw,
-                                   int kh,
-                                   int kw,
-                                   int oc,
-                                   int pad_h,
-                                   int pad_w,
-                                   int stride_h,
-                                   int stride_w) {
-  using ElementAccumulator = float;
-  using ElementComputeEpilogue = float;
-  using ElementInputA = cutlass::half_t;
-  using ElementInputB = cutlass::half_t;
-  using ElementOutput = cutlass::half_t;
-  using LayoutInputA = cutlass::layout::TensorNHWC;
-  using LayoutInputB = cutlass::layout::TensorNHWC;
-  using LayoutOutput = cutlass::layout::TensorNHWC;
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm75;
-  using ThreadblockShape = cutlass::gemm::GemmShape<64, 64, 32>;
-  using WarpShape = cutlass::gemm::GemmShape<32, 32, 32>;
-  using InstructionShape = cutlass::gemm::GemmShape<16, 8, 8>;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<4>;
-  constexpr int NumStages = 2;
-  static cutlass::conv::IteratorAlgorithm const IteratorAlgorithm =
-      cutlass::conv::IteratorAlgorithm::kOptimized;
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombinationRelu<
-      ElementOutput,
-      128 / cutlass::sizeof_bits<ElementOutput>::value,
-      float,
-      ElementComputeEpilogue>;
-
-  using Conv2dFpropKernel = typename cutlass::conv::kernel::DefaultConv2dFprop<
-      ElementInputA,
-      LayoutInputA,
-      ElementInputB,
-      LayoutInputB,
-      ElementOutput,
-      LayoutOutput,
-      ElementAccumulator,
-      MMAOp,
-      SmArch,
-      ThreadblockShape,
-      WarpShape,
-      InstructionShape,
-      EpilogueOp,
-      SwizzleThreadBlock,
-      NumStages,
-      cutlass::arch::OpMultiplyAdd,
-      IteratorAlgorithm,
-      cutlass::conv::StrideSupport::kStrided,
-      8,
-      8>::Kernel;
-  using ImplicitGemm =
-      cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
-
-  int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
-  int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
-  cutlass::conv::Mode mode = cutlass::conv::Mode::kCrossCorrelation;
-  cutlass::conv::Conv2dProblemSize problem_size({batch, ih, iw, ic},
-                                                {oc, kh, kw, ic},
-                                                {pad_h, pad_w, pad_h, pad_w},
-                                                {stride_h, stride_w},
-                                                {1, 1},
-                                                {batch, oh, ow, oc},
-                                                mode,
-                                                1);
-
-  typename ImplicitGemm::Arguments arguments{
-      problem_size,
-      {(cutlass::half_t *)(input), {ic, ic * iw, ic * iw * ih}},
-      {(cutlass::half_t *)(weight), {ic, ic * kw, ic * kw * kh}},
-      {(cutlass::half_t *)(bias), {0, 0, 0}},
-      {(cutlass::half_t *)(output), {oc, oc * ow, oc * ow * oh}},
-      {1.f, 1.f}};
-
-  ImplicitGemm implicit_gemm_op;
-  size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
-  void *workspace;
-  cudaMalloc((void **)&workspace, bytes);
-
-  cutlass::Status status = implicit_gemm_op.can_implement(arguments);
-  check(status);
-  status = implicit_gemm_op.initialize(arguments, workspace);
-  check(status);
-  status = implicit_gemm_op();
-  check(status);
-  return status;
-}
-
-
-cutlass::Status cutlass_nhwc_conv2d_bias_relu6(const half *input,
-                                   const half *weight,
-                                   const half *bias,
-                                   half *output,
-                                   int batch,
-                                   int ic,
-                                   int ih,
-                                   int iw,
-                                   int kh,
-                                   int kw,
-                                   int oc,
-                                   int pad_h,
-                                   int pad_w,
-                                   int stride_h,
-                                   int stride_w) {
-  using ElementAccumulator = float;
-  using ElementComputeEpilogue = float;
-  using ElementInputA = cutlass::half_t;
-  using ElementInputB = cutlass::half_t;
-  using ElementOutput = cutlass::half_t;
-  using LayoutInputA = cutlass::layout::TensorNHWC;
-  using LayoutInputB = cutlass::layout::TensorNHWC;
-  using LayoutOutput = cutlass::layout::TensorNHWC;
-  using MMAOp = cutlass::arch::OpClassTensorOp;
-  using SmArch = cutlass::arch::Sm75;
-  using ThreadblockShape = cutlass::gemm::GemmShape<64, 128, 32>;
-  using WarpShape = cutlass::gemm::GemmShape<32, 64, 32>;
-  using InstructionShape = cutlass::gemm::GemmShape<16, 8, 8>;
-  using SwizzleThreadBlock =
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<4>;
-  constexpr int NumStages = 2;
-  static cutlass::conv::IteratorAlgorithm const IteratorAlgorithm =
-      cutlass::conv::IteratorAlgorithm::kOptimized;
-  using EpilogueOp = cutlass::epilogue::thread::LinearCombinationRelu<
-      ElementOutput,
-      128 / cutlass::sizeof_bits<ElementOutput>::value,
-      float,
-      ElementComputeEpilogue>;
-
-  using Conv2dFpropKernel = typename cutlass::conv::kernel::DefaultConv2dFprop<
-      ElementInputA,
-      LayoutInputA,
-      ElementInputB,
-      LayoutInputB,
-      ElementOutput,
-      LayoutOutput,
-      ElementAccumulator,
-      MMAOp,
-      SmArch,
-      ThreadblockShape,
-      WarpShape,
-      InstructionShape,
-      EpilogueOp,
-      SwizzleThreadBlock,
-      NumStages,
-      cutlass::arch::OpMultiplyAdd,
-      IteratorAlgorithm,
-      cutlass::conv::StrideSupport::kStrided,
-      8,
-      8>::Kernel;
-  using ImplicitGemm =
-      cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
-
-  int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
-  int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
-  cutlass::conv::Mode mode = cutlass::conv::Mode::kCrossCorrelation;
-  cutlass::conv::Conv2dProblemSize problem_size({batch, ih, iw, ic},
-                                                {oc, kh, kw, ic},
-                                                {pad_h, pad_w, pad_h, pad_w},
-                                                {stride_h, stride_w},
-                                                {1, 1},
-                                                {batch, oh, ow, oc},
-                                                mode,
-                                                1);
-
-  typename ImplicitGemm::Arguments arguments{
-      problem_size,
-      {(cutlass::half_t *)(input), {ic, ic * iw, ic * iw * ih}},
-      {(cutlass::half_t *)(weight), {ic, ic * kw, ic * kw * kh}},
-      {(cutlass::half_t *)(bias), {0, 0, 0}},
-      {(cutlass::half_t *)(output), {oc, oc * ow, oc * ow * oh}},
-      {1.f, 1.f}};
-
-  ImplicitGemm implicit_gemm_op;
-  size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
-  void *workspace;
-  cudaMalloc((void **)&workspace, bytes);
-
-  cutlass::Status status = implicit_gemm_op.can_implement(arguments);
-  check(status);
-  status = implicit_gemm_op.initialize(arguments, workspace);
-  check(status);
-  status = implicit_gemm_op();
-  check(status);
-  return status;
-}
-
-
-#define N 6
+#define N 9
 cutlass::Status (*cutlass_conv2d_bias_relu_all_func[N])(const half *,
                                        const half *,
                                        const half *,
@@ -625,16 +169,20 @@ cutlass::Status (*cutlass_conv2d_bias_relu_all_func[N])(const half *,
                                        int,
                                        int,
                                        int,
-                                       int) = {cutlass_nhwc_conv2d_bias_relu1,
-                                               cutlass_nhwc_conv2d_bias_relu2,
-                                               cutlass_nhwc_conv2d_bias_relu3, 
-                                               cutlass_nhwc_conv2d_bias_relu4,
-                                               cutlass_nhwc_conv2d_bias_relu5,
-                                               cutlass_nhwc_conv2d_bias_relu6
+                                       int) = {
+                                                cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 64, 64>, cutlass::gemm::GemmShape<32, 32, 64>>,
+                                                cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 32, 64>, cutlass::gemm::GemmShape<32, 32, 64>>,
+                                                cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<128, 32, 64>, cutlass::gemm::GemmShape<32, 32, 64>>,
+                                                cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<128, 64, 64>, cutlass::gemm::GemmShape<32, 32, 64>>,
+                                                cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 64, 32>, cutlass::gemm::GemmShape<32, 32, 32>>,
+                                                cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 128, 32>, cutlass::gemm::GemmShape<32, 64, 32>>,
+                                                cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 128, 64>, cutlass::gemm::GemmShape<64, 64, 32>>,
+                                                cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 256, 32>, cutlass::gemm::GemmShape<64, 64, 32>>,
+                                                cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<128, 64, 32>, cutlass::gemm::GemmShape<64, 32, 32>>
                                                };
-std::map<std::vector<int>,   int> map_problem2_func0;
+std::map<std::vector<int>,   int> map_problem_conv2d_bias_relu;
 
-void cutlass_nhwc_conv2d_bias_relu(const half *input,
+void cutlass_conv2d_bias_relu(const half *input,
                        const half *weight,
                        const half *bias,
                        half *output,
@@ -662,9 +210,8 @@ void cutlass_nhwc_conv2d_bias_relu(const half *input,
   problem_size.push_back(stride_h);
   problem_size.push_back(stride_w);
 
- if (map_problem2_func0.count(problem_size)) {
-     std::cout << map_problem2_func0[problem_size] << std::endl;
-    cutlass_conv2d_bias_relu_all_func[map_problem2_func0.at(problem_size)](CONV_PARAMS0);
+ if (map_problem_conv2d_bias_relu.count(problem_size)) {
+    cutlass_conv2d_bias_relu_all_func[map_problem_conv2d_bias_relu.at(problem_size)](CONV_ARGS0);
     return;
  }
   
@@ -672,7 +219,7 @@ void cutlass_nhwc_conv2d_bias_relu(const half *input,
   for (int i = 0; i < N; i++) {
     auto func = cutlass_conv2d_bias_relu_all_func[i];
     for (int i = 0; i < WARMUP; i++) {
-      func(CONV_PARAMS0);
+      func(CONV_ARGS0);
     }
 
     cudaEvent_t beg, end;
@@ -680,17 +227,16 @@ void cutlass_nhwc_conv2d_bias_relu(const half *input,
     cudaEventCreate(&end);
     cudaEventRecord(beg);
     for (int i = 0; i < REPEATE; i++) {
-      func(CONV_PARAMS0);
+      func(CONV_ARGS0);
     }
 
     cudaEventRecord(end);
     cudaEventSynchronize(end);
     float elapsed_time;
     cudaEventElapsedTime(&elapsed_time, beg, end);
-    printf("gpu conv compute time: %f\n", elapsed_time);
     if (elapsed_time < min_time) {
         min_time = elapsed_time;
-        map_problem2_func0[problem_size] = i;
+        map_problem_conv2d_bias_relu[problem_size] = i;
     }
 
     // debug code
@@ -717,7 +263,7 @@ void cutlass_nhwc_conv2d_bias_relu(const half *input,
 
     // naive_conv_cpu(cpu_input, cpu_weight, cpu_bias, cpu_output, batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, \
     //   stride_h, stride_w, nullptr);
-    // //std::cout << "max diff : "  <<  diff(output_from_cutlass, cpu_output, output_size) << std::endl;
+    // std::cout << "max diff : "  <<  diff(output_from_cutlass, cpu_output, output_size) << std::endl;
     // free(cpu_output);
     // free(cpu_input);
     // free(cpu_weight);

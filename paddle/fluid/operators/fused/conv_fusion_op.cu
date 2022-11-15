@@ -21,7 +21,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn_info.h"
 
-#include "cutlass/conv2d_util.h"
 #include "cutlass/conv2d_bias_relu.h"
 #include "cutlass/conv2d_bias_add_relu.h"
 #include "cutlass/conv2d_bias.h"
@@ -79,10 +78,10 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
     int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
   
-    if (ctx.Attr<std::string>("data_format") == "NHWC") {
+    if (ctx.Attr<std::string>("data_format") == "NHWC" && ic % 8 == 0 && oc % 8 ==0) {
       if (residual)
       {
-        cutlass_nhwc_conv2d_bias_add_relu(
+        cutlass_conv2d_bias_add_relu(
           (const half*)(input->data<T>()),
           (const half*)(filter->data<T>()),
           (const half*)(bias->data<T>()),
@@ -95,7 +94,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       }
       else if(activation == "relu")
       {
-        cutlass_nhwc_conv2d_bias_relu(
+        cutlass_conv2d_bias_relu(
           (const half*)(input->data<T>()),
           (const half*)(filter->data<T>()),
           (const half*)(bias->data<T>()),
@@ -107,7 +106,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       }
       else
       {
-        cutlass_nhwc_conv2d_bias(
+        cutlass_conv2d_bias(
           (const half*)(input->data<T>()),
           (const half*)(filter->data<T>()),
           (const half*)(bias->data<T>()),

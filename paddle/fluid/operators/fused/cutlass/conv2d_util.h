@@ -4,7 +4,7 @@
 
 void check(cutlass::Status status) {
   if (status != cutlass::Status::kSuccess) {
-    printf("不能实施\n");
+    printf("cutlass can not deal with this problem size\n");
   }
 }
 
