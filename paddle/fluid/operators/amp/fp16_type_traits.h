@@ -14,30 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 namespace paddle {
 namespace operators {
 namespace details {
 
-template <typename T>
-class MPTypeTrait {
- public:
-  using Type = T;
-};
-
-template <>
-class MPTypeTrait<platform::float16> {
- public:
-  using Type = float;
-};
-
-template <>
-class MPTypeTrait<platform::bfloat16> {
- public:
-  using Type = float;
-};
+using phi::dtype::MPTypeTrait;
 
 }  // namespace details
 }  // namespace operators
