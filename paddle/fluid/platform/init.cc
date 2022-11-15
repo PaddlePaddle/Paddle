@@ -285,8 +285,6 @@ void InitDevices(const std::vector<int> devices) {
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
-
-#endif
 }
 
 #ifndef _WIN32
