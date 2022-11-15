@@ -743,7 +743,6 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
 
         # use rand not randn to avoiding pow producing `NAN`
         def generate_weight(op_type):
-            # elementwise_floordiv is integer only
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=[32], dtype=np.int32
