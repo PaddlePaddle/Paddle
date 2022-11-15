@@ -1534,7 +1534,7 @@ class Variable(metaclass=VariableMetaClass):
 
                 # create a detached Variable
                 y = x.detach()
-                
+
         """
 
         assert (

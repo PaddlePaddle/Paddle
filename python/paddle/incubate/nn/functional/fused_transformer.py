@@ -337,7 +337,7 @@ def fused_bias_dropout_residual_layer_norm(
                 x, residual, bias)
             # [2, 4, 128]
             print(output.shape)
-            
+
     """
     seed = None
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
