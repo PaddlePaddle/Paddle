@@ -24,6 +24,10 @@ from paddle.fluid.framework import in_dygraph_mode
 
 from ..utils.log_util import logger
 
+from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+    get_rng_state_tracker,
+)
+
 __all__ = []
 
 
@@ -54,10 +58,6 @@ def check_recompute_necessary(inputs):
 
 @contextlib.contextmanager
 def swith_rng_state_tracker(rng_state, tracker):
-    from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
-        get_rng_state_tracker,
-    )
-
     orig_cuda_rng_state = paddle.get_cuda_rng_state()
     orig_cuda_rng_tracker = get_rng_state_tracker().get_states_tracker()
 
@@ -73,10 +73,6 @@ def swith_rng_state_tracker(rng_state, tracker):
 class LegacyRecomputeFunction(LegacyPyLayer):
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args):
-        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
-            get_rng_state_tracker,
-        )
-
         # store for recomputing
         ctx.run_function = run_function
         ctx.preserve_rng_state = preserve_rng_state
@@ -225,10 +221,6 @@ class LegacyRecomputeFunction(LegacyPyLayer):
 class RecomputeFunction(PyLayer):
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args, **kwargs):
-        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
-            get_rng_state_tracker,
-        )
-
         # store for recomputing
         ctx.run_function = run_function
         ctx.preserve_rng_state = preserve_rng_state
@@ -390,9 +382,6 @@ def _recompute_without_reentrant(
     """
     recompute without reentrant, that means use hook to implement the recompute function rather than re-entrant autograd.
     """
-    from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
-        get_rng_state_tracker,
-    )
 
     if preserve_rng_state:
         cur_device = paddle.get_device()
@@ -513,7 +502,8 @@ def recompute(function, *args, **kwargs):
         **kwargs(Dict): Kwargs should only contain the key-value pair of preserve_rng_state, which is used to
               indicate whether to save the forward rng. If it is True, then the last forward rng value will be
               restored when the forward recalculation of backpropagation is performed. The default
-              preserve_rng_state is True.
+              preserve_rng_state is True. if the Kwargs contains other key-value, it must be contain the key-value(use_reentrant=False),
+              which indicates the hook implementation of recompute. default it is the PyLayer implementation of recompute.
 
     Returns:
         Output of function on args.
