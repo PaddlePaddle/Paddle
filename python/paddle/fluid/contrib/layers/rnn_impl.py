@@ -18,6 +18,7 @@ from paddle.fluid import layers, unique_name
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.layers.control_flow import StaticRNN
+from paddle import tensor
 
 __all__ = ['BasicGRUUnit', 'basic_gru', 'BasicLSTMUnit', 'basic_lstm']
 
@@ -149,7 +150,7 @@ class BasicGRUUnit(Layer):
     def forward(self, input, pre_hidden):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
 
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
+        gate_input = tensor.matmul(x=concat_input_hidden, y=self._gate_weight)
 
         gate_input = layers.elementwise_add(gate_input, self._gate_bias)
 
@@ -158,7 +159,7 @@ class BasicGRUUnit(Layer):
 
         r_hidden = r * pre_hidden
 
-        candidate = layers.matmul(
+        candidate = tensor.matmul(
             layers.concat([input, r_hidden], 1), self._candidate_weight
         )
         candidate = layers.elementwise_add(candidate, self._candidate_bias)
@@ -872,7 +873,7 @@ class BasicLSTMUnit(Layer):
 
     def forward(self, input, pre_hidden, pre_cell):
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
+        gate_input = tensor.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = layers.elementwise_add(gate_input, self._bias)
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)

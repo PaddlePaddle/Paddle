@@ -244,9 +244,8 @@ class MultiHeadAttention(nn.Layer):
             q, k, v, cache = self._prepare_qkv(
                 query, key, value, use_cache, cache
             )
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        product = paddle.matmul(x=q, y=k, transpose_y=True)
+        product = paddle.scale(product, scale=self.head_dim**-0.5)
         if attn_mask is not None:
             product = product + attn_mask
         weights = F.softmax(product)
