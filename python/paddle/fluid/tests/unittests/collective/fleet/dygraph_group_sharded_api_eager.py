@@ -172,6 +172,20 @@ def test_sharding_api():
             atol=1e-3,
         )
 
+    # test sharding + dp, just for test
+    dp_group = paddle.distributed.new_group(
+        list(range(paddle.distributed.get_world_size()))
+    )
+
+    test_params = train_mlp(
+        mlp,
+        shard_level="os_g",
+        use_multi_precision=True,
+        output_dir=output_dir,
+        amp_level='O2',
+        dp_group=dp_group,
+    )
+
     # AMP
     mlp3, mlp4 = MLP(), MLP()
     mlp3.set_state_dict(state_dict)
