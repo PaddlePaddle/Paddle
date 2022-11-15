@@ -102,6 +102,7 @@ class IterableDataset(Dataset):
     Examples 1:
 
         .. code-block:: python
+            :name: code-example1
 
             import numpy as np
             from paddle.io import IterableDataset
@@ -131,6 +132,7 @@ class IterableDataset(Dataset):
     Example 2: splitting data copy in each worker in :code:`__iter__`
 
         .. code-block:: python
+            :name: code-example2
 
             import math
             import paddle
@@ -172,6 +174,7 @@ class IterableDataset(Dataset):
     Example 3: splitting data copy in each worker by :code:`worker_init_fn`
 
         .. code-block:: python
+            :name: code-example3
 
             import math
             import paddle
