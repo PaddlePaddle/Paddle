@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 namespace paddle {
@@ -110,7 +110,7 @@ void ConcatDenseTensorWithType(const DeviceContext &dev_ctx,
       ConcatDenseTensor<DeviceContext, int64_t>()(dev_ctx, t_list, p_out);
       break;
     case phi::DataType::FLOAT16:
-      ConcatDenseTensor<DeviceContext, platform::float16>()(
+      ConcatDenseTensor<DeviceContext, phi::dtype::float16>()(
           dev_ctx, t_list, p_out);
       break;
     case phi::DataType::FLOAT32:
@@ -147,7 +147,7 @@ void SplitDenseTensorWithType(const DeviceContext &dev_ctx,
       SplitDenseTensor<DeviceContext, int64_t>()(dev_ctx, t_in, p_list);
       break;
     case phi::DataType::FLOAT16:
-      SplitDenseTensor<DeviceContext, platform::float16>()(
+      SplitDenseTensor<DeviceContext, phi::dtype::float16>()(
           dev_ctx, t_in, p_list);
       break;
     case phi::DataType::FLOAT32:
