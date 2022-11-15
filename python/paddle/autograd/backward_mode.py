@@ -46,6 +46,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
         .. code-block:: python
 
             import paddle
+            import sys
             x = paddle.to_tensor([[1, 2], [3, 4]], dtype='float32', stop_gradient=False)
             y = paddle.to_tensor([[3, 2], [3, 4]], dtype='float32')
 
