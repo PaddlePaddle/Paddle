@@ -52,6 +52,9 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
                             false,
                             "Use new executor in control flow op");
+PADDLE_DEFINE_EXPORTED_bool(new_executor_trace_run,
+                            true,
+                            "Enable trace execution for standalone executor.");
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
@@ -171,9 +174,11 @@ interpreter::CostInfo InterpreterCore::DryRun(
     if (!gc_) {
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
-
-    // ExecuteInstructionList(vec_instruction_);
-    TraceInstructionList(vec_instruction_);
+    if (FLAGS_new_executor_trace_run) {
+      TraceInstructionList(vec_instruction_);
+    } else {
+      ExecuteInstructionList(vec_instruction_);
+    }
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
 
@@ -207,8 +212,11 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    // ExecuteInstructionList(vec_instruction_);
-    TraceInstructionList(vec_instruction_);
+    if (FLAGS_new_executor_trace_run) {
+      TraceInstructionList(vec_instruction_);
+    } else {
+      ExecuteInstructionList(vec_instruction_);
+    }
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(place_)) {
       platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -270,8 +278,11 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    // ExecuteInstructionList(vec_instruction_);
-    TraceInstructionList(vec_instruction_);
+    if (FLAGS_new_executor_trace_run) {
+      TraceInstructionList(vec_instruction_);
+    } else {
+      ExecuteInstructionList(vec_instruction_);
+    }
 #ifdef PADDLE_WITH_ASCEND_CL
     if (platform::is_npu_place(place_)) {
       platform::DeviceContextPool::Instance().Get(place_)->Wait();
@@ -851,26 +862,9 @@ void InterpreterCore::TraceInstructionList(
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";
-      // if (exception_notifier_ != nullptr) {
-      //   exception_notifier_->NotifyEvent();
-      // }
       break;
     }
-
-    // VLOG(4) << "unfinished_op_number_: " << unfinished_op_number_;
-    // if (UNLIKELY(unfinished_op_number_.fetch_sub(
-    //                  1, std::memory_order_relaxed) == 1)) {
-    //   VLOG(1) << "unfinished_op_number_ - 1 == 1";
-    //   if (completion_notifier_ != nullptr) {
-    //     VLOG(1) << "completion_notifier_ Notify.";
-    //     completion_notifier_->NotifyEvent();
-    //   }
-    // }
   }
-
-  // auto event_name = main_thread_blocker_.WaitEvent();
-  // VLOG(1) << "main_thread_blocker_(" << &main_thread_blocker_
-  //         << ") got event_name: " << event_name;
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(1) << "Exception caught " << exception_holder_.Type();
