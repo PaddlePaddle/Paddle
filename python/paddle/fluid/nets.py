@@ -15,6 +15,7 @@
 from . import layers
 from .data_feeder import check_variable_and_dtype, convert_dtype
 from ..utils import deprecated
+from .. import matmul
 
 __all__ = [
     "simple_img_conv_pool",
@@ -619,7 +620,7 @@ def scaled_dot_product_attention(
 
     key_dim_per_head = keys.shape[-1] // num_heads
     scaled_q = layers.scale(x=q, scale=key_dim_per_head**-0.5)
-    product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
+    product = matmul(x=scaled_q, y=k, transpose_y=True)
 
     weights = layers.reshape(
         x=layers.reshape(
@@ -631,5 +632,5 @@ def scaled_dot_product_attention(
         weights = layers.dropout(
             weights, dropout_prob=dropout_rate, is_test=False
         )
-    ctx_multiheads = layers.matmul(weights, v)
+    ctx_multiheads = matmul(weights, v)
     return __combine_heads(ctx_multiheads)
