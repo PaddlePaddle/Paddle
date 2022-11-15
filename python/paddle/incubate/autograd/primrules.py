@@ -278,11 +278,6 @@ def sum_orig2prim(op, xs):
     return x0
 
 
-@REGISTER_ORIG2PRIM('reduce_sum')
-def reduce_sum_orig2prim(op, xs):
-    return reduce(xs, [])
-
-
 @REGISTER_ORIG2PRIM('index_select')
 def index_select_orig2prim(op, index_t, x):
     return gather(x, indextensor=index_t, axis=op.attr('dim'))
