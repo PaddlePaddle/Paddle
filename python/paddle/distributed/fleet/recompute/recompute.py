@@ -619,6 +619,8 @@ def recompute(function, *args, **kwargs):
     """
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
     preserve = kwargs.pop('preserve_rng_state', True)
+
+    # whether to use reentrant method to implement recompute
     use_reentrant = kwargs.pop('use_reentrant', True)
 
     if kwargs and use_reentrant:
