@@ -3902,20 +3902,6 @@ class TestBook(LayerTest):
             out = layers.gaussian_random(shape=[20, 30])
             return out
 
-    def make_sampling_id(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(
-                name="X",
-                shape=[13, 11],
-                dtype='float32',
-                append_batch_size=False,
-            )
-
-            out = layers.sampling_id(x)
-            return out
-
     def make_sum(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
