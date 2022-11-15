@@ -28,6 +28,7 @@ from paddle.fluid.layers import rnn as dynamic_rnn
 from paddle.fluid import contrib
 from paddle.fluid.contrib.layers import basic_lstm
 import paddle.fluid.layers.utils as utils
+import paddle
 
 import numpy as np
 
