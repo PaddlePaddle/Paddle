@@ -1392,7 +1392,7 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
 
   if (!ret) {
     auto simplifier = DimsSimplifier<T>(
-            rank, numel, perm, phi::vectorize<int64_t>(in.dims()));
+        rank, numel, perm, phi::vectorize<int64_t>(in.dims()));
     auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithEigen<T>);
     tuner->AddCallBack(PermuteAndTranspose<T>);
 
@@ -1402,13 +1402,13 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
         paddle::experimental::CppTypeToDataType<T>::Type());
 
     tuner->Run(ctx,
-              phi::autotune::AlgorithmType::kTranspose,
-              key,
-              ctx,
-              rank,
-              const_cast<phi::DenseTensor*>(&in),
-              out,
-              simplifier);
+               phi::autotune::AlgorithmType::kTranspose,
+               key,
+               ctx,
+               rank,
+               const_cast<phi::DenseTensor*>(&in),
+               out,
+               simplifier);
   }
 }
 
