@@ -124,7 +124,7 @@ class SplitOp : public framework::OperatorWithKernel {
       if (x_md.data.format_desc.blocking.inner_nblks == 0)
         return framework::OpKernelType(input_data_type,
                                        ctx.GetPlace(),
-                                       phi::DataLayout::kMKLDNN,
+                                       phi::DataLayout::ONEDNN,
                                        framework::LibraryType::kMKLDNN);
     }
 #endif

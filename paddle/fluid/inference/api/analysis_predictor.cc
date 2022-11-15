@@ -1150,6 +1150,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
     argument_.SetXpuDeviceId(config_.xpu_device_id_);
     argument_.SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
+    argument_.SetUseOpenCL(config_.use_opencl_);
     // NNAdapter related
     argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
     argument_.SetNNAdapterDeviceNames(
@@ -2258,6 +2259,7 @@ USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
+USE_TRT_CONVERTER(where);
 USE_TRT_CONVERTER(swish);
 USE_TRT_CONVERTER(silu);
 USE_TRT_CONVERTER(group_norm);
