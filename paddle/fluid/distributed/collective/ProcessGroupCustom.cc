@@ -299,6 +299,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
   return task;
 }
 
+const phi::DeviceContext& ProcessGroupCustom::GetDeviceContext(
+    const Place& place) const {
+  const std::string key = GetKeyFromPlace(place);
+  const auto& iter = places_to_ctx_.find(key);
+  PADDLE_ENFORCE_NE(
+      iter,
+      places_to_ctx_.end(),
+      platform::errors::NotFound(
+          "Cannot find the device context in this process group."));
+  return *iter->second[0];
+}
+
 phi::ccl::CCLComm ProcessGroupCustom::CustomCCLComm(const Place& place) const {
   std::vector<Place> places = {place};
   const auto& iter = places_to_customcomm_.find(GetKeyFromPlaces(places));
