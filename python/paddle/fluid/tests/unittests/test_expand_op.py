@@ -250,8 +250,8 @@ class TestExpandDygraphAPI(unittest.TestCase):
     def test_expand_times_is_tensor(self):
         with paddle.fluid.dygraph.guard():
             a = paddle.rand([2, 5])
-            b = paddle.paddle.expand(a, [4, 15])
-            c = paddle.paddle.expand(a, [4, 15])
+            b = paddle.expand(a, [4, 15])
+            c = paddle.expand(a, [4, 15])
             np.testing.assert_array_equal(b.numpy(), np.tile(a.numpy(), [2, 3]))
             np.testing.assert_array_equal(c.numpy(), np.tile(a.numpy(), [2, 3]))
 

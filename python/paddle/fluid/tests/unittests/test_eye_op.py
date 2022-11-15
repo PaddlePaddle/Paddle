@@ -131,7 +131,7 @@ class API_TestTensorEye(unittest.TestCase):
 
         paddle.disable_static()
         batch_shape = [3, 2]
-        out = paddle.eye(10, 10, dtype="int64", batch_shape=batch_shape)
+        out = paddle.eye(10, 10, dtype="int64")
         out = paddle.unsqueeze(out, [0, 1])
         out = paddle.expand(out, [3, 2, -1, -1])
         result = np.eye(10, dtype="int64")
