@@ -147,7 +147,6 @@ __all__ = [
     'flatten',
     'stack',
     'pad2d',
-    'unstack',
     'unique',
     'unique_with_counts',
     'expand',
