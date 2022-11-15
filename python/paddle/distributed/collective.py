@@ -152,17 +152,15 @@ def _new_process_group_impl(
     genv = _get_global_env()
     assert backend in _valid_backend_list, "Unsupported backend: %s." % backend
     if backend == "gloo":
-        place = core.CPUPlace()
-        pg = core.ProcessGroupGloo(store, rank, world_size, place, group_id)
+        pg = core.ProcessGroupGloo(store, rank, world_size, group_id)
     elif backend == "nccl":
-        place = core.CUDAPlace(genv.device_id)
-        pg = core.ProcessGroupNCCL(store, rank, world_size, place, group_id)
+        pg = core.ProcessGroupNCCL(store, rank, world_size, group_id)
     elif backend == "xccl":
-        place = core.CustomPlace(genv.device_type, genv.device_id)
-        pg = core.ProcessGroupCustom(store, rank, world_size, place, group_id)
+        pg = core.ProcessGroupCustom(
+            store, genv.device_type, rank, world_size, group_id
+        )
     elif backend == "bkcl":
-        place = core.XPUPlace(genv.device_id)
-        pg = core.ProcessGroupBKCL(store, rank, world_size, place, group_id)
+        pg = core.ProcessGroupBKCL(store, rank, world_size, group_id)
     return pg
 
 
@@ -192,7 +190,12 @@ def barrier(group=None):
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
-        task = group.process_group.barrier()
+        place = paddle.fluid.framework._current_expected_place()
+        if isinstance(place, paddle.fluid.core.CPUPlace):
+            task = group.process_group.barrier()
+        else:
+            device_id = place.get_device_id()
+            task = group.process_group.barrier(device_id)
         task.wait()
         return
 
