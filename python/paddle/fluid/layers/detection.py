@@ -1740,7 +1740,9 @@ def ssd_loss(
     conf_shape = nn.shape(confidence)
 
     def __reshape_to_2d(var):
-        return nn.flatten(x=var, axis=2)
+        out = paddle.flatten(var, 2, -1)
+        out = paddle.flatten(out, 0, 1)
+        return out
 
     # 1. Find matched bounding box by prior box.
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
@@ -2338,8 +2340,14 @@ def multi_box_head(
     """
 
     def _reshape_with_axis_(input, axis=1):
-        out = nn.flatten(x=input, axis=axis)
-        return out
+        if axis == 0:
+            x = paddle.flatten(input, 0, -1)
+            x = paddle.unsqueeze(x, 0)
+            return x
+        else:
+            x = paddle.flatten(input, axis, -1)
+            x = paddle.flatten(x, 0, axis - 1)
+            return x
 
     def _is_list_or_tuple_(data):
         return isinstance(data, list) or isinstance(data, tuple)
@@ -2448,7 +2456,7 @@ def multi_box_head(
         )
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        mbox_loc_flatten = nn.flatten(mbox_loc, axis=1)
+        mbox_loc_flatten = paddle.flatten(mbox_loc, 1, -1)
         mbox_locs.append(mbox_loc_flatten)
 
         # get conf
@@ -2461,7 +2469,7 @@ def multi_box_head(
             stride=stride,
         )
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
-        conf_loc_flatten = nn.flatten(conf_loc, axis=1)
+        conf_loc_flatten = paddle.flatten(conf_loc, 1, -1)
         mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:
