@@ -263,24 +263,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
 ) {
   std::vector<phi::DenseTensor> in_wrapper{in_tensor};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
-  return Collective(
-      in_wrapper,
-      out_wrapper,
-      [&](phi::DenseTensor& input,
-          phi::DenseTensor& output,
-          phi::ccl::CCLComm comm,
-          const phi::stream::Stream& stream) {
-        return phi::DeviceManager::CCLAllReduce(
-            device_type_,
-            input.data(),
-            output.data(),
-            input.numel(),
-            phi::ccl::ToCCLDataType(input.dtype()),
-            ToCustomCCLRedType(opts.reduce_op),
-            comm,
-            stream);
-      },
-      CommType::ALLREDUCE);
+  return AllReduce(in_wrapper, out_wrapper, opts);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
@@ -291,35 +274,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
 ) {
   std::vector<phi::DenseTensor> in_wrapper{in_tensor};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
-  return Collective(
-      in_wrapper,
-      out_wrapper,
-      [&](phi::DenseTensor& input,
-          phi::DenseTensor& output,
-          phi::ccl::CCLComm comm,
-          const phi::stream::Stream& stream) {
-        int root = opts.source_rank + opts.source_root;
-        if (rank_ == root) {
-          return phi::DeviceManager::CCLBroadcast(
-              device_type_,
-              input.data(),
-              input.numel(),
-              phi::ccl::ToCCLDataType(input.dtype()),
-              root,
-              comm,
-              stream);
-        } else {
-          return phi::DeviceManager::CCLBroadcast(
-              device_type_,
-              output.data(),
-              output.numel(),
-              phi::ccl::ToCCLDataType(output.dtype()),
-              root,
-              comm,
-              stream);
-        }
-      },
-      CommType::BROADCAST);
+  return Broadcast(in_wrapper, out_wrapper, opts);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
@@ -352,6 +307,118 @@ phi::ccl::CCLComm ProcessGroupCustom::CustomCCLComm(const Place& place) const {
                     platform::errors::InvalidArgument(
                         "Cannot find nccl comm in process group."));
   return iter->second[0]->GetCustomCCLComm();
+}
+
+// TODO(sunyilun): methods below will be removed later
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(in_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All inputs should be in CustomPlace(%s).", device_type_));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(out_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All outputs should be in CustomPlace(%s).", device_type_));
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          phi::ccl::CCLComm comm,
+          const phi::stream::Stream& stream) {
+        return phi::DeviceManager::CCLAllGather(
+            device_type_,
+            input.data(),
+            output.data(),
+            input.numel(),
+            phi::ccl::ToCCLDataType(input.dtype()),
+            comm,
+            stream);
+      },
+      CommType::ALLGATHER);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
+    std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+    std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+    const AllreduceOptions& opts) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(in_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All inputs should be in CustomPlace(%s).", device_type_));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(out_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All outputs should be in CustomPlace(%s).", device_type_));
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          phi::ccl::CCLComm comm,
+          const phi::stream::Stream& stream) {
+        return phi::DeviceManager::CCLAllReduce(
+            device_type_,
+            input.data(),
+            output.data(),
+            input.numel(),
+            phi::ccl::ToCCLDataType(input.dtype()),
+            ToCustomCCLRedType(opts.reduce_op),
+            comm,
+            stream);
+      },
+      CommType::ALLREDUCE);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
+    std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+    std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+    const BroadcastOptions& opts) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(in_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All inputs should be in CustomPlace(%s).", device_type_));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(out_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All outputs should be in CustomPlace(%s).", device_type_));
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          phi::ccl::CCLComm comm,
+          const phi::stream::Stream& stream) {
+        int root = opts.source_rank * in_tensors.size() + opts.source_root;
+        if (rank_ == root) {
+          return phi::DeviceManager::CCLBroadcast(
+              device_type_,
+              input.data(),
+              input.numel(),
+              phi::ccl::ToCCLDataType(input.dtype()),
+              root,
+              comm,
+              stream);
+        } else {
+          return phi::DeviceManager::CCLBroadcast(
+              device_type_,
+              output.data(),
+              output.numel(),
+              phi::ccl::ToCCLDataType(output.dtype()),
+              root,
+              comm,
+              stream);
+        }
+      },
+      CommType::BROADCAST);
 }
 
 }  //  namespace distributed

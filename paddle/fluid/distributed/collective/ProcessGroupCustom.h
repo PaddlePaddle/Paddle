@@ -95,6 +95,21 @@ class ProcessGroupCustom : public ProcessGroup {
 
   phi::ccl::CCLComm CustomCCLComm(const Place& place) const;
 
+  // TODO(sunyilun): methods below will be removed later
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllReduce(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      const AllreduceOptions& = AllreduceOptions()) override;
+
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      const BroadcastOptions& = BroadcastOptions()) override;
+
  protected:
   virtual std::shared_ptr<ProcessGroupCustom::CustomTask> CreateTask(
       std::vector<Place> places,
