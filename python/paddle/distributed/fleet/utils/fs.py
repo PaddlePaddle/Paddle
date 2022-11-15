@@ -19,6 +19,7 @@ import re
 import time
 import abc
 from paddle.fluid import core
+from .log_util import logger
 import functools
 
 import shutil

@@ -30,9 +30,9 @@ def init_process_group(strategy=None):
     store = paddle.fluid.core.TCPStore("127.0.0.1", 6173, is_master, nranks)
     pg_group = core.ProcessGroupCustom(
         store,
+        ParallelEnv().device_type,
         rank,
         nranks,
-        paddle.CustomPlace(ParallelEnv().device_type, ParallelEnv().device_id),
     )
 
     return pg_group
@@ -51,9 +51,8 @@ class TestProcessGroupFp32(unittest.TestCase):
 
     def test_create_process_group_xccl(self):
         with _test_eager_guard():
-            paddle.set_device(
-                'custom_cpu:%d' % paddle.distributed.ParallelEnv().dev_id
-            )
+            device_id = paddle.distributed.ParallelEnv().dev_id
+            paddle.set_device('custom_cpu:%d' % device_id)
 
             pg = init_process_group()
 
@@ -119,11 +118,11 @@ class TestProcessGroupFp32(unittest.TestCase):
             # test barrier
             # rank 0
             if pg.rank() == 0:
-                task = pg.barrier()
+                task = pg.barrier(device_id)
                 task.wait()
             # rank 1
             else:
-                task = pg.barrier()
+                task = pg.barrier(device_id)
                 task.wait()
 
             print("test barrier api ok\n")
