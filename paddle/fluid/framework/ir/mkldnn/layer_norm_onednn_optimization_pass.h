@@ -12,21 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/pad_kernel.h"
+#pragma once
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/pad_kernel_impl.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
-PD_REGISTER_KERNEL(pad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::PadKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+namespace paddle {
+namespace framework {
+namespace ir {
+
+class LayerNormOneDNNOptimizationPass : public FusePassBase {
+ public:
+  virtual ~LayerNormOneDNNOptimizationPass() {}
+
+ protected:
+  void ApplyImpl(Graph *graph) const override;
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
