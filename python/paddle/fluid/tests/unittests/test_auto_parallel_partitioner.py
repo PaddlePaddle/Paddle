@@ -1164,9 +1164,7 @@ class DecoderLayer(nn.Layer):
         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
-        product = tensor.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
+        product = tensor.matmul(x=q, y=k, transpose_y=True)
         product = tensor.scale(product, scale=self.head_dim**-0.5)
 
         if self.attn_mask is not None:
