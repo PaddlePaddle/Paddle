@@ -1400,6 +1400,7 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
         simplifier.GetSrcDims(),
         simplifier.GetPerm(),
         paddle::experimental::CppTypeToDataType<T>::Type());
+
     tuner->Run(ctx,
               phi::autotune::AlgorithmType::kTranspose,
               key,
