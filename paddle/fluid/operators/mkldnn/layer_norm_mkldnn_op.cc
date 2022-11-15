@@ -52,7 +52,7 @@ class LayerNormOneDNNHandler
     if (scaleshift) {
       return this->AcquireMemoryFromPrimitive(
           this->fwd_pd_->weights_desc(),
-          platform::to_void_cast(scaleshift->data<float>()));
+          phi::funcs::to_void_cast(scaleshift->data<float>()));
     } else {
       const unsigned int C = phi::vectorize(scale->dims())[0];
 
