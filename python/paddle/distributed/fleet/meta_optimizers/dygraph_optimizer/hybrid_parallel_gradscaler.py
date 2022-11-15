@@ -51,7 +51,7 @@ class HybridParallelGradScaler:
 
         return optimize_ops, params_grads
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     def _unscale(self, optimizer):
         if not self._enable:
             return
