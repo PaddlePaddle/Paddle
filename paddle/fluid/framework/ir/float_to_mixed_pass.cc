@@ -339,19 +339,29 @@ void FloatToMixedPass::GetOpPrecision() const {
         auto out_dtype = op_node->Op()->GetAttrIfExists<int>("out_dtype");
         support_mixed =
             support_mixed && IsFloatType(static_cast<VarType::Type>(out_dtype));
-      }
-      // else {
-      //   for (auto* var_node : op_node->inputs) {
-      //     CHECK_EQ(var_node->IsVar(), true);
-      //     auto* real_var_node = real_vars_[var_node->Var()->Name()];
-      //     if (!VarNodeHasDtype(real_var_node)) continue;
-      //     if (real_var_node->Var()->Persistable()) continue;
+      } else {
+        // if op's input var and output var is not dense tensor, the op should
+        // not run mixed.
+        for (auto* in_var_node : op_node->inputs) {
+          CHECK_EQ(in_var_node->IsVar(), true);
+          auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
+          if (real_in_var_node->Var()->Persistable()) continue;
 
-      //     support_mixed =
-      //         support_mixed &&
-      //         IsFloatType(real_var_node->Var()->GetDataType());
-      //   }
-      // }
+          support_mixed =
+              support_mixed &&
+              (real_in_var_node->Var()->GetType() == VarType::LOD_TENSOR);
+        }
+
+        for (auto* out_var_node : op_node->outputs) {
+          CHECK_EQ(out_var_node->IsVar(), true);
+          auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
+          if (real_out_var_node->Var()->Persistable()) continue;
+
+          support_mixed =
+              support_mixed &&
+              (real_out_var_node->Var()->GetType() == VarType::LOD_TENSOR);
+        }
+      }
 
       if (support_mixed) {
         op_run_mixed_.insert(op_type);
@@ -388,7 +398,7 @@ void FloatToMixedPass::UpdateOpPrecision() const {
                   << " is output of " << op_type;
         }
 
-        // select_input op's input var should not convert to mixed. so, when
+        // the select_input op's input var should not convert to mixed. when
         // op's output var is select_input op's input var, the op should not run
         // mixed.
         if (op_original_type_[op_node->Op()->Type()] == "select_input") {
