@@ -27,8 +27,8 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
-    def sample_program_configs(self, op_type):
-        def generate_input(shape):
+    def sample_program_configs(self):
+        def generate_input(shape, op_type):
             # elementwise_floordiv is integer only
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
@@ -732,7 +732,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input(shape):
+        def generate_input(shape, op_type):
             # elementwise_floordiv is integer only
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
@@ -742,7 +742,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                 return np.random.random(shape).astype(np.float32)
 
         # use rand not randn to avoiding pow producing `NAN`
-        def generate_weight():
+        def generate_weight(op_type):
             # elementwise_floordiv is integer only
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
