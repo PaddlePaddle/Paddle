@@ -4456,7 +4456,7 @@ class ModelAverage(Optimizer):
         sum = layers.cast(
             x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
-        param = paddle.divide(x, y)
+        paddle.assign(paddle.divide(sum, tmp), output=param)
 
     def _add_average_restore_op(self, block, param_grad):
         param = block._clone_variable(param_grad[0])
