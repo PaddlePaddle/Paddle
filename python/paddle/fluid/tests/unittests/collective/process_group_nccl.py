@@ -44,9 +44,8 @@ class TestProcessGroupFp32(unittest.TestCase):
 
     def test_create_process_group_nccl(self):
         with _test_eager_guard():
-            paddle.set_device(
-                'gpu:%d' % paddle.distributed.ParallelEnv().dev_id
-            )
+            device_id = paddle.distributed.ParallelEnv().dev_id
+            paddle.set_device('gpu:%d' % device_id)
 
             pg = init_process_group()
             print("rank:", pg.rank(), "size:", pg.size(), "name:", pg.name())
@@ -170,10 +169,10 @@ class TestProcessGroupFp32(unittest.TestCase):
             # test barrier
             # rank 0
             if pg.rank() == 0:
-                dist.barrier()
+                pg.barrier(device_id)
             # rank 1
             else:
-                task = pg.barrier()
+                task = pg.barrier(device_id)
                 task.wait()
 
             print("test barrier api ok\n")

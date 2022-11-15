@@ -13,42 +13,20 @@
 // limitations under the License.
 
 #pragma once
-#include <chrono>
-#include <cstdint>
-#include <vector>
-#include "paddle/phi/common/place.h"
+
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace distributed {
 
-// TODO(shenliang03): To support AVG for reduce
-enum class ReduceOp : std::uint8_t { SUM = 0, AVG, MAX, MIN, PRODUCT };
-
-struct AllreduceOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-};
-
-struct BroadcastOptions {
-  int source_rank = 0;
-  int source_root = 0;
-};
-
-struct BarrierOptions {
-  int8_t device_id;
-};
-
-struct ReduceOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-  int root_rank = 0;
-};
-
-struct ScatterOptions {
-  int root_rank = 0;
-};
-
-struct ReduceScatterOptions {
-  ReduceOp reduce_op = ReduceOp::SUM;
-};
+inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor &tensor,
+                                         int64_t offset,
+                                         int64_t numel) {
+  phi::DenseTensor tensor_flattened;
+  tensor_flattened.ShareDataWith(tensor);
+  tensor_flattened.Resize({tensor.numel()});
+  return tensor_flattened.Slice(offset, offset + numel);
+}
 
 }  //  namespace distributed
 }  //  namespace paddle
