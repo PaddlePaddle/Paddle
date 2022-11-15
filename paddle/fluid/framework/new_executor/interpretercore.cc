@@ -202,9 +202,7 @@ paddle::framework::FetchList InterpreterCore::Run(
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
-    if (!(FLAGS_new_executor_trace_run && (sync_op_num_ == 0))) {
-      async_work_queue_ = GetWorkQueue();
-    }
+    async_work_queue_ = GetWorkQueue();
 
     // lazy initialization of gc, do not create gc is the program only run once
     if (!gc_) {
@@ -274,9 +272,7 @@ paddle::framework::FetchList InterpreterCore::Run(
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
     // until the second step run.
-    if (!(FLAGS_new_executor_trace_run && (sync_op_num_ == 0))) {
-      async_work_queue_ = GetWorkQueue();
-    }
+    async_work_queue_ = GetWorkQueue();
 
     // lazy initialization of gc, do not create gc is the program only run once
     if (!gc_) {
