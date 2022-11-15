@@ -76,7 +76,6 @@ __all__ = [
     'pool3d',
     'adaptive_pool2d',
     'adaptive_pool3d',
-    'batch_norm',
     'inplace_abn',
     'instance_norm',
     'data_norm',

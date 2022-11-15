@@ -1963,6 +1963,7 @@ def fused_bn_add_act(
     Examples:
             .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
             def build_program(main_program, startup_program):
