@@ -364,6 +364,8 @@ void FloatToMixedPass::GetOpPrecision() const {
 }
 
 void FloatToMixedPass::UpdateOpPrecision() const {
+  std::unordered_set<std::string> vars_should_not_mixed;
+
   // var -> the var's all input op
   std::unordered_map<std::string, std::vector<Node*>> var_input_ops;
   auto GetVarInputOps = [&] {
@@ -384,6 +386,19 @@ void FloatToMixedPass::UpdateOpPrecision() const {
           var_input_ops[var_node->Var()->Name()].push_back(op_node);
           VLOG(4) << "var input ops: " << var_node->Var()->Name()
                   << " is output of " << op_type;
+        }
+
+        // select_input op's input var should not convert to mixed. so, when
+        // op's output var is select_input op's input var, the op should not run
+        // mixed.
+        if (op_original_type_[op_node->Op()->Type()] == "select_input") {
+          for (auto* var_node : op_node->inputs) {
+            CHECK_EQ(var_node->IsVar(), true);
+            if (var_node->Var()->Persistable()) continue;
+            if (!VarNodeHasDtype(var_node)) continue;
+
+            vars_should_not_mixed.insert(var_node->Var()->Name());
+          }
         }
       }
     }
@@ -406,16 +421,25 @@ void FloatToMixedPass::UpdateOpPrecision() const {
           auto* real_var_node = real_vars_[var_node->Var()->Name()];
           if (real_var_node->Var()->Persistable()) continue;
 
+          bool not_run_mixed = false;
           const auto& input_op_nodes =
               var_input_ops[real_var_node->Var()->Name()];
-          for (auto* node : input_op_nodes) {
-            if (op_run_mixed_.count(node->Op()->Type()) == 0) {
-              op_run_mixed_.erase(op_node->Op()->Type());
-              precision_updated = true;
-              VLOG(4) << op_node->Op()->Type()
-                      << " should not support mixed precision.";
-              break;
+          if (vars_should_not_mixed.count(real_var_node->Var()->Name())) {
+            not_run_mixed = true;
+          } else {
+            for (auto* node : input_op_nodes) {
+              if (op_run_mixed_.count(node->Op()->Type()) == 0) {
+                not_run_mixed = true;
+                break;
+              }
             }
+          }
+          if (not_run_mixed) {
+            op_run_mixed_.erase(op_node->Op()->Type());
+            precision_updated = true;
+            VLOG(4) << op_node->Op()->Type()
+                    << " should not support mixed precision.";
+            break;
           }
         }
       }
