@@ -267,7 +267,7 @@ class StaticGraphAdapter:
     """
 
     def __init__(self, model):
-        super(StaticGraphAdapter, self).__init__()
+        super().__init__()
         self.model = model
         # with `_build_once` gone, parameters are now created in `__init__`
         # so we need to keep track of the parameters already created
@@ -736,9 +736,9 @@ class StaticGraphAdapter:
         self._compiled_progs[mode] = compiled_prog
 
 
-class DynamicGraphAdapter(object):
+class DynamicGraphAdapter:
     def __init__(self, model):
-        super(DynamicGraphAdapter, self).__init__()
+        super().__init__()
         self.model = model
         self._nranks = ParallelEnv().nranks
         self._local_rank = ParallelEnv().local_rank
@@ -1008,7 +1008,7 @@ class DynamicGraphAdapter(object):
             self.model._scaler = None
 
 
-class Model(object):
+class Model:
     """
 
     An Model object is network with training and inference features.
@@ -1345,7 +1345,7 @@ class Model(object):
 
                 class Mnist(nn.Layer):
                     def __init__(self):
-                        super(Mnist, self).__init__()
+                        super().__init__()
                         self.net = nn.Sequential(
                             nn.Flatten(1),
                             nn.Linear(784, 200),
@@ -2097,7 +2097,7 @@ class Model(object):
 
                 class MnistDataset(paddle.vision.datasets.MNIST):
                     def __init__(self, mode, return_label=True):
-                        super(MnistDataset, self).__init__(mode=mode)
+                        super().__init__(mode=mode)
                         self.return_label = return_label
 
                     def __getitem__(self, idx):

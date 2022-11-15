@@ -50,8 +50,10 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
     Returns:
         Tensor, the dtype is same as input tensor.
 
-        - If :attr:`keepdim` is True, the output shape is :math:`[N, 1]` or :math:`[1]`, depending on whether the input has data shaped as :math:`[N, D]`.
-        - If :attr:`keepdim` is False, the output shape is :math:`[N]` or :math:`[]`, depending on whether the input has data shaped as :math:`[N, D]`.
+        - If :attr:`keepdim` is True, the output shape is :math:`[N, 1]` or :math:`[1]`,
+          depending on whether the input has data shaped as :math:`[N, D]`.
+        - If :attr:`keepdim` is False, the output shape is :math:`[N]` or :math:`[]`,
+          depending on whether the input has data shaped as :math:`[N, D]`.
 
     Examples:
         .. code-block:: python

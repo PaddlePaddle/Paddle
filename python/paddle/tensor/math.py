@@ -273,6 +273,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
 def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
     r"""
+
     stanh activation.
 
     .. math::

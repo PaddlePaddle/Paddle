@@ -1900,10 +1900,16 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
             {(dend - dstart) * (hend - hstart) * (wend - wstart)}
 
     Args:
-        x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor. The data type can be float32, float64.
-        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list, it must contain three elements, (D, H, W). D, H and W can be either a int, or None which means the size will be the same as that of the input.
-        data_format (str): The data format of the input and output data. An optional string from: "NCDHW", "NDHWC". The default is "NCDHW". When it is "NCDHW", the data is stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
-        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
+        x (Tensor): The input tensor of adaptive avg pool3d operator, which is a 5-D tensor.
+            The data type can be float32, float64.
+        output_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or
+            list, it must contain three elements, (D, H, W). D, H and W can be either a int,
+            or None which means the size will be the same as that of the input.
+        data_format (str): The data format of the input and output data. An optional string
+            from: "NCDHW", "NDHWC". The default is "NCDHW". When it is "NCDHW", the data is
+            stored in the order of: [batch_size, input_channels, input_depth, input_height, input_width].
+        name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+            Usually name is no need to set and None by default.
 
     Returns:
         Tensor, The output tensor of avg adaptive pool3d result. The data type is same as input tensor.
