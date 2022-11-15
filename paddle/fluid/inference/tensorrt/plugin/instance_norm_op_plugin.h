@@ -159,7 +159,6 @@ class InstanceNormPluginDynamic : public DynamicPluginTensorRT {
   // tensorrt.
   // It should not be called by users.
   void serialize(void *buffer) const TRT_NOEXCEPT override {
-    serializeBase(buffer);
     SerializeValue(&buffer, eps_);
     SerializeValue(&buffer, scale_);
     SerializeValue(&buffer, bias_);
