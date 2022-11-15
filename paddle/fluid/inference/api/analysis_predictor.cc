@@ -503,7 +503,6 @@ void AnalysisPredictor::SetDeviceMemory(void* device_memory) {
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global().setContextMemory(predictor_id_, device_memory);
-    LOG(INFO) << "AnalysisPredictor SetDeviceMemory predictor_id: " << predictor_id_ << " device_memory: " << device_memory;
   }
 #endif
 }
