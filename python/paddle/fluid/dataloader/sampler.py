@@ -185,7 +185,6 @@ class RandomSampler(Sampler):
             for index in sampler:
                 print(index)
 
-    see `paddle.io.Sampler`
     """
 
     def __init__(
