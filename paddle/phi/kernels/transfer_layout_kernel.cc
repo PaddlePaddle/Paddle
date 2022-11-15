@@ -60,7 +60,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
                            DenseTensor* out) {
   auto src_dim = x.dims();
 
-  auto axis = GetAxis(x.layout(), dst_layout);
+  auto axis = GetAxis(src_layout, dst_layout);
 
   std::vector<int64_t> dst_dim;
   dst_dim.resize(axis.size());
