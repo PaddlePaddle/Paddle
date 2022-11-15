@@ -18,6 +18,7 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import os
 import tempfile
+import paddle
 
 
 class TestLoadOp(unittest.TestCase):
