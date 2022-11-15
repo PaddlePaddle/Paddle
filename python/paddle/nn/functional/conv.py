@@ -483,7 +483,7 @@ def conv1d(
                 conv2d_data_format,
             )
         else:
-            out = getattr(_C_ops, l_type)(
+            out = _C_ops.depthwise_conv2d(
                 x,
                 weight,
                 stride,
@@ -496,7 +496,6 @@ def conv1d(
                 -1,
                 False,
                 False,
-                use_cudnn,
             )
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
