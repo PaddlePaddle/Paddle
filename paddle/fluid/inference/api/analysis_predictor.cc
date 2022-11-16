@@ -2232,6 +2232,8 @@ USE_TRT_CONVERTER(elementwise_mul_tensor);
 USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
+USE_TRT_CONVERTER(elementwise_floordiv_weight);
+USE_TRT_CONVERTER(elementwise_floordiv_tensor);
 USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
