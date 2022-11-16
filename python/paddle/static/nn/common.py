@@ -689,7 +689,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         shape=alpha_shape,
         dtype=dtype,
         is_bias=False,
-        default_initializer=paddle.Constant(0.25),
+        default_initializer=paddle.nn.initializer.Constant(0.25),
     )
     if paddle.in_dygraph_mode():
         return paddle._C_ops.prelu(x, alpha, data_format, mode)
