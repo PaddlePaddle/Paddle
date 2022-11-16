@@ -13,7 +13,7 @@
 
 from paddle import fluid
 from .meta_optimizer_base import MetaOptimizerBase
-from paddle.fluid import core
+from paddle.framework import core
 import subprocess
 import re
 import os
@@ -185,8 +185,8 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return _main, _startup
 
     def _build_pserver_programs(self, compiled_config):
-        _main = fluid.Program()
-        _startup = fluid.Program()
+        _main = paddle.static.Program()
+        _startup = paddle.static.Program()
 
         from paddle.fluid.incubate.fleet.parameter_server.ir import (
             pserver_pass as server,
