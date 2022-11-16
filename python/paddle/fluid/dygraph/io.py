@@ -548,21 +548,23 @@ class _ProgramHolder:
         for block_idx in range(program.num_blocks):
             block = program.block(block_idx)
             for op in block.ops:
-                # if op.type == "batch_norm":
-                #     if (
-                #         "ReserveSpace" not in op.output_names
-                #         or len(op.output("ReserveSpace")) == 0
-                #     ):
-                #         reserve_space = block.create_var(
-                #             name=unique_name.generate_with_ignorable_key(
-                #                 ".".join(["reserve_space", 'tmp'])
-                #             ),
-                #             dtype=block.var(op.input("X")[0]).dtype,
-                #             type=core.VarDesc.VarType.LOD_TENSOR,
-                #             persistable=False,
-                #             stop_gradient=True,
-                #         )
-                #         op.desc.set_output("ReserveSpace", [reserve_space.name])
+                if op.type == "batch_norm":
+                    if (
+                        "ReserveSpace" not in op.output_names
+                        or len(op.output("ReserveSpace")) == 0
+                    ):
+                        reserve_space = block.create_var(
+                            name=unique_name.generate_with_ignorable_key(
+                                ".".join(["reserve_space", 'tmp'])
+                            ),
+                            dtype=block.var(op.input("X")[0]).dtype,
+                            type=core.VarDesc.VarType.LOD_TENSOR,
+                            persistable=False,
+                            stop_gradient=True,
+                        )
+                        op.desc.set_output("ReserveSpace", [reserve_space.name])
+                    continue
+
                 proto = OpProtoHolder.instance().get_op_proto(op.type)
                 has_create_intermediate_out = False
                 for output_proto in proto.outputs:
