@@ -166,18 +166,16 @@ struct VecAtomicAddHelperBase {
 template <typename T>
 struct VecAtomicAddHelper : VecAtomicAddHelperBase<T, false, void, void> {};
 
-#ifdef PADDLE_CUDA_FP16
+#if CUDA_VERSION >= 10000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
 template <>
 struct VecAtomicAddHelper<float16>
     : VecAtomicAddHelperBase<float16, true, __half, __half2> {};
 #endif
 
-#ifdef PADDLE_CUDA_BF16
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+#if CUDA_VERSION >= 11000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
 template <>
 struct VecAtomicAddHelper<bfloat16>
     : VecAtomicAddHelperBase<bfloat16, true, __nv_bfloat16, __nv_bfloat162> {};
-#endif
 #endif
 
 // The performance of "atomicAdd(half* )" is bad, but for "atomicAdd(half2* )"
