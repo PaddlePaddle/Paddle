@@ -1442,14 +1442,20 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
             ),
         )
 
-        cost = paddle.nn.functional.hsigmoid_loss(
-            input=emb,
-            label=label,
-            num_classes=num_total_classes - 1,
-            path_table=path_table,
-            path_code=path_code,
+        loss = paddle.nn.HSigmoidLoss(
+            feature_size=emb.shape[1],
+            num_classes=num_total_classes,
+            is_custom=True,
             is_sparse=is_sparse,
         )
+
+        cost = loss(
+            input=emb,
+            label=label,
+            path_table=path_table,
+            path_code=path_code,
+        )
+
         avg_cost = paddle.mean(cost)
         # optimizer
         optimizer = fluid.optimizer.SGD(learning_rate=0.003)

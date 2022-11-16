@@ -4041,7 +4041,7 @@ class TestBook(LayerTest):
                 append_batch_size=False,
             )
             loss = paddle.nn.functional.kl_div(
-                x=x, target=target, reduction='batchmean'
+                input=x, label=target, reduction='batchmean'
             )
             return loss
 
