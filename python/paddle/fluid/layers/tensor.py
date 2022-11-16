@@ -573,8 +573,9 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
         ), "The 'input' in tensor_array_to_tensor must be list"
         from .nn import concat
         from ..dygraph import to_variable
+        from paddle import stack
 
-        op = concat
+        op = stack if use_stack else concat
         res = op(input, axis=axis)
         sizes = to_variable(
             numpy.array(list(map(lambda x: int(x.shape[axis]), input)))
