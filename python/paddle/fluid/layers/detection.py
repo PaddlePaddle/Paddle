@@ -2340,14 +2340,15 @@ def multi_box_head(
     """
 
     def _reshape_with_axis_(input, axis=1):
-        if axis == 0:
-            x = paddle.flatten(input, 0, -1)
-            x = paddle.unsqueeze(x, 0)
-            return x
-        else:
-            x = paddle.flatten(input, axis, -1)
-            x = paddle.flatten(x, 0, axis - 1)
-            return x
+        # Note : axis!=0 in current references to this func
+        # if axis == 0:
+        #     x = paddle.flatten(input, 0, -1)
+        #     x = paddle.unsqueeze(x, 0)
+        #     return x
+        # else:
+        x = paddle.flatten(input, axis, -1)
+        x = paddle.flatten(x, 0, axis - 1)
+        return x
 
     def _is_list_or_tuple_(data):
         return isinstance(data, list) or isinstance(data, tuple)
