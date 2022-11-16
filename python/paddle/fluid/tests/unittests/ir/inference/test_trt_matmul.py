@@ -32,7 +32,6 @@ class TensorRTMatMulDims2Test(InferencePassTest):
                 y=data,
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
-                alpha=self.alpha,
             )
             matmul_out = paddle.scale(matmul_out, scale=self.alpha)
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
@@ -72,7 +71,6 @@ class TensorRTMatMulTest(InferencePassTest):
                 y=data,
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
-                alpha=self.alpha,
             )
             matmul_out = paddle.scale(matmul_out, scale=self.alpha)
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
@@ -135,7 +133,6 @@ class TensorRTMatMulBroadcastTest(InferencePassTest):
                 y=data_y,
                 transpose_x=self.transpose_x,
                 transpose_y=self.transpose_y,
-                alpha=self.alpha,
             )
             matmul_out = paddle.scale(matmul_out, scale=self.alpha)
             out = fluid.layers.batch_norm(matmul_out, is_test=True)
