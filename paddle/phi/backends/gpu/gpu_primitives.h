@@ -173,9 +173,11 @@ struct VecAtomicAddHelper<float16>
 #endif
 
 #ifdef PADDLE_CUDA_BF16
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
 template <>
 struct VecAtomicAddHelper<bfloat16>
     : VecAtomicAddHelperBase<bfloat16, true, __nv_bfloat16, __nv_bfloat162> {};
+#endif
 #endif
 
 // The performance of "atomicAdd(half* )" is bad, but for "atomicAdd(half2* )"
