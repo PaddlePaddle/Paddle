@@ -28,6 +28,7 @@ from paddle.fluid.layers import (
     nn,
     tensor,
 )
+import paddle
 
 
 class Uniform(distribution.Distribution):
