@@ -3732,7 +3732,7 @@ void StridedSliceRawInferMeta(const MetaTensor& x,
     }
     out_dims = phi::make_ddim(new_out_shape);
   }
-  VLOG(1) << "out_dims: " << out_dims;
+  VLOG(4) << "out_dims: " << out_dims;
   out->set_dims(out_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());

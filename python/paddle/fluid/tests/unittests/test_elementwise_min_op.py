@@ -18,6 +18,7 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle import _legacy_C_ops
 
 paddle.enable_static()
 
@@ -213,7 +214,7 @@ class TestElementwiseMinOpFP16(unittest.TestCase):
             y = paddle.to_tensor(y_np)
             x.stop_gradient = False
             y.stop_gradient = False
-            z = fluid.layers.elementwise_min(x, y, axis)
+            z = _legacy_C_ops.elementwise_min(x, y, 'axis', axis)
             x_g, y_g = paddle.grad([z], [x, y])
             return (
                 z.numpy().astype(dtype),
