@@ -131,7 +131,6 @@ __all__ = [
     'log',
     'crop',
     'crop_tensor',
-    'elu',
     'relu6',
     'pow',
     'stanh',
@@ -9920,49 +9919,6 @@ def pad2d(
         type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs
     )
 
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.elu")
-def elu(x, alpha=1.0, name=None):
-    """
-    :alias_main: paddle.nn.functional.elu
-        :alias: paddle.nn.functional.elu,paddle.nn.functional.activation.elu
-        :old_api: paddle.fluid.layers.elu
-
-    ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        alpha(${alpha_type}|1.0): ${alpha_comment}
-        name(str|None): The default value is None. Normally there is no need for user to set this property.
-                        For more information, please refer to :ref:`api_guide_Name`.
-    Returns:
-        ${out_type}: ${out_comment}
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-
-            input_elu = np.array([[-1,6],[1,15.6]])
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(input_elu)
-                y = fluid.layers.elu(x, alpha=0.2)
-                print(y.numpy())
-                # [[-0.12642411  6.        ]
-                # [ 1.          15.6       ]]
-    """
-    helper = LayerHelper('elu', **locals())
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'elu')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='elu',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'alpha': alpha},
-    )
     return out
 
 
