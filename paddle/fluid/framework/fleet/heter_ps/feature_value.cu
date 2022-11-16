@@ -79,9 +79,8 @@ __global__ void PullDedupCopy(const size_t N,
       return;
     }
 
-    float* src_ptr =
-        (float*)((char*)src + uint64_t(restore_idx[i]) *.  // NOLINT
-                                                        uint64_t(max_val_size));
+    float* src_ptr = (float*)((char*)src + uint64_t(restore_idx[i]) *  // NOLINT
+                                               uint64_t(max_val_size));
     switch (off) {
       case 0:
         *(dest_ptr + off) = src_ptr[accessor.ShowIndex()];
