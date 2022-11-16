@@ -650,14 +650,12 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 min_eager_ret = paddle.minimum(to_variable(n), to_variable(n2))
-                max_eager_ret = layers.elementwise_max(
-                    to_variable(n), to_variable(n2)
-                )
+                max_eager_ret = paddle.maximum(to_variable(n), to_variable(n2))
                 min_eager_ret_value = min_eager_ret.numpy()
                 max_eager_ret_value = max_eager_ret.numpy()
 
             min_ret = paddle.minimum(to_variable(n), to_variable(n2))
-            max_ret = layers.elementwise_max(to_variable(n), to_variable(n2))
+            max_ret = paddle.maximum(to_variable(n), to_variable(n2))
             min_ret_value = min_ret.numpy()
             max_ret_value = max_ret.numpy()
 

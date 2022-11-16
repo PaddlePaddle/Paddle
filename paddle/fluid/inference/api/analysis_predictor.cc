@@ -1185,6 +1185,8 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuAvailableMemoryProportion(
       config_.ipu_available_memory_proportion_);
   argument_.SetIpuEnableHalfPartial(config_.ipu_enable_half_partial_);
+  argument_.SetIpuEnableModelRuntimeExecutor(
+      config_.ipu_enable_model_runtime_executor_);
   argument_.SetIpuCustomOpsInfo(config_.ipu_custom_ops_info_);
   argument_.SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
@@ -2259,6 +2261,7 @@ USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
+USE_TRT_CONVERTER(where);
 USE_TRT_CONVERTER(swish);
 USE_TRT_CONVERTER(silu);
 USE_TRT_CONVERTER(group_norm);
