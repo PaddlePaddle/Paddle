@@ -1215,35 +1215,15 @@ __global__ void add_fusedQKV_bias_transpose_split_kernel(
   }
 }
 
-constexpr int kBlockSize = 128;
-constexpr int kNumWaves = 16;
-
 inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
-  int dev;
-  {
-    cudaError_t err = cudaGetDevice(&dev);
-    if (err != cudaSuccess) {
-      return err;
-    }
-  }
-  int sm_count;
-  {
-    cudaError_t err =
-        cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev);
-    if (err != cudaSuccess) {
-      return err;
-    }
-  }
-  int max_thread_per_multiprocessor;
-  {
-    cudaError_t err =
-        cudaDeviceGetAttribute(&max_thread_per_multiprocessor,
-                               cudaDevAttrMaxThreadsPerMultiProcessor,
-                               dev);
-    if (err != cudaSuccess) {
-      return err;
-    }
-  }
+  constexpr int kBlockSize = 128;
+  constexpr int kNumWaves = 16;
+
+  const int device_id = paddle::platform::GetCurrentDeviceId();
+  const int sm_count = paddle::platform::GetGPUMultiProcessors(device_id);
+  const int max_thread_per_multiprocessor =
+      paddle::platform::GetGPUMultiProcessors(device_id);
+
   *num_blocks =
       std::max<int>(1,
                     std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
