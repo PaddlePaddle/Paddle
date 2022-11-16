@@ -92,7 +92,7 @@ void DoInsertCastOp(Graph* graph,
   };
 
   if (cache->count(var_node) == 0) {
-    // insert cast op before node.
+    // insert cast op between var_node and op_node
     std::string cast_input_name = var_node->Var()->Name();
     std::string cast_output_name =
         var_node->Var()->Name() + "_cast.tmp_" + std::to_string((*suffix)++);
@@ -269,15 +269,20 @@ void FloatToMixedPass::RestoreOpOriginType() const {
       CHECK_EQ(op_node->IsOp(), true);
 
       auto op_type = op_node->Op()->Type();
-      if (op_original_type_.count(op_type) &&
-          op_original_type_[op_type] != std::string()) {
-        op_node->Op()->SetType(op_original_type_[op_type]);
-        op_node->Op()->Flush();
-        VLOG(4) << "restore op type: " << op_type << " ---> "
-                << op_original_type_[op_type];
-      }
+      op_node->Op()->SetType(GetOpOrignalType(op_type));
+      op_node->Op()->Flush();
+      VLOG(4) << "restore op type: " << op_type << " ---> "
+              << op_node->Op()->Type();
     }
   }
+}
+
+inline std::string FloatToMixedPass::GetOpOrignalType(
+    const std::string& op_type) const {
+  if (op_original_type_.count(op_type)) {
+    return op_original_type_.at(op_type);
+  }
+  return op_type;
 }
 
 void FloatToMixedPass::ProcessOpWithDtypeAttr() const {
@@ -324,11 +329,12 @@ void FloatToMixedPass::GetOpPrecision() const {
 
       auto op_type = op_node->Op()->Type();
       bool support_mixed = true;
-      if (op_type == "feed" || op_type == "fetch") {
+      if (GetOpOrignalType(op_type) == "feed" ||
+          GetOpOrignalType(op_type) == "fetch") {
         support_mixed = !keep_io_types_;
       } else {
         support_mixed =
-            OpSupportPrecision(op_original_type_[op_type], mixed_precision_);
+            OpSupportPrecision(GetOpOrignalType(op_type), mixed_precision_);
       }
 
       if (op_node->Op()->HasAttr("dtype")) {
@@ -378,6 +384,7 @@ void FloatToMixedPass::UpdateOpPrecision() const {
 
   // var -> the var's all input op
   std::unordered_map<std::string, std::vector<Node*>> var_input_ops;
+
   auto GetVarInputOps = [&] {
     for (const auto& nodes : all_op_nodes_) {
       for (auto* op_node : nodes) {
@@ -385,7 +392,7 @@ void FloatToMixedPass::UpdateOpPrecision() const {
 
         auto op_type = op_node->Op()->Type();
 
-        if (op_type == "fetch") continue;
+        if (GetOpOrignalType(op_type) == "fetch") continue;
         if (op_node->Op()->HasAttr("sub_block")) continue;
 
         for (auto* var_node : op_node->outputs) {
@@ -398,16 +405,32 @@ void FloatToMixedPass::UpdateOpPrecision() const {
                   << " is output of " << op_type;
         }
 
+        // code flag 2 related
         // the select_input op's input var should not convert to mixed. when
         // op's output var is select_input op's input var, the op should not run
         // mixed.
-        if (op_original_type_[op_node->Op()->Type()] == "select_input") {
-          for (auto* var_node : op_node->inputs) {
-            CHECK_EQ(var_node->IsVar(), true);
-            if (var_node->Var()->Persistable()) continue;
-            if (!VarNodeHasDtype(var_node)) continue;
+        if (GetOpOrignalType(op_node->Op()->Type()) == "select_input") {
+          for (auto* in_var_node : op_node->inputs) {
+            CHECK_EQ(in_var_node->IsVar(), true);
+            if (in_var_node->Var()->Persistable()) continue;
+            if (!VarNodeHasDtype(in_var_node)) continue;
 
-            vars_should_not_mixed.insert(var_node->Var()->Name());
+            vars_should_not_mixed.insert(in_var_node->Var()->Name());
+          }
+        }
+
+        // code flag 1 related
+        // when op_1 only support cpu kernel. if op_2's intput var is op_1's
+        // output var, then op_2 should not run mixed.
+        if (GetOpOrignalType(op_type) != "feed" &&
+            !GpuKernelSupportPrecision(GetOpOrignalType(op_type),
+                                       phi::DataType::FLOAT32)) {
+          for (auto* out_var_node : op_node->outputs) {
+            CHECK_EQ(out_var_node->IsVar(), true);
+            if (out_var_node->Var()->Persistable()) continue;
+            if (!VarNodeHasDtype(out_var_node)) continue;
+
+            vars_should_not_mixed.insert(out_var_node->Var()->Name());
           }
         }
       }
@@ -424,17 +447,37 @@ void FloatToMixedPass::UpdateOpPrecision() const {
 
         if (op_run_mixed_.count(op_node->Op()->Type()) == 0) continue;
 
-        for (auto* var_node : op_node->outputs) {
-          CHECK_EQ(var_node->IsVar(), true);
-          if (!VarNodeHasDtype(var_node)) continue;
+        // code flag 1 related.
+        for (auto* in_var_node : op_node->inputs) {
+          CHECK_EQ(in_var_node->IsVar(), true);
+          if (!VarNodeHasDtype(in_var_node)) continue;
 
-          auto* real_var_node = real_vars_[var_node->Var()->Name()];
-          if (real_var_node->Var()->Persistable()) continue;
+          auto* real_in_var_node = real_vars_[in_var_node->Var()->Name()];
+          if (real_in_var_node->Var()->Persistable()) continue;
+
+          if (vars_should_not_mixed.count(real_in_var_node->Var()->Name())) {
+            op_run_mixed_.erase(op_node->Op()->Type());
+            precision_updated = true;
+            VLOG(4) << op_node->Op()->Type()
+                    << " should not support mixed precision.";
+            break;
+          }
+        }
+
+        if (op_run_mixed_.count(op_node->Op()->Type()) == 0) continue;
+
+        for (auto* out_var_node : op_node->outputs) {
+          CHECK_EQ(out_var_node->IsVar(), true);
+          if (!VarNodeHasDtype(out_var_node)) continue;
+
+          auto* real_out_var_node = real_vars_[out_var_node->Var()->Name()];
+          if (real_out_var_node->Var()->Persistable()) continue;
 
           bool not_run_mixed = false;
           const auto& input_op_nodes =
-              var_input_ops[real_var_node->Var()->Name()];
-          if (vars_should_not_mixed.count(real_var_node->Var()->Name())) {
+              var_input_ops[real_out_var_node->Var()->Name()];
+          if (vars_should_not_mixed.count(real_out_var_node->Var()->Name())) {
+            // code flag 2 related.
             not_run_mixed = true;
           } else {
             for (auto* node : input_op_nodes) {
@@ -461,7 +504,7 @@ bool FloatToMixedPass::InputVarsNotConvert(Node* op_node,
                                            const std::string& var_name) const {
   CHECK_EQ(op_node->IsOp(), true);
   auto* op_desc = op_node->Op();
-  if (op_original_type_[op_desc->Type()] == "batch_norm") {
+  if (GetOpOrignalType(op_desc->Type()) == "batch_norm") {
     auto vecs = op_desc->Input("Bias");
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
@@ -478,7 +521,7 @@ bool FloatToMixedPass::InputVarsNotConvert(Node* op_node,
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
     }
-  } else if (op_original_type_[op_desc->Type()] == "fused_multi_transformer") {
+  } else if (GetOpOrignalType(op_desc->Type()) == "fused_multi_transformer") {
     auto vecs = op_desc->Input("LnScale");
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
@@ -504,7 +547,7 @@ bool FloatToMixedPass::OutputVarsNotConvert(Node* op_node,
   CHECK_EQ(op_node->IsOp(), true);
   auto* op_desc = op_node->Op();
   // batch_norm's input and output (variance and mean) are the same.
-  if (op_original_type_[op_desc->Type()] == "batch_norm") {
+  if (GetOpOrignalType(op_desc->Type()) == "batch_norm") {
     auto vecs = op_desc->Output("MeanOut");
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
@@ -635,7 +678,7 @@ void FloatToMixedPass::InsertCastOp() const {
 
       auto op_type = op_node->Op()->Type();
 
-      if (op_type == "feed") continue;
+      if (GetOpOrignalType(op_type) == "feed") continue;
       if (op_node->Op()->HasAttr("sub_block")) continue;
 
       VLOG(4) << "process op: " << op_type
@@ -679,7 +722,7 @@ void FloatToMixedPass::InsertCastOp() const {
       // Special op.
       // fused_multi_transformer's input(CacheKV) and output(CacheKVOut) vars
       // have same name.
-      if (op_original_type_[op_type] == "fused_multi_transformer") {
+      if (GetOpOrignalType(op_type) == "fused_multi_transformer") {
         auto cache_kv_inputs = op_node->Op()->Input("CacheKV");
         auto cache_kv_outputs = op_node->Op()->Output("CacheKVOut");
         CHECK_EQ(cache_kv_inputs.size(), cache_kv_outputs.size());

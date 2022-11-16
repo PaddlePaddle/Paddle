@@ -54,6 +54,8 @@ class FloatToMixedPass : public FusePassBase {
 
   void RestoreOpOriginType() const;
 
+  inline std::string GetOpOrignalType(const std::string& op_type) const;
+
   void GetOpPrecision() const;
 
   void UpdateOpPrecision() const;
