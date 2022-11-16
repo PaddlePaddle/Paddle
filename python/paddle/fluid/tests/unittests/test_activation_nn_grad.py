@@ -503,6 +503,38 @@ class TestSinDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestCosDoubleGradCheck(unittest.TestCase):
+    def cos_wrapper(self, x):
+        return paddle.cos(x[0])
+
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 0.0005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = paddle.cos(x)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.cos_wrapper, [x], y, x_init=x_arr, place=place
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 class TestPowDoubleGradCheck1(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 2)
@@ -678,6 +710,38 @@ class TestPowTripleGradCheck3(unittest.TestCase):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.pow_wrapper, [x], y, x_init=x_arr, place=place
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestCosTripleGradCheck(unittest.TestCase):
+    def cos_wrapper(self, x):
+        return paddle.cos(x[0])
+
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 3, 7, 9]
+        eps = 0.0005
+        dtype = np.float64
+        x = layers.data('x', shape, False, dtype=dtype)
+        x.persistable = True
+        y = layers.cos(x)
+        x_arr = np.random.random(shape).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        gradient_checker.triple_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.cos_wrapper, [x], y, x_init=x_arr, place=place
         )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
