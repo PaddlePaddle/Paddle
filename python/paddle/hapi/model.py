@@ -1837,8 +1837,7 @@ class Model:
         assert train_data is not None, "train_data must be given!"
 
         if isinstance(batch_size, (tuple, list)) and all([isinstance(x, int) for x in batch_size]):
-            assert len(batch_size) == 2, 
-                f"expected train_batch_size and eval_batch_size, got {len(batch_size)} elements in batch_size."
+            assert len(batch_size) == 2, "batch_size too long, expected train_batch_size and eval_batch_size."
             train_batch_size, eval_batch_size = batch_size
         elif isinstance(batch_size, int):
             train_batch_size, eval_batch_size = batch_size, batch_size
