@@ -663,8 +663,8 @@ class GroupShardedStage2(nn.Layer):
                     assert self._comm_task is not None
                     self._comm_task.wait()
 
-                dp_allreduce_func()
                 grad_func()
+                dp_allreduce_func()
                 opt_step()
 
             opt.step = MethodType(_opt_step, opt)
