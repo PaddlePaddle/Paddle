@@ -462,9 +462,7 @@ class BaseModel(fluid.dygraph.Layer):
             beam_indices = fluid.layers.elementwise_floordiv(
                 topk_indices, vocab_size_tensor
             )
-            token_indices = fluid.layers.elementwise_mod(
-                topk_indices, vocab_size_tensor
-            )
+            token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
             next_log_probs = self._gather(scores, topk_indices, batch_pos)
 
             x = 0

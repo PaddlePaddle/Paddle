@@ -7756,7 +7756,7 @@ class LookaheadOptimizer:
                 shape=[1], dtype='float32', value=1.0
             )
 
-            mod = layers.elementwise_mod(step, k)
+            mod = paddle.remainder(step, k)
             with layers.control_flow.Switch() as switch:
                 with switch.case(step == one_var):
                     for param_name in params:

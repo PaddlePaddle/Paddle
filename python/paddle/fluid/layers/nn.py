@@ -160,7 +160,6 @@ __all__ = [
     'elementwise_max',
     'elementwise_min',
     'elementwise_pow',
-    'elementwise_mod',
     'elementwise_floordiv',
     'uniform_random_batch_size_like',
     'gaussian_random',
@@ -13274,43 +13273,6 @@ def elementwise_pow(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
-@deprecated(since="2.0.0", update_to="paddle.remainder")
-def elementwise_mod(x, y, axis=-1, act=None, name=None):
-    """
-
-    Examples:
-
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.array([10, 15, 8]).astype('int32'),
-                    "y": np.array([3, 6, 5]).astype('int32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3], dtype='int32')
-            y = fluid.data(name="y", shape=[3], dtype='int32')
-            z = fluid.layers.elementwise_mod(x, y)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) #[1, 3, 3]
-    """
-    if _non_static_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_mod'
-        )
-
-    return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
-
-
 @deprecated(since="2.0.0", update_to="paddle.floor_divide")
 def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
     """
@@ -13356,7 +13318,6 @@ for func in [
     elementwise_max,
     elementwise_pow,
     elementwise_min,
-    elementwise_mod,
     elementwise_floordiv,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)

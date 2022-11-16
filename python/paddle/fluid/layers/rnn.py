@@ -1320,7 +1320,7 @@ class BeamSearchDecoder(Decoder):
         beam_indices = nn.elementwise_floordiv(
             topk_indices, self.vocab_size_tensor
         )
-        token_indices = nn.elementwise_mod(topk_indices, self.vocab_size_tensor)
+        token_indices = paddle.remainder(topk_indices, self.vocab_size_tensor)
         next_log_probs = self._gather(
             nn.reshape(log_probs, [-1, self.beam_size * self.vocab_size]),
             topk_indices,

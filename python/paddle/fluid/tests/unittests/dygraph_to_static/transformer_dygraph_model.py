@@ -859,9 +859,7 @@ class Transformer(Layer):
             beam_indices = fluid.layers.elementwise_floordiv(
                 topk_indices, vocab_size_tensor
             )
-            token_indices = fluid.layers.elementwise_mod(
-                topk_indices, vocab_size_tensor
-            )
+            token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
 
             # update states
             caches = map_structure(
