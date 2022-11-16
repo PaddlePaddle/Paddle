@@ -1252,7 +1252,7 @@ def screen_persistables(program, var_list):
         else:
             var = program.global_block().vars[var_name]
 
-        if fluid.io.is_persistable(var):
+        if paddle.fluid.io.is_persistable(var):
             need_remove.append(var_name)
 
     for var_name in need_remove:
