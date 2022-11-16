@@ -173,30 +173,6 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 np.testing.assert_allclose(tril_out, np.tril(data), rtol=1e-05)
                 np.testing.assert_allclose(triu_out, np.triu(data), rtol=1e-05)
 
-    def test_fluid_api(self):
-        paddle.enable_static()
-
-        dtypes = ['float16', 'float32']
-        for dtype in dtypes:
-            prog = Program()
-            startup_prog = Program()
-            with program_guard(prog, startup_prog):
-                data = np.random.random([1, 9, 9, 4]).astype(dtype)
-                x = fluid.data(shape=[1, 9, -1, 4], dtype=dtype, name='x')
-                triu_out = fluid.layers.triu(x)
-
-                place = (
-                    fluid.CUDAPlace(0)
-                    if fluid.core.is_compiled_with_cuda()
-                    else fluid.CPUPlace()
-                )
-                exe = fluid.Executor(place)
-                triu_out = exe.run(
-                    fluid.default_main_program(),
-                    feed={"x": data},
-                    fetch_list=[triu_out],
-                )
-
 
 if __name__ == '__main__':
     unittest.main()

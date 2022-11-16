@@ -39,7 +39,6 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         activation="identity",
         alpha=1.0,
         use_cuda=False,
-        inplace=False,
     ):
         main = fluid.Program()
         startup = fluid.Program()
@@ -54,33 +53,20 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     append_batch_size=False,
                     stop_gradient=False,
                 )
-                if inplace:
-                    bn = fluid.layers.inplace_abn(
-                        data,
-                        act=activation,
-                        param_attr=fluid.ParamAttr(name='bn_scale'),
-                        bias_attr=fluid.ParamAttr(name='bn_bias'),
-                        moving_mean_name='bn_moving_mean',
-                        moving_variance_name='bn_moving_variance',
-                        data_layout=layout,
-                        is_test=only_forward,
-                        act_alpha=alpha,
-                    )
-                else:
-                    bn = fluid.layers.batch_norm(
-                        data,
-                        param_attr=fluid.ParamAttr(name='bn_scale'),
-                        bias_attr=fluid.ParamAttr(name='bn_bias'),
-                        moving_mean_name='bn_moving_mean',
-                        moving_variance_name='bn_moving_variance',
-                        data_layout=layout,
-                        is_test=only_forward,
-                        in_place=inplace,
-                    )
-                    if activation == 'leaky_relu':
-                        bn = fluid.layers.leaky_relu(bn, alpha)
-                    if activation == 'elu':
-                        bn = fluid.layers.elu(bn, alpha)
+                bn = fluid.layers.batch_norm(
+                    data,
+                    param_attr=fluid.ParamAttr(name='bn_scale'),
+                    bias_attr=fluid.ParamAttr(name='bn_bias'),
+                    moving_mean_name='bn_moving_mean',
+                    moving_variance_name='bn_moving_variance',
+                    data_layout=layout,
+                    is_test=only_forward,
+                    in_place=False,
+                )
+                if activation == 'leaky_relu':
+                    bn = fluid.layers.leaky_relu(bn, alpha)
+                if activation == 'elu':
+                    bn = fluid.layers.elu(bn, alpha)
 
                 # NOTE: in inplace mode input and output of bn
                 # may have same name, multiply 1. to generate
@@ -101,55 +87,53 @@ class TestInplaceANBOpTraining(unittest.TestCase):
 
         fetch_outs = []
         fetch_names = []
-        for inplace in [False, True]:
-            main, startup, outs = self.build_program(
-                place,
-                layout,
-                seed,
-                only_forward,
-                activation,
-                alpha,
-                inplace=inplace,
-            )
-            exe = fluid.Executor(place)
-            exe.run(startup)
+        main, startup, outs = self.build_program(
+            place,
+            layout,
+            seed,
+            only_forward,
+            activation,
+            alpha,
+        )
+        exe = fluid.Executor(place)
+        exe.run(startup)
 
-            fetch_name = [v.name for v in outs] + [
-                'bn_moving_mean',
-                'bn_moving_variance',
-                'bn_scale',
-                'bn_bias',
+        fetch_name = [v.name for v in outs] + [
+            'bn_moving_mean',
+            'bn_moving_variance',
+            'bn_scale',
+            'bn_bias',
+        ]
+        if not only_forward:
+            others = [
+                'batch_norm_0.tmp_0',
+                'batch_norm_0.tmp_1',
+                'bn_scale@GRAD',
+                'bn_bias@GRAD',
+                'input@GRAD',
             ]
-            if not only_forward:
-                others = [
-                    'inplace_abn_0.tmp_0' if inplace else 'batch_norm_0.tmp_0',
-                    'inplace_abn_0.tmp_1' if inplace else 'batch_norm_0.tmp_1',
-                    'bn_scale@GRAD',
-                    'bn_bias@GRAD',
-                    'input@GRAD',
-                ]
-                fetch_name += others
-            for nm in fetch_name:
-                fv = fluid.framework._get_var(str(nm), program=main)
-                fv.persistable = True
+            fetch_name += others
+        for nm in fetch_name:
+            fv = fluid.framework._get_var(str(nm), program=main)
+            fv.persistable = True
 
-            build_strategy = fluid.BuildStrategy()
-            build_strategy.sync_batch_norm = (
-                use_cuda and fluid.core.get_cuda_device_count() > 1
-            )
-            build_strategy.enable_inplace = inplace
-            exec_strategy = fluid.ExecutionStrategy()
-            exec_strategy.num_threads = 1 if os.name == 'nt' else 0
-            comp_prog1 = compiler.CompiledProgram(main).with_data_parallel(
-                outs[0].name if not only_forward else None,
-                build_strategy=build_strategy,
-                exec_strategy=exec_strategy,
-            )
-            bn_fetches = exe.run(
-                program=main, feed={'input': data}, fetch_list=fetch_name
-            )
-            fetch_outs.append(bn_fetches)
-            fetch_names.append(fetch_name)
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.sync_batch_norm = (
+            use_cuda and fluid.core.get_cuda_device_count() > 1
+        )
+        build_strategy.enable_inplace = False
+        exec_strategy = fluid.ExecutionStrategy()
+        exec_strategy.num_threads = 1 if os.name == 'nt' else 0
+        comp_prog1 = compiler.CompiledProgram(main).with_data_parallel(
+            outs[0].name if not only_forward else None,
+            build_strategy=build_strategy,
+            exec_strategy=exec_strategy,
+        )
+        bn_fetches = exe.run(
+            program=main, feed={'input': data}, fetch_list=fetch_name
+        )
+        fetch_outs.append(bn_fetches)
+        fetch_names.append(fetch_name)
 
         for bn_val, inplace_abn_val, name1, name2 in zip(
             *(fetch_outs + fetch_names)
