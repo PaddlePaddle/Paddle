@@ -36,7 +36,7 @@ class ClassWithArguments(metaclass=abc.ABCMeta):
         return self._kwargs
 
     @abc.abstractmethod
-    def get_class(self):
+    def _get_class(self):
         pass
 
     def __str__(self):
@@ -59,13 +59,13 @@ class QuanterFactory(ClassWithArguments):
         super(QuanterFactory, self).__init__(*args, **kwargs)
         self.partial_class = None
 
-    def instance(self, layer: Layer) -> BaseQuanter:
+    def _instance(self, layer: Layer) -> BaseQuanter:
         r"""
         Create an instance of quanter for target layer.
         """
         if self.partial_class is None:
             self.partial_class = partial(
-                self.get_class(), *self.args, **self.kwargs
+                self._get_class(), *self.args, **self.kwargs
             )
         return self.partial_class(layer)
 
@@ -119,7 +119,7 @@ locals()["get_class_function"]=get_class_function
             (QuanterFactory,),
             {
                 "__init__": locals()["init_function"],
-                "get_class": locals()["get_class_function"],
+                "_get_class": locals()["get_class_function"],
             },
         )
         setattr(mod, class_name, new_class)

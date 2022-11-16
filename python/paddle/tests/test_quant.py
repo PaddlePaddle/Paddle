@@ -58,31 +58,31 @@ class TestQuantConfig(unittest.TestCase):
         self.q_config = TRTQuantConfig(
             activation=self.quanter, weight=self.quanter
         )
-        self.q_config.specify(self.model)
+        self.q_config._specify(self.model)
         self.assertIsNotNone(self.q_config.global_config.activation)
         self.assertIsNotNone(self.q_config.global_config.weight)
         for layer in self.model.sublayers():
-            config = self.q_config.get_config_by_layer(layer)
+            config = self.q_config._get_config_by_layer(layer)
             self.assertTrue(config.activation == self.quanter)
             self.assertTrue(config.weight == self.quanter)
 
     def assert_just_linear_weight_configure(self, model, config):
         for layer in model.sublayers():
-            layer_config = config.get_config_by_layer(layer)
+            layer_config = config._get_config_by_layer(layer)
             if type(layer) == Linear:
                 self.assertIsNone(layer_config.activation)
                 self.assertEqual(layer_config.weight, self.quanter)
-                self.assertTrue(config.is_quantifiable(layer))
+                self.assertTrue(config._is_quantifiable(layer))
             elif type(layer) == Conv2D:
                 self.assertIsNone(layer_config)
-                self.assertFalse(config.is_quantifiable(layer))
+                self.assertFalse(config._is_quantifiable(layer))
 
     def test_add_layer_config(self):
         self.q_config = TRTQuantConfig(activation=None, weight=None)
         self.q_config.add_layer_config(
             [self.model.fc], activation=None, weight=self.quanter
         )
-        self.q_config.specify(self.model)
+        self.q_config._specify(self.model)
         self.assert_just_linear_weight_configure(self.model, self.q_config)
 
     def test_add_prefix_config(self):
@@ -90,7 +90,7 @@ class TestQuantConfig(unittest.TestCase):
         self.q_config.add_prefix_config(
             [self.model.fc.full_name()], activation=None, weight=self.quanter
         )
-        self.q_config.specify(self.model)
+        self.q_config._specify(self.model)
         self.assert_just_linear_weight_configure(self.model, self.q_config)
 
     def test_add_type_config(self):
@@ -98,7 +98,7 @@ class TestQuantConfig(unittest.TestCase):
         self.q_config.add_type_config(
             [Linear], activation=None, weight=self.quanter
         )
-        self.q_config.specify(self.model)
+        self.q_config._specify(self.model)
         self.assert_just_linear_weight_configure(self.model, self.q_config)
 
     def test_add_qat_layer_mapping(self):
@@ -113,10 +113,10 @@ class TestQuantConfig(unittest.TestCase):
         self.q_config = TRTQuantConfig(activation=None, weight=None)
         self.q_config.add_custom_leaf(Sequential)
         self.assertTrue(Sequential in self.q_config.custom_leaves)
-        self.assertTrue(self.q_config.is_custom_leaf(self.model.fc))
-        self.assertTrue(self.q_config.is_leaf(self.model.fc))
-        self.assertFalse(self.q_config.is_default_leaf(self.model.fc))
-        self.assertFalse(self.q_config.is_real_leaf(self.model.fc))
+        self.assertTrue(self.q_config._is_custom_leaf(self.model.fc))
+        self.assertTrue(self.q_config._is_leaf(self.model.fc))
+        self.assertFalse(self.q_config._is_default_leaf(self.model.fc))
+        self.assertFalse(self.q_config._is_real_leaf(self.model.fc))
 
     def test_need_observe(self):
         self.q_config = TRTQuantConfig(activation=None, weight=None)
@@ -124,24 +124,24 @@ class TestQuantConfig(unittest.TestCase):
             [self.model.fc], activation=self.quanter, weight=self.quanter
         )
         self.q_config.add_custom_leaf(Sequential)
-        self.q_config.specify(self.model)
-        self.assertTrue(self.q_config.has_observer_config(self.model.fc))
-        self.assertTrue(self.q_config.need_observe(self.model.fc))
+        self.q_config._specify(self.model)
+        self.assertTrue(self.q_config._has_observer_config(self.model.fc))
+        self.assertTrue(self.q_config._need_observe(self.model.fc))
 
-    def test_get_observer(self):
+    def test__get_observer(self):
         self.q_config = TRTQuantConfig(activation=None, weight=None)
         self.q_config.add_layer_config(
             [self.model.fc], activation=self.quanter, weight=self.quanter
         )
-        self.q_config.specify(self.model)
-        observer = self.q_config.get_observer(self.model.fc)
+        self.q_config._specify(self.model)
+        observer = self.q_config._get_observer(self.model.fc)
         self.assertIsInstance(observer, BaseQuanter)
 
     def test_details(self):
         self.q_config = TRTQuantConfig(
             activation=self.quanter, weight=self.quanter
         )
-        self.q_config.specify(self.model)
+        self.q_config._specify(self.model)
         self.assertIsNotNone(self.q_config.details())
         self.assertIsNotNone(self.q_config.__str__())
 

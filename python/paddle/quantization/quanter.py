@@ -19,6 +19,11 @@ __all__ = ["BaseQuanter"]
 
 
 class BaseQuanter(Layer, metaclass=abc.ABCMeta):
+    r"""
+    Built-in quanters and custom quanters should extend this base quanter
+    and implement abstract methods.
+    """
+
     def __init__(self):
         super(BaseQuanter, self).__init__()
 

@@ -279,46 +279,46 @@ class QuantConfig(object):
         """
         return self._custom_leaves
 
-    def need_observe(self, layer: Layer):
+    def _need_observe(self, layer: Layer):
         r"""
         Whether the layer should be observed by observer.
         """
-        return self.is_leaf(layer) and self.has_observer_config(layer)
+        return self._is_leaf(layer) and self._has_observer_config(layer)
 
-    def has_observer_config(self, layer: Layer):
+    def _has_observer_config(self, layer: Layer):
         r"""
         Whether the layer has been configured for activation quantization.
         """
-        _config = self.get_config_by_layer(layer)
+        _config = self._get_config_by_layer(layer)
         return _config is not None and _config.activation is not None
 
-    def is_leaf(self, layer: Layer):
+    def _is_leaf(self, layer: Layer):
         return (
-            self.is_default_leaf(layer)
-            or self.is_real_leaf(layer)
-            or self.is_custom_leaf(layer)
+            self._is_default_leaf(layer)
+            or self._is_real_leaf(layer)
+            or self._is_custom_leaf(layer)
         )
 
-    def is_default_leaf(self, layer: Layer):
+    def _is_default_leaf(self, layer: Layer):
         return type(layer) in DEFAULT_LEAVES
 
-    def is_real_leaf(self, layer: Layer):
+    def _is_real_leaf(self, layer: Layer):
         r"""
         The leaf is real leaf when it has no sublayers.
         """
         return layer._sub_layers is None or len(layer._sub_layers) == 0
 
-    def is_custom_leaf(self, layer: Layer):
+    def _is_custom_leaf(self, layer: Layer):
         return type(layer) in self.custom_leaves
 
-    def get_observer(self, layer: Layer):
+    def _get_observer(self, layer: Layer):
         r"""
         Create an instance of observer or quanter according to the
         given layer's quantization config.
         """
-        _config = self.get_config_by_layer(layer)
+        _config = self._get_config_by_layer(layer)
         _observer = None if _config is None else _config.activation
-        return None if _observer is None else _observer.instance(layer)
+        return None if _observer is None else _observer._instance(layer)
 
     @property
     def qat_layer_mappings(self):
@@ -332,17 +332,17 @@ class QuantConfig(object):
     def global_config(self) -> SingleLayerConfig:
         return self._global_config
 
-    def get_config_by_layer(self, layer) -> SingleLayerConfig:
+    def _get_config_by_layer(self, layer) -> SingleLayerConfig:
         return self._layer2config.get(layer, None)
 
-    def is_quantifiable(self, layer: Layer):
+    def _is_quantifiable(self, layer: Layer):
         r"""
         The layer is quantifiable when it configured by activation quanter/observer
         or weight quanter/observer.
         """
         return layer in self._layer2config
 
-    def specify(self, model: Layer):
+    def _specify(self, model: Layer):
         r"""
         Specify the quantization config of each sublayer in model.
         For each layer in sublayers of mode,
@@ -371,7 +371,7 @@ class QuantConfig(object):
             quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
             q_config = QuantConfig(activation=None, weight=None)
             q_config.add_layer_config([model.fc], activation=quanter, weight=quanter)
-            q_config.specify(model)
+            q_config._specify(model)
         """
         self._model = model
         self._specify_helper(self._model)
