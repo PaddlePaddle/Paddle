@@ -1280,6 +1280,8 @@ void InterpreterCore::AnalyseTraceExecuteOrder() {
   VLOG(1) << "Analyze the execution order of Trace scheduling mode.";
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
 
+  auto op_downstream_map = dependency_builder_.GetOpDownStreamMap();
+
   auto IsReady = [this](size_t next_id) {
     VLOG(4) << "op_id: " << next_id
             << ", remain deps: " << deps_[next_id]->DynamicDep();
