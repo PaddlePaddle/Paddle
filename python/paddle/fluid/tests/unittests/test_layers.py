@@ -4169,55 +4169,6 @@ class TestBook(LayerTest):
                 )
             )
 
-    def test_linear_chain_crf(self):
-        with self.static_graph():
-            label_dict_len = 10
-            feature = layers.data(name='feature', shape=[784], dtype='float32')
-            label = layers.data(name='label', shape=[1], dtype='int64')
-            emission = layers.fc(input=feature, size=10)
-            crf = layers.linear_chain_crf(
-                input=emission, label=label, param_attr=ParamAttr(name="crfw")
-            )
-            crf_decode = layers.crf_decoding(
-                input=emission, param_attr=ParamAttr(name="crfw")
-            )
-            self.assertIsNotNone(crf)
-            self.assertIsNotNone(crf_decode)
-            return layers.chunk_eval(
-                input=crf_decode,
-                label=label,
-                chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) // 2,
-            )
-
-    def test_linear_chain_crf_padding(self):
-        with self.static_graph():
-            label_dict_len, max_len = 10, 20
-            feature = layers.data(
-                name='feature', shape=[max_len, 784], dtype='float32'
-            )
-            label = layers.data(name='label', shape=[max_len], dtype='int64')
-            length = layers.data(name='length', shape=[1], dtype='int64')
-            emission = layers.fc(input=feature, size=10, num_flatten_dims=2)
-            crf = layers.linear_chain_crf(
-                input=emission,
-                label=label,
-                length=length,
-                param_attr=ParamAttr(name="crfw"),
-            )
-            crf_decode = layers.crf_decoding(
-                input=emission, length=length, param_attr=ParamAttr(name="crfw")
-            )
-            self.assertIsNotNone(crf)
-            self.assertIsNotNone(crf_decode)
-            return layers.chunk_eval(
-                input=crf_decode,
-                label=label,
-                seq_length=length,
-                chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) // 2,
-            )
-
     def test_im2sequence(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
