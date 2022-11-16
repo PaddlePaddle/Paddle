@@ -117,8 +117,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     : place_(place),
       block_(block),
       execution_config_(place, block.OpSize()),
-      var_scope_(scope),
-      stream_analyzer_(place) {
+      stream_analyzer_(place),
+      var_scope_(scope) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/stream_analyzer.h"
+#include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 
 #include <future>
 #include <unordered_set>
@@ -23,6 +23,7 @@
 
 namespace paddle {
 namespace framework {
+namespace interpreter {
 
 class ContextManager {
  public:
@@ -287,5 +288,6 @@ platform::DeviceType StreamAnalyzer::GetWaiterType(const Instruction& instr) {
   }
 }
 
+}  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

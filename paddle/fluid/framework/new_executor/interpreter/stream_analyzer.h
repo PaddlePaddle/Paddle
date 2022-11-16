@@ -23,6 +23,7 @@
 
 namespace paddle {
 namespace framework {
+namespace interpreter {
 
 class StreamAnalyzer {
  public:
@@ -57,5 +58,6 @@ class StreamAnalyzer {
   std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
 };
 
+}  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
