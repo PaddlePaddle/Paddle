@@ -1532,3 +1532,9 @@ class Optimizer:
         For Multi Tensor, append optimize merged_operator to block.
         """
         pass
+
+    def _is_dtype_fp16_or_bf16(self, dtype):
+        return (
+            dtype == core.VarDesc.VarType.FP16
+            or dtype == core.VarDesc.VarType.BF16
+        )
