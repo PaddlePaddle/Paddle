@@ -209,7 +209,7 @@ def crf_decoding(input, param_attr, label=None, length=None):
 
            crf_cost = paddle.fluid.layers.linear_chain_crf(input=emission, label=label,
                      param_attr=paddle.ParamAttr(name="crfw"))
-           crf_decode = paddle.static.nn.common.crf_decoding(input=emission,
+           crf_decode = paddle.static.nn.crf_decoding(input=emission,
                      param_attr=paddle.ParamAttr(name="crfw"))
 
            # Common tensor example
@@ -222,7 +222,7 @@ def crf_decoding(input, param_attr, label=None, length=None):
 
            crf_cost = paddle.fluid.layers.linear_chain_crf(input=emission, label=label, length=length,
                      param_attr=paddle.ParamAttr(name="crfw_pad"))
-           crf_decode = paddle.static.nn.common.crf_decoding(input=emission, length=length,
+           crf_decode = paddle.static.nn.crf_decoding(input=emission, length=length,
                      param_attr=paddle.ParamAttr(name="crfw_pad"))
     """
     check_variable_and_dtype(
