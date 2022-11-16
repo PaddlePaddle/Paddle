@@ -196,7 +196,6 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                         activation,
                         alpha,
                         use_cuda,
-                        True,
                     )
                     exe = fluid.Executor(place)
                     exe.run(startup)
