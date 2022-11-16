@@ -297,9 +297,9 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
       ir::PassRegistry::Instance().Get("while_op_eager_deletion_pass");
   while_op_eager_deletion_pass->Apply(graph);
 
-  auto recurrent_op_eager_deletion_pass =
-      ir::PassRegistry::Instance().Get("recurrent_op_eager_deletion_pass");
-  recurrent_op_eager_deletion_pass->Apply(graph);
+  // auto recurrent_op_eager_deletion_pass =
+  //     ir::PassRegistry::Instance().Get("recurrent_op_eager_deletion_pass");
+  // recurrent_op_eager_deletion_pass->Apply(graph);
 
 #ifdef PADDLE_WITH_CINN
   auto share_varinfo_into_cinn_pass =
