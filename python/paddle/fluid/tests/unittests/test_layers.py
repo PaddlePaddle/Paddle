@@ -3629,13 +3629,6 @@ class TestBook(LayerTest):
             output = layers.crop(x, shape=y)
             return output
 
-    def make_mean_iou(self):
-        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
-            x = self._get_data(name='x', shape=[16], dtype='int32')
-            y = self._get_data(name='label', shape=[16], dtype='int32')
-            iou = layers.mean_iou(x, y, self._high_data_bound)
-            return iou
-
     def make_argsort(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
