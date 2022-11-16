@@ -129,7 +129,7 @@ MatmulElementwiseAddMKLDNNFusePass::MatmulElementwiseAddMKLDNNFusePass() {
       .IsType<bool>()
       .End();
 
-  AddOpCompat(OpCompat("elementwise_add"))
+  AddOpCompat(OpCompat("add"))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -155,4 +155,4 @@ REGISTER_PASS_CAPABILITY(matmul_elementwise_add_mkldnn_fuse_pass)
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
-            .LE("elementwise_add", 1));
+            .LE("add", 1));

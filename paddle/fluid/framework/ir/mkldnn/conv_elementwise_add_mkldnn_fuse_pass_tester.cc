@@ -89,7 +89,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionAsYWithElementwiseAddRelu) {
                   {{"Input", "b"}, {"Bias", "bias"}, {"Filter", "weights"}},
                   {{"Output", "c"}});
   Create_Op_elemntwise_add(
-      &prog, "elementwise_add", {{"X", "a"}, {"Y", "c"}}, {{"Out", "d"}});
+      &prog, "add", {{"X", "a"}, {"Y", "c"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
 
   Graph graph(prog);
@@ -100,8 +100,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionAsYWithElementwiseAddRelu) {
                                      "relu",
                                      nodes_removed,
                                      nodes_added));
-  EXPECT_TRUE(
-      test::AssertOpsCount(graph, {{"conv2d", 1}, {"elementwise_add", 0}}));
+  EXPECT_TRUE(test::AssertOpsCount(graph, {{"conv2d", 1}, {"add", 0}}));
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass,
@@ -123,7 +122,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass,
                   {{"Output", "f"}});
 
   Create_Op_elemntwise_add(
-      &prog, "elementwise_add", {{"X", "f"}, {"Y", "c"}}, {{"Out", "d"}});
+      &prog, "add", {{"X", "f"}, {"Y", "c"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
 
   Graph graph(prog);
@@ -134,8 +133,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass,
                                      "relu",
                                      nodes_removed,
                                      nodes_added));
-  EXPECT_TRUE(
-      test::AssertOpsCount(graph, {{"conv2d", 2}, {"elementwise_add", 0}}));
+  EXPECT_TRUE(test::AssertOpsCount(graph, {{"conv2d", 2}, {"add", 0}}));
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass,
@@ -148,7 +146,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass,
                   {{"Input", "b"}, {"Filter", "weights"}},
                   {{"Output", "c"}});
   Create_Op_elemntwise_add(
-      &prog, "elementwise_add", {{"X", "a"}, {"Y", "c"}}, {{"Out", "d"}});
+      &prog, "add", {{"X", "a"}, {"Y", "c"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
 
   Graph graph(prog);
@@ -159,8 +157,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass,
                                      "relu",
                                      nodes_removed,
                                      nodes_added));
-  EXPECT_TRUE(
-      test::AssertOpsCount(graph, {{"conv2d", 1}, {"elementwise_add", 0}}));
+  EXPECT_TRUE(test::AssertOpsCount(graph, {{"conv2d", 1}, {"add", 0}}));
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionAsXWithElementwiseAddRelu) {
@@ -174,7 +171,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionAsXWithElementwiseAddRelu) {
                   {{"Output", "c"}});
 
   Create_Op_elemntwise_add(
-      &prog, "elementwise_add", {{"X", "c"}, {"Y", "a"}}, {{"Out", "d"}});
+      &prog, "add", {{"X", "c"}, {"Y", "a"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
 
   Graph graph(prog);
@@ -185,8 +182,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionAsXWithElementwiseAddRelu) {
                                      "relu",
                                      nodes_removed,
                                      nodes_added));
-  EXPECT_TRUE(
-      test::AssertOpsCount(graph, {{"conv2d", 1}, {"elementwise_add", 0}}));
+  EXPECT_TRUE(test::AssertOpsCount(graph, {{"conv2d", 1}, {"add", 0}}));
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass,
@@ -199,7 +195,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass,
                   {{"Input", "b"}, {"Filter", "weights"}},
                   {{"Output", "c"}});
   Create_Op_elemntwise_add(
-      &prog, "elementwise_add", {{"X", "c"}, {"Y", "a"}}, {{"Out", "d"}});
+      &prog, "add", {{"X", "c"}, {"Y", "a"}}, {{"Out", "d"}});
   test::CreateOp(&prog, "relu", {{"X", "d"}}, {{"Out", "e"}});
 
   Graph graph(prog);
@@ -210,8 +206,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass,
                                      "relu",
                                      nodes_removed,
                                      nodes_added));
-  EXPECT_TRUE(
-      test::AssertOpsCount(graph, {{"conv2d", 1}, {"elementwise_add", 0}}));
+  EXPECT_TRUE(test::AssertOpsCount(graph, {{"conv2d", 1}, {"add", 0}}));
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass, NoFusion) {
@@ -230,15 +225,14 @@ TEST(ConvElementwiseAddMKLDNNFusePass, NoFusion) {
                   {{"Output", "e"}});
 
   Create_Op_elemntwise_add(
-      &prog, "elementwise_add", {{"X", "c"}, {"Y", "e"}}, {{"Out", "f"}});
+      &prog, "add", {{"X", "c"}, {"Y", "e"}}, {{"Out", "f"}});
   test::CreateOp(&prog, "relu", {{"X", "f"}}, {{"Out", "g"}});
 
   Graph graph(prog);
 
   EXPECT_TRUE(test::RunPassAndAssert(
       &graph, "conv_elementwise_add_mkldnn_fuse_pass", "a", "g", 0, 0));
-  EXPECT_TRUE(
-      test::AssertOpsCount(graph, {{"conv2d", 2}, {"elementwise_add", 1}}));
+  EXPECT_TRUE(test::AssertOpsCount(graph, {{"conv2d", 2}, {"add", 1}}));
 }
 
 TEST(ConvElementwiseAddMKLDNNFusePass, pass_op_version_check) {

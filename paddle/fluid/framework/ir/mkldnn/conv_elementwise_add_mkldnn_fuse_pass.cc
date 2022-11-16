@@ -61,7 +61,7 @@ ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
       .IsStringIn({"NHWC", "NCHW", "AnyLayout"})
       .End();
 
-  AddOpCompat(OpCompat("elementwise_add"))
+  AddOpCompat(OpCompat("add"))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -90,7 +90,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
   elementwise_pattern(
       conv_output,
       pattern->NewNode(elementwise_pattern.residual_data_repr()),
-      "elementwise_add",
+      "add",
       as_x);
   conv_output->AsIntermediate();
 
@@ -166,7 +166,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
   auto conv_y_output = conv_y_pattern();
 
   patterns::Elementwise elementwise_pattern{pattern, name_scope};
-  elementwise_pattern(conv_x_output, conv_y_output, "elementwise_add");
+  elementwise_pattern(conv_x_output, conv_y_output, "add");
   conv_x_output->AsIntermediate();
   conv_y_output->AsIntermediate();
 
@@ -260,4 +260,4 @@ REGISTER_PASS_CAPABILITY(conv_elementwise_add_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .LE("elementwise_add", 1));
+            .LE("add", 1));

@@ -40,7 +40,7 @@ FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
       .IsNumGE(1)
       .End();
 
-  AddOpCompat(OpCompat("add_raw"))
+  AddOpCompat(OpCompat("add"))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -69,7 +69,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
   elementwise_pattern(
       fc_output,
       pattern->NewNode(elementwise_pattern.residual_data_repr()),
-      "elementwise_add",
+      "add",
       fc_as_x);
   fc_output->AsIntermediate();
 
@@ -162,4 +162,4 @@ REGISTER_PASS_CAPABILITY(fc_elementwise_add_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("fc", 0)
-            .LE("elementwise_add", 1));
+            .LE("add", 1));

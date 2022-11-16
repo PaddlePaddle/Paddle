@@ -72,7 +72,7 @@ class MKLDNNConvBatchNormPassTest {
                    .count(type)) {
       op->SetInput("X", inputs);
       op->SetOutput("Out", {outputs[0]});
-    } else if (type == "elementwise_add") {
+    } else if (type == "add") {
       op->SetAttr("axis", static_cast<int>(1));
       op->SetInput("X", {inputs[0]});
       op->SetInput("Y", {inputs[1]});
@@ -139,13 +139,13 @@ class MKLDNNConvBatchNormPassTest {
             std::vector<std::string>({"e"}),
             true);
       SetOp(&prog,
-            "elementwise_add",
+            "add",
             "elementwise_add1",
             std::vector<std::string>({"f", "g"}),
             std::vector<std::string>({"h"}),
             true);
       SetOp(&prog,
-            "elementwise_add",
+            "add",
             "elementwise_add2",
             std::vector<std::string>({"e", "g"}),
             std::vector<std::string>({"j"}),
@@ -167,7 +167,7 @@ class MKLDNNConvBatchNormPassTest {
                 {"k", "mean2", "variance2", "saved_mean2", "saved_variance2"}),
             true);
       SetOp(&prog,
-            "elementwise_add",
+            "add",
             "elementwise_add3",
             std::vector<std::string>({"i", "k"}),
             std::vector<std::string>({"l"}),

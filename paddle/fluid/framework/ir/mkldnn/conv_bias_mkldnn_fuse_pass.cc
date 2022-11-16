@@ -60,7 +60,7 @@ ConvBiasFusePass::ConvBiasFusePass() {
       .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 
-  AddOpCompat(OpCompat("elementwise_add"))
+  AddOpCompat(OpCompat("add"))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -118,7 +118,7 @@ Conv2DTransposeBiasFusePass::Conv2DTransposeBiasFusePass() {
       .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 
-  AddOpCompat(OpCompat("elementwise_add"))
+  AddOpCompat(OpCompat("add"))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -164,7 +164,7 @@ Conv3DBiasFusePass::Conv3DBiasFusePass() {
       .IsStringIn({"NDHWC", "NCDHW"})
       .End();
 
-  AddOpCompat(OpCompat("elementwise_add"))
+  AddOpCompat(OpCompat("add"))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -325,7 +325,7 @@ REGISTER_PASS_CAPABILITY(conv_bias_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .LE("elementwise_add", 1));
+            .LE("add", 1));
 
 REGISTER_PASS(conv_transpose_bias_mkldnn_fuse_pass,
               paddle::framework::ir::Conv2DTransposeBiasFusePass);
@@ -333,7 +333,7 @@ REGISTER_PASS_CAPABILITY(conv_transpose_bias_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d_transpose", 2)
-            .LE("elementwise_add", 1));
+            .LE("add", 1));
 
 REGISTER_PASS(conv3d_bias_mkldnn_fuse_pass,
               paddle::framework::ir::Conv3DBiasFusePass);

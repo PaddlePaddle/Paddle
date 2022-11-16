@@ -161,7 +161,7 @@ ConvAffineChannelFusePass::ConvAffineChannelFusePass() {
       .IsStringIn({"NCHW", "AnyLayout"})
       .End();
 
-  AddOpCompat(OpCompat("elementwise_add"))
+  AddOpCompat(OpCompat("add"))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -246,7 +246,7 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
     desc.SetInput("X", std::vector<std::string>({conv_out->Name()}));
     desc.SetInput("Y", std::vector<std::string>({eltwise_y_in_node->Name()}));
     desc.SetOutput("Out", std::vector<std::string>({ac_out->Name()}));
-    desc.SetType("elementwise_add");
+    desc.SetType("add");
     desc.SetAttr("axis", 1);
     desc.SetAttr("use_mkldnn", conv->Op()->GetAttrIfExists<bool>("use_mkldnn"));
 

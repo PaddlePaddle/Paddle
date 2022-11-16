@@ -60,17 +60,17 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["matmul"]["Y"] = ScaleAlgo::KL;
   rules_["matmul"]["Out"] = ScaleAlgo::KL;
 
-  rules_["elementwise_add"]["X"] = ScaleAlgo::KL;
-  rules_["elementwise_add"]["Y"] = ScaleAlgo::KL;
-  rules_["elementwise_add"]["Out"] = ScaleAlgo::KL;
+  rules_["add"]["X"] = ScaleAlgo::KL;
+  rules_["add"]["Y"] = ScaleAlgo::KL;
+  rules_["add"]["Out"] = ScaleAlgo::KL;
 
-  rules_["elementwise_mul"]["X"] = ScaleAlgo::KL;
-  rules_["elementwise_mul"]["Y"] = ScaleAlgo::KL;
-  rules_["elementwise_mul"]["Out"] = ScaleAlgo::KL;
+  rules_["multiply"]["X"] = ScaleAlgo::KL;
+  rules_["multiply"]["Y"] = ScaleAlgo::KL;
+  rules_["multiply"]["Out"] = ScaleAlgo::KL;
 
-  rules_["elementwise_sub"]["X"] = ScaleAlgo::KL;
-  rules_["elementwise_sub"]["Y"] = ScaleAlgo::KL;
-  rules_["elementwise_sub"]["Out"] = ScaleAlgo::KL;
+  rules_["subtract"]["X"] = ScaleAlgo::KL;
+  rules_["subtract"]["Y"] = ScaleAlgo::KL;
+  rules_["subtract"]["Out"] = ScaleAlgo::KL;
 
   // Reshape2 does not perform calculation on the data and shapes are not
   // changed. Scale is calculated on input data and assign to Quantize and
