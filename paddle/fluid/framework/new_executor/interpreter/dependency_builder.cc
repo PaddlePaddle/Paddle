@@ -60,7 +60,7 @@ const std::map<int, std::set<int>>& DependencyBuilder::Build(
   }
 
   AddDependencyForCoalesceTensorOp();
-  AddDependencyForCommunicationOp();
+  // AddDependencyForCommunicationOp();
   AddDependencyForRandomOp();
   AddDependencyForReadOp();
 
