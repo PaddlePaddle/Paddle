@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle.fluid.dygraph as dygraph
 from paddle.fluid.framework import _test_eager_guard
-
+import paddle
 
 class TestImperativeLayerTrainable(unittest.TestCase):
     def func_set_trainable(self):
@@ -27,7 +27,7 @@ class TestImperativeLayerTrainable(unittest.TestCase):
 
             label = dygraph.to_variable(label)
 
-            linear = dygraph.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
             y = linear(label)
             self.assertFalse(y.stop_gradient)
 

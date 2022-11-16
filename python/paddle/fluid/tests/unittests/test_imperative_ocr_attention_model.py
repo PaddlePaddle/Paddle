@@ -18,7 +18,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.nn import (
-    Pool2D,
     Linear,
     BatchNorm,
     Embedding,
@@ -110,11 +109,9 @@ class ConvBNPool(fluid.dygraph.Layer):
         self.bn_1_layer = BatchNorm(out_ch[1], act=act, is_test=is_test)
 
         if self.pool:
-            self.pool_layer = Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=2,
-                use_cudnn=use_cudnn,
+            self.pool_layer = paddle.nn.MaxPool2D(
+                kernel_size=2,
+                stride=2,
                 ceil_mode=True,
             )
 

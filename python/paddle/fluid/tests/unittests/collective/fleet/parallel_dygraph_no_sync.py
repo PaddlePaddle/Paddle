@@ -19,7 +19,7 @@ import random
 import paddle
 import paddle.fluid as fluid
 import paddle.distributed as dist
-from paddle.fluid.dygraph.nn import Linear
+from paddle.nn import Linear
 from test_dist_base import (
     print_to_err,
     print_to_out,

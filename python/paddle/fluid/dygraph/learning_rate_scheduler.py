@@ -836,7 +836,7 @@ class ReduceLROnPlateau(LearningRateDecay):
 
         with fluid.dygraph.guard():
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-            linear = fluid.dygraph.Linear(10, 10)
+            linear = paddle.nn.Linear(10, 10)
             input = fluid.dygraph.to_variable(x)
 
             reduce_lr = fluid.dygraph.ReduceLROnPlateau(
@@ -1105,7 +1105,7 @@ class StepDecay(_LearningRateEpochDecay):
             import numpy as np
             with fluid.dygraph.guard():
                 x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-                linear = fluid.dygraph.Linear(10, 10)
+                linear = paddle.nn.Linear(10, 10)
                 input = fluid.dygraph.to_variable(x)
                 scheduler = fluid.dygraph.StepDecay(0.5, step_size=3)
                 adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
@@ -1185,7 +1185,7 @@ class MultiStepDecay(_LearningRateEpochDecay):
             import numpy as np
             with fluid.dygraph.guard():
                 x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-                linear = fluid.dygraph.Linear(10, 10)
+                linear = paddle.nn.Linear(10, 10)
                 input = fluid.dygraph.to_variable(x)
                 scheduler = fluid.dygraph.MultiStepDecay(0.5, milestones=[3, 5])
                 adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
@@ -1270,7 +1270,7 @@ class LambdaDecay(_LearningRateEpochDecay):
             import numpy as np
             with fluid.dygraph.guard():
                 x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
-                linear = fluid.dygraph.Linear(10, 10)
+                linear = paddle.nn.Linear(10, 10)
                 input = fluid.dygraph.to_variable(x)
                 scheduler = fluid.dygraph.LambdaDecay(0.5, lr_lambda=lambda x: 0.95**x)
                 adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())

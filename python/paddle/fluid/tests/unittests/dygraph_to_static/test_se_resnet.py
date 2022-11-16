@@ -23,7 +23,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
+from paddle.fluid.dygraph.nn import BatchNorm, Linear
 from paddle.fluid.dygraph import declarative
 from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -126,7 +126,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
 
         super().__init__()
         self._num_channels = num_channels
-        self._pool = Pool2D(pool_size=0, pool_type='avg', global_pooling=True)
+        self._pool = paddle.nn.AdaptiveAvgPool2D(output_size=(1, 1)
         stdv = 1.0 / math.sqrt(num_channels * 1.0)
         self._fc = Linear(
             num_channels,
@@ -243,8 +243,8 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = Pool2D(
-                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+            self.pool = paddle.nn.Pool2D(
+                kernel_size=3, stride=2, padding=1
             )
         elif layers == 101:
             cardinality = 32
@@ -258,8 +258,8 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = Pool2D(
-                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+            self.pool = paddle.nn.Pool2D(
+                kernel_size=3, stride=2, padding=1
             )
         elif layers == 152:
             cardinality = 64
@@ -287,8 +287,8 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=1,
                 act='relu',
             )
-            self.pool = Pool2D(
-                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+            self.pool = paddle.nn.Pool2D(
+                kernel_size=3, stride=2, padding=1
             )
 
         self.bottleneck_block_list = []
@@ -313,9 +313,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
-        self.pool2d_avg = Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(output_size=(1, 1)
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 2 * 1 * 1

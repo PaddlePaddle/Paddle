@@ -21,7 +21,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator, to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Linear, Pool2D
+from paddle.fluid.dygraph.nn import BatchNorm, Linear
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 random.seed(0)
@@ -155,8 +155,8 @@ class TSM_ResNet(fluid.dygraph.Layer):
         self.conv = ConvBNLayer(
             num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu'
         )
-        self.pool2d_max = Pool2D(
-            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+        self.pool2d_max = paddle.nn.MaxPool2D(
+            kernel_size=3, stride=2, padding=1
         )
 
         self.bottleneck_block_list = []
@@ -178,9 +178,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
                 num_channels = int(bottleneck_block._num_channels_out)
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-        self.pool2d_avg = Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(output_size=(1, 1))
 
         import math
 

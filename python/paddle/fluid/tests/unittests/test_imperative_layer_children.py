@@ -28,10 +28,10 @@ class LeNetDygraph(fluid.dygraph.Layer):
         self.features = nn.Sequential(
             nn.Conv2D(1, 6, 3, stride=1, padding=1),
             nn.ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
             nn.Conv2D(6, 16, 5, stride=1, padding=0),
             nn.ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
         )
 
     def forward(self, inputs):

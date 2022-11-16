@@ -23,7 +23,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.nn import Linear, Pool2D
+from paddle.nn import Linear
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _test_eager_guard
@@ -70,14 +70,27 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             bias_attr=None,
         )
 
-        self._pool2d = Pool2D(
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn,
-        )
+
+        if pool_type == 'max':
+            if global_pooling:
+                self._pool2d =  paddle.nn.AdaptiveMaxPool2D(output_size=(1,1))
+            else:
+                self._pool2d = paddle.nn.MaxPool2D(
+                        kernel_size=pool_size,
+                        sride=pool_stride,
+                        padding=pool_padding
+                )
+        else if pool_type == "avg":
+            if global_pooling:
+                self._pool2d =  paddle.nn.AdaptiveAvgPool2D(output_size=(1,1))
+            else:
+                self._pool2d = paddle.nn.AvgPool2D(
+                        kernel_size=pool_size,
+                        sride=pool_stride,
+                        padding=pool_padding
+                )
+
+
 
     def forward(self, inputs):
         x = self._conv2d(inputs)
@@ -103,12 +116,11 @@ class MNIST(fluid.dygraph.Layer):
         self._fc = Linear(
             self.pool_2_shape,
             10,
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=scale
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Normal(
+                    mean=0.0, std=scale
                 )
             ),
-            act="softmax",
         )
 
     def forward(self, inputs, label=None):
@@ -127,6 +139,7 @@ class MNIST(fluid.dygraph.Layer):
         x = self._simple_img_conv_pool_2(x)
         x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
         x = self._fc(x)
+        x = paddle.nn.functional.softmax(x)
         return x
 
 

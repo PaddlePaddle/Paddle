@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.dygraph.nn import Pool2D, BatchNorm, Linear
+from paddle.fluid.dygraph.nn import BatchNorm, Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -254,7 +254,7 @@ class MobileNetV1(fluid.dygraph.Layer):
         )
         self.dwsl.append(dws6)
 
-        self.pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(output_size=(1, 1))
 
         self.out = Linear(
             int(1024 * scale),
@@ -420,7 +420,7 @@ class MobileNetV2(fluid.dygraph.Layer):
         )
 
         # 4. pool
-        self._pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
+        self._pool2d_avg = paddle.nn.AdaptiveAvgPool2D(output_size=(1, 1))
 
         # 5. fc
         tmp_param = ParamAttr(name=self.full_name() + "fc10_weights")

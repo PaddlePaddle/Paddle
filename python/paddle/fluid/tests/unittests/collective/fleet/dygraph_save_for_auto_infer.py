@@ -18,7 +18,8 @@ import numpy as np
 import tempfile
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear, Embedding
+from paddle.fluid.dygraph.nn import Embedding
+from paddle.nn import Linear
 from paddle.distributed import fleet
 from paddle.distributed.fleet.layers.mpu.mp_layers import (
     RowParallelLinear,
@@ -80,7 +81,7 @@ class MLP_pipe(PipelineLayer):
                 gather_output=True,
                 has_bias=True,
             ),
-            LayerDesc(Linear, input_dim=linear_size, output_dim=10),
+            LayerDesc(Linear, in_features=linear_size, out_features=10),
         ]
         super(MLP_pipe, self).__init__(
             desc,

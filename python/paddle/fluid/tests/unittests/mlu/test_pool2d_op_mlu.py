@@ -1003,11 +1003,9 @@ class TestDygraphPool2DAPIError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # the input of Pool2D must be Variable.
             data1 = np.random.random((3, 32, 32, 5)).astype('float32')
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                global_pooling=False,
+            pool2d = paddle.nn.MaxPool2D(
+                kernel_size=2,
+                stride=1,
             )
             self.assertRaises(TypeError, pool2d, data1)
 
@@ -1023,11 +1021,9 @@ class TestDygraphPool2DAPIError(unittest.TestCase):
             data1 = np.random.random((3, 32, 32, 5)).astype('float32')
             self.assertRaises(
                 ValueError,
-                fluid.dygraph.Pool2D,
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                global_pooling=False,
+                paddle.nn.MaxPool2D,
+                kernel_size=2,
+                stride=1,
                 data_format='NWHC',
             )
 
@@ -1037,12 +1033,10 @@ class TestDygraphPool2DAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             data = np.random.random((3, 32, 32, 5)).astype('float32')
             x = fluid.dygraph.to_variable(data)
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
+            pool2d = paddle.nn.MaxPool2D(
+                kernel_size=2,
+                stride=1,
+                padding=[0, 0],
                 data_format='NHWC',
             )
             out1 = pool2d(x)
@@ -1060,12 +1054,10 @@ class TestDygraphPool2DAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             data = np.random.random((3, 32, 32, 5)).astype('float32')
             x = fluid.dygraph.to_variable(data)
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='max',
-                pool_stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
+            pool2d = paddle.nn.MaxPool2D(
+                kernel_size=2,
+                stride=1,
+                padding=[0, 0],
                 data_format='nhwc',
             )
             out1 = pool2d(x)
@@ -1083,12 +1075,10 @@ class TestDygraphPool2DAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             data = np.random.random((3, 32, 32, 5)).astype('float32')
             x = fluid.dygraph.to_variable(data)
-            pool2d = fluid.dygraph.Pool2D(
-                pool_size=2,
-                pool_type='MAX',
-                pool_stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
+            pool2d = paddle.nn.MaxPool2D(
+                kernel_size=2,
+                stride=1,
+                padding=[0, 0],
                 data_format='nhwc',
             )
             out1 = pool2d(x)

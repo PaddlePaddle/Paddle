@@ -16,7 +16,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Pool2D, Linear
+from paddle.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
@@ -56,14 +56,24 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             bias_attr=None,
         )
 
-        self._pool2d = Pool2D(
-            pool_size=pool_size,
-            pool_type=pool_type,
-            pool_stride=pool_stride,
-            pool_padding=pool_padding,
-            global_pooling=global_pooling,
-            use_cudnn=use_cudnn,
-        )
+        if pool_type == 'max':
+            if global_pooling:
+                self._pool2d =  paddle.nn.AdaptiveMaxPool2D(output_size=(1,1))
+            else:
+                self._pool2d = paddle.nn.MaxPool2D(
+                        kernel_size=pool_size,
+                        sride=pool_stride,
+                        padding=pool_padding
+                )
+        else if pool_type == "avg":
+            if global_pooling:
+                self._pool2d =  paddle.nn.AdaptiveAvgPool2D(output_size=(1,1))
+            else:
+                self._pool2d = paddle.nn.AvgPool2D(
+                        kernel_size=pool_size,
+                        sride=pool_stride,
+                        padding=pool_padding
+                )
 
     def forward(self, inputs):
         x = self._conv2d(inputs)
@@ -89,20 +99,20 @@ class MNIST(fluid.dygraph.Layer):
         self._fc = Linear(
             self.pool_2_shape,
             10,
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.NormalInitializer(
-                    loc=0.0, scale=scale
+            param_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Normal(
+                    mean=0.0, std=scale
                 )
             ),
-            act="softmax",
         )
+        self.act = paddle.nn.Softmax()
 
     def forward(self, inputs, label):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
         x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
         cost = self._fc(x)
-        loss = fluid.layers.cross_entropy(cost, label)
+        loss = fluid.layers.cross_entropy(self.act(cost), label)
         avg_loss = paddle.mean(loss)
         return avg_loss
 
