@@ -391,7 +391,7 @@
   optional : mask
 
 - backward_op : depthwise_conv2d_double_grad
-  forward : depthwise_conv2d_grad (Tensor input, Tensor filter, Tensor grad_out, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_gpudnn) -> Tensor(grad_input), Tensor(grad_filter)
+  forward : depthwise_conv2d_grad (Tensor input, Tensor filter, Tensor grad_out, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(grad_input), Tensor(grad_filter)
   args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(input_grad), Tensor(filter_grad), Tensor(grad_out_grad)
   infer_meta :
@@ -402,8 +402,8 @@
   optional : grad_input_grad, grad_filter_grad
 
 - backward_op : depthwise_conv2d_grad
-  forward : depthwise_conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_gpudnn) -> Tensor(out)
-  args : (Tensor input, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_gpudnn)
+  forward : depthwise_conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(out)
+  args : (Tensor input, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(input_grad), Tensor(filter_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
@@ -411,7 +411,7 @@
   kernel :
     func : depthwise_conv2d_grad
     param : [input, filter, out_grad, strides, paddings, padding_algorithm, groups, dilations, data_format]
-    use_gpudnn : use_gpudnn
+    use_gpudnn : True
   backward : depthwise_conv2d_double_grad
 
 - backward_op : depthwise_conv2d_transpose_grad

@@ -541,7 +541,7 @@
   backward : deformable_conv_grad
 
 - op : depthwise_conv2d
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_gpudnn)
+  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(out)
   infer_meta :
     func : DepthwiseConvInferMeta
@@ -549,7 +549,7 @@
   kernel :
     func : depthwise_conv2d
     param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
-    use_gpudnn : use_gpudnn
+    use_gpudnn : true
   backward : depthwise_conv2d_grad
 
 - op : depthwise_conv2d_transpose

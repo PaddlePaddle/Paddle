@@ -263,6 +263,10 @@ template const NPUStorageProperties& DenseTensor::storage_properties() const;
 template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
 #endif
 
+bool DenseTensor::storage_properties_initialized() const {
+  return storage_properties_ != nullptr;
+}
+
 void DenseTensor::set_storage_properties(
     std::unique_ptr<StorageProperties>&& storage_properties) {
   storage_properties_ = std::move(storage_properties);

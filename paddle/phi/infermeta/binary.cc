@@ -195,10 +195,10 @@ void BincountInferMeta(const MetaTensor& x,
                                    "But the dimension of Input(X) is [%d]",
                                    input_dim.size()));
 
-  VLOG(1) << "####### CHECK weights";
+  VLOG(4) << "####### CHECK weights";
   if (weights) {
     auto weights_dim = weights.dims();
-    VLOG(1) << "##### weights_dim " << weights_dim;
+    VLOG(4) << "##### weights_dim " << weights_dim;
     PADDLE_ENFORCE_EQ(weights_dim.size(),
                       1,
                       phi::errors::InvalidArgument(
