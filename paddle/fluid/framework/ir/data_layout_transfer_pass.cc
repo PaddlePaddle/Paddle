@@ -13,6 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/data_layout_transfer_pass.h"
+
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -57,107 +62,13 @@ void TransDataLayout(DataLayout from_layout,
   out->set_layout(to_layout);
 }
 
-}  // namespace
-void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
-  PADDLE_ENFORCE_NOT_NULL(
-      graph,
-      platform::errors::PreconditionNotMet("graph should not be nullptr."));
-  FusePassBase::Init("data_layout_transfer", graph);
-  auto *scope = param_scope();
-
-  PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "the graph should be main graph when applying "
-                        "data_layout_transfer_pass"));
-
-  PADDLE_ENFORCE_NOT_NULL(
-      scope,
-      platform::errors::Fatal("scope must not be nullptr when applying "
-                              "data_layout_transfer_pass"));
-
-  std::unordered_map<framework::ir::Node *, framework::ir::Node *> cache;
-  auto op_nodes = framework::ir::TopologySortOperations(*graph);
-  auto iter = op_nodes.cbegin();
-  auto *block_desc = (*iter)->Op()->Block();
-
-  // Only support conv2d_fusion now.
-  std::string target_op_type = "conv2d_fusion";
-
-  for (auto *op_node : op_nodes) {
-    CHECK_EQ(op_node->IsOp(), true);
-    auto *op_desc = op_node->Op();
-    if (op_desc->Type() == target_op_type) {
-      auto &&data_format = op_desc->GetAttrIfExists<std::string>("data_format");
-      if (data_format == "NCHW") {
-        auto op_inputs = op_node->inputs;
-        for (auto *in_var_node : op_inputs) {
-          CHECK_EQ(in_var_node->IsVar(), true);
-          auto from_shape = in_var_node->Var()->GetShape();
-          in_var_node->Var()->SetShape(
-              {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
-          if (in_var_node->Var()->Persistable()) continue;
-
-          if (in_var_node->inputs[0]->Name() == target_op_type) continue;
-          InsertLayoutTransOp(graph,
-                              in_var_node,
-                              op_node,
-                              DataLayout::kNCHW,
-                              DataLayout::kNHWC,
-                              block_desc,
-                              &cache);
-        }
-
-        auto nhwc_attr = framework::Attribute(std::string("NHWC"));
-        op_desc->SetAttr("data_format", nhwc_attr);
-
-        // transfer weights
-        auto filter_names = op_desc->Input("Filter");
-        for (const auto &filter_name : filter_names) {
-          auto *filter_var = scope->FindLocalVar(filter_name);
-          auto *filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
-          phi::DenseTensor temp_tensor = *filter_tensor;
-          filter_tensor->clear();
-
-          TransDataLayout(
-              DataLayout::kNCHW, DataLayout::kNHWC, temp_tensor, filter_tensor);
-        }
-
-        auto op_outputs = op_node->outputs;
-        for (auto *out_var_node : op_outputs) {
-          CHECK_EQ(out_var_node->IsVar(), true);
-          if (out_var_node->Var()->Persistable()) continue;
-
-          auto from_shape = out_var_node->Var()->GetShape();
-          out_var_node->Var()->SetShape(
-              {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
-
-          for (auto *out_op_node : out_var_node->outputs) {
-            CHECK_EQ(out_op_node->IsOp(), true);
-            if (out_op_node->Op()->Type() == target_op_type) continue;
-            InsertLayoutTransOp(graph,
-                                out_var_node,
-                                out_op_node,
-                                DataLayout::kNHWC,
-                                DataLayout::kNCHW,
-                                block_desc,
-                                &cache);
-          }
-        }
-      }
-    }
-  }
-}
-
-void DataLayoutTransferPass::InsertLayoutTransOp(
-    framework::ir::Graph *graph,
-    framework::ir::Node *prev_node,
-    framework::ir::Node *next_node,
-    DataLayout from_layout,
-    DataLayout to_layout,
-    framework::BlockDesc *block_desc,
-    std::unordered_map<framework::ir::Node *, framework::ir::Node *> *cache)
-    const {
+void InsertLayoutTransOp(ir::Graph *graph,
+                         ir::Node *prev_node,
+                         ir::Node *next_node,
+                         DataLayout from_layout,
+                         DataLayout to_layout,
+                         framework::BlockDesc *block_desc,
+                         std::unordered_map<ir::Node *, ir::Node *> *cache) {
   auto do_insert = [&](const std::string &in_var_name,
                        const std::string &out_var_name) {
     auto update_op_desc = [&](framework::OpDesc &desc,
@@ -202,6 +113,8 @@ void DataLayoutTransferPass::InsertLayoutTransOp(
                                  cache->at(prev_node)->Name());
     IR_NODE_LINK_TO(prev_node, cache->at(prev_node)->inputs.front());
     IR_NODE_LINK_TO(cache->at(prev_node), next_node);
+
+    IR_NODE_UNLINK(prev_node, next_node);
   };
 
   if (from_layout == DataLayout::kNCHW && to_layout == DataLayout::kNHWC) {
@@ -213,6 +126,131 @@ void DataLayoutTransferPass::InsertLayoutTransOp(
     auto in_var_name = prev_node->Var()->Name();
     auto out_var_name = in_var_name + "_nhwc_to_nchw";
     do_insert(in_var_name, out_var_name);
+  }
+}
+
+}  // namespace
+
+void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph,
+      platform::errors::PreconditionNotMet("graph should not be nullptr."));
+  FusePassBase::Init("data_layout_transfer", graph);
+  auto *scope = param_scope();
+
+  PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "the graph should be main graph when applying "
+                        "data_layout_transfer_pass"));
+
+  PADDLE_ENFORCE_NOT_NULL(
+      scope,
+      platform::errors::Fatal("scope must not be nullptr when applying "
+                              "data_layout_transfer_pass"));
+
+  // Not support multiple block now.
+  std::unordered_map<ir::Node *, ir::Node *> cache;
+  auto op_nodes = ir::TopologySortOperations(*graph);
+  auto iter = op_nodes.cbegin();
+  auto *block_desc = (*iter)->Op()->Block();
+
+  std::unordered_set<ir::Node *> vars_shape_nhwc;
+
+  // Only support conv2d_fusion now.
+  std::string target_op_type = "conv2d_fusion";
+
+  for (auto *op_node : op_nodes) {
+    CHECK_EQ(op_node->IsOp(), true);
+    if (op_node->Op()->Type() == target_op_type) {
+      auto *op_desc = op_node->Op();
+      auto data_format = op_desc->GetAttrIfExists<std::string>("data_format");
+      if (data_format == "NCHW") {
+        auto nhwc_attr = framework::Attribute(std::string("NHWC"));
+        op_desc->SetAttr("data_format", nhwc_attr);
+        op_desc->Flush();
+
+        // transfer weights
+        auto filter_names = op_desc->Input("Filter");
+        for (const auto &filter_name : filter_names) {
+          auto *filter_var = scope->FindLocalVar(filter_name);
+          auto *filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
+          phi::DenseTensor temp_tensor = *filter_tensor;
+          filter_tensor->clear();
+
+          TransDataLayout(
+              DataLayout::kNCHW, DataLayout::kNHWC, temp_tensor, filter_tensor);
+        }
+        auto op_inputs = op_node->inputs;
+        for (auto *in_var_node : op_inputs) {
+          CHECK_EQ(in_var_node->IsVar(), true);
+          if (in_var_node->Var()->Persistable()) {
+            if (std::find(filter_names.cbegin(),
+                          filter_names.cend(),
+                          in_var_node->Var()->Name()) != filter_names.cend()) {
+              auto from_shape = in_var_node->Var()->GetShape();
+              in_var_node->Var()->SetShape(
+                  {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
+            }
+          }
+        }
+
+        // transfer outputs
+        auto op_outputs = op_node->outputs;
+        for (auto *out_var_node : op_outputs) {
+          CHECK_EQ(out_var_node->IsVar(), true);
+          if (out_var_node->Var()->Persistable()) continue;
+
+          auto from_shape = out_var_node->Var()->GetShape();
+          out_var_node->Var()->SetShape(
+              {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
+          vars_shape_nhwc.insert(out_var_node);
+        }
+      }
+    }
+  }
+
+  // Insert transfer_layout op
+  for (auto *op_node : op_nodes) {
+    CHECK_EQ(op_node->IsOp(), true);
+
+    if (op_node->Op()->Type() == target_op_type) {
+      auto *op_desc = op_node->Op();
+      auto data_format = op_desc->GetAttrIfExists<std::string>("data_format");
+      CHECK_EQ(data_format, "NHWC");
+
+      auto op_inputs = op_node->inputs;
+      for (auto *in_var_node : op_inputs) {
+        CHECK_EQ(in_var_node->IsVar(), true);
+
+        if (in_var_node->Var()->Persistable()) continue;
+        if (in_var_node->inputs[0]->Name() == target_op_type) continue;
+        if (vars_shape_nhwc.count(in_var_node)) continue;
+
+        InsertLayoutTransOp(graph,
+                            in_var_node,
+                            op_node,
+                            DataLayout::kNCHW,
+                            DataLayout::kNHWC,
+                            block_desc,
+                            &cache);
+      }
+    } else {
+      auto op_inputs = op_node->inputs;
+      for (auto *in_var_node : op_inputs) {
+        CHECK_EQ(in_var_node->IsVar(), true);
+
+        if (vars_shape_nhwc.count(in_var_node)) {
+          InsertLayoutTransOp(graph,
+                              in_var_node,
+                              op_node,
+                              DataLayout::kNHWC,
+                              DataLayout::kNCHW,
+                              block_desc,
+                              &cache);
+        }
+      }
+    }
   }
 }
 
