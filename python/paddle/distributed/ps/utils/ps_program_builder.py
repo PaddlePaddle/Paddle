@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 from .public import *  # noqa: F403
 from paddle.distributed.fleet.base.private_helper_function import (
