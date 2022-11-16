@@ -17,10 +17,10 @@ cc_library(
   conditional_block_op_helper
   SRCS conditional_block_op_helper.cc
   DEPS operator op_variant conditional_block_op)
-cc_library(
-  recurrent_op_helper
-  SRCS recurrent_op_helper.cc
-  DEPS operator op_variant recurrent_op)
+# cc_library(
+#   recurrent_op_helper
+#   SRCS recurrent_op_helper.cc
+#   DEPS operator op_variant recurrent_op)
 cc_library(
   while_op_helper
   SRCS while_op_helper.cc

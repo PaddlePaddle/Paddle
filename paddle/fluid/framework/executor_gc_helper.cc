@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
-#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
+// #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -228,8 +228,8 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
         program, 0, global_block_ops);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         program, 0, global_block_ops);
-    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-        program, 0, global_block_ops);
+    // operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+    //     program, 0, global_block_ops);
   }
 
   // find the skip vars on each block

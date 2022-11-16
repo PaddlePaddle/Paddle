@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
-#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
+// #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -510,8 +510,8 @@ void BuildOpFuncList(const platform::Place& place,
         main_program, block.ID(), ops_unique);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         main_program, block.ID(), ops_unique);
-    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-        main_program, block.ID(), ops_unique);
+    // operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+    //     main_program, block.ID(), ops_unique);
   }
 
 #ifdef PADDLE_WITH_MKLDNN

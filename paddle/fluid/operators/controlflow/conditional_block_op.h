@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/controlflow/conditional_block_op_util.h"
 
 namespace paddle {
 namespace operators {
@@ -33,12 +34,6 @@ class ConditionalOp : public framework::OperatorBase {
                 const framework::VariableNameMap &outputs,
                 const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-
-  static const char kInputs[];
-  static const char kOutputs[];
-  static const char kCondition[];
-  static const char kScope[];
-  static const char kSkipEagerDeletionVars[];
 
  protected:
   std::vector<const phi::DenseTensor *> InputTensors(
@@ -100,15 +95,15 @@ class ConditionalOp : public framework::OperatorBase {
 class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(ConditionalOp::kCondition,
+    AddInput(ConditionalOp_kCondition,
              "The conditional variable of this operator. If Cond is empty, the "
              "whole sub-block will not be executed.")
         .AsDuplicable();
-    AddInput(ConditionalOp::kInputs, "The input variables of the sub-block.")
+    AddInput(ConditionalOp_kInputs, "The input variables of the sub-block.")
         .AsDuplicable();
-    AddOutput(ConditionalOp::kOutputs, "The output variables of the sub-block.")
+    AddOutput(ConditionalOp_kOutputs, "The output variables of the sub-block.")
         .AsDuplicable();
-    AddOutput(ConditionalOp::kScope,
+    AddOutput(ConditionalOp_kScope,
               "(std::vector<Scope*>) The step scope of conditional block. To "
               "unify the conditional block, rnn and while op, the type of "
               "scope is std::vector<Scope*>");

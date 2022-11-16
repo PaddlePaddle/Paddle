@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/operators/controlflow/conditional_block_op_util.h"
 
 #include <string>
 
@@ -27,8 +28,8 @@ namespace operators {
 
 static bool IsMatchedConditionalBlockOpAndConditionalBlockGradOp(
     const OpVariant &fwd_op, const OpVariant &bwd_op) {
-  return fwd_op.Outputs().at(ConditionalOp::kScope) ==
-         bwd_op.Inputs().at(ConditionalOp::kScope);
+  return fwd_op.Outputs().at(ConditionalOp_kScope) ==
+         bwd_op.Inputs().at(ConditionalOp_kScope);
 }
 
 static void FindAllConditionalBlockAndConditionalBlockGradOp(
@@ -95,7 +96,7 @@ static void SetSkipVarsForConditionalBlockOp(OpVariant *fwd_op,
                                          forward_skip_vars.end());
   VLOG(2) << "Prepare to skip " << skip_vars_vec.size()
           << " var(s): " << string::join_strings(skip_vars_vec, ' ');
-  fwd_attrs[ConditionalOp::kSkipEagerDeletionVars] = std::move(skip_vars_vec);
+  fwd_attrs[ConditionalOp_kSkipEagerDeletionVars] = std::move(skip_vars_vec);
 }
 
 static void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(

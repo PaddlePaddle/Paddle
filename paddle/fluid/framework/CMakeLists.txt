@@ -730,7 +730,7 @@ cc_library(
        garbage_collector
        op_registry
        while_op_helper
-       recurrent_op_helper
+       #  recurrent_op_helper
        conditional_block_op_helper)
 if(WITH_DISTRIBUTE)
   if(WITH_PSLIB)
@@ -1051,7 +1051,7 @@ else()
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper
-                      recurrent_op_helper conditional_block_op_helper)
+                      conditional_block_op_helper)
 
 cc_library(
   parallel_executor

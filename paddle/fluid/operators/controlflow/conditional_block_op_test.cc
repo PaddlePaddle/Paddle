@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 
-USE_NO_KERNEL_OP(conditional_block);
-USE_NO_KERNEL_OP(conditional_block_grad);
+// USE_OP_ITSELF(conditional_block);
+// USE_OP_ITSELF(conditional_block_grad);
 
 using LoDTensor = phi::DenseTensor;
 using LoDTensorArray = paddle::framework::LoDTensorArray;
