@@ -31,7 +31,7 @@ class DataLayoutTransferPass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void insertLayoutTransOp(
+  void InsertLayoutTransOp(
       framework::ir::Graph* graph,
       framework::ir::Node* node,
       framework::ir::Node* next_node,

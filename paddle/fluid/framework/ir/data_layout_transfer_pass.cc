@@ -84,21 +84,24 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   // Only support conv2d_fusion now.
   std::string target_op_type = "conv2d_fusion";
 
-  for (auto *node : op_nodes) {
-    if (node->IsOp() && node->Name() == target_op_type) {
-      auto *op_desc = node->Op();
+  for (auto *op_node : op_nodes) {
+    CHECK_EQ(op_node->IsOp(), true);
+    auto *op_desc = op_node->Op();
+    if (op_desc->Type() == target_op_type) {
       auto &&data_format = op_desc->GetAttrIfExists<std::string>("data_format");
       if (data_format == "NCHW") {
-        for (auto *in_node : node->inputs) {
-          if (!in_node->IsVar()) continue;
-          auto from_shape = in_node->Var()->GetShape();
-          in_node->Var()->SetShape(
+        auto op_inputs = op_node->inputs;
+        for (auto *in_var_node : op_inputs) {
+          CHECK_EQ(in_var_node->IsVar(), true);
+          auto from_shape = in_var_node->Var()->GetShape();
+          in_var_node->Var()->SetShape(
               {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
-          if (in_node->Var()->Persistable()) continue;
-          if (in_node->inputs[0]->Name() == target_op_type) continue;
-          insertLayoutTransOp(graph,
-                              in_node,
-                              node,
+          if (in_var_node->Var()->Persistable()) continue;
+
+          if (in_var_node->inputs[0]->Name() == target_op_type) continue;
+          InsertLayoutTransOp(graph,
+                              in_var_node,
+                              op_node,
                               DataLayout::kNCHW,
                               DataLayout::kNHWC,
                               block_desc,
@@ -120,26 +123,33 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
               DataLayout::kNCHW, DataLayout::kNHWC, temp_tensor, filter_tensor);
         }
 
-        for (auto *out_node : node->outputs) {
-          if (!out_node->IsVar() || out_node->Var()->Persistable()) continue;
-          auto from_shape = out_node->Var()->GetShape();
-          out_node->Var()->SetShape(
+        auto op_outputs = op_node->outputs;
+        for (auto *out_var_node : op_outputs) {
+          CHECK_EQ(out_var_node->IsVar(), true);
+          if (out_var_node->Var()->Persistable()) continue;
+
+          auto from_shape = out_var_node->Var()->GetShape();
+          out_var_node->Var()->SetShape(
               {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
-          if (out_node->outputs[0]->Name() == target_op_type) continue;
-          insertLayoutTransOp(graph,
-                              out_node,
-                              out_node->outputs[0],
-                              DataLayout::kNHWC,
-                              DataLayout::kNCHW,
-                              block_desc,
-                              &cache);
+
+          for (auto *out_op_node : out_var_node->outputs) {
+            CHECK_EQ(out_op_node->IsOp(), true);
+            if (out_op_node->Op()->Type() == target_op_type) continue;
+            InsertLayoutTransOp(graph,
+                                out_var_node,
+                                out_op_node,
+                                DataLayout::kNHWC,
+                                DataLayout::kNCHW,
+                                block_desc,
+                                &cache);
+          }
         }
       }
     }
   }
 }
 
-void DataLayoutTransferPass::insertLayoutTransOp(
+void DataLayoutTransferPass::InsertLayoutTransOp(
     framework::ir::Graph *graph,
     framework::ir::Node *prev_node,
     framework::ir::Node *next_node,
@@ -198,14 +208,11 @@ void DataLayoutTransferPass::insertLayoutTransOp(
     auto in_var_name = prev_node->Var()->Name();
     auto out_var_name = in_var_name + "_nchw_to_nhwc";
     do_insert(in_var_name, out_var_name);
-
   } else if (from_layout == DataLayout::kNHWC &&
              to_layout == DataLayout::kNCHW) {
     auto in_var_name = prev_node->Var()->Name();
     auto out_var_name = in_var_name + "_nhwc_to_nchw";
     do_insert(in_var_name, out_var_name);
-  } else {
-    //
   }
 }
 
