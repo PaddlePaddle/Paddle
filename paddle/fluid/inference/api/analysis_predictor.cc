@@ -1150,6 +1150,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
     argument_.SetXpuDeviceId(config_.xpu_device_id_);
     argument_.SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
+    argument_.SetUseOpenCL(config_.use_opencl_);
     // NNAdapter related
     argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
     argument_.SetNNAdapterDeviceNames(
@@ -1184,6 +1185,8 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuAvailableMemoryProportion(
       config_.ipu_available_memory_proportion_);
   argument_.SetIpuEnableHalfPartial(config_.ipu_enable_half_partial_);
+  argument_.SetIpuEnableModelRuntimeExecutor(
+      config_.ipu_enable_model_runtime_executor_);
   argument_.SetIpuCustomOpsInfo(config_.ipu_custom_ops_info_);
   argument_.SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
@@ -2258,6 +2261,7 @@ USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
+USE_TRT_CONVERTER(where);
 USE_TRT_CONVERTER(swish);
 USE_TRT_CONVERTER(silu);
 USE_TRT_CONVERTER(group_norm);
@@ -2265,6 +2269,7 @@ USE_TRT_CONVERTER(instance_norm);
 USE_TRT_CONVERTER(layer_norm);
 USE_TRT_CONVERTER(gelu);
 USE_TRT_CONVERTER(multihead_matmul);
+USE_TRT_CONVERTER(multihead_matmul_roformer);
 USE_TRT_CONVERTER(skip_layernorm);
 USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
