@@ -16,6 +16,7 @@ import numpy as np
 import time
 import sys
 import logging
+import paddle
 
 import paddle.fluid as fluid
 
