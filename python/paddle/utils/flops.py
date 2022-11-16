@@ -41,7 +41,7 @@ def flops(op_type: str, input_shapes: dict, attrs: dict) -> int:
     else:
         func = _FLOPS_COMPUTE_FUNC_MAP[op_type]
         try:
-            flops = func(input_shapes, **attrs)
+            flops = func(input_shapes, attrs)
         except Exception as e:
             return 0
         return flops
@@ -66,10 +66,10 @@ def _dropout_flops(input_shapes, attrs):
     return 0
 
 
-def _elementwise_flops_compute(input_shapes, **attrs):
+def _elementwise_flops_compute(input_shapes, attrs):
     if isinstance(input_shapes, dict):
-        input_x = input_shapes["X"]
-        input_y = input_shapes["Y"]
+        input_x = input_shapes.get("X")[0]
+        input_y = input_shapes.get("Y")[0]
     else:
         input_x = input_shapes[0]
         input_y = input_shapes[1]
@@ -85,52 +85,52 @@ def _elementwise_flops_compute(input_shapes, **attrs):
 
 
 @register_flops("elementwise_add")
-def _elementwise_add_flops(input_shapes, **attrs):
-    return _elementwise_flops_compute(input_shapes, **attrs)
+def _elementwise_add_flops(input_shapes, attrs):
+    return _elementwise_flops_compute(input_shapes, attrs)
 
 
 @register_flops("elementwise_mul")
-def _elementwise_mul_flops(input_shapes, **attrs):
-    return _elementwise_flops_compute(input_shapes, **attrs)
+def _elementwise_mul_flops(input_shapes, attrs):
+    return _elementwise_flops_compute(input_shapes, attrs)
 
 
 @register_flops("elementwise_div")
-def _elementwise_mul_flops(input_shapes, **attrs):
-    return _elementwise_flops_compute(input_shapes, **attrs)
+def _elementwise_mul_flops(input_shapes, attrs):
+    return _elementwise_flops_compute(input_shapes, attrs)
 
 
 @register_flops("gelu")
-def _gelu_flops(input_shapes, **attrs):
+def _gelu_flops(input_shapes, attrs):
     if isinstance(input_shapes, dict):
-        input = input_shapes['X']
+        input = input_shapes.get('X')[0]
     else:
         input = input_shapes[0]
     return prod(input) * 5
 
 
 @register_flops("layer_norm")
-def _layer_norm_flops(input_shapes, **attrs):
+def _layer_norm_flops(input_shapes, attrs):
     if isinstance(input_shapes, dict):
-        input = input_shape['X']
+        input = input_shapes.get('X')[0]
     else:
         input = input_shapes[2]
     flops = prod(input) * 7
-    if attrs['epsilon']:
+    if attrs.get('epsilon'):
         flops += prod(input)
     return flops
 
 
 @register_flops("matmul")
-def _matmul_flops(input_shapes, **attrs):
+def _matmul_flops(input_shapes, attrs):
     if isinstance(input_shapes, dict):
-        x_shape = input_shapes["X"]
-        y_shape = input_shapes["Y"]
+        x_shape = input_shapes.get("X")[0]
+        y_shape = input_shapes.get("Y")[0]
     else:
         x_shape = input_shapes[0]
         y_shape = input_shapes[1]
-    if attrs['transpose_X']:
+    if attrs.get('transpose_X') or attrs.get('transpose_x'):
         x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
-    if attrs['transpose_Y']:
+    if attrs.get('transpose_Y') or attrs.get('transpose_y'):
         y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
     dim_x = len(x_shape)
     dim_y = len(y_shape)
@@ -147,16 +147,16 @@ def _matmul_flops(input_shapes, **attrs):
 
 
 @register_flops("matmul_v2")
-def _matmul_v2_flops(input_shapes, **attrs):
+def _matmul_v2_flops(input_shapes, attrs):
     if isinstance(input_shapes, dict):
-        x_shape = input_shapes["X"]
-        y_shape = input_shapes["Y"]
+        x_shape = input_shapes.get('X')[0]
+        y_shape = input_shapes.get('Y')[0]
     else:
         x_shape = input_shapes[0]
         y_shape = input_shapes[1]
-    if attrs['trans_x']:
+    if attrs.get('trans_x') is not None:
         x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
-    if attrs['trans_y']:
+    if attrs.get('trans_y') is not None:
         y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
     dim_x = len(x_shape)
     dim_y = len(y_shape)
@@ -176,19 +176,19 @@ def _relu_flops(input_shapes, attrs):
     return prod(input_shapes.get('X')[0])
 
 @register_flops("reshape2")
-def _reshape2_flops(input_shapes, **attrs):
+def _reshape2_flops(input_shapes, attrs):
     return 0
 
 
 @register_flops("soft_max")
-def _soft_max_flops(input_shapes, **attrs):
+def _soft_max_flops(input_shapes, attrs):
     if isinstance(input_shapes, dict):
-        input = input_shapes['X']
+        input = input_shapes.get('X')[0]
     else:
         input = input_shapes[0]
     return prod(input) * 3
 
 
 @register_flops("transpose2")
-def _transpose2_flops(input_shapes, **attrs):
+def _transpose2_flops(input_shapes, attrs):
     return 0

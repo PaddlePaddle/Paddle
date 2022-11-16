@@ -231,7 +231,7 @@ class TestFLOPSAPI(unittest.TestCase):
             flops(
                 'matmul',
                 ([3, 12, 12, 8], [12, 12, 8]),
-                **{'transpose_X': False, 'transpose_Y': True}
+                {'transpose_X': False, 'transpose_Y': True},
             )
             == 3 * 12 * 12 * 12 * 2 * 8
         )
@@ -239,64 +239,75 @@ class TestFLOPSAPI(unittest.TestCase):
             flops(
                 'matmul_v2',
                 ([3, 12, 12, 8], [12, 12, 8]),
-                **{'trans_x': False, 'trans_y': True}
+                {'trans_x': False, 'trans_y': True},
             )
             == 3 * 12 * 12 * 12 * 2 * 8
         )
-        self.assertTrue(flops('transpose2', ([12, 12, 12],)) == 0)
-        self.assertTrue(flops('reshape2', ([12, 12, 12],)) == 0)
-        self.assertTrue(flops('unsqueeze2', ([12, 12, 12],)) == 0)
-        self.assertTrue(flops('soft_max', ([12, 12, 12],)) == 3 * 12 * 12 * 12)
-        self.assertTrue(flops('gelu', ([12, 12, 12],)) == 5 * 12 * 12 * 12)
+        self.assertTrue(flops('transpose2', ([12, 12, 12],), {}) == 0)
+        self.assertTrue(flops('reshape2', ([12, 12, 12],), {}) == 0)
+        self.assertTrue(flops('unsqueeze2', ([12, 12, 12],), {}) == 0)
         self.assertTrue(
-            flops('elementwise_add', ([12, 12, 12], [2, 2, 12])) == 12 * 12 * 12
+            flops('soft_max', ([12, 12, 12],), {}) == 3 * 12 * 12 * 12
+        )
+        self.assertTrue(flops('gelu', ([12, 12, 12],), {}) == 5 * 12 * 12 * 12)
+        self.assertTrue(
+            flops('elementwise_add', ([12, 12, 12], [2, 2, 12]), {})
+            == 12 * 12 * 12
         )
         self.assertTrue(
-            flops('elementwise_mul', ([12, 12, 12], [2, 2, 12])) == 12 * 12 * 12
+            flops('elementwise_mul', ([12, 12, 12], [2, 2, 12]), {})
+            == 12 * 12 * 12
         )
         self.assertTrue(
-            flops('elementwise_div', ([12, 12, 12], [2, 2, 12])) == 12 * 12 * 12
+            flops('elementwise_div', ([12, 12, 12], [2, 2, 12]), {})
+            == 12 * 12 * 12
         )
         self.assertTrue(
             flops(
                 'layer_norm',
                 ([12, 12, 12], [12, 12, 12], [12, 12, 12]),
-                **{'epsilon': 0.01}
+                {'epsilon': 0.01},
             )
             == 12 * 12 * 12 * 8
         )
-        self.aseertTrue(
+        self.assertTrue(
             flops(
                 'layer_norm',
-                {'Bias': [128], 'Scale': [128], 'X': [32, 128, 28, 28]},
-                **{'epsilon': 0.01}
+                {'Bias': [[128]], 'Scale': [[128]], 'X': [[32, 128, 28, 28]]},
+                {'epsilon': 0.01},
             )
-            == 32 * 128 * 28 * 28
+            == 32 * 128 * 28 * 28 * 8
         )
         self.assertTrue(
-            flops('elementwise_add', {'X': [12, 12, 12], 'Y': [2, 2, 12]})
+            flops(
+                'elementwise_add', {'X': [[12, 12, 12]], 'Y': [[2, 2, 12]]}, {}
+            )
             == 12 * 12 * 12
         )
-        self.assertTrue(flops('gelu', {'X': [12, 12, 12]}) == 5 * 12 * 12 * 12)
+        self.assertTrue(
+            flops('gelu', {'X': [[12, 12, 12]]}, {}) == 5 * 12 * 12 * 12
+        )
         self.assertTrue(
             flops(
                 'matmul',
-                {'X': [3, 12, 12, 8], 'Y': [12, 12, 8]},
-                **{'transpose_X': False, 'transpose_Y': True}
+                {'X': [[3, 12, 12, 8]], 'Y': [[12, 12, 8]]},
+                {'transpose_X': False, 'transpose_Y': True},
             )
             == 3 * 12 * 12 * 12 * 2 * 8
         )
         self.assertTrue(
             flops(
                 'matmul_v2',
-                {'X': [3, 12, 12, 8], 'Y': [12, 12, 8]},
-                **{'trans_x': False, 'trans_y': True}
+                {'X': [[3, 12, 12, 8]], 'Y': [[12, 12, 8]]},
+                {'trans_x': False, 'trans_y': True},
             )
             == 3 * 12 * 12 * 12 * 2 * 8
         )
-        self.assertTrue(flops('relu', {'X': [12, 12, 12]}) == 12 * 12 * 12)
         self.assertTrue(
-            flops('soft_max', {'X': [12, 12, 12]}) == 3 * 12 * 12 * 12
+            flops('relu', {'X': [[12, 12, 12]]}, {}) == 12 * 12 * 12
+        )
+        self.assertTrue(
+            flops('soft_max', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
         )
 
 if __name__ == '__main__':
