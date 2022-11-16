@@ -165,7 +165,7 @@ struct VecAtomicAddHelper : VecAtomicAddHelperBase<T, false, void, void> {};
 template <>
 struct VecAtomicAddHelper<platform::float16>
     : VecAtomicAddHelperBase<platform::float16, true, __half, __half2> {
-  __device__ static __half zero() { return __int2half_rz(0); }
+  __device__ static __half zero() { return __half(0); }
 };
 #endif
 
@@ -176,7 +176,7 @@ struct VecAtomicAddHelper<platform::bfloat16>
                              true,
                              __nv_bfloat16,
                              __nv_bfloat162> {
-  __device__ static __nv_bfloat16 zero() { return __int2bfloat16_rz(0); }
+  __device__ static __nv_bfloat16 zero() { return __nv_bfloat16(0); }
 };
 #endif
 
