@@ -18,6 +18,7 @@ import collections
 import os
 import warnings
 import logging
+import paddle.fluid as fluid
 from paddle.framework import core
 import paddle.fluid.framework as framework
 
@@ -1252,7 +1253,7 @@ def screen_persistables(program, var_list):
         else:
             var = program.global_block().vars[var_name]
 
-        if paddle.fluid.io.is_persistable(var):
+        if fluid.io.is_persistable(var):
             need_remove.append(var_name)
 
     for var_name in need_remove:
