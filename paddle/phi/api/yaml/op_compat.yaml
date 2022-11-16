@@ -235,7 +235,7 @@
     attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
 
 - op : cos
-  backward : cos_grad
+  backward : cos_grad, cos_double_grad, cos_triple_grad
   inputs :
     x : X
   outputs :

@@ -178,6 +178,18 @@
   output : Tensor(x_grad)
   invoke : conj(out_grad)
 
+- backward_op : cos_double_grad
+  forward : cos_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor x, Tensor grad_out, Tensor grad_x_grad)
+  output : Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, x]
+  kernel :
+    func : cos_double_grad
+  backward : cos_triple_grad
+  inplace : (grad_x_grad -> grad_out_grad)
+
 - backward_op : cos_grad
   forward : cos (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
@@ -187,7 +199,19 @@
     param : [x]
   kernel :
     func : cos_grad
+  backward : cos_double_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : cos_triple_grad
+  forward : cos_double_grad (Tensor x, Tensor grad_out_forward, Tensor grad_x_grad_forward) -> Tensor(grad_x), Tensor(grad_out_grad)
+  args : (Tensor x, Tensor grad_out_forward, Tensor grad_x_grad_forward, Tensor grad_x_grad, Tensor grad_out_grad_grad)
+  output : Tensor(x_grad), Tensor(grad_out_forward_grad), Tensor(grad_x_grad_forward_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [x, x, grad_x_grad_forward]
+  kernel :
+    func : cos_triple_grad
+  inplace : (grad_x_grad_forward -> grad_out_forward_grad)
 
 - backward_op : cosh_grad
   forward : cosh (Tensor x) -> Tensor(out)

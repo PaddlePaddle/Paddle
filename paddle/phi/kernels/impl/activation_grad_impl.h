@@ -646,4 +646,56 @@ void SinTripleGradKernel(const Context& dev_ctx,
           d_ddx);  // output
 }
 
+template <typename T, typename Context>
+void CosDoubleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         DenseTensor* dx,
+                         DenseTensor* ddout) {
+  if (dx) {
+    dx->Resize(x.dims());
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (ddout) {
+    dev_ctx.template Alloc<T>(ddout);
+  }
+  phi::funcs::CosDoubleGradFunctor<T> functor;
+  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
+}
+
+template <typename T, typename Context>
+void CosTripleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         const DenseTensor& d_dx_new,
+                         const DenseTensor& d_ddout,
+                         DenseTensor* d_x_new,
+                         DenseTensor* d_dout,
+                         DenseTensor* d_ddx) {
+  if (d_dout) {
+    d_dout->Resize(x.dims());
+    dev_ctx.template Alloc<T>(d_dout);
+  }
+  if (d_x_new) {
+    d_dout->Resize(x.dims());
+    dev_ctx.template Alloc<T>(d_x_new);
+  }
+  if (d_ddx) {
+    d_dout->Resize(ddx.dims());
+    dev_ctx.template Alloc<T>(d_ddx);
+  }
+  funcs::CosTripleGradFunctor<T> functor;
+  functor(dev_ctx,
+          &x,
+          &ddx,
+          &dout,
+          &d_ddout,
+          &d_dx_new,  // input
+          d_dout,
+          d_x_new,
+          d_ddx);  // output
+}
+
 }  // namespace phi

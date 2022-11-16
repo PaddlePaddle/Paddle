@@ -15,6 +15,7 @@
 import math
 import warnings
 
+import paddle
 from .. import unique_name
 from ..framework import Variable
 from ..data_feeder import check_type
@@ -977,11 +978,9 @@ class ReduceLROnPlateau(LearningRateDecay):
                 self.num_bad_epochs += 1
 
             if self.num_bad_epochs > self.patience:
-                from .. import layers
-
                 self.cooldown_counter = self.cooldown
                 self.num_bad_epochs = 0
-                new_lr = layers.elementwise_max(
+                new_lr = paddle.maximum(
                     self.learning_rate * self.decay_rate, self.min_lr
                 )
                 if self.learning_rate - new_lr > self.eps:
