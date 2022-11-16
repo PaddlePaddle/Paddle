@@ -164,9 +164,7 @@ struct VecAtomicAddHelper : VecAtomicAddHelperBase<T, false, void, void> {};
 #ifdef PADDLE_CUDA_FP16
 template <>
 struct VecAtomicAddHelper<platform::float16>
-    : VecAtomicAddHelperBase<platform::float16, true, __half, __half2> {
-  __device__ static __half zero() { return __half(0); }
-};
+    : VecAtomicAddHelperBase<platform::float16, true, __half, __half2> {};
 #endif
 
 #ifdef PADDLE_CUDA_BF16
@@ -175,9 +173,7 @@ struct VecAtomicAddHelper<platform::bfloat16>
     : VecAtomicAddHelperBase<platform::bfloat16,
                              true,
                              __nv_bfloat16,
-                             __nv_bfloat162> {
-  __device__ static __nv_bfloat16 zero() { return __nv_bfloat16(0); }
-};
+                             __nv_bfloat162> {};
 #endif
 
 // The performance of "atomicAdd(half* )" is bad, but for "atomicAdd(half2* )"
@@ -199,12 +195,12 @@ __device__ __forceinline__ void fastAtomicAdd(T *tensor,
   if (aligned_half2 && index < (numel - 1)) {
     NVVec2T value2;
     value2.x = *reinterpret_cast<NVT *>(&value);
-    value2.y = VecAtomicAddHelper<T>::zero();
+    value2.y = 0.0;
     atomicAdd(reinterpret_cast<NVVec2T *>(target_addr), value2);
 
   } else if (!aligned_half2 && index > 0) {
     NVVec2T value2;
-    value2.x = VecAtomicAddHelper<T>::zero();
+    value2.x = 0.0;
     value2.y = *reinterpret_cast<NVT *>(&value);
     atomicAdd(reinterpret_cast<NVVec2T *>(target_addr - 1), value2);
 
