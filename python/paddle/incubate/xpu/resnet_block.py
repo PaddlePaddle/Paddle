@@ -426,7 +426,7 @@ class ResNetBasicBlock(Layer):
             out = resnet_basic_block.forward(x)
 
             print(out.shape) # [2, 8, 16, 16]
-            
+
     """
 
     def __init__(
