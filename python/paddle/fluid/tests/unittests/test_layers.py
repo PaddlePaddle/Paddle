@@ -652,14 +652,12 @@ class TestLayer(LayerTest):
                 min_eager_ret = layers.elementwise_min(
                     to_variable(n), to_variable(n2)
                 )
-                max_eager_ret = layers.elementwise_max(
-                    to_variable(n), to_variable(n2)
-                )
+                max_eager_ret = paddle.maximum(to_variable(n), to_variable(n2))
                 min_eager_ret_value = min_eager_ret.numpy()
                 max_eager_ret_value = max_eager_ret.numpy()
 
             min_ret = layers.elementwise_min(to_variable(n), to_variable(n2))
-            max_ret = layers.elementwise_max(to_variable(n), to_variable(n2))
+            max_ret = paddle.maximum(to_variable(n), to_variable(n2))
             min_ret_value = min_ret.numpy()
             max_ret_value = max_ret.numpy()
 
@@ -3300,38 +3298,6 @@ class TestBook(LayerTest):
                 pool_stride=[1, 2, 3],
                 pool_padding=(2, 1, 1),
             )
-
-    def make_adaptive_pool2d(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[3, 224, 224], dtype='float32')
-            return layers.adaptive_pool2d(x, [3, 3], pool_type='avg')
-            pool, mask = layers.adaptive_pool2d(x, [3, 3], require_index=True)
-            return pool
-            return mask
-            return layers.adaptive_pool2d(x, 3, pool_type='avg')
-            pool, mask = layers.adaptive_pool2d(x, 3, require_index=True)
-            return pool
-            return mask
-
-    def make_adaptive_pool3d(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(
-                name='x', shape=[3, 244, 224, 224], dtype='float32'
-            )
-            return layers.adaptive_pool3d(x, [3, 3, 3], pool_type='avg')
-            pool, mask = layers.adaptive_pool3d(
-                x, [3, 3, 3], require_index=True
-            )
-            return pool
-            return mask
-            return layers.adaptive_pool3d(x, 3, pool_type='avg')
-            pool, mask = layers.adaptive_pool3d(x, 3, require_index=True)
-            return pool
-            return mask
 
     def make_lstm_unit(self):
         with program_guard(

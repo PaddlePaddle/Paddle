@@ -20,7 +20,6 @@ import sys
 import paddle
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.dygraph.parallel import ParallelEnv
-import paddle.distributed as dist
 
 
 def init_process_group(strategy=None):
@@ -45,9 +44,8 @@ class TestProcessGroupFp32(unittest.TestCase):
 
     def test_create_process_group_bkcl(self):
         with _test_eager_guard():
-            paddle.set_device(
-                'xpu:%d' % paddle.distributed.ParallelEnv().dev_id
-            )
+            device_id = paddle.distributed.ParallelEnv().dev_id
+            paddle.set_device('xpu:%d' % device_id)
 
             pg = init_process_group()
             sys.stdout.write(
@@ -108,10 +106,10 @@ class TestProcessGroupFp32(unittest.TestCase):
             # test barrier
             # rank 0
             if pg.rank() == 0:
-                dist.barrier()
+                pg.barrier(device_id)
             # rank 1
             else:
-                task = pg.barrier()
+                task = pg.barrier(device_id)
                 task.wait()
 
             sys.stdout.write("rank {}: test barrier api ok\n".format(pg.rank()))

@@ -178,9 +178,6 @@ def train(use_cuda, save_dirname=None, is_local=True):
 
     # TODO(qiao)
     # add dependency track and move this config before optimizer
-    crf_decode = paddle.static.nn.crf_decoding(
-        input=feature_out, param_attr=fluid.ParamAttr(name='crfw')
-    )
 
     train_data = paddle.batch(
         paddle.reader.shuffle(paddle.dataset.conll05.test(), buf_size=8192),

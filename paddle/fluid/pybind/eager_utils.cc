@@ -1243,7 +1243,7 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
                                               ssize_t arg_pos) {
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  VLOG(1) << "type_name: " << type_name;
+  VLOG(4) << "type_name: " << type_name;
   if (type_name == "numpy.ndarray" && PySequence_Check(obj)) {
     PyObject* item = nullptr;
     item = PySequence_GetItem(obj, 0);
@@ -1296,7 +1296,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   // obj could be: int, float, bool, paddle.Tensor
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  VLOG(1) << "type_name: " << type_name;
+  VLOG(4) << "type_name: " << type_name;
   if (PyBool_Check(obj)) {
     bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
@@ -1348,7 +1348,7 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
 
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  VLOG(1) << "type_name: " << type_name;
+  VLOG(4) << "type_name: " << type_name;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
