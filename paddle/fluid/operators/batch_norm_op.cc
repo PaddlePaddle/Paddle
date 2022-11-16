@@ -164,7 +164,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   ctx->SetOutputDim("SavedMean", {C});
   ctx->SetOutputDim("SavedVariance", {C});
   ctx->ShareLoD("X", "Y");
-  if (ctx->HasInput("ReserveSpace")) {
+  if (ctx->HasOutput("ReserveSpace")) {
     ctx->SetOutputDim("ReserveSpace", {-1});
   }
 }
