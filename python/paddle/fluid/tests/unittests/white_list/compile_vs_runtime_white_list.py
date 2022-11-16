@@ -21,9 +21,7 @@
 COMPILE_RUN_OP_WHITE_LIST = [
     'sequence_pool',
     'sequence_slice',
-    'generate_proposals',
     'mine_hard_examples',
-    'retinanet_detection_output',
     'ctc_align',
     'fusion_seqpool_cvm_concat',
     'gru',
@@ -31,8 +29,6 @@ COMPILE_RUN_OP_WHITE_LIST = [
     'retinanet_target_assign',
     'filter_by_instag',
     'im2sequence',
-    'generate_proposal_labels',
     'detection_map',
-    'locality_aware_nms',
     'var_conv_2d',
 ]

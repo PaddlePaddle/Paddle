@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
+from paddle.fluid.layer_helper import LayerHelper
 
 from darknet import DarkNet53_conv_body
 from darknet import ConvBNLayer
@@ -220,6 +221,44 @@ class Upsample(fluid.dygraph.Layer):
         return out
 
 
+def multiclass_nms(
+    bboxes,
+    scores,
+    score_threshold,
+    nms_top_k,
+    keep_top_k,
+    nms_threshold=0.3,
+    normalized=True,
+    nms_eta=1.0,
+    background_label=-1,
+):
+    helper = LayerHelper('multiclass_nms3', **locals())
+    output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+    index = helper.create_variable_for_type_inference(dtype='int32')
+    nms_rois_num = helper.create_variable_for_type_inference(dtype='int32')
+    inputs = {'BBoxes': bboxes, 'Scores': scores}
+    outputs = {'Out': output, 'Index': index, 'NmsRoisNum': nms_rois_num}
+
+    helper.append_op(
+        type="multiclass_nms3",
+        inputs=inputs,
+        attrs={
+            'background_label': background_label,
+            'score_threshold': score_threshold,
+            'nms_top_k': nms_top_k,
+            'nms_threshold': nms_threshold,
+            'keep_top_k': keep_top_k,
+            'nms_eta': nms_eta,
+            'normalized': normalized,
+        },
+        outputs=outputs,
+    )
+    output.stop_gradient = True
+    index.stop_gradient = True
+
+    return output, index, nms_rois_num
+
+
 class YOLOv3(fluid.dygraph.Layer):
     def __init__(self, ch_in, is_train=True, use_random=False):
         super().__init__()
@@ -355,7 +394,7 @@ class YOLOv3(fluid.dygraph.Layer):
             yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
             yolo_scores = fluid.layers.concat(self.scores, axis=2)
 
-            pred = fluid.layers.multiclass_nms(
+            pred = multiclass_nms(
                 bboxes=yolo_boxes,
                 scores=yolo_scores,
                 score_threshold=cfg.valid_thresh,
