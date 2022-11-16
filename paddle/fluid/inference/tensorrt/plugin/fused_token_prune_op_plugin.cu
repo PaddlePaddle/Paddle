@@ -149,7 +149,7 @@ __global__ void ReduceSum2<half>(
   }
 
   if (tid == 0) {
-    platform::fastAtomicAdd<platform::float16>(
+    phi::fastAtomicAdd<platform::float16>(
         reinterpret_cast<platform::float16*>(dst),
         static_cast<size_t>(batch * max_seq_len + col),
         static_cast<size_t>(bsz * max_seq_len),
