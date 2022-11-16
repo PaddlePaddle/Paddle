@@ -210,7 +210,7 @@ class TestRecompute(unittest.TestCase):
         # test for recompute
         # True: PyLayer of recompute
         # False: HooK of recompute
-        for flag in ["True", "False"]:
+        for flag in [True, False]:
             # recompute second block
             loss, param, grad = run_model(
                 recompute_block=[1],
@@ -279,7 +279,7 @@ class TestRecompute(unittest.TestCase):
         self.test_base_case()
 
     def test_fc_net_without_restore_rng(self):
-        for flag in ["True", "False"]:
+        for flag in [True, False]:
             loss_ref, param_ref, grad_ref = run_model(
                 recompute_block=[2],
                 recompute_kwargs={
@@ -313,7 +313,7 @@ class TestRecompute(unittest.TestCase):
 
     def test_recompute_cpu_rng(self):
         paddle.set_device("cpu")
-        for flag in ["True", "False"]:
+        for flag in [True, False]:
             with self.assertRaises(RuntimeError):
                 loss_ref, param_ref, grad_ref = run_model(
                     recompute_block=[2],
