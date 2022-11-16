@@ -12,16 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.device import xpu
+import paddle
+
 import unittest
-import sys
-
-sys.path.append("..")
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
-class TestProcessGroup(TestMultipleGpus):
-    def test_process_group_nccl(self):
-        self.run_mnist_2gpu('process_group_hccl.py')
+class TestSynchronize(unittest.TestCase):
+    def test_synchronize(self):
+        if paddle.is_compiled_with_xpu():
+            self.assertIsNone(xpu.synchronize())
+            self.assertIsNone(xpu.synchronize(0))
+            self.assertIsNone(xpu.synchronize(paddle.XPUPlace(0)))
+
+            self.assertRaises(ValueError, xpu.synchronize, "xpu:0")
 
 
 if __name__ == "__main__":

@@ -64,22 +64,43 @@ class ProcessGroupCustom : public ProcessGroup {
   };
 
   ProcessGroupCustom(const std::shared_ptr<Store>& store,
+                     const std::string& device_type,
                      int rank,
                      int size,
-                     const platform::Place& place,
                      int gid);
 
   std::string GetBackendName() const override { return "XCCL_" + device_type_; }
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      int64_t offset,
+      int64_t numel,
+      bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllReduce(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const AllreduceOptions& opts,
+      bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const BroadcastOptions& opts,
+      bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Barrier(
+      const BarrierOptions& = BarrierOptions()) override;
+
+  const phi::DeviceContext& GetDeviceContext(const Place& place) const override;
+
+  phi::ccl::CCLComm CustomCCLComm(const Place& place) const;
+
+  // TODO(sunyilun): methods below will be removed later
+  std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      int64_t offset,
-      int64_t length) override;
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,
@@ -90,11 +111,6 @@ class ProcessGroupCustom : public ProcessGroup {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
-
-  std::shared_ptr<ProcessGroup::Task> Barrier(
-      const BarrierOptions& = BarrierOptions()) override;
-
-  phi::ccl::CCLComm CustomCCLComm(const Place& place) const;
 
  protected:
   virtual std::shared_ptr<ProcessGroupCustom::CustomTask> CreateTask(
