@@ -140,7 +140,9 @@ def decoder_decode(context, is_sparse):
         topk_scores, topk_indices = pd.topk(current_score, k=beam_size)
         # calculate accumulated scores after topk to reduce computation cost
         accu_scores = pd.elementwise_add(
-            x=pd.log(topk_scores), y=pd.reshape(pre_score, shape=[-1]), axis=0
+            x=pd.log(topk_scores),
+            y=paddle.reshape(pre_score, shape=[-1]),
+            axis=0,
         )
         selected_ids, selected_scores = pd.beam_search(
             pre_ids,
