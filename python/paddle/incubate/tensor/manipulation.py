@@ -45,7 +45,7 @@ def _npu_identity(x, format=-1):
             import paddle
 
             x = paddle.ones(shape=[6])
-            y = paddle.incubate._npu_identity(x, 3) # NC0HWC1 = 3
+            y = paddle.incubate._npu_identity(x, 3) # ACL_FORMAT_NC1HWC0 = 3
             # y.shape = [1, 1, 1, 1, 16]
     """
     if in_dygraph_mode():
