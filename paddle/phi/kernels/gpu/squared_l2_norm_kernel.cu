@@ -19,7 +19,6 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
-#include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 namespace phi {
 template <typename T, typename Context>
