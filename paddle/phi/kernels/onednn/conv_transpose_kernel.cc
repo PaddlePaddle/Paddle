@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/phi/kernels/conv_transpose_kernel.h"
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -160,7 +158,7 @@ class ConvTransposeOneDNNHandlerT
         dst_tz, funcs::OneDNNGetDataType<T_out>(), chosen_memory_format);
 
     const dnnl::primitive_attr conv_trans_attr =
-        CreateConvAttrs(dev_ctx, fuse_activation);  //!!!!
+        CreateConvAttrs(dev_ctx, fuse_activation);
     auto fwd_prop_kind = is_test_ ? dnnl::prop_kind::forward_inference
                                   : dnnl::prop_kind::forward_training;
     if (bias) {
@@ -297,7 +295,7 @@ class ConvTransposeOneDNNHandlerT
         paddle::platform::RecordEvent record_reorder(
             "int_reorder",
             paddle::platform::TracerEventType::UserDefined,
-            2,
+            1,
             paddle::platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
@@ -323,7 +321,7 @@ class ConvTransposeOneDNNHandlerT
         paddle::platform::RecordEvent record_reorder(
             "int_reorder",
             paddle::platform::TracerEventType::UserDefined,
-            2,
+            1,
             paddle::platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
@@ -430,7 +428,7 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
 
 template <typename T, typename Context>
 void Conv2dTransposeKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
+                           const DenseTensor& input,
                            const DenseTensor& filter,
                            const std::vector<int>& strides,
                            const std::vector<int>& paddings,
@@ -466,7 +464,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
 
   if (dst_dt == dnnl::memory::data_type::f32) {
     ComputeFP32<T, float>(dev_ctx,
-                          &x,
+                          &input,
                           &filter,
                           bias,
                           strides,
@@ -481,7 +479,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                           out);
   } else if (dst_dt == dnnl::memory::data_type::bf16) {
     ComputeFP32<T, dtype::bfloat16>(dev_ctx,
-                                    &x,
+                                    &input,
                                     &filter,
                                     bias,
                                     strides,
