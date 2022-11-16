@@ -1,3 +1,14 @@
+# All the configuration in this file are only for existing operators,
+# which cannot be modified in principle. There's no need to configure
+# this file for new operator.
+#
+# This file is used for two purposes:
+# 1. Configure the mapping relationship of parameter names of operator
+#    between the operators in ops.yaml and the old operators defined
+#    in fluid.
+# 2. Save the extra parameters in the OpMaker of operators temporarily,
+#    which will be removed in the future.
+
 # - op : rnn
 #   backward : rnn_grad
 #   extra :
@@ -58,6 +69,18 @@
   outputs :
     out : Out
     indices : Indices
+
+- op : as_complex
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : as_real
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : asin
   inputs :
@@ -206,7 +229,7 @@
     attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB()]
 
 - op : cos
-  backward : cos_grad
+  backward : cos_grad, cos_double_grad, cos_triple_grad
   inputs :
     x : X
   outputs :
@@ -272,6 +295,12 @@
   outputs :
     out : Out
 
+- op : diag_embed
+  inputs :
+    input : Input
+  outputs :
+    out : Out
+
 - op : diagonal
   inputs :
     x : Input
@@ -316,6 +345,26 @@
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
 
+- op : eig
+  inputs :
+    x : X
+  outputs :
+    out_w : Eigenvalues
+    out_v : Eigenvectors
+
+- op : eigh
+  inputs :
+    x : X
+  outputs :
+    out_w : Eigenvalues
+    out_v : Eigenvectors
+
+- op : eigvals
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : elementwise_pow
   backward : elementwise_pow_grad
   extra :
@@ -337,6 +386,12 @@
     attrs : [bool is_sparse = false, bool is_distributed = false, bool remote_prefetch = false,
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
              'str[] table_names = {}']
+
+- op : equal_all
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : erf
   inputs :
@@ -413,6 +468,12 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : fill_diagonal_tensor
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : flip
   inputs :
     x : X
@@ -445,6 +506,12 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- op : fold
+  inputs :
+    x : X
+  outputs :
+    out : Y
+
 - op : frobenius_norm
   backward : frobenius_norm_grad
   extra :
@@ -459,8 +526,18 @@
   extra :
     attrs : [bool overwrite = true]
 
+- op : gather_tree
+  inputs :
+    {ids : Ids, parents : Parents}
+  outputs :
+    out : Out
+
 - op : gelu
   backward : gelu_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
@@ -478,6 +555,12 @@
   backward : gru_grad
   extra :
     attrs : [bool is_test = false]
+
+- op : gumbel_softmax
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : hard_swish
   backward : hard_swish_grad
@@ -831,7 +914,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : sin
-  backward : sin_grad, sin_double_grad
+  backward : sin_grad, sin_double_grad, sin_triple_grad
   inputs :
     x : X
   outputs :
@@ -996,6 +1079,12 @@
     input : X
   outputs :
     out : Out
+
+- op : unfold
+  inputs :
+    x : X
+  outputs :
+    out : Y
 
 - op : while
   backward : while_grad

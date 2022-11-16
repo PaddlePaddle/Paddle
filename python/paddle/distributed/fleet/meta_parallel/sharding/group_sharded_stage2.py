@@ -225,13 +225,13 @@ class GroupShardedStage2(nn.Layer):
 
     def _grad_scale(self):
         """
-        Before the gradient accumulation, scale the gradient.
+        Before the optimization, scale the gradients before allreduce of dp_group.
         """
 
         if self._dp_group is None or self._dp_group.nranks <= 1:
-            scale_factor = self._world_size_scaling
+            return
         else:
-            scale_factor = 1.0 / (self._group.nranks * self._dp_group.nranks)
+            scale_factor = 1.0 / (self._dp_group.nranks)
 
         # Scale grad storages
         for dtype in self._grad_storages.keys():
@@ -365,6 +365,13 @@ class GroupShardedStage2(nn.Layer):
                 len(self._sharding_optimizers) == 1
             ), "Only support comm overlap strategy for single optimizer"
         self._sharding_optimizers[0]._set_reduce_overlap(reduce_overlap)
+
+    def _get_scaled_grad_fn(self):
+        @paddle.autograd.no_grad()
+        def scale(grad):
+            grad.scale_(self._world_size_scaling)
+
+        return scale
 
     def _get_reduce_fn(self, index, param, dst_rank):
         """
@@ -510,6 +517,8 @@ class GroupShardedStage2(nn.Layer):
             return
 
         for index, param in enumerate(self._trainable_params):
+            param._register_grad_hook(self._get_scaled_grad_fn())
+
             dst_rank = self._trainable_param2rank[param.name]
 
             reduce_function = self._get_reduce_fn(index, param, dst_rank)

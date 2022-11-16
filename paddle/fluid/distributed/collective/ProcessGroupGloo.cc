@@ -180,10 +180,9 @@ ProcessGroupGloo::ProcessGroupGloo(
     const std::shared_ptr<distributed::Store>& store,
     int rank,
     int world_size,
-    const platform::Place& place,
     int gid,
     const std::shared_ptr<GlooOptions> options)
-    : ProcessGroup(rank, world_size, place, gid),
+    : ProcessGroup(rank, world_size, gid),
       _tag(0),
       _store(new GlooStore(store)) {
   _context = std::make_shared<gloo::rendezvous::Context>(rank, world_size);
@@ -392,8 +391,26 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    int64_t offset,  // for compatibility, no use now
+    int64_t numel,   // for compatibility, no use now
+    bool sync_op) {
+  std::vector<phi::DenseTensor> in_wrapper = {in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper = {*out_tensor};
+  return AllGather(in_wrapper, out_wrapper, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors) {
+  return AllGather(in_tensors, out_tensors, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    bool sync_op) {
   std::shared_ptr<AllgatherGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();

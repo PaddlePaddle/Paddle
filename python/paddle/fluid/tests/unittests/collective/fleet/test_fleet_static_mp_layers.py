@@ -128,7 +128,7 @@ class TestDistTraning(unittest.TestCase):
             ops = [op.type for op in ops]
             self.assertEqual(
                 ops,
-                ['c_split', 'matmul_v2', 'c_allreduce_sum', 'elementwise_add'],
+                ['c_split', 'matmul_v2', 'mp_allreduce_sum', 'elementwise_add'],
             )
 
             weight = model_a.parallel_linear.weight
@@ -156,7 +156,7 @@ class TestDistTraning(unittest.TestCase):
             # print(main_program)
             ops = main_program.global_block().ops
             ops = [op.type for op in ops]
-            self.assertEqual(ops, ['c_embedding', 'c_allreduce_sum'])
+            self.assertEqual(ops, ['c_embedding', 'mp_allreduce_sum'])
 
             weight = model_a.embedding.weight
             self.assertEqual(

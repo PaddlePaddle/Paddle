@@ -29,15 +29,9 @@ using dnnl::stream;
 using framework::DDim;
 using framework::ExecutionContext;
 using LoDTensor = phi::DenseTensor;
-using platform::GetMKLDNNFormat;
+using phi::funcs::OneDNNGetDataType;
+using phi::funcs::to_void_cast;
 using platform::MKLDNNDeviceContext;
-using platform::MKLDNNGetDataType;
-using platform::to_void_cast;
-
-template <typename T>
-constexpr bool IsInt8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
-}
 
 struct InnerProductCache {
   dnnl::inner_product_forward inner_product_p;
@@ -48,8 +42,8 @@ struct InnerProductCache {
 };
 template <typename T_in, typename T_w, typename T_out>
 class FCMKLDNNHandler
-    : public platform::MKLDNNHandlerNoCachingT<T_in,
-                                               dnnl::inner_product_forward> {
+    : public phi::funcs::OneDNNHandlerNoCachingT<T_in,
+                                                 dnnl::inner_product_forward> {
  public:
   FCMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                   const platform::MKLDNNDeviceContext& dev_ctx,
@@ -60,7 +54,7 @@ class FCMKLDNNHandler
                   const int in_num_col_dims,
                   dnnl::engine mkldnn_engine,
                   platform::Place cpu_place)
-      : platform::MKLDNNHandlerNoCachingT<T_in, dnnl::inner_product_forward>(
+      : phi::funcs::OneDNNHandlerNoCachingT<T_in, dnnl::inner_product_forward>(
             mkldnn_engine, cpu_place),
         dev_ctx_(dev_ctx) {
     this->memory_key_ = ctx.InputName("W");
@@ -83,14 +77,14 @@ class FCMKLDNNHandler
     dnnl::memory::desc bias_md;
 
     auto src_md = dnnl::memory::desc(
-        {MB, IC}, MKLDNNGetDataType<T_in>(), dnnl::memory::format_tag::any);
+        {MB, IC}, OneDNNGetDataType<T_in>(), dnnl::memory::format_tag::any);
     auto weights_md = dnnl::memory::desc(
-        {OC, IC}, MKLDNNGetDataType<T_w>(), dnnl::memory::format_tag::any);
+        {OC, IC}, OneDNNGetDataType<T_w>(), dnnl::memory::format_tag::any);
     auto dst_md = dnnl::memory::desc(
-        {MB, OC}, MKLDNNGetDataType<T_out>(), dnnl::memory::format_tag::any);
+        {MB, OC}, OneDNNGetDataType<T_out>(), dnnl::memory::format_tag::any);
     if (bias) {
       bias_md = dnnl::memory::desc({bias->numel()},
-                                   MKLDNNGetDataType<float>(),
+                                   OneDNNGetDataType<float>(),
                                    dnnl::memory::format_tag::a);
     }
 
@@ -111,7 +105,7 @@ class FCMKLDNNHandler
 
     std::vector<float> output_shift_scale;
     float scale = 1.0f;
-    if (IsInt8<T_w>()) {
+    if (phi::funcs::is_int8<T_w>()) {
       std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
       int mask = CreateMask(1, output_shift_scale.size() > 1);
       attributes.set_output_scales(mask, output_shift_scale);
@@ -211,10 +205,17 @@ class FCMKLDNNHandler
         *user_memory_p, *target_memory_p, attrs);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    reorder_p->execute(
-        astream,
-        {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
-    astream.wait();
+    {
+      platform::RecordEvent record_reorder(
+          "int_reorder",
+          platform::TracerEventType::UserDefined,
+          1,
+          platform::EventRole::kUniqueOp);
+      reorder_p->execute(
+          astream,
+          {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
+      astream.wait();
+    }
 
     return target_memory_p;
   }
@@ -244,7 +245,7 @@ class FCMKLDNNHandler
       const std::vector<float>& scale_weights) {
     const float* bias_data = bias->data<float>();
 
-    if (IsInt8<T_w>() == false) {
+    if (phi::funcs::is_int8<T_w>() == false) {
       // for BF16/FP32 bias is 1D and has no scales, so reorder is not needed
       return this->AcquireMemoryFromPrimitive(this->fwd_pd_->bias_desc(),
                                               to_void_cast<float>(bias_data));
@@ -261,7 +262,7 @@ class FCMKLDNNHandler
         attrs.set_output_scales(mask, scale_data);
 
         auto user_md = dnnl::memory::desc({bias->dims()[0]},
-                                          MKLDNNGetDataType<float>(),
+                                          OneDNNGetDataType<float>(),
                                           dnnl::memory::format_tag::a);
 
         memory_p = this->AcquireMemoryWithReorderAndAttrs(
@@ -286,10 +287,10 @@ class FCMKLDNNHandler
       auto weights_dims = this->fwd_pd_->weights_desc().dims();
 
       auto user_md = dnnl::memory::desc(weights_dims,
-                                        MKLDNNGetDataType<float>(),
+                                        OneDNNGetDataType<float>(),
                                         dnnl::memory::format_tag::io);
 
-      if (IsInt8<T_w>()) {
+      if (phi::funcs::is_int8<T_w>()) {
         dnnl::primitive_attr attrs;
         int mask = CreateMask(0, scale_data.size() > 1);
         attrs.set_output_scales(mask, scale_data);
@@ -352,7 +353,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     IF_CHANGE_FC_TW_TYPENAME((std::is_same<T_in, uint8_t>::value), ([&] {
                                if (force_fp32_output) {
                                  this->RunKernel<float, T_w>(ctx);
-                               } else if (IsInt8<T_in>()) {
+                               } else if (phi::funcs::is_int8<T_in>()) {
                                  if (fuse_relu) {
                                    this->RunKernel<uint8_t, T_w>(ctx);
                                  } else {

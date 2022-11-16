@@ -137,22 +137,5 @@ class TestCase6(TestBase):
         self.attrs['exclusive'] = False
 
 
-class TestAdaptive(TestBase):
-    def set_op_attrs(self):
-        self.attrs = {
-            "pool_size": 1,
-            "pool_type": 'max',
-            "require_index": False,
-        }
-
-    @IPUOpTest.static_graph
-    def build_model(self):
-        x = paddle.static.data(
-            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
-        )
-        out = paddle.fluid.layers.adaptive_pool2d(x, **self.attrs)
-        self.fetch_list = [out.name]
-
-
 if __name__ == "__main__":
     unittest.main()

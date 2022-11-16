@@ -246,9 +246,10 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 3), 1e-5
+        # fill_constant will be folded by constnt folding pass!
+        yield self.create_inference_config(), (0, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 3), 1e-3
+        yield self.create_inference_config(), (0, 3), 1e-3
 
     def add_skip_trt_case(self):
         pass
@@ -389,9 +390,10 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (4, 3), 1e-5
+        # fill_constant will be folded by constnt folding pass!
+        yield self.create_inference_config(), (0, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (4, 3), 1e-3
+        yield self.create_inference_config(), (0, 3), 1e-3
 
     def add_skip_trt_case(self):
         pass

@@ -3249,7 +3249,12 @@ void ShardIndexInferMeta(const MetaTensor& in,
 
 void SizeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
-  out->set_dims({1});
+  if (input.dims().size() == 0) {
+    out->set_dims(phi::make_ddim({}));
+  } else {
+    // TODO(zhouwei): will change shape [1] to [] to support zero-dim
+    out->set_dims(phi::make_ddim({1}));
+  }
 }
 
 void SliceRawInferMeta(const MetaTensor& input,
@@ -3727,7 +3732,7 @@ void StridedSliceRawInferMeta(const MetaTensor& x,
     }
     out_dims = phi::make_ddim(new_out_shape);
   }
-  VLOG(1) << "out_dims: " << out_dims;
+  VLOG(4) << "out_dims: " << out_dims;
   out->set_dims(out_dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());

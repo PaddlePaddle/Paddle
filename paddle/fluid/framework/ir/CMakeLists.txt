@@ -105,8 +105,10 @@ pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
 pass_library(skip_layernorm_fuse_pass base)
 pass_library(multihead_matmul_fuse_pass inference)
+pass_library(multihead_matmul_roformer_fuse_pass inference)
 pass_library(fused_multi_transformer_encoder_pass inference)
 pass_library(fused_multi_transformer_decoder_pass inference)
+pass_library(fuse_multi_transformer_layer_pass inference)
 pass_library(adaptive_pool2d_convert_global_pass inference)
 pass_library(unsqueeze2_eltwise_fuse_pass inference)
 pass_library(yolo_box_fuse_pass inference)
@@ -151,7 +153,7 @@ if(WITH_MKLDNN)
     mkldnn_placement_pass
     op_registry
     elementwise_add_op
-    gelu_op
+    generated_op
     activation_op
     softmax_op
     softmax
@@ -176,6 +178,7 @@ if(WITH_MKLDNN)
   pass_library(elt_act_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(layer_norm_onednn_optimization_pass inference DIR mkldnn)
   pass_library(operator_scale_onednn_fuse_pass inference DIR mkldnn)
   pass_library(squeeze2_transpose2_onednn_fuse_pass inference DIR mkldnn)
   pass_library(operator_unsqueeze2_onednn_fuse_pass inference DIR mkldnn)
@@ -327,6 +330,10 @@ cc_test(
   SRCS fused_multi_transformer_decoder_pass_tester.cc
   DEPS fused_multi_transformer_decoder_pass)
 cc_test(
+  test_fuse_multi_transformer_layer_pass
+  SRCS fuse_multi_transformer_layer_pass_tester.cc
+  DEPS fuse_multi_transformer_layer_pass)
+cc_test(
   test_conv_bn_fuse_pass_cc
   SRCS conv_bn_fuse_pass_tester.cc
   DEPS conv_bn_fuse_pass)
@@ -400,13 +407,6 @@ if(WITH_MKLDNN)
     mkldnn/params_quantization_mkldnn_pass_tester.cc DEPS
     params_quantization_mkldnn_pass)
   cc_test_old(
-    test_fc_elementwise_add_mkldnn_fuse_pass SRCS
-    mkldnn/fc_elementwise_add_mkldnn_fuse_pass_tester.cc DEPS
-    fc_elementwise_add_mkldnn_fuse_pass pass_test_util)
-  cc_test_old(
-    test_fc_act_mkldnn_fuse_pass SRCS mkldnn/fc_act_mkldnn_fuse_pass_tester.cc
-    DEPS fc_act_mkldnn_fuse_pass pass_test_util)
-  cc_test_old(
     test_batch_norm_act_fuse_pass SRCS
     mkldnn/batch_norm_act_fuse_pass_tester.cc DEPS batch_norm_act_fuse_pass
     pass_test_util)
@@ -419,7 +419,7 @@ if(WITH_MKLDNN)
       im2col
       vol2col
       batch_norm_op
-      gelu_op
+      generated_op
       activation_op
       elementwise_add_op
       concat_and_split

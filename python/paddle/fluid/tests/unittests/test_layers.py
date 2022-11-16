@@ -652,14 +652,12 @@ class TestLayer(LayerTest):
                 min_eager_ret = layers.elementwise_min(
                     to_variable(n), to_variable(n2)
                 )
-                max_eager_ret = layers.elementwise_max(
-                    to_variable(n), to_variable(n2)
-                )
+                max_eager_ret = paddle.maximum(to_variable(n), to_variable(n2))
                 min_eager_ret_value = min_eager_ret.numpy()
                 max_eager_ret_value = max_eager_ret.numpy()
 
             min_ret = layers.elementwise_min(to_variable(n), to_variable(n2))
-            max_ret = layers.elementwise_max(to_variable(n), to_variable(n2))
+            max_ret = paddle.maximum(to_variable(n), to_variable(n2))
             min_ret_value = min_ret.numpy()
             max_ret_value = max_ret.numpy()
 
@@ -3301,38 +3299,6 @@ class TestBook(LayerTest):
                 pool_padding=(2, 1, 1),
             )
 
-    def make_adaptive_pool2d(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[3, 224, 224], dtype='float32')
-            return layers.adaptive_pool2d(x, [3, 3], pool_type='avg')
-            pool, mask = layers.adaptive_pool2d(x, [3, 3], require_index=True)
-            return pool
-            return mask
-            return layers.adaptive_pool2d(x, 3, pool_type='avg')
-            pool, mask = layers.adaptive_pool2d(x, 3, require_index=True)
-            return pool
-            return mask
-
-    def make_adaptive_pool3d(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(
-                name='x', shape=[3, 244, 224, 224], dtype='float32'
-            )
-            return layers.adaptive_pool3d(x, [3, 3, 3], pool_type='avg')
-            pool, mask = layers.adaptive_pool3d(
-                x, [3, 3, 3], require_index=True
-            )
-            return pool
-            return mask
-            return layers.adaptive_pool3d(x, 3, pool_type='avg')
-            pool, mask = layers.adaptive_pool3d(x, 3, require_index=True)
-            return pool
-            return mask
-
     def make_lstm_unit(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -4169,55 +4135,6 @@ class TestBook(LayerTest):
                 layers.dynamic_lstmp(
                     input=fc_out, size=4 * hidden_dim, proj_size=proj_dim
                 )
-            )
-
-    def test_linear_chain_crf(self):
-        with self.static_graph():
-            label_dict_len = 10
-            feature = layers.data(name='feature', shape=[784], dtype='float32')
-            label = layers.data(name='label', shape=[1], dtype='int64')
-            emission = layers.fc(input=feature, size=10)
-            crf = layers.linear_chain_crf(
-                input=emission, label=label, param_attr=ParamAttr(name="crfw")
-            )
-            crf_decode = layers.crf_decoding(
-                input=emission, param_attr=ParamAttr(name="crfw")
-            )
-            self.assertIsNotNone(crf)
-            self.assertIsNotNone(crf_decode)
-            return layers.chunk_eval(
-                input=crf_decode,
-                label=label,
-                chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) // 2,
-            )
-
-    def test_linear_chain_crf_padding(self):
-        with self.static_graph():
-            label_dict_len, max_len = 10, 20
-            feature = layers.data(
-                name='feature', shape=[max_len, 784], dtype='float32'
-            )
-            label = layers.data(name='label', shape=[max_len], dtype='int64')
-            length = layers.data(name='length', shape=[1], dtype='int64')
-            emission = layers.fc(input=feature, size=10, num_flatten_dims=2)
-            crf = layers.linear_chain_crf(
-                input=emission,
-                label=label,
-                length=length,
-                param_attr=ParamAttr(name="crfw"),
-            )
-            crf_decode = layers.crf_decoding(
-                input=emission, length=length, param_attr=ParamAttr(name="crfw")
-            )
-            self.assertIsNotNone(crf)
-            self.assertIsNotNone(crf_decode)
-            return layers.chunk_eval(
-                input=crf_decode,
-                label=label,
-                seq_length=length,
-                chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) // 2,
             )
 
     def test_im2sequence(self):

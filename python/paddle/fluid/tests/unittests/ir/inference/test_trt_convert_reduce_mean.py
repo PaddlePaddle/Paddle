@@ -28,7 +28,7 @@ class TrtConvertReduceMeanTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        ## dim should be in (-rank, rank), and not NONE
+        # dim should be in (-rank, rank), and not NONE
         rank = len(inputs['input_data'].shape)
         for x in attrs[0]["dim"]:
             if x >= rank or x <= -rank:
