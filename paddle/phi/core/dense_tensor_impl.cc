@@ -42,10 +42,6 @@ void DenseTensor::check_memory_size() const {
       holder_,
       phi::errors::PreconditionNotMet("Tensor holds no memory. "
                                       "Call Tensor::mutable_data firstly."));
-  if (holder_)
-    std::cout << "holder_->size()=" << holder_->size() << ","
-              << "meta_.offset=" << meta_.offset << std::endl;
-
   PADDLE_ENFORCE_LE(
       numel() * SizeOf(dtype()),
       memory_size(),
@@ -118,19 +114,11 @@ void* DenseTensor::mutable_data(const Place& place,
     holder_ = paddle::memory::AllocShared(place, size);
     meta_.offset = 0;
   }
-
-  if (holder_)
-    std::cout << "holder_->size()1=" << holder_->size() << ","
-              << "meta_.offset1=" << meta_.offset << std::endl;
-
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  meta_.offset);
 }
 
 void* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
-  if (holder_)
-    std::cout << "holder_->size()2=" << holder_->size() << ","
-              << "meta_.offset2=" << meta_.offset << std::endl;
   return mutable_data(place, type(), requested_size);
 }
 
@@ -157,10 +145,6 @@ void* DenseTensor::mutable_data(const Place& place,
     holder_ = paddle::memory::AllocShared(place, size, stream);
     meta_.offset = 0;
   }
-  if (holder_)
-    std::cout << "holder_->size()3=" << holder_->size() << ","
-              << "meta_.offset3=" << meta_.offset << std::endl;
-
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  meta_.offset);
 }

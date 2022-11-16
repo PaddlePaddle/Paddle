@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 
 
 class TestCenterLossOp(OpTest):
@@ -79,8 +80,8 @@ class TestCenterLossOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    # def test_check_grad(self):
-    #     self.check_grad(['X'], 'Loss')
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Loss')
 
 
 class TestCenterLossOpNoUpdate(TestCenterLossOp):
@@ -89,4 +90,5 @@ class TestCenterLossOpNoUpdate(TestCenterLossOp):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
