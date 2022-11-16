@@ -691,7 +691,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         is_bias=False,
         default_initializer=paddle.nn.initializer.Constant(0.25),
     )
-    if paddle.in_dygraph_mode():
+    if paddle.fluid.framework.in_dygraph_mode():
         return paddle._C_ops.prelu(x, alpha, data_format, mode)
 
     out = helper.create_variable_for_type_inference(dtype)
