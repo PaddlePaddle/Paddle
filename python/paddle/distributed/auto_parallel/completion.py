@@ -17,7 +17,7 @@ import logging
 
 from paddle.fluid import core
 
-from .utils import is_naive_data_parallel, get_logger
+from .utils import get_logger, is_naive_data_parallel
 from .utils import is_gradient_clip_op, __no_shape_var_type__
 from .operators import find_compatible_distributed_operator_impls
 from .dist_context import _node_id
@@ -1564,11 +1564,15 @@ class Completer:
                     )
 
                 for output_name in grad_op.output_arg_names:
-                    assert output_name in grad_var_to_var
-                    fwd_name = grad_var_to_var[output_name]
-                    ref_dims_mapping = fwd_op_dist_attr.get_input_dims_mapping(
-                        fwd_name
-                    )
+                    # assert output_name in grad_var_to_var
+                    if output_name not in grad_var_to_var:
+                        assert output_name == "@EMPTY@"
+                        ref_dims_mapping = []
+                    else:
+                        fwd_name = grad_var_to_var[output_name]
+                        ref_dims_mapping = (
+                            fwd_op_dist_attr.get_input_dims_mapping(fwd_name)
+                        )
                     # var
                     output_var = vars[output_name]
                     tensor_dist_attr = TensorDistributedAttribute()
@@ -1629,6 +1633,29 @@ class Completer:
                     )
                     grad_op_dist_attr.impl_type = "default"
                     grad_op_dist_attr.impl_idx = 0
+
+                    # input
+                    # NOTE: `where_api`'s backward parse has a input var which is grad var and is a leaf-node var.
+                    # The situation will cause that there is not dist_attr of this var after complete.
+                    for in_name in grad_op.input_arg_names:
+                        in_var = vars[in_name]
+                        dist_attr = (
+                            self._dist_context.get_tensor_dist_attr_for_program(
+                                in_var
+                            )
+                        )
+                        if dist_attr is None:
+                            tensor_dist_attr = TensorDistributedAttribute()
+                            tensor_dist_attr.dims_mapping = [
+                                -1 for _ in range(len(in_var.shape))
+                            ]
+                            tensor_dist_attr.process_mesh = ref_fwd_process_mesh
+                            self._dist_context.set_tensor_dist_attr_for_program(
+                                in_var, tensor_dist_attr
+                            )
+                            grad_op_dist_attr.set_input_dims_mapping(
+                                in_name, tensor_dist_attr.dims_mapping
+                            )
 
                 elif grad_op.type == 'fill_any_like':
                     ref_var_name = grad_op.input_arg_names[0]
