@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-const int CUDA_NUM_THREADS = platform::PADDLE_CUDA_NUM_THREADS;
+const int CUDA_NUM_THREADS = phi::PADDLE_CUDA_NUM_THREADS;
 #define GET_BLOCK(N) ((N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS)
 #define CUDA_BLOCK(N) GET_BLOCK(N), CUDA_NUM_THREADS, 0
 

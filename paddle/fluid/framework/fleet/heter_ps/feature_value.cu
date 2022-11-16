@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-const int CUDA_NUM_THREADS = platform::PADDLE_CUDA_NUM_THREADS;
+const int CUDA_NUM_THREADS = phi::PADDLE_CUDA_NUM_THREADS;
 #define GET_BLOCK(N) ((N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS)
 #define CUDA_BLOCK(N) GET_BLOCK(N), CUDA_NUM_THREADS, 0
 
@@ -44,8 +44,9 @@ __global__ void PullCopy(float** dest,
     }
     int x = low;
     int y = i - (x ? len[x - 1] : 0);
-    float* feature_value_ptr = reinterpret_cast<float*>(
-        reinterpret_cast<char*>(src) + uint64_t(i) * uint64_t(max_val_size));
+    float* feature_value_ptr =
+        reinterpret_cast<float*>(reinterpret_cast<char const*>(src) +
+                                 uint64_t(i) * uint64_t(max_val_size));
     int mf_dim = gpu_dim[x] - 3;
     gpu_accessor.Select(
         dest[x] + y * (mf_dim + 3), feature_value_ptr, keys[x] + y, mf_dim);
@@ -79,9 +80,9 @@ __global__ void PullDedupCopy(const size_t N,
       return;
     }
 
-    float* src_ptr = reinterpret_cast<float*>(reinterpret_cast<char*>(src) +
-                                              uint64_t(restore_idx[i]) *
-                                                  uint64_t(max_val_size));
+    float* src_ptr = reinterpret_cast<float*>(
+        reinterpret_cast<char const*>(src) +
+        uint64_t(restore_idx[i]) * uint64_t(max_val_size));
     switch (off) {
       case 0:
         *(dest_ptr + off) = src_ptr[accessor.ShowIndex()];
@@ -126,7 +127,7 @@ __global__ void PushCopyWithPool(float* dest,
     }
     int x = low;
     int y = i - (x ? len[low - 1] : 0);
-    float* cur = reinterpret_cast<float*>(reinterpret_cast<char*>(dest) +
+    float* cur = reinterpret_cast<float*>(reinterpret_cast<char const*>(dest) +
                                           i * grad_value_size);
 
     cur[gpu_accessor.common_push_value.SlotIndex()] =
@@ -173,7 +174,7 @@ __global__ void PushMergeCopyAtomic(const size_t N,
     int y = i - slot_lens[x];
 
     const float* ptr = src[x] + y * hidden;
-    float* cur = reinterpret_cast<float*>(reinterpret_cast<char*>(dest) +
+    float* cur = reinterpret_cast<float*>(reinterpret_cast<char const*>(dest) +
                                           d_restore_idx[i] * grad_value_size);
     int mf_dim = slot_dims[x] - 3;
     switch (off) {
@@ -229,7 +230,7 @@ __global__ void PushMergeCopy(const size_t N,
     int i = idx / hidden;
     int off = idx % hidden;
     // filter 0 keys
-    float* cur = reinterpret_cast<float*>(reinterpret_cast<char*>(dest) +
+    float* cur = reinterpret_cast<float*>(reinterpret_cast<char const*>(dest) +
                                           i * grad_value_size);
 
     if (total_keys[i] == 0) {
