@@ -81,6 +81,7 @@ class InterpreterCore {
   void BuildAndCacheInstructionCtx(Instruction* instr_node);
   void BuildSkipShareLoDInfo();
   void UpdateSyncOpNum();
+  void AnalyseTraceExecuteOrder();
 
   // inplace
   void BuildInplace();
@@ -159,6 +160,8 @@ class InterpreterCore {
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
+
+  std::vector<size_t> trace_execute_order_;
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(

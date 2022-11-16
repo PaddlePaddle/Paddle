@@ -40,6 +40,10 @@ class DependencyBuilder {
 
   bool OpHappensBefore(int prior_op_idx, int posterior_op_idx);
 
+  const std::map<int, std::set<int>>& GetOpDownStreamMap() {
+    return op_downstream_map_;
+  }
+
  private:
   void AddDependencyForCoalesceTensorOp();
   void AddDependencyForCommunicationOp();

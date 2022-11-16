@@ -209,7 +209,7 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    if (FLAGS_new_executor_trace_run && (sync_op_num_ == 0)) {
+    if (FLAGS_new_executor_trace_run) {
       VLOG(0) << "FLAGS_new_executor_trace_run is: "
               << FLAGS_new_executor_trace_run;
       VLOG(0) << "sync_op_num_ is: " << sync_op_num_;
@@ -279,7 +279,7 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    if (FLAGS_new_executor_trace_run && (sync_op_num_ == 0)) {
+    if (FLAGS_new_executor_trace_run) {
       VLOG(0) << "FLAGS_new_executor_trace_run is: "
               << FLAGS_new_executor_trace_run;
       VLOG(0) << "sync_op_num_ is: " << sync_op_num_;
@@ -672,6 +672,8 @@ void InterpreterCore::Convert(
     refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
         vec_meta_info[i].var_ref_count_, var_scope_.VarRef(i)));
   }
+
+  AnalyseTraceExecuteOrder();
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {
@@ -828,7 +830,8 @@ void InterpreterCore::TraceInstructionList(
 
   exception_holder_.Clear();
 
-  for (size_t instr_id = 0; instr_id < unfinished_op_number_; instr_id++) {
+  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+    auto instr_id = trace_execute_order_[idx];
     auto& instr_node = vec_instruction_.at(instr_id);
 
     VLOG(5) << __func__ << " OP id:" << instr_node.Id()
@@ -1271,6 +1274,53 @@ void InterpreterCore::UpdateSyncOpNum() {
   }
   sync_op_num_ = sync_op_num;
   VLOG(0) << "Update sync op num, sync op num is: " << sync_op_num_;
+}
+
+void InterpreterCore::AnalyseTraceExecuteOrder() {
+  VLOG(1) << "Analyze the execution order of Trace scheduling mode.";
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+
+  auto IsReady = [this](size_t next_id) {
+    VLOG(4) << "op_id: " << next_id
+            << ", remain deps: " << deps_[next_id]->DynamicDep();
+    return deps_[next_id]->CheckAndDecrease();
+  };
+
+  std::vector<size_t> trace_order;
+  std::deque<size_t> ready_ops;
+
+  for (size_t instr_id = 0; instr_id < dependecy_count_.size(); ++instr_id) {
+    if (dependecy_count_[instr_id] == 0) {
+      ready_ops.push_back(instr_id);
+    }
+  }
+
+  while (!ready_ops.empty()) {
+    auto now_id = ready_ops.front();
+    ready_ops.pop_front();
+    trace_order.push_back(now_id);
+
+    auto next_op_set = op_downstream_map[now_id];
+
+    for (size_t next_op_id : next_op_set) {
+      if (IsReady(next_op_id)) {
+        ready_ops.push_back(next_op_id);
+      }
+    }
+  }
+
+  VLOG(6) << "get trace order: ";
+  for (auto idx : trace_order) {
+    VLOG(1) << idx;
+  }
+
+  PADDLE_ENFORCE_EQ(
+      trace_order.size(),
+      dependecy_count_.size(),
+      platform::errors::PreconditionNotMet(
+          "trace_order size should be equal to dependecy_count_."));
+
+  trace_execute_order_ = trace_order;
 }
 
 }  // namespace framework
