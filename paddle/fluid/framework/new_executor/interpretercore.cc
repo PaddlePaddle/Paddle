@@ -52,9 +52,6 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
 PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
                             false,
                             "Use new executor in control flow op");
-PADDLE_DEFINE_EXPORTED_bool(new_executor_trace_run,
-                            true,
-                            "Enable trace execution for standalone executor.");
 
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
