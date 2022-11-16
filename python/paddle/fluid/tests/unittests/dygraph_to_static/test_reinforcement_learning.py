@@ -32,8 +32,8 @@ class Policy(Layer):
     def __init__(self):
         super().__init__()
 
-        self.affine1 = nn.Linear(4, 128)
-        self.affine2 = nn.Linear(128, 2)
+        self.affine1 = paddle.nn.Linear(4, 128)
+        self.affine2 = paddle.nn.Linear(128, 2)
         self.dropout_ratio = 0.6
 
         self.saved_log_probs = []

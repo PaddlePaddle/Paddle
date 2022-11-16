@@ -23,7 +23,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.nn import BatchNorm, Linear
+from paddle.fluid.dygraph.nn import BatchNorm
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from predictor_utils import PredictorTools
@@ -196,11 +196,10 @@ class ResNet(fluid.dygraph.Layer):
 
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
-        self.out = Linear(
+        self.out = paddle.nn.Linear(
             self.pool2d_avg_output,
             class_dim,
-            act='softmax',
-            param_attr=fluid.param_attr.ParamAttr(
+            weight_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Uniform(-stdv, stdv)
             ),
         )
@@ -213,6 +212,7 @@ class ResNet(fluid.dygraph.Layer):
         y = self.pool2d_avg(y)
         y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
         pred = self.out(y)
+        pred = paddle.nn.functional.softmax(pred) 
 
         return pred
 

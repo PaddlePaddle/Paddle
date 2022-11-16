@@ -69,7 +69,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
                         sride=pool_stride,
                         padding=pool_padding
                 )
-        else if pool_type == "avg":
+        elif pool_type == "avg":
             if global_pooling:
                 self._pool2d =  paddle.nn.AdaptiveAvgPool2D(output_size=(1,1))
             else:

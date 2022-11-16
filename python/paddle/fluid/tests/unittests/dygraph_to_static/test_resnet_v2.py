@@ -186,7 +186,7 @@ class ResNet(paddle.nn.Layer):
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
-        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(output_size(1, 1)) 
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(output_size=(1, 1)) 
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
 

@@ -16,7 +16,7 @@ import unittest
 import paddle.fluid as fluid
 import numpy as np
 from paddle.fluid.framework import _test_eager_guard
-
+import paddle
 
 class TestImperativePartitialBackward(unittest.TestCase):
     def func_partitial_backward(self):

@@ -20,7 +20,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.dygraph.nn import BatchNorm, Linear
+from paddle.fluid.dygraph.nn import BatchNorm
+from paddle.nn import Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -259,7 +260,7 @@ class MobileNetV1(fluid.dygraph.Layer):
         self.out = Linear(
             int(1024 * scale),
             class_dim,
-            param_attr=ParamAttr(
+            weight_attr=ParamAttr(
                 initializer=MSRA(), name=self.full_name() + "fc7_weights"
             ),
             bias_attr=ParamAttr(name="fc7_offset"),
@@ -427,7 +428,7 @@ class MobileNetV2(fluid.dygraph.Layer):
         self._fc = Linear(
             self._out_c,
             class_dim,
-            param_attr=tmp_param,
+            weight_attr=tmp_param,
             bias_attr=ParamAttr(name="fc10_offset"),
         )
 

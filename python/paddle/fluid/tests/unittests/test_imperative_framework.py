@@ -25,7 +25,7 @@ class MLP(fluid.Layer):
         self._linear1 = paddle.nn.Linear(
             input_size,
             3,
-            param_attr=paddle.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
             bias_attr=paddle.ParamAttr(
@@ -35,7 +35,7 @@ class MLP(fluid.Layer):
         self._linear2 = paddle.nn.Linear(
             3,
             4,
-            param_attr=paddle.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.1)
             ),
             bias_attr=paddle.ParamAttr(

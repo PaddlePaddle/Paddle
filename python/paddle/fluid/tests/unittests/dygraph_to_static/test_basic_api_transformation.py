@@ -151,8 +151,8 @@ def dyfunc_Conv2D(input):
 def dyfunc_Conv3D(input):
     conv3d = paddle.nn.Conv3D(
         in_channels=3,
-        out_channels=3,
-        kernel_size=(3, 3),
+        out_channels=2,
+        kernel_size=3,
         weight_attr=paddle.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.99)
         ),
@@ -184,7 +184,7 @@ def dyfunc_Conv2DTranspose(input):
 def dyfunc_Conv3DTranspose(input):
     conv3dTranspose = paddle.nn.Conv3DTranspose(
         in_channels=3,
-        out_channels=3,
+        out_channels=12,
         kernel_size=12,
         weight_attr=paddle.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.99)
@@ -201,7 +201,7 @@ def dyfunc_Linear(input):
     fc = paddle.nn.Linear(
         in_features=10,
         out_features=5,
-        param_attr=paddle.ParamAttr(
+        weight_attr=paddle.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.99)
         ),
         bias_attr=paddle.ParamAttr(

@@ -15,7 +15,8 @@
 import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Embedding, LayerNorm, Linear, Layer
+from paddle.fluid import Embedding, LayerNorm, Layer
+from paddle.nn import Linear
 from paddle.fluid.dygraph import to_variable, guard
 from paddle.fluid.dygraph import TracedLayer
 from test_imperative_base import new_program_scope
@@ -426,12 +427,13 @@ class PrePostProcessLayer(Layer):
 class PositionwiseFeedForwardLayer(Layer):
     def __init__(self, d_inner_hid, d_hid, dropout_rate):
         super().__init__()
-        self._i2h = Linear(d_hid, d_inner_hid, act="relu")
+        self._i2h = Linear(d_hid, d_inner_hid)
         self._h2o = Linear(d_inner_hid, d_hid)
         self._dropout_rate = dropout_rate
 
     def forward(self, x):
         hidden = self._i2h(x)
+        hidden = paddle.nn.functional.relu(hidden) 
         if self._dropout_rate:
             hidden = fluid.layers.dropout(
                 hidden,

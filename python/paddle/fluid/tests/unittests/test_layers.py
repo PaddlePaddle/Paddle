@@ -87,10 +87,10 @@ class TestLayer(LayerTest):
         class CustomLayer(fluid.Layer):
             def __init__(self, input_size, linear1_size=4):
                 super().__init__()
-                self.linear1 = nn.Linear(
+                self.linear1 = paddle.nn.Linear(
                     input_size, linear1_size, bias_attr=False
                 )
-                self.linear2 = nn.Linear(linear1_size, 1, bias_attr=False)
+                self.linear2 = paddle.nn.Linear(linear1_size, 1, bias_attr=False)
 
             def forward(self, x, do_linear2=False):
                 ret = self.linear1(x)
@@ -168,7 +168,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 append_batch_size=False,
             )
-            linear = nn.Linear(
+            linear = paddle.nn.Linear(
                 32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1)
             )
             ret = linear(t)
@@ -178,7 +178,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 t = base.to_variable(inp)
-                linear = nn.Linear(
+                linear = paddle.nn.Linear(
                     32,
                     4,
                     bias_attr=fluid.initializer.ConstantInitializer(value=1),
@@ -187,7 +187,7 @@ class TestLayer(LayerTest):
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
             t = base.to_variable(inp)
-            linear = nn.Linear(
+            linear = paddle.nn.Linear(
                 32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1)
             )
             dy_ret = linear(t)
@@ -201,7 +201,7 @@ class TestLayer(LayerTest):
             # the input of Linear must be Variable.
             def test_Variable():
                 inp = np.ones([3, 32, 32], dtype='float32')
-                linear = nn.Linear(
+                linear = paddle.nn.Linear(
                     32,
                     4,
                     bias_attr=fluid.initializer.ConstantInitializer(value=1),
@@ -214,7 +214,7 @@ class TestLayer(LayerTest):
             # float16 only can be set on GPU place
             def test_type():
                 inp = np.ones([3, 32, 32], dtype='int32')
-                linear = nn.Linear(
+                linear = paddle.nn.Linear(
                     32,
                     4,
                     bias_attr=fluid.initializer.ConstantInitializer(value=1),
@@ -257,7 +257,7 @@ class TestLayer(LayerTest):
             # the input of Linear must be Variable.
             def test_Variable():
                 inp = np.ones([3, 32, 32], dtype='float32')
-                linear = nn.Linear(
+                linear = paddle.nn.Linear(
                     32,
                     4,
                     bias_attr=fluid.initializer.ConstantInitializer(value=1),
@@ -270,7 +270,7 @@ class TestLayer(LayerTest):
             # float16 only can be set on GPU place
             def test_type():
                 inp = np.ones([3, 32, 32], dtype='int32')
-                linear = nn.Linear(
+                linear = paddle.nn.Linear(
                     32,
                     4,
                     bias_attr=fluid.initializer.ConstantInitializer(value=1),

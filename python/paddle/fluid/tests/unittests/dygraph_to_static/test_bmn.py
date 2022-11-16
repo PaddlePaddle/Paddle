@@ -220,11 +220,10 @@ class BMN(fluid.dygraph.Layer):
 
         self.p_conv3d1 = paddle.nn.Conv3D(
             in_channels=128,
-            out_channels=128,
+            out_channels=self.hidden_dim_3d,
             kernel_size=(self.num_sample, 1, 1),
             stride=(self.num_sample, 1, 1),
             padding=0,
-            act="relu",
             weight_attr=paddle.ParamAttr(name="PEM_3d1_w"),
             bias_attr=paddle.ParamAttr(name="PEM_3d1_b"),
         )
@@ -289,6 +288,7 @@ class BMN(fluid.dygraph.Layer):
         )
 
         xp = self.p_conv3d1(xp)
+        xp = paddle.tanh(xp)
         xp = fluid.layers.squeeze(xp, axes=[2])
         xp = paddle.nn.functional.relu(self.p_conv2d1(xp))
         xp = paddle.nn.functional.relu(self.p_conv2d2(xp))

@@ -158,7 +158,7 @@ class MyLayer(fluid.dygraph.Layer):
         self.fc = paddle.nn.Linear(
             in_features=5,
             out_features=1,
-            param_attr=paddle.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
             bias_attr=paddle.ParamAttr(

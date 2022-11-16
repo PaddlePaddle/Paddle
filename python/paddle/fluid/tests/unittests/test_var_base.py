@@ -1172,7 +1172,7 @@ class TestVarBase(unittest.TestCase):
             fc = paddle.nn.Linear(
                 10,
                 20,
-                param_attr=paddle.ParamAttr(
+                weight_attr=paddle.ParamAttr(
                     learning_rate=0.001,
                     do_model_average=True,
                     regularizer=paddle.regularizer.L1Decay(),

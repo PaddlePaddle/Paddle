@@ -21,7 +21,8 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator, to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Linear
+from paddle.fluid.dygraph.nn import BatchNorm
+from paddle.nn import Linear
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 random.seed(0)
@@ -187,12 +188,11 @@ class TSM_ResNet(fluid.dygraph.Layer):
         self.out = Linear(
             2048,
             self.class_dim,
-            act="softmax",
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
-            bias_attr=fluid.param_attr.ParamAttr(
-                learning_rate=2.0, regularizer=fluid.regularizer.L2Decay(0.0)
+            bias_attr=paddle.ParamAttr(
+                learning_rate=2.0, regularizer=paddle.regularizer.L1Decay()
             ),
         )
 
@@ -209,6 +209,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
         y = fluid.layers.reduce_mean(y, dim=1)
         y = fluid.layers.reshape(y, shape=[-1, 2048])
         y = self.out(y)
+        y = paddle.nn.functional.softmax(y)
         return y
 
 

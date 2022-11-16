@@ -184,7 +184,7 @@ class TestRegularizer(unittest.TestCase):
             linear1 = paddle.nn.Linear(
                 2, 2, weight_attr=fc_param_attr, bias_attr=fc_param_attr
             )
-            linear2 = paddle.nn..Linear(
+            linear2 = paddle.nn.Linear(
                 2, 2, weight_attr=fc_param_attr, bias_attr=fc_param_attr
             )
 

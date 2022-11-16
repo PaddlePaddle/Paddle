@@ -17,7 +17,7 @@ import paddle.fluid.param_attr as attr
 
 from functools import reduce
 from paddle.fluid.dygraph import declarative
-from paddle.fluid.dygraph import Embedding, Layer, Linear
+from paddle.fluid.dygraph import Embedding, Layer
 from paddle.static import Variable
 
 
@@ -489,7 +489,7 @@ class BOW(Layer):
         self.emb_layer = EmbeddingLayer(
             self.dict_size, self.emb_dim, "emb"
         ).ops()
-        self.bow_layer = Linear(self.bow_dim, self.bow_dim)
+        self.bow_layer = paddle.nn.Linear(self.bow_dim, self.bow_dim)
         self.bow_layer_po = FCLayer(self.bow_dim, None, "fc").ops()
         self.softmax_layer = FCLayer(2, "softmax", "cos_sim").ops()
 
