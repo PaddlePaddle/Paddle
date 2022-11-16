@@ -160,52 +160,70 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   // Only support conv2d_fusion now.
   std::string target_op_type = "conv2d_fusion";
 
+  auto OpIsValid = [&](ir::Node *op_node) -> bool {
+    if (op_node->Op()->Type() != target_op_type) return false;
+
+    auto data_format =
+        op_node->Op()->GetAttrIfExists<std::string>("data_format");
+    if (data_format != "NCHW") return false;
+
+    auto filter_names = op_node->Op()->Input("Filter");
+
+    // If filter's channel is not multiple of 8, conv2d_fusion not run at nhwc.
+    for (const auto &filter_name : filter_names) {
+      auto *filter_var = scope->FindLocalVar(filter_name);
+      const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
+      if (filter_tensor.dims().size() == 4 &&
+          filter_tensor.dims()[1] % 8 != 0) {
+        return false;
+      }
+    }
+    return true;
+  };
+
   for (auto *op_node : op_nodes) {
     CHECK_EQ(op_node->IsOp(), true);
-    if (op_node->Op()->Type() == target_op_type) {
+    if (OpIsValid(op_node)) {
       auto *op_desc = op_node->Op();
-      auto data_format = op_desc->GetAttrIfExists<std::string>("data_format");
-      if (data_format == "NCHW") {
-        auto nhwc_attr = framework::Attribute(std::string("NHWC"));
-        op_desc->SetAttr("data_format", nhwc_attr);
-        op_desc->Flush();
+      auto nhwc_attr = framework::Attribute(std::string("NHWC"));
+      op_desc->SetAttr("data_format", nhwc_attr);
+      op_desc->Flush();
 
-        // transfer weights
-        auto filter_names = op_desc->Input("Filter");
-        for (const auto &filter_name : filter_names) {
-          auto *filter_var = scope->FindLocalVar(filter_name);
-          auto *filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
-          phi::DenseTensor temp_tensor = *filter_tensor;
-          filter_tensor->clear();
+      // transfer weights
+      auto filter_names = op_desc->Input("Filter");
+      for (const auto &filter_name : filter_names) {
+        auto *filter_var = scope->FindLocalVar(filter_name);
+        auto *filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensor temp_tensor = *filter_tensor;
+        filter_tensor->clear();
 
-          TransDataLayout(
-              DataLayout::kNCHW, DataLayout::kNHWC, temp_tensor, filter_tensor);
-        }
-        auto op_inputs = op_node->inputs;
-        for (auto *in_var_node : op_inputs) {
-          CHECK_EQ(in_var_node->IsVar(), true);
-          if (in_var_node->Var()->Persistable()) {
-            if (std::find(filter_names.cbegin(),
-                          filter_names.cend(),
-                          in_var_node->Var()->Name()) != filter_names.cend()) {
-              auto from_shape = in_var_node->Var()->GetShape();
-              in_var_node->Var()->SetShape(
-                  {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
-            }
+        TransDataLayout(
+            DataLayout::kNCHW, DataLayout::kNHWC, temp_tensor, filter_tensor);
+      }
+      auto op_inputs = op_node->inputs;
+      for (auto *in_var_node : op_inputs) {
+        CHECK_EQ(in_var_node->IsVar(), true);
+        if (in_var_node->Var()->Persistable()) {
+          if (std::find(filter_names.cbegin(),
+                        filter_names.cend(),
+                        in_var_node->Var()->Name()) != filter_names.cend()) {
+            auto from_shape = in_var_node->Var()->GetShape();
+            in_var_node->Var()->SetShape(
+                {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
           }
         }
+      }
 
-        // transfer outputs
-        auto op_outputs = op_node->outputs;
-        for (auto *out_var_node : op_outputs) {
-          CHECK_EQ(out_var_node->IsVar(), true);
-          if (out_var_node->Var()->Persistable()) continue;
+      // transfer outputs
+      auto op_outputs = op_node->outputs;
+      for (auto *out_var_node : op_outputs) {
+        CHECK_EQ(out_var_node->IsVar(), true);
+        if (out_var_node->Var()->Persistable()) continue;
 
-          auto from_shape = out_var_node->Var()->GetShape();
-          out_var_node->Var()->SetShape(
-              {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
-          vars_shape_nhwc.insert(out_var_node);
-        }
+        auto from_shape = out_var_node->Var()->GetShape();
+        out_var_node->Var()->SetShape(
+            {from_shape[0], from_shape[2], from_shape[3], from_shape[1]});
+        vars_shape_nhwc.insert(out_var_node);
       }
     }
   }
@@ -214,7 +232,7 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   for (auto *op_node : op_nodes) {
     CHECK_EQ(op_node->IsOp(), true);
 
-    if (op_node->Op()->Type() == target_op_type) {
+    if (OpIsValid(op_node)) {
       auto *op_desc = op_node->Op();
       auto data_format = op_desc->GetAttrIfExists<std::string>("data_format");
       CHECK_EQ(data_format, "NHWC");
@@ -224,7 +242,6 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
         CHECK_EQ(in_var_node->IsVar(), true);
 
         if (in_var_node->Var()->Persistable()) continue;
-        if (in_var_node->inputs[0]->Name() == target_op_type) continue;
         if (vars_shape_nhwc.count(in_var_node)) continue;
 
         InsertLayoutTransOp(graph,
