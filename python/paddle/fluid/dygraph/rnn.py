@@ -18,7 +18,6 @@ from ..layers import (
     tanh,
     concat,
     fill_constant,
-    matmul,
     elementwise_add,
     elementwise_mul,
     split,

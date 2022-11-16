@@ -1015,6 +1015,7 @@ set_tests_properties(test_fuse_relu_depthwise_conv_pass PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fleet_util PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
+set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
