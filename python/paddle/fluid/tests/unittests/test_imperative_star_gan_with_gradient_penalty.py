@@ -385,7 +385,7 @@ def loss_cls(cls, label, cfg):
     )
     return (
         fluid.layers.reduce_sum(
-            fluid.layers.sigmoid_cross_entropy_with_logits(cls, label)
+            paddle.nn.functional.sigmoid_cross_entropy_with_logits(cls, label)
         )
         / cfg.batch_size
     )

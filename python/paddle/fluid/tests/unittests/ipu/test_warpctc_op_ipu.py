@@ -97,7 +97,7 @@ class TestBase(IPUOpTest):
         label_length = paddle.static.data(
             name=self.feed_list[3], shape=self.feed_shape[3], dtype='int64'
         )
-        out = paddle.fluid.layers.warpctc(
+        out = paddle.nn.functional.warpctc(
             logits,
             labels,
             input_length=input_length,

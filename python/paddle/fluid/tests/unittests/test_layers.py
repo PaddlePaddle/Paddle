@@ -652,12 +652,14 @@ class TestLayer(LayerTest):
                 min_eager_ret = layers.elementwise_min(
                     to_variable(n), to_variable(n2)
                 )
-                max_eager_ret = paddle.maximum(to_variable(n), to_variable(n2))
+                max_eager_ret = layers.elementwise_max(
+                    to_variable(n), to_variable(n2)
+                )
                 min_eager_ret_value = min_eager_ret.numpy()
                 max_eager_ret_value = max_eager_ret.numpy()
 
             min_ret = layers.elementwise_min(to_variable(n), to_variable(n2))
-            max_ret = paddle.maximum(to_variable(n), to_variable(n2))
+            max_ret = layers.elementwise_max(to_variable(n), to_variable(n2))
             min_ret_value = min_ret.numpy()
             max_ret_value = max_ret.numpy()
 
@@ -1314,7 +1316,7 @@ class TestLayer(LayerTest):
 
             embs = layers.concat(input=embs, axis=1)
             wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
-            nce_loss = layers.nce(
+            nce_loss = paddle.static.nn.nce(
                 input=embs,
                 label=wl,
                 num_total_classes=dict_size,
@@ -2986,7 +2988,6 @@ class TestBook(LayerTest):
                 "make_gaussian_random_batch_size_like",
                 "make_kldiv_loss",
                 "make_prelu",
-                "make_sampled_softmax_with_cross_entropy",
                 "make_sampling_id",
                 "make_uniform_random_batch_size_like",
             }
@@ -3093,18 +3094,6 @@ class TestBook(LayerTest):
                 append_batch_size=append_batch_size,
             )
 
-    def make_sampled_softmax_with_cross_entropy(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            logits = self._get_data(name='Logits', shape=[256], dtype='float32')
-            label = self._get_data(name='Label', shape=[1], dtype='int64')
-            num_samples = 25
-            output = layers.sampled_softmax_with_cross_entropy(
-                logits, label, num_samples
-            )
-            return output
-
     def make_fit_a_line(self):
         with program_guard(
             fluid.default_main_program(),
@@ -3113,7 +3102,9 @@ class TestBook(LayerTest):
             x = self._get_data(name='x', shape=[13], dtype='float32')
             y_predict = layers.fc(input=x, size=1, act=None)
             y = self._get_data(name='y', shape=[1], dtype='float32')
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
             return avg_cost
 
@@ -3235,35 +3226,8 @@ class TestBook(LayerTest):
             dat = self._get_data(name='data', shape=[10], dtype='float32')
             lbl = self._get_data(name='label', shape=[10], dtype='float32')
             ignore_index = -1
-            return layers.sigmoid_cross_entropy_with_logits(
+            return paddle.nn.functional.sigmoid_cross_entropy_with_logits(
                 x=dat, label=lbl, ignore_index=ignore_index
-            )
-
-    def make_hsigmoid(self):
-        self._force_to_use_cpu = True
-        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
-            x = self._get_data(name='x', shape=[2], dtype='float32')
-            y = self._get_data(name='y', shape=[2], dtype='int64')
-            return layers.hsigmoid(input=x, label=y, num_classes=2)
-
-        # test hsigmod with custom tree structure
-        program2 = Program()
-        with program_guard(program2):
-            x2 = self._get_data(name='x2', shape=[4, 8], dtype='float32')
-            y2 = self._get_data(name='y2', shape=[4], dtype='int64')
-            path_table = self._get_data(
-                name='path_table', shape=[4, 6], dtype='int64'
-            )
-            path_code = self._get_data(
-                name='path_code', shape=[4, 6], dtype='int64'
-            )
-            return layers.hsigmoid(
-                input=x2,
-                label=y2,
-                num_classes=6,
-                path_table=path_table,
-                path_code=path_code,
-                is_custom=True,
             )
 
     def make_pool2d(self):
@@ -3413,7 +3377,7 @@ class TestBook(LayerTest):
             embs.append(emb)
 
         embs = layers.concat(input=embs, axis=1)
-        loss = layers.nce(
+        loss = paddle.static.nn.nce(
             input=embs,
             label=words[label_word],
             num_total_classes=dict_size,
@@ -3439,23 +3403,31 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name='x', shape=[16], dtype='float32')
             y = self._get_data(name='label', shape=[1], dtype='int64')
-            loss, softmax = layers.softmax_with_cross_entropy(
+            loss, softmax = paddle.nn.functional.softmax_with_cross_entropy(
                 x, y, return_softmax=True
             )
             self.assertIsNotNone(loss)
             self.assertIsNotNone(softmax)
 
-            loss = layers.softmax_with_cross_entropy(x, y)
+            loss = paddle.nn.functional.softmax_with_cross_entropy(x, y)
             self.assertIsNotNone(loss)
 
             x1 = self._get_data(name='x1', shape=[16, 32, 64], dtype='float32')
             y1 = self._get_data(name='label1', shape=[1, 32, 64], dtype='int64')
             y2 = self._get_data(name='label2', shape=[16, 1, 64], dtype='int64')
             y3 = self._get_data(name='label3', shape=[16, 32, 1], dtype='int64')
-            loss1 = layers.softmax_with_cross_entropy(x1, y1, axis=1)
-            loss2 = layers.softmax_with_cross_entropy(x1, y2, axis=2)
-            loss3 = layers.softmax_with_cross_entropy(x1, y3, axis=3)
-            loss4 = layers.softmax_with_cross_entropy(x1, y3, axis=-1)
+            loss1 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y1, axis=1
+            )
+            loss2 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y2, axis=2
+            )
+            loss3 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y3, axis=3
+            )
+            loss4 = paddle.nn.functional.softmax_with_cross_entropy(
+                x1, y3, axis=-1
+            )
             self.assertIsNotNone(loss1)
             self.assertIsNotNone(loss2)
             self.assertIsNotNone(loss3)
@@ -3644,31 +3616,6 @@ class TestBook(LayerTest):
             out, ids = layers.argsort(input=data, axis=1)
             return out
             return ids
-
-    def make_rank_loss(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            label = self._get_data(
-                name='label',
-                append_batch_size=False,
-                shape=[16, 1],
-                dtype="float32",
-            )
-            left = self._get_data(
-                name='left',
-                append_batch_size=False,
-                shape=[16, 1],
-                dtype="float32",
-            )
-            right = self._get_data(
-                name='right',
-                append_batch_size=False,
-                shape=[16, 1],
-                dtype="float32",
-            )
-            out = layers.rank_loss(label, left, right, name="rank_loss")
-            return out
 
     def make_shape(self):
         with program_guard(
@@ -3865,14 +3812,6 @@ class TestBook(LayerTest):
             label = self._get_data(name="label", shape=[30, 1], dtype="int64")
             mode = 'channel'
             out = layers.cross_entropy(x, label, False, 4)
-            return out
-
-    def make_bpr_loss(self):
-        self._force_to_use_cpu = True
-        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
-            x = self._get_data(name="x", shape=[30, 10], dtype="float32")
-            label = self._get_data(name="label", shape=[30, 1], dtype="int64")
-            out = layers.bpr_loss(x, label)
             return out
 
     def make_expand(self):
@@ -4101,7 +4040,9 @@ class TestBook(LayerTest):
                 dtype="float32",
                 append_batch_size=False,
             )
-            loss = layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+            loss = paddle.nn.functional.kl_div(
+                x=x, target=target, reduction='batchmean'
+            )
             return loss
 
     def make_temporal_shift(self):
@@ -4143,7 +4084,7 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name="X", shape=[1], dtype="float32")
             y = self._get_data(name="Y", shape=[1], dtype="float32")
-            out = layers.mse_loss(input=x, label=y)
+            out = paddle.nn.functional.mse_loss(input=x, label=y)
             return out
 
     def make_square_error_cost(self):
@@ -4152,7 +4093,7 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name="X", shape=[1], dtype="float32")
             y = self._get_data(name="Y", shape=[1], dtype="float32")
-            out = layers.square_error_cost(input=x, label=y)
+            out = paddle.nn.functional.square_error_cost(input=x, label=y)
             return out
 
     def test_dynamic_lstmp(self):
@@ -4833,24 +4774,13 @@ class TestBook(LayerTest):
             predict = layers.data(
                 name='predict', shape=[4, 4, 8], dtype='float32'
             )
-            output = layers.warpctc(
+            output = paddle.nn.functional.warpctc(
                 input=predict,
                 label=label,
                 input_length=input_length,
                 label_length=label_length,
             )
             return output
-
-    def test_edit_distance(self):
-        with self.static_graph():
-            predict = layers.data(
-                name='predict', shape=[-1, 1], dtype='int64', lod_level=1
-            )
-            label = layers.data(
-                name='label', shape=[-1, 1], dtype='int64', lod_level=1
-            )
-            evaluator = fluid.evaluator.EditDistance(predict, label)
-            return evaluator.metrics
 
     def test_basic_gru(self):
         input_size = 128

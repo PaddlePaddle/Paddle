@@ -308,14 +308,13 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             ),
         )
 
-        cost = fluid.layers.hsigmoid(
+        cost = paddle.nn.functional.hsigmoid_loss(
             input=emb,
             label=label,
-            bias_attr=True,
-            num_classes=3,
+            bias=True,
+            num_classes=3 - 1,
             path_table=path_table,
             path_code=path_code,
-            is_custom=True,
             is_sparse=is_sparse,
         )
 
@@ -636,16 +635,17 @@ class TestHSigmoidLossAPI(unittest.TestCase):
                 path_code = fluid.data('path_code', [-1, -1], 'int64')
             weight_attr = I.NumpyArrayInitializer(self.weight_np)
             bias_attr = I.NumpyArrayInitializer(self.bias_np)
-            out = fluid.layers.hsigmoid(
-                x,
-                labels,
-                self.num_classes,
-                weight_attr,
-                bias_attr,
-                'out',
-                path_table,
-                path_code,
-                self.is_custom,
+            out = paddle.nn.functional.hsigmoid_loss(
+                input=x,
+                label=labels,
+                num_classes=self.num_classes - 1
+                if self.is_custom
+                else self.num_classes,
+                weight=weight_attr,
+                bias=bias_attr,
+                path_table=path_table,
+                path_code=path_code,
+                name='out',
             )
 
             exe = fluid.Executor(self.place)
@@ -733,26 +733,34 @@ class TestHSigmoidLossAPI(unittest.TestCase):
         self.assertRaises(ValueError, F.hsigmoid_loss, x, label, 0, weight)
         paddle.enable_static()
 
-        # test paddle.fluid.layers.hsigmoid
+        # test paddle.nn.functional.hsigmoid_loss
         with program_guard(Program()):
             label = fluid.data('label', [4, 1], 'int64')
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.hsigmoid, 1, label, 2)
+            self.assertRaises(
+                TypeError, paddle.nn.functional.hsigmoid_loss, 1, label, 2
+            )
             # The input dtype must be float16, float32, float64.
             x_int32 = fluid.data(name='x_int32', shape=[4, 3], dtype='int32')
             self.assertRaises(
-                TypeError, fluid.layers.hsigmoid, x_int32, label, 2
+                TypeError, paddle.nn.functional.hsigmoid_loss, x_int32, label, 2
             )
             # support the input dtype is float32
             x_fp32 = fluid.data(name='x_fp32', shape=[4, 3], dtype='float32')
-            fluid.layers.hsigmoid(x_fp32, label, 2)
+            paddle.nn.functional.hsigmoid_loss(x_fp32, label, 2)
 
             # The label type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.hsigmoid, x_fp32, 1, 2)
+            self.assertRaises(
+                TypeError, paddle.nn.functional.hsigmoid_loss, x_fp32, 1, 2
+            )
             # The label dtype must be int64.
             label_int32 = fluid.data('label_int32', [4, 1], 'int32')
             self.assertRaises(
-                TypeError, fluid.layers.hsigmoid, x_fp32, label_int32, 2
+                TypeError,
+                paddle.nn.functional.hsigmoid_loss,
+                x_fp32,
+                label_int32,
+                2,
             )
 
 

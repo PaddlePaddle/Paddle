@@ -59,7 +59,9 @@ class TestBook(unittest.TestCase):
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -153,7 +155,9 @@ class TestSaveInferenceModel(unittest.TestCase):
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
         place = core.CPUPlace()
@@ -209,7 +213,9 @@ class TestInstance(unittest.TestCase):
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
         place = core.CPUPlace()
@@ -245,7 +251,9 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -422,7 +430,9 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
@@ -469,7 +479,9 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
             y_predict = layers.fc(input=x, size=1, act=None)
 
-            cost = layers.square_error_cost(input=y_predict, label=y)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)

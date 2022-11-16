@@ -57,7 +57,7 @@ class AdaRoundLoss:
         self.default_beta_range = default_beta_range
 
     def compute_recon_loss(self, ada_quantized_output, orig_output):
-        square_cost = fluid.layers.square_error_cost(
+        square_cost = paddle.nn.functional.square_error_cost(
             ada_quantized_output, orig_output
         )
         recon_loss = fluid.layers.reduce_mean(

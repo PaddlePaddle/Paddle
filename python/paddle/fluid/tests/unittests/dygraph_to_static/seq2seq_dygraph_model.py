@@ -290,7 +290,7 @@ class BaseModel(fluid.dygraph.Layer):
 
         dec_output = fluid.layers.stack(dec_output)
         dec_output = self.fc(self._transpose_batch_time(dec_output))
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
         loss = fluid.layers.squeeze(loss, axes=[2])
@@ -821,7 +821,7 @@ class AttentionModel(fluid.dygraph.Layer):
 
         dec_output = fluid.layers.stack(dec_output)
         dec_output = self.fc(self._transpose_batch_time(dec_output))
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
         )
         loss = fluid.layers.squeeze(loss, axes=[2])

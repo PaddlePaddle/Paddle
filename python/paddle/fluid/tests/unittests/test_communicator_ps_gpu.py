@@ -55,7 +55,7 @@ class TestCommunicator(unittest.TestCase):
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         slots_vars = [x, y]
 
-        cost = fluid.layers.square_error_cost(input=x, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=x, label=y)
         avg_cost = paddle.mean(cost)
 
         optimizer = fluid.optimizer.Adam(0.01)

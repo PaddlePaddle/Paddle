@@ -19,6 +19,7 @@ import os
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
 from paddle.fluid.framework import program_guard
 from paddle.fluid import unique_name
+import paddle
 
 import numpy as np
 
@@ -68,7 +69,7 @@ class AutoCheckpointBase(unittest.TestCase):
             label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
 
             fc_tmp = fluid.layers.fc(image, size=CLASS_NUM)
-            cross_entropy = fluid.layers.softmax_with_cross_entropy(
+            cross_entropy = paddle.nn.functional.softmax_with_cross_entropy(
                 fc_tmp, label
             )
             loss = fluid.layers.reduce_mean(cross_entropy)

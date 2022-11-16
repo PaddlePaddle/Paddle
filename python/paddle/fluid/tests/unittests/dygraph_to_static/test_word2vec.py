@@ -16,6 +16,7 @@ import math
 import random
 import numpy as np
 import paddle.fluid as fluid
+import paddle
 import unittest
 
 from paddle.fluid.dygraph.nn import Embedding
@@ -262,7 +263,9 @@ class SkipGram(fluid.dygraph.Layer):
 
         pred = fluid.layers.sigmoid(word_sim)
 
-        loss = fluid.layers.sigmoid_cross_entropy_with_logits(word_sim, label)
+        loss = paddle.nn.functional.sigmoid_cross_entropy_with_logits(
+            word_sim, label
+        )
         loss = fluid.layers.reduce_mean(loss)
 
         return pred, loss
