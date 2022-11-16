@@ -58,7 +58,6 @@ from ..data_feeder import (
     check_type,
     check_dtype,
 )
-import paddle
 from paddle.utils import deprecated
 from paddle import _C_ops, _legacy_C_ops
 
@@ -13318,7 +13317,6 @@ for func in [
     elementwise_sub,
     elementwise_mul,
     elementwise_max,
-    elementwise_pow,
     elementwise_min,
     elementwise_mod,
     elementwise_floordiv,
