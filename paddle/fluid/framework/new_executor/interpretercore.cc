@@ -209,10 +209,8 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    if (FLAGS_new_executor_trace_run) {
-      VLOG(0) << "FLAGS_new_executor_trace_run is: "
-              << FLAGS_new_executor_trace_run;
-      VLOG(0) << "sync_op_num_ is: " << sync_op_num_;
+    if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
+      VLOG(4) << "Tracing Instruction List";
       TraceInstructionList(vec_instruction_);
     } else {
       ExecuteInstructionList(vec_instruction_);
@@ -279,10 +277,8 @@ paddle::framework::FetchList InterpreterCore::Run(
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
     }
 
-    if (FLAGS_new_executor_trace_run) {
-      VLOG(0) << "FLAGS_new_executor_trace_run is: "
-              << FLAGS_new_executor_trace_run;
-      VLOG(0) << "sync_op_num_ is: " << sync_op_num_;
+    if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
+      VLOG(4) << "Tracing Instruction List";
       TraceInstructionList(vec_instruction_);
     } else {
       ExecuteInstructionList(vec_instruction_);
@@ -821,7 +817,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::TraceInstructionList(
     const std::vector<Instruction>& vec_instr) {
-  VLOG(1) << "Tracing Instruction List ...";
   unfinished_op_number_ = vec_instr.size();
   if (unfinished_op_number_ == 0) {
     VLOG(4) << "No op to run, return";
@@ -1273,11 +1268,11 @@ void InterpreterCore::UpdateSyncOpNum() {
     }
   }
   sync_op_num_ = sync_op_num;
-  VLOG(0) << "Update sync op num, sync op num is: " << sync_op_num_;
+  VLOG(4) << "Update sync op num, sync op num is: " << sync_op_num_;
 }
 
 void InterpreterCore::AnalyseTraceExecuteOrder() {
-  VLOG(1) << "Analyze the execution order of Trace scheduling mode.";
+  VLOG(4) << "Analyze the execution order of Trace scheduling mode.";
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
 
   auto op_downstream_map = dependency_builder_.GetOpDownStreamMap();
@@ -1309,11 +1304,6 @@ void InterpreterCore::AnalyseTraceExecuteOrder() {
         ready_ops.push_back(next_op_id);
       }
     }
-  }
-
-  VLOG(6) << "get trace order: ";
-  for (auto idx : trace_order) {
-    VLOG(1) << idx;
   }
 
   PADDLE_ENFORCE_EQ(
