@@ -252,6 +252,7 @@ void LiteSubgraphPass::SetUpEngine(
   bool use_xpu = Get<bool>("use_xpu");
   int xpu_device_id = Get<int>("xpu_device_id");
   int xpu_l3_workspace_size = Get<int>("xpu_l3_workspace_size");
+  bool use_opencl = Get<bool>("use_opencl");
   int cpu_math_library_num_threads = Get<int>("cpu_math_library_num_threads");
   bool locked = Get<bool>("locked");
   bool autotune = Get<bool>("autotune");
@@ -285,6 +286,8 @@ void LiteSubgraphPass::SetUpEngine(
 #ifdef LITE_WITH_NNADAPTER
     target_type = TARGET(kNNAdapter);
 #endif
+  } else if (use_opencl) {
+    target_type = TARGET(kOpenCL);
   } else {
 #ifdef PADDLE_WITH_ARM
     target_type = TARGET(kARM);
@@ -313,6 +316,33 @@ void LiteSubgraphPass::SetUpEngine(
 #endif
       paddle::lite_api::Place({TARGET(kHost), PRECISION(kFloat)}),
   };
+
+  // opencl has no int64, and has bugs with image io.
+  if (use_opencl) {
+    config.valid_places = {
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kFP16), DATALAYOUT(kImageDefault)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kFP16), DATALAYOUT(kImageFolder)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kFloat), DATALAYOUT(kNCHW)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kAny), DATALAYOUT(kImageDefault)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kAny), DATALAYOUT(kImageFolder)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kAny), DATALAYOUT(kNCHW)},
+        paddle::lite_api::Place{
+            TARGET(kOpenCL), PRECISION(kInt32), DATALAYOUT(kNCHW)},
+#ifdef PADDLE_WITH_ARM
+        paddle::lite_api::Place{TARGET(kARM), PRECISION(kFloat)},
+#else
+        paddle::lite_api::Place{TARGET(kX86), PRECISION(kFloat)},
+#endif
+        paddle::lite_api::Place{TARGET(kHost), PRECISION(kFloat)},
+    };
+  }
+
   config.cpu_math_library_num_threads = cpu_math_library_num_threads;
   config.xpu_l3_workspace_size = xpu_l3_workspace_size;
   config.device_id = xpu_device_id;

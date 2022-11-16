@@ -161,7 +161,7 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
                        only_inputs,
                        allow_unused,
                        no_grad_vars);
-    VLOG(1) << " in eager_api_run_partial_grad, after runing egr::Grad";
+    VLOG(4) << " in eager_api_run_partial_grad, after runing egr::Grad";
   }
   return ToPyObject(result, true /* return_py_none_if_not_initialize */);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -240,6 +240,40 @@ PyObject* eager_api_get_grads_lists(PyObject* self,
         default:
           break;
       }
+    }
+  }
+
+  return ToPyObject(ret);
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* eager_api_get_grads_types(PyObject* self,
+                                    PyObject* args,
+                                    PyObject* kwargs) {
+  EAGER_TRY
+  auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
+
+  std::vector<int> ret;
+
+  for (auto& tensor : tensor_list) {
+    VLOG(6) << "Get grad for tensor: " << tensor.name();
+    auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
+    if (!meta || meta->StopGradient()) {
+      ret.emplace_back(-1);
+      continue;
+    }
+
+    auto& grad = meta->Grad();
+    if (meta && grad.initialized()) {
+      if (grad.is_dense_tensor() &&
+          (tensor.dtype() == paddle::experimental::DataType::FLOAT32 ||
+           tensor.dtype() == paddle::experimental::DataType::FLOAT16)) {
+        ret.emplace_back(
+            paddle::framework::TransToProtoVarType(tensor.dtype()));
+      }
+    } else {
+      ret.emplace_back(-1);
     }
   }
 
@@ -1065,6 +1099,10 @@ PyMethodDef variable_functions[] = {
      NULL},
     {"get_grads_lists",
      (PyCFunction)(void (*)(void))eager_api_get_grads_lists,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"get_grads_types",
+     (PyCFunction)(void (*)(void))eager_api_get_grads_types,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"read_next_tensor_list",

@@ -30,18 +30,14 @@ if(WITH_NCCL OR WITH_RCCL)
          device_context
          ${DEVICE_EVENT_LIBS}
          dense_tensor)
-  if(WITH_DISTRIBUTE AND WITH_PSCORE)
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-      set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-      set_source_files_properties(
-        ProcessGroupHeter.cc PROPERTIES COMPILE_FLAGS
-                                        ${DISTRIBUTE_COMPILE_FLAGS})
-    endif()
-    cc_library(
-      processgroup_heter
-      SRCS ProcessGroupHeter.cc NCCLTools.cc Common.cc
-      DEPS place enforce collective_helper device_context phi_api eager_api)
-  endif()
+endif()
+
+if(WITH_XPU_BKCL)
+  cc_library(
+    processgroup_bkcl
+    SRCS ProcessGroupBKCL.cc BKCLTools.cc Common.cc
+    DEPS processgroup place enforce collective_helper device_context
+         dense_tensor)
 endif()
 
 if(WITH_MPI)
@@ -49,38 +45,6 @@ if(WITH_MPI)
     processgroup_mpi
     SRCS ProcessGroupMPI.cc MPITools.cc Common.cc
     DEPS collective_helper device_context)
-endif()
-
-if(WITH_ASCEND_CL)
-  cc_library(
-    processgroup_hccl
-    SRCS ProcessGroupHCCL.cc HCCLTools.cc Common.cc
-    DEPS place
-         npu_stream
-         enforce
-         collective_helper
-         device_context
-         phi_api
-         eager_api)
-  if(WITH_DISTRIBUTE AND WITH_PSCORE)
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-      set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-      set_source_files_properties(
-        ProcessGroupHeter.cc PROPERTIES COMPILE_FLAGS
-                                        ${DISTRIBUTE_COMPILE_FLAGS})
-    endif()
-
-    cc_library(
-      processgroup_heter
-      SRCS ProcessGroupHeter.cc HCCLTools.cc Common.cc
-      DEPS place
-           npu_stream
-           enforce
-           collective_helper
-           device_context
-           phi_api
-           eager_api)
-  endif()
 endif()
 
 if(WITH_CUSTOM_DEVICE)

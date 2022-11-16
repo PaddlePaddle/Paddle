@@ -913,7 +913,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
       out_tensor->set_lod(in_tensor.lod());
 #ifdef PADDLE_WITH_MKLDNN
-      if (in_tensor.layout() != DataLayout::kMKLDNN)
+      if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
         out_tensor->set_layout(in_tensor.layout());
     }
@@ -978,7 +978,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
     //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
     //    in Compute()
-    if (in_tensor.layout() != DataLayout::kMKLDNN)
+    if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
       out_tensor->set_layout(in_tensor.layout());
   }
@@ -1006,7 +1006,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
       return ((op_with_kernel.kernel_type()) &&
               (op_with_kernel.kernel_type()->data_layout_ ==
-               phi::DataLayout::kMKLDNN));
+               phi::DataLayout::ONEDNN));
     } catch (const std::bad_cast& exp) {
       return false;
     }
@@ -1441,7 +1441,7 @@ bool OperatorWithKernel::SupportsKernelType(
       this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
-    tmp_kernel_type.data_layout_ = framework::DataLayout::kMKLDNN;
+    tmp_kernel_type.data_layout_ = framework::DataLayout::ONEDNN;
     return kernels.find(tmp_kernel_type) != kernels.end();
   }
 #endif
@@ -1637,7 +1637,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi_kernel_name = kernel_signature_->name;
 
 // NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
-// LibraryType::kMKLDNN and data_layout_ = DataLayout::kMKLDNN. But the default
+// LibraryType::kMKLDNN and data_layout_ = DataLayout::ONEDNN. But the default
 // values are kPlain, so we need to modify the library_type and data_layout_
 // here. There are three statements in if condition:
 // 1. Whether mkldnn kernel fallbacks to plain kernel;
@@ -1648,7 +1648,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           !paddle::platform::in_mkldnn_white_list(type_) &&
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
-        kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
+        kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
       }
 #endif
 
@@ -1897,7 +1897,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
-    expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
+    expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   }
 #endif
 
@@ -2295,16 +2295,16 @@ Scope* OperatorWithKernel::PrepareData(
         // Var without buffer may be needed
         // for some situation like InferShape().
         // In this situation We cannot skip Var analysis, as
-        // MKL-DNN shape of Var may differ from kNHWC Var
+        // oneDNN shape of Var may differ from kNHWC Var
         // In such situation corressponding resized Var
         // has to be created and registered
-        if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
+        if ((tensor_in->layout() == DataLayout::ONEDNN) &&
             (var->IsType<phi::DenseTensor>() == true) &&
-            (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
+            (expected_kernel_key.data_layout_ != DataLayout::ONEDNN) &&
             (paddle::platform::MKLDNNDeviceContext::tls()
                  .get_cur_paddle_data_layout() == DataLayout::kNHWC) &&
             (tensor_in->dims().size() >= 3)) {
-          // Mixed execution : MKL-DNN and GPU is not supported!
+          // Mixed execution : oneDNN and GPU is not supported!
           if (!new_scope) {
             new_scope = &scope.NewScope();
           }
@@ -2312,9 +2312,9 @@ Scope* OperatorWithKernel::PrepareData(
           in_vars->at(i) = trans_var;
           auto out = trans_var->GetMutable<phi::DenseTensor>();
           out->Resize(tensor_in->dims());
-          platform::MatchShapeToLayout(
+          phi::funcs::MatchShapeToLayout(
               out, tensor_in->layout(), DataLayout::kNHWC);
-          VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
+          VLOG(7) << "Created reshaped dummy input based on oneDNN "
                      "phi::DenseTensor , "
                      "but kNHWC layout"
                   << in_name << " in Operator " << type_;
@@ -2553,13 +2553,6 @@ void OperatorWithKernel::ParseInputDataType(
       }
     }
     if (t != nullptr) {
-      PADDLE_ENFORCE_EQ(t->IsInitialized(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "The %s Op's Input Variable `%s` "
-                            "contains uninitialized phi::DenseTensor.",
-                            Type(),
-                            name));
       *data_type = paddle::framework::TransToProtoVarType(t->dtype());
     }
   }
@@ -2759,8 +2752,8 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
   // When the op is first oneDNN op (there was some non oneDNN op
   // previously)
   // then we also need to rotate shape NHWC -> NCWH
-  if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN) &&
+  if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN) &&
       paddle::platform::MKLDNNDeviceContext::tls()
               .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
     return framework::OpKernelType(expected_kernel_type.data_type_,

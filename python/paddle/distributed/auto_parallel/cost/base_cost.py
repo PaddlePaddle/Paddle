@@ -833,7 +833,7 @@ class CommOpCost(OpCost):
             if self.op_desc is not None:
                 self._group_ranks = self.op_desc["group_ranks"]
             elif self.op is not None:
-                ring_id = op.attrs("ring_id")
+                ring_id = self.op.attrs("ring_id")
                 process_group = get_process_group(ring_id)
                 if process_group is None:
                     raise ValueError(

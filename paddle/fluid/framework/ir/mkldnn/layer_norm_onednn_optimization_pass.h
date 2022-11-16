@@ -12,20 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-namespace phi {
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
-KernelSignature GeluOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("gelu", {"X"}, {"approximate"}, {"Out"});
-}
+namespace paddle {
+namespace framework {
+namespace ir {
 
-KernelSignature GeluGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "gelu_grad", {"X", "Out@GRAD"}, {"approximate"}, {"X@GRAD"});
-}
+class LayerNormOneDNNOptimizationPass : public FusePassBase {
+ public:
+  virtual ~LayerNormOneDNNOptimizationPass() {}
 
-}  // namespace phi
+ protected:
+  void ApplyImpl(Graph *graph) const override;
+};
 
-PD_REGISTER_ARG_MAPPING_FN(gelu_grad, phi::GeluGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(gelu, phi::GeluOpArgumentMapping);
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
