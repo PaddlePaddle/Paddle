@@ -433,6 +433,11 @@ void DeviceInterface::GraphEngineExecuteGraph(size_t dev_id,
   INTERFACE_UNIMPLEMENT;
 }
 
+std::shared_ptr<DeviceAllocator> DeviceInterface::GetDeviceAllocator(
+    size_t dev_id) {
+  INTERFACE_UNIMPLEMENT;
+}
+
 #undef INTERFACE_UNIMPLEMENT
 
 }  // namespace phi

@@ -644,12 +644,6 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableUseGpu,
            py::arg("memory_pool_init_size_mb"),
            py::arg("device_id") = 0)
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-      .def("enable_custom_device",
-           &AnalysisConfig::EnableCustomDevice,
-           py::arg("device_type"),
-           py::arg("device_id") = 0)
-#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("set_exec_stream",
            [](AnalysisConfig &self, phi::CUDAStream &stream) {

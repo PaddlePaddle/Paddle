@@ -700,6 +700,15 @@ struct C_DeviceInterface {
                                          char** fetch_tensor_name,
                                          void** fetch_tensor_data,
                                          size_t fetch_tensor_num);
+
+  C_Status (*device_allocator_allocate)(const C_Device device,
+                                        void** ptr,
+                                        size_t byte_size);
+
+  C_Status (*device_allocator_deallocate)(const C_Device device,
+                                          void* ptr,
+                                          size_t byte_size);
+
   void* reserved_other_api[6];
 };
 

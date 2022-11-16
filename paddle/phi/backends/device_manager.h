@@ -291,6 +291,9 @@ class DeviceManager {
                                       void** fetch_tensor_data,
                                       size_t fetch_tensor_num);
 
+  static std::shared_ptr<DeviceAllocator> GetDeviceAllocator(
+      const Place& place);
+
   static void Clear();
 
  private:

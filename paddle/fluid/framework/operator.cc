@@ -40,7 +40,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
 
-DECLARE_bool(use_graph_engine);
 namespace phi {
 class DenseTensor;
 }  // namespace phi
@@ -2557,13 +2556,6 @@ void OperatorWithKernel::ParseInputDataType(
       }
     }
     if (t != nullptr) {
-      PADDLE_ENFORCE_EQ(t->IsInitialized(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "The %s Op's Input Variable `%s` "
-                            "contains uninitialized phi::DenseTensor.",
-                            Type(),
-                            name));
       *data_type = paddle::framework::TransToProtoVarType(t->dtype());
     }
   }

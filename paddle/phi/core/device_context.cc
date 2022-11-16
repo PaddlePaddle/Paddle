@@ -18,6 +18,7 @@
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_graph.h"
 #endif
 
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -154,7 +155,7 @@ struct DeviceContext::Impl {
                           : (pinned ? pinned_allocator_ : device_allocator_);
     if (place.GetType() == phi::AllocationType::CUSTOM &&
         FLAGS_use_graph_engine) {
-      allocator = zero_allocator_;
+      allocator = phi::DeviceManager::GetDeviceAllocator(place).get();
     }
 
 #ifdef PADDLE_WITH_CUDA

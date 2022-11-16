@@ -37,6 +37,37 @@ namespace phi {
     INTERFACE_UNIMPLEMENT; \
   }
 
+DeviceAllocator::DeviceAllocator(
+    const Place& place,
+    C_Device device,
+    const std::unique_ptr<C_DeviceInterface>& pimpl) {
+  auto device_allocator_allocate = pimpl->device_allocator_allocate;
+  auto device_allocator_deallocate = pimpl->device_allocator_deallocate;
+
+  allocator_ = [=](size_t bytes_size) -> phi::Allocation* {
+    PADDLE_ENFORCE(device_allocator_allocate,
+                   phi::errors::Unimplemented(
+                       "device_allocator_allocate is not implemented."));
+    void* ptr = nullptr;
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+        device_allocator_allocate(device, &ptr, bytes_size));
+    return new phi::Allocation(ptr, bytes_size, place);
+  };
+
+  deleter_ = [=](phi::Allocation* allocation) -> void {
+    PADDLE_ENFORCE(device_allocator_deallocate,
+                   phi::errors::Unimplemented(
+                       "device_allocator_allocate is not implemented."));
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(device_allocator_deallocate(
+        device, allocation->ptr(), allocation->size()));
+  };
+}
+
+phi::Allocator::AllocationPtr DeviceAllocator::Allocate(size_t bytes_size) {
+  auto ptr = allocator_(bytes_size);
+  return phi::Allocator::AllocationPtr(ptr, deleter_);
+}
+
 class CustomDevice : public DeviceInterface {
  public:
   CustomDevice(const std::string& type,
@@ -119,6 +150,8 @@ class CustomDevice : public DeviceInterface {
       // Core set logical id, and Plugin replace it with physical id
       const auto device = &devices_pool[dev_id];
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->init_device(device));
+      device_allocators_[dev_id] = std::make_shared<DeviceAllocator>(
+          CustomPlace(Type(), dev_id), device, pimpl_);
     }
   }
 
@@ -923,6 +956,13 @@ class CustomDevice : public DeviceInterface {
         fetch_tensor_num);
   }
 
+  std::shared_ptr<DeviceAllocator> GetDeviceAllocator(size_t dev_id) override {
+    PADDLE_ENFORCE(device_allocators_.find(dev_id) != device_allocators_.end(),
+                   phi::errors::Unavailable(
+                       "DeviceAllocator is not implemented on %s", Type()));
+    return device_allocators_[dev_id];
+  }
+
  private:
   inline int PlaceToIdNoCheck(const Place& place) {
     int dev_id = place.GetDeviceId();
@@ -945,6 +985,8 @@ class CustomDevice : public DeviceInterface {
   std::unordered_map<size_t, C_Device_st> devices_pool;
   bool device_init_flag_ = false;
   size_t device_count_;
+  std::unordered_map<size_t, std::shared_ptr<DeviceAllocator>>
+      device_allocators_;
 };
 
 bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {

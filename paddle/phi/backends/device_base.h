@@ -14,11 +14,14 @@
 
 #pragma once
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include <functional>
 #include <vector>
 
 #include "paddle/phi/backends/c_comm_lib.h"
+#include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
+#include "paddle/phi/core/allocator.h"
 
 namespace paddle {
 namespace platform {
@@ -27,6 +30,19 @@ class TraceEventCollector;
 }  // namespace paddle
 
 namespace phi {
+
+class DeviceAllocator final : public phi::Allocator {
+ public:
+  DeviceAllocator(const Place& place,
+                  C_Device device,
+                  const std::unique_ptr<C_DeviceInterface>& pimpl);
+
+  phi::Allocator::AllocationPtr Allocate(size_t bytes_size) override;
+
+ private:
+  std::function<phi::Allocation*(size_t bytes_size)> allocator_;
+  std::function<void(phi::Allocation*)> deleter_;
+};
 
 class DeviceInterface {  // Driver / Runtime
  public:
@@ -285,6 +301,8 @@ class DeviceInterface {  // Driver / Runtime
                                        char** fetch_tensor_name,
                                        void** fetch_tensor_data,
                                        size_t fetch_tensor_num);
+
+  virtual std::shared_ptr<DeviceAllocator> GetDeviceAllocator(size_t dev_id);
 
  private:
   const std::string type_;

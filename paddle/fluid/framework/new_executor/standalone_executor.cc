@@ -116,6 +116,9 @@ std::shared_ptr<GraphEngine> StandaloneExecutor::GetGraphEngine(
           "Cannot use GraphEngine, Please recompile or reinstall paddlepaddle "
           "with CustomDevice."));
 #endif
+    } else {
+      PADDLE_THROW(platform::errors::NotFound(
+          "Not found GraphEngine of place %s", place));
     }
   }
   return graph_engines_[oss.str()];

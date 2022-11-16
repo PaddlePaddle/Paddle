@@ -700,6 +700,14 @@ void DeviceManager::GraphEngineExecuteGraph(const Place& place,
                                     fetch_tensor_num);
 }
 
+std::shared_ptr<DeviceAllocator> DeviceManager::GetDeviceAllocator(
+    const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->GetDeviceAllocator(device_id);
+}
+
 DeviceManager& DeviceManager::Instance() {
   static DeviceManager platform_manager;
   return platform_manager;
