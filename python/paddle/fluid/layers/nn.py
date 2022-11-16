@@ -159,7 +159,6 @@ __all__ = [
     'elementwise_mul',
     'elementwise_max',
     'elementwise_min',
-    'elementwise_pow',
     'elementwise_mod',
     'elementwise_floordiv',
     'uniform_random_batch_size_like',
@@ -13237,41 +13236,6 @@ def elementwise_min(x, y, axis=-1, act=None, name=None):
         )
 
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
-
-
-def elementwise_pow(x, y, axis=-1, act=None, name=None):
-    """
-
-    Examples:
-
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = fluid.layers.elementwise_pow(x, y)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) #[2, 243, 16]
-    """
-    if _non_static_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_pow'
-        )
-    return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
 @deprecated(since="2.0.0", update_to="paddle.remainder")
