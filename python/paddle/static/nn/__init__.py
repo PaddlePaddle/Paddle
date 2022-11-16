@@ -14,6 +14,7 @@
 
 from .common import fc  # noqa: F401
 from .common import deform_conv2d  # noqa: F401
+from .common import prelu
 
 from ...fluid.layers import batch_norm  # noqa: F401
 from ...fluid.layers import bilinear_tensor_product  # noqa: F401
@@ -99,4 +100,5 @@ __all__ = [  # noqa
     'sequence_enumerate',
     'sequence_reverse',
     'StaticRNN',
+    'prelu',
 ]
