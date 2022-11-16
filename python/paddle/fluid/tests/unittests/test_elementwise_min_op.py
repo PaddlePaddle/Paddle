@@ -213,7 +213,7 @@ class TestElementwiseMinOpFP16(unittest.TestCase):
             y = paddle.to_tensor(y_np)
             x.stop_gradient = False
             y.stop_gradient = False
-            z = fluid.layers.elementwise_min(x, y, axis)
+            z = paddle.minimum(x, y, axis)
             x_g, y_g = paddle.grad([z], [x, y])
             return (
                 z.numpy().astype(dtype),
