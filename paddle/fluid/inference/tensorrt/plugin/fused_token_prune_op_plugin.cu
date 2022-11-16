@@ -20,8 +20,8 @@
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
 #include "paddle/fluid/operators/fused_token_prune_op.cu.h"

@@ -13,7 +13,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace framework {
@@ -44,8 +44,8 @@ __global__ void PullCopy(float** dest,
     }
     int x = low;
     int y = i - (x ? len[x - 1] : 0);
-    float* feature_value_ptr =
-        (float*)((char*)src + uint64_t(i) * uint64_t(max_val_size));
+    float* feature_value_ptr = reinterpret_cast<float*>(
+        reinterpret_cast<char*>(src) + uint64_t(i) * uint64_t(max_val_size));
     int mf_dim = gpu_dim[x] - 3;
     gpu_accessor.Select(
         dest[x] + y * (mf_dim + 3), feature_value_ptr, keys[x] + y, mf_dim);
@@ -79,8 +79,9 @@ __global__ void PullDedupCopy(const size_t N,
       return;
     }
 
-    float* src_ptr = (float*)((char*)src + uint64_t(restore_idx[i]) *
-                                               uint64_t(max_val_size));
+    float* src_ptr = reinterpret_cast<float*>(reinterpret_cast<char*>(src) +
+                                              uint64_t(restore_idx[i]) *
+                                                  uint64_t(max_val_size));
     switch (off) {
       case 0:
         *(dest_ptr + off) = src_ptr[accessor.ShowIndex()];
@@ -125,9 +126,11 @@ __global__ void PushCopyWithPool(float* dest,
     }
     int x = low;
     int y = i - (x ? len[low - 1] : 0);
-    float* cur = (float*)((char*)dest + i * grad_value_size);
+    float* cur = reinterpret_cast<float*>(reinterpret_cast<char*>(dest) +
+                                          i * grad_value_size);
 
-    cur[gpu_accessor.common_push_value.SlotIndex()] = (float)slot_vector[x];
+    cur[gpu_accessor.common_push_value.SlotIndex()] =
+        static_cast<float>(slot_vector[x]);
     int mf_dim = mf_dim_vector[x];
     cur[gpu_accessor.common_push_value.MfDimIndex()] = mf_dim;
 
@@ -170,31 +173,29 @@ __global__ void PushMergeCopyAtomic(const size_t N,
     int y = i - slot_lens[x];
 
     const float* ptr = src[x] + y * hidden;
-    float* cur = (float*)((char*)dest + d_restore_idx[i] * grad_value_size);
+    float* cur = reinterpret_cast<float*>(reinterpret_cast<char*>(dest) +
+                                          d_restore_idx[i] * grad_value_size);
     int mf_dim = slot_dims[x] - 3;
     switch (off) {
       case 0:
-        cur[accessor.SlotIndex()] = (float)slot_vector[x];
+        cur[accessor.SlotIndex()] = static_cast<float>(slot_vector[x]);
         cur[accessor.MfDimIndex()] = mf_dim;
-        paddle::platform::CudaAtomicAdd(&cur[accessor.ShowIndex()],
-                                        *(ptr + off));
+        phi::CudaAtomicAdd(&cur[accessor.ShowIndex()], *(ptr + off));
         break;
       case 1:
-        paddle::platform::CudaAtomicAdd(&cur[accessor.ClickIndex()],
-                                        *(ptr + off));
+        phi::CudaAtomicAdd(&cur[accessor.ClickIndex()], *(ptr + off));
         break;
       case 2:
-        paddle::platform::CudaAtomicAdd(&cur[accessor.EmbedGIndex()],
-                                        *(ptr + off) * -1. * bs);
+        phi::CudaAtomicAdd(&cur[accessor.EmbedGIndex()],
+                           *(ptr + off) * -1. * bs);
         break;
       default:
         int embedx_idx = off - 3;
         if (mf_dim < embedx_idx) {
           return;
         }
-        paddle::platform::CudaAtomicAdd(
-            &cur[accessor.EmbedxGIndex() + embedx_idx],
-            *(ptr + off) * -1. * bs);
+        phi::CudaAtomicAdd(&cur[accessor.EmbedxGIndex() + embedx_idx],
+                           *(ptr + off) * -1. * bs);
         break;
     }
   }
@@ -228,7 +229,8 @@ __global__ void PushMergeCopy(const size_t N,
     int i = idx / hidden;
     int off = idx % hidden;
     // filter 0 keys
-    float* cur = (float*)((char*)dest + i * grad_value_size);
+    float* cur = reinterpret_cast<float*>(reinterpret_cast<char*>(dest) +
+                                          i * grad_value_size);
 
     if (total_keys[i] == 0) {
       switch (off) {
@@ -262,7 +264,7 @@ __global__ void PushMergeCopy(const size_t N,
 
     switch (off) {
       case 0:
-        cur[accessor.SlotIndex()] = (float)slot_vector[x];
+        cur[accessor.SlotIndex()] = static_cast<float>(slot_vector[x]);
         cur[accessor.MfDimIndex()] = mf_dim;
         SUM_GRAD_VALUE
         cur[accessor.ShowIndex()] = val;
@@ -331,8 +333,8 @@ void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
     const uint64_t total_length,
     const int batch_size,
     size_t grad_value_size,
-    std::vector<int>& slot_vector,
-    std::vector<int>& slot_mf_dim_vector) {
+    std::vector<int>* slot_vector,
+    std::vector<int>* slot_mf_dim_vector) {
   auto stream = dynamic_cast<phi::GPUContext*>(
                     paddle::platform::DeviceContextPool::Instance().Get(place))
                     ->stream();
@@ -360,11 +362,11 @@ void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
              slot_lengths.size() * sizeof(int64_t),
              cudaMemcpyHostToDevice);
   cudaMemcpy(d_slot_vector,
-             slot_vector.data(),
+             slot_vector->data(),
              slot_lengths_lod.size() * sizeof(int),
              cudaMemcpyHostToDevice);
   cudaMemcpy(d_mf_dim_vector,
-             slot_mf_dim_vector.data(),
+             slot_mf_dim_vector->data(),
              slot_lengths_lod.size() * sizeof(int),
              cudaMemcpyHostToDevice);
   PushCopyWithPool<<<(total_length + 1024 - 1) / 1024, 1024, 0, stream>>>(
