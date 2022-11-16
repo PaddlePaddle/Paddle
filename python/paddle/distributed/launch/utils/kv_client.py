@@ -16,11 +16,13 @@ import requests
 import time
 
 
-class KVClient(object):
-
+class KVClient:
     def __init__(self, endpoint='localhost:2379'):
-        self.endpoint = endpoint if endpoint.startswith(
-            "http://") else "http://{}".format(endpoint)
+        self.endpoint = (
+            endpoint
+            if endpoint.startswith("http://")
+            else "http://{}".format(endpoint)
+        )
 
     def put(self, key, value):
         key = key if key.startswith('/') else "/{}".format(key)
@@ -77,7 +79,7 @@ class KVClient(object):
 
 
 if __name__ == '__main__':
-    cli = PKVClient("http://localhost:8090")
+    cli = KVClient("http://localhost:8090")
     data = {"/workers/1": "rank1", "/workers/2": "rank2"}
     for k, v in data.items():
         cli.put(k, v)

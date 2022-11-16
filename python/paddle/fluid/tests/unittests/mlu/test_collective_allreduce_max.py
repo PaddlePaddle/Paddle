@@ -23,33 +23,38 @@ paddle.enable_static()
 
 
 class TestCAllreduceOp(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_allreduce_max_fp32(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_max",
-                              "float32")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_max", "float32"
+        )
 
     def test_allreduce_max_fp16(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_max",
-                              "float16")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_max", "float16"
+        )
 
     def test_allreduce_max_int32(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_max",
-                              "int32")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_max", "int32"
+        )
 
     def test_allreduce_max_int16(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_max",
-                              "int16")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_max", "int16"
+        )
 
     def test_allreduce_max_int8(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_max",
-                              "int8")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_max", "int8"
+        )
 
     def test_allreduce_max_uint8(self):
-        self.check_with_place("collective_allreduce_op.py", "allreduce_max",
-                              "uint8")
+        self.check_with_place(
+            "collective_allreduce_op.py", "allreduce_max", "uint8"
+        )
 
 
 if __name__ == '__main__':

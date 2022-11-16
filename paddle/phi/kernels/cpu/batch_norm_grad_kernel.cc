@@ -52,15 +52,13 @@ void BatchNormGradRawKernel(const Context& ctx,
                             bool is_test,
                             bool use_global_stats,
                             bool trainable_statistics,
-                            bool fuse_with_relu,
                             bool is_inplace,
                             DenseTensor* x_grad,
                             DenseTensor* scale_grad,
                             DenseTensor* bias_grad) {
   const auto* d_y = &y_grad;
 
-  DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
   auto* d_x = x_grad;
   auto* d_scale = scale_grad;
@@ -311,7 +309,6 @@ void BatchNormGradKernel(const Context& dev_ctx,
                          bool is_test,
                          bool use_global_stats,
                          bool trainable_statistics,
-                         bool fuse_with_relu,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad) {
@@ -331,7 +328,6 @@ void BatchNormGradKernel(const Context& dev_ctx,
                                      is_test,
                                      use_global_stats,
                                      trainable_statistics,
-                                     fuse_with_relu,
                                      false,
                                      x_grad,
                                      scale_grad,
@@ -356,7 +352,6 @@ void BatchNormDoubleGradKernel(const Context& ctx,
                                bool is_test,
                                bool use_global_stats,
                                bool trainable_statistics,
-                               bool fuse_with_relu,
                                DenseTensor* x_grad,
                                DenseTensor* scale_grad,
                                DenseTensor* y_grad_grad) {
@@ -373,8 +368,7 @@ void BatchNormDoubleGradKernel(const Context& ctx,
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));
 
-  const auto data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const auto data_layout = phi::StringToDataLayout(data_layout_str);
 
   const auto* ddX = &x_grad_grad;
   const auto* ddScale = &scale_grad_grad;

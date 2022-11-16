@@ -21,43 +21,60 @@ paddle.enable_static()
 
 
 class TestCollectiveScatterAPI(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_scatter_gloo(self):
-        self.check_with_place("collective_scatter_api.py", "scatter", "gloo",
-                              "4")
+        self.check_with_place(
+            "collective_scatter_api.py", "scatter", "gloo", "4"
+        )
 
     def test_scatter_nccl(self):
         self.check_with_place("collective_scatter_api.py", "scatter", "nccl")
 
     def test_scatter_nccl_dygraph(self):
         dtypes_to_test = [
-            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
-            "bool"
+            "float16",
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+            "int8",
+            "uint8",
+            "bool",
         ]
         if self._nccl_version >= 2100:
             dtypes_to_test.append("bfloat16")
         for dtype in dtypes_to_test:
-            self.check_with_place("collective_scatter_api_dygraph.py",
-                                  "scatter",
-                                  "nccl",
-                                  static_mode="0",
-                                  dtype=dtype)
+            self.check_with_place(
+                "collective_scatter_api_dygraph.py",
+                "scatter",
+                "nccl",
+                static_mode="0",
+                dtype=dtype,
+            )
 
     def test_scatter_gloo_dygraph(self):
         dtypes_to_test = [
-            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
-            "bool", "bfloat16"
+            "float16",
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+            "int8",
+            "uint8",
+            "bool",
+            "bfloat16",
         ]
         for dtype in dtypes_to_test:
-            self.check_with_place("collective_scatter_api_dygraph.py",
-                                  "scatter",
-                                  "gloo",
-                                  "4",
-                                  static_mode="0",
-                                  dtype=dtype)
+            self.check_with_place(
+                "collective_scatter_api_dygraph.py",
+                "scatter",
+                "gloo",
+                "4",
+                static_mode="0",
+                dtype=dtype,
+            )
 
 
 if __name__ == "__main__":

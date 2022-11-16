@@ -59,7 +59,6 @@ def wait(procs, timeout=30):
 
 
 def _find_free_port(port_set):
-
     def __free_port():
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
             s.bind(('', 0))

@@ -46,6 +46,10 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DEFINE_WRAP);
 CUDNN_DNN_ROUTINE_EACH_R8(DEFINE_WRAP);
 #endif
 
+#ifdef CUDNN_DNN_ROUTINE_EACH_FRONTEND
+CUDNN_DNN_ROUTINE_EACH_FRONTEND(DEFINE_WRAP);
+#endif
+
 bool HasCUDNN() {
   std::call_once(cudnn_dso_flag,
                  []() { cudnn_dso_handle = GetCUDNNDsoHandle(); });

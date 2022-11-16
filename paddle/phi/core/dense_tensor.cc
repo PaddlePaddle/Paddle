@@ -53,10 +53,11 @@ DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
 
 DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
   holder_ = other.holder_;
+  storage_properties_ =
+      std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
 
 #ifdef PADDLE_WITH_MKLDNN
-  format_ = other.format_;
   mem_desc_ = other.mem_desc_;
 #endif
 }
@@ -64,9 +65,10 @@ DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   meta_ = other.meta();
   holder_ = other.holder_;
+  storage_properties_ =
+      std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
 #ifdef PADDLE_WITH_MKLDNN
-  format_ = other.format_;
   mem_desc_ = other.mem_desc_;
 #endif
   return *this;
@@ -75,9 +77,9 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
 DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
+  storage_properties_ = std::move(other.storage_properties_);
   std::swap(inplace_version_counter_, other.inplace_version_counter_);
 #ifdef PADDLE_WITH_MKLDNN
-  format_ = other.format_;
   mem_desc_ = other.mem_desc_;
 #endif
   return *this;
@@ -139,8 +141,10 @@ const T* DenseTensor::data() const {
       dtype(),
       paddle::experimental::CppTypeToDataType<T>::Type(),
       phi::errors::InvalidArgument(
-          "The type of data we are trying to retrieve does not match the "
-          "type of data currently contained in the container."));
+          "The type of data we are trying to retrieve (%s) does not match the "
+          "type of data (%s) currently contained in the container.",
+          paddle::experimental::CppTypeToDataType<T>::Type(),
+          dtype()));
   return static_cast<const T*>(data());
 }
 
@@ -150,8 +154,10 @@ T* DenseTensor::data() {
   PADDLE_ENFORCE(
       (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
       phi::errors::InvalidArgument(
-          "The type of data we are trying to retrieve does not match the "
-          "type of data currently contained in the container."));
+          "The type of data we are trying to retrieve (%s) does not match the "
+          "type of data (%s) currently contained in the container.",
+          paddle::experimental::CppTypeToDataType<T>::Type(),
+          dtype()));
   return ret;
 }
 
@@ -236,5 +242,30 @@ DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<float>);
 DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>);
 
 #undef DATA_MEMBER_FUNC_INSTANTIATION
+
+template <typename DeviceT>
+const DeviceT& DenseTensor::storage_properties() const {
+  PADDLE_ENFORCE_NOT_NULL(
+      storage_properties_,
+      phi::errors::PreconditionNotMet(
+          "The storage_properties of current DenseTensor is nullptr."));
+  if (DeviceT::classof(storage_properties_.get())) {
+    return static_cast<DeviceT&>(*storage_properties_);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The actual type of storage_properties is inconsistent with the type "
+        "of the template parameter passed in."));
+  }
+}
+
+template const NPUStorageProperties& DenseTensor::storage_properties() const;
+#ifdef PADDLE_WITH_MKLDNN
+template const OneDNNStorageProperties& DenseTensor::storage_properties() const;
+#endif
+
+void DenseTensor::set_storage_properties(
+    std::unique_ptr<StorageProperties>&& storage_properties) {
+  storage_properties_ = std::move(storage_properties);
+}
 
 }  // namespace phi
