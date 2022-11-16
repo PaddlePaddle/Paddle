@@ -208,12 +208,22 @@ class TestExpandError(unittest.TestCase):
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
             expand_times = [2, 2]
-            self.assertRaises(TypeError, paddle.expand, x1, x1.shape * 2)
+            self.assertRaises(TypeError, paddle.expand, x1, expand_times)
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
-            self.assertRaises(TypeError, paddle.expand, x2, x2.shape * 2)
+            self.assertRaises(
+                TypeError,
+                paddle.expand,
+                x2,
+                [x * y for x, y in zip(x2.shape, expand_times)],
+            )
             x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
             x3.stop_gradient = True
-            self.assertRaises(ValueError, paddle.expand, x3, x3.shape * 2)
+            self.assertRaises(
+                ValueError,
+                paddle.expand,
+                x3,
+                [x * y for x, y in zip(x3.shape, expand_times)],
+            )
 
 
 # Test python API
@@ -231,7 +241,7 @@ class TestExpandAPI(unittest.TestCase):
 
         out_1 = paddle.expand(x, [24, 42])
         out_2 = paddle.expand(x, [12 * positive_2, 42])
-        out_3 = paddle.expand(x, x.shape * expand_times)
+        out_3 = paddle.expand(x, [x * y for x, y in zip(x.shape, expand_times)])
 
         g0 = fluid.backward.calc_gradient(out_2, x)
 

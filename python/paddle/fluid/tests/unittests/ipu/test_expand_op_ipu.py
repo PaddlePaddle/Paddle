@@ -82,7 +82,9 @@ class TestCase1(TestBase):
         expand_times = paddle.fluid.layers.fill_constant(
             shape=[len(self.feed_shape[0])], dtype="int32", value=2
         )
-        out = paddle.expand(x, x.shape * 2, **self.attrs)
+        out = paddle.expand(
+            x, [x * y for x, y in zip(x.shape, expand_times)], **self.attrs
+        )
         self.fetch_list = [out.name]
 
 
