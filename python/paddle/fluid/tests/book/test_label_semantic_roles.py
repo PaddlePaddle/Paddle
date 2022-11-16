@@ -178,7 +178,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
 
     # TODO(qiao)
     # add dependency track and move this config before optimizer
-    crf_decode = paddle.static.nn.common.crf_decoding(
+    crf_decode = paddle.static.nn.crf_decoding(
         input=feature_out, param_attr=fluid.ParamAttr(name='crfw')
     )
 

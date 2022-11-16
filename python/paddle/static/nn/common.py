@@ -207,8 +207,6 @@ def crf_decoding(input, param_attr, label=None, length=None):
            label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64', lod_level=1)
            emission = paddle.static.nn.fc(feature, size=num_labels)
 
-           crf_cost = paddle.fluid.layers.linear_chain_crf(input=emission, label=label,
-                     param_attr=paddle.ParamAttr(name="crfw"))
            crf_decode = paddle.static.nn.crf_decoding(input=emission,
                      param_attr=paddle.ParamAttr(name="crfw"))
 
@@ -220,8 +218,7 @@ def crf_decoding(input, param_attr, label=None, length=None):
            emission = paddle.static.nn.fc(feature, size=num_labels,
                                       num_flatten_dims=2)
 
-           crf_cost = paddle.fluid.layers.linear_chain_crf(input=emission, label=label, length=length,
-                     param_attr=paddle.ParamAttr(name="crfw_pad"))
+
            crf_decode = paddle.static.nn.crf_decoding(input=emission, length=length,
                      param_attr=paddle.ParamAttr(name="crfw_pad"))
     """
