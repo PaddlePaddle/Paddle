@@ -111,7 +111,6 @@ __all__ = [
     'lod_append',
     'lrn',
     'pad',
-    'pad_constant_like',
     'label_smooth',
     'roi_pool',
     'roi_align',
@@ -7511,102 +7510,6 @@ def pad(x, paddings, pad_value=0.0, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'paddings': paddings, 'pad_value': pad_value},
-    )
-    return out
-
-
-def pad_constant_like(x, y, pad_value=0.0, name=None):
-    r"""
-    Pad :attr:`y` with :attr:`pad_value`, the number of values padded to
-    the edges of each axis is specified by the difference of the shape
-    of :attr:`x` and :attr:`y` . ((0, shape_x_0 - shape_y_0), ... (0, shape_x_n - shape_y_n))
-    specify padding widths for each axis. The input should be a k-D tensor(k > 0 and k < 7).
-
-    See below for an example.
-
-    .. code-block:: text
-
-        Given:
-            X = [[[[ 0,  1,  2],
-                   [ 3,  4,  5]],
-                  [[ 6,  7,  8],
-                   [ 9, 10, 11]],
-                  [[12, 13, 14],
-                   [15, 16, 17]]],
-                 [[[18, 19, 20],
-                   [21, 22, 23]],
-                  [[24, 25, 26],
-                   [27, 28, 29]],
-                  [[30, 31, 32],
-                   [33, 34, 35]]]]
-
-            X.shape = (2, 3, 2, 3)
-
-            Y = [[[[35, 36, 37]],
-                  [[38, 39, 40]],
-                  [[41, 42, 43]]]]
-
-            Y.shape = (1, 3, 1, 3)
-
-        And
-            pad_value = 0.
-
-        Return:
-            Out = [[[[35, 36, 37],
-                     [ 0,  0,  0]],
-                    [[38, 39, 40],
-                     [ 0,  0,  0]],
-                    [[41, 42, 43],
-                     [ 0,  0,  0]]],
-                   [[[ 0,  0,  0],
-                     [ 0,  0,  0]],
-                    [[ 0,  0,  0],
-                     [ 0,  0,  0]],
-                    [[ 0,  0,  0],
-                     [ 0,  0,  0]]]]
-
-            Out.shape = [2, 3, 2, 3]
-
-
-    Args:
-        x (Variable): Tensor, its shape specifies the shape of output.
-        y (Variable): Tensor, its rank is the same with :attr:`x`, and for each dimension :math:`i` ,
-                      :math:`y\_shape[i] <= x\_shape[i]` . The data type can be float32 or float64.
-        pad_value (float): The constant value used to pad.
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        The padded tensor, with the same shape as :attr:`x` and the same data type as :attr:`y`
-
-    Return Type:
-        Variable
-
-    Examples:
-        .. code-block:: python
-
-            # x is a rank 4 tensor variable, x.shape = (2, 3, 2, 3)
-            # y is a rank 4 tensor variable, y.shape = (1, 3, 1, 3)
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[2,3,2,3], dtype='float32')
-            y = fluid.data(name='y', shape=[1,3,1,3], dtype='float32')
-            out = fluid.layers.pad_constant_like(x=x, y=y, pad_value=0.)
-            # out is a rank 4 tensor variable, and out.shape = [2, 3 ,2 , 3]
-    """
-    check_type(x, 'x', (Variable), 'pad_constant_like')
-    check_variable_and_dtype(
-        y, 'y', ['float32', 'float64', 'int32', 'int64'], "pad_constant_like"
-    )
-
-    helper = LayerHelper('pad_constant_like', **locals())
-    dtype = helper.input_dtype(input_param_name='y')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='pad_constant_like',
-        inputs={'X': x, 'Y': y},
-        outputs={'Out': out},
-        attrs={'pad_value': float(pad_value)},
     )
     return out
 
