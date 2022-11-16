@@ -78,6 +78,26 @@ class ProcessGroupCustom : public ProcessGroup {
       int64_t numel,
       bool sync_op) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllReduce(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const AllreduceOptions& opts,
+      bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const BroadcastOptions& opts,
+      bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Barrier(
+      const BarrierOptions& = BarrierOptions()) override;
+
+  const phi::DeviceContext& GetDeviceContext(const Place& place) const override;
+
+  phi::ccl::CCLComm CustomCCLComm(const Place& place) const;
+
+  // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
@@ -91,11 +111,6 @@ class ProcessGroupCustom : public ProcessGroup {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
-
-  std::shared_ptr<ProcessGroup::Task> Barrier(
-      const BarrierOptions& = BarrierOptions()) override;
-
-  phi::ccl::CCLComm CustomCCLComm(const Place& place) const;
 
  protected:
   virtual std::shared_ptr<ProcessGroupCustom::CustomTask> CreateTask(

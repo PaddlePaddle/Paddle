@@ -377,7 +377,7 @@ void Tensor::CopyToCpuImpl(T *data,
 
   if (paddle::platform::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_MKLDNN
-    if (tensor->layout() == phi::DataLayout::kMKLDNN)
+    if (tensor->layout() == phi::DataLayout::ONEDNN)
       paddle::framework::innerTransDataLayoutFromMKLDNN(
           tensor->layout(),
           paddle::platform::MKLDNNDeviceContext::tls()
@@ -664,7 +664,7 @@ std::vector<int> Tensor::shape() const {
 // mkldnn may does layout transform internally, so need to reorder before
 // return
 #ifdef PADDLE_WITH_MKLDNN
-  if (tensor->layout() == phi::DataLayout::kMKLDNN) {
+  if (tensor->layout() == phi::DataLayout::ONEDNN) {
     phi::DataLayout out_layout = paddle::platform::MKLDNNDeviceContext::tls()
                                      .get_cur_paddle_data_layout();
     // Set default as NCHW in case not specified
@@ -852,7 +852,7 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
 
   if (paddle::platform::is_cpu_place(t_place)) {
 #ifdef PADDLE_WITH_MKLDNN
-    if (tensor->layout() == phi::DataLayout::kMKLDNN)
+    if (tensor->layout() == phi::DataLayout::ONEDNN)
       paddle::framework::innerTransDataLayoutFromMKLDNN(
           tensor->layout(),
           paddle::platform::MKLDNNDeviceContext::tls()

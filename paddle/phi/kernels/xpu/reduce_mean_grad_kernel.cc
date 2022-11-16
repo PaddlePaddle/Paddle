@@ -38,14 +38,8 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
 
   auto reduce_dims = dims_arr.GetData();
 
-  std::vector<int> xdims;
-  for (int i = 0; i < x.dims().size(); i++) {
-    xdims.push_back(x.dims()[i]);
-  }
-  std::vector<int> ydims;
-  for (int i = 0; i < out_grad.dims().size(); i++) {
-    ydims.push_back(out_grad.dims()[i]);
-  }
+  std::vector<int> xdims = vectorize<int>(x.dims());
+  std::vector<int> ydims = vectorize<int>(out_grad.dims());
 
   int reduce_numel = 1;
   if (reduce_all) {
@@ -73,6 +67,14 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   int r = xpu::constant(
       dev_ctx.x_context(), x_data, x.numel(), static_cast<XPUType>(val));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+
+  // use [1] to replace [], because xpu not support []
+  if (xdims.size() == 0) {
+    xdims = std::vector<int>({1});
+  }
+  if (ydims.size() == 0) {
+    ydims = std::vector<int>({1});
+  }
 
   r = xpu::broadcast_mul(
       dev_ctx.x_context(), x_data, dy_data, x_data, xdims, ydims);
