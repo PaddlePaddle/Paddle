@@ -158,12 +158,14 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
                           bias_dim[0]));
   }
   ctx->SetOutputDim("Y", x_dims);
+  ctx->ShareLoD("X", "Y");
   VLOG(4) << x_dims;
   ctx->SetOutputDim("MeanOut", {C});
   ctx->SetOutputDim("VarianceOut", {C});
-  ctx->SetOutputDim("SavedMean", {C});
-  ctx->SetOutputDim("SavedVariance", {C});
-  ctx->ShareLoD("X", "Y");
+  if (!test_mode) {
+    ctx->SetOutputDim("SavedMean", {C});
+    ctx->SetOutputDim("SavedVariance", {C});
+  }
 }
 
 framework::OpKernelType BatchNormOp::GetExpectedKernelType(
