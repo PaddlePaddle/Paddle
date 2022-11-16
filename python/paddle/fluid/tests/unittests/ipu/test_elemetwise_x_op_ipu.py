@@ -145,7 +145,7 @@ class TestMin(TestMul):
 
 class TestMax(TestMul):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_max
+        self.op = paddle.maximum
 
 
 class TestPow(TestMul):
