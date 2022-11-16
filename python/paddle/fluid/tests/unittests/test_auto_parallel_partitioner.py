@@ -1399,15 +1399,15 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             distributed_attr_check_for_program(dist_main_prog, dist_context)
         )
         # check distribured attr
-        serial_op_idx = [0, 5, 9, 11, 23, 28, 31]
+        serial_op_idx = [0, 5, 9, 11, 24, 29, 32]
         dist_op_idx = [
             [0, 1],
             [6, 7],
             [11, 12],
             [14, 15],
-            [27, 28],
-            [33, 34],
-            [37, 38],
+            [28, 29],
+            [34, 35],
+            [38, 39],
         ]
         self.assertTrue(
             distributed_attr_check_for_dist_op(
