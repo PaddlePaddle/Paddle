@@ -28,7 +28,7 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -981,7 +981,7 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNHWC(
       }
 #undef gaid
     }
-    platform::CudaAtomicAdd(&filter_grad_data[gbid], s);
+    phi::CudaAtomicAdd(&filter_grad_data[gbid], s);
   }
 }
 
@@ -1057,7 +1057,7 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradCFilterNHWC(
     }
     for (int i = 0; i < c_filter * c_filter; ++i) {
       T* weight = filter_grad_data + i * output_channels + kernel_id;
-      platform::CudaAtomicAdd(&weight[0], r_weight[i]);
+      phi::CudaAtomicAdd(&weight[0], r_weight[i]);
     }
   }
 }

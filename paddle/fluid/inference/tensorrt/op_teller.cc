@@ -1161,6 +1161,28 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "fill_any_like") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the fill_any_like does not support static shape yet";
+        return false;
+      }
+      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      if (dtype != -1 && dtype != 2 && dtype != 5) {
+        VLOG(3) << "the fill_any_like only supports int32 and float32";
+        return false;
+      }
+      if (dtype == -1) {
+        auto* block = desc.Block();
+        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+        auto input_type = x_var_desc->GetDataType();
+        if (input_type != framework::proto::VarType::INT32 &&
+            input_type != framework::proto::VarType::FP32) {
+          VLOG(3) << "the fill_any_like only supports int32 and float32";
+          return false;
+        }
+      }
+    }
+
     if (op_type == "slice") {
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
@@ -1244,7 +1266,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
         op_type == "elementwise_pow" || op_type == "elementwise_min" ||
-        op_type == "elementwise_max") {
+        op_type == "elementwise_max" || op_type == "elementwise_floordiv") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -2288,8 +2310,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_pow",
       "elementwise_min",
       "elementwise_max",
+      "elementwise_floordiv",
       "equal",
       "dropout",
+      "fill_any_like",
       "prelu",
       "conv2d_transpose",
       "depthwise_conv2d_transpose",
@@ -2413,8 +2437,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_pow",
       "elementwise_min",
       "elementwise_max",
+      "elementwise_floordiv",
       "equal",
       "dropout",
+      "fill_any_like",
       "prelu",
       "conv2d_transpose",
       "depthwise_conv2d_transpose",

@@ -18,9 +18,9 @@
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -50,8 +50,8 @@ __global__ void IndexSampleGrad(const IndexT* index,
       unsigned int in_idx = index_j * input_length + index_i;
       IndexT sample_idx = index[index_idx];
       if (same_data_in_row) {
-        paddle::platform::CudaAtomicAdd(
-            &(in_grad[in_idx - index_i + sample_idx]), out_grad[sample_idx]);
+        phi::CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
+                           out_grad[sample_idx]);
       } else {
         in_grad[in_idx - index_i + sample_idx] = out_grad[index_idx];
       }
