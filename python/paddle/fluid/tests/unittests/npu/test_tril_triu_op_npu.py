@@ -56,7 +56,7 @@ class TestNPUTrilTriu(OpTest):
 
     def initTestCase(self):
         self.real_op_type = np.random.choice(['triu', 'tril'])
-        self.diagonal = 0
+        self.diagonal = None
         self.X = np.arange(1, 101, dtype=self.dtype).reshape([10, -1])
 
 
@@ -187,7 +187,7 @@ class TestNPUTrilTriu_bool(TestNPUTrilTriu):
 
     def initTestCase(self):
         self.real_op_type = np.random.choice(['triu', 'tril'])
-        self.diagonal = 0
+        self.diagonal = None
         self.X = np.random.choice([False, True], size=(100)).reshape([10, -1])
 
 

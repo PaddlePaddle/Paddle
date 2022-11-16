@@ -92,7 +92,7 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
                 self.check_grad_with_place(self.place, ['X'], 'Out')
 
         def initTestCase(self):
-            self.diagonal = 0
+            self.diagonal = None
             self.Xshape = (10, 10)
 
     class TestTrilTriuOp1(TestTrilTriuOp):

@@ -50,7 +50,7 @@ class TrilTriuOpDefaultTest(OpTest):
 
     def initTestCase(self):
         self.real_op_type = np.random.choice(['triu', 'tril'])
-        self.diagonal = 0
+        self.diagonal = None
         self.X = np.arange(1, 101, dtype="float64").reshape([10, -1])
 
 
