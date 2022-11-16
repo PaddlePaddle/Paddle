@@ -23,6 +23,7 @@ from ..layers import (
     split,
 )
 import copy
+import paddle
 
 __all__ = ['LSTMCell', 'GRUCell']
 
@@ -216,9 +217,11 @@ class LSTMCell(Layer):
     def forward(self, input, pre_hidden, pre_cell):
 
         if self._use_cudnn_impl:
-            igates = matmul(input, y=self._weight_ih, transpose_y=True)
+            igates = paddle.matmul(input, y=self._weight_ih, transpose_y=True)
             igates = elementwise_add(igates, self._bias_ih)
-            hgates = matmul(pre_hidden, self._weight_hh, transpose_y=True)
+            hgates = paddle.matmul(
+                pre_hidden, self._weight_hh, transpose_y=True
+            )
             hgates = elementwise_add(hgates, self._bias_hh)
 
             chunked_igates = split(igates, num_or_sections=4, dim=1)
@@ -242,7 +245,7 @@ class LSTMCell(Layer):
         else:
 
             concat_input_hidden = concat([input, pre_hidden], 1)
-            gate_input = matmul(x=concat_input_hidden, y=self._weight)
+            gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
             gate_input = elementwise_add(gate_input, self._bias)
             i, j, f, o = split(gate_input, num_or_sections=4, dim=-1)
@@ -463,9 +466,11 @@ class GRUCell(Layer):
 
         if self._use_cudnn_impl:
 
-            igates = matmul(input, y=self._weight_ih, transpose_y=True)
+            igates = paddle.matmul(input, y=self._weight_ih, transpose_y=True)
             igates = elementwise_add(igates, self._bias_ih)
-            hgates = matmul(pre_hidden, self._weight_hh, transpose_y=True)
+            hgates = paddle.matmul(
+                pre_hidden, self._weight_hh, transpose_y=True
+            )
             hgates = elementwise_add(hgates, self._bias_hh)
 
             chunked_igates = split(igates, num_or_sections=3, dim=1)
@@ -487,7 +492,9 @@ class GRUCell(Layer):
 
             concat_input_hidden = concat([input, pre_hidden], 1)
 
-            gate_input = matmul(x=concat_input_hidden, y=self._gate_weight)
+            gate_input = paddle.matmul(
+                x=concat_input_hidden, y=self._gate_weight
+            )
 
             gate_input = elementwise_add(gate_input, self._gate_bias)
             gate_input = self._gate_activation(gate_input)
@@ -495,7 +502,7 @@ class GRUCell(Layer):
 
             r_hidden = r * pre_hidden
 
-            candidate = matmul(
+            candidate = paddle.matmul(
                 concat([input, r_hidden], 1), self._candidate_weight
             )
             candidate = elementwise_add(candidate, self._candidate_bias)

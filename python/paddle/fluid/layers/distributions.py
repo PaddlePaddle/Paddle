@@ -703,10 +703,10 @@ class MultivariateNormalDiag(Distribution):
         check_type(other, 'other', MultivariateNormalDiag, 'kl_divergence')
 
         tr_cov_matmul = nn.reduce_sum(self._inv(other.scale) * self.scale)
-        loc_matmul_cov = nn.matmul(
+        loc_matmul_cov = paddle.matmul(
             (other.loc - self.loc), self._inv(other.scale)
         )
-        tri_matmul = nn.matmul(loc_matmul_cov, (other.loc - self.loc))
+        tri_matmul = paddle.matmul(loc_matmul_cov, (other.loc - self.loc))
         k = list(self.scale.shape)[0]
         ln_cov = nn.log(self._det(other.scale)) - nn.log(self._det(self.scale))
         kl = 0.5 * (tr_cov_matmul + tri_matmul - k + ln_cov)
