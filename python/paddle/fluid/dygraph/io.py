@@ -602,12 +602,8 @@ class _ProgramHolder:
         for out in self._output_descs:
             targets.append(program.global_block().var(out.name()))
 
-        print("########## _get_train_forward_program ##########\n")
-        print(program)
         # 3. append backward
         backward.gradients(targets=targets, inputs=[])
-        print("########## _train_program_desc ##########\n")
-        print(program)
         return program.desc
 
 
