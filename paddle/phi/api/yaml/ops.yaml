@@ -476,6 +476,15 @@
     func : mv
   backward : mv_grad
 
+- op : npu_identity
+  args : (Tensor x, int format = -1)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : npu_identity
+
 - op : poisson
   args : (Tensor x)
   output : Tensor
