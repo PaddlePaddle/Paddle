@@ -698,7 +698,7 @@ class Transformer(Layer):
                 tensor, [tensor.shape[0], 1] + list(tensor.shape[1:])
             )
             tile_dims = [-1] * len(tensor.shape)
-            tile_dims[1] = beam_size * (-1)
+            tile_dims[1] = beam_size
             return paddle.expand(tensor, tile_dims)
 
         def merge_batch_beams(tensor):

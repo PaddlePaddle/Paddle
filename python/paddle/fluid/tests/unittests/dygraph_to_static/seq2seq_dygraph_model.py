@@ -185,7 +185,7 @@ class BaseModel(fluid.dygraph.Layer):
     def _expand_to_beam_size(self, x):
         x = fluid.layers.unsqueeze(x, [1])
         expand_shape = [-1] * len(x.shape)
-        expand_shape[1] = self.beam_size * expand_shape[1] * (-1)
+        expand_shape[1] = self.beam_size * x.shape[1]
         x = paddle.expand(x, expand_shape)
         return x
 
@@ -654,7 +654,7 @@ class AttentionModel(fluid.dygraph.Layer):
     def tile_beam_merge_with_batch(self, x):
         x = fluid.layers.unsqueeze(x, [1])  # [batch_size, 1, ...]
         expand_shape = [-1] * len(x.shape)
-        expand_shape[1] = self.beam_size * x.shape[1] * (-1)
+        expand_shape[1] = self.beam_size * x.shape[1]
         x = paddle.expand(x, expand_shape)  # [batch_size, beam_size, ...]
         x = fluid.layers.transpose(
             x, list(range(2, len(x.shape))) + [0, 1]
@@ -674,7 +674,7 @@ class AttentionModel(fluid.dygraph.Layer):
     def _expand_to_beam_size(self, x):
         x = fluid.layers.unsqueeze(x, [1])
         expand_shape = [-1] * len(x.shape)
-        expand_shape[1] = self.beam_size * x.shape[1] * (-1)
+        expand_shape[1] = self.beam_size * x.shape[1]
         x = paddle.expand(x, expand_shape)
         return x
 
