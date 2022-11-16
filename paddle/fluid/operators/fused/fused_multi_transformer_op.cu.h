@@ -1201,28 +1201,17 @@ class CublasFusedMLP {
         platform::dynload::cublasLtMatrixLayoutDestroy(out_desc_));
   }
 
-  void SetBiasPtr(const T *bias_data) {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            operation_desc_,
-            CUBLASLT_MATMUL_DESC_BIAS_POINTER,
-            &bias_data,
-            sizeof(bias_data)));
-  }
+  // Change to use tensor's shape.
+  void Setup(const phi::DDim &x_shape,
+             const phi::DDim &w_shape,
+             bool trans_x,
+             bool trans_w) {
+    int64_t M = trans_x ? x_shape[1] : x_shape[0];
+    int64_t K = trans_w ? w_shape[1] : w_shape[0];
+    int64_t N = trans_w ? w_shape[0] : w_shape[1];
 
-  void Setup(bool transA,
-             bool transB,
-             int bsz_seq,
-             int hidden_feature,
-             int in_feature,
-             const std::string &activation,
-             bool compute_bias) {
-    int64_t M = bsz_seq;
-    int64_t K = in_feature;
-    int64_t N = hidden_feature;
-
-    cublasOperation_t cublas_transA = transA ? CUBLAS_OP_T : CUBLAS_OP_N;
-    cublasOperation_t cublas_transB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
+    cublasOperation_t cublas_transA = trans_x ? CUBLAS_OP_T : CUBLAS_OP_N;
+    cublasOperation_t cublas_transB = trans_w ? CUBLAS_OP_T : CUBLAS_OP_N;
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatmulDescSetAttribute(
             operation_desc_,
@@ -1236,27 +1225,21 @@ class CublasFusedMLP {
             &cublas_transB,
             sizeof(cublas_transB)));
 
-    cublasLtEpilogue_t epiloque_func =
-        get_epilogue_type_(activation, compute_bias);
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cublasLtMatmulDescSetAttribute(
-            operation_desc_,
-            CUBLASLT_MATMUL_DESC_EPILOGUE,
-            &epiloque_func,
-            sizeof(epiloque_func)));
-
     /*
     cublas use col major: x(M, K) matmul w(K, N) = out(M, N) equals to w_t(N, K)
     * x_t(K, M) = out(N, M)
     */
-    SetCublasMatrixLayout(x_desc_, cublas_transA, K, M);
-    SetCublasMatrixLayout(w_desc_, cublas_transB, N, K);
-    SetCublasMatrixLayout(out_desc_, CUBLAS_OP_N, N, M);
+    SetCublasMatrixLayout_(x_desc_, cublas_transA, K, M);
+    SetCublasMatrixLayout_(w_desc_, cublas_transB, N, K);
+    SetCublasMatrixLayout_(out_desc_, CUBLAS_OP_N, N, M);
   }
 
-  void ComputeForward(const phi::DenseTensor *weight,
-                      const phi::DenseTensor *input,
-                      phi::DenseTensor *output) {
+  void ComputeForward(const phi::DenseTensor *input,
+                      const phi::DenseTensor *weight,
+                      const phi::DenseTensor *bias,
+                      phi::DenseTensor *residual,
+                      phi::DenseTensor *output,
+                      const std::string &activation) {
     // here: (transa, transb): nt, input * weight.
     // (M * K) * (K * N)
     cublasLtHandle_t lt_handle = dev_ctx_.cublaslt_handle();
@@ -1267,12 +1250,31 @@ class CublasFusedMLP {
                       workspace_size,
                       phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
 
-    const auto *w_data = weight->data<T>();
+    const bool add_residual = (residual == nullptr) ? false : true;
+    const bool add_bias = (bias == nullptr) ? false : true;
+    if (add_bias) {
+      SetCublasBiasPtr_(bias);
+    }
+
+    // Set cublasLt epilogue.
+    cublasLtEpilogue_t epiloque_func = GetEpilogueType_(activation, add_bias);
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            operation_desc_,
+            CUBLASLT_MATMUL_DESC_EPILOGUE,
+            &epiloque_func,
+            sizeof(epiloque_func)));
+
     const auto *x_data = input->data<T>();
+    const auto *w_data = weight->data<T>();
+    auto *residual_data =
+        add_residual ? residual->data<T>() : output->data<T>();
     auto *out_data = output->data<T>();
 
-    double alpha64 = 1.0, beta64 = 0.0;
-    float alpha32 = 1.0f, beta32 = 0.0f;
+    // if add_residual, we compute result + 1.0 * residual, else result + 0.0 *
+    // out.
+    double alpha64 = 1.0, beta64 = add_residual ? 1.0 : 0.0;
+    float alpha32 = 1.0f, beta32 = add_residual ? 1.0f : 0.0f;
     void *alpha = nullptr, *beta = nullptr;
     if (std::is_same<T, double>::value) {
       alpha = &alpha64;
@@ -1291,7 +1293,7 @@ class CublasFusedMLP {
                                           x_data,
                                           x_desc_,
                                           beta,
-                                          out_data,
+                                          residual_data,
                                           out_desc_,
                                           out_data,
                                           out_desc_,
@@ -1302,8 +1304,8 @@ class CublasFusedMLP {
   }
 
  private:
-  static cublasLtEpilogue_t get_epilogue_type_(const std::string &activation,
-                                               const bool add_bias) {
+  static cublasLtEpilogue_t GetEpilogueType_(const std::string &activation,
+                                             const bool add_bias) {
     if (activation == "relu") {
       if (add_bias) {
         return CUBLASLT_EPILOGUE_RELU_BIAS;
@@ -1334,11 +1336,10 @@ class CublasFusedMLP {
     }
   }
 
-  void SetCublasMatrixLayout(cublasLtMatrixLayout_t layout_desc,
-                             cublasOperation_t cublas_trans,
-                             const size_t cublas_m,
-                             const size_t cublas_n) {
-    // if (transA)
+  void SetCublasMatrixLayout_(cublasLtMatrixLayout_t layout_desc,
+                              cublasOperation_t cublas_trans,
+                              const size_t cublas_m,
+                              const size_t cublas_n) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cublasLtMatrixLayoutSetAttribute(
             layout_desc,
@@ -1358,6 +1359,16 @@ class CublasFusedMLP {
             CUBLASLT_MATRIX_LAYOUT_LD,
             &cublas_ld,
             sizeof(cublas_ld)));
+  }
+
+  void SetCublasBiasPtr_(const phi::DenseTensor *bias) {
+    const T *bias_data = bias->data<T>();
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        platform::dynload::cublasLtMatmulDescSetAttribute(
+            operation_desc_,
+            CUBLASLT_MATMUL_DESC_BIAS_POINTER,
+            &bias_data,
+            sizeof(bias_data)));
   }
 
   const phi::GPUContext &dev_ctx_;
