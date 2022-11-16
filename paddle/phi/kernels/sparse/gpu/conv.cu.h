@@ -402,7 +402,7 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
     for (int kz = 0; kz < kernel_dims[1]; kz++) {
       for (int ky = 0; ky < kernel_dims[2]; ky++) {
         for (int kx = 0; kx < kernel_dims[3]; kx++) {
-          int in_i = -1, out_index = -1, kernel_i = -1;
+          int in_i = -1, out_index = -1;
           if (phi::funcs::sparse::Check(x_dims,
                                         kernel_dims,
                                         paddings,
@@ -425,7 +425,6 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
               int real_out_index = out_index_table[out_index];
               in_i = i;
               int buf_i = atomicAdd(&counter_buf[kernel_index], 1);
-              kernel_i = kernel_index;
               rulebook_buf[kernel_index * blockDim.x + buf_i] = in_i;
               rulebook_buf[kernel_index * blockDim.x +
                            kernel_size * blockDim.x + buf_i] = real_out_index;
