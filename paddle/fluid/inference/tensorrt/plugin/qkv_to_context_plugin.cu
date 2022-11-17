@@ -399,10 +399,10 @@ __global__ void broadcast(const T *src,
 
 template <typename T>
 __global__ void broadcast_batch_head_number(const T *src,
-                          T *dst,
-                          const int batch_size,
-                          const int seq_len,
-                          const int head_num) {
+                                            T *dst,
+                                            const int batch_size,
+                                            const int seq_len,
+                                            const int head_num) {
   int batch_id = blockIdx.x % seq_len;
   int dst_offset = blockIdx.x * seq_len;
   if (threadIdx.x < seq_len) {

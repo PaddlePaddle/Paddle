@@ -95,7 +95,9 @@ class TestFusedMultiHeadMatmulOp_biasqk2(OpTest):
 
         # Compute Q*K
         q_k = np.matmul(scale_q, transpose_k)
-        eltadd_qk = q_k + np.tile(self.BiasQK,[self.batch_size,self.head_number,1,1])
+        eltadd_qk = q_k + np.tile(
+            self.BiasQK, [self.batch_size, self.head_number, 1, 1]
+        )
         softmax_qk = np.apply_along_axis(stable_softmax, 3, eltadd_qk)
         # Compute V path
         fc_v = self.V + self.BiasV
@@ -134,6 +136,7 @@ class TestFusedMultiHeadMatmulOp_biasqk2(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place, atol=2e-3)
+
 
 class TestFusedMultiheadMatmulOp(OpTest):
     def config(self):
@@ -243,6 +246,7 @@ class TestFusedMultiHeadMatmulOp2(TestFusedMultiheadMatmulOp):
         self.head_number = 12
         self.batch_size = 8
         self.scale = 0.125
+
 
 if __name__ == '__main__':
     unittest.main()
