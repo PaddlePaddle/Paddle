@@ -129,6 +129,18 @@ class ProcessGroupStream : public ProcessGroup {
       bool sync_op,
       bool use_calc_stream);
 
+  std::shared_ptr<ProcessGroup::Task> Scatter(phi::DenseTensor* out_tensor,
+                                              const phi::DenseTensor& in_tensor,
+                                              const ScatterOptions& opts,
+                                              bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> Scatter(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const ScatterOptions& opts,
+      bool sync_op,
+      bool use_calc_stream);
+
   std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                            int src_rank,
                                            int64_t offset,
@@ -177,19 +189,6 @@ class ProcessGroupStream : public ProcessGroup {
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
       const ReduceScatterOptions& opts,
-      bool sync_op,
-      bool use_calc_stream);
-
-  std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-      const ScatterOptions& opts,
-      bool sync_op) override;
-
-  virtual std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-      const ScatterOptions& opts,
       bool sync_op,
       bool use_calc_stream);
 

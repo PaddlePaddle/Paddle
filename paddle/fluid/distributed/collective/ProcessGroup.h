@@ -160,6 +160,16 @@ class ProcessGroup {
         GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> Scatter(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const ScatterOptions& opts,
+      bool sync_op) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "ProcessGroup%s does not support scatter with sync_op flag.",
+        GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                                    int src_rank,
                                                    int64_t offset,
@@ -289,16 +299,6 @@ class ProcessGroup {
       const ScatterOptions&) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support scatter", GetBackendName()));
-  }
-
-  virtual std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      const ScatterOptions&,
-      bool) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support scatter with sync_op flag",
-        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> ReduceScatter(

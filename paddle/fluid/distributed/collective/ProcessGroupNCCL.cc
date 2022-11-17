@@ -336,6 +336,58 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
       use_calc_stream);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ScatterOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  return Collective(
+      out_tensor,
+      in_tensor,
+      [&](phi::DenseTensor* output,
+          const phi::DenseTensor& input,
+          ncclComm_t comm,
+          gpuStream_t& stream) {
+        int64_t numel = input.numel() / size_;
+        if (rank_ == opts.root_rank) {
+          int64_t offset = 0;
+          phi::DenseTensor partial_tensor;
+          GroupStart();
+          for (auto i = 0; i < size_; i++) {
+            partial_tensor = GetPartialTensor(input, offset, numel);
+            NCCL_CHECK(platform::dynload::ncclSend(
+                partial_tensor.data(),
+                numel,
+                platform::ToNCCLDataType(input.dtype()),
+                i,
+                comm,
+                stream));
+            offset += numel;
+          }
+          NCCL_CHECK(platform::dynload::ncclRecv(
+              output->data(),
+              numel,
+              platform::ToNCCLDataType(output->dtype()),
+              opts.root_rank,
+              comm,
+              stream));
+          GroupEnd();
+        } else {
+          NCCL_CHECK(platform::dynload::ncclRecv(
+              output->data(),
+              numel,
+              platform::ToNCCLDataType(output->dtype()),
+              opts.root_rank,
+              comm,
+              stream));
+        }
+      },
+      CommType::SCATTER,
+      sync_op,
+      use_calc_stream);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
     phi::DenseTensor* tensor,
     int src_rank,
@@ -1368,68 +1420,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
         }
       },
       CommType::SCATTER);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const ScatterOptions& opts,
-    bool sync_op,
-    bool use_calc_stream) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(in_tensors),
-      true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(out_tensors),
-      true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
-  return Collective(
-      in_tensors,
-      out_tensors,
-      [&](phi::DenseTensor& input,
-          phi::DenseTensor& output,
-          ncclComm_t comm,
-          const gpuStream_t& stream) {
-        PADDLE_ENFORCE_EQ(
-            output.numel(),
-            input.numel() / size_,
-            platform::errors::InvalidArgument(
-                "Input and output tensors should have the same shape."));
-        size_t offset = 0;
-        if (rank_ == opts.root_rank) {
-          GroupStart();
-          for (auto i = 0; i < size_; i++) {
-            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
-                GetPointerByOffset(input.data(), offset, input.dtype()),
-                input.numel() / size_,
-                platform::ToNCCLDataType(input.dtype()),
-                i,
-                comm,
-                stream));
-            offset += input.numel() / size_;
-          }
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
-              output.data(),
-              input.numel() / size_,
-              platform::ToNCCLDataType(input.dtype()),
-              opts.root_rank,
-              comm,
-              stream));
-          GroupEnd();
-        } else {
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
-              output.data(),
-              input.numel() / size_,
-              platform::ToNCCLDataType(input.dtype()),
-              opts.root_rank,
-              comm,
-              stream));
-        }
-      },
-      CommType::SCATTER,
-      sync_op,
-      use_calc_stream);
 }
 
 }  //  namespace distributed
