@@ -13,6 +13,7 @@
 
 from paddle.optimizer import Lamb as LAMB
 from .meta_optimizer_base import MetaOptimizerBase
+from paddle.fluid.optimizer import AdamOptimizer
 import logging
 
 __all__ = []
