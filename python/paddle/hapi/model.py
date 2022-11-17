@@ -642,7 +642,7 @@ class StaticGraphAdapter:
                     metrics.append(to_list(metric.compute(*(outputs + labels))))
 
             if mode == 'train' and self.model._optimizer:
-                self._loss_endpoint = fluid.layers.sum(losses)
+                self._loss_endpoint = paddle.add_n(losses)
                 if self._nranks > 1:
                     role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                     fleet.init(role)
