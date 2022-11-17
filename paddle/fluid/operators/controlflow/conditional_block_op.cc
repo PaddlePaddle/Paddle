@@ -133,8 +133,8 @@ class ConditionalBlockOp : public ConditionalOp {
           if (FLAGS_use_mkldnn) exec_->EnableMKLDNN(pdesc);
           ctx_ = exec_->Prepare(pdesc, block->ID(), skip_vars, false);
 #ifdef PADDLE_WITH_MKLDNN
-          platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
-          platform::RegisterModelLayout(ctx->ops_, dev_place);
+          platform::AttachPointerHashToMKLDNNKey(exec_.get(), dev_place);
+          platform::RegisterModelLayout(ctx_->ops_, dev_place);
 #endif
         }
         exec_->RunPreparedContext(ctx_.get(),
@@ -242,8 +242,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
           if (FLAGS_use_mkldnn) exec_->EnableMKLDNN(pdesc);
           ctx_ = exec_->Prepare(pdesc, block->ID(), inside_grads, false);
 #ifdef PADDLE_WITH_MKLDNN
-          platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
-          platform::RegisterModelLayout(ctx->ops_, dev_place);
+          platform::AttachPointerHashToMKLDNNKey(exec_.get(), dev_place);
+          platform::RegisterModelLayout(ctx_->ops_, dev_place);
 #endif
         }
         exec_->RunPreparedContext(ctx_.get(),
