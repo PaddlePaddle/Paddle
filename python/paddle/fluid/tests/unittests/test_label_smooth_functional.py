@@ -52,7 +52,6 @@ class LabelSmoothTestCase(unittest.TestCase):
                     label_var,
                     prior_dist=self.prior_dist,
                     epsilon=self.epsilon,
-                    dtype=self.dtype,
                 )
         feed_dict = {"input": self.label}
         exe = fluid.Executor(place)

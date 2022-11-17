@@ -3503,9 +3503,7 @@ class TestBook(LayerTest):
         with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
             label = self._get_data(name="label", shape=[1], dtype="int32")
             one_hot_label = layers.one_hot(input=label, depth=10)
-            smooth_label = F.label_smooth(
-                label=one_hot_label, epsilon=0.1, dtype="int32"
-            )
+            smooth_label = F.label_smooth(label=one_hot_label, epsilon=0.1)
             return smooth_label
 
     def make_topk(self):
