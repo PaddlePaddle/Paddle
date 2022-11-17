@@ -99,7 +99,7 @@ def get_gpus(selected_gpus):
     return gpus
 
 
-class Hdfs(object):
+class Hdfs:
     def __init__(self):
         self.hdfs_ugi = None
         self.hdfs_name = None
@@ -128,7 +128,7 @@ class Hdfs(object):
         return not self == n
 
 
-class Cluster(object):
+class Cluster:
     def __init__(self, hdfs):
         self.job_server = None
         self.pods = []
@@ -194,7 +194,7 @@ class Cluster(object):
         return None
 
 
-class JobServer(object):
+class JobServer:
     def __init__(self):
         self.endpoint = None
 
@@ -208,7 +208,7 @@ class JobServer(object):
         return not self == j
 
 
-class Trainer(object):
+class Trainer:
     def __init__(self):
         self.gpus = []
         self.endpoint = None
@@ -239,7 +239,7 @@ class Trainer(object):
         return self.rank
 
 
-class Pod(object):
+class Pod:
     def __init__(self):
         self.rank = None
         self.id = None
@@ -454,7 +454,7 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
     return proc_env
 
 
-class TrainerProc(object):
+class TrainerProc:
     def __init__(self):
         self.proc = None
         self.log_fn = None

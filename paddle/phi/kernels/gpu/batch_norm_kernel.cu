@@ -20,19 +20,19 @@
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -829,7 +829,7 @@ void BatchNormKernel(const Context &ctx,
 //         epsilon));
 #else
     const bool use_native_kernel =
-        ((x_dims.size() == 2) ||
+        (x_dims.size() == 2 ||
          (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
     if (use_native_kernel) {
       const int block_size = 256;
@@ -851,11 +851,13 @@ void BatchNormKernel(const Context &ctx,
         if (x_dims.size() == 2) {
           DenseTensor inv_var = phi::Empty<BatchNormParamType<T>>(ctx, {C});
           auto *inv_var_ptr = inv_var.data<BatchNormParamType<T>>();
-          InverseVariance<T>
-              <<<1, C>>>(est_var->template data<BatchNormParamType<T>>(),
-                         epsilon,
-                         C,
-                         inv_var_ptr);
+          const int threads = 512 > C ? C : 512;
+          const int blocks = (C + 511) / 512;
+          InverseVariance<T><<<blocks, threads>>>(
+              est_var->template data<BatchNormParamType<T>>(),
+              epsilon,
+              C,
+              inv_var_ptr);
           BN1DForwardInference<T, DataLayout::kNHWC>
               <<<grid_size, block_size, 0, ctx.stream()>>>(
                   transformed_x.template data<T>(),

@@ -59,7 +59,7 @@ void AutoTuneCache::UpdateStatus() {
     cache_misses += v.second.CacheMisses();
   }
 
-  for (auto& v : cudnn_auto_tune_map_) {
+  for (auto& v : conv_auto_tune_map_) {
     VLOG(4) << "AlgoType: " << std::setfill(' ') << std::setw(name_width)
             << AlgorithmTypeString(v.first)
             << " Cache Size: " << v.second.Size()

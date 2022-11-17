@@ -30,7 +30,7 @@ PADDLE_ROOT = PADDLE_ROOT.replace('//', '/')
 ssl._create_default_https_context = ssl._create_unverified_context
 
 
-class PRChecker(object):
+class PRChecker:
     """PR Checker."""
 
     def __init__(self):

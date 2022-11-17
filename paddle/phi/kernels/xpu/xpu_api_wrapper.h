@@ -34,7 +34,7 @@ enum XPUFCCalcType {
 
 template <typename T>
 XPUFCCalcType FCCalcType() {
-  if (std::is_same<paddle::platform::float16, T>::value ||
+  if (std::is_same<phi::dtype::float16, T>::value ||
       std::is_same<float16, T>::value) {
     return XPUFCCalcType::FC_INT16;
   } else if (std::getenv("XPU_PADDLE_FC_INT32") != nullptr) {
@@ -382,7 +382,8 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
                               const T* y,
                               T* out,
                               const XpuFcInfo& fcinfo,
-                              float alpha) {
+                              float alpha,
+                              bool is_grad = false) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   int fccal_type = FCCalcType<XPUType>();
 
@@ -398,6 +399,12 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
   };
 
   auto fc_api = fc_api_list[fccal_type];
+  if (std::getenv("XPU_PADDLE_FC_GRAD_LOCAL") != nullptr) {
+    if (is_grad) {
+      fc_api = fc_api_list[2];
+    }
+  }
+
   auto fc_batch_api = fc_batch_api_list[fccal_type];
 
   int m = fcinfo.m;

@@ -20,7 +20,7 @@ import paddle
 import numpy as np
 
 
-class BackwardNet(object):
+class BackwardNet:
     """
     Abstract Base Class.
     All Net inherited this Class should implement two functions:
@@ -188,24 +188,24 @@ class SimpleNet(BackwardNet):
         super().__init__()
         self.stop_gradient_grad_vars = set(
             [
-                u'x_no_grad@GRAD',
-                u'x2_no_grad@GRAD',
-                u'x3_no_grad@GRAD',
-                u'label_no_grad@GRAD',
+                'x_no_grad@GRAD',
+                'x2_no_grad@GRAD',
+                'x3_no_grad@GRAD',
+                'label_no_grad@GRAD',
             ]
         )
         self.no_grad_vars = set()
-        self.params_names = set([u'w2v', u'fc_predict.b_0', u'fc_w'])
+        self.params_names = set(['w2v', 'fc_predict.b_0', 'fc_w'])
         self.op_path = [
-            u'lookup_table_v2',
-            u'lookup_table_v2',  # embedding
-            u'elementwise_add',  # merge
-            u'mul',
-            u'elementwise_add',
-            u'softmax',  # fc
-            u'elementwise_sub',
-            u'square',
-            u'reduce_mean',
+            'lookup_table_v2',
+            'lookup_table_v2',  # embedding
+            'elementwise_add',  # merge
+            'mul',
+            'elementwise_add',
+            'softmax',  # fc
+            'elementwise_sub',
+            'square',
+            'reduce_mean',
         ]  # loss
         self.shape = [16, 50]
 

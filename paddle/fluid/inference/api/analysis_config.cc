@@ -205,11 +205,13 @@ void AnalysisConfig::EnableIpu(int ipu_device_num,
 void AnalysisConfig::SetIpuConfig(bool ipu_enable_fp16,
                                   int ipu_replica_num,
                                   float ipu_available_memory_proportion,
-                                  bool ipu_enable_half_partial) {
+                                  bool ipu_enable_half_partial,
+                                  bool ipu_enable_model_runtime_executor) {
   ipu_enable_fp16_ = ipu_enable_fp16;
   ipu_replica_num_ = ipu_replica_num;
   ipu_available_memory_proportion_ = ipu_available_memory_proportion;
   ipu_enable_half_partial_ = ipu_enable_half_partial;
+  ipu_enable_model_runtime_executor_ = ipu_enable_model_runtime_executor;
 
   Update();
 }
@@ -284,7 +286,7 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
 
     if (ipu_config_mapper_.find(key) == ipu_config_mapper_.end()) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "invalid key {} in IPU config", key));
+          "invalid key {} in IPU config: ", key));
     }
     switch (ipu_config_mapper_.at(key)) {
       case ipu_config_code::ipu_device_num:
@@ -316,6 +318,9 @@ void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
         break;
       case ipu_config_code::ipu_custom_patterns:
         ipu_custom_patterns_ = string2vector(value);
+        break;
+      case ipu_config_code::ipu_enable_model_runtime_executor:
+        ipu_enable_model_runtime_executor_ = string2bool(value);
         break;
 
       default:
@@ -446,6 +451,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_adaptive_seqlen_);
   CP_MEMBER(xpu_enable_multi_stream_);
 
+  // Lite OpenCL Related
+  CP_MEMBER(use_opencl_);
+
   // NPU related.
   CP_MEMBER(use_npu_);
   CP_MEMBER(npu_device_id_);
@@ -479,6 +487,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(ipu_replica_num_);
   CP_MEMBER(ipu_available_memory_proportion_);
   CP_MEMBER(ipu_enable_half_partial_);
+  CP_MEMBER(ipu_enable_model_runtime_executor_);
   CP_MEMBER(ipu_custom_ops_info_);
   CP_MEMBER(ipu_custom_patterns_);
 
@@ -612,6 +621,16 @@ void AnalysisConfig::EnableMkldnnBfloat16() {
   use_mkldnn_bfloat16_ = false;
 #endif
 
+  Update();
+}
+
+void AnalysisConfig::DisableMkldnnFcPasses() {
+#ifdef PADDLE_WITH_MKLDNN
+  disable_mkldnn_fc_passes_ = true;
+#else
+  LOG(ERROR) << "Please compile with MKLDNN first to use DisableMkldnnFcPasses";
+  disable_mkldnn_fc_passes_ = false;
+#endif
   Update();
 }
 
@@ -892,6 +911,12 @@ void AnalysisConfig::Update() {
 #endif
   }
 
+  if (disable_mkldnn_fc_passes_) {
+#ifdef PADDLE_WITH_MKLDNN
+    pass_builder()->DisableMkldnnFcPasses();
+#endif
+  }
+
 #ifdef PADDLE_WITH_MKLDNN
   // Do not optimize when mkldnn is on
   if (enable_memory_optim_ && !use_mkldnn_) {
@@ -1042,6 +1067,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_replica_num_;
   ss << ipu_available_memory_proportion_;
   ss << ipu_enable_half_partial_;
+  ss << ipu_enable_model_runtime_executor_;
   for (auto custom_op : ipu_custom_ops_info_)
     for (auto attr : custom_op) ss << attr;
   ss << ";";
@@ -1138,6 +1164,11 @@ void AnalysisConfig::EnableLiteEngine(
   lite_passes_filter_ = passes_filter;
   lite_ops_filter_ = ops_filter;
   lite_zero_copy_ = zero_copy;
+  Update();
+}
+
+void AnalysisConfig::EnableOpenCL() {
+  use_opencl_ = true;
   Update();
 }
 

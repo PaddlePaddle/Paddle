@@ -89,6 +89,14 @@ void SinDoubleGradKernel(const Context& dev_ctx,
                          DenseTensor* ddout);
 
 template <typename T, typename Context>
+void CosDoubleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         DenseTensor* dx,
+                         DenseTensor* ddout);
+
+template <typename T, typename Context>
 void TanhDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
                           const DenseTensor& dout,
@@ -106,6 +114,28 @@ void TanhTripleGradKernel(const Context& dev_ctx,
                           DenseTensor* d_out_new,
                           DenseTensor* d_dout,
                           DenseTensor* d_ddx);
+
+template <typename T, typename Context>
+void SinTripleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         const DenseTensor& d_dx_new,
+                         const DenseTensor& d_ddout,
+                         DenseTensor* d_x_new,
+                         DenseTensor* d_dout,
+                         DenseTensor* d_ddx);
+
+template <typename T, typename Context>
+void CosTripleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         const DenseTensor& d_dx_new,
+                         const DenseTensor& d_ddout,
+                         DenseTensor* d_x_new,
+                         DenseTensor* d_dout,
+                         DenseTensor* d_ddx);
 
 template <typename T, typename Context>
 void LeakyReluDoubleGradKernel(const Context& dev_ctx,
@@ -207,6 +237,26 @@ void PowGradKernel(const Context& dev_ctx,
                    const Scalar& factor,
                    DenseTensor* dx);
 
+template <typename T, typename Context>
+void PowDoubleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         const Scalar& factor,
+                         DenseTensor* dx,
+                         DenseTensor* ddout);
+
+template <typename T, typename Context>
+void PowTripleGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dout,
+                         const DenseTensor& ddx,
+                         const DenseTensor& d_dx,
+                         const DenseTensor& d_ddout,
+                         const Scalar& factor,
+                         DenseTensor* out_d_x,
+                         DenseTensor* out_d_dout,
+                         DenseTensor* out_d_ddx);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Cos);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Tan);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Acos);

@@ -19,6 +19,7 @@ import re
 import time
 import abc
 from paddle.fluid import core
+from .log_util import logger
 import functools
 
 import shutil
@@ -46,7 +47,7 @@ class FSShellCmdAborted(ExecuteError):
     pass
 
 
-class FS(object):
+class FS:
     @abc.abstractmethod
     def ls_dir(self, fs_path):
         raise NotImplementedError

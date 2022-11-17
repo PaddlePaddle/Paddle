@@ -336,6 +336,7 @@ PD_REGISTER_KERNEL(square_double_grad,
                    phi::dtype::float16,
                    int,
                    int64_t) {}
+
 PD_REGISTER_KERNEL(sin_double_grad,
                    CPU,
                    ALL_LAYOUT,
@@ -345,6 +346,37 @@ PD_REGISTER_KERNEL(sin_double_grad,
                    phi::dtype::float16,
                    int,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(sin_triple_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SinTripleGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(cos_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CosDoubleGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(cos_triple_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CosTripleGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   int,
+                   int64_t) {}
+
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softsign_grad, SoftsignGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_double_grad, SigmoidDoubleGradKernel)
@@ -369,6 +401,22 @@ PD_REGISTER_KERNEL(pow_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::PowGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+PD_REGISTER_KERNEL(pow_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::PowDoubleGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {}
+PD_REGISTER_KERNEL(pow_triple_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::PowTripleGradKernel,
                    float,
                    double,
                    int,

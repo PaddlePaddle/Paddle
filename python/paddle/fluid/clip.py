@@ -92,7 +92,7 @@ def _squared_l2_norm(x):
     return out
 
 
-class BaseErrorClipAttr(object):
+class BaseErrorClipAttr:
     def __str__(self):
         raise NotImplementedError()
 
@@ -177,7 +177,7 @@ def error_clip_callback(block, context):
             error_clip._append_clip_op(block, grad_n)
 
 
-class ClipGradBase(object):
+class ClipGradBase:
     def __init__(self):
         super().__init__()
 
@@ -550,7 +550,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             need_clip = True
             clip_var = layers.elementwise_div(
                 x=max_global_norm,
-                y=layers.elementwise_max(x=global_norm_var, y=max_global_norm),
+                y=paddle.maximum(x=global_norm_var, y=max_global_norm),
             )
         elif global_norm_var > max_global_norm:
             # only when global_norm_var > max_global_norm, grad need clip
@@ -654,9 +654,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 )
                 scale_var = layers.elementwise_div(
                     x=max_global_norm,
-                    y=layers.elementwise_max(
-                        x=max_global_norm, y=global_norm_var
-                    ),
+                    y=paddle.maximum(x=max_global_norm, y=global_norm_var),
                 )
             param_new_grad_name_dict = dict()
             for p, g in params_grads:
@@ -733,7 +731,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
             clip_var = self.context[self.group_name + "_clip"]
             group_scale_var = layers.elementwise_div(
                 x=clip_var,
-                y=layers.elementwise_max(x=clip_var, y=group_norm_var),
+                y=paddle.maximum(x=clip_var, y=group_norm_var),
             )
             assert group_scale_var.shape == (1,)
             self.context[group_scale_name] = group_scale_var

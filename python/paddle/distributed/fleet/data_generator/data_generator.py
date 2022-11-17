@@ -17,7 +17,7 @@ import sys
 __all__ = []
 
 
-class DataGenerator(object):
+class DataGenerator:
     """
     DataGenerator is a general Base class for user to inherit
     A user who wants to define his/her own python processing logic
@@ -342,9 +342,7 @@ class MultiSlotDataGenerator(DataGenerator):
                 for elem in elements:
                     if isinstance(elem, float):
                         self._proto_info[-1] = (name, "float")
-                    elif not isinstance(elem, int) and not isinstance(
-                        elem, long
-                    ):
+                    elif not isinstance(elem, int):
                         raise ValueError(
                             "the type of element%s must be in int or float"
                             % type(elem)
@@ -379,9 +377,7 @@ class MultiSlotDataGenerator(DataGenerator):
                     if self._proto_info[index][1] != "float":
                         if isinstance(elem, float):
                             self._proto_info[index] = (name, "float")
-                        elif not isinstance(elem, int) and not isinstance(
-                            elem, long
-                        ):
+                        elif not isinstance(elem, int):
                             raise ValueError(
                                 "the type of element%s must be in int or float"
                                 % type(elem)

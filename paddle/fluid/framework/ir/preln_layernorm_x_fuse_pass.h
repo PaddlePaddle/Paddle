@@ -28,6 +28,15 @@ namespace ir {
 //        other_op4  layernorm_shift_partition  other_op4  other_op3
 //                        |
 //                   other_op3
+//                                 or
+//     |           |                            |            |
+// other_op1     other_op2                  other_op1    other_op2
+//     |           |              fuse           \          /
+//     |------elementwise_add      ->        preln_merge_layernorm
+//             |          |                        |      |
+//        other_op4  merge_layernorm          other_op4  other_op3
+//                        |
+//                   other_op3
 class Graph;
 
 class PrelnLayerNormXFusePass : public FusePassBase {
@@ -52,7 +61,8 @@ class PrelnLayerNormXFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
-  int ApplyPattern(ir::Graph* graph) const;
+  int ApplyLayerNormShiftPattern(ir::Graph* graph) const;
+  int ApplyMergeLayerNormPattern(ir::Graph* graph) const;
 };
 
 }  // namespace ir

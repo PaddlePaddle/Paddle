@@ -45,7 +45,7 @@ from multiprocessing import Process, Manager
 __all__ = ["TrainerFactory", "FetchHandlerMonitor"]
 
 
-class TrainerFactory(object):
+class TrainerFactory:
     """
     Create trainer and device worker.
     If opt_info is not None, it will get configs from opt_info,
@@ -151,7 +151,7 @@ class TrainerFactory(object):
         return trainer
 
 
-class FetchHandlerMonitor(object):
+class FetchHandlerMonitor:
     """
     Defination of FetchHandlerMonitor class,
     it's for fetch handler.

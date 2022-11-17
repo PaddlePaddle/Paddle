@@ -62,7 +62,7 @@ __all__ = [
 ]
 
 
-class RNNCell(object):
+class RNNCell:
     """
         :api_attr: Static Graph
 
@@ -160,7 +160,7 @@ class RNNCell(object):
                 return True
             return isinstance(seq, Sequence) and not isinstance(seq, str)
 
-        class Shape(object):
+        class Shape:
             def __init__(self, shape):
                 self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
 
@@ -544,7 +544,7 @@ def rnn(
         )
 
 
-class ArrayWrapper(object):
+class ArrayWrapper:
     def __init__(self, x):
         self.array = [x]
 
@@ -823,7 +823,7 @@ def birnn(
     return outputs, final_states
 
 
-class Decoder(object):
+class Decoder:
     """
         :api_attr: Static Graph
 
@@ -1869,7 +1869,7 @@ def dynamic_decode(
         )
 
 
-class DecodeHelper(object):
+class DecodeHelper:
     """
     DecodeHelper is the base class for any helper instance used in `BasicDecoder`.
     It provides interface to implement sampling and produce inputs for the next
