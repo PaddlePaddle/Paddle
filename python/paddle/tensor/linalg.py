@@ -2121,7 +2121,7 @@ def matrix_power(x, n, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        - Tensor: The n-th power of the matrix (or the batch of matrices) `x`. Its
+        - Tensor, The n-th power of the matrix (or the batch of matrices) `x`. Its
           data type should be the same as that of `x`.
 
     Examples:

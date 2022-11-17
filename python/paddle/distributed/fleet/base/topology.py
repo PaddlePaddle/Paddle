@@ -26,7 +26,7 @@ _HYBRID_PARALLEL_GROUP = None
 class ParallelMode:
     """
 
-    There are all the parallel modes currently supported:
+    - There are all the parallel modes currently supported:
         - DATA_PARALLEL: Distribute input data to different devices.
         - TENSOR_PARALLEL: Shards tensors in the network to different devices.
         - PIPELINE_PARALLEL: Place different layers of the network on different devices.

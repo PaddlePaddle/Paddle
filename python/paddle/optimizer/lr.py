@@ -1663,7 +1663,7 @@ class OneCycleLR(LRScheduler):
     Args:
         max_learning_rate (float): The maximum learning rate. It is a python float number. Functionally, it defines the initial learning rate by ``divide_factor`` .
         total_steps (int): Number of total training steps.
-        divide_factor (float): Initial learning rate will be determined by initial_learning_rate = max_learning_rate / divide_factor. Default: 25.
+        divide_factor (float, optional): Initial learning rate will be determined by initial_learning_rate = max_learning_rate / divide_factor. Default: 25.
         end_learning_rate (float, optional): The minimum learning rate during training, it should be much less than initial learning rate.
         phase_pct (float): The percentage of total steps which used to increasing learning rate. Default: 0.3.
         anneal_strategy (str, optional): Strategy of adjusting learning rate.'cos' for cosine annealing, 'linear' for linear annealing. Default: 'cos'.
