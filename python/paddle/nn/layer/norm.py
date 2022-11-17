@@ -1088,9 +1088,9 @@ class SyncBatchNorm(_BatchNormBase):
     - :math:`\beta` : trainable shift parameter vector
 
     Note:
-        If you want to use container to pack your model and has ``SyncBatchNorm`` in the
-        evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of
-        ``list`` to pack the model.
+        If you want to use container to pack your model and has :ref:`api_paddle_nn_SyncBatchNorm` in the
+        evaluation phase, please use :ref:`api_paddle_nn_LayerList` or :ref:`api_paddle_nn_Sequential` instead of
+        :ref:`api_paddle_hub_list` to pack the model.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -1108,8 +1108,8 @@ class SyncBatchNorm(_BatchNormBase):
              have trainable bias parameter. Default: None.
 
     Shapes:
-        input: Tensor that the dimension from 2 to 5.
-        output: Tensor with the same shape as input.
+        - input: Tensor that the dimension from 2 to 5.
+        - output: Tensor with the same shape as input.
 
     Examples:
         .. code-block:: python

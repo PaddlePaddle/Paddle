@@ -720,7 +720,7 @@ def upsample(
     in_d is the depth of the intput tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
-    Supporting resample methods:
+    - Supporting resample methods:
         - 'linear' : Linear interpolation
         - 'bilinear' : Bilinear interpolation
         - 'trilinear' : Trilinear interpolation
@@ -829,8 +829,8 @@ def upsample(
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
-    https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of linear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Linear_interpolation.
 
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
