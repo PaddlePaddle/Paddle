@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
@@ -27,7 +25,6 @@ paddle.enable_static()
 
 
 class TestFillAnyLikeOp(OpTest):
-
     def setUp(self):
         self.init_dtype()
         self.set_mlu()
@@ -56,25 +53,21 @@ class TestFillAnyLikeOp(OpTest):
 
 
 class TestFillAnyLikeOp2(TestFillAnyLikeOp):
-
     def set_value(self):
         self.value = -0.0
 
 
 class TestFillAnyLikeOp3(TestFillAnyLikeOp):
-
     def set_value(self):
         self.value = 1.0
 
 
 class TestFillAnyLikeOp4(TestFillAnyLikeOp):
-
     def set_value(self):
         self.value = 1e-9
 
 
 class TestFillAnyLikeOp5(TestFillAnyLikeOp):
-
     def set_value(self):
         if self.dtype == "float16":
             self.value = 0.05
@@ -83,7 +76,6 @@ class TestFillAnyLikeOp5(TestFillAnyLikeOp):
 
 
 class TestFillAnyLikeOpInt32(TestFillAnyLikeOp):
-
     def init_dtype(self):
         self.dtype = np.int32
 
@@ -92,7 +84,6 @@ class TestFillAnyLikeOpInt32(TestFillAnyLikeOp):
 
 
 class TestFillAnyLikeOpInt64(TestFillAnyLikeOp):
-
     def init_dtype(self):
         self.dtype = np.int64
 
@@ -101,7 +92,6 @@ class TestFillAnyLikeOpInt64(TestFillAnyLikeOp):
 
 
 class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
-
     def init_dtype(self):
         self.dtype = np.float32
 

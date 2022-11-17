@@ -77,7 +77,7 @@ void GatherOpHandle::RunImpl() {
 
   auto &pre_in_value = pre_in_var->Get<phi::SelectedRows>();
   std::vector<int64_t> out_rows;
-  std::vector<Tensor> in_tensors;
+  std::vector<phi::DenseTensor> in_tensors;
 
   // Gather the inputs
   for (auto *in_handle : in_var_handles) {
@@ -121,7 +121,7 @@ void GatherOpHandle::RunImpl() {
   out_dim[0] = static_cast<int64_t>(rows);
   out_value->mutable_value()->Resize(out_dim).mutable_data(
       t_out_p, pre_in_value.value().dtype());
-  Tensor *out_tensor = out_value->mutable_value();
+  phi::DenseTensor *out_tensor = out_value->mutable_value();
 
   // copy
   auto dev_ctx = dev_ctxes_.at(out_var_handle->place());

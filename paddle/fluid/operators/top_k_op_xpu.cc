@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename T>
 class TopkXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -31,15 +31,15 @@ class TopkXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // Get the top k elements of each row of input tensor
-    const auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
-    auto* indices = ctx.Output<Tensor>("Indices");
+    const auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* indices = ctx.Output<phi::DenseTensor>("Indices");
 
     // get k from attr
     int k = static_cast<int>(ctx.Attr<int>("k"));
 
     // get k from input tensor
-    auto* k_t = ctx.Input<Tensor>("K");
+    auto* k_t = ctx.Input<phi::DenseTensor>("K");
     if (k_t) {
       memory::Copy(platform::CPUPlace(),
                    static_cast<void*>(&k),

@@ -36,10 +36,10 @@ set(PRIM_OP_SRCS
     pow_p_op.cc
     max_p_op.cc
     erf_p_op.cc
+    bernoulli_p_op.cc
     abs_p_op.cc
-    cast_p_op.cc)
+    cast_p_op.cc
+    rsqrt_p_op.cc
+    uniform_random_p_op.cc)
 
-cc_test(
-  prim_op_test
-  SRCS prim_op_test.cc ${PRIM_OP_SRCS}
-  DEPS op_registry)
+cc_test_old(prim_op_test SRCS prim_op_test.cc ${PRIM_OP_SRCS} DEPS op_registry)

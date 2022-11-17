@@ -23,8 +23,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class TemporalShiftOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

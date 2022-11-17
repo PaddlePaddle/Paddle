@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -22,7 +20,6 @@ from paddle.fluid.op import Operator
 
 
 class TestFillOp1(OpTest):
-
     def setUp(self):
         self.op_type = "fill"
         val = np.random.random(size=[100, 200])
@@ -31,7 +28,7 @@ class TestFillOp1(OpTest):
             'value': val.flatten().tolist(),
             'shape': [100, 200],
             'dtype': int(core.VarDesc.VarType.FP64),
-            'force_cpu': False
+            'force_cpu': False,
         }
         self.outputs = {'Out': val.astype('float64')}
 
@@ -40,7 +37,6 @@ class TestFillOp1(OpTest):
 
 
 class TestFillOp2(OpTest):
-
     def setUp(self):
         self.op_type = "fill"
         val = np.random.random(size=[100, 200])
@@ -49,7 +45,7 @@ class TestFillOp2(OpTest):
             'value': val.flatten().tolist(),
             'shape': [100, 200],
             'dtype': int(core.VarDesc.VarType.FP64),
-            'force_cpu': True
+            'force_cpu': True,
         }
         self.outputs = {'Out': val.astype('float64')}
 
@@ -58,7 +54,6 @@ class TestFillOp2(OpTest):
 
 
 class TestFillOp3(unittest.TestCase):
-
     def check_with_place(self, place, f_cpu):
         scope = core.Scope()
         # create Out Variable
@@ -66,12 +61,14 @@ class TestFillOp3(unittest.TestCase):
 
         # create and run fill_op operator
         val = np.random.random(size=[300, 200])
-        fill_op = Operator("fill",
-                           value=val.flatten(),
-                           shape=[300, 200],
-                           dtype=int(core.VarDesc.VarType.FP32),
-                           force_cpu=f_cpu,
-                           Out='Out')
+        fill_op = Operator(
+            "fill",
+            value=val.flatten(),
+            shape=[300, 200],
+            dtype=int(core.VarDesc.VarType.FP32),
+            force_cpu=f_cpu,
+            Out='Out',
+        )
         fill_op.run(scope, place)
 
         # get result from Out

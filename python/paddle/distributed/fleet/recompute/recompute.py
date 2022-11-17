@@ -21,7 +21,6 @@ from paddle.fluid import framework
 import contextlib
 from paddle.fluid.framework import in_dygraph_mode
 
-import logging
 from ..utils.log_util import logger
 
 __all__ = []
@@ -41,16 +40,23 @@ def detach_variable(inputs):
 
 
 def check_recompute_necessary(inputs):
-    if not any(input_.stop_gradient == False for input_ in inputs
-               if isinstance(input_, (core.eager.Tensor, paddle.Tensor))):
+    if not any(
+        not input_.stop_gradient
+        for input_ in inputs
+        if isinstance(input_, (core.eager.Tensor, paddle.Tensor))
+    ):
         logger.warning(
             "[Recompute]: None of the inputs to current recompute block need grad, "
-            "therefore there is NO need to recompute this block in backward !")
+            "therefore there is NO need to recompute this block in backward !"
+        )
 
 
 @contextlib.contextmanager
 def swith_rng_state_tracker(rng_state, tracker):
-    from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
+    from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+        get_rng_state_tracker,
+    )
+
     orig_cuda_rng_state = paddle.get_cuda_rng_state()
     orig_cuda_rng_tracker = get_rng_state_tracker().get_states_tracker()
 
@@ -64,10 +70,11 @@ def swith_rng_state_tracker(rng_state, tracker):
 
 
 class LegacyRecomputeFunction(LegacyPyLayer):
-
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args):
-        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+            get_rng_state_tracker,
+        )
 
         # store for recomputing
         ctx.run_function = run_function
@@ -96,30 +103,37 @@ class LegacyRecomputeFunction(LegacyPyLayer):
             cur_device = paddle.get_device()
             if 'gpu:' not in cur_device:
                 raise RuntimeError(
-                    "Recompute with RNG perserve is not support current device: {}."
-                    .format(cur_device))
+                    "Recompute with RNG perserve is not support current device: {}.".format(
+                        cur_device
+                    )
+                )
             ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
-            ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
-            ).get_states_tracker()
+            ctx.fwd_cuda_rng_state_tracker = (
+                get_rng_state_tracker().get_states_tracker()
+            )
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
-        ctx.is_fw_autocast = False if tracer._amp_level == core.AmpLevel.O0 else True
+        ctx.is_fw_autocast = (
+            False if tracer._amp_level == core.AmpLevel.O0 else True
+        )
         if tracer._amp_level == core.AmpLevel.O2:
             ctx.amp_level = 'O2'
         elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
             ctx.amp_level = 'O1'
         else:
-            raise ValueError("unsupported amp level: {}".format(
-                tracer._amp_level))
+            raise ValueError(
+                "unsupported amp level: {}".format(tracer._amp_level)
+            )
 
         if tracer._amp_dtype == 'float16':
             ctx.amp_dtype = 'float16'
         elif tracer._amp_dtype in ('bfloat16', 'float32'):
             ctx.amp_dtype = 'bfloat16'
         else:
-            raise ValueError("unsupported amp dtype: {}".format(
-                tracer._amp_dtype))
+            raise ValueError(
+                "unsupported amp dtype: {}".format(tracer._amp_dtype)
+            )
 
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
@@ -129,7 +143,6 @@ class LegacyRecomputeFunction(LegacyPyLayer):
 
     @staticmethod
     def backward(ctx, *args):
-        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         with paddle.fluid.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 
@@ -147,27 +160,31 @@ class LegacyRecomputeFunction(LegacyPyLayer):
             # NOTE support AMP
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
-                with swith_rng_state_tracker(ctx.fw_cuda_rng_state,
-                                             ctx.fwd_cuda_rng_state_tracker):
+                with swith_rng_state_tracker(
+                    ctx.fw_cuda_rng_state, ctx.fwd_cuda_rng_state_tracker
+                ):
                     with paddle.amp.auto_cast(
-                            enable=ctx.is_fw_autocast,
-                            custom_white_list=ctx.amp_white_list,
-                            custom_black_list=ctx.amp_black_list,
-                            level=ctx.amp_level,
-                            dtype=ctx.amp_dtype):
+                        enable=ctx.is_fw_autocast,
+                        custom_white_list=ctx.amp_white_list,
+                        custom_black_list=ctx.amp_black_list,
+                        level=ctx.amp_level,
+                        dtype=ctx.amp_dtype,
+                    ):
                         detached_inputs = detach_variable(tuple(inputs))
                         outputs = ctx.run_function(*detached_inputs)
             else:
-                with paddle.amp.auto_cast(enable=ctx.is_fw_autocast,
-                                          custom_white_list=ctx.amp_white_list,
-                                          custom_black_list=ctx.amp_black_list,
-                                          level=ctx.amp_level,
-                                          dtype=ctx.amp_dtype):
+                with paddle.amp.auto_cast(
+                    enable=ctx.is_fw_autocast,
+                    custom_white_list=ctx.amp_white_list,
+                    custom_black_list=ctx.amp_black_list,
+                    level=ctx.amp_level,
+                    dtype=ctx.amp_dtype,
+                ):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 
             if isinstance(outputs, core.VarBase):
-                outputs = (outputs, )
+                outputs = (outputs,)
             assert len(outputs) == len(args)
 
             # run backward() with only tensor that requires grad
@@ -178,8 +195,10 @@ class LegacyRecomputeFunction(LegacyPyLayer):
             # the following backward_inputs_with_grad is used to avoid this case.
             backward_inputs_with_grad = []
             for i in range(len(outputs)):
-                if isinstance(outputs[i],
-                              core.VarBase) and not outputs[i].stop_gradient:
+                if (
+                    isinstance(outputs[i], core.VarBase)
+                    and not outputs[i].stop_gradient
+                ):
                     forward_outputs_with_grad.append(outputs[i])
                     backward_inputs_with_grad.append(args[i])
 
@@ -190,19 +209,24 @@ class LegacyRecomputeFunction(LegacyPyLayer):
 
             # actually backward
             with paddle.amp.auto_cast(enable=False):
-                paddle.autograd.backward(forward_outputs_with_grad,
-                                         backward_inputs_with_grad)
+                paddle.autograd.backward(
+                    forward_outputs_with_grad, backward_inputs_with_grad
+                )
 
-            grads = list(inp._grad_ivar() for inp in detached_inputs
-                         if isinstance(inp, core.VarBase))
+            grads = list(
+                inp._grad_ivar()
+                for inp in detached_inputs
+                if isinstance(inp, core.VarBase)
+            )
             return grads
 
 
 class RecomputeFunction(PyLayer):
-
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args, **kwargs):
-        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+            get_rng_state_tracker,
+        )
 
         # store for recomputing
         ctx.run_function = run_function
@@ -232,30 +256,37 @@ class RecomputeFunction(PyLayer):
             cur_device = paddle.get_device()
             if 'gpu:' not in cur_device:
                 raise RuntimeError(
-                    "Recompute with RNG perserve is not support current device: {}."
-                    .format(cur_device))
+                    "Recompute with RNG perserve is not support current device: {}.".format(
+                        cur_device
+                    )
+                )
             ctx.fw_cuda_rng_state = paddle.get_cuda_rng_state()
-            ctx.fwd_cuda_rng_state_tracker = get_rng_state_tracker(
-            ).get_states_tracker()
+            ctx.fwd_cuda_rng_state_tracker = (
+                get_rng_state_tracker().get_states_tracker()
+            )
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
-        ctx.is_fw_autocast = False if tracer._amp_level == core.AmpLevel.O0 else True
+        ctx.is_fw_autocast = (
+            False if tracer._amp_level == core.AmpLevel.O0 else True
+        )
         if tracer._amp_level == core.AmpLevel.O2:
             ctx.amp_level = 'O2'
         elif tracer._amp_level in (core.AmpLevel.O1, core.AmpLevel.O0):
             ctx.amp_level = 'O1'
         else:
-            raise ValueError("unsupported amp level: {}".format(
-                tracer._amp_level))
+            raise ValueError(
+                "unsupported amp level: {}".format(tracer._amp_level)
+            )
 
         if tracer._amp_dtype == 'float16':
             ctx.amp_dtype = 'float16'
         elif tracer._amp_dtype in ('bfloat16', 'float32'):
             ctx.amp_dtype = 'bfloat16'
         else:
-            raise ValueError("unsupported amp dtype: {}".format(
-                tracer._amp_dtype))
+            raise ValueError(
+                "unsupported amp dtype: {}".format(tracer._amp_dtype)
+            )
 
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
@@ -265,7 +296,6 @@ class RecomputeFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
-        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         with paddle.fluid.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 
@@ -283,28 +313,33 @@ class RecomputeFunction(PyLayer):
             # NOTE support AMP
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
-                with swith_rng_state_tracker(ctx.fw_cuda_rng_state,
-                                             ctx.fwd_cuda_rng_state_tracker):
+                with swith_rng_state_tracker(
+                    ctx.fw_cuda_rng_state, ctx.fwd_cuda_rng_state_tracker
+                ):
                     with paddle.amp.auto_cast(
-                            enable=ctx.is_fw_autocast,
-                            custom_white_list=ctx.amp_white_list,
-                            custom_black_list=ctx.amp_black_list,
-                            level=ctx.amp_level,
-                            dtype=ctx.amp_dtype):
+                        enable=ctx.is_fw_autocast,
+                        custom_white_list=ctx.amp_white_list,
+                        custom_black_list=ctx.amp_black_list,
+                        level=ctx.amp_level,
+                        dtype=ctx.amp_dtype,
+                    ):
                         detached_inputs = detach_variable(tuple(inputs))
-                        outputs = ctx.run_function(*detached_inputs,
-                                                   **ctx.kwargs)
+                        outputs = ctx.run_function(
+                            *detached_inputs, **ctx.kwargs
+                        )
             else:
-                with paddle.amp.auto_cast(enable=ctx.is_fw_autocast,
-                                          custom_white_list=ctx.amp_white_list,
-                                          custom_black_list=ctx.amp_black_list,
-                                          level=ctx.amp_level,
-                                          dtype=ctx.amp_dtype):
+                with paddle.amp.auto_cast(
+                    enable=ctx.is_fw_autocast,
+                    custom_white_list=ctx.amp_white_list,
+                    custom_black_list=ctx.amp_black_list,
+                    level=ctx.amp_level,
+                    dtype=ctx.amp_dtype,
+                ):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
 
             if isinstance(outputs, (core.VarBase, core.eager.Tensor)):
-                outputs = (outputs, )
+                outputs = (outputs,)
             assert len(outputs) == len(args)
 
             # run backward() with only tensor that requires grad
@@ -315,10 +350,10 @@ class RecomputeFunction(PyLayer):
             # the following backward_inputs_with_grad is used to avoid this case.
             backward_inputs_with_grad = []
             for i in range(len(outputs)):
-                if isinstance(
-                        outputs[i],
-                    (core.VarBase,
-                     core.eager.Tensor)) and not outputs[i].stop_gradient:
+                if (
+                    isinstance(outputs[i], (core.VarBase, core.eager.Tensor))
+                    and not outputs[i].stop_gradient
+                ):
                     forward_outputs_with_grad.append(outputs[i])
                     backward_inputs_with_grad.append(args[i])
 
@@ -329,17 +364,22 @@ class RecomputeFunction(PyLayer):
 
             # actually backward
             with paddle.amp.auto_cast(enable=False):
-                paddle.autograd.backward(forward_outputs_with_grad,
-                                         backward_inputs_with_grad)
+                paddle.autograd.backward(
+                    forward_outputs_with_grad, backward_inputs_with_grad
+                )
 
             if in_dygraph_mode():
                 grads = tuple(
-                    inp._grad_ivar() for inp in detached_inputs
-                    if isinstance(inp, (core.VarBase, core.eager.Tensor)))
+                    inp._grad_ivar()
+                    for inp in detached_inputs
+                    if isinstance(inp, (core.VarBase, core.eager.Tensor))
+                )
             else:
                 grads = list(
-                    inp._grad_ivar() for inp in detached_inputs
-                    if isinstance(inp, (core.VarBase, core.eager.Tensor)))
+                    inp._grad_ivar()
+                    for inp in detached_inputs
+                    if isinstance(inp, (core.VarBase, core.eager.Tensor))
+                )
             return grads
 
 
@@ -363,13 +403,10 @@ def recompute(function, *args, **kwargs):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
             from paddle.distributed.fleet.utils import recompute
             import random
-
             # required: gpu
-
             def get_fc_block(block_idx, input_size, is_last=False):
                 block_name = "block_" + str(block_idx)
                 block = paddle.nn.Sequential(
@@ -391,10 +428,7 @@ def recompute(function, *args, **kwargs):
                         block_name + "_fc_2",
                         paddle.nn.Linear(input_size, input_size, bias_attr=False)
                     )
-
                 return block
-
-
             class Naive_fc_net(paddle.nn.Layer):
                 def __init__(self, input_size=10,
                             recompute_blocks=[1, 3],
@@ -408,7 +442,6 @@ def recompute(function, *args, **kwargs):
                     self.runfunc3 = get_fc_block(3, input_size, is_last=False)
                     self.runfunc4 = get_fc_block(4, input_size, is_last=True)
                     self.total_func = [self.runfunc0, self.runfunc1, self.runfunc2, self.runfunc3, self.runfunc4]
-
                 def forward(self, inputs):
                     nums = len(self.total_func)
                     for i in range(nums):
@@ -417,15 +450,12 @@ def recompute(function, *args, **kwargs):
                         else:
                             inputs = self.total_func[i](inputs)
                     return inputs
-
             def run_model(cuda_state, recompute_block=[], recompute_kwargs={}):
                 gen = paddle.seed(10)
                 gen.manual_seed(10)
-                np.random.seed(10)
                 random.seed(10)
                 if cuda_state:
                     paddle.set_cuda_rng_state(cuda_state)
-
                 batch_size, input_size = 1, 10
                 model = Naive_fc_net(
                     input_size,
@@ -436,29 +466,24 @@ def recompute(function, *args, **kwargs):
                 param_ = []
                 grad_ = []
                 for _ in range(5):
-                    x_data = np.random.randn(batch_size, input_size).astype(np.float32)
-                    x = paddle.to_tensor(x_data)
+                    x = paddle.rand(shape=[batch_size, input_size], dtype="float32")
                     y_pred = model(x)
                     loss = y_pred.mean()
-                    loss_.append(np.asarray(loss).tolist())
+                    loss_.append(loss.item())
                     loss.backward()
                     optimizer.step()
-                    param_.append(np.asarray(model.parameters()[9]).tolist())
-                    grad_.append(np.asarray(model.parameters()[3]._grad_ivar()).tolist())
+                    param_.append(model.parameters()[9])
+                    grad_.append(model.parameters()[3]._grad_ivar())
                     optimizer.clear_grad()
-
                 return loss_, param_, grad_
-
             cuda_state = paddle.get_cuda_rng_state()
             # without recompute
             loss_ref, param_ref, grad_ref = run_model(
                 cuda_state, recompute_block=[]
             )
-
             loss, param, grad = run_model(cuda_state, recompute_block=[1, 2])
             print("normal_loss: {}, recompute_loss: {}".format(loss_ref, loss))
             # The result of the recompute_loss should be the same as the normal_loss.
-
     """
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
     preserve = kwargs.pop('preserve_rng_state', True)
@@ -497,7 +522,6 @@ def recompute_sequential(ctx, functions, *args, **kwargs):
     preserve_rng_state = ctx.get('preserve_rng_state', True)
 
     def _run_func(begin, end, funcs):
-
         def do_run(input):
             for i in range(begin, end + 1):
                 input = funcs[i](input)
@@ -513,8 +537,10 @@ def recompute_sequential(ctx, functions, *args, **kwargs):
     end = -1
     for begin in range(0, segment_size * (segments - 1), segment_size):
         end = begin + segment_size - 1
-        args = recompute(_run_func(begin, end, functions),
-                         *args,
-                         preserve_rng_state=preserve_rng_state,
-                         **kwargs)
+        args = recompute(
+            _run_func(begin, end, functions),
+            *args,
+            preserve_rng_state=preserve_rng_state,
+            **kwargs
+        )
     return _run_func(end + 1, len(functions) - 1, functions)(args)

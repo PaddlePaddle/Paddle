@@ -17,17 +17,14 @@ from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
 
 class TrtConvertMishTest(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input(batch, dim1, dim2, dim3):
             shape = [batch]
             if dim1 != 0:
@@ -52,35 +49,36 @@ class TrtConvertMishTest(TrtLayerAutoScanTest):
                             if dim1 == 0 and dim2 == 0 and dim3 != 0:
                                 continue
 
-                            ops_config = [{
-                                "op_type": "mish",
-                                "op_inputs": {
-                                    "X": ["input_data"]
-                                },
-                                "op_outputs": {
-                                    "Out": ["mish_output_data"]
-                                },
-                                "op_attrs": {
-                                    "threshold": thre
+                            ops_config = [
+                                {
+                                    "op_type": "mish",
+                                    "op_inputs": {"X": ["input_data"]},
+                                    "op_outputs": {"Out": ["mish_output_data"]},
+                                    "op_attrs": {"threshold": thre},
                                 }
-                            }]
+                            ]
 
                             ops = self.generate_op_config(ops_config)
                             program_config = ProgramConfig(
                                 ops=ops,
                                 weights={},
                                 inputs={
-                                    "input_data":
-                                    TensorConfig(data_gen=partial(
-                                        generate_input, batch, dim1, dim2,
-                                        dim3))
+                                    "input_data": TensorConfig(
+                                        data_gen=partial(
+                                            generate_input,
+                                            batch,
+                                            dim1,
+                                            dim2,
+                                            dim3,
+                                        )
+                                    )
                                 },
-                                outputs=["mish_output_data"])
+                                outputs=["mish_output_data"],
+                            )
 
                             yield program_config
 
     def sample_predictor_configs(self, program_config):
-
         def generate_dynamic_shape(attrs):
             if self.dim1 == 0:
                 self.dynamic_shape.min_input_shape = {
@@ -140,29 +138,35 @@ class TrtConvertMishTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-3, 1e-3)
+            attrs, False
+        ), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-3, 1e-3)
+            attrs, True
+        ), (1e-3, 1e-3)
 
     def add_skip_trt_case(self):
-
         def teller1(program_config, predictor_config):
             if self.dim1 == 0 and self.dim2 == 0 and self.dim3 == 0:
                 return True
             return False
 
-        self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,
-                           "Trt does not support 1-dimensional input.")
+        self.add_skip_case(
+            teller1,
+            SkipReasons.TRT_NOT_SUPPORT,
+            "Trt does not support 1-dimensional input.",
+        )
 
     def test(self):
         self.add_skip_trt_case()

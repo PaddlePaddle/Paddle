@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import paddle
 import os
@@ -26,16 +25,18 @@ paddle.enable_static()
 
 
 class TestDistFleetHeterProgram(unittest.TestCase):
-
     def build_role(self):
         environs = {}
         environs[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36012,127.0.0.1:36013"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36012,127.0.0.1:36013"
         environs["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36014,127.0.0.1:36015"
         environs[
-            "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"] = "127.0.0.1:36016,127.0.0.1:36017"
+            "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"
+        ] = "127.0.0.1:36016,127.0.0.1:36017"
         environs[
-            "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"] = "127.0.0.1:36014,127.0.0.1:36015"
+            "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"
+        ] = "127.0.0.1:36014,127.0.0.1:36015"
         environs["PADDLE_HETER_TRAINER_DEVICE"] = "gpu"
         environs["TRAINING_ROLE"] = "HETER_TRAINER"
         environs["STAGE_ID"] = 2
@@ -59,20 +60,20 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         self.strategy.a_sync = True
         self.strategy.a_sync_configs = {
             "launch_barrier": False,
-            "heter_worker_device_guard": "gpu"
+            "heter_worker_device_guard": "gpu",
         }
         return self.strategy
 
     def build_input(self):
-        dense_input = fluid.layers.data(name="dense_input",
-                                        shape=[10],
-                                        dtype="float32")
+        dense_input = fluid.layers.data(
+            name="dense_input", shape=[10], dtype="float32"
+        )
 
         sparse_input_ids = [
-            fluid.layers.data(name="C" + str(i),
-                              shape=[1],
-                              lod_level=1,
-                              dtype="int64") for i in range(1, 27)
+            fluid.layers.data(
+                name="C" + str(i), shape=[1], lod_level=1, dtype="int64"
+            )
+            for i in range(1, 27)
         ]
 
         label = fluid.layers.data(name="label", shape=[1], dtype="float32")
@@ -81,7 +82,6 @@ class TestDistFleetHeterProgram(unittest.TestCase):
         return inputs
 
     def build_net(self, inputs):
-
         def embedding_layer(input):
             return fluid.layers.embedding(
                 input=input,
@@ -89,7 +89,8 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 size=[100001, 10],
                 param_attr=fluid.ParamAttr(
                     name="SparseFeatFactors",
-                    initializer=fluid.initializer.Uniform()),
+                    initializer=fluid.initializer.Uniform(),
+                ),
             )
 
         sparse_embed_seq = list(map(embedding_layer, inputs[1:-1]))
@@ -101,35 +102,50 @@ class TestDistFleetHeterProgram(unittest.TestCase):
                 input=concated,
                 size=400,
                 act="relu",
-                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
-                    scale=1 / math.sqrt(concated.shape[1]))),
-                name="fc1")
+                param_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.Normal(
+                        scale=1 / math.sqrt(concated.shape[1])
+                    )
+                ),
+                name="fc1",
+            )
 
         with fluid.device_guard("cpu"):
             fc2 = fluid.layers.fc(
                 input=fc1,
                 size=400,
                 act="relu",
-                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
-                    scale=1 / math.sqrt(fc1.shape[1]))),
-                name="fc2")
+                param_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.Normal(
+                        scale=1 / math.sqrt(fc1.shape[1])
+                    )
+                ),
+                name="fc2",
+            )
 
         with fluid.device_guard("gpu"):
             fc3 = fluid.layers.fc(
                 input=fc2,
                 size=400,
                 act="relu",
-                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
-                    scale=1 / math.sqrt(fc2.shape[1]))),
-                name="fc3")
+                param_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.Normal(
+                        scale=1 / math.sqrt(fc2.shape[1])
+                    )
+                ),
+                name="fc3",
+            )
 
         with fluid.device_guard("cpu"):
             predict = fluid.layers.fc(
                 input=fc3,
                 size=2,
                 act="softmax",
-                param_attr=fluid.ParamAttr(initializer=fluid.initializer.Normal(
-                    scale=1 / math.sqrt(fc3.shape[1]))),
+                param_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.Normal(
+                        scale=1 / math.sqrt(fc3.shape[1])
+                    )
+                ),
             )
 
         with fluid.device_guard("gpu"):

@@ -29,7 +29,7 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     auto out_dims = out->dims();
     auto numel = out->numel();
 
@@ -75,7 +75,7 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup *pg = map->get(rid);
-      auto task = pg->Recv_Partial(*out, peer, offset, recv_numel);
+      auto task = pg->Recv(out, peer, offset, recv_numel, /*sync_op*/ true);
       task->Wait();
     } else {
       gpuStream_t stream = nullptr;

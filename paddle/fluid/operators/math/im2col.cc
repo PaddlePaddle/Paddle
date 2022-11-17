@@ -35,11 +35,11 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                     T> {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::Tensor& im,
+                  const phi::DenseTensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  framework::Tensor* col,
+                  phi::DenseTensor* col,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im.dims().size(),
                       3,
@@ -82,11 +82,11 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                     T> {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::Tensor& col,
+                  const phi::DenseTensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  framework::Tensor* im,
+                  phi::DenseTensor* im,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im->dims().size(),
                       3,
@@ -184,11 +184,11 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                     T> {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::Tensor& im,
+                  const phi::DenseTensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  framework::Tensor* col,
+                  phi::DenseTensor* col,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im.dims().size(),
                       3,
@@ -259,11 +259,11 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                     T> {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::Tensor& col,
+                  const phi::DenseTensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding,
-                  framework::Tensor* im,
+                  phi::DenseTensor* im,
                   const DataLayout data_layout) {
     PADDLE_ENFORCE_EQ(im->dims().size(),
                       3,

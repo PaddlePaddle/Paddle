@@ -56,11 +56,11 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
     PADDLE_THROW(platform::errors::Unimplemented(
         "GPU shuffle_batch is not supported on Windows yet"));
 #else
-    auto *x = ctx.Input<framework::Tensor>("X");
-    auto *seed = ctx.Input<framework::Tensor>("Seed");
-    auto *out = ctx.Output<framework::Tensor>("Out");
-    auto *shuffleidx = ctx.Output<framework::Tensor>("ShuffleIdx");
-    auto *seed_out = ctx.Output<framework::Tensor>("SeedOut");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *seed = ctx.Input<phi::DenseTensor>("Seed");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
+    auto *shuffleidx = ctx.Output<phi::DenseTensor>("ShuffleIdx");
+    auto *seed_out = ctx.Output<phi::DenseTensor>("SeedOut");
 
     int64_t x_embed_size = x->dims()[x->dims().size() - 1];
     int64_t elem_size = 1;
@@ -76,7 +76,7 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
         // NOTE: We have overwritten GetKernelTypeForVar, so seed_place would
         // not be CUDAPlace in practice. This case would only happen in Python
         // op_test framework.
-        framework::Tensor tmp_tensor;
+        phi::DenseTensor tmp_tensor;
         framework::TensorCopySync(*seed, platform::CPUPlace(), &tmp_tensor);
         seed_int = *(tmp_tensor.data<int64_t>());
       } else {
@@ -126,9 +126,9 @@ class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
         "GPU shuffle_batch_grad is not supported on Windows yet"));
 #else
     const auto *out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    const auto *shuffleidx = ctx.Input<framework::Tensor>("ShuffleIdx");
-    auto *x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    const auto *shuffleidx = ctx.Input<phi::DenseTensor>("ShuffleIdx");
+    auto *x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     const auto *out_grad_data = out_grad->data<T>();
     const auto *shuffleidx_data = shuffleidx->data<int64_t>();

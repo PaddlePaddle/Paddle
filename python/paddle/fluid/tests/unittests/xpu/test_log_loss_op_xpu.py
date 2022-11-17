@@ -12,18 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
-import paddle.fluid.core as core
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 
 
 def sigmoid_array(x):
@@ -31,7 +26,6 @@ def sigmoid_array(x):
 
 
 class TestXPULogLossOp(OpTest):
-
     def setUp(self):
         self.op_type = 'log_loss'
         samples_num = 100
@@ -46,8 +40,9 @@ class TestXPULogLossOp(OpTest):
         }
 
         self.attrs = {'epsilon': epsilon}
-        loss = -labels * np.log(predicted + epsilon) - (
-            1 - labels) * np.log(1 - predicted + epsilon)
+        loss = -labels * np.log(predicted + epsilon) - (1 - labels) * np.log(
+            1 - predicted + epsilon
+        )
         self.outputs = {'Loss': loss}
 
     def test_check_output(self):

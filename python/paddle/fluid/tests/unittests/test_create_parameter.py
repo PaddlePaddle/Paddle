@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os, shutil
 import unittest
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid import ParamAttr, initializer
 import paddle
 
 
 class TestCreateParameterError(unittest.TestCase):
-
     def func_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -38,18 +35,18 @@ class TestCreateParameterError(unittest.TestCase):
             self.assertRaises(TypeError, test_shape_item)
 
             def test_attr():
-                fluid.layers.create_parameter([1, 2, 3],
-                                              np.float32,
-                                              attr=np.array(
-                                                  [i for i in range(6)]))
+                fluid.layers.create_parameter(
+                    [1, 2, 3], np.float32, attr=np.array([i for i in range(6)])
+                )
 
             self.assertRaises(TypeError, test_attr)
 
             def test_default_initializer():
-                fluid.layers.create_parameter([1, 2, 3],
-                                              np.float32,
-                                              default_initializer=np.array(
-                                                  [i for i in range(6)]))
+                fluid.layers.create_parameter(
+                    [1, 2, 3],
+                    np.float32,
+                    default_initializer=np.array([i for i in range(6)]),
+                )
 
             self.assertRaises(TypeError, test_default_initializer)
 

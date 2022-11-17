@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -35,10 +33,10 @@ def huber_loss_forward(val, delta):
         return delta * (abs_val - 0.5 * delta)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+@unittest.skipIf(
+    not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
+)
 class TestHuberLossOp(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = 'huber_loss'
@@ -52,11 +50,11 @@ class TestHuberLossOp(OpTest):
 
     def set_inputs(self):
         shape = self.set_shape()
-        x = np.random.uniform(0, 1., shape).astype(self.dtype)
-        y = np.random.uniform(0, 1., shape).astype(self.dtype)
+        x = np.random.uniform(0, 1.0, shape).astype(self.dtype)
+        y = np.random.uniform(0, 1.0, shape).astype(self.dtype)
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(y),
         }
 
     def set_attrs(self):
@@ -66,8 +64,9 @@ class TestHuberLossOp(OpTest):
         delta = self.attrs['delta']
         shape = self.set_shape()
         residual = self.inputs['Y'] - self.inputs['X']
-        loss = np.vectorize(huber_loss_forward)(residual,
-                                                delta).astype(self.dtype)
+        loss = np.vectorize(huber_loss_forward)(residual, delta).astype(
+            self.dtype
+        )
         self.outputs = {'Residual': residual, 'Out': loss.reshape(shape)}
 
     def set_shape(self):
@@ -86,46 +85,48 @@ class TestHuberLossOp(OpTest):
         self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        self.check_grad_with_place(self.place, ['Y'],
-                                   'Out',
-                                   max_relative_error=0.008,
-                                   no_grad_set=set("residual"))
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            max_relative_error=0.008,
+            no_grad_set=set("residual"),
+        )
 
     def test_check_grad_ingore_y(self):
-        self.check_grad_with_place(self.place, ['X'],
-                                   'Out',
-                                   max_relative_error=0.008,
-                                   no_grad_set=set('residual'))
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            max_relative_error=0.008,
+            no_grad_set=set('residual'),
+        )
 
 
 def TestHuberLossOp1(TestHuberLossOp):
-
     def set_shape(self):
-        return (64)
+        return 64
 
 
 def TestHuberLossOp2(TestHuberLossOp):
-
     def set_shape(self):
         return (6, 6)
 
 
 def TestHuberLossOp3(TestHuberLossOp):
-
     def set_shape(self):
         return (6, 6, 1)
 
 
 def TestHuberLossOpFP16(TestHuberLossOp):
-
     def init_dtype(self):
         self.dtype = np.float16
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+@unittest.skipIf(
+    not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
+)
 class TestHuberLossOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input and label must be Variable
@@ -140,10 +141,12 @@ class TestHuberLossOpError(unittest.TestCase):
             # the dtype of input and label must be float32 or float64
             xw2 = fluid.data(name='xw2', shape=[None, 6], dtype="int32")
             lw2 = fluid.data(name='lw2', shape=[None, 6], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.huber_loss, xw2, lr,
-                              delta)
-            self.assertRaises(TypeError, fluid.layers.huber_loss, xr, lw2,
-                              delta)
+            self.assertRaises(
+                TypeError, fluid.layers.huber_loss, xw2, lr, delta
+            )
+            self.assertRaises(
+                TypeError, fluid.layers.huber_loss, xr, lw2, delta
+            )
 
 
 if __name__ == '__main__':

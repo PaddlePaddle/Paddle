@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestDygraphFleetApi(TestMultipleGpus):
-
     def test_dygraph_fleet_api(self):
         self.run_mnist_2gpu('dygraph_fleet_api.py')
 

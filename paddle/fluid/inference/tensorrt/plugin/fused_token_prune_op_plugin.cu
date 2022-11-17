@@ -469,7 +469,7 @@ inline void enqueueImpl(const nvinfer1::PluginTensorDesc* input_desc,
       sizeof(T) * 8,
       stream));
   int64_t temp_size = temp_storage_bytes;
-  framework::Tensor temp_storage;
+  phi::DenseTensor temp_storage;
   auto* temp_storage_data = temp_storage.mutable_data<uint8_t>(
       {temp_size}, platform::CUDAPlace(device_id));
 

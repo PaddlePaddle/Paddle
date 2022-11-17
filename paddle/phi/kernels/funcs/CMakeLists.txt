@@ -38,3 +38,11 @@ else()
     math_library(fft DEPS dense_tensor pocketfft)
   endif()
 endif()
+
+if(WITH_MKLDNN)
+  math_library(selected_rows_functor DEPS selected_rows_utils math_function
+               blas mixed_vector)
+else()
+  math_library(selected_rows_functor DEPS selected_rows_utils math_function
+               blas mixed_vector)
+endif()

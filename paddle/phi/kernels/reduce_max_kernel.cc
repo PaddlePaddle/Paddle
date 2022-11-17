@@ -48,7 +48,7 @@ PD_REGISTER_KERNEL(max, KPS, ALL_LAYOUT, phi::MaxKernel, float) {}
 
 #if defined(PADDLE_WITH_MKLDNN)
 PD_REGISTER_KERNEL(
-    max, OneDNN, ALL_LAYOUT, phi::MaxKernel, float, phi::dtype::bfloat16) {}
+    max, OneDNN, ONEDNN, phi::MaxKernel, float, phi::dtype::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)

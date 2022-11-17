@@ -28,8 +28,8 @@ template <typename T>
 class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto params = ctx.MultiInput<framework::Tensor>("Param");
-    auto params_out = ctx.MultiOutput<framework::Tensor>("ParamOut");
+    auto params = ctx.MultiInput<phi::DenseTensor>("Param");
+    auto params_out = ctx.MultiOutput<phi::DenseTensor>("ParamOut");
     size_t n = params.size();
     PADDLE_ENFORCE_EQ(n,
                       params_out.size(),
@@ -47,7 +47,7 @@ class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
                             "must be the same Tensors."));
     }
 
-    auto grads = ctx.MultiInput<framework::Tensor>("Grad");
+    auto grads = ctx.MultiInput<phi::DenseTensor>("Grad");
     PADDLE_ENFORCE_EQ(
         n,
         grads.size(),
@@ -57,7 +57,7 @@ class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
             grads.size(),
             n));
 
-    auto velocitys = ctx.MultiInput<framework::Tensor>("Velocity");
+    auto velocitys = ctx.MultiInput<phi::DenseTensor>("Velocity");
     PADDLE_ENFORCE_EQ(n,
                       velocitys.size(),
                       platform::errors::InvalidArgument(
@@ -67,7 +67,7 @@ class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
                           velocitys.size(),
                           n));
 
-    auto velocitys_out = ctx.MultiOutput<framework::Tensor>("VelocityOut");
+    auto velocitys_out = ctx.MultiOutput<phi::DenseTensor>("VelocityOut");
     PADDLE_ENFORCE_EQ(
         n,
         velocitys_out.size(),
@@ -86,7 +86,7 @@ class NPUMergedMomentumOpKernel : public framework::OpKernel<T> {
     }
 
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
-    auto lrs = ctx.MultiInput<framework::Tensor>("LearningRate");
+    auto lrs = ctx.MultiInput<phi::DenseTensor>("LearningRate");
     if (lrs.size() != 1) {
       PADDLE_ENFORCE_EQ(
           n,

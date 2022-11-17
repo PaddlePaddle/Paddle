@@ -19,7 +19,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 namespace dynload = platform::dynload;

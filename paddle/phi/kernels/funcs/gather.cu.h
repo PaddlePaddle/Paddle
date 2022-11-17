@@ -18,9 +18,8 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memcpy.h"
 // TODO(paddle-dev): move gpu_primitives.h to phi
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -113,7 +112,7 @@ void GPUGather(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * index_size;
   dim3 grid = dim3((n + block - 1) / block);
-  paddle::platform::LimitGridDim(ctx, &grid);
+  phi::backends::gpu::LimitGridDim(ctx, &grid);
 
   GatherCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
       p_src, p_index, p_output, index_size, slice_size);
@@ -155,7 +154,7 @@ void GPUGatherNd(const phi::GPUContext& ctx,
   int block = 512;
   int64_t n = slice_size * remain_numel;
   dim3 grid = dim3((n + block - 1) / block);
-  paddle::platform::LimitGridDim(ctx, &grid);
+  phi::backends::gpu::LimitGridDim(ctx, &grid);
 
   GatherNdCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(p_input,
                                                                   g_input_dims,
@@ -218,7 +217,7 @@ __global__ void GatherGradGPUKernel(const T* input,
     int64_t out_index =
         inner_dim_index * (outer_dim_size * out_index_dim_size) +
         index[index_dim_index] * outer_dim_size + out_dim_index;
-    paddle::platform::CudaAtomicAdd(out + out_index, *(input + idx));
+    phi::CudaAtomicAdd(out + out_index, *(input + idx));
   }
 }
 

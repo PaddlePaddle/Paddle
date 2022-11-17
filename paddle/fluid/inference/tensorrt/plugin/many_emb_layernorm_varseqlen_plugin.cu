@@ -19,7 +19,6 @@
 #include <cstring>
 #include <vector>
 #include "NvInfer.h"
-#include "common/serialize.h"
 
 namespace paddle {
 namespace inference {
@@ -38,8 +37,8 @@ constexpr size_t xmmasM384 = 24;
 constexpr size_t packedMaskSize128 = xmmasM128 * threadsPerCta128;
 constexpr size_t packedMaskSize256 = xmmasM256 * threadsPerCta256;
 constexpr size_t packedMaskSize384 = xmmasM384 * threadsPerCta384;
-char const* EMB_LAYER_NORM_VAR_SEQLEN_VERSION_HFACE{"2"};
-char const* EMB_LAYER_NORM_VAR_SEQLEN_VERSION_MTRON{"3"};
+char const* EMB_LAYER_NORM_VAR_SEQLEN_VERSION_HFACE{"1"};
+char const* EMB_LAYER_NORM_VAR_SEQLEN_VERSION_MTRON{"2"};
 char const* EMB_LAYER_NORM_VAR_SEQLEN_NAME{"ManyEmbLayerNormPluginDynamic"};
 // Static class fields initialization
 nvinfer1::PluginFieldCollection EmbLayerNormVarSeqlenPluginBaseCreator::mFC{};
@@ -61,8 +60,8 @@ EmbLayerNormVarSeqlenPluginBase::EmbLayerNormVarSeqlenPluginBase(
   assert(beta.count == gamma.count);
   mBeta.convertAndCopy(beta, nvinfer1::DataType::kFLOAT);
   mGamma.convertAndCopy(gamma, nvinfer1::DataType::kFLOAT);
-  copyToDevice(mGamma, sizeof(float) * mGamma.count, mGammaDev);
-  copyToDevice(mBeta, sizeof(float) * mBeta.count, mBetaDev);
+  copyToDevice(&mGamma, sizeof(float) * mGamma.count, &mGammaDev);
+  copyToDevice(&mBeta, sizeof(float) * mBeta.count, &mBetaDev);
   for (size_t i = 0; i < mIdsEmb_.size(); ++i) {
     assert(mIdsEmb_[i].count % mLd == 0);
     mIdsVocabSize.push_back(int32_t(mIdsEmb_[i].count / mLd));
@@ -75,7 +74,7 @@ EmbLayerNormVarSeqlenPluginBase::EmbLayerNormVarSeqlenPluginBase(
                                           tem_weight.values,
                                           getWeightsSize(tem_weight, mType),
                                           cudaMemcpyHostToDevice));
-    mIdsEmbDev.push_back(cudaMem);
+    mIdsEmbPtrs.push_back(cudaMem);
   }
 }
 
@@ -84,7 +83,7 @@ EmbLayerNormVarSeqlenPluginBase::EmbLayerNormVarSeqlenPluginBase(
     : mLayerName(name),
       mGammaDev(nullptr),
       mBetaDev(nullptr),
-      mIdsEmbDev{},
+      mIdsEmbPtrs{},
       mIdsEmb_{} {
   // Deserialize in the same order as serialization
   deserialize_value(&data, &length, &mType);
@@ -96,8 +95,8 @@ EmbLayerNormVarSeqlenPluginBase::EmbLayerNormVarSeqlenPluginBase(
     mIdsVocabSize.push_back(tem);
   }
   char const* d = static_cast<char const*>(data);
-  mBeta.convertAndCopy(d, mLd, nvinfer1::DataType::kFLOAT);
-  mGamma.convertAndCopy(d, mLd, nvinfer1::DataType::kFLOAT);
+  mBeta.convertAndCopy(&d, mLd, nvinfer1::DataType::kFLOAT);
+  mGamma.convertAndCopy(&d, mLd, nvinfer1::DataType::kFLOAT);
   for (int32_t i = 0; i < nbLookupTables_; ++i) {
     nvinfer1::Weights pre_tem_weight;
     pre_tem_weight.type = mType;
@@ -142,8 +141,8 @@ EmbLayerNormVarSeqlenPluginMTron::EmbLayerNormVarSeqlenPluginMTron(
 // IPluginV2DynamicExt Methods
 nvinfer1::IPluginV2DynamicExt* EmbLayerNormVarSeqlenPluginHFace::clone()
     const noexcept {
-  TRANSFORMER_DEBUG_MSG("EmbLayerNormVarSeqlenPluginMTron clone");
-  auto p = new EmbLayerNormVarSeqlenPluginMTron(
+  TRANSFORMER_DEBUG_MSG("EmbLayerNormVarSeqlenPluginHFace clone");
+  auto p = new EmbLayerNormVarSeqlenPluginHFace(
       mLayerName, mType, mBeta, mGamma, mIdsEmb_);
   p->setPluginNamespace(mNamespace.c_str());
   return p;
@@ -334,7 +333,7 @@ int32_t EmbLayerNormVarSeqlenPluginHFace::enqueue(
     void* const* outputs,
     void* workspace,
     cudaStream_t stream) noexcept {
-  int32_t const batchSize = inputDesc[0].dims.d[0] - 1;
+  int32_t batchSize = inputDesc[0].dims.d[0] - 1;
   // read out the maximum sequence length from the dummy input
   int32_t const maxSeqlen = inputDesc[nbLookupTables_].dims.d[0];
   int32_t S = 384;
@@ -347,60 +346,132 @@ int32_t EmbLayerNormVarSeqlenPluginHFace::enqueue(
   }
   const float* beta = mBetaDev.get();
   const float* gamma = mGammaDev.get();
-  int32_t** tem_inputs_ptr_dev;
-  cudaMalloc(reinterpret_cast<void**>(&tem_inputs_ptr_dev),
-             sizeof(void*) * nbLookupTables_);
-  cudaMemcpy(tem_inputs_ptr_dev,
-             inputs,
-             sizeof(void*) * nbLookupTables_,
-             cudaMemcpyHostToDevice);
-  int32_t* mIdsVocabSize_dev;
-  cudaMalloc(reinterpret_cast<void**>(&mIdsVocabSize_dev),
-             sizeof(int32_t) * mIdsVocabSize.size());
-  cudaMemcpy(mIdsVocabSize_dev,
-             &(mIdsVocabSize[0]),
-             sizeof(int32_t) * mIdsVocabSize.size(),
-             cudaMemcpyHostToDevice);
   if (mType == nvinfer1::DataType::kFLOAT) {
     auto output = static_cast<float*>(outputs[0]);
-    float** mIdsEmbDev_float;
-    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_float),
-               sizeof(void*) * nbLookupTables_);
-    cudaMemcpy(mIdsEmbDev_float,
-               &(mIdsEmbDev[0]),
-               sizeof(void*) * nbLookupTables_,
-               cudaMemcpyHostToDevice);
-    return embSkipLayerNormHFace<float>(stream,
-                                        static_cast<int32_t>(mLd),
-                                        batchSize,
-                                        S,
-                                        tem_inputs_ptr_dev,
-                                        nbLookupTables_,
-                                        beta,
-                                        gamma,
-                                        mIdsEmbDev_float,
-                                        mIdsVocabSize_dev,
-                                        output);
+    if (nbLookupTables_ == 2) {
+      return embSkipLayerNormHFace_2<float>(
+          stream,
+          static_cast<int32_t>(mLd),
+          batchSize,
+          S,
+          static_cast<int32_t const*>(inputs[0]),
+          static_cast<int32_t const*>(inputs[1]),
+          nbLookupTables_,
+          beta,
+          gamma,
+          static_cast<float const*>(mIdsEmbPtrs[0]),
+          static_cast<float const*>(mIdsEmbPtrs[1]),
+          mIdsVocabSize[0],
+          mIdsVocabSize[1],
+          output);
+    } else if (nbLookupTables_ == 3) {
+      return embSkipLayerNormHFace_3<float>(
+          stream,
+          static_cast<int32_t>(mLd),
+          batchSize,
+          S,
+          static_cast<int32_t const*>(inputs[0]),
+          static_cast<int32_t const*>(inputs[1]),
+          static_cast<int32_t const*>(inputs[2]),
+          nbLookupTables_,
+          beta,
+          gamma,
+          static_cast<float const*>(mIdsEmbPtrs[0]),
+          static_cast<float const*>(mIdsEmbPtrs[1]),
+          static_cast<float const*>(mIdsEmbPtrs[2]),
+          mIdsVocabSize[0],
+          mIdsVocabSize[1],
+          mIdsVocabSize[2],
+          output);
+    } else if (nbLookupTables_ == 4) {
+      return embSkipLayerNormHFace_4<float>(
+          stream,
+          static_cast<int32_t>(mLd),
+          batchSize,
+          S,
+          static_cast<int32_t const*>(inputs[0]),
+          static_cast<int32_t const*>(inputs[1]),
+          static_cast<int32_t const*>(inputs[2]),
+          static_cast<int32_t const*>(inputs[3]),
+          nbLookupTables_,
+          beta,
+          gamma,
+          static_cast<float const*>(mIdsEmbPtrs[0]),
+          static_cast<float const*>(mIdsEmbPtrs[1]),
+          static_cast<float const*>(mIdsEmbPtrs[2]),
+          static_cast<float const*>(mIdsEmbPtrs[3]),
+          mIdsVocabSize[0],
+          mIdsVocabSize[1],
+          mIdsVocabSize[2],
+          mIdsVocabSize[3],
+          output);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Only support 2,3,4 lookup_tables fused "));
+    }
   } else if (mType == nvinfer1::DataType::kHALF) {
     auto output = static_cast<half*>(outputs[0]);
-    half** mIdsEmbDev_half;
-    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_half),
-               sizeof(void*) * nbLookupTables_);
-    cudaMemcpy(mIdsEmbDev_half,
-               &(mIdsEmbDev[0]),
-               sizeof(void*) * nbLookupTables_,
-               cudaMemcpyHostToDevice);
-    return embSkipLayerNormHFace<half>(stream,
-                                       static_cast<int32_t>(mLd),
-                                       batchSize,
-                                       S,
-                                       tem_inputs_ptr_dev,
-                                       nbLookupTables_,
-                                       beta,
-                                       gamma,
-                                       mIdsEmbDev_half,
-                                       mIdsVocabSize_dev,
-                                       output);
+    if (nbLookupTables_ == 2) {
+      return embSkipLayerNormHFace_2<half>(
+          stream,
+          static_cast<int32_t>(mLd),
+          batchSize,
+          S,
+          static_cast<int32_t const*>(inputs[0]),
+          static_cast<int32_t const*>(inputs[1]),
+          nbLookupTables_,
+          beta,
+          gamma,
+          static_cast<half const*>(mIdsEmbPtrs[0]),
+          static_cast<half const*>(mIdsEmbPtrs[1]),
+          mIdsVocabSize[0],
+          mIdsVocabSize[1],
+          output);
+    } else if (nbLookupTables_ == 3) {
+      return embSkipLayerNormHFace_3<half>(
+          stream,
+          static_cast<int32_t>(mLd),
+          batchSize,
+          S,
+          static_cast<int32_t const*>(inputs[0]),
+          static_cast<int32_t const*>(inputs[1]),
+          static_cast<int32_t const*>(inputs[2]),
+          nbLookupTables_,
+          beta,
+          gamma,
+          static_cast<half const*>(mIdsEmbPtrs[0]),
+          static_cast<half const*>(mIdsEmbPtrs[1]),
+          static_cast<half const*>(mIdsEmbPtrs[2]),
+          mIdsVocabSize[0],
+          mIdsVocabSize[1],
+          mIdsVocabSize[2],
+          output);
+    } else if (nbLookupTables_ == 4) {
+      return embSkipLayerNormHFace_4<half>(
+          stream,
+          static_cast<int32_t>(mLd),
+          batchSize,
+          S,
+          static_cast<int32_t const*>(inputs[0]),
+          static_cast<int32_t const*>(inputs[1]),
+          static_cast<int32_t const*>(inputs[2]),
+          static_cast<int32_t const*>(inputs[3]),
+          nbLookupTables_,
+          beta,
+          gamma,
+          static_cast<half const*>(mIdsEmbPtrs[0]),
+          static_cast<half const*>(mIdsEmbPtrs[1]),
+          static_cast<half const*>(mIdsEmbPtrs[2]),
+          static_cast<half const*>(mIdsEmbPtrs[3]),
+          mIdsVocabSize[0],
+          mIdsVocabSize[1],
+          mIdsVocabSize[2],
+          mIdsVocabSize[3],
+          output);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Only support 2,3,4 lookup_tables fused "));
+    }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unsupported type error, expected [kHALF,kFLOAT]"));
@@ -415,7 +486,7 @@ int32_t EmbLayerNormVarSeqlenPluginMTron::enqueue(
     void* const* outputs,
     void* workspace,
     cudaStream_t stream) noexcept {
-  int32_t const batchSize = inputDesc[0].dims.d[0] - 1;
+  int32_t batchSize = inputDesc[0].dims.d[0] - 1;
   // read out the maximum sequence length from the dummy input
   int32_t const maxSeqlen = inputDesc[nbLookupTables_].dims.d[0];
   int32_t S = 384;
@@ -428,64 +499,141 @@ int32_t EmbLayerNormVarSeqlenPluginMTron::enqueue(
   }
   const float* beta = mBetaDev.get();
   const float* gamma = mGammaDev.get();
-  int32_t** tem_inputs_ptr_dev;
-  cudaMalloc(reinterpret_cast<void**>(&tem_inputs_ptr_dev),
-             sizeof(void*) * nbLookupTables_);
-  cudaMemcpy(tem_inputs_ptr_dev,
-             inputs,
-             sizeof(void*) * nbLookupTables_,
-             cudaMemcpyHostToDevice);
-  int32_t* mIdsVocabSize_dev;
-  cudaMalloc(reinterpret_cast<void**>(&mIdsVocabSize_dev),
-             sizeof(int32_t) * mIdsVocabSize.size());
-  cudaMemcpy(mIdsVocabSize_dev,
-             &(mIdsVocabSize[0]),
-             sizeof(int32_t) * mIdsVocabSize.size(),
-             cudaMemcpyHostToDevice);
+
   if (mType == nvinfer1::DataType::kFLOAT) {
     auto output = static_cast<float*>(outputs[0]);
     auto skip = static_cast<float*>(outputs[1]);
-    float** mIdsEmbDev_float;
-    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_float),
-               sizeof(void*) * nbLookupTables_);
-    cudaMemcpy(mIdsEmbDev_float,
-               &(mIdsEmbDev[0]),
-               sizeof(void*) * nbLookupTables_,
-               cudaMemcpyHostToDevice);
-    return embSkipLayerNormMTron<float>(stream,
-                                        static_cast<int32_t>(mLd),
-                                        batchSize,
-                                        S,
-                                        tem_inputs_ptr_dev,
-                                        nbLookupTables_,
-                                        beta,
-                                        gamma,
-                                        mIdsEmbDev_float,
-                                        mIdsVocabSize_dev,
-                                        output,
-                                        skip);
+    if (nbLookupTables_ == 2) {
+      return embSkipLayerNormMTron_2<float>(
+          stream,
+          static_cast<int32_t>(mLd),
+          batchSize,
+          S,
+          static_cast<int32_t const*>(inputs[0]),
+          static_cast<int32_t const*>(inputs[1]),
+          nbLookupTables_,
+          beta,
+          gamma,
+          static_cast<float const*>(mIdsEmbPtrs[0]),
+          static_cast<float const*>(mIdsEmbPtrs[1]),
+          mIdsVocabSize[0],
+          mIdsVocabSize[1],
+          output,
+          skip);
+    } else if (nbLookupTables_ == 3) {
+      return embSkipLayerNormMTron_3<float>(
+          stream,
+          static_cast<int32_t>(mLd),
+          batchSize,
+          S,
+          static_cast<int32_t const*>(inputs[0]),
+          static_cast<int32_t const*>(inputs[1]),
+          static_cast<int32_t const*>(inputs[2]),
+          nbLookupTables_,
+          beta,
+          gamma,
+          static_cast<float const*>(mIdsEmbPtrs[0]),
+          static_cast<float const*>(mIdsEmbPtrs[1]),
+          static_cast<float const*>(mIdsEmbPtrs[2]),
+          mIdsVocabSize[0],
+          mIdsVocabSize[1],
+          mIdsVocabSize[2],
+          output,
+          skip);
+    } else if (nbLookupTables_ == 4) {
+      return embSkipLayerNormMTron_4<float>(
+          stream,
+          static_cast<int32_t>(mLd),
+          batchSize,
+          S,
+          static_cast<int32_t const*>(inputs[0]),
+          static_cast<int32_t const*>(inputs[1]),
+          static_cast<int32_t const*>(inputs[2]),
+          static_cast<int32_t const*>(inputs[3]),
+          nbLookupTables_,
+          beta,
+          gamma,
+          static_cast<float const*>(mIdsEmbPtrs[0]),
+          static_cast<float const*>(mIdsEmbPtrs[1]),
+          static_cast<float const*>(mIdsEmbPtrs[2]),
+          static_cast<float const*>(mIdsEmbPtrs[3]),
+          mIdsVocabSize[0],
+          mIdsVocabSize[1],
+          mIdsVocabSize[2],
+          mIdsVocabSize[3],
+          output,
+          skip);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Only support 2,3,4 lookup_tables fused "));
+    }
   } else if (mType == nvinfer1::DataType::kHALF) {
     auto output = static_cast<half*>(outputs[0]);
     auto skip = static_cast<half*>(outputs[1]);
-    half** mIdsEmbDev_half;
-    cudaMalloc(reinterpret_cast<void**>(&mIdsEmbDev_half),
-               sizeof(void*) * nbLookupTables_);
-    cudaMemcpy(mIdsEmbDev_half,
-               &(mIdsEmbDev[0]),
-               sizeof(void*) * nbLookupTables_,
-               cudaMemcpyHostToDevice);
-    return embSkipLayerNormMTron<half>(stream,
-                                       static_cast<int32_t>(mLd),
-                                       batchSize,
-                                       S,
-                                       tem_inputs_ptr_dev,
-                                       nbLookupTables_,
-                                       beta,
-                                       gamma,
-                                       mIdsEmbDev_half,
-                                       mIdsVocabSize_dev,
-                                       output,
-                                       skip);
+    if (nbLookupTables_ == 2) {
+      return embSkipLayerNormMTron_2<half>(
+          stream,
+          static_cast<int32_t>(mLd),
+          batchSize,
+          S,
+          static_cast<int32_t const*>(inputs[0]),
+          static_cast<int32_t const*>(inputs[1]),
+          nbLookupTables_,
+          beta,
+          gamma,
+          static_cast<half const*>(mIdsEmbPtrs[0]),
+          static_cast<half const*>(mIdsEmbPtrs[1]),
+          mIdsVocabSize[0],
+          mIdsVocabSize[1],
+          output,
+          skip);
+    } else if (nbLookupTables_ == 3) {
+      return embSkipLayerNormMTron_3<half>(
+          stream,
+          static_cast<int32_t>(mLd),
+          batchSize,
+          S,
+          static_cast<int32_t const*>(inputs[0]),
+          static_cast<int32_t const*>(inputs[1]),
+          static_cast<int32_t const*>(inputs[2]),
+          nbLookupTables_,
+          beta,
+          gamma,
+          static_cast<half const*>(mIdsEmbPtrs[0]),
+          static_cast<half const*>(mIdsEmbPtrs[1]),
+          static_cast<half const*>(mIdsEmbPtrs[2]),
+          mIdsVocabSize[0],
+          mIdsVocabSize[1],
+          mIdsVocabSize[2],
+          output,
+          skip);
+    } else if (nbLookupTables_ == 4) {
+      return embSkipLayerNormMTron_4<half>(
+          stream,
+          static_cast<int32_t>(mLd),
+          batchSize,
+          S,
+          static_cast<int32_t const*>(inputs[0]),
+          static_cast<int32_t const*>(inputs[1]),
+          static_cast<int32_t const*>(inputs[2]),
+          static_cast<int32_t const*>(inputs[3]),
+          nbLookupTables_,
+          beta,
+          gamma,
+          static_cast<half const*>(mIdsEmbPtrs[0]),
+          static_cast<half const*>(mIdsEmbPtrs[1]),
+          static_cast<half const*>(mIdsEmbPtrs[2]),
+          static_cast<half const*>(mIdsEmbPtrs[3]),
+          mIdsVocabSize[0],
+          mIdsVocabSize[1],
+          mIdsVocabSize[2],
+          mIdsVocabSize[3],
+          output,
+          skip);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Only support 2,3,4 lookup_tables fused "));
+    }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unsupported type error, expected [kHALF,kFLOAT]"));
@@ -565,11 +713,11 @@ void EmbLayerNormVarSeqlenPluginBase::serialize(void* buffer) const noexcept {
   }
   char* d = static_cast<char*>(buffer);
   size_t const wordSize = getElementSize(mType);
-  serFromDev(d, mBetaDev.get(), mLd);
-  serFromDev(d, mGammaDev.get(), mLd);
-  for (size_t i = 0; i < mIdsEmbDev.size(); ++i) {
-    serFromDev(d,
-               static_cast<char*>(mIdsEmbDev[i]),
+  serFromDev(&d, mBetaDev.get(), mLd);
+  serFromDev(&d, mGammaDev.get(), mLd);
+  for (size_t i = 0; i < mIdsEmbPtrs.size(); ++i) {
+    serFromDev(&d,
+               static_cast<char*>(mIdsEmbPtrs[i]),
                mLd * mIdsVocabSize[i] * wordSize);
   }
 }
@@ -578,8 +726,8 @@ void EmbLayerNormVarSeqlenPluginBase::destroy() noexcept {
   // This gets called when the network containing plugin is destroyed
   mBetaDev.reset(nullptr);
   mGammaDev.reset(nullptr);
-  for (size_t i = 0; i < mIdsEmbDev.size(); ++i) {
-    cudaFree(mIdsEmbDev[i]);
+  for (size_t i = 0; i < mIdsEmbPtrs.size(); ++i) {
+    cudaFree(mIdsEmbPtrs[i]);
   }
   delete this;
 }
@@ -673,7 +821,7 @@ nvinfer1::IPluginV2* EmbLayerNormVarSeqlenPluginHFaceCreator::createPlugin(
   nvinfer1::Weights beta;
   nvinfer1::Weights gamma;
   std::vector<nvinfer1::Weights> IdsEmb;
-  bool output_fp16 = initializeFields(fc, beta, gamma, IdsEmb);
+  bool output_fp16 = initializeFields(fc, &beta, &gamma, &IdsEmb);
   TRANSFORMER_DEBUG_MSG("Building the Plugin...");
   EmbLayerNormVarSeqlenPluginHFace* p = new EmbLayerNormVarSeqlenPluginHFace(
       name,
@@ -681,7 +829,6 @@ nvinfer1::IPluginV2* EmbLayerNormVarSeqlenPluginHFaceCreator::createPlugin(
       beta,
       gamma,
       IdsEmb);
-
   return p;
 }
 
@@ -691,7 +838,7 @@ nvinfer1::IPluginV2* EmbLayerNormVarSeqlenPluginMTronCreator::createPlugin(
   nvinfer1::Weights beta;
   nvinfer1::Weights gamma;
   std::vector<nvinfer1::Weights> IdsEmb;
-  bool output_fp16 = initializeFields(fc, beta, gamma, IdsEmb);
+  bool output_fp16 = initializeFields(fc, &beta, &gamma, &IdsEmb);
   TRANSFORMER_DEBUG_MSG("Building the Plugin...");
   EmbLayerNormVarSeqlenPluginMTron* p = new EmbLayerNormVarSeqlenPluginMTron(
       name,

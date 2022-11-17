@@ -25,13 +25,15 @@ template <typename T>
 class SetValueNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* in = ctx.Input<Tensor>("Input");
-    auto* value_tensor = ctx.Input<Tensor>("ValueTensor");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("Input");
+    auto* value_tensor = ctx.Input<phi::DenseTensor>("ValueTensor");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
-    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
-    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
-    auto steps_tensor_list = ctx.MultiInput<Tensor>("StepsTensorList");
+    auto starts_tensor_list =
+        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
+    auto steps_tensor_list =
+        ctx.MultiInput<phi::DenseTensor>("StepsTensorList");
 
     auto axes = ctx.Attr<std::vector<int64_t>>("axes");
     auto starts = ctx.Attr<std::vector<int64_t>>("starts");

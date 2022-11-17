@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 from .. import framework
 
 __all__ = [
-    "Dataset", "IterableDataset", "TensorDataset", "ComposeDataset",
-    "ChainDataset", "random_split", "Subset"
+    "Dataset",
+    "IterableDataset",
+    "TensorDataset",
+    "ComposeDataset",
+    "ChainDataset",
+    "random_split",
+    "Subset",
 ]
 
 
-class Dataset(object):
+class Dataset:
     """
     An abstract class to encapsulate methods and behaviors of datasets.
 
@@ -69,12 +72,16 @@ class Dataset(object):
         pass
 
     def __getitem__(self, idx):
-        raise NotImplementedError("'{}' not implement in class "\
-                "{}".format('__getitem__', self.__class__.__name__))
+        raise NotImplementedError(
+            "'{}' not implement in class "
+            "{}".format('__getitem__', self.__class__.__name__)
+        )
 
     def __len__(self):
-        raise NotImplementedError("'{}' not implement in class "\
-                "{}".format('__len__', self.__class__.__name__))
+        raise NotImplementedError(
+            "'{}' not implement in class "
+            "{}".format('__len__', self.__class__.__name__)
+        )
 
 
 class IterableDataset(Dataset):
@@ -82,19 +89,20 @@ class IterableDataset(Dataset):
     An abstract class to encapsulate methods and behaviors of iterable datasets.
 
     All datasets in iterable-style (can only get sample one by one sequentially, like
-    a Python iterator) should be a subclass of `paddle.io.IterableDataset`. All subclasses should
+    a Python iterator) should be a subclass of :ref:`api_paddle_io_IterableDataset` . All subclasses should
     implement following methods:
 
-    :code:`__iter__`: yield sample sequentially. This method is required by reading dataset sample in :code:`paddle.io.DataLoader`.
+    :code:`__iter__`: yield sample sequentially. This method is required by reading dataset sample in :ref:`api_paddle_io_DataLoader` .
 
     .. note::
         do not implement :code:`__getitem__` and :code:`__len__` in IterableDataset, should not be called either.
 
-    see :code:`paddle.io.DataLoader`.
+    see :ref:`api_paddle_io_DataLoader` .
 
     Examples:
 
         .. code-block:: python
+            :name: code-example1
 
             import numpy as np
             from paddle.io import IterableDataset
@@ -121,9 +129,10 @@ class IterableDataset(Dataset):
     among workers as follows. In both the methods, worker information that can be getted in
     a worker process by `paddle.io.get_worker_info` will be needed.
 
-    Example 1: splitting data copy in each worker in :code:`__iter__`
+    splitting data copy in each worker in :code:`__iter__`
 
         .. code-block:: python
+            :name: code-example2
 
             import math
             import paddle
@@ -162,9 +171,10 @@ class IterableDataset(Dataset):
                 print(data)
                 # outputs: [2, 5, 3, 6, 4, 7]
 
-    Example 2: splitting data copy in each worker by :code:`worker_init_fn`
+    splitting data copy in each worker by :code:`worker_init_fn`
 
         .. code-block:: python
+            :name: code-example3
 
             import math
             import paddle
@@ -212,16 +222,22 @@ class IterableDataset(Dataset):
         pass
 
     def __iter__(self):
-        raise NotImplementedError("'{}' not implement in class "\
-                "{}".format('__iter__', self.__class__.__name__))
+        raise NotImplementedError(
+            "'{}' not implement in class "
+            "{}".format('__iter__', self.__class__.__name__)
+        )
 
     def __getitem__(self, idx):
-        raise RuntimeError("'{}' should not be called for IterableDataset" \
-                "{}".format('__getitem__', self.__class__.__name__))
+        raise RuntimeError(
+            "'{}' should not be called for IterableDataset"
+            "{}".format('__getitem__', self.__class__.__name__)
+        )
 
     def __len__(self):
-        raise RuntimeError("'{}' should not be called for IterableDataset" \
-                "{}".format('__len__', self.__class__.__name__))
+        raise RuntimeError(
+            "'{}' should not be called for IterableDataset"
+            "{}".format('__len__', self.__class__.__name__)
+        )
 
 
 class TensorDataset(Dataset):
@@ -263,9 +279,11 @@ class TensorDataset(Dataset):
     def __init__(self, tensors):
         if not framework._non_static_mode():
             raise RuntimeError(
-                "TensorDataset con only be used in imperative mode")
-        assert all([tensor.shape[0] == tensors[0].shape[0] for tensor in tensors]), \
-                "tensors not have same shape of the 1st dimension"
+                "TensorDataset con only be used in imperative mode"
+            )
+        assert all(
+            [tensor.shape[0] == tensors[0].shape[0] for tensor in tensors]
+        ), "tensors not have same shape of the 1st dimension"
         self.tensors = tensors
 
     def __getitem__(self, index):
@@ -332,13 +350,16 @@ class ComposeDataset(Dataset):
         self.datasets = list(datasets)
         assert len(self.datasets) > 0, "input datasets shoule not be empty"
         for i, dataset in enumerate(self.datasets):
-            assert isinstance(dataset, Dataset), \
-                    "each input dataset should be paddle.io.Dataset"
-            assert not isinstance(dataset, IterableDataset), \
-                    "paddle.io.IterableDataset not supported"
+            assert isinstance(
+                dataset, Dataset
+            ), "each input dataset should be paddle.io.Dataset"
+            assert not isinstance(
+                dataset, IterableDataset
+            ), "paddle.io.IterableDataset not supported"
             if i > 0:
-                assert len(dataset) == len(self.datasets[i-1]), \
-                        "lengths of datasets should be same"
+                assert len(dataset) == len(
+                    self.datasets[i - 1]
+                ), "lengths of datasets should be same"
 
     def __len__(self):
         return len(self.datasets[0])
@@ -352,16 +373,16 @@ class ComposeDataset(Dataset):
 
 class ChainDataset(IterableDataset):
     """
-    A Dataset which chains multiple iterable-tyle datasets.
+    A Dataset which chains multiple iterable-style datasets.
 
     This dataset is used for assembling multiple datasets which should
-    be :code:`paddle.io.IterableDataset`.
+    be :ref:`api_paddle_io_IterableDataset`.
 
     Args:
-        datasets(list of Dataset): List of datasets to be chainned.
+        datasets(list of IterableDatasets): List of datasets to be chainned.
 
     Returns:
-        Dataset: A Dataset which chains fields of multiple datasets.
+        paddle.io.IterableDataset: A Dataset which chains fields of multiple datasets.
 
     Examples:
 
@@ -393,8 +414,9 @@ class ChainDataset(IterableDataset):
         self.datasets = list(datasets)
         assert len(self.datasets) > 0, "input datasets shoule not be empty"
         for i, dataset in enumerate(self.datasets):
-            assert isinstance(dataset, IterableDataset), \
-                    "ChainDataset only support paddle.io.IterableDataset"
+            assert isinstance(
+                dataset, IterableDataset
+            ), "ChainDataset only support paddle.io.IterableDataset"
 
     def __iter__(self):
         for dataset in self.datasets:
@@ -494,7 +516,7 @@ def random_split(dataset, lengths, generator=None):
     # For example var.item() and var.tolist()
     indices = paddle.randperm(sum(lengths)).numpy().tolist()
     return [
-        Subset(dataset, indices[offset - length:offset])
+        Subset(dataset, indices[offset - length : offset])
         for offset, length in zip(_accumulate(lengths), lengths)
     ]
 

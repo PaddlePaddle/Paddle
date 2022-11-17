@@ -32,7 +32,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     if (Y_v) {
       // Y is weight
-      auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+      auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
       std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
       auto y_weight = engine_->GetTrtWeight(op_desc.Input("Y").front(), *Y_t);
 
@@ -167,6 +167,7 @@ const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
         {"min", nvinfer1::ElementWiseOperation::kMIN},
         {"pow", nvinfer1::ElementWiseOperation::kPOW},
         {"max", nvinfer1::ElementWiseOperation::kMAX},
+        {"floordiv", nvinfer1::ElementWiseOperation::kFLOOR_DIV},
 };
 
 class ElementwiseTensorAddOpConverter : public ElementwiseTensorOpConverter {
@@ -204,6 +205,12 @@ class ElementwiseTensorPowOpConverter : public ElementwiseTensorOpConverter {
   ElementwiseTensorPowOpConverter() { op_type_ = "pow"; }
 };
 
+class ElementwiseTensorFloorDivOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorFloorDivOpConverter() { op_type_ = "floordiv"; }
+};
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -216,8 +223,14 @@ REGISTER_TRT_OP_CONVERTER(elementwise_sub_weight,
                           ElementwiseTensorSubOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_div_weight,
                           ElementwiseTensorDivOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_max_weight,
+                          ElementwiseTensorMaxOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_min_weight,
+                          ElementwiseTensorMinOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_pow_weight,
                           ElementwiseTensorPowOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_weight,
+                          ElementwiseTensorFloorDivOpConverter);
 
 REGISTER_TRT_OP_CONVERTER(elementwise_add_tensor,
                           ElementwiseTensorAddOpConverter);
@@ -233,3 +246,5 @@ REGISTER_TRT_OP_CONVERTER(elementwise_min_tensor,
                           ElementwiseTensorMinOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_pow_tensor,
                           ElementwiseTensorPowOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_tensor,
+                          ElementwiseTensorFloorDivOpConverter);

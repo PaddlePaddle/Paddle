@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -29,7 +27,6 @@ SEED = 2021
 
 
 class TestCase1(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.set_example()
@@ -37,9 +34,9 @@ class TestCase1(OpTest):
         self.place = paddle.device.MLUPlace(0)
         ipt = self.x.astype(self.dtype)
         axis = self.axis if isinstance(self.axis, int) else int(self.axis[0])
-        tmp_outs = np.split(ipt,
-                            axis=axis,
-                            indices_or_sections=self.num_or_sections)
+        tmp_outs = np.split(
+            ipt, axis=axis, indices_or_sections=self.num_or_sections
+        )
         tmp_outs = [o.astype(self.dtype) for o in tmp_outs]
         self.outputs = {'Out': []}
         self.outs = []
@@ -66,7 +63,6 @@ class TestCase1(OpTest):
 
 
 class TestCase2(TestCase1):
-
     def set_example(self):
         self.dtype = "float32"
         self.x = np.random.random((20, 4, 50))
@@ -75,7 +71,6 @@ class TestCase2(TestCase1):
 
 
 class TestCase4(TestCase1):
-
     def set_example(self):
         self.dtype = "float16"
         self.x = np.random.random((4, 50, 20))
@@ -85,7 +80,6 @@ class TestCase4(TestCase1):
 
 # Test Sections
 class TestCase5(TestCase1):
-
     def set_example(self):
         super().set_example()
         self.x = np.random.random((2, 10, 4))
@@ -98,7 +92,6 @@ class TestCase5(TestCase1):
 
 
 class API_TestSplit(unittest.TestCase):
-
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.layers.data('data', shape=[-1, 10], dtype='float32')
@@ -107,13 +100,12 @@ class API_TestSplit(unittest.TestCase):
             exe = fluid.Executor(place)
             input1 = np.random.random([1, 10]).astype('float32')
             r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
-            ex_x0, ex_x1 = np.split(input1, (3, ), axis=1)
+            ex_x0, ex_x1 = np.split(input1, (3,), axis=1)
             np.testing.assert_allclose(ex_x0, r0)
             np.testing.assert_allclose(ex_x1, r1)
 
 
 class API_TestSplit2(unittest.TestCase):
-
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.layers.data('data', shape=[-1, 10], dtype='float32')
@@ -128,7 +120,6 @@ class API_TestSplit2(unittest.TestCase):
 
 
 class API_TestDygraphSplit(unittest.TestCase):
-
     def test_out1(self):
         with fluid.dygraph.guard(paddle.MLUPlace(0)):
             input_1 = np.random.random([4, 6, 6]).astype("int32")
@@ -160,20 +151,18 @@ class API_TestDygraphSplit(unittest.TestCase):
 
 # attr(axis) is Tensor
 class TestSplitOp_AxisTensor(OpTest):
-
     def setUp(self):
         self._set_op_type()
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {
             'X': self.x,
-            'AxisTensor': np.array([self.axis]).astype("int32")
+            'AxisTensor': np.array([self.axis]).astype("int32"),
         }
         self.attrs = {'sections': self.sections, 'num': self.num}
 
         out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) \
-                                for i in range(len(out))]}
+        self.outputs = {'Out': [('out%d' % i, out[i]) for i in range(len(out))]}
 
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -196,7 +185,6 @@ class TestSplitOp_AxisTensor(OpTest):
 
 
 class TestSplitOp_SectionsTensor(OpTest):
-
     def setUp(self):
         self._set_op_type()
         self.dtype = self.get_dtype()
@@ -205,20 +193,20 @@ class TestSplitOp_SectionsTensor(OpTest):
 
         sections_tensor = []
         for index, ele in enumerate(self.sections):
-            sections_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            sections_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs['SectionsTensorList'] = sections_tensor
 
         self.attrs = {
             'axis': self.axis,
             'sections': self.sections_infer,
-            'num': self.num
+            'num': self.num,
         }
 
         out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) \
-                                for i in range(len(out))]}
+        self.outputs = {'Out': [('out%d' % i, out[i]) for i in range(len(out))]}
 
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True

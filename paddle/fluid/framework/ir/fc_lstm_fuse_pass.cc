@@ -220,9 +220,8 @@ int FCLstmFusePass::BuildFusion(Graph* graph,
       PADDLE_ENFORCE_NOT_NULL(fc_bias_var,
                               platform::errors::InvalidArgument(
                                   "FC bias var ptr cannot be nullptr."));
-      auto* lstm_bias_tensor =
-          lstm_bias_var->GetMutable<framework::LoDTensor>();
-      const auto& fc_bias_tensor = fc_bias_var->Get<framework::LoDTensor>();
+      auto* lstm_bias_tensor = lstm_bias_var->GetMutable<phi::DenseTensor>();
+      const auto& fc_bias_tensor = fc_bias_var->Get<phi::DenseTensor>();
 
       auto lstm_bias_data =
           lstm_bias_tensor->mutable_data<float>(platform::CPUPlace());

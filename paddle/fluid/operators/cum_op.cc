@@ -72,13 +72,9 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetType("cumsum");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
-    grad_op->SetAttr("axis", PADDLE_GET_CONST(int, this->GetAttr("axis")));
-    grad_op->SetAttr("flatten",
-                     PADDLE_GET_CONST(bool, this->GetAttr("flatten")));
+    grad_op->SetAttrMap(this->Attrs());
     grad_op->SetAttr("reverse",
                      !PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
-    grad_op->SetAttr("exclusive",
-                     PADDLE_GET_CONST(bool, this->GetAttr("exclusive")));
   }
 };
 

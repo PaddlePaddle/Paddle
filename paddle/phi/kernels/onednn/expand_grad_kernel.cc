@@ -86,7 +86,7 @@ void ExpandGradKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(expand_grad,
                    OneDNN,
-                   ALL_LAYOUT,
+                   ONEDNN,
                    phi::ExpandGradKernel,
                    float,
                    phi::dtype::bfloat16) {}

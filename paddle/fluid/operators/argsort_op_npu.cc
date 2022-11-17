@@ -18,15 +18,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 static void TranposeNPU(const framework::ExecutionContext& ctx,
                         const aclrtStream& stream,
                         std::vector<int64_t>* perm,
-                        const Tensor& in,
-                        Tensor* out) {
+                        const phi::DenseTensor& in,
+                        phi::DenseTensor* out) {
   out->mutable_data<T>(ctx.GetPlace());
   NpuOpRunner runner;
   runner.SetType("Transpose")
@@ -38,8 +38,8 @@ static void TranposeNPU(const framework::ExecutionContext& ctx,
 
 static void CastToInt64(const framework::ExecutionContext& ctx,
                         const aclrtStream& stream,
-                        const Tensor& in,
-                        Tensor* out) {
+                        const phi::DenseTensor& in,
+                        phi::DenseTensor* out) {
   out->mutable_data<int64_t>(ctx.GetPlace());
   NpuOpRunner runner;
   runner.SetType("Cast")
@@ -51,8 +51,8 @@ static void CastToInt64(const framework::ExecutionContext& ctx,
 
 static void CastToFP32(const framework::ExecutionContext& ctx,
                        const aclrtStream& stream,
-                       const Tensor& in,
-                       Tensor* out) {
+                       const phi::DenseTensor& in,
+                       phi::DenseTensor* out) {
   out->mutable_data<float>(ctx.GetPlace());
   NpuOpRunner runner;
   runner.SetType("Cast")
@@ -66,9 +66,9 @@ template <typename T>
 class ArgsortNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::Tensor>("X");
-    auto* output = ctx.Output<framework::Tensor>("Out");
-    auto* indices = ctx.Output<framework::Tensor>("Indices");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* indices = ctx.Output<phi::DenseTensor>("Indices");
     int axis = ctx.Attr<int>("axis");
     bool descending = ctx.Attr<bool>("descending");
 
@@ -176,9 +176,9 @@ template <typename T, typename Type>
 static void FullAssignNPU(const framework::ExecutionContext& ctx,
                           const aclrtStream& stream,
                           const framework::DDim in_dims,
-                          const Tensor& input,
-                          const Tensor& indices,
-                          Tensor* t_out) {
+                          const phi::DenseTensor& input,
+                          const phi::DenseTensor& indices,
+                          phi::DenseTensor* t_out) {
   const int64_t input_height =
       phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
   const int64_t input_width = in_dims[in_dims.size() - 1];
@@ -226,9 +226,9 @@ template <typename T>
 class ArgsortGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* indices = ctx.Input<Tensor>("Indices");
-    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* indices = ctx.Input<phi::DenseTensor>("Indices");
+    auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dO = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     int axis = ctx.Attr<int>("axis");
 
     auto in_dims = indices->dims();

@@ -34,9 +34,5 @@ void MaxRawKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(max_raw,
-                   OneDNN,
-                   ALL_LAYOUT,
-                   phi::MaxRawKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    max_raw, OneDNN, ONEDNN, phi::MaxRawKernel, float, phi::dtype::bfloat16) {}

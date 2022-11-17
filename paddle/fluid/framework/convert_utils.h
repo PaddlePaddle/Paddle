@@ -19,10 +19,8 @@ limitations under the License. */
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/tensor_meta.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 // TODO(chenweihang): this file may need to be removed
 
@@ -30,7 +28,7 @@ namespace paddle {
 namespace framework {
 
 using DataType = paddle::experimental::DataType;
-using DataLayout = paddle::experimental::DataLayout;
+using DataLayout = phi::DataLayout;
 
 DataType TransToPhiDataType(
     const paddle::framework::proto::VarType::Type& dtype);
@@ -40,7 +38,8 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
 
 size_t DataTypeSize(DataType dtype);
 DataType String2DataType(const std::string& str);
-std::string DataType2String(DataType dtype);
+
+using phi::DataType2String;
 
 }  // namespace framework
 }  // namespace paddle

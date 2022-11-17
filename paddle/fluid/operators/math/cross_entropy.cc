@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -29,9 +29,9 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
 struct HardLabelCrossEntropyCPUFunctorImpl {
-  HardLabelCrossEntropyCPUFunctorImpl(framework::Tensor* out,
-                                      const framework::Tensor* prob,
-                                      const framework::Tensor* labels,
+  HardLabelCrossEntropyCPUFunctorImpl(phi::DenseTensor* out,
+                                      const phi::DenseTensor* prob,
+                                      const phi::DenseTensor* labels,
                                       const int ignore_index,
                                       const int axis_dim)
       : out_(out),
@@ -85,9 +85,9 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
   }
 
  private:
-  framework::Tensor* out_;
-  const framework::Tensor* prob_;
-  const framework::Tensor* labels_;
+  phi::DenseTensor* out_;
+  const phi::DenseTensor* prob_;
+  const phi::DenseTensor* labels_;
   const int ignore_index_;
   const int axis_dim_;
 };
@@ -95,9 +95,9 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
 template <typename DeviceContext, typename T>
 void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const DeviceContext& ctx,
-    framework::Tensor* out,
-    const framework::Tensor* prob,
-    const framework::Tensor* labels,
+    phi::DenseTensor* out,
+    const phi::DenseTensor* prob,
+    const phi::DenseTensor* labels,
     const bool softLabel,
     const int ignore_index,
     const int axis_dim) {

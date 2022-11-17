@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid.core as core
 
 
 class TestOpSupportGPU(unittest.TestCase):
-
     def test_case(self):
-        self.assertEqual(core.is_compiled_with_cuda(),
-                         core.op_support_gpu("sum"))
+        self.assertEqual(
+            core.is_compiled_with_cuda(), core.op_support_gpu("sum")
+        )
 
 
 if __name__ == '__main__':

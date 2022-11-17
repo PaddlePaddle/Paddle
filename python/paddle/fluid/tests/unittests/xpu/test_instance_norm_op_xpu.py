@@ -16,13 +16,14 @@ import paddle
 import numpy as np
 import sys
 import unittest
-from functools import reduce
 
 sys.path.append("..")
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from operator import mul
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -56,13 +57,11 @@ def _cal_mean_variance(x, epsilon, mean_shape):
 
 
 class XPUTestInstanceNormOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'instance_norm'
         self.use_dynamic_create_class = False
 
     class XPUTestInstanceNormOp(XPUOpTest):
-
         def setUp(self):
             self.op_type = "instance_norm"
             self.dtype = self.in_type
@@ -82,8 +81,13 @@ class XPUTestInstanceNormOp(XPUOpTestWrapper):
             bias_np = np.random.random_sample(scale_shape).astype(np.float32)
             mean, variance = self.set_global_mean_var(mean_shape, x_np)
 
-            ref_y_np, ref_saved_mean, variance_tmp = _reference_instance_norm_naive(
-                x_np, scale_np, bias_np, epsilon, mean, variance)
+            (
+                ref_y_np,
+                ref_saved_mean,
+                variance_tmp,
+            ) = _reference_instance_norm_naive(
+                x_np, scale_np, bias_np, epsilon, mean, variance
+            )
 
             ref_saved_variance = 1 / np.sqrt(variance_tmp + epsilon)
 
@@ -91,7 +95,7 @@ class XPUTestInstanceNormOp(XPUOpTestWrapper):
             self.outputs = {
                 'Y': ref_y_np,
                 'SavedMean': ref_saved_mean,
-                'SavedVariance': ref_saved_variance
+                'SavedVariance': ref_saved_variance,
             }
             self.attrs = {'epsilon': epsilon, 'use_xpu': True}
 
@@ -109,27 +113,22 @@ class XPUTestInstanceNormOp(XPUOpTestWrapper):
             self.check_grad_with_place(paddle.XPUPlace(0), ['X'], 'Y')
 
     class TestXPUInstanceNormOp1(XPUTestInstanceNormOp):
-
         def set_attrs(self):
             self.shape = [10, 12, 32, 32]
 
     class TestXPUInstanceNormOp2(XPUTestInstanceNormOp):
-
         def set_attrs(self):
             self.shape = [4, 5, 6, 7]
 
     class TestXPUInstanceNormOp3(XPUTestInstanceNormOp):
-
         def set_attrs(self):
             self.shape = [1, 8, 16, 16]
 
     class TestXPUInstanceNormOp4(XPUTestInstanceNormOp):
-
         def set_attrs(self):
             self.shape = [4, 16, 256, 128]
 
     class TestXPUInstanceNormOp5(XPUTestInstanceNormOp):
-
         def set_attrs(self):
             self.shape = [10, 3, 512, 1]
 

@@ -64,7 +64,7 @@ static std::vector<T> ArrayAttrToVec(const mlir::ArrayAttr& int_array_attr) {
   return ret;
 }
 
-static nvinfer1::Weights TensorToWeights(::phi::DenseTensor* tensor) {
+static nvinfer1::Weights TensorToWeights(::Tensor* tensor) {
   CHECK_NOTNULL(tensor);
   nvinfer1::Weights ret;
   ret.type = TensorTypeToWeightType(tensor->dtype());

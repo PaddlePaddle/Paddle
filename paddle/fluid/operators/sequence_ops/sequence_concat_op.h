@@ -26,7 +26,7 @@ namespace operators {
 namespace detail {
 template <typename Container>
 inline framework::LoD ConcatLoD(const Container &xs,
-                                std::vector<framework::Tensor> *xs_in_order) {
+                                std::vector<phi::DenseTensor> *xs_in_order) {
   std::vector<size_t> result;
   result.resize(xs[0].get().lod()[0].size());
 
@@ -34,7 +34,7 @@ inline framework::LoD ConcatLoD(const Container &xs,
     size_t sum = 0;
     for (size_t j = 0; j < xs.size(); ++j) {
       auto &x_lod = xs[j].get().lod()[0];
-      const framework::Tensor &tensor = xs[j].get();
+      const phi::DenseTensor &tensor = xs[j].get();
       if (x_lod[i - 1] < x_lod[i]) {
         xs_in_order->emplace_back(tensor.Slice(x_lod[i - 1], x_lod[i]));
       }
@@ -66,9 +66,9 @@ template <typename DeviceContext, typename T>
 class SeqConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto xs = detail::GetDataVectorSafely(
-        context.MultiInput<framework::LoDTensor>("X"));
-    auto &out = *context.Output<framework::LoDTensor>("Out");
+    auto xs =
+        detail::GetDataVectorSafely(context.MultiInput<phi::DenseTensor>("X"));
+    auto &out = *context.Output<phi::DenseTensor>("Out");
 
     size_t lod_size = 0;
     for (auto &x : xs) {
@@ -98,7 +98,7 @@ class SeqConcatKernel : public framework::OpKernel<T> {
             "received input lod size is %d",
             lod_size));
 
-    std::vector<framework::Tensor> x_in_order;
+    std::vector<phi::DenseTensor> x_in_order;
     out.set_lod(detail::ConcatLoD(xs, &x_in_order));
     out.mutable_data<T>(context.GetPlace());
     math::ConcatFunctor<DeviceContext, T> functor;
@@ -111,9 +111,9 @@ template <typename DeviceContext, typename T>
 class SeqConcatGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto xs = context.MultiInput<framework::LoDTensor>("X");
+    auto xs = context.MultiInput<phi::DenseTensor>("X");
     auto dxs =
-        context.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+        context.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
     PADDLE_ENFORCE_EQ(xs.size(),
                       dxs.size(),
                       platform::errors::InvalidArgument(
@@ -129,15 +129,15 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    std::vector<framework::Tensor> sliced_x;
-    std::vector<paddle::optional<framework::Tensor>> sliced_dx;
+    std::vector<phi::DenseTensor> sliced_x;
+    std::vector<paddle::optional<phi::DenseTensor>> sliced_dx;
 
     for (size_t i = 1; i < xs[0]->lod()[0].size(); ++i) {
       for (size_t j = 0; j < xs.size(); ++j) {
-        const framework::LoDTensor *x = xs[j];
+        const phi::DenseTensor *x = xs[j];
         framework::DDim x_dims = x->dims();
 
-        framework::LoDTensor *dx = dxs[j];
+        phi::DenseTensor *dx = dxs[j];
         auto &x_lod = x->lod()[0];
         if (x_lod[i - 1] == x_lod[i]) continue;
 
@@ -157,13 +157,13 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    std::vector<const framework::Tensor *> sliced_x_ptr;
+    std::vector<const phi::DenseTensor *> sliced_x_ptr;
     sliced_x_ptr.reserve(sliced_x.size());
     for (auto &x : sliced_x) {
       sliced_x_ptr.emplace_back(&x);
     }
 
-    std::vector<framework::Tensor *> sliced_dx_ptr;
+    std::vector<phi::DenseTensor *> sliced_dx_ptr;
     sliced_dx_ptr.reserve(sliced_dx.size());
     for (auto &dx : sliced_dx) {
       if (dx) {
@@ -174,7 +174,7 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
     math::SplitFunctor<DeviceContext, T> functor;
     functor(context.template device_context<DeviceContext>(),
             GET_DATA_SAFELY(
-                context.Input<framework::Tensor>(framework::GradVarName("Out")),
+                context.Input<phi::DenseTensor>(framework::GradVarName("Out")),
                 "Input",
                 framework::GradVarName("Out"),
                 "SeqConcatGrad"),

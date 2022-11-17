@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import paddle
 from paddle.fluid import core
@@ -23,33 +22,38 @@ import sys
 
 sys.path.append("..")
 
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestCIdentityOP(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'c_identity'
         self.use_dynamic_create_class = False
 
     class TestCIdentityOp(TestDistBase):
-
         def _setup_config(self):
             pass
 
         def test_identity(self):
-            self.check_with_place("collective_identity_op_xpu.py", "identity",
-                                  self.in_type_str)
+            self.check_with_place(
+                "collective_identity_op_xpu.py", "identity", self.in_type_str
+            )
 
 
 support_types = get_xpu_op_support_types('c_identity')
 for stype in support_types:
-    create_test_class(globals(),
-                      XPUTestCIdentityOP,
-                      stype,
-                      ignore_device_version=[core.XPUVersion.XPU1])
+    create_test_class(
+        globals(),
+        XPUTestCIdentityOP,
+        stype,
+        ignore_device_version=[core.XPUVersion.XPU1],
+    )
 
 if __name__ == '__main__':
     unittest.main()

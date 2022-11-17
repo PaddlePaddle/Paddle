@@ -164,11 +164,9 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   // those parameter already exist in trt, and should not have another copy in
   // fluid.
   std::vector<std::string> repetitive_params;
-
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
       CreateTensorRTOp(node, graph, graph_param_names, &repetitive_params);
-
       std::unordered_set<const Node *> nodes2remove(
           framework::ir::Agent(node).subgraph()->begin(),
           framework::ir::Agent(node).subgraph()->end());
@@ -319,6 +317,13 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   auto opt_input_shape =
       Get<std::map<std::string, std::vector<int>>>("optim_input_shape");
 
+  auto min_shape_tensor =
+      Get<std::map<std::string, std::vector<int>>>("min_shape_tensor");
+  auto max_shape_tensor =
+      Get<std::map<std::string, std::vector<int>>>("max_shape_tensor");
+  auto opt_shape_tensor =
+      Get<std::map<std::string, std::vector<int>>>("optim_shape_tensor");
+
   auto allow_build_at_runtime = Get<bool>("trt_allow_build_at_runtime");
   auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
   auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
@@ -328,7 +333,10 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     inference::DeserializeShapeRangeInfo(shape_range_info_path,
                                          &min_input_shape,
                                          &max_input_shape,
-                                         &opt_input_shape);
+                                         &opt_input_shape,
+                                         &min_shape_tensor,
+                                         &max_shape_tensor,
+                                         &opt_shape_tensor);
   }
 
   // The following procedure is used to rename all the intermediate
@@ -513,6 +521,9 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                   min_input_shape,
                   max_input_shape,
                   opt_input_shape,
+                  min_shape_tensor,
+                  max_shape_tensor,
+                  opt_shape_tensor,
                   disable_trt_plugin_fp16,
                   static_cast<phi::DataType>(Get<int>("model_precision")));
   trt_engine->SetUseOSS(Get<bool>("use_varseqlen"));
@@ -527,6 +538,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   trt_engine->SetWithErnie(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
+  trt_engine->SetContextMemorySharing(Get<bool>("context_memory_sharing"));
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(

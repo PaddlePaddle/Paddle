@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 from numpy import linalg as LA
@@ -27,8 +25,7 @@ paddle.enable_static()
 
 
 class TestL2LossOp(OpTest):
-    """Test npu squared_l2_norm
-    """
+    """Test npu squared_l2_norm"""
 
     def setUp(self):
         self.set_npu()
@@ -48,9 +45,9 @@ class TestL2LossOp(OpTest):
         self.check_output_with_place(place=self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'],
-                                   'Out',
-                                   max_relative_error=self.max_relative_error)
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', max_relative_error=self.max_relative_error
+        )
 
 
 if __name__ == "__main__":

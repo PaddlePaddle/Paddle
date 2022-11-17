@@ -26,7 +26,7 @@ void IOConverterTester(const platform::DeviceContext& ctx) {
   ASSERT_EQ(0, cudaStreamCreate(&stream));
 
   // init fluid in_tensor
-  framework::LoDTensor in_tensor;
+  phi::DenseTensor in_tensor;
   in_tensor.Resize({10, 10});
   auto place = ctx.GetPlace();
   in_tensor.mutable_data<float>(place);
@@ -45,7 +45,7 @@ void IOConverterTester(const platform::DeviceContext& ctx) {
   EngineIOConverter::ConvertInput("test", in_tensor, buffer, size, &stream);
 
   // convert tensorrt buffer to fluid out_tensor
-  framework::LoDTensor out_tensor;
+  phi::DenseTensor out_tensor;
   out_tensor.Resize({10, 10});
   out_tensor.mutable_data<float>(place);
   EngineIOConverter::ConvertOutput("test", buffer, &out_tensor, size, &stream);

@@ -34,9 +34,9 @@ namespace operators {
 template <typename T>
 struct DequantizeFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& dev_ctx,
-                  const framework::Tensor* in,
-                  const framework::Tensor* dict,
-                  framework::Tensor* out) {
+                  const phi::DenseTensor* in,
+                  const phi::DenseTensor* dict,
+                  phi::DenseTensor* out) {
     const float* dict_data = dict->data<float>();
     const T* input_data = in->data<T>();
     float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());

@@ -42,16 +42,16 @@ template <XpuLogicalType xpu_type, typename T>
 class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* y = context.Input<framework::Tensor>("Y");
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* y = context.Input<phi::DenseTensor>("Y");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     bool* out_ptr = out->mutable_data<bool>(context.GetPlace());
     const T* x_ptr = x->data<T>();
     const T* y_ptr = y->data<T>();
     auto& dev_ctx =
         context.template device_context<paddle::platform::XPUDeviceContext>();
-    framework::Tensor broadcast_x;
-    framework::Tensor broadcast_y;
+    phi::DenseTensor broadcast_x;
+    phi::DenseTensor broadcast_y;
     bool need_broad_cast = false;
     if (x->numel() != out->numel()) {
       // x need broadcast
@@ -160,8 +160,8 @@ template <typename T>
 class UnaryLogicalOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     if (x->numel() == 0) {
       return;
     }

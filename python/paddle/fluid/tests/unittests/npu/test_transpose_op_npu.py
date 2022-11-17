@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -27,7 +25,6 @@ paddle.enable_static()
 
 
 class TestTransposeOp(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "transpose2"
@@ -56,78 +53,73 @@ class TestTransposeOp(OpTest):
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
-class TestCase0(TestTransposeOp):
-
+class TestCase_ZeroDim(TestTransposeOp):
     def init_shape_axis(self):
-        self.shape = (100, )
-        self.axis = (0, )
+        self.shape = ()
+        self.axis = ()
+
+
+class TestCase0(TestTransposeOp):
+    def init_shape_axis(self):
+        self.shape = (100,)
+        self.axis = (0,)
 
 
 class TestCase1(TestTransposeOp):
-
     def init_shape_axis(self):
         self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
 class TestCase2(TestTransposeOp):
-
     def init_shape_axis(self):
         self.shape = (2, 3, 4, 5)
         self.axis = (0, 2, 3, 1)
 
 
 class TestCase3(TestTransposeOp):
-
     def init_shape_axis(self):
         self.shape = (2, 3, 4, 5, 6)
         self.axis = (4, 2, 3, 1, 0)
 
 
 class TestCase4(TestTransposeOp):
-
     def init_shape_axis(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
 
 
 class TestCase5(TestTransposeOp):
-
     def init_shape_axis(self):
         self.shape = (2, 16, 96)
         self.axis = (0, 2, 1)
 
 
 class TestCase6(TestTransposeOp):
-
     def init_shape_axis(self):
         self.shape = (2, 10, 12, 16)
         self.axis = (3, 1, 2, 0)
 
 
 class TestCase7(TestTransposeOp):
-
     def init_shape_axis(self):
         self.shape = (2, 10, 2, 16)
         self.axis = (0, 1, 3, 2)
 
 
 class TestCase8(TestTransposeOp):
-
     def init_shape_axis(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (0, 1, 3, 2, 4, 5, 6, 7)
 
 
 class TestCase9(TestTransposeOp):
-
     def init_shape_axis(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
 class TestTransposeOpFP16(TestTransposeOp):
-
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -136,7 +128,6 @@ class TestTransposeOpFP16(TestTransposeOp):
 
 
 class TestTransposeOpInt64(TestTransposeOp):
-
     def init_dtype(self):
         self.dtype = np.int64
 

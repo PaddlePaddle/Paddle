@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest, os
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 
 
 class TestDnnlMatMulOp(OpTest):
-
     def generate_data(self):
         self.x = np.random.random((25, 2, 2)).astype("float32")
         self.y = np.random.random((25, 2, 2)).astype("float32")
@@ -49,13 +46,11 @@ class TestDnnlMatMulOp(OpTest):
 
 
 class TestDnnlMatMulWithGradOp(TestDnnlMatMulOp):
-
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-2)
 
 
 class TestDnnlMatMulOpMixedDims1(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((17, 2, 3)).astype("float32")
         self.y = np.random.random((3, 4)).astype("float32")
@@ -63,7 +58,6 @@ class TestDnnlMatMulOpMixedDims1(TestDnnlMatMulWithGradOp):
 
 
 class TestDnnlMatMulOpMixedDimsYWiderTransposeY(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((8, 2, 3)).astype("float32")
         self.y = np.random.random((4, 3)).astype("float32")
@@ -74,7 +68,6 @@ class TestDnnlMatMulOpMixedDimsYWiderTransposeY(TestDnnlMatMulWithGradOp):
 
 
 class TestDnnlMatMulOpMixedDimsYWiderTransposeX(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((8, 3, 2)).astype("float32")
         self.y = np.random.random((3, 4)).astype("float32")
@@ -85,31 +78,30 @@ class TestDnnlMatMulOpMixedDimsYWiderTransposeX(TestDnnlMatMulWithGradOp):
 
 
 class TestDnnlMatMulOpMixedDimsXWiderTransposeXY(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((8, 3, 2)).astype("float32")
         self.y = np.random.random((4, 3)).astype("float32")
-        self.out = np.matmul(np.transpose(self.x, (0, 2, 1)),
-                             np.transpose(self.y))
+        self.out = np.matmul(
+            np.transpose(self.x, (0, 2, 1)), np.transpose(self.y)
+        )
 
     def set_attributes(self):
         self.attrs = {'transpose_X': True, 'transpose_Y': True}
 
 
 class TestDnnlMatMulOpMixedDimsYWiderTransposeXY(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((3, 2)).astype("float32")
         self.y = np.random.random((8, 4, 3)).astype("float32")
-        self.out = np.matmul(np.transpose(self.x),
-                             np.transpose(self.y, (0, 2, 1)))
+        self.out = np.matmul(
+            np.transpose(self.x), np.transpose(self.y, (0, 2, 1))
+        )
 
     def set_attributes(self):
         self.attrs = {'transpose_X': True, 'transpose_Y': True}
 
 
 class TestDnnlMatMulOpMixedDimsXWiderTransposeX(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((5, 4)).astype("float32")
         self.y = np.random.random((8, 5, 4)).astype("float32")
@@ -120,7 +112,6 @@ class TestDnnlMatMulOpMixedDimsXWiderTransposeX(TestDnnlMatMulWithGradOp):
 
 
 class TestDnnlMatMulOpVectorMultiply(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((5)).astype("float32")
         self.y = np.random.random((5)).astype("float32")
@@ -128,7 +119,6 @@ class TestDnnlMatMulOpVectorMultiply(TestDnnlMatMulWithGradOp):
 
 
 class TestDnnlMatMulOpVectorMultiplyTranspose(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((5)).astype("float32")
         x_resized = np.copy(self.x)
@@ -143,7 +133,6 @@ class TestDnnlMatMulOpVectorMultiplyTranspose(TestDnnlMatMulWithGradOp):
 
 
 class TestDnnlMatMulOpMixedDims2(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((2, 3)).astype("float32")
         self.y = np.random.random((17, 3, 4)).astype("float32")
@@ -151,7 +140,6 @@ class TestDnnlMatMulOpMixedDims2(TestDnnlMatMulWithGradOp):
 
 
 class TestDnnlMatMulOpAlpha(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((17, 2, 3)).astype("float32")
         self.y = np.random.random((17, 3, 2)).astype("float32")
@@ -160,7 +148,6 @@ class TestDnnlMatMulOpAlpha(TestDnnlMatMulWithGradOp):
 
 
 class TestDnnlMatMulOp2D(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((12, 9)).astype("float32")
         self.y = np.random.random((9, 12)).astype("float32")
@@ -168,7 +155,6 @@ class TestDnnlMatMulOp2D(TestDnnlMatMulWithGradOp):
 
 
 class TestDnnlMatMulOpTransposeX(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((12, 9)).astype("float32")
         self.y = np.random.random((12, 9)).astype("float32")
@@ -179,7 +165,6 @@ class TestDnnlMatMulOpTransposeX(TestDnnlMatMulWithGradOp):
 
 
 class TestDnnlMatMulOpTransposeY(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((12, 9)).astype("float32")
         self.y = np.random.random((12, 9)).astype("float32")
@@ -190,7 +175,6 @@ class TestDnnlMatMulOpTransposeY(TestDnnlMatMulWithGradOp):
 
 
 class TestDnnlMatMulOpTransposeY3D(TestDnnlMatMulWithGradOp):
-
     def generate_data(self):
         self.x = np.random.random((17, 3, 2)).astype("float32")
         self.y = np.random.random((17, 3, 2)).astype("float32")
@@ -201,7 +185,6 @@ class TestDnnlMatMulOpTransposeY3D(TestDnnlMatMulWithGradOp):
 
 
 class TestDnnlMatMulOpInt8NoScales(TestDnnlMatMulOp):
-
     def generate_data(self):
         self.x = np.random.random((12, 9)).astype("int8")
         self.y = np.random.random((9, 12)).astype("int8")
@@ -213,7 +196,7 @@ class TestDnnlMatMulOpInt8(TestDnnlMatMulOp):
     # on older platforms (BDW, SKX) we needed to reduce
     # range from [-127, 127] to [-63, 63]
     def quantize(self, tensor):
-        scale = 63. / np.abs(np.amax(tensor))
+        scale = 63.0 / np.abs(np.amax(tensor))
         quantized = np.round(scale * tensor).astype("int8")
         return scale, quantized
 
@@ -240,7 +223,6 @@ class TestDnnlMatMulOpInt8(TestDnnlMatMulOp):
 
 
 class TestDnnlMatMulOpInt8ForceFP32(TestDnnlMatMulOpInt8):
-
     def generate_data(self):
         x_float = np.random.random((12, 9)).astype("float32")
         self.x_scale, self.x = self.quantize(x_float)
@@ -255,12 +237,11 @@ class TestDnnlMatMulOpInt8ForceFP32(TestDnnlMatMulOpInt8):
         self.attrs = {
             'Scale_x': self.x_scale,
             'Scale_y': self.y_scale,
-            'force_fp32_output': True
+            'force_fp32_output': True,
         }
 
 
 class TestDnnlMatMulOpInt8ForceFP32BasicScales(TestDnnlMatMulOp):
-
     def generate_data(self):
         self.x = np.random.randint(0, 3, (12, 9)).astype("int8")
         self.y = np.random.randint(0, 3, (9, 12)).astype("int8")
@@ -272,15 +253,22 @@ class TestDnnlMatMulOpInt8ForceFP32BasicScales(TestDnnlMatMulOp):
 
 @skip_check_grad_ci(reason="DNNL's MatMul doesn't implement grad kernel.")
 class TestReshapeTransposeMatMulOp(OpTest):
-
     def init_data_type(self):
         self.data_type_ = 'float32'
 
     def generate_data(self):
-        self.x = np.random.random([2, 128, 768]).astype("float32").reshape(
-            [2, 128, 12, 64]).transpose([0, 2, 1, 3])
-        self.y = np.random.random([2, 128, 768]).astype("float32").reshape(
-            [2, 128, 12, 64]).transpose([0, 2, 1, 3])
+        self.x = (
+            np.random.random([2, 128, 768])
+            .astype("float32")
+            .reshape([2, 128, 12, 64])
+            .transpose([0, 2, 1, 3])
+        )
+        self.y = (
+            np.random.random([2, 128, 768])
+            .astype("float32")
+            .reshape([2, 128, 12, 64])
+            .transpose([0, 2, 1, 3])
+        )
         self.out = np.matmul(self.x, self.y.transpose([0, 1, 3, 2]))
         self.fused_reshape_X = []
         self.fused_transpose_X = []
@@ -302,7 +290,7 @@ class TestReshapeTransposeMatMulOp(OpTest):
         self.inputs = {'X': self.x, 'Y': self.y}
         self.attrs = {
             'use_mkldnn': self.use_mkldnn,
-            self.transpose_y_name: self.transpose_y
+            self.transpose_y_name: self.transpose_y,
         }
         if len(self.fused_transpose_X) > 0:
             self.attrs['fused_transpose_X'] = self.fused_transpose_X
@@ -320,49 +308,53 @@ class TestReshapeTransposeMatMulOp(OpTest):
 
 
 class TestReshapeTransposeMatMulOp4DXFloat(TestReshapeTransposeMatMulOp):
-
     def generate_data(self):
         self.x = np.random.random([2, 128, 768]).astype("float32")
-        self.y = np.random.random([2, 128, 768]).astype("float32").reshape(
-            [2, 128, 12, 64]).transpose([0, 2, 1, 3])
+        self.y = (
+            np.random.random([2, 128, 768])
+            .astype("float32")
+            .reshape([2, 128, 12, 64])
+            .transpose([0, 2, 1, 3])
+        )
         self.fused_transpose_X = [0, 2, 1, 3]
         self.fused_reshape_X = [0, 0, 12, 64]
         self.fused_transpose_Y = []
         self.fused_reshape_Y = []
         self.out = np.matmul(
             self.x.reshape([2, 128, 12, 64]).transpose([0, 2, 1, 3]),
-            self.y.transpose([0, 1, 3, 2]))
+            self.y.transpose([0, 1, 3, 2]),
+        )
 
 
 class TestReshapeTransposeMatMulOp4DXInt8(TestReshapeTransposeMatMulOp4DXFloat):
-
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
 class TestReshapeTransposeMatMulOp4DYFloat(TestReshapeTransposeMatMulOp):
-
     def generate_data(self):
-        self.x = np.random.random([2, 128, 768]).astype("float32").reshape(
-            [2, 128, 12, 64]).transpose([0, 2, 1, 3])
+        self.x = (
+            np.random.random([2, 128, 768])
+            .astype("float32")
+            .reshape([2, 128, 12, 64])
+            .transpose([0, 2, 1, 3])
+        )
         self.y = np.random.random([2, 128, 768]).astype("float32")
         self.fused_transpose_X = []
         self.fused_reshape_X = []
         self.fused_transpose_Y = [0, 2, 1, 3]
         self.fused_reshape_Y = [0, 0, 12, 64]
         self.out = np.matmul(
-            self.x,
-            self.y.reshape([2, 128, 12, 64]).transpose([0, 2, 3, 1]))
+            self.x, self.y.reshape([2, 128, 12, 64]).transpose([0, 2, 3, 1])
+        )
 
 
 class TestReshapeTransposeMatMulOp4DYInt8(TestReshapeTransposeMatMulOp4DYFloat):
-
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
 class TestReshapeTransposeMatMulOp4DXYFloat(TestReshapeTransposeMatMulOp):
-
     def generate_data(self):
         self.x = np.random.random([2, 128, 768]).astype("float32")
         self.y = np.random.random([2, 128, 768]).astype("float32")
@@ -372,42 +364,48 @@ class TestReshapeTransposeMatMulOp4DXYFloat(TestReshapeTransposeMatMulOp):
         self.fused_reshape_Y = [0, 0, 12, 64]
         self.out = np.matmul(
             self.x.reshape([2, 128, 12, 64]).transpose([0, 2, 1, 3]),
-            self.y.reshape([2, 128, 12, 64]).transpose([0, 2, 3, 1]))
+            self.y.reshape([2, 128, 12, 64]).transpose([0, 2, 3, 1]),
+        )
 
 
-class TestReshapeTransposeMatMulOp4DXYInt8(TestReshapeTransposeMatMulOp4DXYFloat
-                                           ):
-
+class TestReshapeTransposeMatMulOp4DXYInt8(
+    TestReshapeTransposeMatMulOp4DXYFloat
+):
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
 class TestReshapeTransposeMatMulOp2DXFloat(TestReshapeTransposeMatMulOp):
-
     def generate_data(self):
         self.x = np.random.random([2, 5, 10]).astype("float32")
-        self.y = np.random.random([2, 5, 10]).astype("float32").reshape(
-            [10, 10]).transpose([1, 0])
+        self.y = (
+            np.random.random([2, 5, 10])
+            .astype("float32")
+            .reshape([10, 10])
+            .transpose([1, 0])
+        )
         self.fused_transpose_X = [1, 0]
         self.fused_reshape_X = [10, 10]
         self.fused_transpose_Y = []
         self.fused_reshape_Y = []
         self.out = np.matmul(
-            self.x.reshape([10, 10]).transpose([1, 0]), self.y.transpose([1,
-                                                                          0]))
+            self.x.reshape([10, 10]).transpose([1, 0]), self.y.transpose([1, 0])
+        )
 
 
 class TestReshapeTransposeMatMulOp2DXInt8(TestReshapeTransposeMatMulOp2DXFloat):
-
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
 class TestReshapeTransposeMatMulOp2DYFloat(TestReshapeTransposeMatMulOp):
-
     def generate_data(self):
-        self.x = np.random.random([2, 5, 10]).astype("float32").reshape(
-            [10, 10]).transpose([1, 0])
+        self.x = (
+            np.random.random([2, 5, 10])
+            .astype("float32")
+            .reshape([10, 10])
+            .transpose([1, 0])
+        )
         self.y = np.random.random([2, 5, 10]).astype("float32")
         self.fused_transpose_X = []
         self.fused_reshape_X = []
@@ -417,37 +415,42 @@ class TestReshapeTransposeMatMulOp2DYFloat(TestReshapeTransposeMatMulOp):
 
 
 class TestReshapeTransposeMatMulOp2DYInt8(TestReshapeTransposeMatMulOp2DYFloat):
-
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
 class TestReshapeTransposeMatMulOp3DXFloat(TestReshapeTransposeMatMulOp):
-
     def generate_data(self):
         self.x = np.random.random([2, 2, 5, 5]).astype("float32")
-        self.y = np.random.random([2, 2, 5, 5]).astype("float32").reshape(
-            [2, 10, 5]).transpose([0, 2, 1])
+        self.y = (
+            np.random.random([2, 2, 5, 5])
+            .astype("float32")
+            .reshape([2, 10, 5])
+            .transpose([0, 2, 1])
+        )
         self.fused_transpose_X = [0, 2, 1]
         self.fused_reshape_X = [2, 10, 5]
         self.fused_transpose_Y = []
         self.fused_reshape_Y = []
         self.out = np.matmul(
             self.x.reshape([2, 10, 5]).transpose(0, 2, 1),
-            self.y.transpose(0, 2, 1))
+            self.y.transpose(0, 2, 1),
+        )
 
 
 class TestReshapeTransposeMatMulOp3DXInt8(TestReshapeTransposeMatMulOp3DXFloat):
-
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
 class TestReshapeTransposeMatMulOp3DYFloat(TestReshapeTransposeMatMulOp):
-
     def generate_data(self):
-        self.x = np.random.random([2, 2, 5, 5]).astype(self.data_type_).reshape(
-            [2, 10, 5]).transpose([0, 2, 1])
+        self.x = (
+            np.random.random([2, 2, 5, 5])
+            .astype(self.data_type_)
+            .reshape([2, 10, 5])
+            .transpose([0, 2, 1])
+        )
         self.y = np.random.random([2, 2, 5, 5]).astype(self.data_type_)
         self.fused_transpose_X = []
         self.fused_reshape_X = []
@@ -457,14 +460,12 @@ class TestReshapeTransposeMatMulOp3DYFloat(TestReshapeTransposeMatMulOp):
 
 
 class TestReshapeTransposeMatMulOp3DYInt8(TestReshapeTransposeMatMulOp3DYFloat):
-
     def init_data_type(self):
         self.data_type_ = 'int8'
 
 
 @skip_check_grad_ci(reason="Tests inference only optimization.")
 class TestMatMulOpTransposeReshapeEmptyFloat(OpTest):
-
     def init_data_type(self):
         self.data_type_ = np.float32
 
@@ -514,39 +515,44 @@ class TestMatMulOpTransposeReshapeEmptyFloat(OpTest):
 
 
 class TestMatMulOpTransposeReshapeIntEmptyInt(
-        TestMatMulOpTransposeReshapeEmptyFloat):
-
+    TestMatMulOpTransposeReshapeEmptyFloat
+):
     def init_data_type(self):
         self.data_type_ = np.int8
 
 
 class TestMatMulOpTransposeReshapeBasicFloat(
-        TestMatMulOpTransposeReshapeEmptyFloat):
-
+    TestMatMulOpTransposeReshapeEmptyFloat
+):
     def generate_data(self):
         self.bs = 8
-        self.x = np.random.random([self.bs, 12, 128,
-                                   128]).astype(self.data_type_)
-        self.y = np.random.random([self.bs, 12, 128,
-                                   64]).astype(self.data_type_)
+        self.x = np.random.random([self.bs, 12, 128, 128]).astype(
+            self.data_type_
+        )
+        self.y = np.random.random([self.bs, 12, 128, 64]).astype(
+            self.data_type_
+        )
 
     def init_params_and_out(self):
         self.transpose_out = [0, 2, 1, 3]
         self.reshape_out = [0, 0, self.x.shape[1] * self.y.shape[-1]]
-        self.out = np.matmul(self.x, self.y).transpose([0, 2, 1, 3]).reshape(
-            [self.bs, -1, self.x.shape[1] * self.y.shape[-1]])
+        self.out = (
+            np.matmul(self.x, self.y)
+            .transpose([0, 2, 1, 3])
+            .reshape([self.bs, -1, self.x.shape[1] * self.y.shape[-1]])
+        )
 
 
 class TestMatMulOpTransposeReshapeBasicInt(
-        TestMatMulOpTransposeReshapeBasicFloat):
-
+    TestMatMulOpTransposeReshapeBasicFloat
+):
     def init_data_type(self):
         self.data_type_ = np.int8
 
 
 class TestMatMulOpTransposeReshapeOtherDimFloat(
-        TestMatMulOpTransposeReshapeBasicFloat):
-
+    TestMatMulOpTransposeReshapeBasicFloat
+):
     def generate_data(self):
         self.bs = 11
         self.x = np.random.random([self.bs, 12, 14, 18]).astype(self.data_type_)
@@ -554,13 +560,14 @@ class TestMatMulOpTransposeReshapeOtherDimFloat(
 
 
 class TestMatMulOpTransposeReshapeOtherDimInt(
-        TestMatMulOpTransposeReshapeOtherDimFloat):
-
+    TestMatMulOpTransposeReshapeOtherDimFloat
+):
     def init_data_type(self):
         self.data_type_ = np.int8
 
 
 if __name__ == "__main__":
     from paddle import enable_static
+
     enable_static()
     unittest.main()

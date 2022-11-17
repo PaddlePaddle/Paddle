@@ -19,11 +19,7 @@ from op_test import OpTest
 import random
 import paddle
 
-import paddle.nn as nn
-import paddle.nn.functional as F
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
 
 np.random.seed(0)
 
@@ -51,8 +47,9 @@ def cumprod_grad(x, y, dy, dx, shape, dim):
                     else:
                         elem = dy[pos] * y[index - inner_dim]
                     if pos > index:
-                        for m in range(index + inner_dim, pos + inner_dim,
-                                       inner_dim):
+                        for m in range(
+                            index + inner_dim, pos + inner_dim, inner_dim
+                        ):
                             elem *= x[m]
                     elif pos < index:
                         elem = 0
@@ -61,7 +58,6 @@ def cumprod_grad(x, y, dy, dx, shape, dim):
 
 # test function.
 class TestCumprod(OpTest):
-
     def init_params(self):
         self.shape = (2, 3, 4, 5)
         self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
@@ -102,8 +98,9 @@ class TestCumprod(OpTest):
         if self.dtype == np.complex128 or self.dtype == np.complex64:
             reshape_x = np.conj(reshape_x)
             out_data = np.conj(out_data)
-        cumprod_grad(reshape_x, out_data, self.grad_out, self.grad_x,
-                     self.shape, dim)
+        cumprod_grad(
+            reshape_x, out_data, self.grad_out, self.grad_x, self.shape, dim
+        )
         self.grad_x = self.grad_x.reshape(self.shape)
         self.grad_out = self.grad_out.reshape(self.shape)
 
@@ -123,37 +120,35 @@ class TestCumprod(OpTest):
                 if self.dtype == np.float64:
                     self.check_grad(['X'], 'Out', check_eager=True)
                 else:
-                    self.check_grad(['X'],
-                                    'Out',
-                                    user_defined_grads=[self.grad_x],
-                                    user_defined_grad_outputs=[self.grad_out],
-                                    check_eager=True)
+                    self.check_grad(
+                        ['X'],
+                        'Out',
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True,
+                    )
 
 
 # test float32 case.
 class TestCumprod_float32(TestCumprod):
-
     def init_dtype(self):
         self.dtype = np.float32
 
 
 # test complex64 case.
 class TestCumprod_complex64(TestCumprod):
-
     def init_dtype(self):
         self.dtype = np.complex64
 
 
 # test complex128 case.
 class TestCumprod_complex128(TestCumprod):
-
     def init_dtype(self):
         self.dtype = np.complex128
 
 
 # test api.
 class TestCumprodAPI(unittest.TestCase):
-
     def init_dtype(self):
         self.dtype = 'float64'
         self.shape = [2, 3, 10, 10]
@@ -186,7 +181,6 @@ class TestCumprodAPI(unittest.TestCase):
 
     # test dynamic graph api.
     def test_dygraph_api(self):
-
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)

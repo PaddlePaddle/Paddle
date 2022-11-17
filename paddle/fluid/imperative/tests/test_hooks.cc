@@ -53,8 +53,8 @@ std::shared_ptr<imperative::VariableWrapper> DoubleHook(
   out_var->InnerSetOverridedStopGradient(var->InnerOverridedStopGradient());
 
   // 2. get input and output var's tensor
-  auto* out_tensor = out_var->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto& tensor = var->Var().Get<framework::LoDTensor>();
+  auto* out_tensor = out_var->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto& tensor = var->Var().Get<phi::DenseTensor>();
   out_tensor->Resize(tensor.dims());
 
   // 3. double calc
@@ -81,8 +81,8 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   std::vector<int64_t> x_dims = {2, 5};
   std::vector<int64_t> y_dims = {5, 2};
 
-  auto* x_tensor = x->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto* y_tensor = y->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* x_tensor = x->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* y_tensor = y->MutableVar()->GetMutable<phi::DenseTensor>();
 
   x_tensor->Resize(phi::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
@@ -133,18 +133,18 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   engine.Execute();
 
   // verify VariableWrapper hook result
-  framework::LoDTensor x_grad;
+  phi::DenseTensor x_grad;
   framework::TensorCopySync(
-      x->GradVar().Get<framework::LoDTensor>(), place, &x_grad);
+      x->GradVar().Get<phi::DenseTensor>(), place, &x_grad);
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 8.0);
   }
   // verify Void hook result
   ASSERT_EQ(hook_value, 10);
 
-  framework::LoDTensor y_grad;
+  phi::DenseTensor y_grad;
   framework::TensorCopySync(
-      y->GradVar().Get<framework::LoDTensor>(), place, &y_grad);
+      y->GradVar().Get<phi::DenseTensor>(), place, &y_grad);
 
   for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 4.0);
@@ -170,9 +170,9 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   std::vector<int64_t> y_dims = {5, 2};
   std::vector<int64_t> z_dims = {5, 2};
 
-  auto* x_tensor = x->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto* y_tensor = y->MutableVar()->GetMutable<framework::LoDTensor>();
-  auto* z_tensor = z->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* x_tensor = x->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* y_tensor = y->MutableVar()->GetMutable<phi::DenseTensor>();
+  auto* z_tensor = z->MutableVar()->GetMutable<phi::DenseTensor>();
 
   x_tensor->Resize(phi::make_ddim(x_dims));
   auto* mutable_x = x_tensor->mutable_data<float>(place);
@@ -245,26 +245,26 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   engine.Execute();
 
   // verify VariableWrapper hook result
-  framework::LoDTensor x_grad;
+  phi::DenseTensor x_grad;
   framework::TensorCopySync(
-      x->GradVar().Get<framework::LoDTensor>(), place, &x_grad);
+      x->GradVar().Get<phi::DenseTensor>(), place, &x_grad);
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 16.0);
   }
   // verify Void hook result
   ASSERT_EQ(hook_value, 100);
 
-  framework::LoDTensor y_grad;
+  phi::DenseTensor y_grad;
   framework::TensorCopySync(
-      y->GradVar().Get<framework::LoDTensor>(), place, &y_grad);
+      y->GradVar().Get<phi::DenseTensor>(), place, &y_grad);
 
   for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 4.0);
   }
 
-  framework::LoDTensor z_grad;
+  phi::DenseTensor z_grad;
   framework::TensorCopySync(
-      z->GradVar().Get<framework::LoDTensor>(), place, &z_grad);
+      z->GradVar().Get<phi::DenseTensor>(), place, &z_grad);
 
   for (int i = 0; i < z_grad.numel(); ++i) {
     ASSERT_EQ(z_grad.data<float>()[i], 4.0);
