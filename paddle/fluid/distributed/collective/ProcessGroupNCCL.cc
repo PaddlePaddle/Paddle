@@ -189,16 +189,16 @@ void CheckSizeOnEachRank(const phi::DDim& tensor_dim,
                          int world_size) {
   int length_size_on_each_rank = size_on_each_rank.size();
   PADDLE_ENFORCE_EQ(
-      length_size_on_each_rank == world_size,
-      true,
+      length_size_on_each_rank,
+      world_size,
       platform::errors::InvalidArgument(
           "The length of size_on_each_rank must be equal to world_size."));
 
   int64_t sum_size_on_each_rank =
       std::accumulate(size_on_each_rank.begin(), size_on_each_rank.end(), 0);
   PADDLE_ENFORCE_EQ(
-      sum_size_on_each_rank == tensor_dim[0],
-      true,
+      sum_size_on_each_rank,
+      tensor_dim[0],
       platform::errors::InvalidArgument(
           "The sum of size_on_each_rank must be equal to tensor's dim[0]."));
 }
@@ -227,7 +227,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         phi::DenseTensor input_partial, output_partial;
 
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+        GroupStart();
         for (auto i = 0; i < size_; i++) {
           in_numel = in_size_each_rank[i] * in_row_size;
           input_partial = GetPartialTensor(input, in_offset, in_numel);
@@ -251,7 +251,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
               stream));
           out_offset += out_numel;
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+        GroupEnd();
       },
       CommType::ALLTOALL,
       sync_op,
@@ -523,8 +523,8 @@ void ProcessGroupNCCL::CheckSplitSizes(std::vector<int64_t>* split_sizes,
                                        std::vector<int64_t> tensor_shape) {
   int64_t len_size = (*split_sizes).size();
   if (len_size == 0) {
-    PADDLE_ENFORCE_EQ(tensor_shape[0] % size_ == 0,
-                      true,
+    PADDLE_ENFORCE_EQ(tensor_shape[0] % size_,
+                      0,
                       platform::errors::InvalidArgument(
                           "Tensor's dim[0] must be divisible by group size "
                           "when split_sizes not given."));
@@ -534,15 +534,15 @@ void ProcessGroupNCCL::CheckSplitSizes(std::vector<int64_t>* split_sizes,
                 static_cast<int64_t>(tensor_shape[0] / size_));
   } else {
     PADDLE_ENFORCE_EQ(
-        len_size == size_,
-        true,
+        len_size,
+        size_,
         platform::errors::InvalidArgument(
             "The length of split_sizes must be equal to group size."));
     auto sum_size = std::accumulate(
         (*split_sizes).begin(), (*split_sizes).end(), static_cast<int64_t>(0));
     PADDLE_ENFORCE_EQ(
-        sum_size == tensor_shape[0],
-        true,
+        sum_size,
+        tensor_shape[0],
         platform::errors::InvalidArgument(
             "The sum of split_sizes must be equal to tensor's dim[0]."));
   }
@@ -625,7 +625,7 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
   std::vector<phi::GPUContext*> dev_ctx_raw;
   dev_ctx_raw.resize(places.size());
 
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+  GroupStart();
 
   for (size_t i = 0; i < places.size(); ++i) {
     platform::CUDADeviceGuard guard(places[i]);
@@ -638,7 +638,7 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
     dev_ctx_raw[i] = dev_ctx[i].get();
   }
 
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+  GroupEnd();
 
   // TODO(sunyilun): for compatibility, will be removed later
   place_to_calc_event_.emplace(places_key, places[0]);
@@ -1004,8 +1004,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
 void CheckTensorsInDifferentDevices(
     const std::vector<phi::DenseTensor>& tensors, const size_t num_devices) {
   PADDLE_ENFORCE_EQ(
-      tensors.size() == 0,
-      false,
+      tensors.size(),
+      0,
       platform::errors::InvalidArgument("Tensor list must be nonempty."));
   PADDLE_ENFORCE_LE(
       tensors.size(),
@@ -1160,7 +1160,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
           ncclComm_t comm,
           const gpuStream_t& stream) {
         size_t offset = 0;
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+        GroupStart();
         for (auto i = 0; i < size_; i++) {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
               GetPointerByOffset(input.data(), offset, input.dtype()),
@@ -1178,7 +1178,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
               stream));
           offset += input.numel() / size_;
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+        GroupEnd();
       },
       CommType::ALLTOALL);
 }
@@ -1204,7 +1204,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
           ncclComm_t comm,
           const gpuStream_t& stream) {
         size_t offset = 0;
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+        GroupStart();
         for (auto i = 0; i < size_; i++) {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
               GetPointerByOffset(input.data(), offset, input.dtype()),
@@ -1222,7 +1222,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
               stream));
           offset += input.numel() / size_;
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+        GroupEnd();
       },
       CommType::ALLTOALL,
       sync_op,
@@ -1342,7 +1342,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
           const gpuStream_t& stream) {
         size_t offset = 0;
         if (rank_ == opts.root_rank) {
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+          GroupStart();
           for (auto i = 0; i < size_; i++) {
             PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
                 GetPointerByOffset(input.data(), offset, input.dtype()),
@@ -1360,7 +1360,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
               opts.root_rank,
               comm,
               stream));
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+          GroupEnd();
         } else {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
               output.data(),
@@ -1402,7 +1402,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
                 "Input and output tensors should have the same shape."));
         size_t offset = 0;
         if (rank_ == opts.root_rank) {
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+          GroupStart();
           for (auto i = 0; i < size_; i++) {
             PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
                 GetPointerByOffset(input.data(), offset, input.dtype()),
@@ -1420,7 +1420,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
               opts.root_rank,
               comm,
               stream));
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+          GroupEnd();
         } else {
           PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
               output.data(),
