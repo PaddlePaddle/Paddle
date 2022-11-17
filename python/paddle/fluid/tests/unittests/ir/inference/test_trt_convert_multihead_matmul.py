@@ -1099,7 +1099,7 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
         def generate_weight3():
             return np.random.random((768, 768)).astype(np.float32)
 
-        for batch in [1, 2, 4]:
+        for batch in [2]:
             self.batch = batch
             for reshape_shape in [[0, 0, 12, 64]]:
                 for dim1 in [128]:
@@ -1441,14 +1441,6 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        self.trt_param.workspace_size = 2013265920
-        yield self.create_inference_config(), (1, 4), (1e-5, 1e-5)
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 4), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
