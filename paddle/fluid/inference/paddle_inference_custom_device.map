@@ -22,6 +22,8 @@
 			*paddle_infer::contrib::TensorUtils*;
 			*paddle_infer::contrib::Status*;
 			*paddle_infer::services::PredictorPool*;
+
+			*paddle::experimental*;
 		};
 
 		*Pass*;
