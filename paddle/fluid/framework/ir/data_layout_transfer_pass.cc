@@ -175,7 +175,8 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       auto *filter_var = scope->FindLocalVar(filter_name);
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
       if (filter_tensor.dims().size() == 4 &&
-          filter_tensor.dims()[1] % 8 != 0) {
+          (filter_tensor.dims()[0] % 8 != 0 ||
+           filter_tensor.dims()[1] % 8 != 0)) {
         return false;
       }
     }
