@@ -86,11 +86,9 @@ void AnalysisConfig::SetModel(const std::string &prog_file_path,
   Update();
 }
 
-void AnalysisConfig::EnableUseGpu(
-    uint64_t memory_pool_init_size_mb,
-    int device_id,
-    Precision precision_mode,
-    const std::unordered_set<std::string> &black_list) {
+void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
+                                  int device_id,
+                                  Precision precision_mode) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   use_gpu_ = true;
   memory_pool_init_size_mb_ = memory_pool_init_size_mb;
@@ -101,7 +99,6 @@ void AnalysisConfig::EnableUseGpu(
   } else if (precision_mode == Precision::kHalf ||
              precision_mode == Precision::kBf16) {
     enable_gpu_fp16_ = true;
-    mixed_black_list_ = black_list;
     mixed_precision_mode_ = precision_mode;
   } else {
     LOG(ERROR)
@@ -110,8 +107,7 @@ void AnalysisConfig::EnableUseGpu(
            "you specified in EnableUseGpu or enable_use_gpu function.";
   }
 #else
-  LOG(ERROR) << "PaddlePaddle of non GPU version, Please recompile "
-                "PaddlePaddle with GPU";
+  LOG(ERROR) << "Please use PaddlePaddle with GPU version.";
 #endif
 
   Update();
@@ -1392,7 +1388,7 @@ bool AnalysisConfig::trt_allow_build_at_runtime() const {
   return trt_allow_build_at_runtime_;
 }
 
-void AnalysisConfig::Exp_SetBlackListOpsForMixedModel(
+void AnalysisConfig::Exp_DisableMixedInferOps(
     const std::unordered_set<std::string> &black_list) {
   mixed_black_list_ = black_list;
 }
