@@ -24,7 +24,7 @@ import numpy as np
 import paddle
 from ..layer_helper import LayerHelper
 from paddle.fluid.framework import _in_legacy_dygraph
-from ..initializer import Normal, Constant, NumpyArrayInitializer
+from ..initializer import Normal, Constant
 from ..framework import (
     Variable,
     OpProtoHolder,
