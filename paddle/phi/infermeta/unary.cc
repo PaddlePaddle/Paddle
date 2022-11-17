@@ -1882,8 +1882,8 @@ void LUInferMeta(const MetaTensor& x,
 }
 
 void MatrixRankInferMeta(const MetaTensor& x,
-                         bool use_default_tol,
                          bool hermitian,
+                         bool use_default_tol,
                          MetaTensor* out) {
   auto dim_x = x.dims();
   PADDLE_ENFORCE_GE(dim_x.size(),
@@ -4156,10 +4156,10 @@ void UnbindInferMeta(const MetaTensor& x,
   }
 }
 
-void TrilInferMeta(const MetaTensor& x,
-                   int diagonal,
-                   bool lower,
-                   MetaTensor* out) {
+void TrilTriuInferMeta(const MetaTensor& x,
+                       int diagonal,
+                       bool lower,
+                       MetaTensor* out) {
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
                     2,
@@ -4168,6 +4168,14 @@ void TrilInferMeta(const MetaTensor& x,
   out->set_dims(x.dims());
   out->share_lod(x);
   out->set_dtype(x.dtype());
+}
+
+void TrilInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
+  TrilTriuInferMeta(x, diagonal, true, out);
+}
+
+void TriuInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
+  TrilTriuInferMeta(x, diagonal, false, out);
 }
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
