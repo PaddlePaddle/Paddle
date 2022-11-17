@@ -58,7 +58,6 @@ from ..data_feeder import (
     check_type,
     check_dtype,
 )
-import paddle
 from paddle.utils import deprecated
 from paddle import _C_ops, _legacy_C_ops
 
@@ -123,20 +122,15 @@ __all__ = [
     'log',
     'crop',
     'crop_tensor',
-    'elu',
     'relu6',
     'pow',
-    'stanh',
     'hard_sigmoid',
-    'swish',
     'prelu',
     'brelu',
     'leaky_relu',
-    'soft_relu',
     'flatten',
     'stack',
     'pad2d',
-    'unstack',
     'unique',
     'unique_with_counts',
     'expand',
@@ -146,10 +140,6 @@ __all__ = [
     'elementwise_div',
     'elementwise_sub',
     'elementwise_mul',
-    'elementwise_min',
-    'elementwise_pow',
-    'elementwise_mod',
-    'elementwise_floordiv',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
@@ -168,7 +158,6 @@ __all__ = [
     'clip_by_norm',
     'mean',
     'mul',
-    'affine_grid',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
     'shuffle_channel',
@@ -9304,68 +9293,6 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod, out_val_if_empty=0):
     return [out, loss_weight]
 
 
-def unstack(x, axis=0, num=None):
-    """
-    :alias_main: paddle.unstack
-        :alias: paddle.unstack,paddle.tensor.unstack,paddle.tensor.manipulation.unstack
-        :old_api: paddle.fluid.layers.unstack
-
-    **UnStack Layer**
-
-    This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
-
-    If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
-    If :code:`num` is None, it would be inferred from :code:`x.shape[axis]`,
-    and if :code:`x.shape[axis]` <= 0 or is unknown, :code:`ValueError` is
-    raised.
-
-    Args:
-        x (Tensor): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
-        axis (int): The axis along which the input is unstacked.
-        num (int|None): The number of output variables.
-
-    Returns:
-        list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
-
-    Raises:
-        ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            x = paddle.ones(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
-            y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
-
-    """
-
-    if _non_static_mode():
-        if num is None:
-            num = x.shape[axis]
-        if num == 0:
-            return []
-        return _legacy_C_ops.unstack(x, num, 'axis', int(axis), 'num', num)
-
-    helper = LayerHelper('unstack', **locals())
-    if num is None:
-        if axis is None or x.shape[axis] <= 0:
-            raise ValueError('unknown unstack number')
-        else:
-            num = x.shape[axis]
-
-    outs = []
-    for _ in range(num):
-        outs.append(helper.create_variable_for_type_inference(x.dtype))
-
-    helper.append_op(
-        type='unstack',
-        inputs={'X': [x]},
-        outputs={'Y': outs},
-        attrs={'axis': axis, 'num': num},
-    )
-    return outs
-
-
 @deprecated(since='2.0.0', update_to="paddle.expand")
 def expand(x, expand_times, name=None):
     """
@@ -9696,7 +9623,6 @@ def gaussian_random(
     """
     This OP returns a Tensor filled with random values sampled from a Gaussian
     distribution, with ``shape`` and ``dtype``.
-
     Args:
         shape(list|tuple|Tensor): The shape of the output Tensor. If ``shape``
             is a list or tuple, the elements of it should be integers or Tensors
@@ -10024,6 +9950,7 @@ def sum(x):
 
     return paddle.add_n(x)
 
+<<<<<<< HEAD
 
 @templatedoc()
 def slice(input, axes, starts, ends):
@@ -10123,7 +10050,7 @@ def slice(input, axes, starts, ends):
             )
 
         infer_flags = list(1 for i in range(len(axes)))
-
+        
         tmp_tensor_type = core.eager.Tensor
         if isinstance(starts, (list, tuple)):
             starts = [
@@ -10706,6 +10633,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     ``bias_after_scale`` is True:
 
+<<<<<<< HEAD
     .. math::
                             Out=scale*X+bias
 
@@ -10867,6 +10795,88 @@ def elementwise_add(x, y, axis=-1, act=None, name=None):
             y = fluid.data(name="y", shape=[5], dtype='float32')
             z = fluid.layers.elementwise_add(x, y, axis=3)
             # z = x + y
+=======
+for func in [
+    elementwise_add,
+    elementwise_div,
+    elementwise_sub,
+    elementwise_mul,
+]:
+    op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
+
+    # insert the c++ doc string on top of python doc string
+    func.__doc__ = (
+        _generate_doc_string_(
+            op_proto,
+            additional_args_lines=[
+                "axis (int32, optional): If X.dimension != Y.dimension, \
+            Y.dimension must be a subsequence of x.dimension. \
+            And axis is the start dimension index for broadcasting Y onto X. ",
+                "act (string, optional): Activation applied to the output. \
+            Default is None. Details: :ref:`api_guide_activations_en` ",
+                "name (string, optional): Name of the output. \
+            Default is None. It's used to print debug info for developers. Details: \
+            :ref:`api_guide_Name` ",
+            ],
+            skip_attrs_set={
+                "x_data_format",
+                "y_data_format",
+                "axis",
+                "use_quantizer",
+                "mkldnn_data_type",
+                "Scale_x",
+                "Scale_y",
+                "Scale_out",
+            },
+        )
+        + """\n"""
+        + str(func.__doc__)
+    )
+
+    doc_list = func.__doc__.splitlines()
+
+    for idx, val in enumerate(doc_list):
+        if (
+            val.startswith("Warning: ")
+            and val.endswith(" instead.")
+            and "and will be removed in future versions." in val
+        ):
+            doc_list.insert(0, doc_list.pop(idx))
+            func.__doc__ = "\n" + "\n".join(i for i in doc_list)
+            break
+
+for func in []:
+    op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
+    func.__doc__ = _generate_doc_string_(
+        op_proto,
+        additional_args_lines=[
+            "act (basestring|None): Activation applied to the output.",
+            "name (basestring|None): Name of the output.",
+        ],
+    )
+    func.__doc__ = (
+        func.__doc__
+        + """
+
+Examples:
+  .. code-block:: python
+
+    import paddle.fluid as fluid
+    # example 1: shape(x) = (2, 3, 4, 5), shape(y) = (2, 3, 4, 5)
+    x0 = fluid.layers.data(name="x0", shape=[2, 3, 4, 5], dtype='float32')
+    y0 = fluid.layers.data(name="y0", shape=[2, 3, 4, 5], dtype='float32')
+    z0 = fluid.layers.%s(x0, y0)
+
+    # example 2: shape(X) = (2, 3, 4, 5), shape(Y) = (5)
+    x1 = fluid.layers.data(name="x1", shape=[2, 3, 4, 5], dtype='float32')
+    y1 = fluid.layers.data(name="y1", shape=[5], dtype='float32')
+    z1 = fluid.layers.%s(x1, y1)
+
+    # example 3: shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+    x2 = fluid.layers.data(name="x2", shape=[2, 3, 4, 5], dtype='float32')
+    y2 = fluid.layers.data(name="y2", shape=[4, 5], dtype='float32')
+    z2 = fluid.layers.%s(x2, y2, axis=2)
+>>>>>>> fafc7be247b145107ac3045f04eec29e6ec301d4
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
