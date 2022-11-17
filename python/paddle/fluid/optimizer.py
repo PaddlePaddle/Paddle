@@ -99,7 +99,7 @@ __all__ = [
 ]
 
 
-class Optimizer(object):
+class Optimizer:
     """Optimizer Base class.
 
     Define the common interface of an optimizer.
@@ -1475,7 +1475,7 @@ class SGDOptimizer(Optimizer):
         name=None,
     ):
         assert learning_rate is not None
-        super(SGDOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -1679,7 +1679,7 @@ class MomentumOptimizer(Optimizer):
     ):
         assert learning_rate is not None
         assert momentum is not None
-        super(MomentumOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -1836,7 +1836,7 @@ class DGCMomentumOptimizer(Optimizer):
 
         assert learning_rate is not None
         assert momentum is not None
-        super(DGCMomentumOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -2297,7 +2297,7 @@ class LarsMomentumOptimizer(Optimizer):
     ):
         assert learning_rate is not None
         assert momentum is not None
-        super(LarsMomentumOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -2549,7 +2549,7 @@ class AdagradOptimizer(Optimizer):
     ):
         assert learning_rate is not None
         assert epsilon is not None
-        super(AdagradOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -2800,7 +2800,7 @@ class AdamOptimizer(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(AdamOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -3144,7 +3144,7 @@ class AdamaxOptimizer(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(AdamaxOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -3325,7 +3325,7 @@ class DpsgdOptimizer(Optimizer):
         assert clip is not None
         assert batch_size is not None
         assert sigma is not None
-        super(DpsgdOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate, parameter_list=parameter_list
         )
         self.type = "dpsgd"
@@ -3455,7 +3455,7 @@ class DecayedAdagradOptimizer(Optimizer):
         assert decay is not None
         assert epsilon is not None
 
-        super(DecayedAdagradOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -3586,7 +3586,7 @@ class AdadeltaOptimizer(Optimizer):
             raise ValueError("epsilon is not set.")
         if rho is None:
             raise ValueError("rho is not set.")
-        super(AdadeltaOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -3784,7 +3784,7 @@ class RMSPropOptimizer(Optimizer):
         grad_clip=None,
         name=None,
     ):
-        super(RMSPropOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -4001,7 +4001,7 @@ class FtrlOptimizer(Optimizer):
         grad_clip=None,
         name=None,
     ):
-        super(FtrlOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -4174,7 +4174,7 @@ class LambOptimizer(AdamOptimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(LambOptimizer, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
@@ -4391,9 +4391,7 @@ class ModelAverage(Optimizer):
     ):
         if framework._non_static_mode():
             raise Exception("In dygraph, don't support ModelAverage.")
-        super(ModelAverage, self).__init__(
-            0.0, regularization=regularization, name=name
-        )
+        super().__init__(0.0, regularization=regularization, name=name)
         self.average_window = average_window_rate
         self.min_average_window = min_average_window
         self.max_average_window = max_average_window
@@ -4619,7 +4617,7 @@ class ModelAverage(Optimizer):
         executor.run(self.restore_program)
 
 
-class ExponentialMovingAverage(object):
+class ExponentialMovingAverage:
     r"""
         :api_attr: Static Graph
 
@@ -4879,7 +4877,7 @@ class ExponentialMovingAverage(object):
         executor.run(self.restore_program)
 
 
-class PipelineOptimizer(object):
+class PipelineOptimizer:
     """
         :api_attr: Static Graph
 
@@ -7602,7 +7600,7 @@ class RecomputeOptimizer(Optimizer):
         return optimize_ops, params_grads
 
 
-class LookaheadOptimizer(object):
+class LookaheadOptimizer:
     r"""
         :api_attr: Static Graph
 
@@ -7782,7 +7780,7 @@ class LookaheadOptimizer(object):
         return mini_out
 
 
-class GradientMergeOptimizer(object):
+class GradientMergeOptimizer:
     """
     Gradient Merge, also called as Gradient Accumulation,
     is a training strategy for larger batches. With this strategy,

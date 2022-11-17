@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+
+import paddle.distributed as dist
 from paddle.fluid.clip import ClipGradBase, _squared_l2_norm
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid import core, layers
-from paddle.distributed import collective
 
 
 class ClipGradForMOEByGlobalNorm(ClipGradBase):
@@ -87,7 +89,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         moe_group=None,
         group_name="default_moe_group",
     ):
-        super(ClipGradForMOEByGlobalNorm, self).__init__()
+        super().__init__()
         self.clip_norm = float(clip_norm)
         self.group_name = group_name
         self.moe_group = moe_group
@@ -185,9 +187,9 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
                 moe_params_grads, sum_dtype
             )
             if global_norm_var_moe is not None:
-                collective.all_reduce(
+                dist.all_reduce(
                     global_norm_var_moe,
-                    op=collective.ReduceOp.SUM,
+                    op=dist.ReduceOp.SUM,
                     group=self.moe_group,
                 )
 
@@ -213,7 +215,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         )
         clip_var = layers.elementwise_div(
             x=max_global_norm,
-            y=layers.elementwise_max(x=global_norm_var, y=max_global_norm),
+            y=paddle.maximum(x=global_norm_var, y=max_global_norm),
         )
         for p, g in params_grads:
             if g is None:

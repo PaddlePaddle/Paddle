@@ -315,7 +315,7 @@ void ConvCudnnKernel(const Context& ctx,
       args, exhaustive_search, deterministic, workspace_size, ctx);
 #else
   SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
-  using search = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+  using search = SearchAlgorithm<ConvKind::kForward>;
   fwd_result = search::Find<T>(ctx, args, exhaustive_search, deterministic);
   workspace_size = fwd_result.workspace_size;
 #endif
@@ -359,27 +359,19 @@ void ConvCudnnKernel(const Context& ctx,
       },
       workspace_size);
 #else
-  for (int i = 0; i < groups; i++) {
-    workspace_handle.RunFunc(
-        [&](void* workspace_ptr) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              paddle::platform::dynload::cudnnConvolutionForward(
-                  handle,
-                  &alpha,
-                  args.idesc.desc(),
-                  input_data + i * group_offset_in,
-                  args.wdesc.desc(),
-                  filter_data + i * group_offset_filter,
-                  args.cdesc.desc(),
-                  fwd_result.algo,
-                  workspace_ptr,
-                  workspace_size,
-                  &beta,
-                  args.odesc.desc(),
-                  output_data + i * group_offset_out));
-        },
-        workspace_size);
-  }
+  ConvRunner<T, ConvKind::kForward>::Apply(ctx,
+                                           args,
+                                           fwd_result,
+                                           input_data,
+                                           filter_data,
+                                           output_data,
+                                           groups,
+                                           group_offset_in,
+                                           group_offset_filter,
+                                           group_offset_out,
+                                           workspace_size,
+                                           &workspace_handle,
+                                           false);
 #endif
 
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
@@ -397,9 +389,6 @@ void Conv3DCudnnKernel(const Context& dev_ctx,
                        int groups,
                        const std::vector<int>& dilations,
                        const std::string& data_format,
-                       bool use_addto,
-                       int workspace_size_MB,
-                       bool exhaustive_search,
                        DenseTensor* out) {
   ConvCudnnKernel<T>(dev_ctx,
                      input,
@@ -423,10 +412,6 @@ void DepthwiseConvCudnnKernel(const Context& dev_ctx,
                               int groups,
                               const std::vector<int>& dilations,
                               const std::string& data_format,
-                              bool use_addto,
-                              int workspace_size_MB,
-                              bool exhaustive_search,
-                              bool fuse_relu,
                               DenseTensor* out) {
   ConvCudnnKernel<T>(dev_ctx,
                      input,

@@ -300,8 +300,7 @@ void ConvOnednn(const Context& dev_ctx,
       AllocationType::CPU,
       phi::errors::PreconditionNotMet("Operator DNNL Conv must use CPUPlace"));
 
-  bool is_INT8 =
-      std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+  bool is_INT8 = funcs::is_int8<T>();
 
   auto dst_dt = GetDstType(is_INT8,
                            is_bfloat16,

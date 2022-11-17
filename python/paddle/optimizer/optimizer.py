@@ -98,7 +98,7 @@ def append_backward_new(
     return params_and_grads
 
 
-class Optimizer(object):
+class Optimizer:
     r"""Optimizer Base class.
 
     Define the common interface of an optimizer.
@@ -421,15 +421,21 @@ class Optimizer(object):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
-        # lr var can't be float16, for pure fp16 training, should extra handle the dtype for lr
+        # lr var can't be float16 or bfloat16, for pure fp16 or bf16 training, should extra handle the dtype for lr
         _lr_dtype = (
             paddle.get_default_dtype() if self._dtype is None else self._dtype
         )
         _lr_dtype = (
             paddle.float32
             if (
-                paddle.get_default_dtype() != "float16"
-                and _lr_dtype == paddle.float16
+                (
+                    paddle.get_default_dtype() != "float16"
+                    and _lr_dtype == paddle.float16
+                )
+                or (
+                    paddle.get_default_dtype() != "bfloat16"
+                    and _lr_dtype == paddle.bfloat16
+                )
             )
             else _lr_dtype
         )
@@ -1004,14 +1010,13 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
+                x = paddle.arange(26, dtype="float32").reshape([2, 13])
+
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
                                             parameters = linear.parameters())
-                out = linear(a)
+                out = linear(x)
                 out.backward()
                 adam.step()
                 adam.clear_grad()
@@ -1029,14 +1034,25 @@ class Optimizer(object):
         if framework._non_static_mode():
             parameter_list = parameters if parameters else self._parameter_list
 
-            params_grads = []
-            for param in parameter_list:
-                if param.stop_gradient:
-                    continue
-                if param._grad_ivar() is not None:
-                    # create gradient tensor
-                    grad_var = param._grad_ivar()
-                    params_grads.append((param, grad_var))
+            if framework.in_dygraph_mode():
+                # It is very time-consuming to call c++ functions in a loop on the python side.
+                # We put this part of the code on the c++ side to improve the speed in eager mode.
+                params_grads = []
+                grads = core.eager.get_all_grads(parameter_list)
+                for index, grad in enumerate(grads):
+                    if grad is not None:
+                        params_grads.append((parameter_list[index], grad))
+            else:
+                # Keep the original code to support legacy mode.
+                # Delete the else branch when the legacy mode exits.
+                params_grads = []
+                for param in parameter_list:
+                    if param.stop_gradient:
+                        continue
+                    if param._grad_ivar() is not None:
+                        # create gradient tensor
+                        grad_var = param._grad_ivar()
+                        params_grads.append((param, grad_var))
         else:
             if callbacks is None:
                 callbacks = [error_clip_callback]
@@ -1081,11 +1097,9 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
 
-                inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+                inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
                 linear = paddle.nn.Linear(10, 10)
-                inp = paddle.to_tensor(inp)
                 out = linear(inp)
                 loss = paddle.mean(out)
                 optimizer = paddle.optimizer.Adam(learning_rate=0.1,
@@ -1286,11 +1300,9 @@ class Optimizer(object):
         Examples:
             .. code-block:: python
 
-                import numpy as np
                 import paddle
 
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
+                a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
@@ -1396,14 +1408,12 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
 
-                value = np.arange(26).reshape(2, 13).astype("float32")
-                a = paddle.to_tensor(value)
+                a = paddle.arange(26, dtype="float32").reshape([2, 13])
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
                 adam = paddle.optimizer.Adam(learning_rate = 0.01,
-                                            parameters = linear.parameters())
+                                        parameters = linear.parameters())
                 out = linear(a)
                 out.backward()
                 adam.step()
@@ -1522,3 +1532,17 @@ class Optimizer(object):
         For Multi Tensor, append optimize merged_operator to block.
         """
         pass
+
+    def _is_dtype_fp16_or_bf16(self, dtype):
+        """
+        check the dtype is fp16 or the dtype is bf16
+        :param dtype: instance of core.VarDesc.VarType
+        :return: True if dtype is one of fp16 or bf16, False otherwise
+        """
+        assert isinstance(
+            dtype, core.VarDesc.VarType
+        ), "The dtype should be an instance of core.VarDesc.VarType."
+        return (
+            dtype == core.VarDesc.VarType.FP16
+            or dtype == core.VarDesc.VarType.BF16
+        )

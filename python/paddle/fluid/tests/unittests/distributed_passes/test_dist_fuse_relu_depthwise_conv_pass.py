@@ -26,7 +26,7 @@ paddle.enable_static()
 
 class ReluDepthwiseConvNet(nn.Layer):
     def __init__(self):
-        super(ReluDepthwiseConvNet, self).__init__()
+        super().__init__()
 
         self.conv1 = nn.Conv2D(3, 9, (3, 3))
         self.relu = nn.ReLU()

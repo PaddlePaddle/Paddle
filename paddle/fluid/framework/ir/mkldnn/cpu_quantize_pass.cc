@@ -245,6 +245,54 @@ void CPUQuantizePass::DequantizeOutput(Graph* g,
   if (!scale_attr_name.empty()) op->Op()->SetAttr(scale_attr_name, scale);
 }
 
+void CPUQuantizePass::DequantizeOutputs(Graph* g,
+                                        Node* op,
+                                        std::string output_name,
+                                        double scale_to_one,
+                                        bool is_unsigned,
+                                        std::string scale_attr_name) const {
+  auto outputs = op->outputs;
+  PADDLE_ENFORCE_GE(outputs.size(),
+                    1,
+                    platform::errors::InvalidArgument(
+                        "OP(%s)'s outputs(%d) must be equal or greater than 1.",
+                        op->Name(),
+                        outputs.size()));
+
+  std::vector<std::string> quantize_in_node_names(outputs.size());
+
+  unsigned max = is_unsigned ? U8_MAX : S8_MAX;
+  float scale = scale_to_one * max;
+
+  for (size_t i = 0; i < outputs.size(); i++) {
+    // Create dequantize input variable
+    VarDesc dequantize_in_desc(patterns::PDNodeName("dequantize", "in"));
+    Node* dequantize_in_node = g->CreateVarNode(&dequantize_in_desc);
+    quantize_in_node_names[i] = dequantize_in_node->Name();
+
+    // create a dequantize op node for output.
+    OpDesc deq_desc;
+    deq_desc.SetType("dequantize");
+    deq_desc.SetInput("Input",
+                      std::vector<std::string>({quantize_in_node_names[i]}));
+    deq_desc.SetOutput("Output",
+                       std::vector<std::string>({outputs[i]->Name()}));
+    deq_desc.SetAttr("Scale", scale);
+    deq_desc.SetAttr("is_negative_input", !is_unsigned);
+    auto dequantize_op = g->CreateOpNode(&deq_desc);  // OpDesc will be copied.
+
+    // link dequantize op
+    UnlinkNodes(op, outputs[i]);
+    IR_NODE_LINK_TO(op, dequantize_in_node);
+    IR_NODE_LINK_TO(dequantize_in_node, dequantize_op);
+    IR_NODE_LINK_TO(dequantize_op, outputs[i]);
+  }
+
+  // update op's output
+  op->Op()->SetOutput(output_name, quantize_in_node_names);
+  if (!scale_attr_name.empty()) op->Op()->SetAttr(scale_attr_name, scale);
+}
+
 bool CPUQuantizePass::AreScalesPresentForVarNames(
     std::vector<std::string> names) const {
   bool present = true;
@@ -730,13 +778,17 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph,
     bool is_output_unsigned{false};
     auto output_scale =
         GetScaleValueForNode(immutable_out, &is_output_unsigned);
-    DequantizeOutput(g,
-                     immutable_op,
-                     immutable_out,
-                     "Out",
-                     output_scale,
-                     is_output_unsigned);
-
+    if (immutable_type == "split") {  // ops with multiple outputs
+      DequantizeOutputs(
+          g, immutable_op, "Out", output_scale, is_output_unsigned);
+    } else {
+      DequantizeOutput(g,
+                       immutable_op,
+                       immutable_out,
+                       "Out",
+                       output_scale,
+                       is_output_unsigned);
+    }
     ++quantize_immutable_count;
   };
 
@@ -1184,6 +1236,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeImmutable(graph, "slice", "Input");
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");
+  QuantizeImmutable(graph, "split", "X");
   QuantizeElementwise(graph, "elementwise_add");
   QuantizeElementwise(graph, "elementwise_mul");
   QuantizeElementwise(graph, "elementwise_sub");

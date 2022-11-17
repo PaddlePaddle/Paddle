@@ -30,7 +30,7 @@ def find_latest_set(num):
     return 1 + int(math.floor(math.log(num, 2)))
 
 
-class CodeTable(object):
+class CodeTable:
     def __init__(self, num_classes, code):
         self.c = num_classes + code
 
@@ -44,7 +44,7 @@ class CodeTable(object):
         return self.c & (1 << bit)
 
 
-class CodeTableWithCustomTree(object):
+class CodeTableWithCustomTree:
     def __init__(self, path_table, path_code, index):
         self.ptable_ = path_table
         self.pcode_ = path_code
@@ -170,18 +170,15 @@ def hsigmoidWithCustomTree(
 
 def python_api(
     input,
-    weight,
     label,
+    weight,
+    bias=None,
     path_table=None,
     path_code=None,
-    bias=None,
     num_classes=-1,
     is_sparse=False,
     remote_prefetch=False,
 ):
-    assert (
-        is_sparse == remote_prefetch
-    ), "is_sparse is equal to remote_prefetch in dygraph."
     return paddle.nn.functional.hsigmoid_loss(
         input,
         label,

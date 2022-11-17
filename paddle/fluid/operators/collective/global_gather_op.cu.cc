@@ -226,15 +226,19 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
         int idx = i + j * n_expert;
         if (cpu_global_count_data[idx]) {
           phi::DenseTensor tmp = *x;
-          pg->Send_Partial(
-              tmp, j, send_ptr * in_feat, cpu_global_count_data[idx] * in_feat);
+          pg->Send(&tmp,
+                   j,
+                   send_ptr * in_feat,
+                   cpu_global_count_data[idx] * in_feat,
+                   /*sync_op*/ true);
           send_ptr += cpu_global_count_data[idx];
         }
         if (cpu_local_count_data[idx]) {
-          pg->Recv_Partial(*out,
-                           j,
-                           expert_ptr[idx] * in_feat,
-                           cpu_local_count_data[idx] * in_feat);
+          pg->Recv(out,
+                   j,
+                   expert_ptr[idx] * in_feat,
+                   cpu_local_count_data[idx] * in_feat,
+                   /*sync_op*/ true);
         }
       }
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());

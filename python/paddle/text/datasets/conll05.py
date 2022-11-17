@@ -71,7 +71,7 @@ class Conll05st(Dataset):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
 
                 def forward(self, pred_idx, mark, label):
                     return paddle.sum(pred_idx), paddle.sum(mark), paddle.sum(label)

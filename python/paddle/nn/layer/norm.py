@@ -35,7 +35,6 @@ from ...framework import get_default_dtype
 from ..initializer import Constant
 from ...framework import ParamAttr
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid import dygraph_utils
 
 from ..functional import batch_norm, layer_norm, instance_norm
 
@@ -69,7 +68,7 @@ class _InstanceNormBase(Layer):
         data_format="NCHW",
         name=None,
     ):
-        super(_InstanceNormBase, self).__init__()
+        super().__init__()
 
         if weight_attr is False or bias_attr is False:
             assert (
@@ -349,16 +348,12 @@ class GroupNorm(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            paddle.disable_static()
-            np.random.seed(123)
-            x_data = np.random.random(size=(2, 6, 2, 2)).astype('float32')
-            x = paddle.to_tensor(x_data)
+            x = paddle.arange(48, dtype="float32").reshape((2, 6, 2, 2))
             group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
             group_norm_out = group_norm(x)
 
-            print(group_norm_out.numpy())
+            print(group_norm_out)
     """
 
     def __init__(
@@ -371,14 +366,15 @@ class GroupNorm(Layer):
         data_format='NCHW',
         name=None,
     ):
-        super(GroupNorm, self).__init__()
+        super().__init__()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         self._epsilon = epsilon
         self._num_channels = num_channels
         self._num_groups = num_groups
-        if data_format != 'NCHW':
+        if data_format not in ['NCHW', 'NHWC']:
             raise ValueError("unsupported data layout:" + data_format)
+        self._data_format = data_format
 
         param_shape = [self._num_channels]
 
@@ -416,6 +412,16 @@ class GroupNorm(Layer):
             )
 
     def forward(self, input):
+        if in_dygraph_mode():
+            return _C_ops.group_norm(
+                input,
+                self.weight,
+                self.bias,
+                self._epsilon,
+                self._num_groups,
+                self._data_format,
+            )
+
         mean_out = self._helper.create_variable_for_type_inference(
             dtype=input.dtype, stop_gradient=True
         )
@@ -423,21 +429,7 @@ class GroupNorm(Layer):
             dtype=input.dtype, stop_gradient=True
         )
 
-        if in_dygraph_mode():
-            pre_act = _C_ops.group_norm(
-                input,
-                self.weight,
-                self.bias,
-                self._epsilon,
-                self._num_groups,
-                "NCHW",
-            )
-
-            return dygraph_utils._append_activation_in_dygraph(
-                pre_act, act=None
-            )
-
-        elif _in_legacy_dygraph():
+        if _in_legacy_dygraph():
             pre_act, _, _ = _legacy_C_ops.group_norm(
                 input,
                 self.weight,
@@ -449,9 +441,7 @@ class GroupNorm(Layer):
                 'groups',
                 self._num_groups,
             )
-            return dygraph_utils._append_activation_in_dygraph(
-                pre_act, act=None
-            )
+            return pre_act
 
         inputs = {'X': input}
         if self.bias is not None:
@@ -549,7 +539,7 @@ class LayerNorm(Layer):
         bias_attr=None,
         name=None,
     ):
-        super(LayerNorm, self).__init__()
+        super().__init__()
         if isinstance(normalized_shape, numbers.Integral):
             normalized_shape = [normalized_shape]
 
@@ -606,7 +596,7 @@ class _BatchNormBase(Layer):
         use_global_stats=None,
         name=None,
     ):
-        super(_BatchNormBase, self).__init__()
+        super().__init__()
         self._num_features = num_features
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
@@ -823,7 +813,7 @@ class BatchNorm1D(_BatchNormBase):
         use_global_stats=None,
         name=None,
     ):
-        super(BatchNorm1D, self).__init__(
+        super().__init__(
             num_features,
             momentum,
             epsilon,
@@ -1021,7 +1011,7 @@ class BatchNorm3D(_BatchNormBase):
         use_global_stats=None,
         name=None,
     ):
-        super(BatchNorm3D, self).__init__(
+        super().__init__(
             num_features,
             momentum,
             epsilon,
@@ -1122,18 +1112,23 @@ class SyncBatchNorm(_BatchNormBase):
     Examples:
         .. code-block:: python
 
+          # required: gpu
+
           import paddle
           import paddle.nn as nn
-          import numpy as np
 
-          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-          x = paddle.to_tensor(x)
+          x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
 
           if paddle.is_compiled_with_cuda():
               sync_batch_norm = nn.SyncBatchNorm(2)
               hidden1 = sync_batch_norm(x)
               print(hidden1)
-              # [[[[0.26824948, 1.0936325],[0.26824948, -1.6301316]],[[ 0.8095662, -0.665287],[-1.2744656, 1.1301866 ]]]]
+              # Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+              #        [[[[ 0.26824948,  1.09363246],
+              #           [ 0.26824948, -1.63013160]],
+
+              #          [[ 0.80956620, -0.66528702],
+              #           [-1.27446556,  1.13018656]]]])
     """
 
     def __init__(
@@ -1146,7 +1141,7 @@ class SyncBatchNorm(_BatchNormBase):
         data_format='NCHW',
         name=None,
     ):
-        super(SyncBatchNorm, self).__init__(
+        super().__init__(
             num_features,
             momentum,
             epsilon,
@@ -1175,20 +1170,19 @@ class SyncBatchNorm(_BatchNormBase):
         # variance and variance out share the same memory
         variance_out = self._variance
 
-        ### train mode: use mini-batch stats, eval mode: use global stats
-        ### use_global_stats only support False in sync_batch_norm
+        # train mode: use mini-batch stats, eval mode: use global stats
+        # use_global_stats only support False in sync_batch_norm
         if in_dygraph_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,
-                self.weight,
-                self.bias,
                 self._mean,
                 self._variance,
+                self.weight,
+                self.bias,
+                not self.training,
                 self._momentum,
                 self._epsilon,
                 self._data_format,
-                not self.training,
-                False,
                 False,
                 False,
             )
@@ -1383,7 +1377,7 @@ class LocalResponseNorm(Layer):
         data_format="NCHW",
         name=None,
     ):
-        super(LocalResponseNorm, self).__init__()
+        super().__init__()
         self.size = size
         self.alpha = alpha
         self.beta = beta

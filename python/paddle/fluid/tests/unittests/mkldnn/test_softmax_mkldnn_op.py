@@ -118,7 +118,7 @@ class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
 # Check if primitives already exist in backward
 class TestSoftmaxMKLDNNPrimitivesAlreadyExist(unittest.TestCase):
     def setUp(self):
-        super(TestSoftmaxMKLDNNPrimitivesAlreadyExist, self).setUp()
+        super().setUp()
 
         np.random.seed(123)
         self.op_type = 'softmax'

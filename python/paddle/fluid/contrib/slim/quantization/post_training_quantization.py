@@ -112,7 +112,7 @@ def _apply_pass(
     return graph
 
 
-class PostTrainingQuantization(object):
+class PostTrainingQuantization:
     """
     Utilizing post training quantization methon to quantize the FP32 model,
     and it uses calibrate data to get the quantization information for all
@@ -1481,7 +1481,7 @@ class PostTrainingQuantizationProgram(PostTrainingQuantization):
         self._fetch_list = fetch_list
 
 
-class WeightQuantization(object):
+class WeightQuantization:
     _supported_quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
     _supported_weight_quantize_type = ['channel_wise_abs_max', 'abs_max']
 

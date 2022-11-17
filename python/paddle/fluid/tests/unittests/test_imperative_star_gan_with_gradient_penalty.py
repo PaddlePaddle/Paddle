@@ -23,7 +23,7 @@ if fluid.is_compiled_with_cuda():
     fluid.core.globals()['FLAGS_cudnn_deterministic'] = True
 
 
-class Config(object):
+class Config:
     def __init__(self, place, sort_sum_gradient=True):
         self.place = place
 
@@ -106,7 +106,7 @@ def create_mnist_dataset(cfg):
 
 class InstanceNorm(fluid.dygraph.Layer):
     def __init__(self, num_channels, epsilon=1e-5):
-        super(InstanceNorm, self).__init__()
+        super().__init__()
         self.epsilon = epsilon
 
         self.scale = self.create_parameter(shape=[num_channels], is_bias=False)
@@ -139,11 +139,11 @@ class Conv2DLayer(fluid.dygraph.Layer):
         use_bias=False,
         relufactor=None,
     ):
-        super(Conv2DLayer, self).__init__()
-        self._conv = fluid.dygraph.Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        super().__init__()
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
             bias_attr=None if use_bias else False,
@@ -180,7 +180,7 @@ class Deconv2DLayer(fluid.dygraph.Layer):
         use_bias=False,
         relufactor=None,
     ):
-        super(Deconv2DLayer, self).__init__()
+        super().__init__()
 
         self._deconv = fluid.dygraph.Conv2DTranspose(
             num_channels=num_channels,
@@ -212,7 +212,7 @@ class Deconv2DLayer(fluid.dygraph.Layer):
 
 class ResidualBlock(fluid.dygraph.Layer):
     def __init__(self, num_channels, num_filters):
-        super(ResidualBlock, self).__init__()
+        super().__init__()
         self._conv0 = Conv2DLayer(
             num_channels=num_channels,
             num_filters=num_filters,
@@ -241,7 +241,7 @@ class ResidualBlock(fluid.dygraph.Layer):
 
 class Generator(fluid.dygraph.Layer):
     def __init__(self, cfg, num_channels=3):
-        super(Generator, self).__init__()
+        super().__init__()
         conv_base = Conv2DLayer(
             num_channels=cfg.c_dim + num_channels,
             num_filters=cfg.g_base_dims,
@@ -328,7 +328,7 @@ class Generator(fluid.dygraph.Layer):
 
 class Discriminator(fluid.dygraph.Layer):
     def __init__(self, cfg, num_channels=3):
-        super(Discriminator, self).__init__()
+        super().__init__()
 
         cur_dim = cfg.d_base_dims
 
@@ -506,7 +506,7 @@ def build_optimizer(layer, cfg, loss=None):
         return optimizer
 
 
-class DyGraphTrainModel(object):
+class DyGraphTrainModel:
     def __init__(self, cfg):
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
@@ -564,7 +564,7 @@ class DyGraphTrainModel(object):
         return g_loss.numpy()[0], d_loss.numpy()[0]
 
 
-class StaticGraphTrainModel(object):
+class StaticGraphTrainModel:
     def __init__(self, cfg):
         self.cfg = cfg
 

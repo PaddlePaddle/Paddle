@@ -251,16 +251,14 @@ def fluid_softmax_with_cross_entropy(
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            data = np.random.rand(128).astype("float32")
-            label = np.random.rand(1).astype("int64")
-            data = paddle.to_tensor(data)
-            label = paddle.to_tensor(label)
-            linear = paddle.nn.Linear(128, 100)
-            x = linear(data)
-            out = paddle.nn.functional.softmax_with_cross_entropy(logits=x, label=label)
+            logits = paddle.to_tensor([0.4, 0.6, 0.9])
+            label = paddle.randint(high=2, shape=[1], dtype="int64")
+
+            out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             print(out)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.15328646])
     """
     if _non_static_mode():
         if core.is_compiled_with_npu():
@@ -1019,17 +1017,13 @@ def hsigmoid_loss(
     if in_dygraph_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
             input,
-            weight,
             label,
+            weight,
+            bias,
             path_table,
             path_code,
-            bias,
             num_classes,
             is_sparse,
-            0,
-            [],
-            [],
-            [],
             is_sparse,
         )
         return out
@@ -1772,7 +1766,6 @@ def ctc_loss(
 
             # declarative mode
             import paddle.nn.functional as F
-            import numpy as np
             import paddle
 
             # length of the longest logit sequence
@@ -1784,8 +1777,7 @@ def ctc_loss(
             # class num
             class_num = 3
 
-            np.random.seed(1)
-            log_probs = np.array([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
+            log_probs = paddle.to_tensor([[[4.17021990e-01, 7.20324516e-01, 1.14374816e-04],
                                     [3.02332580e-01, 1.46755889e-01, 9.23385918e-02]],
 
                                     [[1.86260208e-01, 3.45560730e-01, 3.96767467e-01],
@@ -1798,30 +1790,30 @@ def ctc_loss(
                                     [9.68261600e-01, 3.13424170e-01, 6.92322612e-01]],
 
                                     [[8.76389146e-01, 8.94606650e-01, 8.50442126e-02],
-                                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]]).astype("float32")
-            labels = np.array([[1, 2, 2],
-                            [1, 2, 2]]).astype("int32")
-            input_lengths = np.array([5, 5]).astype("int64")
-            label_lengths = np.array([3, 3]).astype("int64")
-
-            log_probs = paddle.to_tensor(log_probs)
-            labels = paddle.to_tensor(labels)
-            input_lengths = paddle.to_tensor(input_lengths)
-            label_lengths = paddle.to_tensor(label_lengths)
+                                    [3.90547849e-02, 1.69830427e-01, 8.78142476e-01]]],
+                                    dtype="float32")
+            labels = paddle.to_tensor([[1, 2, 2],
+                                    [1, 2, 2]], dtype="int32")
+            input_lengths = paddle.to_tensor([5, 5], dtype="int64")
+            label_lengths = paddle.to_tensor([3, 3], dtype="int64")
 
             loss = F.ctc_loss(log_probs, labels,
                 input_lengths,
                 label_lengths,
                 blank=0,
                 reduction='none')
-            print(loss)  #[3.9179852 2.9076521]
+            print(loss)
+            # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [3.91798496, 2.90765190])
 
             loss = F.ctc_loss(log_probs, labels,
                 input_lengths,
                 label_lengths,
                 blank=0,
                 reduction='mean')
-            print(loss)  #[1.1376063]
+            print(loss)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.13760614])
 
     """
 
@@ -2257,16 +2249,14 @@ def softmax_with_cross_entropy(
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            data = np.random.rand(128).astype("float32")
-            label = np.random.rand(1).astype("int64")
-            data = paddle.to_tensor(data)
-            label = paddle.to_tensor(label)
-            linear = paddle.nn.Linear(128, 100)
-            x = linear(data)
-            out = paddle.nn.functional.softmax_with_cross_entropy(logits=x, label=label)
+            logits = paddle.to_tensor([0.4, 0.6, 0.9], dtype="float32")
+            label = paddle.to_tensor([1], dtype="int64")
+
+            out = paddle.nn.functional.softmax_with_cross_entropy(logits=logits, label=label)
             print(out)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [1.15328646])
     """
     return fluid_softmax_with_cross_entropy(
         logits,
@@ -4003,18 +3993,26 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             input = paddle.to_tensor([[0.5, 0.6, 0.7],[0.3, 0.5, 0.2]], 'float32')
             label = paddle.to_tensor([[1.0, -1.0, 1.0],[-1.0, 1.0, 1.0]], 'float32')
             output = paddle.nn.functional.soft_margin_loss(input, label)
+            print(output)
+            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [0.64022040])
 
-            input_np = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
-            label_np = np.random.randint(0, 2, size=(5, 5)).astype(np.int64)
-            label_np[label_np==0]=-1
-            input = paddle.to_tensor(input_np)
-            label = paddle.to_tensor(label_np)
+            input = paddle.uniform(shape=(5, 5), dtype="float32", min=0.1, max=0.8)
+            label = paddle.randint(0, 2, shape=(5, 5), dtype="int64")
+            label[label==0]=-1
+
             output = paddle.nn.functional.soft_margin_loss(input, label, reduction='none')
+            print(output)
+            # Tensor(shape=[5, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[1.09917796, 0.52613139, 0.56263304, 0.82736146, 0.38776723],
+            #         [1.07179427, 1.11924267, 0.49877715, 1.10026348, 0.46184641],
+            #         [0.84367639, 0.74795729, 0.44629076, 0.55123353, 0.77659678],
+            #         [0.39465919, 0.76651484, 0.54485321, 0.76609844, 0.77166790],
+            #         [0.51283568, 0.84757161, 0.78913331, 1.05268764, 0.45318675]])
     """
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(

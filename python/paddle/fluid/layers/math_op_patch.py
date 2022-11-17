@@ -99,6 +99,7 @@ def monkey_patch_variable():
         return var
 
     def create_scalar(block, value, dtype):
+        # TODO(zhouwei): will change to [] which is 0-D Tensor
         return create_tensor(block, value, dtype, shape=[1])
 
     def create_tensor_with_batchsize(ref_var, value, dtype):
@@ -417,7 +418,7 @@ def monkey_patch_variable():
                 out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
 
             axis = -1
-            if other_var.shape[0] == -1:
+            if other_var.ndim > 0 and other_var.shape[0] == -1:
                 stack = inspect.stack()[1]
                 file_name = stack[1]
                 line_num = stack[2]

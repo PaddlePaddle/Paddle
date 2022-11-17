@@ -69,8 +69,12 @@ void CompareAllInferMeta(const MetaTensor& x,
 
 void CompareInferMeta(const MetaTensor& x,
                       const MetaTensor& y,
-                      int axis,
                       MetaTensor* out);
+
+void CompareRawInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         int axis,
+                         MetaTensor* out);
 
 void ComplexInferMeta(const MetaTensor& x,
                       const MetaTensor& y,
@@ -95,9 +99,6 @@ void Conv3DInferMeta(const MetaTensor& input,
                      int groups,
                      const std::vector<int>& dilations,
                      const std::string& data_format,
-                     bool use_addto,
-                     int workspace_size_MB,
-                     bool exhaustive_search,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
@@ -151,9 +152,6 @@ void DepthwiseConvInferMeta(const MetaTensor& input,
                             int groups,
                             const std::vector<int>& dilations,
                             const std::string& data_format,
-                            bool use_addto,
-                            int workspace_size_MB,
-                            bool exhaustive_search,
                             MetaTensor* out,
                             MetaConfig config = MetaConfig());
 
