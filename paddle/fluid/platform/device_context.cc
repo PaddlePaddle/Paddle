@@ -183,6 +183,9 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
   dev_ctx->SetZeroAllocator(memory::allocation::AllocatorFacade::Instance()
                                 .GetZeroAllocator(p)
                                 .get());
+  dev_ctx->SetHostZeroAllocator(memory::allocation::AllocatorFacade::Instance()
+                                    .GetZeroAllocator(platform::CPUPlace())
+                                    .get());
   return PtrType(dev_ctx);
 }
 
