@@ -15,10 +15,10 @@
 #ifndef PADDLE_WITH_HIP
 
 #include "paddle/phi/kernels/affine_grid_grad_kernel.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/int_array.h"

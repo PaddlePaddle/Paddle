@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/activation_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"

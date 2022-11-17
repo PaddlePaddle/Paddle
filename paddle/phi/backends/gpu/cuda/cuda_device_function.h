@@ -138,7 +138,7 @@ __forceinline__ __device__ phi::dtype::complex<double> CudaShuffleXorSync(
       __shfl_xor_sync(mask, static_cast<double>(val.real), width));
   double imag = static_cast<double>(
       __shfl_xor_sync(mask, static_cast<double>(val.imag), width));
-  return paddle::platform::complex<double>(real, imag);
+  return phi::dtype::complex<double>(real, imag);
 }
 
 template <typename T>
