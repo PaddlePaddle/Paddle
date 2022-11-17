@@ -399,26 +399,6 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
-@unittest.skipIf(not paddle.is_compiled_with_xpu(),
-                 "core is not compiled with XPU")
-class TestNearestInterpException(unittest.TestCase):
-    def test_exception(self):
-        input = fluid.data(name="input", shape=[1, 3, 6, 6], dtype="float32")
-
-        def attr_data_format():
-            # for 4-D input, data_format can only be NCHW or NHWC
-            out = fluid.layers.resize_nearest(
-                input, out_shape=[4, 8], data_format="NDHWC")
-
-        def attr_scale_type():
-            out = fluid.layers.resize_nearest(input, scale="scale")
-
-        def attr_scale_value():
-            out = fluid.layers.resize_nearest(input, scale=-0.3)
-
-        self.assertRaises(ValueError, attr_data_format)
-        self.assertRaises(TypeError, attr_scale_type)
-        self.assertRaises(ValueError, attr_scale_value)
 '''
 
 if __name__ == "__main__":
