@@ -2095,7 +2095,8 @@ AnalysisPredictor::~AnalysisPredictor() {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   } else if (config_.with_new_profile_) {
-    std::unique_ptr<ProfilerResult> profiler_result = profiler_->Stop();
+    std::unique_ptr<platform::ProfilerResult> profiler_result =
+        profiler_->Stop();
     profiler_result->Save(std::string());
   }
   if (sub_scope_) {
