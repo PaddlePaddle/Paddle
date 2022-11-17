@@ -87,14 +87,14 @@ class TestFlagsUseMkldnn(unittest.TestCase):
         assert self.not_found(self.matmul_regex, out, err)
 
     def test_flags_use_mkl_dnn_off(self):
-        env = {str("FLAGS_tracer_mkldnn_ops_off"): str("matmul")}
+        env = {str("FLAGS_tracer_mkldnn_ops_off"): str("matmul_v2")}
         out, err = self.flags_use_mkl_dnn_common(env)
         assert self.found(self.relu_regex, out, err)
         assert self.found(self.ew_add_regex, out, err)
         assert self.not_found(self.matmul_regex, out, err)
 
     def test_flags_use_mkl_dnn_off_multiple(self):
-        env = {str("FLAGS_tracer_mkldnn_ops_off"): str("matmul,relu")}
+        env = {str("FLAGS_tracer_mkldnn_ops_off"): str("matmul_v2,relu")}
         out, err = self.flags_use_mkl_dnn_common(env)
         assert self.not_found(self.relu_regex, out, err)
         assert self.found(self.ew_add_regex, out, err)
@@ -103,7 +103,7 @@ class TestFlagsUseMkldnn(unittest.TestCase):
     def test_flags_use_mkl_dnn_on_off(self):
         env = {
             str("FLAGS_tracer_mkldnn_ops_on"): str("elementwise_add"),
-            str("FLAGS_tracer_mkldnn_ops_off"): str("matmul"),
+            str("FLAGS_tracer_mkldnn_ops_off"): str("matmul_v2"),
         }
         out, err = self.flags_use_mkl_dnn_common(env)
         assert self.not_found(self.relu_regex, out, err)
