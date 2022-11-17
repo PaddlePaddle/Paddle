@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/tril_grad_kernel.h"
+#include "paddle/phi/kernels/tril_triu_grad_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -20,11 +20,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TrilGradKernel(const Context& ctx,
-                    const DenseTensor& out_grad,
-                    int diagonal,
-                    bool lower,
-                    DenseTensor* x_grad) {
+void TrilTriuGradKernel(const Context& ctx,
+                        const DenseTensor& out_grad,
+                        int diagonal,
+                        bool lower,
+                        DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(x_grad);
   auto dy_shape = vectorize<int>(out_grad.dims());
@@ -46,7 +46,27 @@ void TrilGradKernel(const Context& ctx,
   }
 }
 
+template <typename T, typename Context>
+void TrilGradKernel(const Context& ctx,
+                    const DenseTensor& out_grad,
+                    int diagonal,
+                    DenseTensor* x_grad) {
+  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, true, x_grad);
+}
+
+template <typename T, typename Context>
+void TriuGradKernel(const Context& ctx,
+                    const DenseTensor& out_grad,
+                    int diagonal,
+                    DenseTensor* x_grad) {
+  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, false, x_grad);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     tril_grad, XPU, ALL_LAYOUT, phi::TrilGradKernel, int, float) {}
+PD_REGISTER_KERNEL(
+    triu_grad, XPU, ALL_LAYOUT, phi::TriuGradKernel, int, float) {}
+PD_REGISTER_KERNEL(
+    tril_triu_grad, XPU, ALL_LAYOUT, phi::TrilTriuGradKernel, int, float) {}
