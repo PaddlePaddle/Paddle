@@ -52,7 +52,8 @@ void SetOp(ProgramDesc* prog,
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
-  } else if (type == "matmul" || type == "add" || type == "multiply") {
+  } else if (type == "matmul" || type == "elementwise_add" ||
+             type == "elementwise_mul") {
     op->SetInput("X", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", {outputs[0]});
@@ -133,8 +134,13 @@ ProgramDesc BuildProgramDescDoubleInput(bool use_mkldnn) {
   SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, use_mkldnn, "float32");
   SetOp(&prog, "matmul", "Matmul", {"b", "b"}, {"c"}, use_mkldnn, "bfloat16");
   SetOp(&prog, "transpose2", "Transpose", {"d"}, {"e"}, use_mkldnn, "float32");
-  SetOp(
-      &prog, "add", "ElemetwiseAdd", {"c", "e"}, {"f"}, use_mkldnn, "bfloat16");
+  SetOp(&prog,
+        "elementwise_add",
+        "ElemetwiseAdd",
+        {"c", "e"},
+        {"f"},
+        use_mkldnn,
+        "bfloat16");
   SetOp(&prog, "reshape2", "Reshape", {"f"}, {"g"}, use_mkldnn, "bfloat16");
 
   return prog;

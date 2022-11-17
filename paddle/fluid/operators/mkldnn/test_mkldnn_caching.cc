@@ -73,8 +73,11 @@ void RunOperator(const platform::Place &place,
                  const std::string &first_input) {
   framework::Scope scope;
 
-  std::map<const std::string, int> num_inputs = {
-      {"softmax", 1}, {"relu", 1}, {"conv2d", 2}, {"add", 2}, {"multiply", 2}};
+  std::map<const std::string, int> num_inputs = {{"softmax", 1},
+                                                 {"relu", 1},
+                                                 {"conv2d", 2},
+                                                 {"elementwise_add", 2},
+                                                 {"elementwise_mul", 2}};
 
   std::string first_input_var_name = (op_type == "conv2d") ? "Input" : "X";
   std::string second_input_var_name = (op_type == "conv2d") ? "Filter" : "Y";

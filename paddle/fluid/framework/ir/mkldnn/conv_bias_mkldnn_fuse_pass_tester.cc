@@ -52,7 +52,7 @@ void SetOp(ProgramDesc* prog,
       op->SetInput("Bias", {inputs[2]});
     else
       op->SetInput("Bias", {});
-  } else if (type == "add") {
+  } else if (type == "elementwise_add") {
     op->SetAttr("use_mkldnn", true);
     op->SetAttr("axis", 1);
     op->SetInput("X", {inputs[0]});
@@ -92,7 +92,7 @@ ProgramDesc BuildProgramDesc(bool convWithExistingBias) {
           std::vector<std::string>({"f"}));
   }
   SetOp(&prog,
-        "add",
+        "elementwise_add",
         "eltwise",
         std::vector<std::string>({"f", "eltwise_bias"}),
         std::vector<std::string>({"g"}));

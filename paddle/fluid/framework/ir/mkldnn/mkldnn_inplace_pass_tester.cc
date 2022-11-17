@@ -65,7 +65,7 @@ class MKLDNNInplacePassTest {
     } else if (type == "softmax") {
       op->SetAttr("axis", -1);
       op->SetInput("X", inputs);
-    } else if (type == "add") {
+    } else if (type == "elementwise_add") {
       op->SetInput("X", {inputs[0]});
       op->SetInput("Y", {inputs[1]});
     } else {
@@ -117,11 +117,11 @@ class MKLDNNInplacePassTest {
           std::vector<std::string>({"h"}),
           mkldnn_enabled_op.compare("softmax") == 0);
     SetOp(&prog,
-          "add",
+          "elementwise_add",
           "elementwise_add1",
           std::vector<std::string>({"h", "i"}),
           std::vector<std::string>({"j"}),
-          mkldnn_enabled_op.compare("add") == 0);
+          mkldnn_enabled_op.compare("elementwise_add") == 0);
     SetOp(&prog,
           "relu",
           "relu2",
@@ -213,7 +213,7 @@ TEST(MKLDNNInplacePass, inplace_softmax_branched) {
 
 TEST(MKLDNNInplacePass, inplace_elementwise_add) {
   // Two elementwise_add mkl-dnn enabled op instances to be made inplace
-  MKLDNNInplacePassTest().MainTest("add", false, 0);
+  MKLDNNInplacePassTest().MainTest("elementwise_add", false, 0);
 }
 TEST(MKLDNNInplacePass, inplace_tanh) {
   MKLDNNInplacePassTest().MainTest("tanh", false, 1);

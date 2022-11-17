@@ -28,12 +28,13 @@ using string::PrettyLogDetail;
 
 void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
   auto act_types = phi::funcs::GetSupportedActivations();
-  std::vector<std::string> elt_types = {"add", "subtract", "multiply"};
+  std::vector<std::string> elt_types = {
+      "elementwise_add", "elementwise_sub", "elementwise_mul"};
 
   for (const auto &elt_type : elt_types)
     for (const auto &act_type : act_types) {
       // This fuse combination currently does not work
-      if (elt_type == "subtract" && act_type == "relu") continue;
+      if (elt_type == "elementwise_sub" && act_type == "relu") continue;
       FuseElementwiseAct(graph, elt_type, act_type);
     }
 }
@@ -117,9 +118,9 @@ REGISTER_PASS(elt_act_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(elt_act_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .LE("add", 1)
-            .LE("subtract", 1)
-            .LE("multiply", 1)
+            .LE("elementwise_add", 1)
+            .LE("elementwise_sub", 1)
+            .LE("elementwise_mul", 1)
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)
