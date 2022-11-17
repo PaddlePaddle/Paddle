@@ -108,7 +108,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fused_transpose_X", ExtraAttrProperty::ONEDNN},
         {"fused_transpose_Y", ExtraAttrProperty::ONEDNN},
         {"mkldnn_data_type", ExtraAttrProperty::ONEDNN},
-        {"ResidualData", ExtraAttrProperty::ONEDNN},
         {"scale_x", ExtraAttrProperty::ONEDNN},
         {"scale_y", ExtraAttrProperty::ONEDNN},
         {"scale_out", ExtraAttrProperty::ONEDNN},
