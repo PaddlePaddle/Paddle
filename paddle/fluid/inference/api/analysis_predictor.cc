@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <algorithm>
+#include <bitset>
 #include <fstream>
 #include <memory>
 #include <set>
@@ -261,7 +262,14 @@ bool AnalysisPredictor::Init(
   } else if (config_.with_new_profile_) {
     LOG(WARNING) << "Profiler is activated, which might affect the performance";
     platform::ProfilerOptions options;
-    options.trace_switch = config_.use_gpu() ? 3 : 1;
+    constexpr uint32_t kProfileCPUOptionBit = 0;
+    constexpr uint32_t kProfileGPUOptionBit = 1;
+    std::bitset<32> trace_switch;
+    trace_switch.set(kProfileCPUOptionBit);
+    if (config_.use_gpu()) {
+      trace_switch.set(kProfileGPUOptionBit);
+    }
+    options.trace_switch = trace_switch.to_ulong();
     profiler_ = platform::Profiler::Create(options);
     profiler_->Prepare();
     profiler_->Start();
