@@ -161,7 +161,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
     target = fluid.layers.data(
         name='target', shape=[1], dtype='int64', lod_level=1
     )
-    cost = fluid.layers.cross_entropy(input=feature_out, label=target)
+    cost = fluid.layers.softmax_with_cross_entropy(feature_out, target)
     avg_cost = paddle.mean(cost)
 
     # TODO(qiao)
