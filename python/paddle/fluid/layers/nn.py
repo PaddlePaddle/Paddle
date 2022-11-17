@@ -112,7 +112,6 @@ __all__ = [
     'label_smooth',
     'dice_loss',
     'image_resize',
-    'image_resize_short',
     'resize_linear',
     'resize_bilinear',
     'resize_trilinear',
@@ -8445,46 +8444,6 @@ def resize_nearest(
         align_mode=1,
         data_format=data_format,
     )
-
-
-def image_resize_short(input, out_short_len, resample='BILINEAR'):
-    """
-    This op resizes a batch of images. The short edge of input images will be
-    resized to the given 'out_short_len'. The long edge of input images
-    will be resized proportionately to make images' length-width ratio
-    constant.
-
-    Parameters:
-        input (Variable): 4-D tensor(NCHW), The input tensor of image resize layer.
-        out_short_len(int): The length of output images' short edge.
-        resample (str): resample method, default: BILINEAR.
-
-    Returns:
-        Variable: 4-D tensor(NCHW).
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            input = fluid.data(name="input", shape=[None,3,6,9], dtype="float32")
-            out = fluid.layers.image_resize_short(input, out_short_len=3)
-    """
-    in_shape = input.shape
-    if len(in_shape) != 4:
-        raise ValueError(
-            "The rank of input must be 4 (num_batches, channels, in_h, in_w)."
-        )
-    hw = in_shape[2:4]
-    short_idx = hw.index(min(hw))
-    long_idx = 1 - short_idx
-    out_shape = list(hw)
-    out_shape[short_idx] = out_short_len
-    out_shape[long_idx] = int(
-        float(out_shape[long_idx])
-        * (float(out_short_len) / float(hw[short_idx]))
-        + 0.5
-    )
-    return image_resize(input=input, out_shape=out_shape, resample=resample)
 
 
 @deprecated(since="2.0.0", update_to="paddle.gather")
