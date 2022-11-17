@@ -218,31 +218,62 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::create_storage(
   auto& nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
     platform::CUDADeviceGuard guard(resource_->dev_id(nodes[i].dev_num));
-    PADDLE_ENFORCE_GPU_SUCCESS(allocator->DeviceAllocate(
+    if (keylen > 0) {
+      PADDLE_ENFORCE_GPU_SUCCESS(allocator->DeviceAllocate(
         resource_->dev_id(nodes[i].dev_num),
         (void**)&(nodes[i].key_storage),  // NOLINT
         keylen,
         resource_->remote_stream(nodes[i].dev_num, start_index)));
-    PADDLE_ENFORCE_GPU_SUCCESS(allocator->DeviceAllocate(
+      nodes[i].key_bytes_len = keylen;
+    }
+    if (vallen > 0) {
+      PADDLE_ENFORCE_GPU_SUCCESS(allocator->DeviceAllocate(
         resource_->dev_id(nodes[i].dev_num),
         (void**)&(nodes[i].val_storage),  // NOLINT
         vallen,
         resource_->remote_stream(nodes[i].dev_num, start_index)));
-    nodes[i].key_bytes_len = keylen;
-    nodes[i].val_bytes_len = vallen;
+      nodes[i].val_bytes_len = vallen;
+    }
   }
 #elif defined(PADDLE_WITH_XPU_KP)
   auto& nodes = path_[start_index][end_index].nodes_;
   for (size_t i = 0; i < nodes.size(); ++i) {
     platform::XPUDeviceGuard guard(resource_->dev_id(nodes[i].dev_num));
     auto place = DevPlace(resource_->dev_id(nodes[i].dev_num));
-    auto node_keys_mem = memory::Alloc(place, keylen);
-    nodes[i].key_storage = reinterpret_cast<char*>(node_keys_mem->ptr());
-    auto node_vals_mem = memory::Alloc(place, vallen);
-    nodes[i].val_storage = reinterpret_cast<char*>(node_vals_mem->ptr());
-    nodes[i].key_bytes_len = keylen;
-    nodes[i].val_bytes_len = vallen;
+    if (keylen > 0) {
+      auto node_keys_mem = memory::Alloc(place, keylen);
+      nodes[i].key_storage = reinterpret_cast<char*>(node_keys_mem->ptr());
+      nodes[i].key_bytes_len = keylen;
+    }
+    if (vallen > 0) {
+      auto node_vals_mem = memory::Alloc(place, vallen);
+      nodes[i].val_storage = reinterpret_cast<char*>(node_vals_mem->ptr());
+      nodes[i].val_bytes_len = vallen;
+    }
   }
+#endif
+}
+
+template <typename KeyType,
+          typename ValType,
+          typename GradType,
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::create_tmp_storage(void * &dest,
+    int start_index, int end_index, size_t vallen) {
+#if defined(PADDLE_WITH_CUDA)
+  auto& allocator = allocators_[start_index];
+  platform::CUDADeviceGuard guard(resource_->dev_id(end_index));
+  PADDLE_ENFORCE_GPU_SUCCESS(allocator->DeviceAllocate(
+        resource_->dev_id(end_index),
+        (void**)&(dest),  // NOLINT
+        vallen,
+        resource_->remote_stream(end_index, start_index)));
+
+#elif defined(PADDLE_WITH_XPU_KP)
+  platform::XPUDeviceGuard guard(resource_->dev_id(end_index));
+  auto place = DevPlace(resource_->dev_id(end_index));
+  auto node_vals_mem = memory::Alloc(place, vallen);
+  dest = reinterpret_cast<void*>(node_vals_mem->ptr());
 #endif
 }
 
@@ -263,6 +294,20 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::destroy_storage(
     PADDLE_ENFORCE_GPU_SUCCESS(allocator->DeviceFree(
         resource_->dev_id(nodes[i].dev_num), nodes[i].val_storage));
   }
+#endif
+}
+
+template <typename KeyType,
+          typename ValType,
+          typename GradType,
+          typename GPUAccessor>
+void HeterComm<KeyType, ValType, GradType, GPUAccessor>::destroy_tmp_storage(void * &p,
+    int start_index, int end_index) {
+#if defined(PADDLE_WITH_CUDA)
+  auto& allocator = allocators_[start_index];
+  platform::CUDADeviceGuard guard(resource_->dev_id(end_index));
+  PADDLE_ENFORCE_GPU_SUCCESS(allocator->DeviceFree(
+      resource_->dev_id(end_index), p));
 #endif
 }
 

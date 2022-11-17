@@ -299,6 +299,11 @@ class HeterComm {
                       int end_index,
                       size_t keylen,
                       size_t vallen);
+  void create_tmp_storage(void * &dest,
+                      int start_index,
+                      int end_index,
+                      size_t vallen);
+  void destroy_tmp_storage(void * &p, int start_index, int end_index);
   void destroy_storage(int start_index, int end_index);
   void walk_to_dest(int start_index,
                     int gpu_num,

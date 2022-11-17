@@ -908,6 +908,7 @@ class GraphDataGenerator {
   int FillWalkBuf();
   int FillInferBuf();
   void DoWalk();
+  int FillSlotFeature(uint64_t* d_walk);
   int FillFeatureBuf(uint64_t* d_walk, uint64_t* d_feature, size_t key_num);
   int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
                      std::shared_ptr<phi::Allocation> d_feature);
@@ -923,6 +924,7 @@ class GraphDataGenerator {
                           bool gpu_graph_training,
                           size_t cursor = 0);
   int FillGraphSlotFeature(int total_instance, bool gpu_graph_training);
+  int FillSlotFeature(uint64_t *d_walk, size_t key_num);
   int MakeInsPair();
   int GetPathNum() { return total_row_; }
   void ResetPathNum() {total_row_ = 0; }
@@ -990,7 +992,8 @@ class GraphDataGenerator {
   int sample_keys_len_;
 
   std::shared_ptr<phi::Allocation> d_ins_buf_;
-  std::shared_ptr<phi::Allocation> d_feature_buf_;
+  std::shared_ptr<phi::Allocation> d_feature_size_list_buf_;
+  std::shared_ptr<phi::Allocation> d_feature_size_prefixsum_buf_;
   std::shared_ptr<phi::Allocation> d_pair_num_;
   std::shared_ptr<phi::Allocation> d_slot_tensor_ptr_;
   std::shared_ptr<phi::Allocation> d_slot_lod_tensor_ptr_;

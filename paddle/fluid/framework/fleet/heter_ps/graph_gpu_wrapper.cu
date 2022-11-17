@@ -483,6 +483,22 @@ std::vector<std::shared_ptr<phi::Allocation>> GraphGpuWrapper::get_edge_type_gra
       ->get_edge_type_graph(gpu_id, edge_type_len);
 }
 
+int GraphGpuWrapper::get_feature_info_of_nodes(int gpu_id,
+                                uint64_t* d_nodes,
+                                int node_num,
+                                uint32_t * size_list,
+                                uint32_t * size_list_prefix_sum,
+                                std::shared_ptr<phi::Allocation> & feature_list,
+                                std::shared_ptr<phi::Allocation> & slot_list) {
+  platform::CUDADeviceGuard guard(gpu_id);
+  PADDLE_ENFORCE_NOT_NULL(graph_table,
+                          paddle::platform::errors::InvalidArgument(
+                              "graph_table should not be null"));
+  return ((GpuPsGraphTable *)graph_table)
+      ->get_feature_info_of_nodes(gpu_id, d_nodes,node_num,
+          size_list, size_list_prefix_sum, feature_list, slot_list);
+}
+
 int GraphGpuWrapper::get_feature_of_nodes(int gpu_id,
                                           uint64_t *d_walk,
                                           uint64_t *d_offset,
