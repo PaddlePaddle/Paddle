@@ -46,7 +46,6 @@ enum class CommType : std::uint8_t {
   SEND = 9,
   RECV = 10,
   BARRIER = 11,
-  ALLTOALL_SINGLE = 12,
   UNKNOWN = 100,
 };
 
@@ -121,6 +120,17 @@ class ProcessGroup {
       bool sync_op) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "ProcessGroup%s does not support all_reduce with sync_op flag.",
+        GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const std::vector<int64_t>& out_size_each_rank,
+      const std::vector<int64_t>& in_size_each_rank,
+      bool sync_op) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "ProcessGroup%s does not support all_to_all with sync_op flag.",
         GetBackendName()));
   }
 
@@ -253,25 +263,6 @@ class ProcessGroup {
       bool) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support alltoall", GetBackendName()));
-  }
-
-  virtual std::shared_ptr<ProcessGroup::Task> AllToAll_Single(
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      std::vector<int64_t>&,
-      std::vector<int64_t>&) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support AllToAll_Single", GetBackendName()));
-  }
-
-  virtual std::shared_ptr<ProcessGroup::Task> AllToAllSingle(
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      std::vector<int64_t>&,
-      std::vector<int64_t>&,
-      bool) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support alltoall_single", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(

@@ -89,6 +89,21 @@ class ProcessGroupStream : public ProcessGroup {
       bool sync_op,
       bool use_calc_stream);
 
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const std::vector<int64_t>& out_size_each_rank,
+      const std::vector<int64_t>& in_size_each_rank,
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const std::vector<int64_t>& out_size_each_rank,
+      const std::vector<int64_t>& in_size_each_rank,
+      bool sync_op,
+      bool use_calc_stream);
+
   std::shared_ptr<ProcessGroup::Task> Broadcast(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
@@ -137,21 +152,6 @@ class ProcessGroupStream : public ProcessGroup {
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-      bool sync_op,
-      bool use_calc_stream);
-
-  std::shared_ptr<ProcessGroup::Task> AllToAllSingle(
-      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-      std::vector<int64_t>& in_sizes,              // NOLINT
-      std::vector<int64_t>& out_sizes,             // NOLINT
-      bool sync_op) override;
-
-  virtual std::shared_ptr<ProcessGroup::Task> AllToAllSingle(
-      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-      std::vector<int64_t>& in_sizes,              // NOLINT
-      std::vector<int64_t>& out_sizes,             // NOLINT
       bool sync_op,
       bool use_calc_stream);
 
