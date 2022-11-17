@@ -163,9 +163,9 @@ void FloatToMixedPass::SetDefaultBlacklist() const {
       "bilinear_interp_v2",
       "bicubic_interp_v2",
       "trilinear_interp_v2",
+      "conv2d_transpose",
       // default fp32 can avoid return inf when the sum value large than 65504.
       "reduce_sum",
-      // special op for this pass
   });
 }
 
