@@ -456,6 +456,9 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}
 
+PD_REGISTER_KERNEL(
+    square, XPU, ALL_LAYOUT, phi::SquareKernel, float, phi::dtype::float16) {}
+
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
@@ -468,4 +471,3 @@ PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
-PD_REGISTER_ACTIVATION_KERNEL(square, SquareKernel)
