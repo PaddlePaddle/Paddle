@@ -180,7 +180,6 @@ __all__ = [
     'shuffle_channel',
     'temporal_shift',
     'py_func',
-    'psroi_pool',
     'prroi_pool',
     'pixel_shuffle',
     'fsp_matrix',
@@ -13641,77 +13640,6 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 # For debug usage
 py_func.registered_func = PyFuncRegistry.registered_func
 py_func.registered_func_num = PyFuncRegistry.registered_func_num
-
-
-@templatedoc()
-def psroi_pool(
-    input,
-    rois,
-    output_channels,
-    spatial_scale,
-    pooled_height,
-    pooled_width,
-    name=None,
-):
-    """
-
-    ${comment}
-
-    Parameters:
-        input (Variable): ${x_comment}
-        rois (Variable): LoDTensor, ROIs (Regions of Interest) to pool over.It should be
-                         a 2-D LoDTensor of shape (num_rois, 4), the lod level
-                         is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
-                         the top left coordinates, and (x2, y2) is the bottom
-                         right coordinates. The data type is the same as `input`
-        output_channels (int): ${output_channels_comment}
-        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
-        pooled_height (int): ${pooled_height_comment} Default: 1
-        pooled_width (int): ${pooled_width_comment} Default: 1
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        ${out_comment}.
-
-    Return Type:
-        Variable
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            x = fluid.data(name='x', shape=[100, 490, 28, 28], dtype='float32')
-            rois = fluid.data(name='rois', shape=[None, 4], lod_level=1, dtype='float32')
-            pool_out = fluid.layers.psroi_pool(x, rois, 10, 1.0, 7, 7)
-    """
-    helper = LayerHelper('psroi_pool', **locals())
-    # check attrs
-    if not isinstance(output_channels, int):
-        raise TypeError("output_channels must be int type")
-    if not isinstance(spatial_scale, float):
-        raise TypeError("spatial_scale must be float type")
-    if not isinstance(pooled_height, int):
-        raise TypeError("pooled_height must be int type")
-    if not isinstance(pooled_width, int):
-        raise TypeError("pooled_width must be int type")
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='psroi_pool',
-        inputs={'X': input, 'ROIs': rois},
-        outputs={'Out': out},
-        attrs={
-            'output_channels': output_channels,
-            'spatial_scale': spatial_scale,
-            'pooled_height': pooled_height,
-            'pooled_width': pooled_width,
-        },
-    )
-    return out
 
 
 @templatedoc()
