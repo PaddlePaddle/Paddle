@@ -14,6 +14,7 @@
 from paddle.framework import core
 from paddle.utils import unique_name
 from .meta_optimizer_base import MetaOptimizerBase
+import paddle
 
 __all__ = []
 
