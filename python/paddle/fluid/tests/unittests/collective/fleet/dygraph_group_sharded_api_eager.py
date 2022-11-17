@@ -148,11 +148,6 @@ def test_sharding_api():
 
     output_dir = tempfile.mkdtemp()
 
-    # test sharding + dp, just for test
-    dp_group = paddle.distributed.new_group(
-        list(range(paddle.distributed.get_world_size()))
-    )
-
     # fp16
     stage2_params = train_mlp(
         mlp1,
