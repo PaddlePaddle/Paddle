@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/quantize_linear_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 
+using float16 = paddle::platform::float16;
+
 namespace paddle {
 namespace operators {
 
@@ -61,6 +63,7 @@ struct ChannelDequantizeFunctorV2<phi::GPUContext, T> {
   }
 };
 
+template struct ChannelDequantizeFunctorV2<phi::GPUContext, float16>;
 template struct ChannelDequantizeFunctorV2<phi::GPUContext, float>;
 template struct ChannelDequantizeFunctorV2<phi::GPUContext, double>;
 
@@ -71,8 +74,11 @@ namespace ops = paddle::operators;
 using CUDA = phi::GPUContext;
 REGISTER_OP_CUDA_KERNEL(dequantize_linear,
                         ops::DeQuantizeLinearKernel<CUDA, float, float>,
+                        ops::DeQuantizeLinearKernel<CUDA, float16, float16>,
                         ops::DeQuantizeLinearKernel<CUDA, int8_t, float>,
+                        ops::DeQuantizeLinearKernel<CUDA, int8_t, float16>,
                         ops::DeQuantizeLinearKernel<CUDA, double, double>);
 
 REGISTER_OP_CUDA_KERNEL(quantize_linear,
-                        ops::QuantizeLinearKernel<CUDA, float>);
+                        ops::QuantizeLinearKernel<CUDA, float>,
+                        ops::QuantizeLinearKernel<CUDA, float16>);
