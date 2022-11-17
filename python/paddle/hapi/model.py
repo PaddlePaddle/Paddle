@@ -800,7 +800,7 @@ class DynamicGraphAdapter:
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
-        final_loss = fluid.layers.sum(losses)
+        final_loss = paddle.add_n(losses)
 
         if self._amp_level != "O0":
             scaled = self.model._scaler.scale(final_loss)
