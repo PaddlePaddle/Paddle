@@ -1926,6 +1926,32 @@ class TestGELUAPI(unittest.TestCase):
             F.gelu(x_fp16)
 
 
+class TestBRelu(TestActivation):
+    def setUp(self):
+        self.op_type = "brelu"
+        self.init_dtype()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-5, 10, [10, 12]).astype(self.dtype)
+        t_min = 1.0
+        t_max = 4.0
+        # The same with TestAbs
+        x[np.abs(x - t_min) < 0.005] = t_min + 0.02
+        x[np.abs(x - t_max) < 0.005] = t_max + 0.02
+        t = np.copy(x)
+        t[t < t_min] = t_min
+        t[t > t_max] = t_max
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.attrs = {'t_min': t_min, 't_max': t_max}
+        self.outputs = {'Out': t}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
 def ref_relu6(x, threshold=6.0):
     out = np.copy(x)
     out[np.abs(x - threshold) < 0.005] = threshold + 0.02
