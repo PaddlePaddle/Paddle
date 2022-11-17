@@ -551,10 +551,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param use_static Serialize optimization information to disk for reusing.
   /// \param use_calib_mode Use TRT int8 calibration(post training
   /// quantization).
-  /// \param engine_memory_sharing The level to control TensorRT engine memory
-  /// sharing in predictors. 0 is disable, 1 is enable, 2 is enable for multi
-  /// predictors. NOTE: when value is equal to 2, the multi predictors should be
-  /// executed serially.
   ///
   ///
   void EnableTensorRtEngine(int64_t workspace_size = 1 << 30,
@@ -562,14 +558,27 @@ struct PD_INFER_DECL AnalysisConfig {
                             int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
                             bool use_static = false,
-                            bool use_calib_mode = true,
-                            int engine_memory_sharing = 1);
+                            bool use_calib_mode = true);
   ///
   /// \brief A boolean state telling whether the TensorRT engine is used.
   ///
   /// \return bool Whether the TensorRT engine is used.
   ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
+  ///
+  /// \brief Turn on the TensorRT memory optimization.
+  ///
+  /// \param engine_memory_sharing Whether to enable TensorRT memory
+  /// optimization.
+  /// \param sharing_identifier This parameter can be set if TensorRT memory
+  /// optimization is enabled, and the value must be greater than 0. If you have
+  /// multiple predictors that want to share memory, you can specify a
+  /// same value for these predictors. NOTE: The predictors specified with the
+  /// same value must be guaranteed to be executed serially, otherwise undefined
+  /// behavior will occur.
+  ///
+  void EnableTensorRTMemoryOptim(bool engine_memory_sharing = true,
+                                 int sharing_identifier = 0);
   ///
   /// \brief A boolean state telling whether the tensorrt engine memory sharing
   /// is activated.
@@ -1070,7 +1079,8 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
-  int trt_engine_memory_sharing_{1};
+  bool trt_engine_memory_sharing_{false};
+  int trt_engine_memory_sharing_identifier_{0};
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;

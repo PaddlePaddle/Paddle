@@ -104,8 +104,9 @@ class AnalysisPredictor : public PaddlePredictor {
       config_.SwitchIrOptim(false);
       config_.EnableMemoryOptim(false);
     }
-    if (config_.trt_engine_memory_sharing_ == 2) {
-      predictor_id_ = -1;
+    auto trt_identifier = config_.trt_engine_memory_sharing_identifier_;
+    if (trt_identifier > 0) {
+      predictor_id_ = -trt_identifier;
     } else {
       predictor_id_ = inference::GetUniqueId();
     }

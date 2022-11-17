@@ -654,8 +654,7 @@ void AnalysisConfig::EnableTensorRtEngine(
     int min_subgraph_size,
     AnalysisConfig::Precision precision_mode,
     bool use_static,
-    bool use_calib_mode,
-    int engine_memory_sharing) {
+    bool use_calib_mode) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableUseGpu() first";
@@ -663,22 +662,6 @@ void AnalysisConfig::EnableTensorRtEngine(
   }
 
   use_tensorrt_ = true;
-#ifdef PADDLE_WITH_TENSORRT
-  // https://forums.developer.nvidia.com/t/nvinfer1-createexecutioncontextwithoutdevicememory-returns-nullptr/111878/2
-  // when trt version less than 7.2,
-  // createExecutionContextWithoutDeviceMemory() has bug.
-  // so, we cannot enable engine context memory sharing.
-#if IS_TRT_VERSION_GE(7200)
-  // now only support engine_memory_sharing = 0, 1, 2
-  CHECK_GE(engine_memory_sharing, 0);
-  CHECK_LE(engine_memory_sharing, 2);
-  trt_engine_memory_sharing_ = engine_memory_sharing;
-#else
-  LOG(WARNING)
-      << "TensorRT engine context memory sharing needs version 7.2 and after.";
-  trt_engine_memory_sharing_ = 0;
-#endif
-#endif
   tensorrt_workspace_size_ = workspace_size;
   tensorrt_max_batchsize_ = max_batch_size;
   tensorrt_min_subgraph_size_ = min_subgraph_size;
@@ -691,6 +674,30 @@ void AnalysisConfig::EnableTensorRtEngine(
   LOG(ERROR)
       << "To use TensorRT engine, please compile inference lib with GPU first.";
 #endif
+}
+
+void AnalysisConfig::EnableTensorRTMemoryOptim(bool engine_memory_sharing,
+                                               int sharing_identifier) {
+  PADDLE_ENFORCE_EQ(
+      use_tensorrt_,
+      true,
+      platform::errors::InvalidArgument(
+          "To enable TensorRT memory optim, please call "
+          "EnableTensorRtEngine or enable_tensorrt_engine first."));
+  PADDLE_ENFORCE_GE(sharing_identifier,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The value of sharing_identifier must be greater "
+                        "than or equal to 0."));
+  if (!engine_memory_sharing) {
+    PADDLE_ENFORCE_EQ(sharing_identifier,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The value of sharing_identifier must be equal to 0 "
+                          "when engine_memory_sharing is false."));
+  }
+  trt_engine_memory_sharing_ = engine_memory_sharing;
+  trt_engine_memory_sharing_identifier_ = sharing_identifier;
 }
 
 void AnalysisConfig::EnableDlnne(
@@ -1090,7 +1097,7 @@ bool AnalysisConfig::enable_memory_optim() const {
 }
 
 bool AnalysisConfig::trt_engine_memory_sharing() const {
-  return trt_engine_memory_sharing_ > 0;
+  return trt_engine_memory_sharing_;
 }
 
 void AnalysisConfig::SetModelBuffer(const char *prog_buffer,
@@ -1248,7 +1255,7 @@ std::string AnalysisConfig::Summary() {
         os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});
       }
       os.InsertRow({"trt_engine_memory_sharing",
-                    trt_engine_memory_sharing_ > 0 ? "true" : "false"});
+                    trt_engine_memory_sharing_ ? "true" : "false"});
 #endif
     }
   }
