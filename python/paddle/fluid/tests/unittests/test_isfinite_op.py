@@ -119,30 +119,5 @@ class TestFP16Isfinite(TestIsfinite):
         self.dtype = np.float16
 
 
-class BadInputTest(unittest.TestCase):
-    def test_error(self):
-        with fluid.program_guard(fluid.Program()):
-
-            def test_has_inf_bad_x():
-                data = [1, 2, 3]
-                result = fluid.layers.has_inf(data)
-
-            self.assertRaises(TypeError, test_has_inf_bad_x)
-
-            def test_has_nan_bad_x():
-                data = [1, 2, 3]
-                result = fluid.layers.has_nan(data)
-
-            self.assertRaises(TypeError, test_has_nan_bad_x)
-
-        with fluid.dygraph.guard():
-            data = paddle.zeros([2, 3])
-            result = paddle.fluid.layers.has_inf(data)
-            expect_value = np.array([False])
-            self.assertEqual((result.numpy() == expect_value).all(), True)
-            result = paddle.fluid.layers.has_nan(data)
-            self.assertEqual((result.numpy() == expect_value).all(), True)
-
-
 if __name__ == '__main__':
     unittest.main()
