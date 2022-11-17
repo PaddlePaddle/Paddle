@@ -296,8 +296,8 @@ class DataParallelOptimizationPass(PassBase):
                 assert op.has_attr('use_calc_stream')
                 assert op.has_attr('ring_id')
 
-                op._set_attr('use_calc_stream', False)
                 if use_standalone_executor():
+                    op._set_attr('use_calc_stream', True)
                     op.dist_attr.execution_stream = self.gradient_sync_stream
                     insert_dependencies_for_two_ops(
                         block,
@@ -308,6 +308,7 @@ class DataParallelOptimizationPass(PassBase):
                         sync=False,
                     )
                 else:
+                    op._set_attr('use_calc_stream', False)
                     ring_id = op.attr("ring_id")
                     block._insert_op_without_sync(
                         idx,
