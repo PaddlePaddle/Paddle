@@ -15,27 +15,26 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void TrilKernel(const Context& ctx,
-                const DenseTensor& x,
-                int diagonal,
-                bool lower,
-                DenseTensor* out);
+void TrilTriuGradKernel(const Context& ctx,
+                        const DenseTensor& out_grad,
+                        int diagonal,
+                        bool lower,
+                        DenseTensor* x_grad);
 
 template <typename T, typename Context>
-DenseTensor Tril(const Context& ctx,
-                 const DenseTensor& x,
-                 int diagonal,
-                 bool lower) {
-  DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
-  TrilInferMeta(x, diagonal, lower, &meta_out);
-  TrilKernel<T, Context>(ctx, x, diagonal, lower, &dense_out);
-  return dense_out;
-}
+void TrilGradKernel(const Context& ctx,
+                    const DenseTensor& out_grad,
+                    int diagonal,
+                    DenseTensor* x_grad);
+
+template <typename T, typename Context>
+void TriuGradKernel(const Context& ctx,
+                    const DenseTensor& out_grad,
+                    int diagonal,
+                    DenseTensor* x_grad);
 
 }  // namespace phi
