@@ -142,6 +142,28 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Reduce(
       "ProcessGroup%s does not support reduce.", GetBackendName()));
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::ReduceScatter(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceScatterOptions& opts,
+    bool sync_op) {
+  return ReduceScatter(out_tensor,
+                       in_tensor,
+                       opts,
+                       sync_op,
+                       /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::ReduceScatter(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceScatterOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "ProcessGroup%s does not support reduce_scatter.", GetBackendName()));
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Scatter(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
@@ -232,28 +254,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllToAll(
     bool use_calc_stream) {
   PADDLE_THROW(platform::errors::InvalidArgument(
       "ProcessGroup%s does not support do alltoall", GetBackendName()));
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::ReduceScatter(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const ReduceScatterOptions& opts,
-    bool sync_op) {
-  return ReduceScatter(in_tensors,
-                       out_tensors,
-                       opts,
-                       sync_op,
-                       /*use_calc_stream*/ false);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::ReduceScatter(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const ReduceScatterOptions& opts,
-    bool sync_op,
-    bool use_calc_stream) {
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "ProcessGroup%s does not support do reduce_scatter", GetBackendName()));
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(

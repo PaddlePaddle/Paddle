@@ -320,7 +320,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
       [&](phi::DenseTensor* output,
           const phi::DenseTensor& input,
           ncclComm_t comm,
-          gpuStream_t& stream) {
+          gpuStream_t stream) {
         NCCL_CHECK(platform::dynload::ncclReduce(
             input.data(),
             output->data(),
@@ -332,6 +332,33 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
             stream));
       },
       CommType::REDUCE,
+      sync_op,
+      use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceScatterOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  return Collective(
+      out_tensor,
+      in_tensor,
+      [&](phi::DenseTensor* output,
+          const phi::DenseTensor& input,
+          ncclComm_t comm,
+          gpuStream_t stream) {
+        NCCL_CHECK(platform::dynload::ncclReduceScatter(
+            input.data(),
+            output->data(),
+            output->numel(),
+            platform::ToNCCLDataType(input.dtype()),
+            ToNCCLRedType(opts.reduce_op),
+            comm,
+            stream));
+      },
+      CommType::REDUCE_SCATTER,
       sync_op,
       use_calc_stream);
 }
@@ -348,7 +375,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
       [&](phi::DenseTensor* output,
           const phi::DenseTensor& input,
           ncclComm_t comm,
-          gpuStream_t& stream) {
+          gpuStream_t stream) {
         int64_t numel = input.numel() / size_;
         if (rank_ == opts.root_rank) {
           int64_t offset = 0;
@@ -1335,38 +1362,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
             stream));
       },
       CommType::REDUCE);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const ReduceScatterOptions& opts,
-    bool sync_op,
-    bool use_calc_stream) {
-  return Collective(
-      in_tensors,
-      out_tensors,
-      [&](phi::DenseTensor& input,
-          phi::DenseTensor& output,
-          ncclComm_t comm,
-          const gpuStream_t& stream) {
-        if (FLAGS_use_stream_safe_cuda_allocator) {
-          platform::CUDADeviceGuard cuda_guard;
-          cuda_guard.SetDevice(output.place());
-          memory::RecordStream(output.Holder(), stream);
-        }
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
-            input.data(),
-            output.data(),
-            output.numel(),
-            platform::ToNCCLDataType(input.dtype()),
-            ToNCCLRedType(opts.reduce_op),
-            comm,
-            stream));
-      },
-      CommType::REDUCE_SCATTER,
-      sync_op,
-      use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
