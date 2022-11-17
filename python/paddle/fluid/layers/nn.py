@@ -174,7 +174,6 @@ __all__ = [
     'mean',
     'mul',
     'affine_grid',
-    'hash',
     'grid_sampler',
     'log_loss',
     'add_position_encoding',
@@ -13081,70 +13080,6 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
     helper.append_op(
         type="mul", inputs={"X": x, "Y": y}, attrs=attrs, outputs={"Out": out}
-    )
-    return out
-
-
-
-def hash(input, hash_size, num_hash=1, name=None):
-    """
-
-    This OP hash the input to an integer less than the hash_size.
-    The hash algorithm we used was xxHash - Extremely fast hash algorithm
-    (https://github.com/Cyan4973/xxHash/tree/v0.6.5)
-
-    Args:
-        input(Variable): A **Two-Dimensional** LoDTensor with type int32, int64.
-             **Only support LoDTensor**.
-        num_hash(int, optional): The times of hash, default is 1.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
-
-    Returns:
-       Variable: A LoDTensor with the same data type as input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-            paddle.enable_static()
-
-            place = fluid.core.CPUPlace()
-
-            x = fluid.data(name="x", shape=[2,2], dtype="int32", lod_level=1)
-            res = fluid.layers.hash(name="res", input=x, hash_size=1000, num_hash=4)
-
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            in1 = np.array([[1,2],[3,4]]).astype("int32")
-            print(in1)
-            x_i = fluid.create_lod_tensor(in1, [[0, 2]], place)
-            res = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res], return_numpy=False)
-            print(np.array(res[0]))
-            # [[[722]
-            #   [407]
-            #   [337]
-            #   [395]]
-            #  [[603]
-            #   [590]
-            #   [386]
-            #   [901]]]
-    """
-    check_variable_and_dtype(input, 'input', ['int32', 'int64'], 'hash')
-    check_type(hash_size, 'hash_size', int, 'hash')
-    check_type(num_hash, 'num_hash', int, 'hash')
-    helper = LayerHelper('hash', **locals())
-    out = helper.create_variable_for_type_inference(
-        helper.input_dtype(), stop_gradient=True
-    )
-    helper.append_op(
-        type='hash',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs={'num_hash': num_hash, 'mod_by': hash_size},
     )
     return out
 
