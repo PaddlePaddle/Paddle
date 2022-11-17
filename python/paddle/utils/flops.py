@@ -215,15 +215,45 @@ def _matmul_v2_flops(input_shapes, attrs):
     return 2 * macs
 
 
+def _relu_class_flops(input_shapes, attrs):
+    input = input_shapes.get('X')[0]
+    return prod(input)
+
+
+@register_flops("elu")
+def _elu_flops(input_shapes, attrs):
+    return _relu_class_flops(input_shapes, attrs)
+
+
+@register_flops("leaky_relu")
+def _leaky_relu_flops(input_shapes, attrs):
+    return _relu_class_flops(input_shapes, attrs)
+
+
+@register_flops("prelu")
+def _prelu_flops(input_shapes, attrs):
+    return _relu_class_flops(input_shapes, attrs)
+
+
 @register_flops("relu")
 def _relu_flops(input_shapes, attrs):
     """FLOPs computation for relu op.
     For relu(input):
         equation: flops = (numel)total number of elements in the input tensor.
     """
-    return prod(input_shapes.get('X')[0])
+    return _relu_class_flops(input_shapes, attrs)
 
 
+@register_flops("relu6")
+def _relu6_flops(input_shapes, attrs):
+    return _relu_class_flops(input_shapes, attrs)
+
+
+@register_flops("silu")
+def _silu_flops(input_shapes, attrs):
+    return _relu_class_flops(input_shapes, attrs)
+
+    
 @register_flops("reshape2")
 def _reshape2_flops(input_shapes, attrs):
     """FLOPs computation for reshape2 op.
@@ -250,3 +280,5 @@ def _transpose2_flops(input_shapes, attrs):
         equation: flops = 0
     """
     return 0
+
+
