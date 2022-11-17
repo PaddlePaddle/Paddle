@@ -17,6 +17,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 TEST(Device, Init) {
   using paddle::platform::CUDAPlace;
@@ -107,7 +108,7 @@ TEST(Device, HostZeroAllocator) {
   phi::GPUContext* device_context = new phi::GPUContext(CUDAPlace(0));
   device_context->SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(CUDAPlace(i), device_context->stream())
+          .GetAllocator(CUDAPlace(0), device_context->stream())
           .get());
   device_context->SetHostAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -115,7 +116,7 @@ TEST(Device, HostZeroAllocator) {
           .get());
   device_context->SetZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(CUDAPlace(i))
+          .GetZeroAllocator(CUDAPlace(0))
           .get());
   device_context->SetHostZeroAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
@@ -132,7 +133,7 @@ TEST(Device, HostZeroAllocator) {
   device_context->HostAlloc<float>(&tensor);
   ASSERT_EQ(tensor.place().GetType(), phi::AllocationType::CPU);
   ASSERT_EQ(tensor.numel(), 0);
-  ASSERT_EQ(tensor.dtype, phi::DataType::FLOAT32);
+  ASSERT_EQ(tensor.dtype(), phi::DataType::FLOAT32);
 }
 
 TEST(Device, DeviceContextPool) {
