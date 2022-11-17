@@ -1469,26 +1469,6 @@ def reverse(x, axis):
     return out
 
 
-def save(x, file_path, overwrite=True):
-    """
-    Saves a variable as a file.
-
-    Args:
-        x(variable): The Tensor/LoDTensor to be saved.
-        file_path(str): The file path where the variable will be saved.
-        overwrite(bool): Whether or not cover the given file when it has already
-            existed. If it's set 'False' and the file is existed, a runtime
-            error will be thrown.
-    """
-    helper = LayerHelper("save", **locals())
-    helper.append_op(
-        type="save",
-        inputs={"input": x},
-        outputs={},
-        args={"file_path": file_path, "overwrite": overwrite},
-    )
-
-
 def save_combine(x, file_path, overwrite=True):
     """
     Saves a list of variables into a single file.
