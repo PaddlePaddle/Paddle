@@ -1845,8 +1845,6 @@ class Model:
             train_batch_size, eval_batch_size = batch_size
         elif isinstance(batch_size, int):
             train_batch_size, eval_batch_size = batch_size, batch_size
-        else:
-            raise TypeError("expected batch_size is an `int` or list[int].")
 
         if isinstance(train_data, Dataset):
             train_sampler = DistributedBatchSampler(
