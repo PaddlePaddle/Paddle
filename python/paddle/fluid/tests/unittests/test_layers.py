@@ -2425,7 +2425,9 @@ class TestLayer(LayerTest):
                 eager_eye_tensor_rlt1 = paddle.unsqueeze(
                     eager_eye_tensor_rlt1, [0]
                 )
-                eager_eye_tensor_rlt1 = paddle.expand(3, -1, -1)
+                eager_eye_tensor_rlt1 = paddle.expand(
+                    eager_eye_tensor_rlt1, [3, -1, -1]
+                )
 
                 eager_eye_tensor_rlt2 = paddle.eye(num_rows=3, num_columns=2)
                 eager_eye_tensor_rlt2 = paddle.unsqueeze(
@@ -3888,7 +3890,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name="input", shape=[10], dtype='int32')
-            out = paddle.expand(x, [-1, 2 * x.shape[1]])
+            out = paddle.expand(x, [2 * x.shape[1], -1])
             return out
 
     def make_uniform_random_batch_size_like(self):
