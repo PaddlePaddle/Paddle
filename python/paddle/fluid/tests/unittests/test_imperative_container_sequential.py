@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import unittest
 import paddle.fluid as fluid
 import numpy as np
@@ -23,7 +24,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
-            model1 = fluid.dygraph.Sequential(
+            model1 = paddle.nn.Sequential(
                 fluid.Linear(10, 1), fluid.Linear(1, 2)
             )
             res1 = model1(data)
@@ -36,7 +37,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
 
             l1 = fluid.Linear(10, 1)
             l2 = fluid.Linear(1, 3)
-            model2 = fluid.dygraph.Sequential(('l1', l1), ('l2', l2))
+            model2 = paddle.nn.Sequential(('l1', l1), ('l2', l2))
             self.assertEqual(len(model2), 2)
             res2 = model2(data)
             self.assertTrue(l1 is model2.l1)
@@ -64,7 +65,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
-            model1 = fluid.dygraph.Sequential(
+            model1 = paddle.nn.Sequential(
                 fluid.Linear(10, 1), fluid.Linear(1, 2)
             )
             res1 = model1(data)
@@ -77,7 +78,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
 
             l1 = fluid.Linear(10, 1)
             l2 = fluid.Linear(1, 3)
-            model2 = fluid.dygraph.Sequential(['l1', l1], ['l2', l2])
+            model2 = paddle.nn.Sequential(['l1', l1], ['l2', l2])
             self.assertEqual(len(model2), 2)
             res2 = model2(data)
             self.assertTrue(l1 is model2.l1)

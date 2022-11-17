@@ -66,4 +66,7 @@ from ..fluid.layer_helper import LayerHelper  # noqa: F401
 from ..fluid.framework import in_dygraph_mode  # noqa: F401
 from ..fluid.framework import _in_legacy_dygraph  # noqa: F401
 
+from ..fluid.framework import Parameter  # noqa: F401
+from ..fluid.dygraph.base import param_guard  # noqa: F401
+
 __all__ = []
