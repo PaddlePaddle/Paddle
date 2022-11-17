@@ -159,6 +159,7 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
 
   // Only support conv2d_fusion now.
   std::string target_op_type = "conv2d_fusion";
+  std::unordered_set<ir::Node *> valid_ops;
 
   auto OpIsValid = [&](ir::Node *op_node) -> bool {
     if (op_node->Op()->Type() != target_op_type) return false;
@@ -184,6 +185,7 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   for (auto *op_node : op_nodes) {
     CHECK_EQ(op_node->IsOp(), true);
     if (OpIsValid(op_node)) {
+      valid_ops.insert(op_node);
       auto *op_desc = op_node->Op();
       auto nhwc_attr = framework::Attribute(std::string("NHWC"));
       op_desc->SetAttr("data_format", nhwc_attr);
@@ -232,11 +234,7 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   for (auto *op_node : op_nodes) {
     CHECK_EQ(op_node->IsOp(), true);
 
-    if (OpIsValid(op_node)) {
-      auto *op_desc = op_node->Op();
-      auto data_format = op_desc->GetAttrIfExists<std::string>("data_format");
-      CHECK_EQ(data_format, "NHWC");
-
+    if (valid_ops.count(op_node)) {
       auto op_inputs = op_node->inputs;
       for (auto *in_var_node : op_inputs) {
         CHECK_EQ(in_var_node->IsVar(), true);
