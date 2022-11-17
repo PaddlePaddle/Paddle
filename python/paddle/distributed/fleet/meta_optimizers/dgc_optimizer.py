@@ -21,7 +21,7 @@ from paddle import framework
 from paddle.framework import core
 from paddle.common_ops_import import LayerHelper
 from paddle.fluid.clip import GradientClipByNorm, append_gradient_clip_ops
-from paddle.optimizer import Optimizer
+from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.dygraph import base as imperative_base
 
 
