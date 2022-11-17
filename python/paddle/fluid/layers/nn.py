@@ -131,7 +131,6 @@ __all__ = [
     'log',
     'crop',
     'crop_tensor',
-    'elu',
     'relu6',
     'pow',
     'stanh',
@@ -154,7 +153,6 @@ __all__ = [
     'elementwise_div',
     'elementwise_sub',
     'elementwise_mul',
-    'elementwise_max',
     'elementwise_min',
     'elementwise_pow',
     'elementwise_mod',
@@ -9924,49 +9922,6 @@ def pad2d(
     return out
 
 
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.elu")
-def elu(x, alpha=1.0, name=None):
-    """
-    :alias_main: paddle.nn.functional.elu
-        :alias: paddle.nn.functional.elu,paddle.nn.functional.activation.elu
-        :old_api: paddle.fluid.layers.elu
-
-    ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        alpha(${alpha_type}|1.0): ${alpha_comment}
-        name(str|None): The default value is None. Normally there is no need for user to set this property.
-                        For more information, please refer to :ref:`api_guide_Name`.
-    Returns:
-        ${out_type}: ${out_comment}
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-
-            input_elu = np.array([[-1,6],[1,15.6]])
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(input_elu)
-                y = fluid.layers.elu(x, alpha=0.2)
-                print(y.numpy())
-                # [[-0.12642411  6.        ]
-                # [ 1.          15.6       ]]
-    """
-    helper = LayerHelper('elu', **locals())
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'elu')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='elu',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'alpha': alpha},
-    )
-    return out
-
-
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.relu6")
 def relu6(x, threshold=6.0, name=None):
     """
@@ -12632,71 +12587,6 @@ def elementwise_mul(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
-def elementwise_max(x, y, axis=-1, act=None, name=None):
-    """
-        :alias_main: paddle.elementwise_max
-            :alias: paddle.elementwise_max,paddle.tensor.elementwise_max,paddle.tensor.math.elementwise_max
-            :old_api: paddle.fluid.layers.elementwise_max
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = fluid.layers.elementwise_max(x, y)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) #[2, 5, 4]
-
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                    "y": np.zeros((3, 4)).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-            y = fluid.data(name="y", shape=[3,4], dtype='float32')
-            z = fluid.layers.elementwise_max(x, y, axis=1)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value)#[[[[1., 1., 1., 1., 1.] .... [1., 1., 1., 1., 1.]]]]
-
-    """
-    if _non_static_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_max'
-        )
-
-    return _elementwise_op(LayerHelper('elementwise_max', **locals()))
-
-
 def elementwise_min(x, y, axis=-1, act=None, name=None):
     """
         :alias_main: paddle.elementwise_min
@@ -12874,7 +12764,6 @@ for func in [
     elementwise_div,
     elementwise_sub,
     elementwise_mul,
-    elementwise_max,
     elementwise_pow,
     elementwise_min,
     elementwise_mod,
