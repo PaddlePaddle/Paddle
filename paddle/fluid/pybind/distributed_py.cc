@@ -277,7 +277,7 @@ void BindDistributed(py::module *m) {
                                            /*offset*/ 0,
                                            /*numel*/ -1,
                                            sync_op);
-                distributed::SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
+                SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
                 task->UpdateWaitChain(dev_ctx);
                 return task;
               },
@@ -337,14 +337,13 @@ void BindDistributed(py::module *m) {
                 const auto &dev_ctx =
                     self.GetDeviceContext(in_tensor_list.back().place());
                 int world_size = self.GetSize();
-                std::vector<int64_t> out_sizes(
-                    world_size, p_out_tensor->dims()[0] / world_size);
-                std::vector<int64_t> in_sizes(
-                    world_size, p_in_tensor->dims()[0] / world_size);
-
-                auto task = self.AllToAll(
-                    out_dense, in_dense, out_sizes, in_sizes, sync_op);
-                distributed::SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
+                auto task =
+                    self.AllToAll(out_dense,
+                                  in_dense,
+                                  GetDefaultSplitSizes(*out_dense, world_size),
+                                  GetDefaultSplitSizes(in_dense, world_size),
+                                  sync_op);
+                SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
                 task->UpdateWaitChain(dev_ctx);
                 return task;
               },
@@ -370,12 +369,12 @@ void BindDistributed(py::module *m) {
                 auto in_dense = *p_in_tensor;
 
                 int world_size = self.GetSize();
-                std::vector<int64_t> out_sizes(
-                    world_size, p_out_tensor->dims()[0] / world_size);
-                std::vector<int64_t> in_sizes(
-                    world_size, p_in_tensor->dims()[0] / world_size);
                 return self.AllToAll(
-                    out_dense, in_dense, out_sizes, in_sizes, sync_op);
+                    out_dense,
+                    in_dense,
+                    GetDefaultSplitSizes(*out_dense, world_size),
+                    GetDefaultSplitSizes(in_dense, world_size),
+                    sync_op);
               },
               py::arg("out"),
               py::arg("in"),
@@ -687,8 +686,8 @@ void BindDistributed(py::module *m) {
               [](distributed::ProcessGroup &self,
                  py::handle py_in_tensor,
                  py::handle py_out_tensor,
-                 std::vector<int64_t> in_sizes,
-                 std::vector<int64_t> out_sizes) {
+                 const std::vector<int64_t> in_sizes,
+                 const std::vector<int64_t> out_sizes) {
                 auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
                 auto p_out_tensor = std::dynamic_pointer_cast<phi::DenseTensor>(
                     out_tensor.impl());
@@ -699,15 +698,6 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 auto in_dense = *p_in_tensor;
 
-                int world_size = self.GetSize();
-                if (in_sizes.size() == 0) {
-                  in_sizes = std::vector<int64_t>(
-                      world_size, p_in_tensor->dims()[0] / world_size);
-                }
-                if (out_sizes.size() == 0) {
-                  out_sizes = std::vector<int64_t>(
-                      world_size, p_out_tensor->dims()[0] / world_size);
-                }
                 return self.AllToAll(
                     out_dense, in_dense, out_sizes, in_sizes, /*sync_op*/ true);
               },
@@ -789,7 +779,7 @@ void BindDistributed(py::module *m) {
                                            /*numel*/ -1,
                                            /*sync_op*/ true,
                                            /*use_calc_stream*/ true);
-                distributed::SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
+                SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
                 return task;
               },
               py::arg("out"),
@@ -900,18 +890,14 @@ void BindDistributed(py::module *m) {
                 const auto &dev_ctx = self.GetDeviceContext(
                     in_tensor_list.back().place(), /*use_calc_stream*/ true);
                 int world_size = self.GetSize();
-                std::vector<int64_t> out_sizes(
-                    world_size, p_out_tensor->dims()[0] / world_size);
-                std::vector<int64_t> in_sizes(
-                    world_size, p_in_tensor->dims()[0] / world_size);
-
-                auto task = self.AllToAll(out_dense,
-                                          in_dense,
-                                          out_sizes,
-                                          in_sizes,
-                                          /*sync_op*/ true,
-                                          /*use_calc_stream*/ true);
-                distributed::SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
+                auto task =
+                    self.AllToAll(out_dense,
+                                  in_dense,
+                                  GetDefaultSplitSizes(*out_dense, world_size),
+                                  GetDefaultSplitSizes(in_dense, world_size),
+                                  /*sync_op*/ true,
+                                  /*use_calc_stream*/ true);
+                SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
                 return task;
               },
               py::arg("out"),
@@ -934,16 +920,13 @@ void BindDistributed(py::module *m) {
                 auto in_dense = *p_in_tensor;
 
                 int world_size = self.GetSize();
-                std::vector<int64_t> out_sizes(
-                    world_size, p_out_tensor->dims()[0] / world_size);
-                std::vector<int64_t> in_sizes(
-                    world_size, p_in_tensor->dims()[0] / world_size);
-                return self.AllToAll(out_dense,
-                                     in_dense,
-                                     out_sizes,
-                                     in_sizes,
-                                     /*sync_op*/ true,
-                                     /*use_calc_stream*/ true);
+                return self.AllToAll(
+                    out_dense,
+                    in_dense,
+                    GetDefaultSplitSizes(*out_dense, world_size),
+                    GetDefaultSplitSizes(in_dense, world_size),
+                    /*sync_op*/ true,
+                    /*use_calc_stream*/ true);
               },
               py::arg("out"),
               py::arg("in"),
