@@ -465,10 +465,10 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 min_local_steps = layers.fill_constant(
                     shape=[1], dtype='int64', value=1
                 )
-                next_local_steps = layers.elementwise_min(
+                next_local_steps = paddle.minimum(
                     next_local_steps, max_local_steps
                 )
-                next_local_steps = layers.elementwise_max(
+                next_local_steps = paddle.maximum(
                     next_local_steps, min_local_steps
                 )
                 layers.assign(next_local_steps, k_steps)
