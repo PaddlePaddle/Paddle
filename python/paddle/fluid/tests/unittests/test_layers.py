@@ -4599,7 +4599,7 @@ class TestBook(LayerTest):
         # TODO(minqiyang): dygraph do not support layers with param now
         with self.static_graph():
             x = layers.data(name='x', shape=[1, 1, 4], dtype='float32')
-            out = paddle.squeeze(x, axes=[2])
+            out = paddle.squeeze(x, axis=[2])
             return out
 
     def test_flatten(self):
