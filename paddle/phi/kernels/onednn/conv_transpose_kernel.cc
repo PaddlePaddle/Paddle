@@ -379,7 +379,7 @@ void Execute(const OneDNNContext& dev_ctx,
 
 template <typename T, typename Context>
 void Conv2dTransposeKernel(const Context& dev_ctx,
-                           const DenseTensor& input,
+                           const DenseTensor& x,
                            const DenseTensor& filter,
                            const std::vector<int>& strides,
                            const std::vector<int>& paddings,
