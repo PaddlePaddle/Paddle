@@ -1076,13 +1076,24 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       auto dtype = x_var_desc->GetDataType();
-      // At present, only support float32 or float16 into trt.
-      if (!(dtype == 5 || dtype == 4)) {
-        return false;
-      }
-      if (!with_dynamic_shape && x_shape.size() == 1) {
-        VLOG(3) << "Scale op does not support 1-dimensional input in tensorrt";
-        return false;
+      if (!with_dynamic_shape) {
+        // At present, only support float32 or float16 into trt.
+        if (!(dtype == framework::proto::VarType::FP32 ||
+              dtype == framework::proto::VarType::FP16)) {
+          return false;
+        }
+        if (x_shape.size() == 1) {
+          VLOG(3)
+              << "Scale op does not support 1-dimensional input in tensorrt";
+          return false;
+        }
+      } else {
+        // At present, only support float32 or float16 or int32 into trt.
+        if (!(dtype == framework::proto::VarType::FP32 ||
+              dtype == framework::proto::VarType::FP16 ||
+              dtype == framework::proto::VarType::INT32)) {
+          return false;
+        }
       }
     }
 
