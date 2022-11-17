@@ -22,6 +22,7 @@ from paddle.fluid.proto import framework_pb2
 from paddle.static import Program
 from paddle.fluid import debugger
 from google.protobuf import text_format
+import paddle.fluid as fluid
 import paddle.framework as framework
 from collections import OrderedDict
 from paddle.fluid import core
