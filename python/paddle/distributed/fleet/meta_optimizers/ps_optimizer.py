@@ -110,7 +110,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         build_var_distributed(attrs)
 
         # server
-        attrs['_main_server'] = paddle.staitc.Program()
+        attrs['_main_server'] = paddle.static.Program()
         attrs['_startup_server'] = paddle.static.Program()
         attrs['tensor_table'] = {}
 
