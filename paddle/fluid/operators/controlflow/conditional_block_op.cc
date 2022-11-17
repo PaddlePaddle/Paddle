@@ -105,51 +105,51 @@ class ConditionalBlockOp : public ConditionalOp {
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
 
       if (FLAGS_control_flow_use_new_executor) {
-        if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
+        if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
           std::set<std::string> skip_gc_vars(skip_vars.begin(),
                                              skip_vars.end());
-          VLOG(10) << "[interpreterCore cache]" << core.get();
-          VLOG_IF(10, core)
-              << platform::is_same_place(core->GetPlace(), dev_place);
-          core.reset(new InterpreterCore(dev_place,
-                                         *block,
-                                         skip_gc_vars,
-                                         &cur_scope,
-                                         /* used_for_jit */ false,
-                                         /* used_for_control_flow_op */ true));
+          VLOG(10) << "[interpreterCore cache]" << core_.get();
+          VLOG_IF(10, core_)
+              << platform::is_same_place(core_->GetPlace(), dev_place);
+          core_.reset(new InterpreterCore(dev_place,
+                                          *block,
+                                          skip_gc_vars,
+                                          &cur_scope,
+                                          /* used_for_jit */ false,
+                                          /* used_for_control_flow_op */ true));
           VLOG(10) << "[interpreterCore cache]"
-                   << "new created:" << core;
+                   << "new created:" << core_;
         } else {
-          BuildScopeForControlFlowOp(*core, *block, &cur_scope);
-          core->reset_scope(&cur_scope);
+          BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
+          core_->reset_scope(&cur_scope);
         }
 
-        core->Run({}, false);
+        core_->Run({}, false);
 
       } else {
-        if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
+        if (!exec_ || !platform::is_same_place(exec_->GetPlace(), dev_place)) {
           auto &pdesc = *block->Program();
-          exec.reset(new Executor(dev_place));
-          if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
-          ctx = exec->Prepare(pdesc, block->ID(), skip_vars, false);
+          exec_.reset(new Executor(dev_place));
+          if (FLAGS_use_mkldnn) exec_->EnableMKLDNN(pdesc);
+          ctx_ = exec_->Prepare(pdesc, block->ID(), skip_vars, false);
 #ifdef PADDLE_WITH_MKLDNN
           platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
           platform::RegisterModelLayout(ctx->ops_, dev_place);
 #endif
         }
-        exec->RunPreparedContext(ctx.get(),
-                                 &cur_scope,
-                                 /* create_local_scope */ false,
-                                 /* create_vars */ true,
-                                 /* keep_kids */ true);
+        exec_->RunPreparedContext(ctx_.get(),
+                                  &cur_scope,
+                                  /* create_local_scope */ false,
+                                  /* create_vars */ true,
+                                  /* keep_kids */ true);
       }
     }
   }
 
  private:
-  mutable std::shared_ptr<Executor> exec{nullptr};
-  mutable std::unique_ptr<ExecutorPrepareContext> ctx{nullptr};
-  mutable std::shared_ptr<InterpreterCore> core{nullptr};
+  mutable std::shared_ptr<Executor> exec_{nullptr};
+  mutable std::unique_ptr<ExecutorPrepareContext> ctx_{nullptr};
+  mutable std::shared_ptr<InterpreterCore> core_{nullptr};
 };
 
 class ConditionalBlockInferShape : public framework::InferShapeBase {
@@ -215,42 +215,42 @@ class ConditionalBlockGradOp : public ConditionalOp {
               << ", scope = " << &cur_scope;
 
       if (FLAGS_control_flow_use_new_executor) {
-        if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
-          VLOG(10) << "[interpreterCore cache]" << core.get();
-          VLOG_IF(10, core)
-              << platform::is_same_place(core->GetPlace(), dev_place);
+        if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+          VLOG(10) << "[interpreterCore cache]" << core_.get();
+          VLOG_IF(10, core_)
+              << platform::is_same_place(core_->GetPlace(), dev_place);
           std::set<std::string> skip_gc_vars(inside_grads.begin(),
                                              inside_grads.end());
-          core.reset(new InterpreterCore(dev_place,
-                                         *block,
-                                         skip_gc_vars,
-                                         &cur_scope,
-                                         /* used_for_jit */ false,
-                                         /* used_for_control_flow_op */ true));
+          core_.reset(new InterpreterCore(dev_place,
+                                          *block,
+                                          skip_gc_vars,
+                                          &cur_scope,
+                                          /* used_for_jit */ false,
+                                          /* used_for_control_flow_op */ true));
           VLOG(10) << "[interpreterCore cache]"
-                   << "new created:" << core;
+                   << "new created:" << core_;
         } else {
-          BuildScopeForControlFlowOp(*core, *block, &cur_scope);
-          core->reset_scope(&cur_scope);
+          BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
+          core_->reset_scope(&cur_scope);
         }
-        core->Run({}, false);
+        core_->Run({}, false);
 
       } else {
-        if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
+        if (!exec_ || !platform::is_same_place(exec_->GetPlace(), dev_place)) {
           auto &pdesc = *block->Program();
-          exec.reset(new Executor(dev_place));
-          if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
-          ctx = exec->Prepare(pdesc, block->ID(), inside_grads, false);
+          exec_.reset(new Executor(dev_place));
+          if (FLAGS_use_mkldnn) exec_->EnableMKLDNN(pdesc);
+          ctx_ = exec_->Prepare(pdesc, block->ID(), inside_grads, false);
 #ifdef PADDLE_WITH_MKLDNN
           platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
           platform::RegisterModelLayout(ctx->ops_, dev_place);
 #endif
         }
-        exec->RunPreparedContext(ctx.get(),
-                                 &cur_scope,
-                                 /* create_local_scope */ false,
-                                 /* create_vars */ true,
-                                 /* keep_kids */ true);
+        exec_->RunPreparedContext(ctx_.get(),
+                                  &cur_scope,
+                                  /* create_local_scope */ false,
+                                  /* create_vars */ true,
+                                  /* keep_kids */ true);
       }
 
       AssignLocalGradientToParentScope(
@@ -262,9 +262,9 @@ class ConditionalBlockGradOp : public ConditionalOp {
   }
 
  private:
-  mutable std::shared_ptr<Executor> exec{nullptr};
-  mutable std::unique_ptr<ExecutorPrepareContext> ctx{nullptr};
-  mutable std::shared_ptr<InterpreterCore> core{nullptr};
+  mutable std::shared_ptr<Executor> exec_{nullptr};
+  mutable std::unique_ptr<ExecutorPrepareContext> ctx_{nullptr};
+  mutable std::shared_ptr<InterpreterCore> core_{nullptr};
 
  private:
   void AssignLocalGradientToParentScope(

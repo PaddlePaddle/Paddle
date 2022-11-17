@@ -50,7 +50,8 @@ static std::string GetSkipEagerDeletionVarsDebugString(
 
 static void TransferVariablePlace(const framework::Scope *scope,
                                   const std::string &var_name,
-                                  const phi::Place &dst_place) {
+                                  const phi::Place &dst_place,
+                                  const platform::DeviceContext &dev_ctx) {
   framework::Variable *var = scope->FindVar(var_name);
   if (var == nullptr) {
     VLOG(4) << "[TransferVariablePlace]"
@@ -72,6 +73,8 @@ static void TransferVariablePlace(const framework::Scope *scope,
 
   phi::DenseTensor *new_t = new phi::DenseTensor;
   framework::TensorCopy(*t, dst_place, new_t);
+  dev_ctx.Wait();
+
   t->set_meta(new_t->meta());
   t->ResetHolder(new_t->Holder());
 
@@ -113,6 +116,10 @@ class WhileOp : public framework::OperatorBase {
     platform::DontClearMKLDNNCache(dev_place);
 #endif
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
+
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
 
     auto *program = block->Program();
     bool is_test = Attr<bool>("is_test");
@@ -194,11 +201,11 @@ class WhileOp : public framework::OperatorBase {
     }
 
     if (FLAGS_control_flow_use_new_executor) {
-      if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
+      if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
         std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
         framework::Scope placeholder;  // Don't care if it's valid, just for
                                        // initialize InterpreterCore
-        core.reset(new framework::InterpreterCore(
+        core_.reset(new framework::InterpreterCore(
             dev_place,
             *block,
             skip_gc_vars,
@@ -207,10 +214,10 @@ class WhileOp : public framework::OperatorBase {
             /* used_for_control_flow_op */ true));
       }
     } else {
-      if (!executor ||
-          !platform::is_same_place(executor->GetPlace(), dev_place)) {
-        executor.reset(new framework::Executor(dev_place));
-        ctx = executor->Prepare(*program, block->ID(), skip_vars);
+      if (!executor_ ||
+          !platform::is_same_place(executor_->GetPlace(), dev_place)) {
+        executor_.reset(new framework::Executor(dev_place));
+        ctx_ = executor_->Prepare(*program, block->ID(), skip_vars);
       }
     }
 
@@ -237,21 +244,21 @@ class WhileOp : public framework::OperatorBase {
           }
         }
         if (FLAGS_control_flow_use_new_executor) {
-          BuildScopeForControlFlowOp(*core, *block, &current_scope);
-          core->reset_scope(&current_scope);
-          core->Run({}, false);
+          BuildScopeForControlFlowOp(*core_, *block, &current_scope);
+          core_->reset_scope(&current_scope);
+          core_->Run({}, false);
 
           // restore inputs place
           for (const auto &n : input_var_original_places) {
             const std::string &in_name = n.first;
             const phi::Place &original_place = n.second;
             // input vars exist in `scope` not `current_scope`
-            TransferVariablePlace(&scope, in_name, original_place);
+            TransferVariablePlace(&scope, in_name, original_place, dev_ctx);
           }
 
         } else {
-          executor->RunPreparedContext(
-              ctx.get(), &current_scope, false, true, true);
+          executor_->RunPreparedContext(
+              ctx_.get(), &current_scope, false, true, true);
         }
 
         for (auto &var_rename : rename_vars) {
@@ -266,10 +273,10 @@ class WhileOp : public framework::OperatorBase {
       auto &current_scope = scope.NewScope();
 
       if (FLAGS_control_flow_use_new_executor) {
-        BuildScopeForControlFlowOp(*core, *block, &current_scope);
-        core->reset_scope(&current_scope);
+        BuildScopeForControlFlowOp(*core_, *block, &current_scope);
+        core_->reset_scope(&current_scope);
       } else {
-        executor->CreateVariables(*program, &current_scope, block->ID());
+        executor_->CreateVariables(*program, &current_scope, block->ID());
       }
 
       while (cond_data) {
@@ -287,10 +294,10 @@ class WhileOp : public framework::OperatorBase {
           }
         }
         if (FLAGS_control_flow_use_new_executor) {
-          core->Run({}, false);
+          core_->Run({}, false);
         } else {
-          executor->RunPreparedContext(
-              ctx.get(), &current_scope, false, false, false);
+          executor_->RunPreparedContext(
+              ctx_.get(), &current_scope, false, false, false);
         }
 
         cond_data =
@@ -301,9 +308,9 @@ class WhileOp : public framework::OperatorBase {
   }
 
  private:
-  mutable std::shared_ptr<framework::Executor> executor{nullptr};
-  mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx{nullptr};
-  mutable std::shared_ptr<framework::InterpreterCore> core{nullptr};
+  mutable std::shared_ptr<framework::Executor> executor_{nullptr};
+  mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx_{nullptr};
+  mutable std::shared_ptr<framework::InterpreterCore> core_{nullptr};
 };
 
 class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -381,11 +388,11 @@ class WhileGradOp : public framework::OperatorBase {
                           inside_og_names.size()));
 
     if (FLAGS_control_flow_use_new_executor) {
-      if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
+      if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
         std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
         framework::Scope placeholder;  // Don't care if it's valid, just for
                                        // initialize InterpreterCore
-        core.reset(new framework::InterpreterCore(
+        core_.reset(new framework::InterpreterCore(
             dev_place,
             *block,
             skip_gc_vars,
@@ -394,10 +401,10 @@ class WhileGradOp : public framework::OperatorBase {
             /* used_for_control_flow_op */ true));
       }
     } else {
-      if (!executor ||
-          !platform::is_same_place(executor->GetPlace(), dev_place)) {
-        executor.reset(new framework::Executor(dev_place));
-        ctx = executor->Prepare(*program, block->ID(), skip_vars);
+      if (!executor_ ||
+          !platform::is_same_place(executor_->GetPlace(), dev_place)) {
+        executor_.reset(new framework::Executor(dev_place));
+        ctx_ = executor_->Prepare(*program, block->ID(), skip_vars);
       }
     }
 
@@ -461,12 +468,12 @@ class WhileGradOp : public framework::OperatorBase {
       }
 
       if (FLAGS_control_flow_use_new_executor) {
-        BuildScopeForControlFlowOp(*core, *block, *cur_scope_iter);
-        core->reset_scope(*cur_scope_iter);
-        core->Run({}, false);
+        BuildScopeForControlFlowOp(*core_, *block, *cur_scope_iter);
+        core_->reset_scope(*cur_scope_iter);
+        core_->Run({}, false);
       } else {
-        executor->RunPreparedContext(
-            ctx.get(), *cur_scope_iter, false, true, true);
+        executor_->RunPreparedContext(
+            ctx_.get(), *cur_scope_iter, false, true, true);
       }
 
       // The Outputs(kXGRAD) contains the names of the gradient of parameters
@@ -584,9 +591,9 @@ class WhileGradOp : public framework::OperatorBase {
   }
 
  private:
-  mutable std::shared_ptr<framework::Executor> executor{nullptr};
-  mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx{nullptr};
-  mutable std::shared_ptr<framework::InterpreterCore> core{nullptr};
+  mutable std::shared_ptr<framework::Executor> executor_{nullptr};
+  mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx_{nullptr};
+  mutable std::shared_ptr<framework::InterpreterCore> core_{nullptr};
 };
 
 template <typename T>
