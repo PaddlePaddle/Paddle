@@ -157,6 +157,13 @@ class GpuPsGraphTable
   int get_feature_of_nodes(
       int gpu_id, uint64_t *d_walk, uint64_t *d_offset, int size, int slot_num,
       int* d_slot_feature_num_map, int fea_num_per_node);
+  int get_feature_info_of_nodes(int gpu_id,
+                                uint64_t* d_nodes,
+                                int node_num,
+                                uint32_t * size_list,
+                                uint32_t * size_list_prefix_sum,
+                                std::shared_ptr<phi::Allocation> & feature_list,
+                                std::shared_ptr<phi::Allocation> & slot_list);
 
   NodeQueryResult query_node_list(int gpu_id,
                                   int idx,
@@ -170,6 +177,15 @@ class GpuPsGraphTable
                                  int *h_right,
                                  uint64_t *src_sample_res,
                                  int *actual_sample_size);
+  void move_result_to_source_gpu(int start_index,
+                                   int gpu_num,
+                                   int* h_left,
+                                   int* h_right,
+                                   int * fea_left,
+                                   uint32_t * fea_num_list,
+                                   uint32_t* actual_feature_size,
+                                   uint64_t* feature_list,
+                                   uint8_t* slot_list);
   void move_result_to_source_gpu_all_edge_type(int gpu_id,
                                                int gpu_num,
                                                int sample_size,
