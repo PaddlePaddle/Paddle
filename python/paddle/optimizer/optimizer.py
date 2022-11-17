@@ -1534,6 +1534,14 @@ class Optimizer:
         pass
 
     def _is_dtype_fp16_or_bf16(self, dtype):
+        """
+        check the dtype is fp16 or the dtype is bf16
+        :param dtype: instance of core.VarDesc.VarType
+        :return: True if dtype is one of fp16 or bf16, False otherwise
+        """
+        assert isinstance(
+            dtype, core.VarDesc.VarType
+        ), "The dtype should be an instance of core.VarDesc.VarType."
         return (
             dtype == core.VarDesc.VarType.FP16
             or dtype == core.VarDesc.VarType.BF16
