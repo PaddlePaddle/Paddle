@@ -4381,40 +4381,6 @@ class TestBook(LayerTest):
             x = layers.data(name="input", shape=[1], dtype='int32', lod_level=1)
             out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
 
-    def test_roi_align(self):
-        x_np = np.random.rand(2, 3, 8, 8).astype('float32')
-        rois_np = np.random.rand(3, 4).astype('float32')
-        rois_num_np = np.array([1, 2]).astype('int32')
-
-        with self.static_graph():
-            x = layers.data(name="x", shape=[3, 8, 8], dtype="float32")
-            rois = layers.data(name="rois", shape=[4], dtype="float32")
-            rois_num = fluid.data(name="rois_num", shape=[None], dtype="int32")
-            output = layers.roi_align(x, rois, 4, 4, 0.5, 2, rois_num=rois_num)
-            static_res = self.get_static_graph_result(
-                feed={'x': x_np, 'rois': rois_np, 'rois_num': rois_num_np},
-                fetch_list=[output],
-            )[0]
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                x_dy = base.to_variable(x_np)
-                rois_dy = base.to_variable(rois_np)
-                rois_num_dy = base.to_variable(rois_num_np)
-                dy_eager_res = layers.roi_align(
-                    x_dy, rois_dy, 4, 4, 0.5, 2, rois_num=rois_num_dy
-                )
-                dy_eager_res_value = dy_eager_res.numpy()
-
-            x_dy = base.to_variable(x_np)
-            rois_dy = base.to_variable(rois_np)
-            rois_num_dy = base.to_variable(rois_num_np)
-            dy_res = layers.roi_align(
-                x_dy, rois_dy, 4, 4, 0.5, 2, rois_num=rois_num_dy
-            )
-            dy_res_value = dy_res.numpy()
-        np.testing.assert_array_equal(static_res, dy_eager_res_value)
-        np.testing.assert_array_equal(static_res, dy_res_value)
 
     def test_dice_loss(self):
         num_classes = 4
