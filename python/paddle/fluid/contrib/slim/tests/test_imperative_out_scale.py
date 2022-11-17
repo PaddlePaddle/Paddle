@@ -57,7 +57,7 @@ def get_vaild_warning_num(warning, w):
 
 class ImperativeLenet(fluid.dygraph.Layer):
     def __init__(self, num_classes=10):
-        super(ImperativeLenet, self).__init__()
+        super().__init__()
         conv2d_w1_attr = fluid.ParamAttr(name="conv2d_w_1")
         conv2d_w2_attr = fluid.ParamAttr(name="conv2d_w_2")
         fc_w1_attr = fluid.ParamAttr(name="fc_w_1")

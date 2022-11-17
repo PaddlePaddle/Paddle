@@ -530,7 +530,7 @@ class OptimizationTuner:
         self._finished_trials.append(trial)
 
         cur_mertic = get_metric(results)
-        if self._best_metric == None or cur_mertic > self._best_metric:
+        if self._best_metric is None or cur_mertic > self._best_metric:
             self._best_metric = cur_mertic
             self._best_iter = i
 

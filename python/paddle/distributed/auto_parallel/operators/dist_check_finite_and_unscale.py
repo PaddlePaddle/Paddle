@@ -31,7 +31,7 @@ world_process_group = get_world_process_group()
 
 class DistributedCheckFiniteAndUnscale(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedCheckFiniteAndUnscale, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(
@@ -41,7 +41,7 @@ register_distributed_operator_impl_container(
 
 class DistributedCheckFiniteAndUnscaleImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedCheckFiniteAndUnscaleImpl, self).__init__(name)
+        super().__init__(name)
         self._name = name
         self._forward_implemented = False
         self._backward_implemented = True

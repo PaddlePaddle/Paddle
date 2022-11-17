@@ -173,7 +173,7 @@ def minimize_lbfgs(
     ):
         # use assign to cut off the relevance between g1 and q, or they will change together.
 
-        #############    compute p_k by two-loop recursion    #############
+        # --------------   compute p_k by two-loop recursion    -------------- #
         q = paddle.assign(g1)
         # In a array circle, the index may out of range, so must use mod.
         i = paddle.full(
@@ -208,7 +208,7 @@ def minimize_lbfgs(
 
         pk = -r
 
-        #############    compute alpha by line serach    #############
+        # --------------   compute alpha by line serach    -------------- #
         if line_search_fn == 'strong_wolfe':
             alpha, value, g2, ls_func_calls = strong_wolfe(
                 f=objective_func,
@@ -225,7 +225,7 @@ def minimize_lbfgs(
             )
         paddle.assign(num_func_calls + ls_func_calls, num_func_calls)
 
-        #############    update sk_vec, yk_vec, rhok_vec    #############
+        # --------------   update sk_vec, yk_vec, rhok_vec    -------------- #
         sk = alpha * pk
         yk = g2 - g1
 
@@ -251,7 +251,7 @@ def minimize_lbfgs(
         g1 = g2
         k += 1
 
-        #############    check convergence    #############
+        # --------------   check convergence    -------------- #
         gnorm = paddle.linalg.norm(g1, p=np.inf)
         pk_norm = paddle.linalg.norm(pk, p=np.inf)
         paddle.assign(

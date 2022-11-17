@@ -65,11 +65,22 @@ class AsyncWorkQueue {
   std::unique_ptr<WorkQueueGroup> queue_group_;
 };
 
-void LogDeviceMemoryStats(const platform::Place& place);
+bool IsCommunicationOp(const std::string& op_name);
 
-void BuildVariableScope(const framework::BlockDesc& block,
-                        VariableScope* var_scope,
-                        bool use_local_scope = true);
+bool IsCommunicationOp(const Instruction& instr);
+
+bool IsCpuOp(const Instruction& instr);
+
+bool IsMemcpyD2H(const Instruction& instr);
+
+bool IsMemcpyH2D(const Instruction& instr);
+
+bool IsMemcpyOp(const Instruction& instr);
+
+bool IsSupportedHeterPlace(const phi::Place& place);
+
+void AddFetch(const std::vector<std::string>& fetch_names,
+              framework::BlockDesc* block);
 
 void BuildOpFuncList(const platform::Place& place,
                      const framework::BlockDesc& block,
@@ -79,10 +90,11 @@ void BuildOpFuncList(const platform::Place& place,
                      const ExecutionConfig& execution_config,
                      bool use_local_scope = true);
 
-void AddFetch(const std::vector<std::string>& fetch_names,
-              framework::BlockDesc* block);
+void BuildVariableScope(const framework::BlockDesc& block,
+                        VariableScope* var_scope,
+                        bool use_local_scope = true);
 
-bool IsCommunicationOp(const std::string& op_name);
+void LogDeviceMemoryStats(const platform::Place& place);
 
 }  // namespace interpreter
 }  // namespace framework

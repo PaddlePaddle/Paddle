@@ -21,7 +21,7 @@ from typing import Any, Dict, List
 import unittest
 
 
-class TrtConvertSwishTest(TrtLayerAutoScanTest):
+class TrtConvertSiluTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -37,33 +37,32 @@ class TrtConvertSwishTest(TrtLayerAutoScanTest):
                 return np.ones([1, 3, 64, 64]).astype(np.float32)
 
         for dims in [1, 2, 3, 4]:
-            for beta in [1.0, 2.0, 3.0]:
-                self.dims = dims
+            self.dims = dims
 
-                ops_config = [
-                    {
-                        "op_type": "silu",
-                        "op_inputs": {
-                            "X": ["input_data"],
-                        },
-                        "op_outputs": {"Out": ["output_data"]},
-                        "op_attrs": {},
-                    }
-                ]
-                ops = self.generate_op_config(ops_config)
-
-                program_config = ProgramConfig(
-                    ops=ops,
-                    weights={},
-                    inputs={
-                        "input_data": TensorConfig(
-                            data_gen=partial(generate_input1, dims, {})
-                        )
+            ops_config = [
+                {
+                    "op_type": "silu",
+                    "op_inputs": {
+                        "X": ["input_data"],
                     },
-                    outputs=["output_data"],
-                )
+                    "op_outputs": {"Out": ["output_data"]},
+                    "op_attrs": {},
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
 
-                yield program_config
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1, dims, {})
+                    )
+                },
+                outputs=["output_data"],
+            )
+
+            yield program_config
 
     def sample_predictor_configs(
         self, program_config

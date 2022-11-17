@@ -68,9 +68,9 @@ class TestGetInputsOutputsInBlock(unittest.TestCase):
         inner_inputs, inner_outputs = utils.get_inputs_outputs_in_block(
             sub_block
         )
-        #'fill_constant_1.tmp_0', 'tmp_3' are names of a, c
+        # 'fill_constant_1.tmp_0', 'tmp_3' are names of a, c
         self.assertTrue(inner_inputs == {'fill_constant_1.tmp_0', 'tmp_3'})
-        #'_generated_var_1', is name of a + c
+        # '_generated_var_1', is name of a + c
         self.assertTrue(inner_outputs == {'_generated_var_1'})
 
 

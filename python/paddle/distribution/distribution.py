@@ -33,7 +33,7 @@ from paddle.fluid.framework import (
 from paddle.fluid.layers import tensor
 
 
-class Distribution(object):
+class Distribution:
     """
     The abstract base class for probability distributions. Functions are
     implemented in specific distributions.
@@ -60,7 +60,7 @@ class Distribution(object):
             else tuple(event_shape)
         )
 
-        super(Distribution, self).__init__()
+        super().__init__()
 
     @property
     def batch_shape(self):

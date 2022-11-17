@@ -106,14 +106,14 @@ class TestMluIouSimilarityOp(OpTest):
 
 class TestMluIouSimilarityOpWithLoD(TestMluIouSimilarityOp):
     def set_init_config(self):
-        super(TestMluIouSimilarityOpWithLoD, self).set_init_config()
+        super().set_init_config()
         self.box_normalized = True
         self.use_lod = True
 
 
 class TestMluIouSimilarityOpWithBoxNormalized(TestMluIouSimilarityOp):
     def set_init_config(self):
-        super(TestMluIouSimilarityOpWithBoxNormalized, self).set_init_config()
+        super().set_init_config()
         self.box_normalized = True
         self.use_lod = True
 

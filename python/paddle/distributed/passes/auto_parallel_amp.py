@@ -54,7 +54,7 @@ from ..auto_parallel.utils import is_forward_op, is_backward_op, is_loss_op
 world_process_group = get_world_process_group()
 
 
-class AMPState(object):
+class AMPState:
     def __init__(self, block):
         self._block = block
         self._op_fp16_dict = (
@@ -80,9 +80,9 @@ class AMPState(object):
                     fwd_op_id = dist_op_context.grad_op_id_to_op_id[
                         op.desc.original_id()
                     ]
-                    if self._is_fp16_op(fwd_op_id) == True:
+                    if self._is_fp16_op(fwd_op_id) is True:
                         self._op_fp16_dict[op.desc.original_id()] = True
-                    elif self._is_fp16_op(fwd_op_id) == False:
+                    elif self._is_fp16_op(fwd_op_id) is False:
                         self._op_fp16_dict[op.desc.original_id()] = False
             elif int(op.attr('op_role')) == int(OpRole.Optimize):
                 break
@@ -132,13 +132,13 @@ class AMPState(object):
                             # if it's one of inputs
                             if (
                                 self._is_fp16_op(prev_op.desc.original_id())
-                                == False
+                                is False
                                 or prev_op.type in amp_lists.black_list
                             ):
                                 is_black_op = True
                             elif (
                                 self._is_fp16_op(prev_op.desc.original_id())
-                                == True
+                                is True
                                 or prev_op.type in amp_lists.white_list
                             ):
                                 is_white_op = True
@@ -161,7 +161,7 @@ class AMPState(object):
             num_cast_ops = 0
             if int(op.attr('op_role')) == int(OpRole.Backward):
                 break
-            if self._is_fp16_op(op.desc.original_id()) == False:
+            if self._is_fp16_op(op.desc.original_id()) is False:
                 num_cast_ops = self._insert_cast_op_forward(
                     op,
                     idx,
@@ -169,7 +169,7 @@ class AMPState(object):
                     core.VarDesc.VarType.FP32,
                     dist_context,
                 )
-            elif self._is_fp16_op(op.desc.original_id()) == True:
+            elif self._is_fp16_op(op.desc.original_id()) is True:
                 num_cast_ops = self._insert_cast_op_forward(
                     op,
                     idx,
@@ -302,7 +302,7 @@ class AMPState(object):
             grad_op_orig_id = grad_op.desc.original_id()
             dist_op_context = dist_context.dist_op_context
             if grad_op_orig_id in dist_op_context.grad_op_id_to_op_id:
-                if self._is_fp16_op(grad_op_orig_id) == False:  # fp32
+                if self._is_fp16_op(grad_op_orig_id) is False:  # fp32
                     num_cast_ops = self._insert_cast_op_backward(
                         grad_op,
                         idx,
@@ -311,7 +311,7 @@ class AMPState(object):
                         dist_context,
                         appended_grad_times,
                     )
-                elif self._is_fp16_op(grad_op_orig_id) == True:  # fp16
+                elif self._is_fp16_op(grad_op_orig_id) is True:  # fp16
                     num_cast_ops = self._insert_cast_op_backward(
                         grad_op,
                         idx,
@@ -618,7 +618,7 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
 @register_pass("auto_parallel_amp")
 class AMPPass(PassBase):
     def __init__(self):
-        super(AMPPass, self).__init__()
+        super().__init__()
         self.set_attr("loss", None)
         self.set_attr("dist_context", None)
         self.set_attr("custom_white_list", None)

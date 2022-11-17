@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/index_add_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 
@@ -24,7 +24,7 @@ DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename IndexT>
 __global__ void index_add_cuda_kernel(const T* input,
@@ -41,7 +41,7 @@ __global__ void index_add_cuda_kernel(const T* input,
     IndexT src_dim_idx = index[dim_idx];
     int64_t input_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-    paddle::platform::CudaAtomicAdd(&output[input_idx], add_value[idx]);
+    phi::CudaAtomicAdd(&output[input_idx], add_value[idx]);
   }
 }
 
@@ -75,7 +75,7 @@ void IndexAddKernel(const Context& ctx,
 
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
   dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
-  paddle::platform::LimitGridDim(ctx, &grid_dim);
+  phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
 
   // copy input to output.
   // todo(@limin29): inplace do not need copy.

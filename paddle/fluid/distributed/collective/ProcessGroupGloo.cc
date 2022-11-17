@@ -180,10 +180,9 @@ ProcessGroupGloo::ProcessGroupGloo(
     const std::shared_ptr<distributed::Store>& store,
     int rank,
     int world_size,
-    const platform::Place& place,
     int gid,
     const std::shared_ptr<GlooOptions> options)
-    : ProcessGroup(rank, world_size, place, gid),
+    : ProcessGroup(rank, world_size, gid),
       _tag(0),
       _store(new GlooStore(store)) {
   _context = std::make_shared<gloo::rendezvous::Context>(rank, world_size);
@@ -229,10 +228,29 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
   }
 };
 
+// TODO(sunyilun): for compatibility, will be updated later
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const BroadcastOptions& opts,
+    bool sync_op) {
+  std::vector<phi::DenseTensor> in_wrapper = {in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper = {*out_tensor};
+  return Broadcast(in_wrapper, out_wrapper, opts, true);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,
     const BroadcastOptions& opts) {
+  return Broadcast(inputs, outputs, opts, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
+    std::vector<phi::DenseTensor>& inputs,
+    std::vector<phi::DenseTensor>& outputs,
+    const BroadcastOptions& opts,
+    bool sync_op) {
   auto root = opts.source_rank;
   std::unique_ptr<BroadcastGlooTask> task;
   auto tag = next_tag();
@@ -373,8 +391,26 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    int64_t offset,  // for compatibility, no use now
+    int64_t numel,   // for compatibility, no use now
+    bool sync_op) {
+  std::vector<phi::DenseTensor> in_wrapper = {in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper = {*out_tensor};
+  return AllGather(in_wrapper, out_wrapper, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors) {
+  return AllGather(in_tensors, out_tensors, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    bool sync_op) {
   std::shared_ptr<AllgatherGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
@@ -442,6 +478,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,
     const ReduceOptions& opts) {
+  return Reduce(inputs, outputs, opts, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
+    std::vector<phi::DenseTensor>& inputs,
+    std::vector<phi::DenseTensor>& outputs,
+    const ReduceOptions& opts,
+    bool sync_op) {
   std::shared_ptr<ReduceGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
@@ -497,6 +541,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const ScatterOptions& opts) {
+  return Scatter(in_tensors, out_tensors, opts, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    const ScatterOptions& opts,
+    bool sync_op) {
   std::shared_ptr<ScatterGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
