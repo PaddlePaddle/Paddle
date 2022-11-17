@@ -424,15 +424,6 @@
     func : concat
   backward : concat_grad
 
-- op : conj
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : conj
-  backward : conj_grad
-
 - op : conv2d
   args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int groups, str data_format)
   output : Tensor
@@ -541,7 +532,7 @@
   backward : deformable_conv_grad
 
 - op : depthwise_conv2d
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format, bool use_gpudnn)
+  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(out)
   infer_meta :
     func : DepthwiseConvInferMeta
@@ -549,7 +540,7 @@
   kernel :
     func : depthwise_conv2d
     param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
-    use_gpudnn : use_gpudnn
+    use_gpudnn : true
   backward : depthwise_conv2d_grad
 
 - op : depthwise_conv2d_transpose
@@ -911,17 +902,6 @@
   kernel :
     func : greater_than
 
-- op : grid_sample
-  args : (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners)
-  output : Tensor(out)
-  infer_meta :
-    func : GridSampleBaseInferMeta
-    param : [x, grid]
-  kernel:
-    func : grid_sample
-    data_type : x
-  backward : grid_sample_grad
-
 - op : group_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int groups, str data_layout)
   output : Tensor(y), Tensor(mean), Tensor(variance)
@@ -953,14 +933,6 @@
     func : hard_tanh
   backward : hardtanh_grad
 
-- op : histogram
-  args : (Tensor input, int64_t bins, int min, int max)
-  output : Tensor(out)
-  infer_meta :
-    func : HistogramInferMeta
-  kernel :
-    func : histogram
-
 - op : hsigmoid_loss
   args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, int num_classes, bool remote_prefetch, int trainer_id, int64_t[] height_sections, str[] epmap, str[] table_names, bool is_sparse)
   output : Tensor(out), Tensor(pre_out), Tensor(w_out)
@@ -991,7 +963,7 @@
   backward : imag_grad
 
 - op : increment
-  args : (Tensor x, float value)
+  args : (Tensor x, float value = 1.0)
   output : Tensor(out)
   infer_meta :
     func : IncrementInferMeta
@@ -1010,26 +982,6 @@
   inplace : (x -> out)
   backward : index_add_grad
 
-- op : index_sample
-  args : (Tensor x, Tensor index)
-  output : Tensor
-  infer_meta :
-    func : IndexSampleInferMeta
-  kernel :
-    func : index_sample
-    data_type : x
-  backward : index_sample_grad
-
-- op : index_select
-  args : (Tensor x, Tensor index,  int axis)
-  output : Tensor(out)
-  infer_meta :
-    func : IndexSelectInferMeta
-  kernel :
-    func : index_select
-    data_type : x
-  backward : index_select_grad
-
 - op : instance_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon)
   output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
@@ -1041,15 +993,6 @@
   optional : scale, bias
   intermediate : saved_mean, saved_variance
   backward : instance_norm_grad
-
-- op : inverse
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : InverseInferMeta
-  kernel :
-    func : inverse
-  backward : inverse_grad
 
 - op : is_empty
   args : (Tensor x)

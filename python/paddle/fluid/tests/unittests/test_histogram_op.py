@@ -88,7 +88,7 @@ class TestHistogramOpError(unittest.TestCase):
             )
             paddle.histogram(input=input_value, bins=-1, min=1, max=5)
 
-        with self.assertRaises(IndexError):
+        with self.assertRaises(ValueError):
             self.run_network(net_func)
 
     def test_min_max_error(self):

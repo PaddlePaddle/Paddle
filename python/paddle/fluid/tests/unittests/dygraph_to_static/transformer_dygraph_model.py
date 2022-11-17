@@ -856,9 +856,7 @@ class Transformer(Layer):
             topk_scores, topk_indices = fluid.layers.topk(
                 input=scores, k=beam_size
             )
-            beam_indices = fluid.layers.elementwise_floordiv(
-                topk_indices, vocab_size_tensor
-            )
+            beam_indices = paddle.floor_divide(topk_indices, vocab_size_tensor)
             token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
 
             # update states
