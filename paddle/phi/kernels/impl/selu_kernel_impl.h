@@ -15,9 +15,9 @@
 #pragma once
 #include <string>
 
-#include "paddle/fluid/operators/math.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
 
@@ -32,7 +32,7 @@ struct SeluFunctor {
   HOSTDEVICE void operator()(size_t idx) const {
     T x_ele = x_data_ptr_[idx];
     if (x_ele <= 0) {
-      x_ele = alpha_ * paddle::operators::real_exp(x_ele) - alpha_;
+      x_ele = alpha_ * phi::funcs::real_exp(x_ele) - alpha_;
     }
     y_data_ptr_[idx] = scale_ * x_ele;
   }
