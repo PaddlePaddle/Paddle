@@ -95,16 +95,16 @@ using float16 = plat::float16;
 #define MMHA_USE_HMMA_FOR_REDUCTION
 
 template <typename D>
-class PDTraits;
+class PDDataTypeTraits;
 
 template <>
-class PDTraits<float> {
+class PDDataTypeTraits<float> {
  public:
   typedef float DataType;
 };
 
 template <>
-class PDTraits<float16> {
+class PDDataTypeTraits<float16> {
  public:
   typedef half DataType;
 };
@@ -718,7 +718,7 @@ template <typename T,
 __global__ void masked_multihead_attention_kernel(
     Masked_multihead_attention_params<T> params) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-  typedef PDTraits<T> traits_;
+  typedef PDDataTypeTraits<T> traits_;
   typedef typename traits_::DataType DataType_;
 
   static_assert(Dh_MAX % THREADS_PER_KEY == 0, "");
