@@ -16,7 +16,6 @@ All layers just related to the neural network.
 """
 
 import os
-import inspect
 import warnings
 
 import numpy as np
