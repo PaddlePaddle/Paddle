@@ -1013,6 +1013,9 @@ int32_t SSDSparseTable::Load(const std::string& path,
     uint64_t ssd_count = 0;
     uint64_t mem_mf_count = 0;
     uint64_t ssd_mf_count = 0;
+    uint64_t filtered_count = 0;
+    uint64_t filter_time = 0;
+    uint64_t filter_begin = 0;
 
     paddle::framework::ChannelReader<std::string> reader(_fs_channel[i].get());
 
@@ -1028,34 +1031,42 @@ int32_t SSDSparseTable::Load(const std::string& path,
       }
       size_t value_size =
           _value_accesor->ParseFromString(++end, data_buffer_ptr);
-      // ssd or mem
-      if (_value_accesor->SaveSSD(data_buffer_ptr)) {
-        tmp_key.emplace_back(key);
-        ssd_keys.emplace_back(
-            std::make_pair((char*)&tmp_key.back(), sizeof(uint64_t)));
-        ssd_values.emplace_back(
-            std::make_pair((char*)data_buffer_ptr, value_size * sizeof(float)));
-        data_buffer_ptr += feature_value_size;
-        if (static_cast<int>(ssd_keys.size()) ==
-            FLAGS_pserver_load_batch_size) {
-          _db->put_batch(local_shard_id, ssd_keys, ssd_values, ssd_keys.size());
-          ssd_keys.clear();
-          ssd_values.clear();
-          tmp_key.clear();
-          data_buffer_ptr = data_buffer;
-        }
-        ssd_count++;
-        if (value_size > feature_value_size - mf_value_size) {
-          ssd_mf_count++;
+      filter_begin = butil::gettimeofday_ms();
+      if (!_value_accesor->FilterSlot(data_buffer_ptr)) {
+        filter_time += butil::gettimeofday_ms() - filter_begin;
+        // ssd or mem
+        if (_value_accesor->SaveSSD(data_buffer_ptr)) {
+          tmp_key.emplace_back(key);
+          ssd_keys.emplace_back(
+              std::make_pair((char*)&tmp_key.back(), sizeof(uint64_t)));
+          ssd_values.emplace_back(std::make_pair((char*)data_buffer_ptr,
+                                                 value_size * sizeof(float)));
+          data_buffer_ptr += feature_value_size;
+          if (static_cast<int>(ssd_keys.size()) ==
+              FLAGS_pserver_load_batch_size) {
+            _db->put_batch(
+                local_shard_id, ssd_keys, ssd_values, ssd_keys.size());
+            ssd_keys.clear();
+            ssd_values.clear();
+            tmp_key.clear();
+            data_buffer_ptr = data_buffer;
+          }
+          ssd_count++;
+          if (value_size > feature_value_size - mf_value_size) {
+            ssd_mf_count++;
+          }
+        } else {
+          auto& value = shard[key];
+          value.resize(value_size);
+          _value_accesor->ParseFromString(end, value.data());
+          mem_count++;
+          if (value_size > feature_value_size - mf_value_size) {
+            mem_mf_count++;
+          }
         }
       } else {
-        auto& value = shard[key];
-        value.resize(value_size);
-        _value_accesor->ParseFromString(end, value.data());
-        mem_count++;
-        if (value_size > feature_value_size - mf_value_size) {
-          mem_mf_count++;
-        }
+        filter_time += butil::gettimeofday_ms() - filter_begin;
+        filtered_count++;
       }
     }
     // last batch
@@ -1066,7 +1077,8 @@ int32_t SSDSparseTable::Load(const std::string& path,
     _db->flush(local_shard_id);
     VLOG(0) << "Table>> load done. ALL[" << mem_count + ssd_count << "] MEM["
             << mem_count << "] MEM_MF[" << mem_mf_count << "] SSD[" << ssd_count
-            << "] SSD_MF[" << ssd_mf_count << "].";
+            << "] SSD_MF[" << ssd_mf_count << "] FILTERED[" << filtered_count
+            << "] filter_time cost:" << filter_time / 1000 << " s";
   }
   for (int i = 0; i < threads.size(); i++) {
     threads[i].join();
