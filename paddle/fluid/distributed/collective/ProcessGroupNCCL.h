@@ -109,6 +109,14 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const std::vector<int64_t>& out_size_each_rank,
+      const std::vector<int64_t>& in_size_each_rank,
+      bool sync_op,
+      bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
 
@@ -168,20 +176,6 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
-      bool sync_op,
-      bool use_calc_stream) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllToAll_Single(
-      std::vector<phi::DenseTensor>& in,
-      std::vector<phi::DenseTensor>& out,
-      std::vector<int64_t>& in_sizes,
-      std::vector<int64_t>& out_sizes) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllToAllSingle(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      std::vector<int64_t>& in_sizes,
-      std::vector<int64_t>& out_sizes,
       bool sync_op,
       bool use_calc_stream) override;
 
