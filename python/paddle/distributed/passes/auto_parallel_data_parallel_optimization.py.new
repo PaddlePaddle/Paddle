@@ -29,6 +29,8 @@ from paddle.distributed.auto_parallel.utils import (
     is_optimize_op,
     ring_id_to_process_group,
     get_var_numel,
+    use_standalone_executor,
+    insert_dependencies_for_two_ops,
 )
 
 # add new optimizers supporting rescale_grad here
@@ -87,16 +89,19 @@ class DataParallelOptimizationPass(PassBase):
         self.dist_context = self.get_attr("dist_context")
         self.global_rank = int(self.get_attr("global_rank"))
         self.use_sharding = self.get_attr("use_sharding")
+        if use_standalone_executor():
+            self.gradient_sync_stream = "gradient_sync_stream"
 
         with paddle.static.program_guard(main_program, startup_program):
             self._analyze_program()
 
+            # TODO refactor here to first fuse then overlap
             if self.is_data_parallel_applied():
                 self._prune_grad_scaling()
                 self._calc_comm_overlap()
                 grad_group = self._fuse_allreduce()
-
-        # self.summary(grad_group)
+                self._add_dependencies()
+                self.summary(grad_group)
 
     def _prune_grad_scaling(self):
 
@@ -284,7 +289,6 @@ class DataParallelOptimizationPass(PassBase):
         # InterpreterCore has a different logic for overlapping
         # which is different from use_calc_stream
         block = default_main_program().global_block()
-        ops = block.ops
 
         # comm wait calc to finish
         for idx, op in reversed(list(enumerate(block.ops))):
@@ -292,9 +296,20 @@ class DataParallelOptimizationPass(PassBase):
                 assert op.has_attr('use_calc_stream')
                 assert op.has_attr('ring_id')
 
-                op._set_attr('use_calc_stream', False)
+                if use_standalone_executor():
+                    op._set_attr('use_calc_stream', True)
+                    op.dist_attr.execution_stream = self.gradient_sync_stream
+                    insert_dependencies_for_two_ops(
+                        block,
+                        idx,
+                        block.ops[op.idx - 1],
+                        op,
+                        self.dist_context,
+                        sync=False,
+                    )
+                else:
+                    op._set_attr('use_calc_stream', False)
                 ring_id = op.attr("ring_id")
-
                 block._insert_op_without_sync(
                     idx,
                     type='c_wait_compute',
@@ -307,8 +322,10 @@ class DataParallelOptimizationPass(PassBase):
 
     def _calc_wait_comms(self):
 
+        if use_standalone_executor():
+            return
+
         block = default_main_program().global_block()
-        ops = block.ops
 
         # NOTE the naive overlap implement in static hybird parallel only sync comm stream
         # at the end of Backward phase, based on a strong constraint that
@@ -325,7 +342,7 @@ class DataParallelOptimizationPass(PassBase):
             ring_id_to_un_sync_grad_map[group.id] = []
 
         # analyze the where need to sync
-        for i, op in enumerate(ops):
+        for i, op in enumerate(block.ops):
             if is_data_parallel_reduce_op(op):
                 ring_id = op.attr("ring_id")
                 grad_name = op.output_arg_names[0]
@@ -365,6 +382,7 @@ class DataParallelOptimizationPass(PassBase):
                     outputs={'Out': []},
                     attrs={'op_role': OpRole.Backward, 'ring_id': ring_id},
                 )
+        block._sync_with_cpp()
 
     def _could_be_fuse(self):
         # TODO  support gradient fuse higher order gradient.
@@ -497,7 +515,7 @@ class DataParallelOptimizationPass(PassBase):
                 ), "Unexception: try to remove op {}".format(
                     str(block.ops[idx])
                 )
-                block._remove_op(idx)
+                block._remove_op(idx, False)
 
             # insert coalecse op
             concated_shapes = []
@@ -528,6 +546,127 @@ class DataParallelOptimizationPass(PassBase):
 
         block._sync_with_cpp()
         # TODO update dist attr
+
+    def _add_dependencies(self, grad_groups):
+        # NOTE Currently, auto_parallel need to adopt for two executors: Sequential executor (old exe) and Graph based
+        # multiple stream executor(standalone exe). This function just for standalone exe. Refactor here
+        # in future when only one executor stay.
+
+        if not use_standalone_executor() or len(grad_groups) == 0:
+            return
+        block = default_main_program().global_block()
+
+        # Build maps
+        vars_to_coalesce_map = {}
+        coalesce_to_vars_map = {}
+
+        for group in grad_groups:
+            grad_names = []
+            coalesce_name = group.coalesce_var.name
+            for grad in group.gradients:
+                vars_to_coalesce_map[grad.name] = coalesce_name
+                grad_names.append(grad.name)
+            coalesce_to_vars_map[coalesce_name] = grad_names
+
+        # analyze dependencies
+        # Record ONLY the last grad that generated before allreduce
+        # NOTE need to be update when we allow multiple calc stream for backward calc
+        not_sync_coalesces = []
+        prior_allreduce_deps = {}
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if is_forward_op(op):
+                break
+            if is_optimize_op(op):
+                continue
+
+            if is_data_parallel_reduce_op(op):
+                coalesce_var_name = op.out_arg_names[0]
+                prior_allreduce_deps[coalesce_var_name] = [
+                    idx,
+                    None,
+                    coalesce_var_name,
+                ]
+                not_sync_coalesces.append(coalesce_var_name)
+                continue
+
+            for out_name in op.out_arg_names:
+                var_name = vars_to_coalesce_map.get(out_name, None)
+                if var_name in not_sync_coalesces:
+                    prior_allreduce_deps[var_name][1] = out_name
+                    not_sync_coalesces.remove(var_name)
+        assert (
+            len(not_sync_coalesces) == 0
+        ), "Unexception: {} has NOT been add prior Dep before allreduce.".format(
+            not_sync_coalesces
+        )
+
+        # Record ONLY the first grad that used after allreduce
+        # NOTE need to be update when we allow multiple calc stream for backward calc
+        not_sync_coalesces = []
+        post_allreduce_deps = {}
+        for idx, op in enumerate(block.ops):
+            if is_forward_op(op):
+                continue
+
+            if is_data_parallel_reduce_op(op):
+                coalesce_var_name = op.out_arg_names[0]
+                post_allreduce_deps[coalesce_var_name] = [
+                    None,
+                    coalesce_var_name,
+                    None,
+                ]
+                not_sync_coalesces.append(coalesce_var_name)
+                continue
+
+            for out_name in op.out_arg_names:
+                var_name = vars_to_coalesce_map.get(out_name, None)
+                if var_name in not_sync_coalesces:
+                    post_allreduce_deps[var_name][0] = idx
+                    post_allreduce_deps[var_name][2] = out_name
+                    not_sync_coalesces.remove(var_name)
+
+        assert (
+            len(not_sync_coalesces) == 0
+        ), "Unexception: {} has NOT been add post Dep after allreduce.".format(
+            not_sync_coalesces
+        )
+
+        # Update program IR insert dependencise op
+        dep_var_pairs = list(
+            set(prior_allreduce_deps.values() + post_allreduce_deps.values())
+        )
+        dep_var_pairs.sort(key=lambda x: x[0], reversed=True)
+        for idx, prior_name, post_name in dep_var_pairs:
+            prior_var = block.var(prior_name)
+            post_var = block.var(post_name)
+            insert_dependencies_for_two_vars(
+                block,
+                idx,
+                prior_var,
+                post_var,
+                self.dist_context,
+                OpRole.Backward,
+                process_mesh=None,
+                is_recompute=False,
+                sync=False,
+            )
+        block._sync_with_cpp()
+
+        # remove naive synchronization
+        def remove_cond(op):
+            if op.type is not "c_wait_compute":
+                return False
+            if len(op.input_arg_names) != 0:
+                return False
+            if len(op.output_arg_names) != 0:
+                return False
+            return True
+
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if remove_cond(op) :
+                block._remove_op(idx, sync=False)
+
+        block._sync_with_cpp()
 
     def summary(self, grad_groups=[]):
         # TODO: add logger module
