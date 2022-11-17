@@ -25,6 +25,7 @@ from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
 from test_attribute_var import UnittestBase
+from paddle.tensor import random
 
 
 def output_hist(out):

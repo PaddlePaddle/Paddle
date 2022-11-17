@@ -285,7 +285,6 @@ def uniform_random_batch_size_like(
             # example 2:
             out_2 = random.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1) # out_2.shape=[2, 3]
 
-
     """
     check_variable_and_dtype(
         input,

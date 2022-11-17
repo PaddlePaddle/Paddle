@@ -16,7 +16,6 @@ from . import control_flow
 from . import tensor
 from . import ops
 from . import nn
-from paddle.tensor import random
 
 import math
 import numpy as np
@@ -224,8 +223,10 @@ class Uniform(Distribution):
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.low + self.high, batch_shape + shape, self.low.dtype, 0.0
             )
-            uniform_random_tmp = random.uniform_random_batch_size_like(
-                zero_tmp, zero_tmp.shape, min=0.0, max=1.0, seed=seed
+            uniform_random_tmp = (
+                paddle.tensor.random.uniform_random_batch_size_like(
+                    zero_tmp, zero_tmp.shape, min=0.0, max=1.0, seed=seed
+                )
             )
             output = (
                 uniform_random_tmp * (zero_tmp + self.high - self.low)
