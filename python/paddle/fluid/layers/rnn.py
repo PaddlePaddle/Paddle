@@ -2092,7 +2092,7 @@ class TrainingHelper(DecodeHelper):
             axes = [0 if self.time_major else 1]
             return paddle.squeeze(
                 nn.slice(
-                    x, axes=axes, starts=[next_time], ends=[next_time + 1]
+                    x, axis=axes, starts=[next_time], ends=[next_time + 1]
                 ),
                 axes=axes,
             )
