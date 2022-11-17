@@ -88,7 +88,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"use_cudnn", ExtraAttrProperty::SCHEDULE},
         {"use_mkldnn", ExtraAttrProperty::SCHEDULE},
         // ONEDNN dedicated attributes
-        {"Bias", ExtraAttrProperty::ONEDNN},
         {"data_format", ExtraAttrProperty::ONEDNN},
         {"force_fp32_output", ExtraAttrProperty::ONEDNN},
         {"fuse_activation", ExtraAttrProperty::ONEDNN},
