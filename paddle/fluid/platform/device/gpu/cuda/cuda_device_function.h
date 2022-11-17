@@ -169,7 +169,7 @@ __device__ T reduceSum(T val, int tid, int len) {
   CREATE_SHFL_MASK(mask, tid < len);
 
   for (int offset = warpSize / 2; offset > 0; offset /= 2)
-    val += platform::CudaShuffleDownSync(mask, val, offset);
+    val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
 
   if (tid < warpSize) shm[tid] = 0;
   __syncthreads();
@@ -184,7 +184,7 @@ __device__ T reduceSum(T val, int tid, int len) {
   if (tid < warpSize) {
     val = shm[tid];
     for (int offset = warpSize / 2; offset > 0; offset /= 2)
-      val += platform::CudaShuffleDownSync(mask, val, offset);
+      val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
   }
   return val;
 }

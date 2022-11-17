@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/math.h"
 
 namespace paddle {
@@ -60,7 +60,7 @@ __global__ void SoftCrossEntropyKernel(T* Y,
     val += math::TolerableValue<T>()(phi::funcs::real_log(X[idx])) * label[idx];
   }
 
-  val = paddle::platform::reduceSum(val, tid, blockDim.x);
+  val = phi::backends::gpu::reduceSum(val, tid, blockDim.x);
   if (threadIdx.x == 0) {
     Y[blockIdx.x] = -val;
   }

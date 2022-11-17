@@ -22,10 +22,10 @@
 #include <random>
 
 #define PADDLE_CUDA_FP16
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 
 using paddle::platform::float16;
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
@@ -216,7 +216,7 @@ static __forceinline__ __device__ T WarpReduceSum(T val) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-    val += paddle::platform::CudaShuffleDownSync(mask, val, offset);
+    val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
   }
   return val;
 }
@@ -303,7 +303,7 @@ void TestReduce(size_t num, float atol = 0.01) {
 #endif
 }
 
-TEST(CudaShuffleSync, float16) {
+TEST(phi::backends::gpu::CudaShuffleSync, float16) {
   TestReduce<float>(10);
   TestReduce<float>(1000);
 
