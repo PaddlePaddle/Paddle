@@ -649,14 +649,12 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                min_eager_ret = layers.elementwise_min(
-                    to_variable(n), to_variable(n2)
-                )
+                min_eager_ret = paddle.minimum(to_variable(n), to_variable(n2))
                 max_eager_ret = paddle.maximum(to_variable(n), to_variable(n2))
                 min_eager_ret_value = min_eager_ret.numpy()
                 max_eager_ret_value = max_eager_ret.numpy()
 
-            min_ret = layers.elementwise_min(to_variable(n), to_variable(n2))
+            min_ret = paddle.minimum(to_variable(n), to_variable(n2))
             max_ret = paddle.maximum(to_variable(n), to_variable(n2))
             min_ret_value = min_ret.numpy()
             max_ret_value = max_ret.numpy()
@@ -3280,7 +3278,9 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             theta = self._get_data("theta", shape=[2, 3], dtype='float32')
-            x = fluid.layers.affine_grid(theta, out_shape=[2, 3, 244, 244])
+            x = paddle.nn.functional.affine_grid(
+                theta, out_shape=[2, 3, 244, 244]
+            )
             return layers.pool2d(
                 x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)
             )
@@ -4177,8 +4177,8 @@ class TestBook(LayerTest):
 
             theta = layers.data(name="theta", shape=[2, 3], dtype="float32")
             out_shape = layers.data(name="out_shape", shape=[-1], dtype="int32")
-            data_0 = layers.affine_grid(theta, out_shape)
-            data_1 = layers.affine_grid(theta, [5, 3, 28, 28])
+            data_0 = paddle.nn.functional.affine_grid(theta, out_shape)
+            data_1 = paddle.nn.functional.affine_grid(theta, [5, 3, 28, 28])
 
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)

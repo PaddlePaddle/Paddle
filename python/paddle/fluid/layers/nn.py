@@ -131,7 +131,6 @@ __all__ = [
     'log',
     'crop',
     'crop_tensor',
-    'elu',
     'relu6',
     'pow',
     'stanh',
@@ -154,7 +153,6 @@ __all__ = [
     'elementwise_div',
     'elementwise_sub',
     'elementwise_mul',
-    'elementwise_max',
     'elementwise_min',
     'elementwise_pow',
     'elementwise_mod',
@@ -179,7 +177,6 @@ __all__ = [
     'mul',
     'maxout',
     'space_to_depth',
-    'affine_grid',
     'affine_channel',
     'similarity_focus',
     'hash',
@@ -9695,90 +9692,6 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     return out
 
 
-def affine_grid(theta, out_shape, name=None):
-    """
-    :alias_main: paddle.nn.functional.affine_grid
-        :alias: paddle.nn.functional.affine_grid,paddle.nn.functional.vision.affine_grid
-        :old_api: paddle.fluid.layers.affine_grid
-
-    It generates a grid of (x,y) coordinates using the parameters of
-    the affine transformation that correspond to a set of points where
-    the input feature map should be sampled to produce the transformed
-    output feature map.
-
-    Args:
-        theta (Variable) - A Tensor with shape [N, 2, 3]. It contains a batch of affine transform parameters.
-                           The data type can be float32 or float64.
-        out_shape (Variable | list | tuple): The shape of target output with format [batch_size, channel, height, width].
-                                             ``out_shape`` can be a Tensor or a list or tuple. The data
-                                             type must be int32.
-        name(str|None): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Variable: A Tensor with shape [batch_size, H, W, 2] while 'H' and 'W' are the height and width of feature map in affine transformation. The data type is the same as `theta`.
-
-    Raises:
-        ValueError: If the type of arguments is not supported.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            place = fluid.CPUPlace()
-            theta = fluid.data(name="x", shape=[None, 2, 3], dtype="float32")
-            out_shape = fluid.data(name="y", shape=[4], dtype="int32")
-            grid_0 = fluid.layers.affine_grid(theta, out_shape)
-            grid_1 = fluid.layers.affine_grid(theta, [5, 3, 28, 28])
-            batch_size=2
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            output= exe.run(feed={"x": np.random.rand(batch_size,2,3).astype("float32"),
-                                  "y": np.array([5, 3, 28, 28]).astype("int32")},
-                                  fetch_list=[grid_0.name, grid_1.name])
-            print(output[0])
-            print(output[1])
-    """
-    helper = LayerHelper('affine_grid')
-
-    check_variable_and_dtype(
-        theta, 'theta', ['float32', 'float64'], 'affine_grid'
-    )
-
-    if not (
-        isinstance(out_shape, list)
-        or isinstance(out_shape, tuple)
-        or isinstance(out_shape, Variable)
-    ):
-        raise ValueError("The out_shape should be a list, tuple or Variable.")
-
-    if not isinstance(theta, Variable):
-        raise ValueError("The theta should be a Variable.")
-
-    out = helper.create_variable_for_type_inference(theta.dtype)
-    ipts = {'Theta': theta}
-    attrs = {}
-    if isinstance(out_shape, Variable):
-        ipts['OutputShape'] = out_shape
-        check_variable_and_dtype(
-            out_shape, 'out_shape', ['int32'], 'affine_grid'
-        )
-    else:
-        attrs['output_shape'] = out_shape
-    if core.is_compiled_with_rocm():
-        # ROCM platform do not have MIOPEN kernel for affine_grid
-        attrs['use_cudnn'] = False
-
-    helper.append_op(
-        type='affine_grid',
-        inputs=ipts,
-        outputs={'Output': out},
-        attrs=None if len(attrs) == 0 else attrs,
-    )
-    return out
-
-
 def pad2d(
     input,
     paddings=[0, 0, 0, 0],
@@ -9921,49 +9834,6 @@ def pad2d(
         type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs
     )
 
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.elu")
-def elu(x, alpha=1.0, name=None):
-    """
-    :alias_main: paddle.nn.functional.elu
-        :alias: paddle.nn.functional.elu,paddle.nn.functional.activation.elu
-        :old_api: paddle.fluid.layers.elu
-
-    ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        alpha(${alpha_type}|1.0): ${alpha_comment}
-        name(str|None): The default value is None. Normally there is no need for user to set this property.
-                        For more information, please refer to :ref:`api_guide_Name`.
-    Returns:
-        ${out_type}: ${out_comment}
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-
-            input_elu = np.array([[-1,6],[1,15.6]])
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(input_elu)
-                y = fluid.layers.elu(x, alpha=0.2)
-                print(y.numpy())
-                # [[-0.12642411  6.        ]
-                # [ 1.          15.6       ]]
-    """
-    helper = LayerHelper('elu', **locals())
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'elu')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='elu',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'alpha': alpha},
-    )
     return out
 
 
@@ -12632,71 +12502,6 @@ def elementwise_mul(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
-def elementwise_max(x, y, axis=-1, act=None, name=None):
-    """
-        :alias_main: paddle.elementwise_max
-            :alias: paddle.elementwise_max,paddle.tensor.elementwise_max,paddle.tensor.math.elementwise_max
-            :old_api: paddle.fluid.layers.elementwise_max
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = fluid.layers.elementwise_max(x, y)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) #[2, 5, 4]
-
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                    "y": np.zeros((3, 4)).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-            y = fluid.data(name="y", shape=[3,4], dtype='float32')
-            z = fluid.layers.elementwise_max(x, y, axis=1)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value)#[[[[1., 1., 1., 1., 1.] .... [1., 1., 1., 1., 1.]]]]
-
-    """
-    if _non_static_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_max'
-        )
-
-    return _elementwise_op(LayerHelper('elementwise_max', **locals()))
-
-
 def elementwise_min(x, y, axis=-1, act=None, name=None):
     """
         :alias_main: paddle.elementwise_min
@@ -12874,7 +12679,6 @@ for func in [
     elementwise_div,
     elementwise_sub,
     elementwise_mul,
-    elementwise_max,
     elementwise_pow,
     elementwise_min,
     elementwise_mod,
