@@ -107,6 +107,7 @@ struct EmbeddingGradCUDAFunctor {
       if (FLAGS_cudnn_deterministic) {
         VLOG(2) << "Run grad kernel of embedding with single thread.";
         grids.x = 1;
+        threads.y = 1;
       }
       EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
           d_table, d_output, ids, N, K, D);
