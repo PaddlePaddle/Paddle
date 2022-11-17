@@ -105,6 +105,7 @@ void ProcessGroupBKCL::BroadcastUniqueBKCLID(BKCLUniqueId* bkcl_id) {
 
 void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
                                           const std::string& place_key) {
+  platform::XPUDeviceGuard guard(place.GetDeviceId());
   BKCLUniqueId bkcl_id;
   if (rank_ == 0) {
     PADDLE_ENFORCE_XPU_SUCCESS(bkcl_get_unique_id(&bkcl_id));
