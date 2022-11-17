@@ -14,6 +14,7 @@
 
 import numpy as np
 from op_test import OpTest
+import unittest
 
 
 class TestPad2dOp(OpTest):
@@ -133,3 +134,7 @@ class TestCase7(TestPad2dOp):
         self.mode = "reflect"
         self.data_format = "NCHW"
         self.variable_paddings = True
+
+
+if __name__ == '__main__':
+    unittest.main()
