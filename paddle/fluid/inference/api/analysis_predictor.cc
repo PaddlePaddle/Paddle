@@ -54,6 +54,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -241,6 +242,13 @@ bool AnalysisPredictor::Init(
     auto tracking_device = config_.use_gpu() ? platform::ProfilerState::kAll
                                              : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
+  } else if (config_.with_new_profile_) {
+    LOG(WARNING) << "Profiler is activated, which might affect the performance";
+    platform::ProfilerOptions options;
+    options.trace_switch = config_.use_gpu() ? 3 : 1;
+    profiler_ = platform::Profiler::Create(options);
+    profiler_->Prepare();
+    profiler_->Start();
   } else {
     VLOG(2) << "Profiler is deactivated, and no profiling report will be "
                "generated.";
@@ -1982,6 +1990,9 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (config_.with_profile_) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
+  } else if (config_.with_new_profile_) {
+    std::unique_ptr<ProfilerResult> profiler_result = profiler_->Stop();
+    profiler_result->Save(std::string());
   }
   if (sub_scope_) {
     if (framework::global_transfer_scope_key().find(sub_scope_) !=

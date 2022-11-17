@@ -32,6 +32,7 @@
 #include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/string/printf.h"
 #ifdef PADDLE_WITH_TESTING
 #include <gtest/gtest.h>
@@ -473,6 +474,7 @@ class AnalysisPredictor : public PaddlePredictor {
   AnalysisConfig config_;
   Argument argument_;
   std::unique_ptr<NaiveExecutor> executor_;
+  std::unique_ptr<platform::Profiler> profiler_;
   platform::Place place_;
   std::shared_ptr<framework::Scope> scope_;
   framework::Scope *sub_scope_{nullptr};

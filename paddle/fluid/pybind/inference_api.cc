@@ -696,6 +696,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableMemoryOptim,
            py::arg("x") = true)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
+      .def("enable_new_profile", &AnalysisConfig::EnableNewProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
       .def("set_optim_cache_dir", &AnalysisConfig::SetOptimCacheDir)
