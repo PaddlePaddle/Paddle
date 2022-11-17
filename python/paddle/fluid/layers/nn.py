@@ -9691,7 +9691,6 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     return out
 
 
-
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.elu")
 def elu(x, alpha=1.0, name=None):
     """
@@ -9732,7 +9731,6 @@ def elu(x, alpha=1.0, name=None):
         outputs={'Out': out},
         attrs={'alpha': alpha},
     )
->>>>>>> fix code style
     return out
 
 
