@@ -15,6 +15,7 @@
 from .common import fc  # noqa: F401
 from .common import deform_conv2d  # noqa: F401
 from .common import crf_decoding  # noqa: F401
+from .common import linear_chain_crf  # noqa: F401
 
 from ...fluid.layers import batch_norm  # noqa: F401
 from ...fluid.layers import bilinear_tensor_product  # noqa: F401
@@ -70,6 +71,7 @@ __all__ = [  # noqa
     'conv2d_transpose',
     'conv3d',
     'conv3d_transpose',
+    'linear_chain_crf',
     'crf_decoding',
     'data_norm',
     'deform_conv2d',
