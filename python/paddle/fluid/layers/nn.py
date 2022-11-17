@@ -133,7 +133,6 @@ __all__ = [
     'crop_tensor',
     'relu6',
     'pow',
-    'stanh',
     'hard_sigmoid',
     'swish',
     'prelu',
@@ -9932,51 +9931,6 @@ def pow(x, factor=1.0, name=None):
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs
-    )
-    return out
-
-
-@templatedoc()
-def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
-    """
-    stanh activation.
-
-    .. math::
-
-        out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}
-
-    Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
-        scale_a (float, optional): The scale factor a of the input. Default is 0.67.
-        scale_b (float, optional): The scale factor b of the output. Default is 1.7159.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        A Tensor with the same data type and shape as ``x`` .
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            out = paddle.stanh(x, scale_a=0.67, scale_b=1.72) # [1.00616539, 1.49927628, 1.65933108, 1.70390463]
-
-    """
-
-    if _non_static_mode():
-        return _legacy_C_ops.stanh(x, 'scale_a', scale_a, 'scale_b', scale_b)
-
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'stanh')
-
-    helper = LayerHelper('stanh', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='stanh',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'scale_a': scale_a, 'scale_b': scale_b},
     )
     return out
 
