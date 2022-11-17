@@ -244,7 +244,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = paddle.nn.Pool2D(
+            self.pool = paddle.nn.MaxPool2D(
                 kernel_size=3, stride=2, padding=1
             )
         elif layers == 101:
@@ -259,7 +259,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = paddle.nn.Pool2D(
+            self.pool = paddle.nn.MaxPool2D(
                 kernel_size=3, stride=2, padding=1
             )
         elif layers == 152:
@@ -288,7 +288,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=1,
                 act='relu',
             )
-            self.pool = paddle.nn.Pool2D(
+            self.pool = paddle.nn.MaxPool2D(
                 kernel_size=3, stride=2, padding=1
             )
 
