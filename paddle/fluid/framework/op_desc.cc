@@ -979,7 +979,7 @@ struct SetAttrDescVisitor {
 };
 
 void OpDesc::Flush() {
-  VLOG(4) << "Flush "
+  VLOG(8) << "Flush "
           << " " << Type() << " " << need_update_;
   if (need_update_) {
     this->desc_.mutable_inputs()->Clear();

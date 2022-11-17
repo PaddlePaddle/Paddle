@@ -713,7 +713,7 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
         UpdateControlOpSkipEagerDeletionVars(*n, graph, graph_idx, n->Name());
       }
       ops->emplace_back(*n->Op());
-      VLOG(4) << n->ToString();
+      VLOG(5) << n->ToString();
     }
     // delete no OpDesc op
   }
