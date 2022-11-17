@@ -18,9 +18,9 @@
 
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/affine_grid_utils.h"
@@ -75,18 +75,14 @@ __global__ void affine_grid_grad_kernel_4d(const int count,
 
     int theta_offset = n * 6;  // 2 * 3;
     T out_grad_x = out_grad[index * 2];
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset,
-                                    out_grad_x * w_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 1,
-                                    out_grad_x * h_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 2, out_grad_x);
+    phi::CudaAtomicAdd(theta_grad + theta_offset, out_grad_x * w_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 1, out_grad_x * h_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 2, out_grad_x);
 
     T out_grad_y = out_grad[index * 2 + 1];
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 3,
-                                    out_grad_y * w_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 4,
-                                    out_grad_y * h_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 5, out_grad_y);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 3, out_grad_y * w_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 4, out_grad_y * h_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 5, out_grad_y);
   }
 }
 
@@ -116,31 +112,22 @@ __global__ void affine_grid_grad_kernel_5d(const int count,
 
     int theta_offset = n * 12;  // 3 * 4;
     T out_grad_x = out_grad[index * 3];
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset,
-                                    out_grad_x * w_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 1,
-                                    out_grad_x * h_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 2,
-                                    out_grad_x * d_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 3, out_grad_x);
+    phi::CudaAtomicAdd(theta_grad + theta_offset, out_grad_x * w_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 1, out_grad_x * h_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 2, out_grad_x * d_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 3, out_grad_x);
 
     T out_grad_y = out_grad[index * 3 + 1];
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 4,
-                                    out_grad_y * w_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 5,
-                                    out_grad_y * h_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 6,
-                                    out_grad_y * d_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 7, out_grad_y);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 4, out_grad_y * w_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 5, out_grad_y * h_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 6, out_grad_y * d_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 7, out_grad_y);
 
     T out_grad_z = out_grad[index * 3 + 2];
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 8,
-                                    out_grad_z * w_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 9,
-                                    out_grad_z * h_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 10,
-                                    out_grad_z * d_coor);
-    paddle::platform::CudaAtomicAdd(theta_grad + theta_offset + 11, out_grad_z);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 8, out_grad_z * w_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 9, out_grad_z * h_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 10, out_grad_z * d_coor);
+    phi::CudaAtomicAdd(theta_grad + theta_offset + 11, out_grad_z);
   }
 }
 

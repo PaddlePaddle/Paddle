@@ -400,7 +400,6 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
     grad_op->SetInput("{{attr_name | to_pascal_case}}Tensor", this->Input("{{attr_name | to_pascal_case}}Tensor"));
       {% endif %}
     {% else %}{# maybe something wrong: backward op has more attrs than the forward one#}
-    grad_op->AddAttr<{{attr["typename"] | to_op_attr_type}}>({{attr_name}}, "({{attr["typename"] | to_op_attr_type}}), exceptional attr {{attr_name}}");
     grad_op->SetAttr("{{attr_name}}", {{process_default_value(attr)}});
     {% endif %}
   {% endfor %}

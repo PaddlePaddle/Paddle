@@ -18,20 +18,25 @@ limitations under the License. */
 
 namespace phi {
 
-#define DECALRE_COMPARE_KERNEL(compare_kernel) \
-  template <typename T, typename Context>      \
-  void compare_kernel(const Context& ctx,      \
-                      const DenseTensor& x,    \
-                      const DenseTensor& y,    \
-                      int axis,                \
-                      DenseTensor* out);
+#define DECALRE_COMPARE_KERNEL(name)         \
+  template <typename T, typename Context>    \
+  void name##RawKernel(const Context& ctx,   \
+                       const DenseTensor& x, \
+                       const DenseTensor& y, \
+                       int axis,             \
+                       DenseTensor* out);    \
+  template <typename T, typename Context>    \
+  void name##Kernel(const Context& ctx,      \
+                    const DenseTensor& x,    \
+                    const DenseTensor& y,    \
+                    DenseTensor* out);
 
-DECALRE_COMPARE_KERNEL(LessThanKernel)
-DECALRE_COMPARE_KERNEL(LessEqualKernel)
-DECALRE_COMPARE_KERNEL(GreaterThanKernel)
-DECALRE_COMPARE_KERNEL(GreaterEqualKernel)
-DECALRE_COMPARE_KERNEL(EqualKernel)
-DECALRE_COMPARE_KERNEL(NotEqualKernel)
+DECALRE_COMPARE_KERNEL(LessThan)
+DECALRE_COMPARE_KERNEL(LessEqual)
+DECALRE_COMPARE_KERNEL(GreaterThan)
+DECALRE_COMPARE_KERNEL(GreaterEqual)
+DECALRE_COMPARE_KERNEL(Equal)
+DECALRE_COMPARE_KERNEL(NotEqual)
 #undef DECALRE_COMPARE_KERNEL
 
 #define DECALRE_COMPARE_ALL_KERNEL(compare_all_kernel) \

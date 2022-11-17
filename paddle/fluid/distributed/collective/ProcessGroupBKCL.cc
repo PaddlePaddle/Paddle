@@ -20,6 +20,7 @@
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace distributed {
@@ -68,11 +69,8 @@ void ProcessGroupBKCL::BKCLTask::Synchronize() { Wait(kWaitTimeout); }
 ProcessGroupBKCL::ProcessGroupBKCL(const std::shared_ptr<Store>& store,
                                    int rank,
                                    int size,
-                                   const platform::Place& place,
                                    int gid)
-    : ProcessGroupStream(rank, size, place, gid), store_(store) {
-  platform::SetXPUDeviceId(place_.device);
-}
+    : ProcessGroupStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupBKCL::GroupStart() {
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
@@ -230,6 +228,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
+    int64_t offset,  // for compatibility, no use now
+    int64_t numel,   // for compatibility, no use now
     bool sync_op,
     bool use_calc_stream) {
   return Collective(
@@ -255,8 +255,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
     const BarrierOptions& opts) {
+  PADDLE_ENFORCE_GE(opts.device_id,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "The barrier device id must greater or equal than 0."));
+  platform::XPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
-      new paddle::experimental::DefaultAllocator(place_));
+      new paddle::experimental::DefaultAllocator(place));
   phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
   phi::DenseTensor barrier_tensor{allocator.get(), meta};
 

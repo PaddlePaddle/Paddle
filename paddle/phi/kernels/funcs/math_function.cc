@@ -26,8 +26,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
