@@ -87,11 +87,11 @@ ProcessGroupNCCL::ProcessGroupNCCL(const std::shared_ptr<Store>& store,
     : ProcessGroupStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupNCCL::GroupStart() {
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+  NCCL_CHECK(platform::dynload::ncclGroupStart());
 }
 
 void ProcessGroupNCCL::GroupEnd() {
-  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+  NCCL_CHECK(platform::dynload::ncclGroupEnd());
 }
 
 const phi::DeviceContext& ProcessGroupNCCL::GetDeviceContext(
@@ -144,13 +144,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
          const phi::DenseTensor& input,
          ncclComm_t comm,
          gpuStream_t stream) {
-        return platform::dynload::ncclAllGather(
+        NCCL_CHECK(platform::dynload::ncclAllGather(
             input.data(),
             output->data(),
             input.numel(),
             platform::ToNCCLDataType(input.dtype()),
             comm,
-            stream);
+            stream));
       },
       CommType::ALLGATHER,
       sync_op,
@@ -170,14 +170,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
           const phi::DenseTensor& input,
           ncclComm_t comm,
           gpuStream_t stream) {
-        return platform::dynload::ncclAllReduce(
+        NCCL_CHECK(platform::dynload::ncclAllReduce(
             input.data(),
             output->data(),
             input.numel(),
             platform::ToNCCLDataType(input.type()),
             ToNCCLRedType(opts.reduce_op),
             comm,
-            stream);
+            stream));
       },
       CommType::ALLREDUCE,
       sync_op,
@@ -231,7 +231,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
         for (auto i = 0; i < size_; i++) {
           in_numel = in_size_each_rank[i] * in_row_size;
           input_partial = GetPartialTensor(input, in_offset, in_numel);
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+          NCCL_CHECK(platform::dynload::ncclSend(
               input_partial.data(),
               in_numel,
               platform::ToNCCLDataType(input.dtype()),
@@ -242,7 +242,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
 
           out_numel = out_size_each_rank[i] * out_row_size;
           output_partial = GetPartialTensor(*output, out_offset, out_numel);
-          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+          NCCL_CHECK(platform::dynload::ncclRecv(
               output_partial.data(),
               out_numel,
               platform::ToNCCLDataType(output->dtype()),
@@ -294,14 +294,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
           ncclComm_t comm,
           gpuStream_t stream) {
         int root = opts.source_rank + opts.source_root;
-        return platform::dynload::ncclBroadcast(
+        NCCL_CHECK(platform::dynload::ncclBroadcast(
             input.data(),
             output->data(),
             input.numel(),
             platform::ToNCCLDataType(input.type()),
             root,
             comm,
-            stream);
+            stream));
       },
       CommType::BROADCAST,
       sync_op,
@@ -328,13 +328,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
          int src,
          ncclComm_t comm,
          gpuStream_t stream) {
-        return platform::dynload::ncclRecv(
+        NCCL_CHECK(platform::dynload::ncclRecv(
             output->data(),
             output->numel(),
             platform::ToNCCLDataType(output->dtype()),
             src,
             comm,
-            stream);
+            stream));
       },
       CommType::RECV,
       sync_op,
@@ -361,13 +361,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
          int dst,
          ncclComm_t comm,
          gpuStream_t stream) {
-        return platform::dynload::ncclSend(
+        NCCL_CHECK(platform::dynload::ncclSend(
             input->data(),
             input->numel(),
             platform::ToNCCLDataType(input->dtype()),
             dst,
             comm,
-            stream);
+            stream));
       },
       CommType::SEND,
       sync_op,
@@ -406,7 +406,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   ncclUniqueId nccl_id;
   if (rank_ == 0) {
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGetUniqueId(&nccl_id));
+    NCCL_CHECK(platform::dynload::ncclGetUniqueId(&nccl_id));
   }
   BroadcastUniqueNCCLID(&nccl_id);
 
@@ -418,7 +418,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
       platform::DeviceContextPool::Instance().Get(place));
   auto comm_ctx = std::make_unique<phi::GPUContext>(place);
   ncclComm_t nccl_comm;
-  NCCLCHECK(platform::dynload::ncclCommInitRank(
+  NCCL_CHECK(platform::dynload::ncclCommInitRank(
       &nccl_comm, GetSize(), nccl_id, GetRank()));
   comm_ctx->set_nccl_comm(nccl_comm);
 
@@ -611,7 +611,7 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
 
   ncclUniqueId nccl_id;
   if (rank_ == 0) {
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGetUniqueId(&nccl_id));
+    NCCL_CHECK(platform::dynload::ncclGetUniqueId(&nccl_id));
   }
   BroadcastUniqueNCCLID(&nccl_id);
 
@@ -632,7 +632,7 @@ void ProcessGroupNCCL::CreateNCCLManagerCache(
 
     dev_ctx[i].reset(new phi::GPUContext(places[i]));
     ncclComm_t nccl_comm;
-    NCCLCHECK(platform::dynload::ncclCommInitRank(
+    NCCL_CHECK(platform::dynload::ncclCommInitRank(
         &nccl_comm, GetSize(), nccl_id, GetRank()));
     dev_ctx[i]->set_nccl_comm(nccl_comm);
     dev_ctx_raw[i] = dev_ctx[i].get();
