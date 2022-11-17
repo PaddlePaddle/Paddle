@@ -32,8 +32,6 @@ def stable_softmax(x):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "Paddle core is not compiled with CUDA"
 )
-
-# unit test for biasQK with shape (1,1,seqlen,seqlen)
 class TestFusedMultiHeadMatmulOp_biasqk2(OpTest):
     def config(self):
         self.seq_len = 128
@@ -138,6 +136,9 @@ class TestFusedMultiHeadMatmulOp_biasqk2(OpTest):
         self.check_output_with_place(place, atol=2e-3)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "Paddle core is not compiled with CUDA"
+)
 class TestFusedMultiheadMatmulOp(OpTest):
     def config(self):
         self.seq_len = 128
