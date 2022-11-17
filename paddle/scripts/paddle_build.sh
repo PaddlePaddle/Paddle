@@ -24,6 +24,7 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
     ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
