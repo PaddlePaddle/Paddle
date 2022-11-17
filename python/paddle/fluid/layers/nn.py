@@ -136,7 +136,6 @@ __all__ = [
     'prelu',
     'brelu',
     'leaky_relu',
-    'soft_relu',
     'flatten',
     'stack',
     'pad2d',
@@ -10154,57 +10153,6 @@ def leaky_relu(x, alpha=0.02, name=None):
 
     """
     return paddle.nn.functional.leaky_relu(x, alpha, name)
-
-
-def soft_relu(x, threshold=40.0, name=None):
-    r"""
-
-    SoftRelu Activation Operator.
-
-    $out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$
-
-    Args:
-        x(Variable): Input of soft_relu operator. Data type can be float32, float64.
-        threshold(float, optional): The threshold value of soft_relu, default value being 40.0.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Variable(Tensor|LoDTensor)): Output of soft_relu operator, shape and LoD same as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import numpy as np
-            import paddle
-
-            paddle.enable_static()
-            inputs = fluid.layers.data(name="x", shape=[2, 2], dtype="float32")
-            output = fluid.layers.soft_relu(inputs, threshold=20.0)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-
-            img = np.array([[0, 1],[2, 3]]).astype(np.float32)
-
-            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-            print(res) # [array([[0.6931472, 1.3132616], [2.126928 , 3.0485873]], dtype=float32)]
-    """
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'soft_relu'
-    )
-
-    helper = LayerHelper('soft_relu', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='soft_relu',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'threshold': threshold},
-    )
-    return out
 
 
 def flatten(x, axis=1, name=None):
