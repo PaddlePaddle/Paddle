@@ -53,7 +53,7 @@ class ScaleOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       nvinfer1::ITensor* bias_tensor =
-          is_int ? Add1DConstantLayer(static_cast<int>(bias + 0.5f))
+          is_int ? Add1DConstantLayer(static_cast<int>(bias))
                  : Add1DConstantLayer(bias);
       bool is_bias_0 = (bias < 1e-06 && bias > -1e-06);
 
@@ -75,9 +75,8 @@ class ScaleOpConverter : public OpConverter {
         is_scale_1 = false;
       } else {
         has_scale_tensor = false;
-        scale_tensor = is_int
-                           ? Add1DConstantLayer(static_cast<int>(scale + 0.5f))
-                           : Add1DConstantLayer(scale);
+        scale_tensor = is_int ? Add1DConstantLayer(static_cast<int>(scale))
+                              : Add1DConstantLayer(scale);
         is_scale_1 = ((scale - 1.0) < 1e-06 && (scale - 1.0) > -1e-06);
       }
 
