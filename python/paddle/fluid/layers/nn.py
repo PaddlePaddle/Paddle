@@ -4026,7 +4026,7 @@ def layer_norm(
     ), "please use LayerNorm instead of layer_norm in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
     check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'layer_norm'
+        input, 'input', ['float16', 'float32', 'float64'], 'layer_norm'
     )
     dtype = helper.input_dtype()
 
