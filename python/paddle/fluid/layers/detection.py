@@ -594,7 +594,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
             batch_size = 32
             max_iter = 20
 
-
+            paddle.enable_static()
             def gen_train_data():
                 x_data = np.random.uniform(0, 255, (batch_size, 3, image_height,
                                                     image_width)).astype('float64')
