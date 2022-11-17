@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.optimizer import Optimizer
+from paddle.fluid.optimizer import Optimizer
 
 __all__ = []
 
