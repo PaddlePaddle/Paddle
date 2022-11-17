@@ -680,9 +680,7 @@ class NoamDecay(LearningRateDecay):
         a = self.create_lr_var(self.step_num**-0.5)
         b = self.create_lr_var((self.warmup_steps**-1.5) * self.step_num)
         lr_value = (
-            self.learning_rate
-            * (self.d_model**-0.5)
-            * layers.elementwise_min(a, b)
+            self.learning_rate * (self.d_model**-0.5) * paddle.minimum(a, b)
         )
         return lr_value
 

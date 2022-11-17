@@ -92,8 +92,7 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Swish(
 ):
     def set_params(self):
         self.operand = fluid.layers.elementwise_add
-        self.act_alpha = 4
-        self.act = fluid.layers.swish
+        self.act = paddle.nn.functional.swish
 
 
 class ElementwiseActivationMkldnnFusePassTest_Add_HardSwish(
@@ -186,7 +185,7 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Swish(
 ):
     def set_params(self):
         self.operand = fluid.layers.elementwise_sub
-        self.act = fluid.layers.swish
+        self.act = paddle.nn.functional.swish
 
 
 class ElementwiseActivationMkldnnFusePassTest_Sub_HardSwish(
@@ -279,7 +278,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Swish(
 ):
     def set_params(self):
         self.operand = fluid.layers.elementwise_mul
-        self.act = fluid.layers.swish
+        self.act = paddle.nn.functional.swish
 
 
 class ElementwiseActivationMkldnnFusePassTest_Mul_HardSwish(

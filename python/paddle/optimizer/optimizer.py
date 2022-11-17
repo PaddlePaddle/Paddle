@@ -421,15 +421,21 @@ class Optimizer:
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
-        # lr var can't be float16, for pure fp16 training, should extra handle the dtype for lr
+        # lr var can't be float16 or bfloat16, for pure fp16 or bf16 training, should extra handle the dtype for lr
         _lr_dtype = (
             paddle.get_default_dtype() if self._dtype is None else self._dtype
         )
         _lr_dtype = (
             paddle.float32
             if (
-                paddle.get_default_dtype() != "float16"
-                and _lr_dtype == paddle.float16
+                (
+                    paddle.get_default_dtype() != "float16"
+                    and _lr_dtype == paddle.float16
+                )
+                or (
+                    paddle.get_default_dtype() != "bfloat16"
+                    and _lr_dtype == paddle.bfloat16
+                )
             )
             else _lr_dtype
         )
@@ -1526,3 +1532,17 @@ class Optimizer:
         For Multi Tensor, append optimize merged_operator to block.
         """
         pass
+
+    def _is_dtype_fp16_or_bf16(self, dtype):
+        """
+        check the dtype is fp16 or the dtype is bf16
+        :param dtype: instance of core.VarDesc.VarType
+        :return: True if dtype is one of fp16 or bf16, False otherwise
+        """
+        assert isinstance(
+            dtype, core.VarDesc.VarType
+        ), "The dtype should be an instance of core.VarDesc.VarType."
+        return (
+            dtype == core.VarDesc.VarType.FP16
+            or dtype == core.VarDesc.VarType.BF16
+        )

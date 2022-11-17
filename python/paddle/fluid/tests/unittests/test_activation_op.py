@@ -2989,7 +2989,7 @@ class TestSTanhAPI(unittest.TestCase):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', [10, 12])
-            out = fluid.layers.stanh(x, self.scale_a, self.scale_b)
+            out = paddle.stanh(x, self.scale_a, self.scale_b)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
@@ -3551,7 +3551,7 @@ class TestSwishAPI(unittest.TestCase):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.swish(x)
+            out = paddle.nn.functional.swish(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_swish(self.x_np)
