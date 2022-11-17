@@ -530,7 +530,8 @@ class DistributedStrategy(object):
                                    'embed_sparse_initial_range', 'embed_sparse_initial_g2sum', 'embed_sparse_beta1_decay_rate', \
                                    'embed_sparse_beta2_decay_rate', 'embedx_sparse_optimizer', 'embedx_sparse_learning_rate', \
                                    'embedx_sparse_weight_bounds', 'embedx_sparse_initial_range', 'embedx_sparse_initial_g2sum', \
-                                   'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate', 'feature_learning_rate', 'nodeid_slot']
+                                   'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate', 'feature_learning_rate', 'nodeid_slot', \
+                                   'sparse_load_filter_slots']
         support_sparse_table_class = [
             'DownpourSparseTable', 'DownpourSparseSSDTable'
         ]
@@ -678,6 +679,9 @@ class DistributedStrategy(object):
                 'sparse_delete_after_unseen_days', 30)
             table_data.accessor.ctr_accessor_param.ssd_unseenday_threshold = config.get(
                 'sparse_ssd_unseenday_threshold', 1)
+            load_filter_slots = config.get('sparse_load_filter_slots', [])
+            table_data.accessor.ctr_accessor_param.load_filter_slots.extend(
+                load_filter_slots)
             converter = config.get('sparse_converter', "")
             deconverter = config.get('sparse_deconverter', "")
 

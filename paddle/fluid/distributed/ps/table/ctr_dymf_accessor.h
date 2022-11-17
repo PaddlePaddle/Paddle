@@ -21,6 +21,7 @@
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
+#include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
@@ -208,6 +209,7 @@ class CtrDymfAccessor : public ValueAccessor {
                  int param,
                  double global_cache_threshold) override;
   bool SaveSSD(float* value) override;
+  bool FilterSlot(float* value);
   // update delta_score and unseen_days after save
   void UpdateStatAfterSave(float* value, int param) override;
   // keys不存在时，为values生成随机值
@@ -265,6 +267,7 @@ class CtrDymfAccessor : public ValueAccessor {
   float ShowClickScore(float show, float click);
   SparseValueSGDRule* _embed_sgd_rule;
   SparseValueSGDRule* _embedx_sgd_rule;
+  robin_hood::unordered_set<float> _filtered_slots;
 };
 }  // namespace distributed
 }  // namespace paddle

@@ -43,6 +43,12 @@ int CtrDymfAccessor::Initialize() {
   if (_config.ctr_accessor_param().show_scale()) {
     _show_scale = true;
   }
+  for (int i = 0; i < _config.ctr_accessor_param().load_filter_slots_size();
+       i++) {
+    _filtered_slots.insert(_config.ctr_accessor_param().load_filter_slots(i));
+    VLOG(0) << "CtrDymfAccessor::Initialize() load filter slot:"
+            << _config.ctr_accessor_param().load_filter_slots(i);
+  }
   VLOG(0) << " INTO CtrDymfAccessor::Initialize(); embed_sgd_dim:"
           << common_feature_value.embed_sgd_dim
           << " embedx_dim:" << common_feature_value.embedx_dim
@@ -99,6 +105,15 @@ bool CtrDymfAccessor::SaveCache(float* value,
 
 bool CtrDymfAccessor::SaveSSD(float* value) {
   if (common_feature_value.UnseenDays(value) > _ssd_unseenday_threshold) {
+    return true;
+  }
+  return false;
+}
+
+bool CtrDymfAccessor::FilterSlot(float* value) {
+  // 热启时过滤掉_filtered_slots中的feasign
+  if (_filtered_slots.find(common_feature_value.Slot(value)) !=
+      _filtered_slots.end()) {
     return true;
   }
   return false;
