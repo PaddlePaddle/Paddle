@@ -4802,7 +4802,7 @@ class ExponentialMovingAverage:
         )
         global_step = layers.cast(global_step, "float32")
         decay_var = block._clone_variable(self._decay_var)
-        decay_pow_acc = layers.elementwise_pow(decay_var, global_step)
+        decay_pow_acc = paddle.pow(decay_var, global_step)
         return decay_pow_acc, global_step
 
     def _create_ema_vars(self, param):

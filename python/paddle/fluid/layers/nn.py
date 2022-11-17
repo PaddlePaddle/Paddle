@@ -58,7 +58,6 @@ from ..data_feeder import (
     check_type,
     check_dtype,
 )
-import paddle
 from paddle.utils import deprecated
 from paddle import _C_ops, _legacy_C_ops
 
@@ -153,7 +152,6 @@ __all__ = [
     'elementwise_div',
     'elementwise_sub',
     'elementwise_mul',
-    'elementwise_pow',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
@@ -12584,47 +12582,11 @@ def elementwise_mul(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
-def elementwise_pow(x, y, axis=-1, act=None, name=None):
-    """
-
-    Examples:
-
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = fluid.layers.elementwise_pow(x, y)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) #[2, 243, 16]
-    """
-    if _non_static_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_pow'
-        )
-    return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
-
-
 for func in [
     elementwise_add,
     elementwise_div,
     elementwise_sub,
     elementwise_mul,
-    elementwise_pow,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
 

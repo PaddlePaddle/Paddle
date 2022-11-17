@@ -150,7 +150,7 @@ class TestMax(TestMul):
 
 class TestPow(TestMul):
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_pow
+        self.op = paddle.pow
 
 
 class TestMod(TestMul):
