@@ -16,6 +16,8 @@ limitations under the License. */
 // https://github.com/NVIDIA/FasterTransformer/blob/v4.0/fastertransformer/cuda/masked_multihead_attention.cu
 // We add License in the head.
 
+#pragma once
+
 #include <cuda_fp16.h>
 #include <float.h>
 
@@ -600,9 +602,9 @@ inline __device__ float qk_hmma_dot_(const uint32_t (&q)[N],
                                      float inv_sqrt_dh) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 750
 #ifdef MMHA_USE_FP32_ACUM_FOR_FMA
-    using K_vec_acum = typename K_vec_acum_fp32_<uint32_t>::Type;
+  using K_vec_acum = typename K_vec_acum_fp32_<uint32_t>::Type;
 #else
-    using K_vec_acum = uint32_t;
+  using K_vec_acum = uint32_t;
 #endif
   K_vec_acum inv_q = mul<K_vec_acum, uint32_t, float>(q[0], inv_sqrt_dh);
   K_vec_acum qk_vec = mul<K_vec_acum, K_vec_acum, uint32_t>(inv_q, k[0]);
@@ -612,10 +614,10 @@ inline __device__ float qk_hmma_dot_(const uint32_t (&q)[N],
     qk_vec = fma(inv_q, k[ii], qk_vec);
   }
 #ifdef MMHA_USE_FP32_ACUM_FOR_FMA
-    uint32_t qk_vec_ = float2_to_half2(qk_vec);
-    return hmma_fp32_tensorcore(make_uint2(qk_vec_, 0u), 0x3c003c00u).x;
+  uint32_t qk_vec_ = float2_to_half2(qk_vec);
+  return hmma_fp32_tensorcore(make_uint2(qk_vec_, 0u), 0x3c003c00u).x;
 #else
-    return hmma_fp32_tensorcore(make_uint2(qk_vec, 0u), 0x3c003c00u).x;
+  return hmma_fp32_tensorcore(make_uint2(qk_vec, 0u), 0x3c003c00u).x;
 #endif
 #else
   return 0.f;
@@ -638,7 +640,7 @@ struct Qk_dot<float16, 4> {
   static inline __device__ float dot(const uint32_t (&q)[N],
                                      const uint32_t (&k)[N],
                                      float inv_sqrt_dh) {
-#ifdef MMHA_USE_HMMA_FOR_REDUCTION && __CUDA_ARCH__ >= 750
+#ifdef MMHA_USE_HMMA_FOR_REDUCTION &&__CUDA_ARCH__ >= 750
     return qk_hmma_dot_(q, k, inv_sqrt_dh);
 #else
     return qk_dot_<4>(q, k, inv_sqrt_dh);
@@ -1101,7 +1103,7 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
   if (params.timestep < 32) {
     MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 64, stream);
   } else if (params.timestep < 2048) {
-#ifdef MMHA_USE_HMMA_FOR_REDUCTION && __CUDA_ARCH__ >= 750
+#ifdef MMHA_USE_HMMA_FOR_REDUCTION &&__CUDA_ARCH__ >= 750
     MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 256, stream);
 #else
     MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 2, THREADS_PER_VALUE, 128, stream);
