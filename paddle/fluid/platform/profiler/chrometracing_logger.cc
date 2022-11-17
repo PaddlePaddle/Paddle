@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.json";
+static const char* kDefaultFilename = "pid_%d_time_%s.paddle_trace.json";
 
 static std::string DefaultFileName() {
   auto pid = GetProcessId();

@@ -271,6 +271,7 @@ bool AnalysisPredictor::Init(
     }
     options.trace_switch = trace_switch.to_ulong();
     profiler_ = platform::Profiler::Create(options);
+    platform::EnableHostEventRecorder();
     profiler_->Prepare();
     profiler_->Start();
   } else {
@@ -2095,9 +2096,10 @@ AnalysisPredictor::~AnalysisPredictor() {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   } else if (config_.with_new_profile_) {
+    platform::DisableHostEventRecorder();
     std::unique_ptr<platform::ProfilerResult> profiler_result =
         profiler_->Stop();
-    profiler_result->Save(std::string());
+    profiler_result->Save(std::string(""));
   }
   if (sub_scope_) {
     if (framework::global_transfer_scope_key().find(sub_scope_) !=
