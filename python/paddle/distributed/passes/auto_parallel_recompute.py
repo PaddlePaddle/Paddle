@@ -423,6 +423,7 @@ class RecomputePass(PassBase):
                             main_block.ops[rc_op.idx - 1],
                             rc_op,
                             self._dist_context,
+                            is_recompute=True,
                             sync=False,
                         )
         main_program._sync_with_cpp()
