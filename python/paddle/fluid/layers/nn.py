@@ -180,7 +180,6 @@ __all__ = [
     'shuffle_channel',
     'temporal_shift',
     'py_func',
-    'prroi_pool',
     'pixel_shuffle',
     'fsp_matrix',
     'continuous_value_model',
@@ -13640,91 +13639,6 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 # For debug usage
 py_func.registered_func = PyFuncRegistry.registered_func
 py_func.registered_func_num = PyFuncRegistry.registered_func_num
-
-
-@templatedoc()
-def prroi_pool(
-    input,
-    rois,
-    spatial_scale=1.0,
-    pooled_height=1,
-    pooled_width=1,
-    batch_roi_nums=None,
-    name=None,
-):
-    """
-
-    The precise roi pooling implementation for paddle. Reference: https://arxiv.org/pdf/1807.11590.pdf
-
-    Args:
-        input (Variable):The input of precise roi pooliing.The shape of input tensor is
-                        [N,C,H,W]. Where N is batch size,C is number of input channels,H
-                        is height of the feature, and W is the width of the feature.
-        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                        a 2-D LoDTensor or Tensor of shape (num_rois, 4), the lod level
-                        is 1 when it is LoDTensor. The LoD include the rois's batch index
-                        information. If rois is Tensor, its batch index information should
-                        be provided by batch_index.
-                        Given as [[x1, y1, x2, y2], ...], (x1, y1) is
-                        the top left coordinates, and (x2, y2) is the bottom
-                        right coordinates.
-        spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
-                             Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
-        pooled_height (integer): The pooled output height. Default: 1.
-        pooled_width (integer): The pooled output width. Default: 1.
-        batch_roi_nums (Variable): The number of roi for each image in batch. It
-                         should be 1-D Tensor, with shape [N] and dtype int64,
-                         where N is the batch size. Default: None. Be note: The lod of input should be
-                         empty when batch_roi_nums has values;
-        name (str, default None): The name of this operation.
-
-    Returns:
-        Variable(Tensor):The shape of the returned Tensor is (N, C, pooled_height, pooled_width), with value type float32,float16. N, C denote batch_size and channels of input respectively.
-
-    Examples:
-        .. code-block:: python
-
-            ## prroi_pool without batch_roi_num
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[None, 490, 28, 28], dtype='float32')
-            rois = fluid.data(name='rois', shape=[None, 4], lod_level=1, dtype='float32')
-            pool_out = fluid.layers.prroi_pool(x, rois, 1.0, 7, 7)
-
-            ## prroi_pool with batch_roi_num
-            batchsize=4
-            x2 = fluid.data(name='x2', shape=[batchsize, 490, 28, 28], dtype='float32')
-            rois2 = fluid.data(name='rois2', shape=[batchsize, 4], dtype='float32')
-            batch_rois_num = fluid.data(name='rois_nums', shape=[batchsize], dtype='int64')
-            pool_out2 = fluid.layers.prroi_pool(x2, rois2, 1.0, 7, 7, batch_roi_nums=batch_rois_num)
-
-
-    """
-    check_variable_and_dtype(input, 'input', ['float32'], 'prroi_pool')
-    check_variable_and_dtype(rois, 'rois', ['float32'], 'prroi_pool')
-    helper = LayerHelper('prroi_pool', **locals())
-    # check attrs
-    if not isinstance(spatial_scale, float):
-        raise TypeError("spatial_scale must be float type")
-    if not isinstance(pooled_height, int):
-        raise TypeError("pooled_height must be int type")
-    if not isinstance(pooled_width, int):
-        raise TypeError("pooled_width must be int type")
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-    inputs_op = {'X': input, 'ROIs': rois}
-    if batch_roi_nums is not None:
-        inputs_op['BatchRoINums'] = batch_roi_nums
-    helper.append_op(
-        type='prroi_pool',
-        inputs=inputs_op,
-        outputs={'Out': out},
-        attrs={
-            'spatial_scale': spatial_scale,
-            'pooled_height': pooled_height,
-            'pooled_width': pooled_width,
-        },
-    )
-    return out
 
 
 def pixel_shuffle(x, upscale_factor):
