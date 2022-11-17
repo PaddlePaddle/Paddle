@@ -78,9 +78,6 @@ class TestOpNameConflict(unittest.TestCase):
                     dtype="float32",
                     default_initializer=fluid.initializer.Constant(0.5),
                 )
-                out_affine = fluid.layers.affine_channel(
-                    data, scale=input_scale, bias=input_bias
-                )
                 out_similarity = fluid.layers.similarity_focus(
                     input=data, axis=1, indexes=[0]
                 )
@@ -100,7 +97,6 @@ class TestOpNameConflict(unittest.TestCase):
                 outs = exe.run(
                     test_program,
                     fetch_list=[
-                        out_affine,
                         out_similarity,
                         position_tensor,
                         x_reversed,
