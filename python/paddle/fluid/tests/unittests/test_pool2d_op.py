@@ -1522,7 +1522,7 @@ class TestDygraphPool2DAPI(unittest.TestCase):
                 kernel_size=2,
                 stride=1,
                 padding=[0, 0],
-                data_format='nhwc',
+                data_format='NHWC',
             )
             out1 = pool2d(x)
             out2 = pool2D_forward_naive(
@@ -1542,9 +1542,8 @@ class TestDygraphPool2DAPI(unittest.TestCase):
             pool2d = paddle.nn.MaxPool2D(
                 kernel_size=2,
                 stride=1,
-                pool_padding=[0, 0],
-                global_pooling=False,
-                data_format='nhwc',
+                padding=[0, 0],
+                data_format='NHWC',
             )
             out1 = pool2d(x)
             out2 = pool2D_forward_naive(

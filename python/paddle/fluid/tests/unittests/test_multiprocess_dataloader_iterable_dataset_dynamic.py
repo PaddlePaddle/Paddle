@@ -56,8 +56,11 @@ class SimpleFCNet(fluid.dygraph.Layer):
                     weight_attr=param_attr,
                     bias_attr=bias_attr,
                 )
+            )
+            self._fcs.append(
                 paddle.nn.Tanh()
             )
+
             in_channel = hidden_size
         self._fcs.append(
             Linear(
@@ -66,8 +69,11 @@ class SimpleFCNet(fluid.dygraph.Layer):
                 weight_attr=param_attr,
                 bias_attr=bias_attr,
             )
+        )
+        self._fcs.append(
             paddle.nn.Softmax()
         )
+
 
     def forward(self, image):
         out = image

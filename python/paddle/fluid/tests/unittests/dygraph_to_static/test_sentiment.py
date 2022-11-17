@@ -150,9 +150,9 @@ class BOW(fluid.dygraph.Layer):
         bow_1 = fluid.layers.reduce_sum(emb, dim=1)
         bow_1 = fluid.layers.tanh(bow_1)
         fc_1 = self._fc1(bow_1)
-        fc_1 = paddl.tanh(fc_1)
+        fc_1 = paddle.tanh(fc_1)
         fc_2 = self._fc2(fc_1)
-        fc_2 = paddl.tanh(fc_2)
+        fc_2 = paddle.tanh(fc_2)
         prediction = self._fc_prediction(fc_2)
         prediction = paddle.nn.functional.softmax(prediction)
 

@@ -17,7 +17,7 @@ import math
 import time
 import tempfile
 import unittest
-
+import paddle
 import numpy as np
 
 import paddle

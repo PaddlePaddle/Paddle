@@ -21,10 +21,10 @@ from paddle.fluid.dygraph.nn import (
     Embedding,
     GroupNorm,
     LayerNorm,
-    Linear,
     NCE,
     PRelu,
 )
+from paddle.nn import Linear
 import numpy as np
 import os
 import tempfile

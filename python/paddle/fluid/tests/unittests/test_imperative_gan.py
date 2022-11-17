@@ -33,7 +33,7 @@ class Discriminator(fluid.Layer):
 
     def forward(self, inputs):
         x = self._fc1(inputs)
-        x = paddle.nn.ELU(x)
+        x = paddle.nn.functional.elu(x)
         x = self._fc2(x)
         return x
 
@@ -47,9 +47,9 @@ class Generator(fluid.Layer):
 
     def forward(self, inputs):
         x = self._fc1(inputs)
-        x = paddle.nn.ELU(x)
+        x = paddle.nn.functional.elu(x)
         x = self._fc2(x)
-        x = paddle.nn.ELU(x)
+        x = paddle.nn.functional.elu(x)
         x = self._fc3(x)
         return x
 

@@ -62,7 +62,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             else:
                 self._pool2d = paddle.nn.MaxPool2D(
                         kernel_size=pool_size,
-                        sride=pool_stride,
+                        stride=pool_stride,
                         padding=pool_padding
                 )
         else if pool_type == "avg":
@@ -71,7 +71,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             else:
                 self._pool2d = paddle.nn.AvgPool2D(
                         kernel_size=pool_size,
-                        sride=pool_stride,
+                        stride=pool_stride,
                         padding=pool_padding
                 )
 

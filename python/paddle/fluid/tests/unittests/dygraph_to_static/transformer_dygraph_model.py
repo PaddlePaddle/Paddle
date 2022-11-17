@@ -170,11 +170,12 @@ class FFN(Layer):
     def __init__(self, d_inner_hid, d_model, dropout_rate):
         super().__init__()
         self.dropout_rate = dropout_rate
-        self.fc1 = Linear(input_dim=d_model, output_dim=d_inner_hid, act="relu")
-        self.fc2 = Linear(input_dim=d_inner_hid, output_dim=d_model)
+        self.fc1 = Linear(d_model, d_inner_hid)
+        self.fc2 = Linear(d_inner_hid, d_model)
 
     def forward(self, x):
         hidden = self.fc1(x)
+        hidden = paddle.nn.functional.relu(hidden)
         if self.dropout_rate:
             hidden = layers.dropout(hidden, dropout_prob=self.dropout_rate)
         out = self.fc2(hidden)
