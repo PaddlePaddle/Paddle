@@ -14,16 +14,16 @@
 
 #include "paddle/phi/kernels/index_select_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/gpu/index_select_impl.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename Context>
 void IndexSelectKernel(const Context& ctx,
