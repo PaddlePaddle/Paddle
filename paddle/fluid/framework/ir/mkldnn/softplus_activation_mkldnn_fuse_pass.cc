@@ -27,7 +27,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  auto act_types = paddle::platform::GetSupportedActivations();
+  auto act_types = phi::funcs::GetSupportedActivations();
 
   // Currently softplus can't be fused with hard_sigmoid
   act_types.erase(
@@ -75,7 +75,7 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     }
 
     auto *activation_op = activation->Op();
-    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+    auto attr_map = phi::funcs::GetAttributeMap(act_type);
     for (const auto &attr : attr_map) {
       if (activation_op->HasAttr(attr.first)) {
         softplus_op->SetAttr(attr.second, activation_op->GetAttr(attr.first));

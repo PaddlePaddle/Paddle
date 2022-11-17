@@ -102,7 +102,6 @@ class ProcessGroupGloo : public ProcessGroup {
       const std::shared_ptr<paddle::distributed::Store>& store,
       int rank,
       int world_size,
-      const platform::Place& place,
       int gid,
       std::shared_ptr<GlooOptions> options);
 
@@ -111,6 +110,8 @@ class ProcessGroupGloo : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
+      int64_t offset,  // for compatibility, no use now
+      int64_t numel,   // for compatibility, no use now
       bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> Broadcast(

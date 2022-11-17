@@ -15,9 +15,9 @@
 #include "paddle/phi/kernels/concat_kernel.h"
 
 #include "paddle/fluid/operators/strided_memcpy.h"
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"

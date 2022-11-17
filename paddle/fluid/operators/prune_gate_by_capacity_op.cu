@@ -121,7 +121,7 @@ class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
     framework::TensorCopy(*expert_count, context.GetPlace(), &expert_count_out);
     PruneGateByCapacityFunctor<DeviceContext, T> functor(
         context, gate_idx, &expert_count_out, new_gate_idx_data);
-    VisitDataType(expert_count->type(), functor);
+    ::paddle::operators::VisitDataType(expert_count->type(), functor);
   }
 };
 
