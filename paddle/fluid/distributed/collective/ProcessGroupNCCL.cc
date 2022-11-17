@@ -308,6 +308,34 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
       use_calc_stream);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  return Collective(
+      out_tensor,
+      in_tensor,
+      [&](phi::DenseTensor* output,
+          const phi::DenseTensor& input,
+          ncclComm_t comm,
+          gpuStream_t& stream) {
+        NCCL_CHECK(platform::dynload::ncclReduce(
+            input.data(),
+            output->data(),
+            input.numel(),
+            platform::ToNCCLDataType(input.dtype()),
+            ToNCCLRedType(opts.reduce_op),
+            opts.root_rank,
+            comm,
+            stream));
+      },
+      CommType::REDUCE,
+      sync_op,
+      use_calc_stream);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
     phi::DenseTensor* tensor,
     int src_rank,
@@ -1255,38 +1283,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
             stream));
       },
       CommType::REDUCE);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const ReduceOptions& opts,
-    bool sync_op,
-    bool use_calc_stream) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(in_tensors),
-      true,
-      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
-  return Collective(
-      in_tensors,
-      out_tensors,
-      [&](const phi::DenseTensor& input,
-          phi::DenseTensor& output,
-          ncclComm_t comm,
-          const gpuStream_t& stream) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
-            input.data(),
-            output.data(),
-            input.numel(),
-            platform::ToNCCLDataType(input.dtype()),
-            ToNCCLRedType(opts.reduce_op),
-            opts.root_rank,
-            comm,
-            stream));
-      },
-      CommType::REDUCE,
-      sync_op,
-      use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(

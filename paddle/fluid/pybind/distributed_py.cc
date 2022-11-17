@@ -412,16 +412,17 @@ void BindDistributed(py::module *m) {
           .def(
               "reduce",
               [](distributed::ProcessGroup &self,
-                 py::handle py_in_tensor,
+                 py::handle py_tensor,
                  int dst,
                  distributed::ReduceOp op,
                  bool sync_op) {
-                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto p_dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                auto *out_dense = p_dense.get();
+                auto in_dense = *p_dense;
                 distributed::ReduceOptions opts{op, dst};
-                auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    in_tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.Reduce(tensors, tensors, opts, sync_op);
+                return self.Reduce(out_dense, in_dense, opts, sync_op);
               },
               py::arg("tensor"),
               py::arg("dst"),
@@ -986,16 +987,17 @@ void BindDistributed(py::module *m) {
           .def(
               "reduce_on_calc_stream",
               [](distributed::ProcessGroupStream &self,
-                 py::handle py_in_tensor,
+                 py::handle py_tensor,
                  int dst,
                  distributed::ReduceOp op) {
-                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+                auto p_dense =
+                    std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+                auto *out_dense = p_dense.get();
+                auto in_dense = *p_dense;
                 distributed::ReduceOptions opts{op, dst};
-                auto dense = std::dynamic_pointer_cast<phi::DenseTensor>(
-                    in_tensor.impl());
-                std::vector<phi::DenseTensor> tensors = {*dense};
-                return self.Reduce(tensors,
-                                   tensors,
+                return self.Reduce(out_dense,
+                                   in_dense,
                                    opts,
                                    /*sync_op*/ true,
                                    /*use_calc_stream*/ true);

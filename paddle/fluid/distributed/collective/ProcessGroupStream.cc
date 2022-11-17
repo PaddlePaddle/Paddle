@@ -120,6 +120,28 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Broadcast(
       "ProcessGroup%s does not support broadcast.", GetBackendName()));
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Reduce(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceOptions& opts,
+    bool sync_op) {
+  return Reduce(out_tensor,
+                in_tensor,
+                opts,
+                sync_op,
+                /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Reduce(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "ProcessGroup%s does not support reduce.", GetBackendName()));
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(
     phi::DenseTensor* tensor,
     int src_rank,
@@ -188,28 +210,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllToAll(
     bool use_calc_stream) {
   PADDLE_THROW(platform::errors::InvalidArgument(
       "ProcessGroup%s does not support do alltoall", GetBackendName()));
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Reduce(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const ReduceOptions& opts,
-    bool sync_op) {
-  return Reduce(in_tensors,
-                out_tensors,
-                opts,
-                sync_op,
-                /*use_calc_stream*/ false);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Reduce(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const ReduceOptions& opts,
-    bool sync_op,
-    bool use_calc_stream) {
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "ProcessGroup%s does not support do reduce", GetBackendName()));
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::ReduceScatter(

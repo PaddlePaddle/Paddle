@@ -475,24 +475,32 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
-    std::vector<phi::DenseTensor>& inputs,
-    std::vector<phi::DenseTensor>& outputs,
-    const ReduceOptions& opts) {
-  return Reduce(inputs, outputs, opts, true);
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceOptions& opts,
+    bool sync_op  // for compatibility, no use now
+) {
+  std::shared_ptr<ReduceGlooTask> task;
+  auto tag = next_tag();
+  auto context = get_context();
+  std::vector<phi::DenseTensor> in_wrapper = {in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper = {*out_tensor};
+  task = std::make_shared<ReduceGlooTask>(rank_,
+                                          context,
+                                          in_wrapper,
+                                          out_wrapper,
+                                          opts.reduce_op,
+                                          opts.root_rank,
+                                          tag);
+  task->Run();
+  return task;
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,
-    const ReduceOptions& opts,
-    bool sync_op) {
-  std::shared_ptr<ReduceGlooTask> task;
-  auto tag = next_tag();
-  auto context = get_context();
-  task = std::make_shared<ReduceGlooTask>(
-      rank_, context, inputs, outputs, opts.reduce_op, opts.root_rank, tag);
-  task->Run();
-  return task;
+    const ReduceOptions& opts) {
+  return Reduce(&outputs[0], inputs[0], opts, true);
 }
 
 class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
