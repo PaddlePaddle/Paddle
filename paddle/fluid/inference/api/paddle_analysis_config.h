@@ -925,6 +925,13 @@ struct PD_INFER_DECL AnalysisConfig {
   /// If not turned on, no profiling report will be generated.
   ///
   void EnableProfile();
+
+  ///
+  /// \brief Turn on new profiler.
+  /// If not turned on, no profiler data will be generated.
+  ///
+  void EnableNewProfile();
+
   ///
   /// \brief A boolean state telling whether the profiler is activated.
   ///
