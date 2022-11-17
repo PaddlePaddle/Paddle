@@ -281,3 +281,12 @@ def _transpose2_flops(input_shapes, attrs):
         equation: flops = 0
     """
     return 0
+
+
+@register_flops("pool")
+def _pool_flops(input_shapes, attrs):
+    if isinstance(input_shapes, dict):
+        input = input_shapes.get('X')[0]
+    else:
+        input = input_shapes[0]
+    return prod(input)
