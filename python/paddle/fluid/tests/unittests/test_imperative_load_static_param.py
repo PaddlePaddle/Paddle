@@ -193,10 +193,10 @@ class TestDygraphLoadStatic(unittest.TestCase):
                         in_channels=10, out_channels=10, kernel_size=5
                     )
 
-                    self.conv3d_1 = Conv3D(
+                    self.conv3d_1 = paddle.nn.Conv3D(
                         in_channels=3, out_channels=2, kernel_size=3
                     )
-                    self.conv3d_2 = Conv3D(
+                    self.conv3d_2 = paddle.nn.Conv3D(
                         in_channels=3, out_channels=2, kernel_size=3
                     )
 

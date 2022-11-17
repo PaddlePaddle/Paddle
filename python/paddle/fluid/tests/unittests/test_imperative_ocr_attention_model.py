@@ -344,7 +344,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
             decoder_size, decoder_size * 3, bias_attr=False
         )
         self.gru_unit = GRUUnit(
-            size=decoder_size * 3, weight_attr=None, bias_attr=None
+            size=decoder_size * 3, param_attr=None, bias_attr=None
         )
         self.out_layer = Linear(
             decoder_size, num_classes + 2, bias_attr=None

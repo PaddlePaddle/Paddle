@@ -23,7 +23,8 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import BatchNorm, Linear
+from paddle.fluid.dygraph.nn import BatchNorm
+from paddle.nn import Linear
 from paddle.fluid.dygraph import declarative
 from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -131,26 +132,26 @@ class SqueezeExcitation(fluid.dygraph.Layer):
         self._fc = Linear(
             num_channels,
             num_channels // reduction_ratio,
-            param_attr=fluid.ParamAttr(
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Uniform(-stdv, stdv)
             ),
-            act='relu',
         )
         stdv = 1.0 / math.sqrt(num_channels / 16.0 * 1.0)
         self._excitation = Linear(
             num_channels // reduction_ratio,
             num_channels,
-            param_attr=fluid.ParamAttr(
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Uniform(-stdv, stdv)
             ),
-            act='sigmoid',
         )
 
     def forward(self, input):
         y = self._pool(input)
         y = fluid.layers.reshape(y, shape=[-1, self._num_channels])
         y = self._fc(y)
+        y = paddle.nn.functional.relu(y)
         y = self._excitation(y)
+        y = paddle.nn.functional.sigmoid(y)
         y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
         return y
 
@@ -321,7 +322,7 @@ class SeResNeXt(fluid.dygraph.Layer):
         self.out = Linear(
             self.pool2d_avg_output,
             class_dim,
-            param_attr=fluid.param_attr.ParamAttr(
+            weight_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Uniform(-stdv, stdv)
             ),
         )

@@ -2327,7 +2327,7 @@ class TestLayer(LayerTest):
                     in_channels=3,
                     out_channels=3,
                     kernel_size=2,
-                    weightattr=weight_attr,
+                    weight_attr=weight_attr,
                     bias_attr='eager_conv3d2_b',
                 )
                 dy_ret1 = conv3d1(base.to_variable(images))
