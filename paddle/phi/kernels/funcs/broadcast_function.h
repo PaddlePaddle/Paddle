@@ -176,7 +176,7 @@ __device__ void VectorizedBroadcastKernelImpl(
 #endif
 
   constexpr bool kCallElementwiseAny =
-      paddle::platform::FunctionTraits<Functor>::has_pointer_args;
+      phi::funcs::FunctionTraits<Functor>::has_pointer_args;
   phi::funcs::ElementwisePrimitiveCaller<InT,
                                          ConditionalT<OutT, NumOuts>,
                                          VecSize,
@@ -787,7 +787,7 @@ void BroadcastKernelForDifferentVecSize(
     std::vector<DenseTensor *> *outs,
     int axis,
     Functor func) {
-  using Traits = paddle::platform::FunctionTraits<Functor>;
+  using Traits = phi::funcs::FunctionTraits<Functor>;
   const int kArity =
       Traits::has_pointer_args ? static_cast<int>(ET) : Traits::arity;
   PADDLE_ENFORCE_EQ(
