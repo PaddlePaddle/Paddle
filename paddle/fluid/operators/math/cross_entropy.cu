@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace paddle {
 namespace operators {
@@ -39,9 +39,10 @@ __global__ void CrossEntropyKernel(T* Y,
                    D,
                    ignore_index,
                    lbl);
-    Y[i] = ignore_index == lbl
-               ? static_cast<T>(0)
-               : -math::TolerableValue<T>()(real_log(X[i * D + lbl]));
+    Y[i] =
+        ignore_index == lbl
+            ? static_cast<T>(0)
+            : -math::TolerableValue<T>()(phi::funcs::real_log(X[i * D + lbl]));
   }
 }
 
@@ -56,7 +57,7 @@ __global__ void SoftCrossEntropyKernel(T* Y,
   int idx = blockIdx.x * class_num + tid;
   int end = blockIdx.x * class_num + class_num;
   for (; idx < end; idx += blockDim.x) {
-    val += math::TolerableValue<T>()(real_log(X[idx])) * label[idx];
+    val += math::TolerableValue<T>()(phi::funcs::real_log(X[idx])) * label[idx];
   }
 
   val = paddle::platform::reduceSum(val, tid, blockDim.x);
@@ -152,7 +153,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
 
 template class CrossEntropyFunctor<phi::GPUContext, float>;
 template class CrossEntropyFunctor<phi::GPUContext, double>;
-template class CrossEntropyFunctor<phi::GPUContext, platform::float16>;
+template class CrossEntropyFunctor<phi::GPUContext, phi::dtype::float16>;
 
 }  // namespace math
 }  // namespace operators
