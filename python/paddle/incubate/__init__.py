@@ -54,5 +54,4 @@ __all__ = [
     'segment_max',
     'segment_min',
     'identity_loss',
-    '_npu_identity',
 ]
