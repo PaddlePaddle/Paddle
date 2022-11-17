@@ -73,6 +73,8 @@ int GroupNormPlugin::enqueue(int batch_size,
 
   int device_id;
   cudaGetDevice(&device_id);
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(platform::CUDAPlace(device_id));
   const float *input = static_cast<const float *>(inputs[0]);
   float *output = static_cast<float *>(outputs[0]);
 
@@ -81,16 +83,17 @@ int GroupNormPlugin::enqueue(int batch_size,
 
   mean_t.Resize(phi::make_ddim(mean_shape_));
   variance_t.Resize(phi::make_ddim(variance_shape_));
-  float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *scale_d =
+      dev_ctx.Alloc<float>(&scale_t, scale_t.numel() * sizeof(float));
+  float *bias_d = dev_ctx.Alloc<float>(&bias_t, bias_t.numel() * sizeof(float));
+  float *mean_d = dev_ctx.Alloc<float>(&mean_t, mean_t.numel() * sizeof(float));
   float *variance_d =
-      variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+      dev_ctx.Alloc<float>(&variance_t, variance_t.numel() * sizeof(float));
 
   phi::DenseTensor temp_variance_t;
   temp_variance_t.Resize(phi::make_ddim(variance_shape_));
-  float *temp_variance_d =
-      temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *temp_variance_d = dev_ctx.Alloc<float>(
+      &temp_variance_t, temp_variance_t.numel() * sizeof(float));
   cudaMemcpyAsync(scale_d,
                   scale_.data(),
                   sizeof(float) * C,
@@ -204,6 +207,8 @@ int GroupNormPluginDynamic::enqueue(
 
   int device_id;
   cudaGetDevice(&device_id);
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(platform::CUDAPlace(device_id));
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     const float *input = static_cast<const float *>(inputs[0]);
@@ -214,16 +219,18 @@ int GroupNormPluginDynamic::enqueue(
     mean_t.Resize(phi::make_ddim(batched_mean_shape));
     variance_t.Resize(phi::make_ddim(batched_variance_shape));
     float *scale_d =
-        scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+        dev_ctx.Alloc<float>(&scale_t, scale_t.numel() * sizeof(float));
+    float *bias_d =
+        dev_ctx.Alloc<float>(&bias_t, bias_t.numel() * sizeof(float));
+    float *mean_d =
+        dev_ctx.Alloc<float>(&mean_t, mean_t.numel() * sizeof(float));
     float *variance_d =
-        variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+        dev_ctx.Alloc<float>(&variance_t, variance_t.numel() * sizeof(float));
 
     phi::DenseTensor temp_variance_t;
     temp_variance_t.Resize(phi::make_ddim(batched_variance_shape));
-    float *temp_variance_d =
-        temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+    float *temp_variance_d = dev_ctx.Alloc<float>(
+        &temp_variance_t, temp_variance_t.numel() * sizeof(float));
     cudaMemcpyAsync(scale_d,
                     scale_.data(),
                     sizeof(float) * C,

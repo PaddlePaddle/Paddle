@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -59,9 +60,12 @@ void TensorCopyImpl(const TENSOR& src,
   auto dst_ptr =
       src.layout() == DataLayout::ONEDNN
           ? dst->mutable_data(dst_place, src.dtype(), src.memory_size())
-          : dst->mutable_data(dst_place, src.dtype());
+          : ctx.Alloc(dst,
+                      src.dtype(),
+                      dst->numel() * experimental::SizeOf(src.dtype()));
 #else
-  auto dst_ptr = dst->mutable_data(dst_place, src.dtype());
+  auto dst_ptr = ctx.Alloc(
+      dst, src.dtype(), dst->numel() * experimental::SizeOf(src.dtype()));
 #endif
   dst->set_layout(src.layout());
   if (src_ptr == dst_ptr && src_place == dst_place) {

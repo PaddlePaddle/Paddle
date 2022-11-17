@@ -375,6 +375,9 @@ inline void enqueueImpl(const nvinfer1::PluginTensorDesc* input_desc,
                         T max_value,
                         bool keep_first_token_,
                         bool keep_order_) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& dev_ctx = *pool.Get(platform::CUDAPlace(device_id));
+
   // Dims
   auto attn_dims = input_desc[0].dims;
   auto x_dims = input_desc[1].dims;
@@ -470,8 +473,9 @@ inline void enqueueImpl(const nvinfer1::PluginTensorDesc* input_desc,
       stream));
   int64_t temp_size = temp_storage_bytes;
   phi::DenseTensor temp_storage;
-  auto* temp_storage_data = temp_storage.mutable_data<uint8_t>(
-      {temp_size}, platform::CUDAPlace(device_id));
+  temp_storage.Resize({temp_size});
+  auto* temp_storage_data = dev_ctx.Alloc<uint8_t>(
+      &temp_storage, temp_storage.numel() * sizeof(uint8_t));
 
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceSegmentedRadixSort::SortPairsDescending(
       temp_storage_data,
@@ -519,8 +523,8 @@ inline void enqueueImpl(const nvinfer1::PluginTensorDesc* input_desc,
 
     temp_size = temp_storage_bytes;
     temp_storage.Resize({temp_size});
-    temp_storage_data =
-        temp_storage.mutable_data<uint8_t>(platform::CUDAPlace(device_id));
+    temp_storage_data = dev_ctx.Alloc<uint8_t>(
+        &temp_storage, temp_storage.numel() * sizeof(uint8_t));
     PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceSegmentedRadixSort::SortKeys(
         temp_storage_data,
         temp_storage_bytes,

@@ -189,6 +189,8 @@ int MultiheadMatmulRoformerPlugin::enqueue(
 
   int device_id;
   cudaGetDevice(&device_id);
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(platform::CUDAPlace(device_id));
   multihead_temp_tensor.Resize({scratch_size + input_num});
   // for roformer
   phi::DenseTensor temp_roformer_tensor;
@@ -197,11 +199,10 @@ int MultiheadMatmulRoformerPlugin::enqueue(
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. RoformerQkvToContext-->fp32";
-    auto *multihead_temp_data = multihead_temp_tensor.mutable_data<float>(
-        platform::CUDAPlace(device_id));
-    auto *temp_roformer_data =
-        temp_roformer_tensor.mutable_data<float>(  // NOLINT
-            platform::CUDAPlace(device_id));
+    auto *multihead_temp_data = dev_ctx.Alloc<float>(
+        &multihead_temp_tensor, multihead_temp_tensor.numel() * sizeof(float));
+    auto *temp_roformer_data = dev_ctx.Alloc<float>(
+        &temp_roformer_tensor, temp_roformer_tensor.numel() * sizeof(float));
     auto *tmp_roformer_ptr = reinterpret_cast<float *>(temp_roformer_data);
     auto *qkptr = multihead_temp_data;
     auto *tptr = multihead_temp_data + scratch_size;
@@ -212,8 +213,8 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     float *qk_bias = const_cast<float *>(static_cast<const float *>(inputs[3]));
     if (ProductDim(input_desc[3].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
-      auto *temp_qk_bias = temp_qk_bias_tensor.mutable_data<float>(
-          platform::CUDAPlace(device_id));
+      auto *temp_qk_bias = dev_ctx.Alloc<float>(
+          &temp_qk_bias_tensor, temp_qk_bias_tensor.numel() * sizeof(float));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(
@@ -277,12 +278,10 @@ int MultiheadMatmulRoformerPlugin::enqueue(
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
     auto *multihead_temp_data =
-        multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
-            platform::CUDAPlace(device_id));
-
-    auto *temp_roformer_data =
-        temp_roformer_tensor.mutable_data<int16_t>(  // NOLINT
-            platform::CUDAPlace(device_id));
+        dev_ctx.Alloc<int16_t>(&multihead_temp_tensor,
+                               multihead_temp_tensor.numel() * sizeof(int16_t));
+    auto *temp_roformer_data = dev_ctx.Alloc<int16_t>(
+        &temp_roformer_tensor, temp_roformer_tensor.numel() * sizeof(int16_t));
     half *tmp_roformer_ptr = reinterpret_cast<half *>(temp_roformer_data);
     half *qkptr = reinterpret_cast<half *>(multihead_temp_data);
     half *tptr = qkptr + scratch_size;
@@ -293,9 +292,8 @@ int MultiheadMatmulRoformerPlugin::enqueue(
     half *qk_bias = const_cast<half *>(static_cast<const half *>(inputs[3]));
     if (ProductDim(input_desc[3].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
-      auto *temp_qk_bias =
-          reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
+      auto *temp_qk_bias = reinterpret_cast<half *>(dev_ctx.Alloc<int16_t>(
+          &temp_qk_bias_tensor, temp_qk_bias_tensor.numel() * sizeof(int16_t)));
       int grid = batch * head_number_ * seq_len;
       int block = round_up(seq_len);
       broadcast<<<grid, block, 0, stream>>>(

@@ -30,6 +30,8 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     std::string engine_name,
     const platform::Place place)
     : batch_size_(batch_size), engine_name_(engine_name) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& dev_ctx = *pool.Get(place);
   int i = 0;
   VLOG(4) << "Init a new calibrator: " << engine_name_;
   for (const auto it : buffers) {
@@ -41,7 +43,8 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     temp_tensor.Resize(data_shape);
     data_tensors_.push_back(temp_tensor);
     data_buffers_[input_name] = std::pair<void*, size_t>(
-        static_cast<void*>(temp_tensor.mutable_data<int16_t>(place)),
+        dev_ctx.Alloc<int16_t>(&temp_tensor,
+                               temp_tensor.numel() * sizeof(int16_t)),
         data_size);
     i += 1;
   }

@@ -81,8 +81,10 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::initialize() {
   in_ptr_tensor_.Resize({input_num});
   emb_ptr_tensor_.Resize({input_num});
   cudaGetDevice(&device_id_);
-  auto emb_ptr_gpu_d =
-      emb_ptr_tensor_.mutable_data<int64_t>(platform::CUDAPlace(device_id_));
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(platform::CUDAPlace(device_id_));
+  auto emb_ptr_gpu_d = dev_ctx.Alloc<int64_t>(
+      &emb_ptr_tensor_, emb_ptr_tensor_.numel() * sizeof(int64_t));
   cudaMemcpy(emb_ptr_gpu_d,
              embs_gpu_.data(),
              sizeof(uintptr_t) * input_num,
@@ -124,10 +126,12 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::enqueue(
   int seq_len = id_dims.d[1];
   int input_num = embs_.size();
   cudaGetDevice(&device_id_);
-  auto in_ptr_gpu_d =
-      in_ptr_tensor_.mutable_data<int64_t>(platform::CUDAPlace(device_id_));
-  auto emb_ptr_gpu_d =
-      emb_ptr_tensor_.mutable_data<int64_t>(platform::CUDAPlace(device_id_));
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(platform::CUDAPlace(device_id_));
+  auto in_ptr_gpu_d = dev_ctx.Alloc<int64_t>(
+      &in_ptr_tensor_, in_ptr_tensor_.numel() * sizeof(int64_t));
+  auto emb_ptr_gpu_d = dev_ctx.Alloc<int64_t>(
+      &emb_ptr_tensor_, emb_ptr_tensor_.numel() * sizeof(int64_t));
 
   cudaMemcpyAsync(in_ptr_gpu_d,
                   reinterpret_cast<const void *>(inputs),

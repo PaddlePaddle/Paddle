@@ -659,11 +659,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             bind_index,
                             num_bindings));
       auto trt_type = engine->engine()->getBindingDataType(bind_index);
+      auto pd_type = TRT2FluidDataType(trt_type);
       // get adr and set type
       VLOG(1) << "trt output [" << y << "] dtype is "
               << TRT2FluidDataType(trt_type);
-      buffers[bind_index] = static_cast<void *>(
-          fluid_t->mutable_data(dev_place, TRT2FluidDataType(trt_type)));
+      buffers[bind_index] = dev_ctx.Alloc(
+          fluid_t, pd_type, fluid_t->numel() * experimental::SizeOf(pd_type));
       output_index += 1;
     }
 

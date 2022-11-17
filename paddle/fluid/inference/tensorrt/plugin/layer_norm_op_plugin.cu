@@ -127,11 +127,13 @@ int LayerNormPlugin::enqueue(int batch_size,
 
   int device_id;
   cudaGetDevice(&device_id);
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(platform::CUDAPlace(device_id));
   mean_t.Resize(phi::make_ddim({batched_mean_shape}));
   variance_t.Resize(phi::make_ddim({batched_variance_shape}));
-  float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *mean_d = dev_ctx.Alloc<float>(&mean_t, mean_t.numel() * sizeof(float));
   float *variance_d =
-      variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+      dev_ctx.Alloc<float>(&variance_t, variance_t.numel() * sizeof(float));
   auto input_type = getDataType();
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp32";
@@ -329,11 +331,13 @@ int LayerNormPluginDynamic::enqueue(
 
   int device_id;
   cudaGetDevice(&device_id);
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(platform::CUDAPlace(device_id));
   mean_t.Resize(phi::make_ddim(mean_shape_));
   variance_t.Resize(phi::make_ddim(variance_shape_));
-  float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *mean_d = dev_ctx.Alloc<float>(&mean_t, mean_t.numel() * sizeof(float));
   float *variance_d =
-      variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+      dev_ctx.Alloc<float>(&variance_t, variance_t.numel() * sizeof(float));
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. LayerNorm-->fp32";

@@ -79,8 +79,11 @@ int InstanceNormPlugin::enqueue(int batch_size,
   bias_t.Resize(phi::make_ddim({batch_size, c}));
   int device_id;
   cudaGetDevice(&device_id);
-  float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto &dev_ctx = *pool.Get(platform::CUDAPlace(device_id));
+  float *scale_d =
+      dev_ctx.Alloc<float>(&scale_t, scale_t.numel() * sizeof(float));
+  float *bias_d = dev_ctx.Alloc<float>(&bias_t, bias_t.numel() * sizeof(float));
 
   for (int i = 0; i < batch_size; i++) {
     cudaMemcpyAsync(scale_d + i * c,
