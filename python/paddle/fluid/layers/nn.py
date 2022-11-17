@@ -174,7 +174,6 @@ __all__ = [
     'mean',
     'mul',
     'affine_grid',
-    'log_loss',
     'add_position_encoding',
     'bilinear_tensor_product',
     'merge_selected_rows',
@@ -13081,46 +13080,6 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
         type="mul", inputs={"X": x, "Y": y}, attrs=attrs, outputs={"Out": out}
     )
     return out
-
-
-def log_loss(input, label, epsilon=1e-4, name=None):
-    r"""
-
-    **Negative Log Loss Layer**
-
-    This layer accepts input predictions and target label and returns the
-    negative log loss.
-
-    .. math::
-
-        Out = -label * \log{(input + \epsilon)}
-              - (1 - label) * \log{(1 - input + \epsilon)}
-
-    Args:
-        input (Tensor|list):  A 2-D tensor with shape [N x 1], where N is the
-                                batch size. This input is a probability computed
-                                by the previous operator. Data type float32.
-        label (Tensor|list):  The ground truth which is a 2-D tensor with
-                                shape [N x 1], where N is the batch size.
-                                Data type float32.
-        epsilon (float, optional): A small number for numerical stability. Default 1e-4.
-        name(str|None): For detailed information, please refer to
-            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
-
-    Returns:
-        Tensor, which shape is [N x 1], data type is float32.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          import paddle.nn.functional as F
-
-          label = paddle.randn((10,1))
-          prob = paddle.randn((10,1))
-          cost = F.log_loss(input=prob, label=label)
-    """
-    return paddle.nn.functional.log_loss(input, label, epsilon, name)
 
 
 def add_position_encoding(input, alpha, beta, name=None):
