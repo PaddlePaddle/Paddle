@@ -127,7 +127,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
 
         sum_result = layers.array_read(array=mem_array, i=j)
         sum_result.persistable = True
-        tmp = paddle.unsqueeze(sum_result, axes=[0])
+        tmp = paddle.unsqueeze(sum_result, axis=[0])
         tmp = layers.expand(tmp, expand_times=[10, 1])
         fc = layers.fc(tmp, size=256)
         loss = paddle.mean(sum_result)
