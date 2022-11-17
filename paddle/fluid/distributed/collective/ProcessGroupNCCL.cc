@@ -523,8 +523,8 @@ void ProcessGroupNCCL::CheckSplitSizes(std::vector<int64_t>* split_sizes,
                                        std::vector<int64_t> tensor_shape) {
   int64_t len_size = (*split_sizes).size();
   if (len_size == 0) {
-    PADDLE_ENFORCE_EQ(tensor_shape[0] % size_,
-                      0,
+    PADDLE_ENFORCE_EQ(tensor_shape[0] % size_ == 0,
+                      true,
                       platform::errors::InvalidArgument(
                           "Tensor's dim[0] must be divisible by group size "
                           "when split_sizes not given."));
@@ -534,15 +534,15 @@ void ProcessGroupNCCL::CheckSplitSizes(std::vector<int64_t>* split_sizes,
                 static_cast<int64_t>(tensor_shape[0] / size_));
   } else {
     PADDLE_ENFORCE_EQ(
-        len_size,
-        size_,
+        len_size == size_,
+        true,
         platform::errors::InvalidArgument(
             "The length of split_sizes must be equal to group size."));
     auto sum_size = std::accumulate(
         (*split_sizes).begin(), (*split_sizes).end(), static_cast<int64_t>(0));
     PADDLE_ENFORCE_EQ(
-        sum_size,
-        tensor_shape[0],
+        sum_size == tensor_shape[0],
+        true,
         platform::errors::InvalidArgument(
             "The sum of split_sizes must be equal to tensor's dim[0]."));
   }
@@ -1004,8 +1004,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
 void CheckTensorsInDifferentDevices(
     const std::vector<phi::DenseTensor>& tensors, const size_t num_devices) {
   PADDLE_ENFORCE_EQ(
-      tensors.size(),
-      0,
+      tensors.size() == 0,
+      false,
       platform::errors::InvalidArgument("Tensor list must be nonempty."));
   PADDLE_ENFORCE_LE(
       tensors.size(),
