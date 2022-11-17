@@ -890,7 +890,7 @@ class TestLayer(LayerTest):
             data_y = layers.data(
                 name='y', shape=[1, 3], dtype="float32", append_batch_size=False
             )
-            out = layers.bilinear_tensor_product(
+            out = paddle.static.nn.common.bilinear_tensor_product(
                 data_x,
                 data_y,
                 6,
@@ -965,7 +965,7 @@ class TestLayer(LayerTest):
             data_y2 = layers.data(
                 name='y', shape=[1, 3], dtype="float32", append_batch_size=False
             )
-            out2 = layers.bilinear_tensor_product(
+            out2 = paddle.static.nn.common.bilinear_tensor_product(
                 data_x2, data_y2, 6, act='sigmoid'
             )
 
@@ -3948,7 +3948,7 @@ class TestBook(LayerTest):
             data = self._get_data(name='data', shape=[4], dtype="float32")
 
             theta = self._get_data(name="theta", shape=[5], dtype="float32")
-            out = layers.bilinear_tensor_product(data, theta, 6)
+            out = paddle.static.nn.common.bilinear_tensor_product(data, theta, 6)
             return out
 
     def make_batch_norm(self):
