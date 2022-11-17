@@ -105,7 +105,9 @@ TEST(Device, HostZeroAllocator) {
   using paddle::platform::CUDAPlace;
   using phi::GPUContext;
 
-  phi::GPUContext* device_context = new phi::GPUContext(CUDAPlace(0));
+  phi::GPUContext gpu_context(CUDAPlace(0));
+  auto device_context =
+      std::make_unique<phi::GPUContext>(std::move(gpu_context));
   device_context->SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(CUDAPlace(0), device_context->stream())
