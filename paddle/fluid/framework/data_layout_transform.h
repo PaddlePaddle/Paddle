@@ -52,51 +52,35 @@ struct CastDataLayout {
 };
 
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNDataType = dnnl::memory::data_type;
+using OneDNNDataType = dnnl::memory::data_type;
 
-inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
+inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
   switch (layout) {
     case DataLayout::kNHWC:
-      return MKLDNNMemoryFormat::nhwc;
+      return OneDNNMemoryFormat::nhwc;
     case DataLayout::kNCHW:
-      return MKLDNNMemoryFormat::nchw;
+      return OneDNNMemoryFormat::nchw;
     case DataLayout::kNCDHW:
-      return MKLDNNMemoryFormat::ncdhw;
+      return OneDNNMemoryFormat::ncdhw;
     case DataLayout::kNDHWC:
-      return MKLDNNMemoryFormat::ndhwc;
+      return OneDNNMemoryFormat::ndhwc;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Fail to convert layout %s to MKLDNN format.",
+          "Fail to convert layout %s to oneDNN format.",
           phi::DataLayoutToString(layout)));
   }
 }
 
-inline DataLayout ToPaddleLayout(const MKLDNNMemoryFormat& format) {
-  switch (format) {
-    case MKLDNNMemoryFormat::nhwc:
-      return DataLayout::kNHWC;
-    case MKLDNNMemoryFormat::nchw:
-      return DataLayout::kNCHW;
-    case MKLDNNMemoryFormat::ncdhw:
-      return DataLayout::kNCDHW;
-    case MKLDNNMemoryFormat::ndhwc:
-      return DataLayout::kNDHWC;
-    default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Fail to convert MKLDNN format to paddle layout."));
-  }
-}
-
-inline MKLDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
-  static std::unordered_map<int, MKLDNNDataType> dict{
-      {DataTypeTrait<float>::DataType(), MKLDNNDataType::f32},
-      {DataTypeTrait<int8_t>::DataType(), MKLDNNDataType::s8},
-      {DataTypeTrait<uint8_t>::DataType(), MKLDNNDataType::u8},
-      {DataTypeTrait<int32_t>::DataType(), MKLDNNDataType::s32},
-      {DataTypeTrait<platform::bfloat16>::DataType(), MKLDNNDataType::bf16}};
+inline OneDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
+  static std::unordered_map<int, OneDNNDataType> dict{
+      {DataTypeTrait<float>::DataType(), OneDNNDataType::f32},
+      {DataTypeTrait<int8_t>::DataType(), OneDNNDataType::s8},
+      {DataTypeTrait<uint8_t>::DataType(), OneDNNDataType::u8},
+      {DataTypeTrait<int32_t>::DataType(), OneDNNDataType::s32},
+      {DataTypeTrait<platform::bfloat16>::DataType(), OneDNNDataType::bf16}};
   auto iter = dict.find(static_cast<int>(type));
   if (iter != dict.end()) return iter->second;
-  return MKLDNNDataType::undef;
+  return OneDNNDataType::undef;
 }
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
@@ -111,7 +95,7 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const phi::DenseTensor& in,
                                phi::DenseTensor* out);
 
-void* GetDataFromTensor(const phi::DenseTensor& tensor, MKLDNNDataType type);
+void* GetDataFromTensor(const phi::DenseTensor& tensor, OneDNNDataType type);
 
 #endif
 

@@ -4801,7 +4801,7 @@ class ExponentialMovingAverage:
         )
         global_step = layers.cast(global_step, "float32")
         decay_var = block._clone_variable(self._decay_var)
-        decay_pow_acc = layers.elementwise_pow(decay_var, global_step)
+        decay_pow_acc = paddle.pow(decay_var, global_step)
         return decay_pow_acc, global_step
 
     def _create_ema_vars(self, param):
@@ -7755,7 +7755,7 @@ class LookaheadOptimizer:
                 shape=[1], dtype='float32', value=1.0
             )
 
-            mod = layers.elementwise_mod(step, k)
+            mod = paddle.remainder(step, k)
             with layers.control_flow.Switch() as switch:
                 with switch.case(step == one_var):
                     for param_name in params:
