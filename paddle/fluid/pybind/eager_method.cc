@@ -800,7 +800,7 @@ static PyObject* tensor_method__get_tensor_from_selected_rows(
 
   auto* dense_tensor =
       static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-  VLOG(1) << "dense_tensor: " << dense_tensor->IsInitialized();
+  VLOG(4) << "dense_tensor: " << dense_tensor->IsInitialized();
 
   auto t = paddle::experimental::Tensor(
       egr::Controller::Instance().GenerateUniqueName());

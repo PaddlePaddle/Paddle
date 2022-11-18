@@ -16,6 +16,7 @@
 #include <chrono>
 #include <cstdint>
 #include <vector>
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace distributed {
@@ -33,7 +34,7 @@ struct BroadcastOptions {
 };
 
 struct BarrierOptions {
-  std::vector<int> place_ids;
+  int8_t device_id;
 };
 
 struct ReduceOptions {

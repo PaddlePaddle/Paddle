@@ -762,7 +762,7 @@ class Transformer(Layer):
             return probs
 
         def gather(input, indices, batch_pos):
-            topk_coordinates = fluid.layers.stack([batch_pos, indices], axis=2)
+            topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
             return layers.gather_nd(input, topk_coordinates)
 
         # run encoder
@@ -856,12 +856,8 @@ class Transformer(Layer):
             topk_scores, topk_indices = fluid.layers.topk(
                 input=scores, k=beam_size
             )
-            beam_indices = fluid.layers.elementwise_floordiv(
-                topk_indices, vocab_size_tensor
-            )
-            token_indices = fluid.layers.elementwise_mod(
-                topk_indices, vocab_size_tensor
-            )
+            beam_indices = paddle.floor_divide(topk_indices, vocab_size_tensor)
+            token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
 
             # update states
             caches = map_structure(
