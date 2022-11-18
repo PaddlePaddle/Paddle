@@ -639,7 +639,7 @@ class DataParallelOptimizationPass(PassBase):
                 post_var,
                 self.dist_context,
                 OpRole.Backward,
-                process_mesh=None,
+                process_mesh=[-1], # hack to avoid initialize the dist attr for coalesc var
                 is_recompute=False,
                 sync=False,
             )
