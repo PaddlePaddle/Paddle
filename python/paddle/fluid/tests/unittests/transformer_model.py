@@ -18,6 +18,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import paddle
 
 pos_enc_param_names = (
     "src_pos_enc_table",
@@ -161,7 +162,7 @@ def multi_head_attention(
             sum_out = layers.reduce_sum(exp_out, dim=-1, keep_dim=False)
             return layers.elementwise_div(x=exp_out, y=sum_out, axis=0)
 
-        scaled_q = layers.scale(x=q, scale=d_model**-0.5)
+        scaled_q = paddle.scale(x=q, scale=d_model**-0.5)
         product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
         weights = __softmax(layers.elementwise_add(x=product, y=attn_bias))
         if dropout_rate:

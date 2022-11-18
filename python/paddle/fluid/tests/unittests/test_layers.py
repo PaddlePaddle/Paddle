@@ -3653,7 +3653,7 @@ class TestBook(LayerTest):
                 dtype='float32',
                 append_batch_size=False,
             )
-            out = layers.scale(input, scale=scale_var)
+            out = paddle.scale(input, scale=scale_var)
             return out
 
     def make_iou_similarity(self):
