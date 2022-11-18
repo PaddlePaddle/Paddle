@@ -4679,17 +4679,6 @@ class TestBook(LayerTest):
             )
             return output
 
-    def test_edit_distance(self):
-        with self.static_graph():
-            predict = layers.data(
-                name='predict', shape=[-1, 1], dtype='int64', lod_level=1
-            )
-            label = layers.data(
-                name='label', shape=[-1, 1], dtype='int64', lod_level=1
-            )
-            evaluator = fluid.evaluator.EditDistance(predict, label)
-            return evaluator.metrics
-
     def test_basic_gru(self):
         input_size = 128
         hidden_size = 256
