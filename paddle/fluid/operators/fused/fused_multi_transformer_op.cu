@@ -205,7 +205,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     auto ffn2_linear_bias_residual = CublasFusedMLP<T>(dev_ctx);
     ffn2_linear_bias_residual.Setup(
-        ffn1_out.dims(), ffn2_weights[1]->dims(), false, false);
+        ffn1_out.dims(), ffn2_weights[0]->dims(), false, false);
 
     // 9. ffn2 residual bias
     DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
