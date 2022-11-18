@@ -120,8 +120,11 @@ class TestExpandAsDygraphAPI(unittest.TestCase):
 # Test python API
 class TestExpandAsAPI(unittest.TestCase):
     def test_api(self):
-        np_data_x = np.array([1, 2, 3]).astype('int32')
-        np_data_y = np.array([[1, 2, 3], [1, 2, 3]]).astype('int32')
+        np_data_x = np.array([1, 2, 3, 4]).astype('int32')
+        np_data_y = np.array(
+            [[1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]
+        ).astype('int32')
+
         data_x = paddle.to_tensor(np_data_x)
         data_y = paddle.to_tensor(np_data_y)
 
