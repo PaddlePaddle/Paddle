@@ -1,5 +1,4 @@
 include(operators)
-include_directories(/zhoukangkang/2022-04-28inference_try/cutlass/include)
 if(WITH_UNITY_BUILD)
   # Load Unity Build rules for operators in paddle/fluid/operators/fused.
   include(unity_build_rule.cmake)
