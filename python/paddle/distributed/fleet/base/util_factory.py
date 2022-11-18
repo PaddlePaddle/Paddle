@@ -496,7 +496,7 @@ class UtilBase:
                 inference_program,
                 feed_target_names,
                 fetch_targets,
-            ) = paddle.static.load_inference_model(
+            ) = paddle.fluid.io.load_inference_model(
                 config.dump_model_dir,
                 exe,
                 model_filename=model_filename,
@@ -669,7 +669,9 @@ class UtilBase:
                     )
                     for i in range(len(feed_config.feeded_vars_names))
                 ]
-                feeder = paddle.fluid.DataFeeder(feed_list=feed_vars, place=place)
+                feeder = paddle.fluid.DataFeeder(
+                    feed_list=feed_vars, place=place
+                )
                 batch_feed = feed_gen(
                     config.batch_size,
                     feed_config.feeded_vars_dims,
