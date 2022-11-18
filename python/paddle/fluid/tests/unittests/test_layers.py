@@ -3233,7 +3233,7 @@ class TestBook(LayerTest):
             dat = self._get_data(name='data', shape=[10], dtype='float32')
             lbl = self._get_data(name='label', shape=[10], dtype='float32')
             ignore_index = -1
-            return layers.sigmoid_cross_entropy_with_logits(
+            return paddle.nn.functional.sigmoid_cross_entropy_with_logits(
                 x=dat, label=lbl, ignore_index=ignore_index
             )
 

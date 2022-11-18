@@ -57,7 +57,7 @@ class TestBase(IPUOpTest):
         label = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
         )
-        out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
+        out = paddle.nn.functional.sigmoid_cross_entropy_with_logits(
             x, label, **self.attrs
         )
         self.fetch_list = [out.name]

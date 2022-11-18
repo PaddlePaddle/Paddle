@@ -88,6 +88,7 @@ from .loss import sigmoid_focal_loss  # noqa: F401
 from .loss import smooth_l1_loss  # noqa: F401
 from .loss import softmax_with_cross_entropy  # noqa: F401
 from .loss import margin_cross_entropy  # noqa: F401
+from .loss import sigmoid_cross_entropy_with_logits
 from .loss import square_error_cost  # noqa: F401
 from .loss import ctc_loss  # noqa: F401
 from .loss import hinge_embedding_loss  # noqa: F401
@@ -244,4 +245,5 @@ __all__ = [  # noqa
     'triplet_margin_loss',
     'multi_margin_loss',
     'soft_margin_loss',
+    'sigmoid_cross_entropy_with_logits',
 ]
