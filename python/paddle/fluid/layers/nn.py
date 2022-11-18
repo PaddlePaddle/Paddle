@@ -178,7 +178,6 @@ __all__ = [
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
     'shuffle_channel',
-    'temporal_shift',
     'py_func',
     'psroi_pool',
     'prroi_pool',
@@ -13626,45 +13625,6 @@ def shuffle_channel(x, group, name=None):
         attrs={"group": group},
     )
     return out
-
-
-@templatedoc()
-def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
-    """
-
-    **Temporal Shift Operator**
-
-    ${comment}
-
-    Args:
-        x(Tensor): ${x_comment}
-        seg_num(int): ${seg_num_comment}
-        shift_ratio(float): ${shift_ratio_comment}
-        name(str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
-        data_format(str, optional): Data format that specifies the layout of input.
-            It can be "NCHW" or "NHWC". Default: "NCHW".
-
-    Returns:
-        out(Tensor): The temporal shifting result is a tensor with the
-        same shape and same data type as the input.
-
-    Raises:
-        TypeError: seg_num must be int type.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            input = paddle.randn([6, 4, 2, 2])
-            out = F.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
-    """
-    return paddle.nn.functional.temporal_shift(
-        x, seg_num, shift_ratio, name, data_format
-    )
 
 
 class PyFuncRegistry:
