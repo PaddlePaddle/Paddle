@@ -614,7 +614,7 @@ class TestLayer(LayerTest):
             t6 = layers.data(name='t6', shape=[3, 3], dtype='float32')
 
             ret = layers.elementwise_add(t, t2)
-            ret = paddle.pow(ret, t3)
+            ret = layers.elementwise_pow(ret, t3)
             ret = layers.elementwise_div(ret, t4)
             ret = layers.elementwise_sub(ret, t5)
             ret = layers.elementwise_mul(ret, t6)
@@ -627,14 +627,14 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 ret = layers.elementwise_add(to_variable(n), to_variable(n2))
-                ret = paddle.pow(ret, to_variable(n3))
+                ret = layers.elementwise_pow(ret, to_variable(n3))
                 ret = layers.elementwise_div(ret, to_variable(n4))
                 ret = layers.elementwise_sub(ret, to_variable(n5))
                 dy_eager_ret = layers.elementwise_mul(ret, to_variable(n6))
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
             ret = layers.elementwise_add(to_variable(n), to_variable(n2))
-            ret = paddle.pow(ret, to_variable(n3))
+            ret = layers.elementwise_pow(ret, to_variable(n3))
             ret = layers.elementwise_div(ret, to_variable(n4))
             ret = layers.elementwise_sub(ret, to_variable(n5))
             dy_ret = layers.elementwise_mul(ret, to_variable(n6))
@@ -1312,7 +1312,7 @@ class TestLayer(LayerTest):
 
             embs = layers.concat(input=embs, axis=1)
             wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
-            nce_loss = layers.nce(
+            nce_loss = paddle.static.nn.nce(
                 input=embs,
                 label=wl,
                 num_total_classes=dict_size,
@@ -3381,7 +3381,7 @@ class TestBook(LayerTest):
             embs.append(emb)
 
         embs = layers.concat(input=embs, axis=1)
-        loss = layers.nce(
+        loss = paddle.static.nn.nce(
             input=embs,
             label=words[label_word],
             num_total_classes=dict_size,
@@ -3687,6 +3687,14 @@ class TestBook(LayerTest):
                 param_attr=ParamAttr(initializer=Constant(1.0)),
                 name='prelu',
             )
+            return out
+
+    def make_soft_relu(self):
+        with program_guard(
+            fluid.default_main_program(), fluid.default_startup_program()
+        ):
+            input = self._get_data(name="input", shape=[16], dtype="float32")
+            out = layers.soft_relu(input, threshold=30.0, name='soft_relu')
             return out
 
     def make_sigmoid(self):
@@ -4744,7 +4752,7 @@ class TestBook(LayerTest):
             predict = layers.data(
                 name='predict', shape=[4, 4, 8], dtype='float32'
             )
-            output = layers.warpctc(
+            output = paddle.nn.functional.warpctc(
                 input=predict,
                 label=label,
                 input_length=input_length,

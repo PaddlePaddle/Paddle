@@ -1353,7 +1353,7 @@ class TestRemoteNce(TestDistLookupTableBase):
             )
         )
 
-        cost = fluid.layers.nce(
+        cost = paddle.static.nn.nce(
             input=input,
             label=label,
             num_total_classes=num_total_classes,

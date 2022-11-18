@@ -214,7 +214,7 @@ def python_api(
     blank=0,
     norm_by_times=False,
 ):
-    return paddle.fluid.layers.warpctc(
+    return paddle.nn.functional.warpctc(
         logits, label, blank, norm_by_times, logits_length, labels_length
     )
 
@@ -539,7 +539,7 @@ class TestWarpCTCOpError(unittest.TestCase):
 
             def test_logits_Variable():
                 logits_data = np.random.rand(5, 16, 6).astype(logits.dtype)
-                fluid.layers.warpctc(
+                paddle.nn.functional.warpctc(
                     input=logits_data,
                     label=label,
                     input_length=logits_length,
@@ -550,7 +550,7 @@ class TestWarpCTCOpError(unittest.TestCase):
 
             def test_label_Variable():
                 label_data = np.random.randint(0, 5, [5, 1]).astype("int32")
-                fluid.layers.warpctc(
+                paddle.nn.functional.warpctc(
                     input=logits,
                     label=label_data,
                     input_length=logits_length,
@@ -561,7 +561,7 @@ class TestWarpCTCOpError(unittest.TestCase):
 
             def test_logits_len_Variable():
                 logits_length_data = np.array([5] * 16).astype("int64")
-                fluid.layers.warpctc(
+                paddle.nn.functional.warpctc(
                     input=logits,
                     label=label,
                     input_length=logits_length_data,
@@ -572,7 +572,7 @@ class TestWarpCTCOpError(unittest.TestCase):
 
             def test_label_len_Variable():
                 label_length_data = np.array([3] * 16).astype("int64")
-                fluid.layers.warpctc(
+                paddle.nn.functional.warpctc(
                     input=logits,
                     label=label,
                     input_length=logits_length,
@@ -590,7 +590,7 @@ class TestWarpCTCOpError(unittest.TestCase):
             softmax = paddle.to_tensor(logits)
             labels = paddle.to_tensor(labels)
 
-            fluid.layers.warpctc(input=softmax, label=labels)
+            paddle.nn.functional.warpctc(input=softmax, label=labels)
 
         paddle.disable_static()
         self.assertRaises(ValueError, test_dygraph_with_lod)
