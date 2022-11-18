@@ -586,10 +586,6 @@ class DataParallelOptimizationPass(PassBase):
                 if var_name in not_sync_coalesces:
                     prior_allreduce_deps[var_name][1] = out_name
                     not_sync_coalesces.remove(var_name)
-        print(str(block))
-        for var in not_sync_coalesces:
-            var_name = vars_to_coalesce_map.get(var, None)
-            print(var_name, var_name in not_sync_coalesces)
         assert (
             len(not_sync_coalesces) == 0
         ), "Unexception: {} has NOT been add prior Dep before allreduce.".format(
@@ -628,9 +624,13 @@ class DataParallelOptimizationPass(PassBase):
         )
 
         # Update program IR insert dependencise op
-        dep_var_pairs = list(
-            set(prior_allreduce_deps.values()) + set(post_allreduce_deps.values())
-        )
+        dep_var_pairs = []
+        for deps in [prior_allreduce_deps, post_allreduce_deps]:
+            for pair in deps.values():
+                dep_var_pairs.append(pair)
+        print("###########"*6)
+        print(dep_var_pairs)
+        print("###########"*6)
         dep_var_pairs.sort(key=lambda x: x[0], reversed=True)
         for idx, prior_name, post_name in dep_var_pairs:
             prior_var = block.var(prior_name)
