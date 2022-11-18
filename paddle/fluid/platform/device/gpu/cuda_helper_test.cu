@@ -303,7 +303,7 @@ void TestReduce(size_t num, float atol = 0.01) {
 #endif
 }
 
-TEST(phi::backends::gpu::CudaShuffleSync, float16) {
+TEST(CudaShuffleSync, float16) {
   TestReduce<float>(10);
   TestReduce<float>(1000);
 
