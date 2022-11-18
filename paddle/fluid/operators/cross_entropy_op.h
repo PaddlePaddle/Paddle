@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -190,7 +190,7 @@ struct HardLabelCrossEntropyForwardFunctor {
                      label);
 
       auto match_x = x_[idx * feature_size_ + label];
-      y_[idx] = -math::TolerableValue<T>()(real_log(match_x));
+      y_[idx] = -math::TolerableValue<T>()(phi::funcs::real_log(match_x));
       match_x_[idx] = match_x;
     } else {
       y_[idx] = 0;
