@@ -14,11 +14,11 @@
 
 #include "paddle/fluid/operators/one_hot_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
-using platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename InT, typename OutT>
 __global__ void FillOutputKernel(const InT* p_in_data,

@@ -28,8 +28,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 #define FINAL_MASK 0xffffffff
 #ifdef __HIPCC__
@@ -713,7 +713,7 @@ __device__ void RadixCountUsingMask(const T* input,
   if (GetLaneId() == 0) {
 #pragma unroll
     for (uint32_t i = 0; i < RadixSize; ++i) {
-      platform::CudaAtomicAdd(&shared_mem[i], counts[i]);
+      phi::CudaAtomicAdd(&shared_mem[i], counts[i]);
     }
   }
 
