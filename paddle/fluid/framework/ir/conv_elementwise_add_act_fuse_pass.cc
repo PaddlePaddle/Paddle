@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv_elementwise_add_act_fuse_pass.h"
-
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -135,16 +135,25 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "Pass in op compat failed.";
-      return;
-    }
+    // if (!IsCompat(subgraph, g)) {
+    //   LOG(WARNING) << "Pass in op compat failed.";
+    //   return;
+    // }
     GET_NODES;
 
     auto base_op_desc = *conv_op->Op()->Proto();
     std::string bias_name = elementwise_add_in_y->Name();
     std::string act_op_type = act_op->Op()->Type();
     std::string act_op_out = act_out->Name();
+auto *scope = param_scope();
+        auto *filter_var = scope->FindLocalVar(conv_filter->Name());
+        auto *filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
+        if((filter_tensor->dims()[0] % 8 != 0) || (filter_tensor->dims()[1] % 8 != 0))
+        {
+             return ;
+        }
+       
+
 
     auto new_op_proto =
         PrepareOpDesc(base_op_desc, bias_name, act_op_type, act_op_out);

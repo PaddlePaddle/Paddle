@@ -17,8 +17,12 @@
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
 #include "cutlass/conv/kernel/default_conv2d_fprop.h"
 #include "cutlass/cutlass.h"
+#include "conv2d_all.h"
 #include "conv2d_util.h"
+#include <iostream>
 
+namespace phi {
+  namespace fusion {
 
 template <typename TShape, typename WShape>
 cutlass::Status cutlass_nhwc_conv2d_bias(COMMON_CONV_PARAMS) {
@@ -181,18 +185,7 @@ cutlass::Status (*cutlass_conv2d_bias_all_func[N])(const half *,
 std::map<std::vector<int>,   int> map_problem_conv2d_bias;
 
 void cutlass_conv2d_bias(COMMON_CONV_PARAMS) {
-  std::vector<int> problem_size;
-  problem_size.push_back(batch);
-  problem_size.push_back(ic);
-  problem_size.push_back(ih);
-  problem_size.push_back(iw);
-  problem_size.push_back(kh);
-  problem_size.push_back(kw);
-  problem_size.push_back(oc);
-  problem_size.push_back(pad_h);
-  problem_size.push_back(pad_w);
-  problem_size.push_back(stride_h);
-  problem_size.push_back(stride_w);
+  std::vector<int> problem_size = {batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, stride_h, stride_w};
 
  if (map_problem_conv2d_bias.count(problem_size)) {
     cutlass_conv2d_bias_all_func[map_problem_conv2d_bias.at(problem_size)](COMMON_CONV_ARGS);
@@ -202,7 +195,7 @@ void cutlass_conv2d_bias(COMMON_CONV_PARAMS) {
   float min_time = 100000.f;
   for (int i = 0; i < N; i++) {
     auto func = cutlass_conv2d_bias_all_func[i];
-    for (int i = 0; i < WARMUP; i++) {
+    for (int ii = 0; ii < WARMUP; ii++) {
       func(COMMON_CONV_ARGS);
     }
 
@@ -210,7 +203,7 @@ void cutlass_conv2d_bias(COMMON_CONV_PARAMS) {
     cudaEventCreate(&beg);
     cudaEventCreate(&end);
     cudaEventRecord(beg);
-    for (int i = 0; i < REPEATE; i++) {
+    for (int ii = 0; ii < REPEATE; ii++) {
       func(COMMON_CONV_ARGS);
     }
 
@@ -222,5 +215,10 @@ void cutlass_conv2d_bias(COMMON_CONV_PARAMS) {
         min_time = elapsed_time;
         map_problem_conv2d_bias[problem_size] = i;
     }
+    // debug code
+    std::cout << conv2d_diff_gpu(COMMON_CONV_ARGS, nullptr, "conv2d_bias") << std::endl;
   }
 }
+
+  } // namespace fusion
+}// namespace phi

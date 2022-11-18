@@ -100,7 +100,9 @@ file(
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
-  "fusion/gpu/*.cu")
+  "fusion/gpu/*.cu"
+  "fusion/cutlass/conv2d/*.cu"
+  "fusion/cutlass/*.cu")
 include_directories(/zhoukangkang/2022-04-28inference_try/cutlass/include)
 if(WITH_MKLDNN)
   file(

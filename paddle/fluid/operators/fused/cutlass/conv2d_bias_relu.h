@@ -20,20 +20,8 @@
 #include "cutlass/cutlass.h"
 
 
-#define CONV_PARAMS0               \
-const half *input,  const half *weight,\
-const half *bias, half *output,\
-int batch, int ic, int ih, int iw,\
-int kh, int kw, int oc, int pad_h, int pad_w,\
-int stride_h, int stride_w
-
-#define CONV_ARGS0                                                         \
-  input, weight, bias, output, batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, \
-      stride_h, stride_w
-
-
-template <typename TShape, typename WShape>
-cutlass::Status cutlass_nhwc_conv2d_bias_relu(CONV_PARAMS0) {
+template <typename TShape, typename WShape, int aligment = 8>
+cutlass::Status cutlass_nhwc_conv2d_bias_relu(COMMON_CONV_PARAMS) {
   using ElementAccumulator = float;
   using ElementComputeEpilogue = float;
   using ElementInputA = cutlass::half_t;
@@ -77,8 +65,8 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu(CONV_PARAMS0) {
       cutlass::arch::OpMultiplyAdd,
       IteratorAlgorithm,
       cutlass::conv::StrideSupport::kStrided,
-      8,
-      8>::Kernel;
+      aligment,
+      aligment>::Kernel;
   using ImplicitGemm =
       cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
 
@@ -120,39 +108,39 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu(CONV_PARAMS0) {
 // config 1
 template cutlass::Status 
 cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 64, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
-(CONV_PARAMS0);
+(COMMON_CONV_PARAMS);
 // config 2
 template cutlass::Status 
 cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 32, 64>, cutlass::gemm::GemmShape<32, 32, 64>> 
-(CONV_PARAMS0);
+(COMMON_CONV_PARAMS);
 // config 3
 template cutlass::Status 
 cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<128, 32, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
-(CONV_PARAMS0);
+(COMMON_CONV_PARAMS);
 // config 4
 template cutlass::Status 
 cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<128, 64, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
-(CONV_PARAMS0);
+(COMMON_CONV_PARAMS);
 // config 5
 template cutlass::Status 
 cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 64, 32>, cutlass::gemm::GemmShape<32, 32, 32>> 
-(CONV_PARAMS0);
+(COMMON_CONV_PARAMS);
 // config6
 template cutlass::Status 
 cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 128, 32>, cutlass::gemm::GemmShape<32, 64, 32>>
-(CONV_PARAMS0);
+(COMMON_CONV_PARAMS);
 // config 7
 template cutlass::Status
 cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 128, 64>, cutlass::gemm::GemmShape<64, 64, 32>>
-(CONV_PARAMS0);
+(COMMON_CONV_PARAMS);
 // config 8
 template cutlass::Status
 cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<64, 256, 32>, cutlass::gemm::GemmShape<64, 64, 32>>
-(CONV_PARAMS0);
+(COMMON_CONV_PARAMS);
 // config 9
 template cutlass::Status
 cutlass_nhwc_conv2d_bias_relu <cutlass::gemm::GemmShape<128, 64, 32>, cutlass::gemm::GemmShape<64, 32, 32>>
-(CONV_PARAMS0);
+(COMMON_CONV_PARAMS);
 
 #define N 9
 cutlass::Status (*cutlass_conv2d_bias_relu_all_func[N])(const half *,
@@ -182,21 +170,9 @@ cutlass::Status (*cutlass_conv2d_bias_relu_all_func[N])(const half *,
                                                };
 std::map<std::vector<int>,   int> map_problem_conv2d_bias_relu;
 
-void cutlass_conv2d_bias_relu(const half *input,
-                       const half *weight,
-                       const half *bias,
-                       half *output,
-                       int batch,
-                       int ic,
-                       int ih,
-                       int iw,
-                       int kh,
-                       int kw,
-                       int oc,
-                       int pad_h,
-                       int pad_w,
-                       int stride_h,
-                       int stride_w) {
+
+
+void cutlass_conv2d_bias_relu(COMMON_CONV_PARAMS) {
   std::vector<int> problem_size;
   problem_size.push_back(batch);
   problem_size.push_back(ic);
@@ -211,15 +187,19 @@ void cutlass_conv2d_bias_relu(const half *input,
   problem_size.push_back(stride_w);
 
  if (map_problem_conv2d_bias_relu.count(problem_size)) {
-    cutlass_conv2d_bias_relu_all_func[map_problem_conv2d_bias_relu.at(problem_size)](CONV_ARGS0);
+    cutlass_conv2d_bias_relu_all_func[map_problem_conv2d_bias_relu.at(problem_size)](COMMON_CONV_ARGS);
     return;
+ }
+ else {
+   map_problem_conv2d_bias_relu[problem_size] = -1;
  }
   
   float min_time = 100000.f;
   for (int i = 0; i < N; i++) {
+    cutlass::Status status;
     auto func = cutlass_conv2d_bias_relu_all_func[i];
     for (int i = 0; i < WARMUP; i++) {
-      func(CONV_ARGS0);
+      status = func(COMMON_CONV_ARGS);
     }
 
     cudaEvent_t beg, end;
@@ -227,14 +207,14 @@ void cutlass_conv2d_bias_relu(const half *input,
     cudaEventCreate(&end);
     cudaEventRecord(beg);
     for (int i = 0; i < REPEATE; i++) {
-      func(CONV_ARGS0);
+      status = func(COMMON_CONV_ARGS);
     }
 
     cudaEventRecord(end);
     cudaEventSynchronize(end);
     float elapsed_time;
     cudaEventElapsedTime(&elapsed_time, beg, end);
-    if (elapsed_time < min_time) {
+    if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
         min_time = elapsed_time;
         map_problem_conv2d_bias_relu[problem_size] = i;
     }
@@ -270,4 +250,5 @@ void cutlass_conv2d_bias_relu(const half *input,
     // free(cpu_bias);
     // free(output_from_cutlass);
   }
+
 }

@@ -21,9 +21,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn_info.h"
 
-#include "cutlass/conv2d_bias_relu.h"
-#include "cutlass/conv2d_bias_add_relu.h"
-#include "cutlass/conv2d_bias.h"
+// #include "cutlass/conv2d_bias_relu.h"
+// #include "cutlass/conv2d_bias_add_relu.h"
+// #include "cutlass/conv2d_bias.h"
+// #include "cutlass/conv2d_bias_relu_few_channels.h"
+// #include "cutlass/conv2d_bias_silu.h"
 
 DECLARE_int64(cudnn_exhaustive_search_times);
 
@@ -77,47 +79,76 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
   
     int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
     int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
-  
-    if (ctx.Attr<std::string>("data_format") == "NHWC" && ic % 8 == 0 && oc % 8 ==0) {
-      if (residual)
-      {
-        cutlass_conv2d_bias_add_relu(
-          (const half*)(input->data<T>()),
-          (const half*)(filter->data<T>()),
-          (const half*)(bias->data<T>()),
-          (const half*)(residual->data<T>()),
-          (half*)(output->data<T>()),
-          batch,
-          ic, ih, iw,
-          kh,kw,oc,pad_h,pad_w,stride_h,stride_w
-        );
-      }
-      else if(activation == "relu")
-      {
-        cutlass_conv2d_bias_relu(
-          (const half*)(input->data<T>()),
-          (const half*)(filter->data<T>()),
-          (const half*)(bias->data<T>()),
-          (half*)(output->data<T>()),
-          batch,
-          ic, ih, iw,
-          kh,kw,oc,pad_h,pad_w,stride_h,stride_w
-        );
-      }
-      else
-      {
-        cutlass_conv2d_bias(
-          (const half*)(input->data<T>()),
-          (const half*)(filter->data<T>()),
-          (const half*)(bias->data<T>()),
-          (half*)(output->data<T>()),
-          batch,
-          ic, ih, iw,
-          kh,kw,oc,pad_h,pad_w,stride_h,stride_w
-        );
-      }
-        return;   
-    }
+
+    // if (ctx.Attr<std::string>("data_format") == "NHWC") {
+
+    //   if (residual)
+    //   {
+    //     cutlass_conv2d_bias_add_relu(
+    //       (const half*)(input->data<T>()),
+    //       (const half*)(filter->data<T>()),
+    //       (const half*)(bias->data<T>()),
+    //       (const half*)(residual->data<T>()),
+    //       (half*)(output->data<T>()),
+    //       batch,
+    //       ic, ih, iw,
+    //       kh,kw,oc,pad_h,pad_w,stride_h,stride_w
+    //     );
+    //   }
+    //   else if(activation == "relu") {
+    //     if (ic >= 8)
+    //     {
+
+    //       cutlass_conv2d_bias_relu(
+    //         (const half*)(input->data<T>()),
+    //         (const half*)(filter->data<T>()),
+    //         (const half*)(bias->data<T>()),
+    //         (half*)(output->data<T>()),
+    //         batch,
+    //         ic, ih, iw,
+    //         kh,kw,oc,pad_h,pad_w,stride_h,stride_w
+    //       );
+
+
+    //     }
+    //     else
+    //     {
+    //       cutlass_conv2d_bias_relu_few_channels(
+    //         (const half*)(input->data<T>()),
+    //         (const half*)(filter->data<T>()),
+    //         (const half*)(bias->data<T>()),
+    //         (half*)(output->data<T>()),
+    //         batch,
+    //         ic, ih, iw,
+    //         kh,kw,oc,pad_h,pad_w,stride_h,stride_w
+    //       );
+
+
+    //     }
+    //   } else if(activation == "swish") {
+    //     cutlass_conv2d_bias_silu(
+    //       (const half*)(input->data<T>()),
+    //       (const half*)(filter->data<T>()),
+    //       (const half*)(bias->data<T>()),
+    //       (half*)(output->data<T>()),
+    //       batch,
+    //       ic, ih, iw,
+    //       kh,kw,oc,pad_h,pad_w,stride_h,stride_w
+    //     );
+
+    //   } else {
+    //     cutlass_conv2d_bias(
+    //       (const half*)(input->data<T>()),
+    //       (const half*)(filter->data<T>()),
+    //       (const half*)(bias->data<T>()),
+    //       (half*)(output->data<T>()),
+    //       batch,
+    //       ic, ih, iw,
+    //       kh,kw,oc,pad_h,pad_w,stride_h,stride_w
+    //     );
+    //   }
+    //     return;   
+    // }
 
     int groups = ctx.Attr<int>("groups");
     int64_t user_workspace_size =

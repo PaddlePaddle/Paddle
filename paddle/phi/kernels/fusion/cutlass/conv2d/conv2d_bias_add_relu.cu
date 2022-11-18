@@ -17,23 +17,14 @@
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
 #include "cutlass/conv/kernel/default_conv2d_fprop_with_broadcast.h"
 #include "cutlass/cutlass.h"
+#include "conv2d_all.h"
 #include "conv2d_util.h"
 
-#define CONV_PARAMS1                                                         \
-const half *input,  const half *weight,\
-const half *bias, const half *residual, half *output,\
-int batch, int ic, int ih, int iw,\
-int kh, int kw, int oc, int pad_h, int pad_w,\
-int stride_h, int stride_w
-
-
-#define CONV_ARGS1                                                         \
-  input, weight, bias, residual, output, batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, \
-      stride_h, stride_w
-
+namespace phi {
+  namespace fusion {
 
 template <typename TShape, typename WShape>
-cutlass::Status cutlass_nhwc_conv2d_bias_add_relu(CONV_PARAMS1) {
+cutlass::Status cutlass_nhwc_conv2d_bias_add_relu(CONV_RESIDUAL_PARAMS) {
 
   using EpilogueOp = cutlass::epilogue::thread::LinearCombinationResidualBlock<
                cutlass::half_t,
@@ -97,55 +88,55 @@ cutlass::Status cutlass_nhwc_conv2d_bias_add_relu(CONV_PARAMS1) {
 // config 1
 template cutlass::Status 
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<64, 64, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 // config 2
 template cutlass::Status 
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<64, 32, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 // config 3
 template cutlass::Status 
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<128, 32, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 // config 4
 template cutlass::Status 
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<128, 64, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 // config 5
 template cutlass::Status 
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<64, 64, 32>, cutlass::gemm::GemmShape<32, 32, 32>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 // config 6
 template cutlass::Status
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<64, 128, 32>, cutlass::gemm::GemmShape<32, 64, 32>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 // config 7
 template cutlass::Status
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<64, 128, 64>, cutlass::gemm::GemmShape<64, 64, 32>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 // config 8
 template cutlass::Status
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<64, 256, 32>, cutlass::gemm::GemmShape<64, 64, 32>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 // config 9
 template cutlass::Status
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<128, 64, 32>, cutlass::gemm::GemmShape<64, 32, 32>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 // config 10
 template cutlass::Status
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<128, 128, 32>, cutlass::gemm::GemmShape<64, 64, 32>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 // config 11
 template cutlass::Status
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<128, 256, 32>, cutlass::gemm::GemmShape<64, 64, 32>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 // config 12
 template cutlass::Status
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<256, 64, 32>, cutlass::gemm::GemmShape<64, 64, 32>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 // config 13
 template cutlass::Status
 cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<256, 128, 32>, cutlass::gemm::GemmShape<64, 64, 32>>
-(CONV_PARAMS1);
+(CONV_RESIDUAL_PARAMS);
 
 
 
@@ -184,22 +175,11 @@ cutlass_nhwc_conv2d_bias_add_relu <cutlass::gemm::GemmShape<256, 128, 32>, cutla
                                                };
 std::map<std::vector<int>,   int> map_problem_conv2d_bias_add_relu;
 
-void cutlass_conv2d_bias_add_relu(CONV_PARAMS1) {
-  std::vector<int> problem_size;
-  problem_size.push_back(batch);
-  problem_size.push_back(ic);
-  problem_size.push_back(ih);
-  problem_size.push_back(iw);
-  problem_size.push_back(kh);
-  problem_size.push_back(kw);
-  problem_size.push_back(oc);
-  problem_size.push_back(pad_h);
-  problem_size.push_back(pad_w);
-  problem_size.push_back(stride_h);
-  problem_size.push_back(stride_w);
+void cutlass_conv2d_bias_add_relu(CONV_RESIDUAL_PARAMS) {
+  std::vector<int> problem_size = {batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, stride_h, stride_w};
 
  if (map_problem_conv2d_bias_add_relu.count(problem_size)) {
-    cutlass_conv2d_bias_add_relu_all_func[map_problem_conv2d_bias_add_relu.at(problem_size)](CONV_ARGS1);
+    cutlass_conv2d_bias_add_relu_all_func[map_problem_conv2d_bias_add_relu.at(problem_size)](CONV_RESIDUAL_ARGS);
     return;
  }
 
@@ -210,7 +190,7 @@ void cutlass_conv2d_bias_add_relu(CONV_PARAMS1) {
       continue;
     auto func = cutlass_conv2d_bias_add_relu_all_func[i];
     for (int i = 0; i < WARMUP; i++) {
-      func(CONV_ARGS1);
+      func(CONV_RESIDUAL_ARGS);
     }
 
     cudaEvent_t beg, end;
@@ -218,7 +198,7 @@ void cutlass_conv2d_bias_add_relu(CONV_PARAMS1) {
     cudaEventCreate(&end);
     cudaEventRecord(beg);
     for (int i = 0; i < REPEATE; i++) {
-      func(CONV_ARGS1);
+      func(CONV_RESIDUAL_ARGS);
     }
 
     cudaEventRecord(end);
@@ -231,43 +211,10 @@ void cutlass_conv2d_bias_add_relu(CONV_PARAMS1) {
     }
 
     // debug code
-    // half *cpu_input, *cpu_weight, *cpu_bias, *cpu_residual;
-    // float *cpu_output;
-    // half *output_from_cutlass;
-    
-    // int input_size = batch * ic * ih * iw;
-    // int weight_size = oc * ic * kh * kw;
-    // int oh = (ih + pad_h * 2 - kh) / stride_h + 1;
-    // int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
+    std::cout << conv2d_diff_gpu(COMMON_CONV_ARGS, residual, "conv2d_bias_add_relu") << std::endl;
 
-    // int output_size = batch * oc * oh * ow;
-    // cpu_input = (half*)malloc(sizeof(half) * input_size);
-    // cpu_weight = (half*) malloc(sizeof(half) * weight_size);
-    // cpu_bias = (half*) malloc(sizeof(half) * oc);
-    // cpu_residual = (half*) malloc(sizeof(half) * output_size);
-    // cudaMemcpy(cpu_input, input, input_size * sizeof(half), cudaMemcpyDeviceToHost);
-    // cudaMemcpy(cpu_weight, weight, weight_size * sizeof(half), cudaMemcpyDeviceToHost);
-    // cudaMemcpy(cpu_bias, bias, oc * sizeof(half), cudaMemcpyDeviceToHost);
-    // cudaMemcpy(cpu_residual, residual, output_size * sizeof(half), cudaMemcpyDeviceToHost);
-
-    // cpu_output = (float*) malloc(sizeof(float) * output_size);
-    // output_from_cutlass = (half*)malloc(sizeof(half) * output_size); 
-    // cudaMemcpy(output_from_cutlass, output, output_size * sizeof(half), cudaMemcpyDeviceToHost);
-
-    // naive_conv_cpu(cpu_input, cpu_weight, cpu_bias, cpu_output, batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w,
-    //   stride_h, stride_w, cpu_residual);
-    // std::cout << cpu_output[0] << std::endl;
-    // std::cout << cpu_output[1] << std::endl;
-    // std::cout << __half2float(output_from_cutlass[0]) << std::endl;
-    // std::cout << __half2float(output_from_cutlass[1]) << std::endl;
-
-    // std::cout << "the %d th kernel:" << i << std::endl;
-    // std::cout << "max diff : "  <<  diff(output_from_cutlass, cpu_output, output_size) << std::endl;
-    // free(cpu_input);
-    // free(cpu_weight);
-    // free(cpu_bias);
-    // free(cpu_residual);
-    // free(cpu_output);
-    // free(output_from_cutlass);
   }
 }
+
+  } // namespace fusion
+}// namespace phi

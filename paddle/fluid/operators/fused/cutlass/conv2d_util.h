@@ -2,16 +2,26 @@
 
 #include "cutlass/cutlass.h"
 
-void check(cutlass::Status status) {
-  if (status != cutlass::Status::kSuccess) {
-    printf("cutlass can not deal with this problem size\n");
-  }
-}
+
+#define check(status) \
+if (status != cutlass::Status::kSuccess) {\
+    printf("cutlass can not deal with this problem size\n");\
+    return status;\
+  }\
 
 #define WARMUP 10
 #define REPEATE 100
 
+#define COMMON_CONV_PARAMS             \
+const half *input,  const half *weight,\
+const half *bias, half *output,\
+int batch, int ic, int ih, int iw,\
+int kh, int kw, int oc, int pad_h, int pad_w,\
+int stride_h, int stride_w
 
+#define COMMON_CONV_ARGS                                                       \
+  input, weight, bias, output, batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, \
+      stride_h, stride_w
 
 struct logical_struct {
   int n;

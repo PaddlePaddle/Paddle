@@ -340,3 +340,12 @@ REGISTER_OPERATOR(
     ops::ConvOpInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+// this op is used by cutlass
+REGISTER_OPERATOR(
+    conv2d_fusion_cutlass,
+    ops::Conv2DFusionOp,
+    ops::Conv2DFusionOpMaker,
+    ops::ConvOpInferVarType,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
