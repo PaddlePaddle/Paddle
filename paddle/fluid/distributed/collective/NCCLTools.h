@@ -47,7 +47,7 @@
 namespace paddle {
 namespace distributed {
 
-#define NCCLCHECK(cmd)                                  \
+#define NCCL_CHECK(cmd)                                 \
   do {                                                  \
     ncclResult_t r = cmd;                               \
     if (r != ncclSuccess) {                             \
@@ -60,6 +60,7 @@ namespace distributed {
   } while (0)
 
 ncclRedOp_t ToNCCLRedType(ReduceOp reduction);
+
 std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID);
 
 }  // namespace distributed

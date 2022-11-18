@@ -344,7 +344,7 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-dnnl::memory::desc DenseTensor::mem_desc() const { return mem_desc_; }
+const dnnl::memory::desc& DenseTensor::mem_desc() const { return mem_desc_; }
 #endif
 
 // NOTE: For historical reasons, this interface has a special behavior,

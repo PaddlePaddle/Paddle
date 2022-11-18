@@ -379,7 +379,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
                 lambda: fluid.layers.cond(
                     a == b,
                     lambda: fluid.layers.elementwise_sub(a, b),
-                    lambda: fluid.layers.elementwise_pow(a, b),
+                    lambda: paddle.pow(a, b),
                 ),
             )
             append_backward(out)
