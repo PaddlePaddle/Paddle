@@ -411,8 +411,6 @@ class DataParallelOptimizationPass(PassBase):
         def collect_group(cur_group, grad_var, ring_id, i):
             if len(cur_group.gradients) == 0:
                 cur_group = None
-            elif len(cur_group.gradients) == 1:
-                grouped_grad_names.remove(cur_group.gradients[0].name)
             else:
                 cur_group.finalize()
                 grad_groups.append(cur_group)
@@ -457,6 +455,10 @@ class DataParallelOptimizationPass(PassBase):
         remove_op_types = ['scale', 'c_allreduce_sum', 'c_wait_compute']
 
         for i, group in enumerate(grad_groups[::-1]):
+            
+            # skip unfused big tensor
+            if len(group.gradients) <= 1:
+                continue
 
             # create coalecse tensor
             group.coalesce_var = block.create_var(
@@ -485,7 +487,6 @@ class DataParallelOptimizationPass(PassBase):
             ), "should found c_allreduce_sum op but found {}".format(
                 str(allreduce_op)
             )
-            print(str(allreduce_op), allreduce_op.input_arg_names[0], group.coalesce_var.name)
             allreduce_op._rename_input(
                 allreduce_op.input_arg_names[0], group.coalesce_var.name
             )
@@ -584,6 +585,10 @@ class DataParallelOptimizationPass(PassBase):
                 if var_name in not_sync_coalesces:
                     prior_allreduce_deps[var_name][1] = out_name
                     not_sync_coalesces.remove(var_name)
+        print(str(block))
+        for var in not_sync_coalesces:
+            var_name = vars_to_coalesce_map.get(var, None)
+            print(var_name, var_name in not_sync_coalesces)
         assert (
             len(not_sync_coalesces) == 0
         ), "Unexception: {} has NOT been add prior Dep before allreduce.".format(
