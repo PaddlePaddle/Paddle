@@ -137,7 +137,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"is_test",
          ExtraAttrPropertySet(ExtraAttrProperty::ONEDNN) |
              ExtraAttrPropertySet(ExtraAttrProperty::GPUDNN)},
-
 };
 
 inline ExtraAttrPropertySet GetExtraAttrPropertys(

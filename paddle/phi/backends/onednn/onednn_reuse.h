@@ -1632,7 +1632,7 @@ class PoolingOneDNNHandler
 
 static void SetInMemDescWithSqueeze2FuseSupport(
     const OneDNNContext& ctx,
-    DenseTensor& in,
+    DenseTensor* in,
     const dnnl::memory::desc& in_md) {
   const std::vector<int> fused_squeeze2_axes =
       ctx.HasDnnAttr("fused_squeeze2_axes")
@@ -1661,19 +1661,19 @@ static void SetInMemDescWithSqueeze2FuseSupport(
     squeezed_op_tz[j++] = x_vec_dims[i];
   }
 
-  in.set_mem_desc(in_md.reshape(squeezed_op_tz));
-  in.Resize(make_ddim(squeezed_op_tz));
+  in->set_mem_desc(in_md.reshape(squeezed_op_tz));
+  in->Resize(make_ddim(squeezed_op_tz));
 }
 
 static void SetInMemDescWithLogicalLayoutFusesSupport(
     const OneDNNContext& ctx,
-    DenseTensor& in,
+    DenseTensor* in,
     const dnnl::memory::desc& in_md) {
   if (ctx.HasDnnAttr("fused_squeeze2_axes")) {
     SetInMemDescWithSqueeze2FuseSupport(ctx, in, in_md);
   } else {
-    in.set_mem_desc(in_md);
-    in.Resize(make_ddim(in_md.dims()));
+    in->set_mem_desc(in_md);
+    in->Resize(make_ddim(in_md.dims()));
   }
 }
 
@@ -1686,7 +1686,7 @@ static void SetOutMemDescWithUnsqueeze2FuseSupport(
           ? PADDLE_GET_CONST(std::vector<int>,
                              ctx.GetDnnAttr("fused_unsqueeze2_axes"))
           : std::vector<int>();
-  
+
   const std::vector<int64_t>& op_tz = out_md.dims();
   std::vector<int64_t> unsqueezed_op_tz(
       op_tz.size() + fused_unsqueeze2_axes.size(), 0);
@@ -1715,8 +1715,8 @@ static void SetOutMemDescWithReshape2FuseSupport(
           ? PADDLE_GET_CONST(std::vector<int>,
                              ctx.GetDnnAttr("fused_reshape2_shape"))
           : std::vector<int>();
-  std::vector<int64_t> fused_reshape2_shape(
-      fused_reshape2_shape_int.begin(), fused_reshape2_shape_int.end());
+  std::vector<int64_t> fused_reshape2_shape(fused_reshape2_shape_int.begin(),
+                                            fused_reshape2_shape_int.end());
 
   const int out_shape_numel = out->numel();
   const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),

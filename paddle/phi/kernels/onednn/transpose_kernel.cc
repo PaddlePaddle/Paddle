@@ -30,7 +30,7 @@ void TransposeKernel(const Context& dev_ctx,
       errors::PreconditionNotMet("Operator DNNL Transpose must use CPUPlace"));
 
   funcs::SetInMemDescWithLogicalLayoutFusesSupport(
-      dev_ctx, const_cast<DenseTensor&>(x), x.mem_desc());
+      dev_ctx, const_cast<DenseTensor*>(&x), x.mem_desc());
 
   if (axis.size() == 1) {
     paddle::framework::TensorCopy(x, x.place(), out);
