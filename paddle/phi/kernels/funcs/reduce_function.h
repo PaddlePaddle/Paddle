@@ -58,6 +58,7 @@ using dim3 = phi::kps::dim3;
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_utils.h"
 #include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -1332,7 +1333,7 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all) {
-  reduce_all = recompute_reduce_all(x, dims);
+  reduce_all = phi::recompute_reduce_all(input, IntArray(dims));
   dev_ctx.template Alloc<OutT>(output);
 
   if (reduce_all) {
