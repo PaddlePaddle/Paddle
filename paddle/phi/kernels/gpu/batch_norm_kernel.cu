@@ -29,10 +29,10 @@ namespace cub = hipcub;
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/gpu/batch_norm_utils.h"
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
