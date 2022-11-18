@@ -86,29 +86,32 @@ class Softmax(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            paddle.seed(100)
+            paddle.seed(2022)
 
-            mask = np.random.rand(3, 4) < 0.5
-            np_x = np.random.rand(3, 4) * mask
-            # [[0.         0.         0.96823406 0.19722934]
-            #  [0.94373937 0.         0.02060066 0.71456372]
-            #  [0.         0.         0.         0.98275049]]
+            mask = paddle.rand((3, 4)) < 0.7
+            x = paddle.rand((3, 4)) * mask
+            print(x)
+            # Tensor(shape=[3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.08325022, 0.27030438, 0.        , 0.83883715],
+            #         [0.        , 0.95856029, 0.24004589, 0.        ],
+            #         [0.14500992, 0.17088132, 0.        , 0.        ]])
 
-            csr = paddle.to_tensor(np_x).to_sparse_csr()
-            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
-            #        crows=[0, 2, 5, 6],
-            #        cols=[2, 3, 0, 2, 3, 3],
-            #        values=[0.96823406, 0.19722934, 0.94373937, 0.02060066, 0.71456372,
-            #                0.98275049])
+            csr = x.to_sparse_csr()
+            print(csr)
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 3, 5, 7],
+            #        cols=[0, 1, 3, 1, 2, 0, 1],
+            #        values=[0.08325022, 0.27030438, 0.83883715, 0.95856029, 0.24004589,
+            #                0.14500992, 0.17088132])
 
             softmax = paddle.sparse.nn.Softmax()
             out = softmax(csr)
-            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
-            #        crows=[0, 2, 5, 6],
-            #        cols=[2, 3, 0, 2, 3, 3],
-            #        values=[0.68373820, 0.31626180, 0.45610887, 0.18119845, 0.36269269,
-            #                1.        ])
+            print(out)
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 3, 5, 7],
+            #        cols=[0, 1, 3, 1, 2, 0, 1],
+            #        values=[0.23070428, 0.27815846, 0.49113727, 0.67227983, 0.32772022,
+            #                0.49353254, 0.50646752])
     """
 
     def __init__(self, axis=-1, name=None):
