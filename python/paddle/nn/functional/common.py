@@ -720,12 +720,12 @@ def upsample(
     in_d is the depth of the intput tensor.
     and the resizing only applies on the three dimensions(depth, height and width).
 
-    - Supporting resample methods:
-        - 'linear' : Linear interpolation
-        - 'bilinear' : Bilinear interpolation
-        - 'trilinear' : Trilinear interpolation
-        - 'nearest' : Nearest neighbor interpolation
-        - 'bicubic' : Bicubic interpolation
+    Supporting resample methods:
+    - 'linear' : Linear interpolation
+    - 'bilinear' : Bilinear interpolation
+    - 'trilinear' : Trilinear interpolation
+    - 'nearest' : Nearest neighbor interpolation
+    - 'bicubic' : Bicubic interpolation
 
     Linear interpolation is the method of using a line connecting two known quantities
     to determine the value of an unknown quantity between the two known quantities.
