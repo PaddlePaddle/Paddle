@@ -71,8 +71,7 @@ void DepthwiseConv2dTransposeGradKernel(const Context& ctx,
                                         const std::string& data_format,
                                         DenseTensor* dx,
                                         DenseTensor* dfilter) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format);
+  const DataLayout data_layout = phi::StringToDataLayout(data_format);
   DenseTensor filter_ = filter;
 
   if (!dx && !dfilter) {

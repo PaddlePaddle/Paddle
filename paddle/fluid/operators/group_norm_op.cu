@@ -27,7 +27,7 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 enum GroupNormKernelFlags { kHasScale = 1, kHasBias = 2 };
 #define ALIGN_BYTES 16
 
@@ -265,8 +265,7 @@ class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* scale = ctx.Input<phi::DenseTensor>("Scale");
     auto* bias = ctx.Input<phi::DenseTensor>("Bias");
@@ -325,7 +324,7 @@ class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     if (data_layout == DataLayout::kNCHW) {
-      using AccT = typename details::MPTypeTrait<T>::Type;
+      using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
       constexpr int vec_size = sizeof(float4) / sizeof(T);
       int size = group_size * imsize;
       const int max_num_threads = 1024;
@@ -613,8 +612,7 @@ class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Input<phi::DenseTensor>("Y");

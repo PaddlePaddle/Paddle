@@ -26,7 +26,7 @@ framework::OpKernelType DeQuantOp::GetExpectedKernelType(
 
   return framework::OpKernelType(input_data_type,
                                  ctx.GetPlace(),
-                                 framework::DataLayout::kMKLDNN,
+                                 phi::DataLayout::ONEDNN,
                                  framework::LibraryType::kMKLDNN);
 }
 

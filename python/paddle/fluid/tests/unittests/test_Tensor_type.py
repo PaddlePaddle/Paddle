@@ -20,7 +20,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorTypeTest(unittest.TestCase):
-
     def func_type_totensor(self):
         paddle.disable_static()
         inx = np.array([1, 2])

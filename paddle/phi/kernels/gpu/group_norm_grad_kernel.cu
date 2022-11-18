@@ -71,14 +71,14 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
 
   if (flags & kHasScale) {
 #if CUDA_VERSION >= 11070
-    paddle::platform::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
+    phi::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
 #else
     CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
 #endif
   }
   if (flags & kHasBias) {
 #if CUDA_VERSION >= 11070
-    paddle::platform::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
+    phi::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
 #else
     CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
 #endif
@@ -264,8 +264,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_x,
                          DenseTensor* d_scale,
                          DenseTensor* d_bias) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 

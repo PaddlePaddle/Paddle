@@ -21,9 +21,18 @@ from test_anchor_generator_op import anchor_generator_in_python
 import copy
 
 
-def generate_proposals_in_python(scores, bbox_deltas, im_info, anchors,
-                                 variances, pre_nms_topN, post_nms_topN,
-                                 nms_thresh, min_size, eta):
+def generate_proposals_in_python(
+    scores,
+    bbox_deltas,
+    im_info,
+    anchors,
+    variances,
+    pre_nms_topN,
+    post_nms_topN,
+    nms_thresh,
+    min_size,
+    eta,
+):
     all_anchors = anchors.reshape(-1, 4)
     rois = np.empty((0, 5), dtype=np.float32)
     roi_probs = np.empty((0, 1), dtype=np.float32)
@@ -34,9 +43,17 @@ def generate_proposals_in_python(scores, bbox_deltas, im_info, anchors,
     num_images = scores.shape[0]
     for img_idx in range(num_images):
         img_i_boxes, img_i_probs = proposal_for_one_image(
-            im_info[img_idx, :], all_anchors, variances,
-            bbox_deltas[img_idx, :, :, :], scores[img_idx, :, :, :],
-            pre_nms_topN, post_nms_topN, nms_thresh, min_size, eta)
+            im_info[img_idx, :],
+            all_anchors,
+            variances,
+            bbox_deltas[img_idx, :, :, :],
+            scores[img_idx, :, :, :],
+            pre_nms_topN,
+            post_nms_topN,
+            nms_thresh,
+            min_size,
+            eta,
+        )
         rois_num.append(img_i_probs.shape[0])
         rpn_rois.append(img_i_boxes)
         rpn_roi_probs.append(img_i_probs)
@@ -44,9 +61,18 @@ def generate_proposals_in_python(scores, bbox_deltas, im_info, anchors,
     return rpn_rois, rpn_roi_probs, rois_num
 
 
-def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
-                           pre_nms_topN, post_nms_topN, nms_thresh, min_size,
-                           eta):
+def proposal_for_one_image(
+    im_info,
+    all_anchors,
+    variances,
+    bbox_deltas,
+    scores,
+    pre_nms_topN,
+    post_nms_topN,
+    nms_thresh,
+    min_size,
+    eta,
+):
     # Transpose and reshape predicted bbox transformations to get them
     # into the same order as the anchors:
     #   - bbox deltas will be (4 * A, H, W) format from conv output
@@ -94,10 +120,9 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
     # take post_nms_topN (e.g. 1000)
     # return the top proposals
     if nms_thresh > 0:
-        keep = nms(boxes=proposals,
-                   scores=scores,
-                   nms_threshold=nms_thresh,
-                   eta=eta)
+        keep = nms(
+            boxes=proposals, scores=scores, nms_threshold=nms_thresh, eta=eta
+        )
         if post_nms_topN > 0 and post_nms_topN < len(keep):
             keep = keep[:post_nms_topN]
         proposals = proposals[keep, :]
@@ -111,10 +136,10 @@ def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
     Decode proposals by anchors and bbox_deltas from RPN
     """
     offset = 1 if pixel_offset else 0
-    #proposals: xmin, ymin, xmax, ymax
+    # proposals: xmin, ymin, xmax, ymax
     proposals = np.zeros_like(bbox_deltas, dtype=np.float32)
 
-    #anchor_loc: width, height, center_x, center_y
+    # anchor_loc: width, height, center_x, center_y
     anchor_loc = np.zeros_like(bbox_deltas, dtype=np.float32)
 
     anchor_loc[:, 0] = all_anchors[:, 2] - all_anchors[:, 0] + offset
@@ -122,34 +147,52 @@ def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
     anchor_loc[:, 2] = all_anchors[:, 0] + 0.5 * anchor_loc[:, 0]
     anchor_loc[:, 3] = all_anchors[:, 1] + 0.5 * anchor_loc[:, 1]
 
-    #predicted bbox: bbox_center_x, bbox_center_y, bbox_width, bbox_height
+    # predicted bbox: bbox_center_x, bbox_center_y, bbox_width, bbox_height
     pred_bbox = np.zeros_like(bbox_deltas, dtype=np.float32)
     if variances is not None:
         for i in range(bbox_deltas.shape[0]):
-            pred_bbox[i, 0] = variances[i, 0] * bbox_deltas[i, 0] * anchor_loc[
-                i, 0] + anchor_loc[i, 2]
-            pred_bbox[i, 1] = variances[i, 1] * bbox_deltas[i, 1] * anchor_loc[
-                i, 1] + anchor_loc[i, 3]
-            pred_bbox[i, 2] = math.exp(
-                min(variances[i, 2] * bbox_deltas[i, 2], math.log(
-                    1000 / 16.0))) * anchor_loc[i, 0]
-            pred_bbox[i, 3] = math.exp(
-                min(variances[i, 3] * bbox_deltas[i, 3], math.log(
-                    1000 / 16.0))) * anchor_loc[i, 1]
+            pred_bbox[i, 0] = (
+                variances[i, 0] * bbox_deltas[i, 0] * anchor_loc[i, 0]
+                + anchor_loc[i, 2]
+            )
+            pred_bbox[i, 1] = (
+                variances[i, 1] * bbox_deltas[i, 1] * anchor_loc[i, 1]
+                + anchor_loc[i, 3]
+            )
+            pred_bbox[i, 2] = (
+                math.exp(
+                    min(
+                        variances[i, 2] * bbox_deltas[i, 2],
+                        math.log(1000 / 16.0),
+                    )
+                )
+                * anchor_loc[i, 0]
+            )
+            pred_bbox[i, 3] = (
+                math.exp(
+                    min(
+                        variances[i, 3] * bbox_deltas[i, 3],
+                        math.log(1000 / 16.0),
+                    )
+                )
+                * anchor_loc[i, 1]
+            )
     else:
         for i in range(bbox_deltas.shape[0]):
-            pred_bbox[i,
-                      0] = bbox_deltas[i, 0] * anchor_loc[i, 0] + anchor_loc[i,
-                                                                             2]
-            pred_bbox[i,
-                      1] = bbox_deltas[i, 1] * anchor_loc[i, 1] + anchor_loc[i,
-                                                                             3]
-            pred_bbox[i, 2] = math.exp(
-                min(bbox_deltas[i, 2], math.log(1000 / 16.0))) * anchor_loc[i,
-                                                                            0]
-            pred_bbox[i, 3] = math.exp(
-                min(bbox_deltas[i, 3], math.log(1000 / 16.0))) * anchor_loc[i,
-                                                                            1]
+            pred_bbox[i, 0] = (
+                bbox_deltas[i, 0] * anchor_loc[i, 0] + anchor_loc[i, 2]
+            )
+            pred_bbox[i, 1] = (
+                bbox_deltas[i, 1] * anchor_loc[i, 1] + anchor_loc[i, 3]
+            )
+            pred_bbox[i, 2] = (
+                math.exp(min(bbox_deltas[i, 2], math.log(1000 / 16.0)))
+                * anchor_loc[i, 0]
+            )
+            pred_bbox[i, 3] = (
+                math.exp(min(bbox_deltas[i, 3], math.log(1000 / 16.0)))
+                * anchor_loc[i, 1]
+            )
     proposals[:, 0] = pred_bbox[:, 0] - pred_bbox[:, 2] / 2
     proposals[:, 1] = pred_bbox[:, 1] - pred_bbox[:, 3] / 2
     proposals[:, 2] = pred_bbox[:, 0] + pred_bbox[:, 2] / 2 - offset
@@ -161,33 +204,33 @@ def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
 def clip_tiled_boxes(boxes, im_shape, pixel_offset=True):
     """Clip boxes to image boundaries. im_shape is [height, width] and boxes
     has shape (N, 4 * num_tiled_boxes)."""
-    assert boxes.shape[1] % 4 == 0, \
-        'boxes.shape[1] is {:d}, but must be divisible by 4.'.format(
+    assert (
+        boxes.shape[1] % 4 == 0
+    ), 'boxes.shape[1] is {:d}, but must be divisible by 4.'.format(
         boxes.shape[1]
     )
     offset = 1 if pixel_offset else 0
     # x1 >= 0
-    boxes[:,
-          0::4] = np.maximum(np.minimum(boxes[:, 0::4], im_shape[1] - offset),
-                             0)
+    boxes[:, 0::4] = np.maximum(
+        np.minimum(boxes[:, 0::4], im_shape[1] - offset), 0
+    )
     # y1 >= 0
-    boxes[:,
-          1::4] = np.maximum(np.minimum(boxes[:, 1::4], im_shape[0] - offset),
-                             0)
+    boxes[:, 1::4] = np.maximum(
+        np.minimum(boxes[:, 1::4], im_shape[0] - offset), 0
+    )
     # x2 < im_shape[1]
-    boxes[:,
-          2::4] = np.maximum(np.minimum(boxes[:, 2::4], im_shape[1] - offset),
-                             0)
+    boxes[:, 2::4] = np.maximum(
+        np.minimum(boxes[:, 2::4], im_shape[1] - offset), 0
+    )
     # y2 < im_shape[0]
-    boxes[:,
-          3::4] = np.maximum(np.minimum(boxes[:, 3::4], im_shape[0] - offset),
-                             0)
+    boxes[:, 3::4] = np.maximum(
+        np.minimum(boxes[:, 3::4], im_shape[0] - offset), 0
+    )
     return boxes
 
 
 def filter_boxes(boxes, min_size, im_info, pixel_offset=True):
-    """Only keep boxes with both sides >= min_size and center within the image.
-    """
+    """Only keep boxes with both sides >= min_size and center within the image."""
     # Scale min_size to match image scale
     im_scale = im_info[2]
     min_size = max(min_size, 1.0)
@@ -197,11 +240,14 @@ def filter_boxes(boxes, min_size, im_info, pixel_offset=True):
     if pixel_offset:
         ws_orig_scale = (boxes[:, 2] - boxes[:, 0]) / im_scale + 1
         hs_orig_scale = (boxes[:, 3] - boxes[:, 1]) / im_scale + 1
-        x_ctr = boxes[:, 0] + ws / 2.
-        y_ctr = boxes[:, 1] + hs / 2.
-        keep = np.where((ws_orig_scale >= min_size)
-                        & (hs_orig_scale >= min_size) & (x_ctr < im_info[1])
-                        & (y_ctr < im_info[0]))[0]
+        x_ctr = boxes[:, 0] + ws / 2.0
+        y_ctr = boxes[:, 1] + hs / 2.0
+        keep = np.where(
+            (ws_orig_scale >= min_size)
+            & (hs_orig_scale >= min_size)
+            & (x_ctr < im_info[1])
+            & (y_ctr < im_info[0])
+        )[0]
     else:
         keep = np.where((ws >= min_size) & (hs >= min_size))[0]
     return keep
@@ -263,9 +309,9 @@ def nms(boxes, scores, nms_threshold, eta=1.0, pixel_offset=True):
         for k in range(len(selected_indices)):
             if keep:
                 kept_idx = selected_indices[k]
-                overlap = iou(boxes[idx],
-                              boxes[kept_idx],
-                              pixel_offset=pixel_offset)
+                overlap = iou(
+                    boxes[idx], boxes[kept_idx], pixel_offset=pixel_offset
+                )
                 keep = True if overlap <= adaptive_threshold else False
             else:
                 break
@@ -277,7 +323,6 @@ def nms(boxes, scores, nms_threshold, eta=1.0, pixel_offset=True):
 
 
 class TestGenerateProposalsOp(OpTest):
-
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -287,7 +332,7 @@ class TestGenerateProposalsOp(OpTest):
             'BboxDeltas': self.bbox_deltas,
             'ImInfo': self.im_info.astype(np.float32),
             'Anchors': self.anchors,
-            'Variances': self.variances
+            'Variances': self.variances,
         }
 
         self.attrs = {
@@ -295,7 +340,7 @@ class TestGenerateProposalsOp(OpTest):
             'post_nms_topN': self.post_nms_topN,
             'nms_thresh': self.nms_thresh,
             'min_size': self.min_size,
-            'eta': self.eta
+            'eta': self.eta,
         }
 
         self.outputs = {
@@ -315,7 +360,7 @@ class TestGenerateProposalsOp(OpTest):
         self.post_nms_topN = 5000  # train 6000, test 1000
         self.nms_thresh = 0.7
         self.min_size = 3.0
-        self.eta = 1.
+        self.eta = 1.0
 
     def init_test_input(self):
         batch_size = 1
@@ -323,30 +368,47 @@ class TestGenerateProposalsOp(OpTest):
         layer_h = 16
         layer_w = 16
         input_feat = np.random.random(
-            (batch_size, input_channels, layer_h, layer_w)).astype('float32')
+            (batch_size, input_channels, layer_h, layer_w)
+        ).astype('float32')
         self.anchors, self.variances = anchor_generator_in_python(
             input_feat=input_feat,
-            anchor_sizes=[16., 32.],
+            anchor_sizes=[16.0, 32.0],
             aspect_ratios=[0.5, 1.0],
             variances=[1.0, 1.0, 1.0, 1.0],
             stride=[16.0, 16.0],
-            offset=0.5)
-        self.im_info = np.array([[64., 64., 8.]])  #im_height, im_width, scale
+            offset=0.5,
+        )
+        self.im_info = np.array(
+            [[64.0, 64.0, 8.0]]
+        )  # im_height, im_width, scale
         num_anchors = self.anchors.shape[2]
         self.scores = np.random.random(
-            (batch_size, num_anchors, layer_h, layer_w)).astype('float32')
+            (batch_size, num_anchors, layer_h, layer_w)
+        ).astype('float32')
         self.bbox_deltas = np.random.random(
-            (batch_size, num_anchors * 4, layer_h, layer_w)).astype('float32')
+            (batch_size, num_anchors * 4, layer_h, layer_w)
+        ).astype('float32')
 
     def init_test_output(self):
-        self.rpn_rois, self.rpn_roi_probs, self.rois_num = generate_proposals_in_python(
-            self.scores, self.bbox_deltas, self.im_info, self.anchors,
-            self.variances, self.pre_nms_topN, self.post_nms_topN,
-            self.nms_thresh, self.min_size, self.eta)
+        (
+            self.rpn_rois,
+            self.rpn_roi_probs,
+            self.rois_num,
+        ) = generate_proposals_in_python(
+            self.scores,
+            self.bbox_deltas,
+            self.im_info,
+            self.anchors,
+            self.variances,
+            self.pre_nms_topN,
+            self.post_nms_topN,
+            self.nms_thresh,
+            self.min_size,
+            self.eta,
+        )
 
 
 class TestGenerateProposalsOutLodOp(TestGenerateProposalsOp):
-
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -356,7 +418,7 @@ class TestGenerateProposalsOutLodOp(TestGenerateProposalsOp):
             'BboxDeltas': self.bbox_deltas,
             'ImInfo': self.im_info.astype(np.float32),
             'Anchors': self.anchors,
-            'Variances': self.variances
+            'Variances': self.variances,
         }
 
         self.attrs = {
@@ -365,24 +427,23 @@ class TestGenerateProposalsOutLodOp(TestGenerateProposalsOp):
             'nms_thresh': self.nms_thresh,
             'min_size': self.min_size,
             'eta': self.eta,
-            'return_rois_num': True
+            'return_rois_num': True,
         }
 
         self.outputs = {
             'RpnRois': (self.rpn_rois[0], [self.rois_num]),
             'RpnRoiProbs': (self.rpn_roi_probs[0], [self.rois_num]),
-            'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32))
+            'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32)),
         }
 
 
 class TestGenerateProposalsOpNoBoxLeft(TestGenerateProposalsOp):
-
     def init_test_params(self):
         self.pre_nms_topN = 12000  # train 12000, test 2000
         self.post_nms_topN = 5000  # train 6000, test 1000
         self.nms_thresh = 0.7
         self.min_size = 1000.0
-        self.eta = 1.
+        self.eta = 1.0
 
 
 if __name__ == '__main__':
