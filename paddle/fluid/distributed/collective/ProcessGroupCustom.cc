@@ -433,5 +433,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       CommType::BROADCAST);
 }
 
+std::shared_ptr<ProcessGroupCustom>
+ProcessGroupCustom::CreateProcessGroupCustom(
+    const std::shared_ptr<Store>& store,
+    const std::string& device_type,
+    int rank,
+    int size,
+    int gid) {
+  auto process_group =
+      std::make_shared<ProcessGroupCustom>(store, device_type, rank, size, gid);
+  ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
+  return process_group;
+}
+
 }  //  namespace distributed
 }  //  namespace paddle

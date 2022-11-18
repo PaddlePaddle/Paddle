@@ -15,6 +15,7 @@
 #pragma once
 
 #include <future>
+#include <memory>
 #include <mutex>
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
@@ -98,12 +99,17 @@ class ProcessGroupGloo : public ProcessGroup {
     std::shared_ptr<::gloo::transport::Device> device;
   };
 
-  explicit ProcessGroupGloo(
+  ProcessGroupGloo(const std::shared_ptr<paddle::distributed::Store>& store,
+                   int rank,
+                   int world_size,
+                   int gid,
+                   std::shared_ptr<GlooOptions> options);
+
+  static std::shared_ptr<ProcessGroupGloo> CreateProcessGroupGloo(
       const std::shared_ptr<paddle::distributed::Store>& store,
       int rank,
       int world_size,
-      int gid,
-      std::shared_ptr<GlooOptions> options);
+      int gid);
 
   ~ProcessGroupGloo() = default;
 
@@ -192,7 +198,7 @@ class ProcessGroupGloo : public ProcessGroup {
       const std::string& ifname);
   static std::shared_ptr<::gloo::transport::Device> createDefaultDevice();
 
- protected:
+ private:
   uint32_t _tag;
   std::shared_ptr<gloo::rendezvous::Context> _context;
   std::shared_ptr<::gloo::rendezvous::Store> _store;

@@ -1417,5 +1417,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
       CommType::SCATTER);
 }
 
+std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
+    const std::shared_ptr<Store>& store, int rank, int size, int gid) {
+  auto process_group =
+      std::make_shared<ProcessGroupNCCL>(store, rank, size, gid);
+  ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
+  return process_group;
+}
+
 }  //  namespace distributed
 }  //  namespace paddle

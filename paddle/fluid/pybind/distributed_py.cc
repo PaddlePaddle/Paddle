@@ -85,8 +85,6 @@ using GlooStore = paddle::distributed::ProcessGroupGloo::GlooStore;
 using GlooOptions = paddle::distributed::ProcessGroupGloo::GlooOptions;
 #endif
 
-static std::string GLOO_SOCKET_IFNAME_ENV = "GLOO_SOCKET_IFNAME";  // NOLINT
-
 static UNUSED void *use_ccl_comm_func =
     phi::detail::GetCCLComm(phi::CPUPlace());
 
@@ -1222,24 +1220,18 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
-  auto processGroupNCCL =
-      py::class_<distributed::ProcessGroupNCCL,
-                 std::shared_ptr<distributed::ProcessGroupNCCL>>(
-          *m, "ProcessGroupNCCL", ProcessGroupStream)
-          .def(py::init<const std::shared_ptr<distributed::Store> &,
-                        int,
-                        int,
-                        int>(),
-               py::arg("store"),
-               py::arg("rank"),
-               py::arg("world_size"),
-               py::arg("group_id") = 0,
-               py::call_guard<py::gil_scoped_release>());
-
-  processGroupNCCL.def_static(
-      "group_start", []() { distributed::ProcessGroupNCCL::GroupStart(); });
-  processGroupNCCL.def_static(
-      "group_end", []() { distributed::ProcessGroupNCCL::GroupEnd(); });
+  py::class_<distributed::ProcessGroupNCCL,
+             std::shared_ptr<distributed::ProcessGroupNCCL>>(
+      *m, "ProcessGroupNCCL", ProcessGroupStream)
+      .def_static("create",
+                  distributed::ProcessGroupNCCL::CreateProcessGroupNCCL,
+                  py::arg("store"),
+                  py::arg("rank"),
+                  py::arg("world_size"),
+                  py::arg("group_id") = 0,
+                  py::call_guard<py::gil_scoped_release>())
+      .def_static("group_start", distributed::ProcessGroupNCCL::GroupStart)
+      .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd);
 
 #endif
 
@@ -1266,17 +1258,14 @@ void BindDistributed(py::module *m) {
   py::class_<distributed::ProcessGroupCustom,
              std::shared_ptr<distributed::ProcessGroupCustom>>(
       *m, "ProcessGroupCustom", ProcessGroup)
-      .def(py::init<const std::shared_ptr<distributed::Store> &,
-                    const std::string &,
-                    int,
-                    int,
-                    int>(),
-           py::arg("store"),
-           py::arg("device_type"),
-           py::arg("rank"),
-           py::arg("world_size"),
-           py::arg("group_id") = 0,
-           py::call_guard<py::gil_scoped_release>());
+      .def_static("create",
+                  distributed::ProcessGroupCustom::CreateProcessGroupCustom,
+                  py::arg("store"),
+                  py::arg("device_type"),
+                  py::arg("rank"),
+                  py::arg("world_size"),
+                  py::arg("group_id") = 0,
+                  py::call_guard<py::gil_scoped_release>());
 
 #endif
 
@@ -1285,15 +1274,13 @@ void BindDistributed(py::module *m) {
       py::class_<distributed::ProcessGroupBKCL,
                  std::shared_ptr<distributed::ProcessGroupBKCL>>(
           *m, "ProcessGroupBKCL", ProcessGroupStream)
-          .def(py::init<const std::shared_ptr<distributed::Store> &,
-                        int,
-                        int,
-                        int>(),
-               py::arg("store"),
-               py::arg("rank"),
-               py::arg("world_size"),
-               py::arg("group_id") = 0,
-               py::call_guard<py::gil_scoped_release>());
+          .def_static("create",
+                      distributed::ProcessGroupBKCL::CreateProcessGroupBKCL,
+                      py::arg("store"),
+                      py::arg("rank"),
+                      py::arg("world_size"),
+                      py::arg("group_id") = 0,
+                      py::call_guard<py::gil_scoped_release>());
 #endif
 
   py::class_<distributed::ProcessGroup::Task,
@@ -1311,32 +1298,13 @@ void BindDistributed(py::module *m) {
 #if defined(PADDLE_WITH_GLOO)
   py::class_<ProcessGroupGloo, std::shared_ptr<ProcessGroupGloo>>(
       *m, "ProcessGroupGloo", ProcessGroup)
-      .def(py::init<const std::shared_ptr<paddle::distributed::Store> &,
-                    int,
-                    int,
-                    int,
-                    std::shared_ptr<GlooOptions> &>(),
-           py::call_guard<py::gil_scoped_release>())
-      .def(py::init([](const std::shared_ptr<paddle::distributed::Store> &store,
-                       int rank,
-                       int world_size,
-                       int gid) {
-             auto opts = GlooOptions::create();
-             char *ifname = getenv(GLOO_SOCKET_IFNAME_ENV.c_str());
-             if (ifname && strlen(ifname) > 1) {
-               opts->device = ProcessGroupGloo::createDeviceForInterface(
-                   std::string(ifname));
-             } else {
-               opts->device = ProcessGroupGloo::createDefaultDevice();
-             }
-             return std::make_shared<ProcessGroupGloo>(
-                 store, rank, world_size, gid, opts);
-           }),
-           py::arg("store"),
-           py::arg("rank"),
-           py::arg("world_size"),
-           py::arg("group_id") = 0,
-           py::call_guard<py::gil_scoped_release>())
+      .def_static("create",
+                  distributed::ProcessGroupGloo::CreateProcessGroupGloo,
+                  py::arg("store"),
+                  py::arg("rank"),
+                  py::arg("world_size"),
+                  py::arg("group_id") = 0,
+                  py::call_guard<py::gil_scoped_release>())
       .def_static("create_default_device",
                   &ProcessGroupGloo::createDefaultDevice);
 #endif

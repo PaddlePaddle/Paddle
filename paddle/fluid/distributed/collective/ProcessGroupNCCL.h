@@ -82,6 +82,9 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   };
 
  public:
+  static std::shared_ptr<ProcessGroupNCCL> CreateProcessGroupNCCL(
+      const std::shared_ptr<Store>& store, int rank, int size, int gid);
+
   ProcessGroupNCCL(const std::shared_ptr<Store>& store,
                    int rank,
                    int size,
