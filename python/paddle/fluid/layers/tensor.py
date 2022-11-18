@@ -571,8 +571,9 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
         assert isinstance(
             input, list
         ), "The 'input' in tensor_array_to_tensor must be list"
-        from .nn import stack, concat
+        from .nn import concat
         from ..dygraph import to_variable
+        from paddle import stack
 
         op = stack if use_stack else concat
         res = op(input, axis=axis)
