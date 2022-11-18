@@ -286,7 +286,7 @@ def pool2D_forward_naive(
     return out
 
 
-class TestPool2D_Op_Mixin(object):
+class TestPool2D_Op_Mixin:
     def setUp(self):
         self.op_type = "pool2d"
         self.use_cudnn = False

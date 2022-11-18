@@ -565,7 +565,7 @@ class WrapDecoder(Layer):
         return logits
 
 
-class CrossEntropyCriterion(object):
+class CrossEntropyCriterion:
     def __init__(self, label_smooth_eps):
         self.label_smooth_eps = label_smooth_eps
 
@@ -762,7 +762,7 @@ class Transformer(Layer):
             return probs
 
         def gather(input, indices, batch_pos):
-            topk_coordinates = fluid.layers.stack([batch_pos, indices], axis=2)
+            topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
             return layers.gather_nd(input, topk_coordinates)
 
         # run encoder
@@ -789,7 +789,7 @@ class Transformer(Layer):
         )
         predict_ids = []
         parent_ids = []
-        ### initialize states of beam search ###
+        # initialize states of beam search
         log_probs = to_variable(
             np.array(
                 [[0.0] + [-inf] * (beam_size - 1)] * batch_size, dtype="float32"
@@ -856,12 +856,8 @@ class Transformer(Layer):
             topk_scores, topk_indices = fluid.layers.topk(
                 input=scores, k=beam_size
             )
-            beam_indices = fluid.layers.elementwise_floordiv(
-                topk_indices, vocab_size_tensor
-            )
-            token_indices = fluid.layers.elementwise_mod(
-                topk_indices, vocab_size_tensor
-            )
+            beam_indices = paddle.floor_divide(topk_indices, vocab_size_tensor)
+            token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
 
             # update states
             caches = map_structure(
@@ -880,8 +876,8 @@ class Transformer(Layer):
             if layers.reduce_all(finished).numpy():
                 break
 
-        predict_ids = layers.stack(predict_ids, axis=0)
-        parent_ids = layers.stack(parent_ids, axis=0)
+        predict_ids = paddle.stack(predict_ids, axis=0)
+        parent_ids = paddle.stack(parent_ids, axis=0)
         finished_seq = layers.transpose(
             layers.gather_tree(predict_ids, parent_ids), [1, 2, 0]
         )

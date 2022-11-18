@@ -126,7 +126,7 @@ def _keep_fp32_output(op, out_name):
     return False
 
 
-class FP16State(object):
+class FP16State:
     def __init__(
         self,
         program,
@@ -256,7 +256,10 @@ class FP16State(object):
         for op in block.ops:
             if is_forward_op(op):
                 # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
-                if self._is_fp16_op(op.desc.original_id()) or op.type == "cast":
+                if (
+                    self._is_fp16_op(op.desc.original_id()) is True
+                    or op.type == "cast"
+                ):
                     for in_name in op.input_names:
                         if _keep_fp32_input(op, in_name):
                             continue
@@ -273,7 +276,7 @@ class FP16State(object):
                             self.set_var_to_fp16(out_var_name, block)
                     set_op_dtype_to_fp16(op)
                 # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
-                elif not self._is_fp16_op(op.desc.original_id()):
+                elif self._is_fp16_op(op.desc.original_id()) is False:
                     for out_var_name in op.output_arg_names:
                         out_var = block.vars.get(out_var_name)
                         if out_var is None or out_var.type not in _valid_types:
@@ -281,7 +284,7 @@ class FP16State(object):
                         if out_var.dtype == core.VarDesc.VarType.FP16:
                             out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
             elif is_backward_op(op):
-                if self._is_fp16_op(op.desc.original_id()):
+                if self._is_fp16_op(op.desc.original_id()) is True:
                     for out_name in op.output_names:
                         if _keep_fp32_output(op, out_name):
                             continue
@@ -289,7 +292,7 @@ class FP16State(object):
                             self.set_var_to_fp16(out_var_name, block)
                     set_op_dtype_to_fp16(op)
                 # NOTE (JZ-LIANG) un-expected cast op when user call "+, -, *, /" in python
-                elif not self._is_fp16_op(op.desc.original_id()):
+                elif self._is_fp16_op(op.desc.original_id()) is False:
                     for out_var_name in op.output_arg_names:
                         out_var = block.vars.get(out_var_name)
                         if out_var is None or out_var.type not in _valid_types:
@@ -308,7 +311,7 @@ class FP16State(object):
                 idx += 1
                 continue
             elif is_forward_op(op):
-                if not self._is_fp16_op(op.desc.original_id()):
+                if self._is_fp16_op(op.desc.original_id()) is False:
                     num_cast_ops = self._insert_forward_cast_ops(
                         op,
                         idx,
@@ -317,7 +320,7 @@ class FP16State(object):
                         core.VarDesc.VarType.FP32,
                         self.dist_context,
                     )
-                elif self._is_fp16_op(op.desc.original_id()):
+                elif self._is_fp16_op(op.desc.original_id()) is True:
                     num_cast_ops = self._insert_forward_cast_ops(
                         op,
                         idx,
@@ -328,7 +331,7 @@ class FP16State(object):
                     )
             elif is_backward_op(op):
                 if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
-                    if not self._is_fp16_op(op.desc.original_id()):
+                    if self._is_fp16_op(op.desc.original_id()) is False:
                         num_cast_ops = self._insert_backward_cast_ops(
                             op,
                             idx,
@@ -337,7 +340,7 @@ class FP16State(object):
                             core.VarDesc.VarType.FP32,
                             self.dist_context,
                         )
-                    elif self._is_fp16_op(op.desc.original_id()):
+                    elif self._is_fp16_op(op.desc.original_id()) is True:
                         num_cast_ops = self._insert_backward_cast_ops(
                             op,
                             idx,
@@ -487,9 +490,8 @@ class FP16State(object):
 
             # create cast grad
             grad_slot_name = slot_name + "@GRAD"
-            assert (
-                grad_slot_name in op.output_names
-            ), "[{}], Current Op: {}".format(grad_slot_name, str(op))
+            if grad_slot_name not in op.output_names:
+                continue
 
             # some forward input maybe stop_gradient=True, e.g. input_mask
             if len(op.output(grad_slot_name)) == 0:
@@ -785,33 +787,67 @@ class FP16Pass(AMPPass):
                     with main_program._optimized_guard([]):
                         block = main_program.global_block()
 
-                        all_infs = paddle.fluid.layers.concat(found_infs)
+                        # all_infs = paddle.fluid.layers.concat(found_infs)
+                        all_infs = block.create_var(
+                            name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                                ".".join(['concat', 'tmp'])
+                            ),
+                            dtype=found_infs[0].dtype,
+                            shape=None,
+                            lod_level=found_infs[0].lod_level,
+                            type=found_infs[0].type,
+                            persistable=False,
+                            stop_gradient=False,
+                        )
+                        concat_op = block.append_op(
+                            type='concat',
+                            inputs={'X': found_infs},
+                            outputs={'Out': [all_infs]},
+                            attrs={'axis': 0},
+                        )
                         set_var_dist_attr(
                             self.dist_context,
                             all_infs,
                             [-1],
                             world_process_group.ranks,
                         )
-                        new_op = block.ops[-1]
-                        assert new_op.type == "concat"
                         _set_op_dist_attr_with_ranks(
-                            new_op,
+                            concat_op,
                             world_process_group.ranks,
                             block,
                             self.dist_context,
                         )
 
-                        found_inf = paddle.fluid.layers.reduce_any(all_infs)
+                        # found_inf = paddle.fluid.layers.reduce_any(all_infs)
+                        found_inf = block.create_var(
+                            name=paddle.fluid.unique_name.generate_with_ignorable_key(
+                                ".".join(['reduce_any', 'tmp'])
+                            ),
+                            dtype=all_infs.dtype,
+                            shape=None,
+                            lod_level=all_infs.lod_level,
+                            type=all_infs.type,
+                            persistable=False,
+                            stop_gradient=False,
+                        )
+                        reduce_any_op = block.append_op(
+                            type='reduce_any',
+                            inputs={'X': all_infs},
+                            outputs={'Out': found_inf},
+                            attrs={
+                                'dim': [0],
+                                'keep_dim': False,
+                                'reduce_all': True,
+                            },
+                        )
                         set_var_dist_attr(
                             self.dist_context,
                             found_inf,
                             [-1],
                             world_process_group.ranks,
                         )
-                        new_op = block.ops[-1]
-                        assert new_op.type == "reduce_any"
                         _set_op_dist_attr_with_ranks(
-                            new_op,
+                            reduce_any_op,
                             world_process_group.ranks,
                             block,
                             self.dist_context,

@@ -47,11 +47,11 @@ def _all_to_all_tensor_in_dygraph(
     _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
 
     if use_calc_stream:
-        return group.process_group.alltoall_tensor_on_calc_stream(
+        return group.process_group.all_to_all_tensor_on_calc_stream(
             in_tensor, out_tensor
         )
 
-    task = group.process_group.alltoall_tensor(in_tensor, out_tensor, sync_op)
+    task = group.process_group.all_to_all_tensor(in_tensor, out_tensor, sync_op)
     if sync_op:
         task.wait()
 
@@ -74,12 +74,12 @@ def _all_to_all_in_dygraph(
         )
 
     if use_calc_stream:
-        return group.process_group.alltoall_on_calc_stream(
-            in_tensor_list, out_tensor_list
+        return group.process_group.all_to_all_on_calc_stream(
+            out_tensor_list, in_tensor_list
         )
 
-    task = group.process_group.alltoall(
-        in_tensor_list, out_tensor_list, sync_op
+    task = group.process_group.all_to_all(
+        out_tensor_list, in_tensor_list, sync_op
     )
     if sync_op:
         task.wait()
@@ -243,18 +243,23 @@ def _alltoall_single_in_dygraph(
     sync_op,
     use_calc_stream,
 ):
+    world_size = dist.get_world_size()
     if out_split_sizes is None:
-        out_split_sizes = []
+        out_split_sizes = [
+            out_tensor.shape[0] // world_size for _ in range(world_size)
+        ]
     if in_split_sizes is None:
-        in_split_sizes = []
+        in_split_sizes = [
+            in_tensor.shape[0] // world_size for _ in range(world_size)
+        ]
 
     if use_calc_stream:
-        return group.process_group.alltoall_single_on_calc_stream(
-            in_tensor, out_tensor, in_split_sizes, out_split_sizes
+        return group.process_group.all_to_all_single_on_calc_stream(
+            out_tensor, in_tensor, out_split_sizes, in_split_sizes
         )
 
-    task = group.process_group.alltoall_single(
-        in_tensor, out_tensor, in_split_sizes, out_split_sizes, sync_op
+    task = group.process_group.all_to_all_single(
+        out_tensor, in_tensor, out_split_sizes, in_split_sizes, sync_op
     )
     if sync_op:
         task.wait()

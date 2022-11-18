@@ -62,7 +62,7 @@ void BmmKernel(const Context& dev_ctx,
           y_dims[1]));
 
   xpu::Context* xpu_ctx = dev_ctx.x_context();
-  if (std::is_same<paddle::platform::float16, T>::value) {
+  if (std::is_same<phi::dtype::float16, T>::value) {
     MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, xpu_ctx);
   } else {
     if (std::getenv("XPU_PADDLE_FC_INT32") != nullptr) {
@@ -77,4 +77,4 @@ void BmmKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    bmm, XPU, ALL_LAYOUT, phi::BmmKernel, float, paddle::platform::float16) {}
+    bmm, XPU, ALL_LAYOUT, phi::BmmKernel, float, phi::dtype::float16) {}

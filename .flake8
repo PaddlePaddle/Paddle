@@ -16,14 +16,14 @@ exclude =
     ./python/paddle/fluid/tests/unittests/mlu/**
 ignore =
     # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-    E203,E266,
+    E203,
     E401,E402,
     E501,
     E721,E722,E731,E741,
 
     # F, see https://flake8.pycqa.org/en/latest/user/error-codes.html
     F405,
-    F811,F821,F841,
+    F811,F841,
 
     # W, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
     W503
@@ -33,3 +33,7 @@ per-file-ignores =
     python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py:E101,W191
     # Ignore unused imports in __init__.py
     __init__.py: F401
+    # Ignore undefined variables in CMake config and some dygraph_to_static tests
+    .cmake-format.py: F821
+    python/paddle/fluid/tests/unittests/dygraph_to_static/test_loop.py: F821
+    python/paddle/fluid/tests/unittests/dygraph_to_static/test_closure_analysis.py: F821

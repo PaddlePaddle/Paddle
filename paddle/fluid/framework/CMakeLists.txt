@@ -504,7 +504,8 @@ if(WITH_XPU)
          phi_utils
          kernel_factory
          infershape_utils
-         op_utils)
+         op_utils
+         op_compat_infos)
 else()
   cc_library(
     operator
@@ -529,7 +530,8 @@ else()
          phi_utils
          kernel_factory
          infershape_utils
-         op_utils)
+         op_utils
+         op_compat_infos)
 endif()
 
 cc_test(

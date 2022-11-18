@@ -470,7 +470,7 @@ def fake_data_reader(batch_size, label_size):
     return reader
 
 
-class Args(object):
+class Args:
     batch_size = 4
     model = "MobileNetV1"
     lr = 0.001

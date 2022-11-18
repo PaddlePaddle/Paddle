@@ -17,7 +17,7 @@ from paddle.fluid import framework as framework
 __all__ = ["extend_with_decoupled_weight_decay"]
 
 
-class DecoupledWeightDecay(object):
+class DecoupledWeightDecay:
     def __init__(self, coeff=0.0, apply_decay_param_fun=None, **kwargs):
         if not isinstance(coeff, float) and not isinstance(
             coeff, framework.Variable

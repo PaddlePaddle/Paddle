@@ -44,12 +44,12 @@ def _all_gather_into_tensor_in_dygraph(
     _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
 
     if use_calc_stream:
-        return group.process_group.allgather_into_tensor_on_calc_stream(
+        return group.process_group.all_gather_into_tensor_on_calc_stream(
             out_tensor,
             in_tensor,
         )
 
-    task = group.process_group.allgather_into_tensor(
+    task = group.process_group.all_gather_into_tensor(
         out_tensor, in_tensor, sync_op
     )
     if sync_op:
@@ -69,9 +69,11 @@ def _all_gather_in_dygraph(
         _check_tensor_list_shape(tensor_list, tensor.shape, group.nranks)
 
     if use_calc_stream:
-        return group.process_group.allgather_on_calc_stream(tensor_list, tensor)
+        return group.process_group.all_gather_on_calc_stream(
+            tensor_list, tensor
+        )
 
-    task = group.process_group.allgather(tensor_list, tensor, sync_op)
+    task = group.process_group.all_gather(tensor_list, tensor, sync_op)
     if sync_op:
         task.wait()
 

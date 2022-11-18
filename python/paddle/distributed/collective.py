@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-import os
 import pickle
 import io
 import datetime
@@ -67,7 +66,7 @@ _group_map_backend = {}
 # Name of the default group for init_parallel_env
 _default_group_name = "_default_pg"
 
-_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'xccl']
+_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'xccl', 'bkcl']
 _default_store = None  # the default tcp store
 _default_backend = None
 _default_timeout = datetime.timedelta(seconds=1800)
@@ -148,65 +147,20 @@ def _new_process_group_impl(
     group_name,
     pg_options,
     group_id=0,
-    src_rank=None,
-    dst_rank=None,
 ):
     pg = None
     genv = _get_global_env()
-    if backend != 'heter':
-        assert src_rank is None and dst_rank is None, (
-            "src_rank and dst_rank " "can only be set for heter backend."
-        )
     assert backend in _valid_backend_list, "Unsupported backend: %s." % backend
     if backend == "gloo":
-        place = core.CPUPlace()
-        pg = core.ProcessGroupGloo(store, rank, world_size, place, group_id)
+        pg = core.ProcessGroupGloo(store, rank, world_size, group_id)
     elif backend == "nccl":
-        place = core.CUDAPlace(genv.device_id)
-        pg = core.ProcessGroupNCCL(store, rank, world_size, place, group_id)
-    elif backend == "hccl":
-        place = core.NPUPlace(genv.device_id)
-        pg = core.ProcessGroupHCCL(store, rank, world_size, place, group_id)
+        pg = core.ProcessGroupNCCL(store, rank, world_size, group_id)
     elif backend == "xccl":
-        place = core.CustomPlace(genv.device_type, genv.device_id)
-        pg = core.ProcessGroupCustom(store, rank, world_size, place, group_id)
-    elif backend == "heter":
-        place = None
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(genv.device_id)
-        elif core.is_compiled_with_npu():
-            place = core.NPUPlace(genv.device_id)
-        cluster_id = int(os.getenv("CLUSTER_ID", "-1"))
-        assert cluster_id >= 0, "please set the CLUSTER_ID variable."
-        cluster_size = os.getenv("CLUSTER_SIZE", None)
-        assert cluster_size, "please set the CLUSTER_SIZE variable."
-        cluster_size = cluster_size.split(",")
-        cluster_size = [int(s) for s in cluster_size]
-        switch_ep = os.getenv("CLUSTER_SWITCH", None)
-        assert switch_ep, "please set the CLUSTER_SWITCH variable."
-        cluster_size_cumsum = np.cumsum(cluster_size)
-        cluster_offset = (
-            0 if cluster_id == 0 else cluster_size_cumsum[cluster_id - 1]
+        pg = core.ProcessGroupCustom(
+            store, genv.device_type, rank, world_size, group_id
         )
-        global_rank = cluster_offset + rank
-        global_world_size = cluster_size_cumsum[-1]
-        global_rank, global_world_size = _get_global_config(backend, rank)
-        pg = core.ProcessGroupHeter(
-            store,
-            rank=global_rank,
-            world_size=global_world_size,
-            place=place,
-            gid=group_id,
-            local_rank=rank,
-            local_size=world_size,
-            gloo_rank=cluster_id,
-            gloo_size=len(cluster_size),
-            with_switch=True,
-            switch_endpoint=switch_ep,
-            src_rank=src_rank,
-            dst_rank=dst_rank,
-        )
-
+    elif backend == "bkcl":
+        pg = core.ProcessGroupBKCL(store, rank, world_size, group_id)
     return pg
 
 
@@ -236,7 +190,12 @@ def barrier(group=None):
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
-        task = group.process_group.barrier()
+        place = paddle.fluid.framework._current_expected_place()
+        if isinstance(place, paddle.fluid.core.CPUPlace):
+            task = group.process_group.barrier()
+        else:
+            device_id = place.get_device_id()
+            task = group.process_group.barrier(device_id)
         task.wait()
         return
 
@@ -313,10 +272,8 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
             )
         size = len(ranks)
         ranks = sorted(ranks)
-        if backend == 'heter' or (size > 1 and global_rank in ranks):
+        if size > 1 and global_rank in ranks:
             rank = 0 if backend == 'heter' else ranks.index(global_rank)
-            src_rank = ranks[0] if backend == 'heter' else None
-            dst_rank = ranks[1] if backend == 'heter' else None
             pg = _new_process_group_impl(
                 backend,
                 _default_store,
@@ -325,8 +282,6 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                 group_name,
                 pg_options=None,
                 group_id=gid,
-                src_rank=src_rank,
-                dst_rank=dst_rank,
             )
         else:
             rank = -1
@@ -546,7 +501,7 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
             out = paddle.empty(tensor_shape, tensor.dtype)
         else:
             out = paddle.concat(tensor_list, axis=0)
-        task = group.process_group.all_gather(tensor, out)
+        task = group.process_group.all_gather_into_tensor(out, tensor, sync_op)
         task.wait()
         tensor_list.clear()
         list_of_tensor = paddle.split(out, group.nranks, 0)

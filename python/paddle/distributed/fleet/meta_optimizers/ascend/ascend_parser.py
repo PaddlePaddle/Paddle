@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import paddle.fluid.core as core
+import paddle.framework.core as core
 import numpy as np
 from functools import reduce
 
@@ -71,7 +71,7 @@ registerd_op = {  # forwards
     "equal": "EqualParser",
     "expand": "ExpandParser",
     "squeeze2": "SqueezeParser",
-    ## backwords
+    # backwords
     "matmul_grad": "MatMulGradParser",
     "mul_grad": "MulGradParser",
     "relu_grad": "ReluGradParser",
@@ -93,7 +93,7 @@ registerd_op = {  # forwards
     "gather_grad": "GatherGradParser",
     "transpose2_grad": "TransposeGradParser",
     "layer_norm_grad": "LayerNormGradParser",
-    ## opt
+    # opt
     "sgd": "SGDParser",
     # "adam": "AdamParser",
 }
@@ -101,7 +101,7 @@ global_cnt = -1
 global_input_cnt = -1
 
 
-class AscendHelper(object):
+class AscendHelper:
     def __init__(self):
         self.dtype2ge_map = {
             0: core.GEDataType.DT_BOOL,
@@ -136,7 +136,7 @@ class AscendHelper(object):
         return self.dtype2np_map[index]
 
 
-class AscendParserFactory(object):
+class AscendParserFactory:
     def __init__(self, graph, var2geop):
         self.graph = graph
         self.var2geop = var2geop
@@ -149,7 +149,7 @@ class AscendParserFactory(object):
             raise ValueError("parser class %s does not exist" % parser_class)
 
 
-class AscendParserBase(object):
+class AscendParserBase:
     def __init__(self, graph, var2geop):
         self.graph = graph
         self.var2geop = var2geop
@@ -445,7 +445,7 @@ class MinParser(AscendParserBase):
         return [min_out], [[0]]
 
 
-## cal
+# cal
 class LogParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super().__init__(graph, var2geop)
@@ -605,7 +605,7 @@ class ReduceSumParser(AscendParserBase):
 #        return [increment]
 
 
-## matrix cal
+# matrix cal
 class MatMulParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super().__init__(graph, var2geop)
@@ -803,7 +803,7 @@ class LayerNormParser(AscendParserBase):
         return [y, mean, variance], [[1], [2], [0]]
 
 
-## activate function
+# activate function
 class ReluParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super().__init__(graph, var2geop)
@@ -843,7 +843,7 @@ class TanhParser(AscendParserBase):
         return [tanh], [[0]]
 
 
-## loss function
+# loss function
 class SoftmaxWithCrossEntropyParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super().__init__(graph, var2geop)
@@ -932,7 +932,7 @@ class SoftMaxParser(AscendParserBase):
         return [softmax], [[0]]
 
 
-## general
+# general
 class ShapeParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super().__init__(graph, var2geop)
@@ -1038,7 +1038,7 @@ class TruncatedNormalParser(AscendParserBase):
             .set_attr_int32("seed", 0)
         )
 
-        ## wirte the output of truncatedNormal from startup_program to main_program
+        # wirte the output of truncatedNormal from startup_program to main_program
         if self.op.block.var(self.op.output('Out')[0]).persistable:
             # print("%s is Persistable in truncated_normal" %
             #      (self.op.output('Out')[0]))
@@ -1524,7 +1524,7 @@ class UnSqueezeParser(AscendParserBase):
         return [shape, output], [[1], [0]]
 
 
-## parallel
+# parallel
 class AllGatherParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super().__init__(graph, var2geop)
@@ -1821,7 +1821,7 @@ class SqueezeParser(AscendParserBase):
 # ***************************            *************************#
 # ***************************            *************************#
 # ****************************************************************#
-## grad
+# grad
 class ReduceSumGradParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super().__init__(graph, var2geop)

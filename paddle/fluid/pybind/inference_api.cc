@@ -678,7 +678,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("ipu_enable_fp16") = false,
            py::arg("ipu_replica_num") = 1,
            py::arg("ipu_available_memory_proportion") = 1.0,
-           py::arg("ipu_enable_half_partial") = false)
+           py::arg("ipu_enable_half_partial") = false,
+           py::arg("ipu_enable_model_runtime_executor") = false)
       .def("set_ipu_custom_info",
            &AnalysisConfig::SetIpuCustomInfo,
            py::arg("ipu_custom_ops_info") =
@@ -691,6 +692,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_onnxruntime", &AnalysisConfig::EnableONNXRuntime)
       .def("disable_onnxruntime", &AnalysisConfig::DisableONNXRuntime)
       .def("onnxruntime_enabled", &AnalysisConfig::use_onnxruntime)
+      .def("use_opencl", &AnalysisConfig::use_opencl)
       .def("enable_ort_optimization", &AnalysisConfig::EnableORTOptimization)
       .def("use_gpu", &AnalysisConfig::use_gpu)
       .def("use_xpu", &AnalysisConfig::use_xpu)
@@ -783,6 +785,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("zero_copy") = false,
            py::arg("passes_filter") = std::vector<std::string>(),
            py::arg("ops_filter") = std::vector<std::string>())
+      .def("enable_opencl", &AnalysisConfig::EnableOpenCL)
       .def("lite_engine_enabled", &AnalysisConfig::lite_engine_enabled)
       .def("switch_ir_debug",
            &AnalysisConfig::SwitchIrDebug,
@@ -809,6 +812,22 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("mkldnn_int8_enabled_op_types") =
                std::unordered_set<std::string>({}))
       .def("mkldnn_int8_enabled", &AnalysisConfig::mkldnn_int8_enabled)
+      .def("disable_mkldnn_fc_passes",
+           &AnalysisConfig::DisableMkldnnFcPasses,
+           R"DOC(
+           Disable Mkldnn FC
+           Args:
+                None.
+           Returns:
+                None.
+           Examples:
+               .. code-block:: python
+                from paddle.inference import Config
+
+                config = Config("")
+                config.enable_mkldnn()
+                config.disable_mkldnn_fc_passes()
+           )DOC")
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)

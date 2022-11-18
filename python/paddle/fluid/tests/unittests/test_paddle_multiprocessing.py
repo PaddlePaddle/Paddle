@@ -50,7 +50,7 @@ def send_parambase(queue, event, device, dtype):
     event.wait()
 
 
-class leak_checker(object):
+class leak_checker:
     def __init__(self, test_case):
         self.checked_pids = [os.getpid()]
         self.test_case = test_case

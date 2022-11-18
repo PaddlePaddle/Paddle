@@ -21,7 +21,7 @@ from ..utils import deprecated
 __all__ = ['DatasetFactory', 'InMemoryDataset', 'QueueDataset']
 
 
-class DatasetFactory(object):
+class DatasetFactory:
     """
     DatasetFactory is a factory which create dataset by its name,
     you can create "QueueDataset" or "InMemoryDataset", or "FileInstantDataset",
@@ -64,7 +64,7 @@ class DatasetFactory(object):
             )
 
 
-class DatasetBase(object):
+class DatasetBase:
     """Base dataset class."""
 
     def __init__(self):

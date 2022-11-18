@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
+
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/utils/type_registry.h"
 
@@ -42,9 +43,7 @@ struct NPUStorageProperties
   virtual ~NPUStorageProperties() = default;
   static const char* name() { return "NPUStorageProperties"; }
 
-  int64_t origin_format{-1};
   int64_t storage_format{-1};
-  DDim origin_dims;
   DDim storage_dims;
 };
 
@@ -76,12 +75,8 @@ static std::unique_ptr<StorageProperties> CopyStorageProperties(
   if (sp) {
     if (NPUStorageProperties::classof(sp.get())) {
       auto result = std::make_unique<NPUStorageProperties>();
-      result->origin_format =
-          static_cast<NPUStorageProperties*>(sp.get())->origin_format;
       result->storage_format =
           static_cast<NPUStorageProperties*>(sp.get())->storage_format;
-      result->origin_dims =
-          static_cast<NPUStorageProperties*>(sp.get())->origin_dims;
       result->storage_dims =
           static_cast<NPUStorageProperties*>(sp.get())->storage_dims;
       return result;

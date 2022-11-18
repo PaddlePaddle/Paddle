@@ -52,7 +52,7 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-class TestDistRunnerBase(object):
+class TestDistRunnerBase:
     def get_model(
         self,
         batch_size=DEFAULT_BATCH_SIZE,
@@ -381,7 +381,7 @@ class TestDistRunnerBase(object):
                 infer_save_dir_fleet = os.path.join(
                     model_save_dir, "fleet_infer_2"
                 )
-            fluid.io.save_persistables(
+            paddle.distributed.io.save_persistables(
                 exe, model_save_dir_fluid, fleet._origin_program
             )
             fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
@@ -586,7 +586,7 @@ class TestDistRunnerBase(object):
         print_to_out(out_losses)
 
 
-class TestParallelDyGraphRunnerBase(object):
+class TestParallelDyGraphRunnerBase:
     def get_model(self):
         raise NotImplementedError(
             "get_model should be implemented by child classes."
