@@ -127,6 +127,25 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream) override;
 
+  std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
+                                             const phi::DenseTensor& in_tensor,
+                                             const ReduceOptions& opts,
+                                             bool sync_op,
+                                             bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> ReduceScatter(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const ReduceScatterOptions& opts,
+      bool sync_op,
+      bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Scatter(phi::DenseTensor* out_tensor,
+                                              const phi::DenseTensor& in_tensor,
+                                              const ScatterOptions& opts,
+                                              bool sync_op,
+                                              bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                            int src_rank,
                                            int64_t offset,
@@ -184,31 +203,10 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       std::vector<phi::DenseTensor>& out_tensors,
       const ReduceOptions& opts) override;
 
-  std::shared_ptr<ProcessGroup::Task> Reduce(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const ReduceOptions& opts,
-      bool sync_op,
-      bool use_calc_stream) override;
-
-  std::shared_ptr<ProcessGroup::Task> ReduceScatter(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const ReduceScatterOptions& opts,
-      bool sync_op,
-      bool use_calc_stream) override;
-
   std::shared_ptr<ProcessGroup::Task> Scatter(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const ScatterOptions& opts) override;
-
-  std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const ScatterOptions& opts,
-      bool sync_op,
-      bool use_calc_stream) override;
 
  private:
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,

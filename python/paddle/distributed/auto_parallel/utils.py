@@ -33,6 +33,9 @@ from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
 )
 
+OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+OpRole = core.op_proto_and_checker_maker.OpRole
+
 __no_shape_var_type__ = [
     core.VarDesc.VarType.READER,
     core.VarDesc.VarType.STEP_SCOPES,
@@ -1181,7 +1184,6 @@ def _get_split_indices(
 
 def set_grad_var_shape(program, dist_context):
     from .operators.common import infer_shape
-    from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
     block = program.global_block()
     vars = block.vars
@@ -1313,10 +1315,6 @@ def set_grad_var_shape(program, dist_context):
 
             if list(grad_var.shape) != ref_shape:
                 grad_var.desc.set_shape(ref_shape)
-
-
-OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
-OpRole = core.op_proto_and_checker_maker.OpRole
 
 
 def is_forward_op(op):
@@ -1894,6 +1892,39 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
                         break
         process_group.instantiate()
     server_socket.close()
+
+
+def set_recompute_ckpts(model, strategy):
+    from .interface import _g_recompute_idx
+
+    if _g_recompute_idx > -1:
+        return
+
+    recompute = strategy.recompute
+    if not recompute.enable:
+        return
+
+    # NOTE: hack to enable recompute in engine api for GPT-3
+    # TODO support more PaddleNLP/CV models here
+    # extract ckpts by specific model
+    if isinstance(model, paddle.nn.Layer):
+        if hasattr(model, "gpt") and model.__class__.__name__ in [
+            'GPTForPretraining',
+            'GPTForPretrainingAuto',
+        ]:
+            exact_ckpts = model.gpt.checkpoints
+        else:
+            exact_ckpts = recompute.checkpoints
+    else:
+        exact_ckpts = recompute.checkpoints
+
+    # modify strategy
+    recompute.checkpoints = exact_ckpts[:]
+    logs = {
+        'Model Class': model.__class__.__name__,
+        'Applied Recompute ckpts': exact_ckpts,
+    }
+    logging.info(logs)
 
 
 def get_input_split_info(cur_rank, var, dist_context):
