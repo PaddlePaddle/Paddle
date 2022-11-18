@@ -383,13 +383,10 @@ void ConvCudnnKernel(const Context& ctx,
                             ? paddle::platform::DataLayout::kNHWC
                             : paddle::platform::DataLayout::kNCHW;
 #endif
-  std::cout  << "Compute ConvOp with cuDNN:"
+  VLOG(3) << "Compute ConvOp with cuDNN:"
           << " data_format=" << data_format << " compute_format="
           << (compute_format == paddle::platform::DataLayout::kNHWC ? "NHWC"
-                                                                    : "NCHW") << std::endl;
-if(dtype == CUDNN_DATA_HALF) {
-  std::cout << "是fp16数据！" << std::endl;
-}
+                                                                    : "NCHW");
 
   // ------------ transformed tensor -----------
   DenseTensor transformed_input_channel(input.type());
@@ -562,7 +559,6 @@ if(dtype == CUDNN_DATA_HALF) {
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
     TransToChannelLast<Context, T>(ctx, &transformed_output, output);
   }
-  std::cout << fwd_result.algo << std::endl;
 }
 
 template <typename T, typename Context>
