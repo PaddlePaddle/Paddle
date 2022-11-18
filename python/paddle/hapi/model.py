@@ -1467,7 +1467,7 @@ class Model:
             except ValueError as err:
                 if skip_mismatch:
                     warnings.warn(
-                        ("Skip loading for {}. ".format(key) + str(err))
+                        "Skip loading for {}. ".format(key) + str(err)
                     )
                     # reset optimizer when mismatch happens
                     reset_optimizer = True

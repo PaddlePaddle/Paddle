@@ -51,7 +51,7 @@ def create_test_class(op_type, typename, callback):
                 self.assertRaises(TypeError, op, x=x, y=a)
                 self.assertRaises(TypeError, op, x=a, y=y)
 
-    cls_name = "{0}_{1}".format(op_type, typename)
+    cls_name = "{}_{}".format(op_type, typename)
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 
@@ -327,7 +327,7 @@ def create_paddle_case(op_type, callback):
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
                 exe = paddle.static.Executor(self.place)
-                input_x = np.arange(0, 5).reshape((5)).astype(np.int32)
+                input_x = np.arange(0, 5).reshape(5).astype(np.int32)
                 input_y = np.array([5, 3, 2]).reshape((3, 1)).astype(np.int32)
                 real_result = callback(input_x, input_y)
                 (res,) = exe.run(

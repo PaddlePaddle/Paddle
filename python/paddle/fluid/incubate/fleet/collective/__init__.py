@@ -318,7 +318,7 @@ class CollectiveOptimizer(DistributedOptimizer):
     def _check_condition(self, name, **kwargs):
         for k, v in kwargs.items():
             if v is True:
-                assert False, "you can't use %s and %s together" % (name, k)
+                assert False, "you can't use {} and {} together".format(name, k)
 
     def _check_collective_mode(self, main_program, optimizer, strategy):
         """
@@ -503,7 +503,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def raiseOptimizeError(self, strategy_name, optimize_name):
         raise ValueError(
-            "can not use {0} when you set DistStrategy.{1} "
+            "can not use {} when you set DistStrategy.{} "
             "as True".format(optimize_name, strategy_name)
         )
 

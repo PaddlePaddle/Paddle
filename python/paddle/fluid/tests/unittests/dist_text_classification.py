@@ -30,7 +30,7 @@ DATA_MD5 = '29ebfc94f11aea9362bbb7f5e9d86b8a'
 # Load dictionary.
 def load_vocab(filename):
     vocab = {}
-    with open(filename, 'r', encoding="utf-8") as f:
+    with open(filename, encoding="utf-8") as f:
         for idx, line in enumerate(f):
             vocab[line.strip()] = idx
     return vocab
@@ -188,8 +188,7 @@ def reader_creator(pos_pattern, neg_pattern, word_idx):
     load(neg_pattern, INS, 1)
 
     def reader():
-        for doc, label in INS:
-            yield doc, label
+        yield from INS
 
     return reader
 

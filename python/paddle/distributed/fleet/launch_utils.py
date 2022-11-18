@@ -645,7 +645,7 @@ def start_local_trainers(
 
 def pull_worker_log(tp):
     if tp.log_fn:
-        with open(tp.log_fn.name, 'r') as fin:
+        with open(tp.log_fn.name) as fin:
             fin.seek(tp.log_offset, 0)
             for line in fin:
                 try:
@@ -1067,7 +1067,7 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
 
     # parse ip-ranks json file
     cluster_topo = None
-    with open(args.cluster_topo_path, "r") as json_file:
+    with open(args.cluster_topo_path) as json_file:
         cluster_topo = json.load(json_file)
 
     node_ips = []
@@ -1086,7 +1086,9 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
 
     assert (
         node_ip in node_ips
-    ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    ), "Can't find your local ip {{{}}} in node_ips: {{{}}}".format(
+        node_ip, node_ips
+    )
     node_rank = node_ips.index(node_ip)
 
     assert len(node_ranks) == len(
@@ -1199,7 +1201,7 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
         "PADDLE_RANK_MAPPING_PATH"
     )
     rank_mapping = None
-    with open(rank_mapping_path, "r") as json_file:
+    with open(rank_mapping_path) as json_file:
         rank_mapping = json.load(json_file)
     # reset PADDLE_RANK_MAPPING_PATH env
     os.environ["PADDLE_RANK_MAPPING_PATH"] = ""
@@ -1226,7 +1228,9 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
 
     assert (
         node_ip in node_ips
-    ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
+    ), "Can't find your local ip {{{}}} in node_ips: {{{}}}".format(
+        node_ip, node_ips
+    )
     node_rank = node_ips.index(node_ip)
 
     assert (
@@ -1657,7 +1661,7 @@ class ParameterServerLauncher:
             for i in range(len(self.server_endpoints_ips)):
                 if ip == self.server_endpoints_ips[i]:
                     server = Trainer()
-                    server.endpoint = "%s:%s" % (
+                    server.endpoint = "{}:{}".format(
                         ip,
                         self.server_endpoints_port[i],
                     )
@@ -1667,7 +1671,7 @@ class ParameterServerLauncher:
             for j in range(len(self.worker_endpoints_ips)):
                 if ip == self.worker_endpoints_ips[j]:
                     worker = Trainer()
-                    worker.endpoint = "%s:%s" % (
+                    worker.endpoint = "{}:{}".format(
                         ip,
                         self.worker_endpoints_port[j],
                     )
@@ -1678,7 +1682,7 @@ class ParameterServerLauncher:
             for m in range(len(self.coordinator_endpoints_ips)):
                 if ip == self.coordinator_endpoints_ips[m]:
                     coordinator = Trainer()
-                    coordinator.endpoint = "%s:%s" % (
+                    coordinator.endpoint = "{}:{}".format(
                         ip,
                         self.coordinator_endpoints_port[m],
                     )
@@ -1690,7 +1694,7 @@ class ParameterServerLauncher:
             for k in range(len(self.heter_worker_endpoints_ips)):
                 if ip == self.heter_worker_endpoints_ips[k]:
                     heter_worker = Trainer()
-                    heter_worker.endpoint = "%s:%s" % (
+                    heter_worker.endpoint = "{}:{}".format(
                         ip,
                         self.heter_worker_endpoints_port[k],
                     )

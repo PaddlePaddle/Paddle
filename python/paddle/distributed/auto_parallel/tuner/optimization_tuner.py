@@ -495,7 +495,7 @@ class OptimizationTuner:
 
         # Load results
         try:
-            with open(result_path, 'r') as fp:
+            with open(result_path) as fp:
                 results = json.load(fp)
             return results
         except FileNotFoundError:

@@ -447,7 +447,7 @@ def monkey_patch_variable():
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
         __impl__.__doc__ = """
-        {0}
+        {}
         Args:
             self(Variable): left hand variable
             other_var(Variable|float|int): right hand variable

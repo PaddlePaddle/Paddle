@@ -29,7 +29,7 @@ import warnings
 try:
     from collections.abc import Sequence
 except:
-    from collections import Sequence
+    from collections.abc import Sequence
 
 __all__ = [
     'append_backward',
@@ -238,7 +238,7 @@ class ProgramStats:
 
 
 def _pretty_op_desc_(op_desc, prefix):
-    out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % (
+    out_s = "{}\tname:[{}]\n{}    \tinputs:[{}]\n{}    \toutputs:[{}]".format(
         prefix + "_op",
         str(op_desc.type()),
         prefix + "_input",
@@ -732,9 +732,9 @@ def _remove_no_grad_branch_(
         return False
 
     # Remove ops whose outputs are all in no_grad_dict
-    target_grad_var_names = set(
-        [var.name + core.grad_var_suffix() for var in target_vars]
-    )
+    target_grad_var_names = {
+        var.name + core.grad_var_suffix() for var in target_vars
+    }
     op_descs = [
         op_desc
         for op_desc in op_descs
@@ -1936,7 +1936,7 @@ def append_backward(
         # not support double grad in control flow sub-block now.
         if not is_in_control_flow:
             if program._appending_grad_times > 1:
-                input_grad_names_set = set([_append_grad_suffix_(loss.name)])
+                input_grad_names_set = {_append_grad_suffix_(loss.name)}
 
         # TODO: support _append_backward_ops_with_checkpoints_ in
         #  sub-block (control flow)
@@ -2037,7 +2037,7 @@ def append_backward(
         grad_block = grad_info[1]
         if not grad_block.has_var(grad_info[0]):
             raise ValueError(
-                "grad block[{0}] did not have grad var {1}".format(
+                "grad block[{}] did not have grad var {}".format(
                     grad_info[1], grad_info[0]
                 )
             )
@@ -2107,7 +2107,7 @@ def _get_output_names(cur_block, targets):
     """
 
     block = targets[0].block if targets else cur_block
-    current_output_names = set([out.name for out in targets])
+    current_output_names = {out.name for out in targets}
 
     # 1. If `targets` in cur_block or the ancestral block of `cur_block`
     if block.idx == cur_block.idx or _is_ancestor_block(block, cur_block):
@@ -2177,7 +2177,7 @@ def _find_op_path_(
         The forward op path of block corresponding to backward op.
     """
 
-    input_names = set([inp.name for inp in inputs])
+    input_names = {inp.name for inp in inputs}
     output_names = _get_output_names(block, targets)
     if op_path_dict is None:
         op_path_dict = dict()

@@ -33,7 +33,7 @@ from paddle.static import program_guard
 try:
     from collections.abc import Sequence
 except:
-    from collections import Sequence
+    from collections.abc import Sequence
 
 __all__ = []
 

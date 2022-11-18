@@ -145,7 +145,7 @@ class CspReporter:
             trainerId = int(timeFileName.split(sed)[-1])
             gpuId = int(timeFileName.split(sed)[-2])
             info = {}
-            with open(timeFileName, "r") as rf:
+            with open(timeFileName) as rf:
                 for line in rf:
                     if line.startswith("start time:"):
                         info["start_time"] = int(

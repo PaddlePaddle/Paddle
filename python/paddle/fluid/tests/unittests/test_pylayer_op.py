@@ -55,7 +55,7 @@ class TestPyLayer(unittest.TestCase):
         z2.mean().backward()
 
         self.assertTrue(
-            np.max(np.abs((input1.grad.numpy() - input2.grad.numpy()))) < 1e-10
+            np.max(np.abs(input1.grad.numpy() - input2.grad.numpy())) < 1e-10
         )
 
     def test_simple_pylayer_multiple_output(self):
@@ -96,7 +96,7 @@ class TestPyLayer(unittest.TestCase):
         z2.mean().backward()
 
         self.assertTrue(
-            np.max(np.abs((input1.grad.numpy() - input2.grad.numpy()))) < 1e-10
+            np.max(np.abs(input1.grad.numpy() - input2.grad.numpy())) < 1e-10
         )
 
     def test_simple_pylayer_return_none_with_no_grad(self):
@@ -129,7 +129,7 @@ class TestPyLayer(unittest.TestCase):
         z2.mean().backward()
 
         self.assertTrue(
-            np.max(np.abs((input1.grad.numpy() - input2.grad.numpy()))) < 1e-10
+            np.max(np.abs(input1.grad.numpy() - input2.grad.numpy())) < 1e-10
         )
 
     def test_simple_pylayer_single_output(self):
@@ -508,7 +508,7 @@ class TestPyLayer(unittest.TestCase):
             data.stop_gradient = False
             layer = Layer()
             z = layer(data)
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 RuntimeError,
                 "received tensor_version:{} != wrapper_version_snapshot:{}".format(
                     1, 0

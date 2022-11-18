@@ -18,7 +18,7 @@ from paddle.distribution import categorical, distribution
 try:
     from collections.abc import Iterable
 except:
-    from collections import Iterable
+    from collections.abc import Iterable
 
 
 class Multinomial(distribution.Distribution):

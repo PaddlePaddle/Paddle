@@ -343,7 +343,7 @@ def monkey_patch_math_varbase():
             comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
         __impl__.__doc__ = """
-        {0}
+        {}
         Args:
             other_var(Tensor|float|int): right hand Tensor
 

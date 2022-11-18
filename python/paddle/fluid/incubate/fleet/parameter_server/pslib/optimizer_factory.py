@@ -290,7 +290,9 @@ class DistributedAdam(DistributedOptimizerImplBase):
             pname = params[i].name
             gname = grads[i].name
             if pname != gname[:-5]:
-                raise ValueError(" params != grads , %s vs %s" % (pname, gname))
+                raise ValueError(
+                    " params != grads , {} vs {}".format(pname, gname)
+                )
             pname2grad[pname] = grads[i]
 
         return pname2grad

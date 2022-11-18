@@ -108,7 +108,7 @@ def test():
         train_test_feed=feeder,
     )
 
-    print("Test: avg_cost: %s, acc: %s" % (avg_loss_val, acc_val))
+    print("Test: avg_cost: {}, acc: {}".format(avg_loss_val, acc_val))
     assert acc_val > 0.96
 
 

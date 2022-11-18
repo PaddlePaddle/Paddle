@@ -52,10 +52,10 @@ def set_config():
 
 def parse_data():
     """parse input and output data"""
-    with open('data/data.txt', 'r') as fr:
+    with open('data/data.txt') as fr:
         data = np.array([float(_) for _ in fr.read().split()])
 
-    with open('data/result.txt', 'r') as fr:
+    with open('data/result.txt') as fr:
         result = np.array([float(_) for _ in fr.read().split()])
 
     return (data, result)

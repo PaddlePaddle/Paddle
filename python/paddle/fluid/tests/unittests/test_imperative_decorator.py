@@ -109,8 +109,7 @@ class TestNoGradClass(unittest.TestCase):
         )
 
         def test_gen():
-            for i in range(3):
-                yield i
+            yield from range(3)
 
         a = 0
         for i in test_gen():
@@ -118,8 +117,7 @@ class TestNoGradClass(unittest.TestCase):
 
         @paddle.no_grad()
         def test_wrapped_gen():
-            for i in range(3):
-                yield i
+            yield from range(3)
 
         b = 0
         for i in test_wrapped_gen():

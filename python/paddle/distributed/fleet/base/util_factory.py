@@ -329,7 +329,7 @@ class UtilBase:
 
         def load_program_text(path):
             """load program from human-readable text file"""
-            with open(path, "r") as f:
+            with open(path) as f:
                 program_desc_text = f.read()
 
             prog_desc = framework_pb2.ProgramDesc()
@@ -434,7 +434,7 @@ class UtilBase:
                 shape = [batch_size] + shape
                 dim = dim * batch_size
 
-                for line in open(fn, 'r'):
+                for line in open(fn):
                     fields = line.strip().split(' ')
                     fields = [float(d) for d in fields]
                     while len(fields) >= dim:

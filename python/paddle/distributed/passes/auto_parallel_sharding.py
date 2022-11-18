@@ -1138,10 +1138,10 @@ def _fuse_overlap_parameter_comm_stage_three(sharding_infos, fuse_size):
     sharding_info = sharding_infos[0]
 
 
-class ShardingInfo(object):
+class ShardingInfo:
     def __init__(self, group, rank, params_grads, partition_algor):
         self.group = group
-        self.params_grads = dict([(p.name, (p, g)) for p, g in params_grads])
+        self.params_grads = {p.name: (p, g) for p, g in params_grads}
         assert len(self.params_grads) == len(
             set(self.params_grads)
         ), "found duplicated param in params_grads"
@@ -1182,8 +1182,8 @@ class ShardingInfo(object):
     # and sharding should only broadcast the casted fp16 param
     # instead of the origin fp32 version param.
     def get_broadcast_vars_and_param_usage(self, block):
-        broadcast_vars = set([])
-        fp16_params = set([])
+        broadcast_vars = set()
+        fp16_params = set()
         fp16_to_fp32 = {}
 
         param_usage = {x: 0 for x in self.param_names}
@@ -1220,7 +1220,7 @@ class ShardingInfo(object):
         return self.params_grads.get(param_name, None)
 
 
-class ParameterGroup(object):
+class ParameterGroup:
     def __init__(self, max_size):
         self.max_siez = max_size
         self.dtype = None

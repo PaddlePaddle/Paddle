@@ -105,8 +105,8 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         assert labels_file, "The labels file is missing."
 
         def reader():
-            with open(data_file, 'r') as df:
-                with open(labels_file, 'r') as lf:
+            with open(data_file) as df:
+                with open(labels_file) as lf:
                     data_lines = df.readlines()
                     labels_lines = lf.readlines()
                     assert len(data_lines) == len(
@@ -257,13 +257,13 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
 
     def _print_performance(self, title, pps, lat):
         _logger.info(
-            '{0}: avg predictions per sec: {1:.2f}, avg latency: {2:.4f} ms'.format(
+            '{}: avg predictions per sec: {:.2f}, avg latency: {:.4f} ms'.format(
                 title, pps, lat
             )
         )
 
     def _print_accuracy(self, title, acc):
-        _logger.info('{0}: avg accuracy: {1:.6f}'.format(title, acc))
+        _logger.info('{}: avg accuracy: {:.6f}'.format(title, acc))
 
     def _summarize_performance(self, int8_pps, int8_lat, fp32_pps, fp32_lat):
         _logger.info('--- Performance summary ---')
@@ -280,7 +280,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
 
     def _compare_accuracy(self, threshold, quant_acc, int8_acc):
         _logger.info(
-            'Accepted accuracy drop threshold: {0}. (condition: (Quant_acc - INT8_acc) <= threshold)'.format(
+            'Accepted accuracy drop threshold: {}. (condition: (Quant_acc - INT8_acc) <= threshold)'.format(
                 threshold
             )
         )
@@ -290,7 +290,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         assert quant_acc - int8_acc <= threshold
 
     def _strings_from_csv(self, string):
-        return set(s.strip() for s in string.split(','))
+        return {s.strip() for s in string.split(',')}
 
     def _ints_from_csv(self, string):
         return set(map(int, string.split(',')))
@@ -321,7 +321,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
                 test_case_args.ops_to_quantize
             )
 
-        self._op_ids_to_skip = set([-1])
+        self._op_ids_to_skip = {-1}
         if test_case_args.op_ids_to_skip:
             self._op_ids_to_skip = self._ints_from_csv(
                 test_case_args.op_ids_to_skip

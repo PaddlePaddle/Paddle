@@ -355,7 +355,7 @@ class TestDeformablePSROIPoolOp(OpTest):
         self.trans = np.random.rand(
             self.rois_num, 2, self.part_size[0], self.part_size[1]
         ).astype('float32')
-        self.top_count = np.random.random((output_shape)).astype('float32')
+        self.top_count = np.random.random(output_shape).astype('float32')
         count = (
             self.rois_num
             * self.output_channels

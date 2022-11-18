@@ -69,7 +69,7 @@ class TestSequencePadOp(OpTest):
             start_idx = end_idx
 
         out_data = np.array(padded_sequences)
-        length = np.array(self.x_len_lod[0]).reshape((-1))
+        length = np.array(self.x_len_lod[0]).reshape(-1)
         self.outputs = {'Out': out_data, 'Length': length}
 
     def setUp(self):
@@ -89,7 +89,7 @@ class TestSequencePadOp2(TestSequencePadOp):
     def set_attr(self):
         self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
-        self.pad_value = np.random.random((10))
+        self.pad_value = np.random.random(10)
         self.padded_length = -1
         self.dtype = 'float64'
 
@@ -107,7 +107,7 @@ class TestSequencePadOp4(TestSequencePadOp):
     def set_attr(self):
         self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
-        self.pad_value = np.random.random((10))
+        self.pad_value = np.random.random(10)
         self.padded_length = 7
         self.dtype = 'float64'
 

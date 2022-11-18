@@ -58,7 +58,7 @@ class LayerHelper(LayerHelperBase):
     def input(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
         if len(inputs) != 1:
-            raise "{0} layer only takes one input".format(self.layer_type)
+            raise "{} layer only takes one input".format(self.layer_type)
         return inputs[0]
 
     @property
@@ -87,8 +87,7 @@ class LayerHelper(LayerHelperBase):
     def iter_inputs_and_params(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
         param_attrs = self.multiple_param_attr(len(inputs))
-        for ipt, param_attr in zip(inputs, param_attrs):
-            yield ipt, param_attr
+        yield from zip(inputs, param_attrs)
 
     def input_dtype(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)

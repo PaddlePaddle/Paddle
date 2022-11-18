@@ -446,7 +446,7 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             # self.out_linear_in_scales.append(127.0 / max_v)
 
             self.out_linear_in_scales.append(max_v)
-            self.out_linear_out_scales.append((127.0 * 127.0))
+            self.out_linear_out_scales.append(127.0 * 127.0)
             out_linear_in = self.fake_quant(
                 out_linear_in, self.out_linear_in_scales[i]
             )
@@ -478,7 +478,7 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
                 0
             ]
             self.ffn1_in_scales.append(max_v)
-            self.ffn1_out_scales.append((127.0 * 127.0))
+            self.ffn1_out_scales.append(127.0 * 127.0)
             ffn_ln_out = self.fake_quant(ffn_ln_out, self.ffn1_in_scales[i])
 
             ffn1_out = paddle.nn.functional.linear(
@@ -498,7 +498,7 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             max_v = paddle.max(paddle.abs(paddle.cast(ffn1_out, 'float32')))[0]
             # self.ffn2_in_scales.append(127.0 / max_v)
             self.ffn2_in_scales.append(max_v)
-            self.ffn2_out_scales.append((127.0 * 127.0))
+            self.ffn2_out_scales.append(127.0 * 127.0)
             # print('ffn2_in_scales ', i, self.ffn2_in_scales[i])
             ffn1_out = self.fake_quant(ffn1_out, self.ffn2_in_scales[i])
 

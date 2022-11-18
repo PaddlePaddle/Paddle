@@ -17,11 +17,11 @@
 import difflib
 import sys
 
-with open(sys.argv[1], 'r') as f:
+with open(sys.argv[1]) as f:
     origin = f.read()
     origin = origin.splitlines()
 
-with open(sys.argv[2], 'r') as f:
+with open(sys.argv[2]) as f:
     new = f.read()
     new = new.splitlines()
 

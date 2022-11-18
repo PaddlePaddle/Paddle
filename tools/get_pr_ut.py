@@ -160,7 +160,7 @@ class PRChecker:
         )
         if 'cmakelist' in filename.lower():
             isWhiteFile = False
-        elif filename.startswith((not_white_files)):
+        elif filename.startswith(not_white_files):
             isWhiteFile = False
         else:
             isWhiteFile = True
@@ -288,7 +288,7 @@ class PRChecker:
         print("build_path:", build_path)
         (unittest_directory, unittest_name) = os.path.split(unittest_path)
         # determine whether filename is in all_ut_case
-        with open(all_ut_file, 'r') as f:
+        with open(all_ut_file) as f:
             all_unittests = f.readlines()
             for test in all_unittests:
                 test = test.replace('\n', '').strip()
@@ -328,7 +328,7 @@ class PRChecker:
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
             elif filename.startswith(PADDLE_ROOT + 'paddle/'):
-                if filename.startswith((PADDLE_ROOT + 'paddle/infrt')):
+                if filename.startswith(PADDLE_ROOT + 'paddle/infrt'):
                     filterFiles.append(filename)
                 elif filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
                     if filename.startswith(
@@ -416,7 +416,7 @@ class PRChecker:
                             (unittest_directory, unittest_name) = os.path.split(
                                 f_judge
                             )
-                            with open(path, 'r') as f:
+                            with open(path) as f:
                                 added_unittests = f.readlines()
                                 for test in added_unittests:
                                     test = test.replace('\n', '').strip()

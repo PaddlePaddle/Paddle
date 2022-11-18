@@ -272,7 +272,7 @@ class TestDataNormOp(OpTest):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        self.check_grad(['X'], 'Y', no_grad_set=set())
 
 
 class TestDataNormOpWithEnableScaleAndShift(OpTest):
@@ -334,7 +334,7 @@ class TestDataNormOpWithEnableScaleAndShift(OpTest):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        self.check_grad(['X'], 'Y', no_grad_set=set())
 
 
 class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
@@ -391,7 +391,7 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        self.check_grad(['X'], 'Y', no_grad_set=set())
 
 
 class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
@@ -453,7 +453,7 @@ class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        self.check_grad(['X'], 'Y', no_grad_set=set())
 
 
 class TestDataNormOpWithSlotDim(OpTest):
@@ -509,7 +509,7 @@ class TestDataNormOpWithSlotDim(OpTest):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+        self.check_grad(['X'], 'Y', no_grad_set=set())
 
 
 class TestDataNormOpErrorr(unittest.TestCase):

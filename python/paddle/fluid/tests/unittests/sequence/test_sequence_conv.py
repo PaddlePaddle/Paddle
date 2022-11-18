@@ -168,9 +168,7 @@ class TestSeqProject(OpTest):
 
     def test_check_grad_padding_data(self):
         if self.padding_trainable:
-            self.check_grad(
-                ['PaddingData'], 'Out', no_grad_set=set(['X', 'Filter'])
-            )
+            self.check_grad(['PaddingData'], 'Out', no_grad_set={'X', 'Filter'})
 
     def test_check_grad_Filter(self):
         self.check_grad(
@@ -186,7 +184,7 @@ class TestSeqProject(OpTest):
                 ['X', 'Filter'],
                 'Out',
                 max_relative_error=0.05,
-                no_grad_set=set(['PaddingData']),
+                no_grad_set={'PaddingData'},
             )
 
     def test_check_grad_padding_input(self):
@@ -195,7 +193,7 @@ class TestSeqProject(OpTest):
                 self.inputs_val_no_f,
                 'Out',
                 max_relative_error=0.05,
-                no_grad_set=set(['Filter']),
+                no_grad_set={'Filter'},
             )
 
     def test_check_grad_padding_filter(self):
@@ -204,7 +202,7 @@ class TestSeqProject(OpTest):
                 self.inputs_val_no_x,
                 'Out',
                 max_relative_error=0.05,
-                no_grad_set=set(['X']),
+                no_grad_set={'X'},
             )
 
     def init_test_case(self):

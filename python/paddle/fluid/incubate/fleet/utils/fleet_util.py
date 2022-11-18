@@ -424,7 +424,7 @@ class FleetUtil:
         xbox_base_key = int(xbox_base_key)
 
         if pass_id != "-1":
-            suffix_name = "/%s/%s/" % (day, pass_id)
+            suffix_name = "/{}/{}/".format(day, pass_id)
             model_path = output_path.rstrip("/") + suffix_name
         else:
             suffix_name = "/%s/0/" % day
@@ -463,7 +463,9 @@ class FleetUtil:
                     client.delete(donefile_path)
                     client.upload(donefile_name, output_path)
                     self.rank0_error(
-                        "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                        "write {}/{} {} succeed".format(
+                            day, pass_id, donefile_name
+                        )
                     )
                 else:
                     self.rank0_error(
@@ -475,7 +477,7 @@ class FleetUtil:
                     f.write(content + "\n")
                 client.upload(donefile_name, output_path)
                 self.rank0_error(
-                    "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                    "write {}/{} {} succeed".format(day, pass_id, donefile_name)
                 )
         fleet._role_maker._barrier_worker()
 
@@ -532,7 +534,7 @@ class FleetUtil:
 
         if pass_id != "-1":
             mode = "patch"
-            suffix_name = "/%s/delta-%s/" % (day, pass_id)
+            suffix_name = "/{}/delta-{}/".format(day, pass_id)
             model_path = output_path.rstrip("/") + suffix_name
             if donefile_name is None:
                 donefile_name = "xbox_patch_done.txt"
@@ -582,7 +584,9 @@ class FleetUtil:
                     client.delete(donefile_path)
                     client.upload(donefile_name, output_path)
                     self.rank0_error(
-                        "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                        "write {}/{} {} succeed".format(
+                            day, pass_id, donefile_name
+                        )
                     )
                 else:
                     self.rank0_error(
@@ -594,7 +598,7 @@ class FleetUtil:
                     f.write(xbox_str + "\n")
                 client.upload(donefile_name, output_path)
                 self.rank0_error(
-                    "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                    "write {}/{} {} succeed".format(day, pass_id, donefile_name)
                 )
         fleet._role_maker._barrier_worker()
 
@@ -695,7 +699,7 @@ class FleetUtil:
         """
         day = str(day)
         pass_id = str(pass_id)
-        suffix_name = "/%s/%s/" % (day, pass_id)
+        suffix_name = "/{}/{}/".format(day, pass_id)
         load_path = output_path + suffix_name
         self.rank0_error("going to load_model %s" % load_path)
         self.load_fleet_model(load_path)
@@ -720,7 +724,7 @@ class FleetUtil:
         """
         day = str(day)
         pass_id = str(pass_id)
-        suffix_name = "/%s/%s/" % (day, pass_id)
+        suffix_name = "/{}/{}/".format(day, pass_id)
         model_path = output_path + suffix_name
         self.rank0_print("going to save_model %s" % model_path)
         self.save_fleet_model(model_path)
@@ -768,7 +772,7 @@ class FleetUtil:
         """
         day = str(day)
         pass_id = str(pass_id)
-        suffix_name = "/%s/delta-%s/" % (day, pass_id)
+        suffix_name = "/{}/delta-{}/".format(day, pass_id)
         model_path = output_path + suffix_name
         self.rank0_print("going to save_delta_model %s" % model_path)
         fleet.save_persistables(None, model_path, mode=1)
@@ -824,7 +828,7 @@ class FleetUtil:
         pass_id = str(pass_id)
         mode = int(mode)
         table_id = kwargs.get("table_id", 0)
-        suffix_name = "/%s/delta-%s" % (day, pass_id)
+        suffix_name = "/{}/delta-{}".format(day, pass_id)
         model_path = output_path.rstrip("/") + suffix_name
         self.rank0_print("going to save_cache_model %s" % model_path)
         key_num = fleet.save_cache_model(
@@ -998,9 +1002,9 @@ class FleetUtil:
             client = HDFSClient(hadoop_home, configs)
 
             if pass_id == "-1":
-                dest = "%s/%s/base/dnn_plugin/" % (output_path, day)
+                dest = "{}/{}/base/dnn_plugin/".format(output_path, day)
             else:
-                dest = "%s/%s/delta-%s/dnn_plugin/" % (
+                dest = "{}/{}/delta-{}/dnn_plugin/".format(
                     output_path,
                     day,
                     pass_id,
@@ -1103,9 +1107,9 @@ class FleetUtil:
             client = HDFSClient(hadoop_home, configs)
 
             if pass_id == "-1":
-                dest = "%s/%s/base/dnn_plugin/" % (output_path, day)
+                dest = "{}/{}/base/dnn_plugin/".format(output_path, day)
             else:
-                dest = "%s/%s/delta-%s/dnn_plugin/" % (
+                dest = "{}/{}/delta-{}/dnn_plugin/".format(
                     output_path,
                     day,
                     pass_id,
@@ -1959,7 +1963,7 @@ class GPUPSUtil(FleetUtil):
         self._afs.download(donefile_path, "./xbox_base_done.txt")
         # pre_content = self._afs.cat(donefile_path)
         pre_content = ""
-        with open("xbox_base_done.txt", "r") as f:
+        with open("xbox_base_done.txt") as f:
             pre_content = f.read()
         pre_content = pre_content.strip()
         last_dict = json.loads(pre_content.split("\n")[-1])
@@ -2000,7 +2004,7 @@ class GPUPSUtil(FleetUtil):
             return [-1, -1, "", int(time.time())]
         self._afs.download(donefile_path, "xbox_patch_done.txt")
         pre_content = ""
-        with open("xbox_patch_done.txt", "r") as f:
+        with open("xbox_patch_done.txt") as f:
             pre_content = f.read()
         pre_content = pre_content.strip()
         last_dict = json.loads(pre_content.split("\n")[-1])
@@ -2045,7 +2049,7 @@ class GPUPSUtil(FleetUtil):
             return [-1, -1, "", int(time.time())]
         self._afs.download(donefile_path, "./donefile.txt")
         content = ""
-        with open("donefile.txt", "r") as f:
+        with open("donefile.txt") as f:
             content = f.read()
         content = content.strip().split("\n")[-1].split("\t")
         last_save_day = int(content[0])
@@ -2093,7 +2097,7 @@ class GPUPSUtil(FleetUtil):
         xbox_base_key = int(xbox_base_key)
 
         if pass_id != "-1":
-            suffix_name = "/%s/%s/" % (day, pass_id)
+            suffix_name = "/{}/{}/".format(day, pass_id)
             model_path = output_path.rstrip("/") + suffix_name
         else:
             suffix_name = "/%s/0/" % day
@@ -2111,7 +2115,7 @@ class GPUPSUtil(FleetUtil):
             if self._afs.is_file(donefile_path):
                 self._afs.download(donefile_path, donefile_name)
                 pre_content = ""
-                with open(donefile_name, "r") as f:
+                with open(donefile_name) as f:
                     pre_content = f.read()
                 pre_content_list = pre_content.strip().split("\n")
                 day_list = [i.split("\t")[0] for i in pre_content_list]
@@ -2131,7 +2135,9 @@ class GPUPSUtil(FleetUtil):
                     self._afs.delete(donefile_path)
                     self._afs.upload(donefile_name, donefile_path)
                     self.rank0_error(
-                        "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                        "write {}/{} {} succeed".format(
+                            day, pass_id, donefile_name
+                        )
                     )
                 else:
                     self.rank0_error(
@@ -2143,7 +2149,7 @@ class GPUPSUtil(FleetUtil):
                     f.write(content + "\n")
                 self._afs.upload(donefile_name, donefile_path)
                 self.rank0_error(
-                    "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                    "write {}/{} {} succeed".format(day, pass_id, donefile_name)
                 )
 
     def write_xbox_donefile(
@@ -2196,7 +2202,7 @@ class GPUPSUtil(FleetUtil):
         mode = None
         if pass_id != "-1":
             mode = "patch"
-            suffix_name = "/%s/delta-%s/" % (day, pass_id)
+            suffix_name = "/{}/delta-{}/".format(day, pass_id)
             model_path = output_path.rstrip("/") + suffix_name
             if donefile_name is None:
                 donefile_name = "xbox_patch_done.txt"
@@ -2226,7 +2232,7 @@ class GPUPSUtil(FleetUtil):
                 self.rank0_info("exist %s succeed" % (donefile_path))
                 self._afs.download(donefile_path, donefile_name)
                 pre_content = ""
-                with open(donefile_name, "r") as f:
+                with open(donefile_name) as f:
                     pre_content = f.read()
                 last_dict = json.loads(pre_content.strip().split("\n")[-1])
                 last_day = last_dict["input"].split("/")[-3]
@@ -2248,7 +2254,9 @@ class GPUPSUtil(FleetUtil):
                     self._afs.delete(donefile_path)
                     self._afs.upload(donefile_name, donefile_path)
                     self.rank0_info(
-                        "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                        "write {}/{} {} succeed".format(
+                            day, pass_id, donefile_name
+                        )
                     )
                 else:
                     self.rank0_info(
@@ -2260,7 +2268,7 @@ class GPUPSUtil(FleetUtil):
                     f.write(xbox_str + "\n")
                 self._afs.upload(donefile_name, donefile_path)
                 self.rank0_error(
-                    "write %s/%s %s succeed" % (day, pass_id, donefile_name)
+                    "write {}/{} {} succeed".format(day, pass_id, donefile_name)
                 )
 
     def write_cache_donefile(

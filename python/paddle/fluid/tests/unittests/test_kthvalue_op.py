@@ -56,7 +56,7 @@ class TestKthvalueOp(OpTest):
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(set(['X']), 'Out', check_eager=True)
+        self.check_grad({'X'}, 'Out', check_eager=True)
 
 
 class TestKthvalueOpWithKeepdim(OpTest):
@@ -83,7 +83,7 @@ class TestKthvalueOpWithKeepdim(OpTest):
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(set(['X']), 'Out', check_eager=True)
+        self.check_grad({'X'}, 'Out', check_eager=True)
 
 
 class TestKthvalueOpKernels(unittest.TestCase):

@@ -161,7 +161,7 @@ class Node:
             label=self.label,
             extra=','
             + ','.join(
-                "%s=%s" % (key, crepr(value))
+                "{}={}".format(key, crepr(value))
                 for key, value in self.attrs.items()
             )
             if self.attrs

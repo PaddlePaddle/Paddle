@@ -514,9 +514,9 @@ def _update_backward_cast_ops(params_grads, dist_context):
             post_ops = find_true_post_op(main_block.ops, op, g.name)
             if post_ops:
                 raise ValueError(
-                    "The cast op {0}'s output should not be"
+                    "The cast op {}'s output should not be"
                     "used by a non-optimize op, however, it"
-                    "is used by {1}".format(op, post_ops[0])
+                    "is used by {}".format(op, post_ops[0])
                 )
 
             if op == main_block.ops[-1]:
@@ -554,7 +554,7 @@ def _update_backward_cast_ops(params_grads, dist_context):
 
             op_idx = find_op_index(main_block.desc, op.desc)
             if op_idx == -1:
-                raise ValueError("The op {0} is not in program".format(op))
+                raise ValueError("The op {} is not in program".format(op))
             main_block._remove_op(op_idx, sync=False)
 
     main_block._sync_with_cpp()

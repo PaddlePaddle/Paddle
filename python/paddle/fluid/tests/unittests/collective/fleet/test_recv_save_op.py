@@ -89,7 +89,7 @@ class TestListenAndServOp(unittest.TestCase):
                 start_left_time -= sleep_time
 
     def _get_pserver_port(self, pid):
-        with open("/tmp/paddle.%d.port" % pid, 'r') as f:
+        with open("/tmp/paddle.%d.port" % pid) as f:
             port = int(f.read().strip())
         return port
 

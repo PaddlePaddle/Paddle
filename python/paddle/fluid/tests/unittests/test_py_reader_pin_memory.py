@@ -21,8 +21,7 @@ import numpy as np
 
 def user_reader(inputs):
     def _reader():
-        for d in inputs:
-            yield d
+        yield from inputs
 
     return _reader
 

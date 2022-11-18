@@ -883,7 +883,7 @@ class Profiler:
 
 def get_profiler(config_path):
     try:
-        with open(config_path, 'r') as filehandle:
+        with open(config_path) as filehandle:
             config_dict = json.load(filehandle)
     except Exception as e:
         print('Load config file for profiler error: {}'.format(e))

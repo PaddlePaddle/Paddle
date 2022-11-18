@@ -395,8 +395,7 @@ class no_grad_:
         def _decorate_generator(func, *args, **kwargs):
             gen = func(*args, **kwargs)
             with self:
-                for x in gen:
-                    yield x
+                yield from gen
 
         if inspect.isgeneratorfunction(func):
             return _decorate_generator(func)

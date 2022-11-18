@@ -117,7 +117,7 @@ class dcgmFileReader(FileReader):
         ]
 
         csv_tempfile = tempfile.TemporaryFile()
-        with open(fileName, 'r') as fp:
+        with open(fileName) as fp:
             has_header = False
 
             for line in fp:

@@ -28,7 +28,7 @@ from sys import version_info
 try:
     from collections.abc import Sequence
 except:
-    from collections import Sequence
+    from collections.abc import Sequence
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -139,15 +139,13 @@ def _yield_value(iterable):
         for key in _sorted(iterable):
             yield iterable[key]
     else:
-        for value in iterable:
-            yield value
+        yield from iterable
 
 
 def _yield_flat_nest(nest):
     for n in _yield_value(nest):
         if is_sequence(n):
-            for ni in _yield_flat_nest(n):
-                yield ni
+            yield from _yield_flat_nest(n)
         else:
             yield n
 

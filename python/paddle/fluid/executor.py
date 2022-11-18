@@ -402,7 +402,7 @@ def _add_feed_fetch_ops(
         for i, var in enumerate(fetch_list):
             assert isinstance(var, Variable) or isinstance(
                 var, str
-            ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
+            ), "Wrong type for fetch_list[{}]: {}".format(i, type(var))
             global_block.append_op(
                 type=fetch_op,
                 inputs={'X': [var]},
@@ -2722,7 +2722,7 @@ class Executor:
             for i, var in enumerate(fetch_list):
                 assert isinstance(var, Variable) or isinstance(
                     var, str
-                ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
+                ), "Wrong type for fetch_list[{}]: {}".format(i, type(var))
                 global_block.append_op(
                     type=fetch_op,
                     inputs={'X': [var]},

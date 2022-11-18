@@ -307,23 +307,23 @@ def main(
     output_op_path,
     output_arg_map_path,
 ):
-    with open(ops_yaml_path, "rt") as f:
+    with open(ops_yaml_path) as f:
         ops = yaml.safe_load(f)
         ops = [restruct_io(op) for op in ops]
     forward_op_dict = to_named_dict(ops)
 
-    with open(backward_yaml_path, "rt") as f:
+    with open(backward_yaml_path) as f:
         backward_ops = yaml.safe_load(f)
         backward_ops = [restruct_io(op) for op in backward_ops]
     backward_op_dict = to_named_dict(backward_ops)
 
-    with open(op_version_yaml_path, "rt") as f:
+    with open(op_version_yaml_path) as f:
         op_versions = yaml.safe_load(f)
     # add op version info into op
     for op_version in op_versions:
         forward_op_dict[op_version['op']]['version'] = op_version['version']
 
-    with open(op_compat_yaml_path, "rt") as f:
+    with open(op_compat_yaml_path) as f:
         op_op_map = yaml.safe_load(f)
 
     for op in ops:
@@ -356,14 +356,14 @@ def main(
         return
 
     op_template = env.get_template('op.c.j2')
-    with open(output_op_path, "wt") as f:
+    with open(output_op_path, "w") as f:
         msg = op_template.render(
             ops=ops, backward_ops=backward_ops, op_dict=op_dict
         )
         f.write(msg)
 
     ks_template = env.get_template('ks.c.j2')
-    with open(output_arg_map_path, 'wt') as f:
+    with open(output_arg_map_path, 'w') as f:
         msg = ks_template.render(ops=ops, backward_ops=backward_ops)
         f.write(msg)
 

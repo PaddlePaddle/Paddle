@@ -178,9 +178,9 @@ class TestDygraphDeepCF(unittest.TestCase):
         likes = dict()
         num_users = -1
         num_items = -1
-        with open(self.data_path, 'r') as f:
+        with open(self.data_path) as f:
             for l in f.readlines():
-                uid, iid, rating = [int(v) for v in l.split('\t')]
+                uid, iid, rating = (int(v) for v in l.split('\t'))
                 num_users = max(num_users, uid + 1)
                 num_items = max(num_items, iid + 1)
                 if float(rating) > 0.0:
@@ -320,7 +320,9 @@ class TestDygraphDeepCF(unittest.TestCase):
                     adam.minimize(loss)
                     deepcf.clear_gradients()
                     dy_loss = loss.numpy()
-                    sys.stderr.write('dynamic loss: %s %s\n' % (slice, dy_loss))
+                    sys.stderr.write(
+                        'dynamic loss: {} {}\n'.format(slice, dy_loss)
+                    )
 
         with fluid.dygraph.guard():
             paddle.seed(seed)
@@ -355,7 +357,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                     deepcf2.clear_gradients()
                     dy_loss2 = loss2.numpy()
                     sys.stderr.write(
-                        'dynamic loss: %s %s\n' % (slice, dy_loss2)
+                        'dynamic loss: {} {}\n'.format(slice, dy_loss2)
                     )
 
         with fluid.dygraph.guard():
@@ -398,7 +400,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                         deepcf.clear_gradients()
                         eager_loss = loss.numpy()
                         sys.stderr.write(
-                            'eager loss: %s %s\n' % (slice, eager_loss)
+                            'eager loss: {} {}\n'.format(slice, eager_loss)
                         )
 
         self.assertEqual(static_loss, dy_loss)

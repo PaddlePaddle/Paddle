@@ -555,7 +555,7 @@ class Test_get_incrementapi(unittest.TestCase):
 
     def test_it(self):
         get_incrementapi()
-        with open(self.api_diff_spec_filename, 'r') as f:
+        with open(self.api_diff_spec_filename) as f:
             lines = f.readlines()
             self.assertCountEqual(
                 [

@@ -48,7 +48,7 @@ class netFileReader(FileReader):
         for fileName in fileNameList:
             trainerId = self.getTrainerId(fileName)
             trainerIdList.append(trainerId)
-            with open(fileName, "r") as rf:
+            with open(fileName) as rf:
                 for line in rf:
                     try:
                         event_str = json.loads(line.strip())

@@ -1291,7 +1291,7 @@ class TestLayer(LayerTest):
             for i in range(window_size):
                 words.append(
                     layers.data(
-                        name='word_{0}'.format(i), shape=[None], dtype='int64'
+                        name='word_{}'.format(i), shape=[None], dtype='int64'
                     )
                 )
             sample_weights = layers.fill_constant(
@@ -1326,7 +1326,7 @@ class TestLayer(LayerTest):
             )
             feed_dict = dict()
             for i in range(window_size):
-                feed_dict['word_{0}'.format(i)] = inp_word[i]
+                feed_dict['word_{}'.format(i)] = inp_word[i]
             static_rlt = self.get_static_graph_result(
                 feed=feed_dict, fetch_list=[nce_loss]
             )[0]
@@ -1336,7 +1336,7 @@ class TestLayer(LayerTest):
             for i in range(window_size):
                 words.append(
                     layers.data(
-                        name='word_{0}'.format(i), shape=[None], dtype='int64'
+                        name='word_{}'.format(i), shape=[None], dtype='int64'
                     )
                 )
             sample_weights = layers.fill_constant(
@@ -1371,7 +1371,7 @@ class TestLayer(LayerTest):
             nce_loss2 = nce(embs2, wl)
             feed_dict = dict()
             for i in range(len(words)):
-                feed_dict['word_{0}'.format(i)] = inp_word[i]
+                feed_dict['word_{}'.format(i)] = inp_word[i]
 
             static_rlt2 = self.get_static_graph_result(
                 feed=feed_dict, fetch_list=[nce_loss2]
@@ -3359,7 +3359,7 @@ class TestBook(LayerTest):
         for i in range(window_size):
             words.append(
                 self._get_data(
-                    name='word_{0}'.format(i), shape=[1], dtype='int64'
+                    name='word_{}'.format(i), shape=[1], dtype='int64'
                 )
             )
 

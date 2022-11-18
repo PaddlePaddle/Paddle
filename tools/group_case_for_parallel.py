@@ -35,7 +35,7 @@ def group_case_for_parallel(rootPath):
         )
 
     # get nightly tests
-    nightly_tests_file = open('%s/tools/nightly_case' % rootPath, 'r')
+    nightly_tests_file = open('%s/tools/nightly_case' % rootPath)
     nightly_tests = nightly_tests_file.read().strip().split('\n')
     nightly_tests_file.close()
 
@@ -49,23 +49,23 @@ def group_case_for_parallel(rootPath):
     ]
     case_file = '%s/build/ut_list' % rootPath
     if os.path.exists(case_file):
-        f = open(case_file, 'r')
+        f = open(case_file)
         all_need_run_cases = f.read().strip().split('\n')
         if len(all_need_run_cases) == 1 and all_need_run_cases[0] == '':
             f.close()
             case_file = '%s/build/all_ut_list' % rootPath
-            f = open(case_file, 'r')
+            f = open(case_file)
             all_need_run_cases = f.read().strip().split('\n')
     else:
         case_file = '%s/build/all_ut_list' % rootPath
-        f = open(case_file, 'r')
+        f = open(case_file)
         all_need_run_cases = f.read().strip().split('\n')
 
     print("case_file: %s" % case_file)
 
     all_group_case = []
     for filename in parallel_case_file_list:
-        fi = open(filename, 'r')
+        fi = open(filename)
         new_f = open('%s_new' % filename, 'w')
         lines = fi.readlines()
         new_case_file_list = []

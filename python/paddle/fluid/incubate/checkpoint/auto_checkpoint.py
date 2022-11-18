@@ -251,7 +251,7 @@ class ExeTrainStatus(SerializableBase):
     def deserialize(self, path):
         d = None
         file_name = "{}/{}".format(path, self._file_name)
-        with open(file_name, 'r') as f:
+        with open(file_name) as f:
             s = f.read()
             self._deserialize(s)
 
@@ -443,7 +443,7 @@ class TrainEpochRange(SerializableBase):
     def deserialize(self, path):
         d = None
         file_name = "{}/{}".format(path, self._file_name)
-        with open(file_name, 'r') as f:
+        with open(file_name) as f:
             d = json.load(f)
 
         # self
@@ -633,8 +633,7 @@ def _get_checker():
 def _normal_yield(max_epoch_num):
     if max_epoch_num < 0:
         max_epoch_num = sys.maxint
-    for i in range(0, max_epoch_num):
-        yield i
+    yield from range(0, max_epoch_num)
 
     return
 
@@ -645,14 +644,12 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=None):
         logger.warning(
             "auto checkpoint will take effect  automaticly on PaddleCloud"
         )
-        for i in _normal_yield(max_epoch_num):
-            yield i
+        yield from _normal_yield(max_epoch_num)
 
         return
 
     if g_acp_type == CONST_DACP_TYPE:
-        for i in _normal_yield(max_epoch_num):
-            yield i
+        yield from _normal_yield(max_epoch_num)
 
         return
 
@@ -667,8 +664,7 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=None):
             checkpoint_inter=save_checkpoint_inter,
         )
 
-        for i in g_train_epoch_range.next():
-            yield i
+        yield from g_train_epoch_range.next()
     finally:
         g_train_epoch_range = None
 

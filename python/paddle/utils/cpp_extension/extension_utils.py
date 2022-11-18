@@ -325,7 +325,7 @@ def clean_object_if_change_cflags(so_path, extension):
 
     def deserialize(path):
         assert os.path.exists(path)
-        with open(path, 'r') as f:
+        with open(path) as f:
             content = f.read()
             return json.loads(content)
 
@@ -499,7 +499,7 @@ def _get_include_dirs_when_compiling(compile_dir):
     assert os.path.isfile(include_dirs_file), "File {} does not exist".format(
         include_dirs_file
     )
-    with open(include_dirs_file, 'r') as f:
+    with open(include_dirs_file) as f:
         include_dirs = [line.strip() for line in f.readlines() if line.strip()]
 
     extra_dirs = ['paddle/fluid/platform']
@@ -857,7 +857,7 @@ def add_compile_flag(extra_compile_args, flags):
 
 def is_cuda_file(path):
 
-    cuda_suffix = set(['.cu'])
+    cuda_suffix = {'.cu'}
     items = os.path.splitext(path)
     assert len(items) > 1
     return items[-1] in cuda_suffix
@@ -1221,13 +1221,13 @@ def parse_op_name_from(sources):
         pattern = re.compile(r'PD_BUILD_OP\(([^,\)]+)\)')
         content = re.sub(r'\s|\t|\n', '', content)
         op_name = pattern.findall(content)
-        op_name = set([re.sub('_grad', '', name) for name in op_name])
+        op_name = {re.sub('_grad', '', name) for name in op_name}
 
         return op_name
 
     op_names = set()
     for source in sources:
-        with open(source, 'r') as f:
+        with open(source) as f:
             content = f.read()
             op_names |= regex(content)
 

@@ -134,13 +134,11 @@ class GradientClipHelper:
         # the grad sum here should take the all and only param in the current shard
         to_check_param = set(reversed_x_paramname)
         should_check_param = set(shard.global_params).intersection(
-            set(
-                [
-                    param
-                    for param, worker_idx in shard.global_param2device.items()
-                    if worker_idx == shard.worker_idx
-                ]
-            )
+            {
+                param
+                for param, worker_idx in shard.global_param2device.items()
+                if worker_idx == shard.worker_idx
+            }
         )
         assert (
             to_check_param == should_check_param

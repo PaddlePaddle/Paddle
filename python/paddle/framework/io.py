@@ -52,7 +52,7 @@ from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 try:
     from collections.abc import Iterable
 except:
-    from collections import Iterable
+    from collections.abc import Iterable
 
 __all__ = []
 

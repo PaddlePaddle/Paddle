@@ -334,7 +334,7 @@ def scope_prog_guard():
 
 
 def inject_test_train(use_cuda, is_sparse):
-    f_name = 'test_{0}_{1}_train'.format(
+    f_name = 'test_{}_{}_train'.format(
         'cuda' if use_cuda else 'cpu', 'sparse' if is_sparse else 'dense'
     )
 
@@ -346,7 +346,7 @@ def inject_test_train(use_cuda, is_sparse):
 
 
 def inject_test_decode(use_cuda, is_sparse, decorator=None):
-    f_name = 'test_{0}_{1}_decode'.format(
+    f_name = 'test_{}_{}_decode'.format(
         'cuda' if use_cuda else 'cpu', 'sparse' if is_sparse else 'dense'
     )
 

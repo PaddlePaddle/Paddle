@@ -26,7 +26,7 @@ class TestSeedOpFixSeed(OpTest):
         self.op_type = "seed"
         self.inputs = {}
         self.attrs = {"seed": 123}
-        self.outputs = {"Out": np.asarray((123)).astype('int')}
+        self.outputs = {"Out": np.asarray(123).astype('int')}
 
     def test_check_output(self):
         self.check_output()
@@ -37,7 +37,7 @@ class TestSeedOpDiffSeed(OpTest):
         self.op_type = "seed"
         self.inputs = {}
         self.attrs = {"seed": 0}
-        self.outputs = {"Out": np.asarray((123)).astype('int')}
+        self.outputs = {"Out": np.asarray(123).astype('int')}
 
     def test_check_output(self):
         self.check_output(no_check_set=["Out"])

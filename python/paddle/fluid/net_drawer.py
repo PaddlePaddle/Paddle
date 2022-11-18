@@ -71,7 +71,7 @@ def draw_node(op):
 
 def draw_edge(var_parent, op, var, arg):
     edge = VAR_STYLE
-    edge["label"] = "%s(%s)" % (var.parameter, arg)
+    edge["label"] = "{}({})".format(var.parameter, arg)
     edge["head_name"] = op.type
     edge["tail_name"] = var_parent[arg]
     return edge

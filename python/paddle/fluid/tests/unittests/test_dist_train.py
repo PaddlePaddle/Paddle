@@ -49,7 +49,7 @@ class TestSendOp(unittest.TestCase):
         self.ps_timeout = 5
         self._wait_ps_ready(p.pid)
 
-        with open("/tmp/paddle.%d.port" % p.pid, "r") as fn:
+        with open("/tmp/paddle.%d.port" % p.pid) as fn:
             selected_port = int(fn.readlines()[0])
         self.init_client(place, selected_port)
 
@@ -105,7 +105,7 @@ class TestSendOp(unittest.TestCase):
                 inputs={},
                 outputs={"Out": []},
                 attrs={
-                    "endpoints": ["127.0.0.1:{0}".format(port)],
+                    "endpoints": ["127.0.0.1:{}".format(port)],
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                 },
             )

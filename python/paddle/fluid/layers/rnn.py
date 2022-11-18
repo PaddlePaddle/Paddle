@@ -35,7 +35,7 @@ from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 try:
     from collections.abc import Sequence
 except:
-    from collections import Sequence
+    from collections.abc import Sequence
 
 __all__ = [
     'RNNCell',
@@ -1484,7 +1484,7 @@ def _dynamic_decode_imperative(
         initial_states,
         initial_finished,
     )
-    cond = control_flow.logical_not((nn.reduce_all(initial_finished)))
+    cond = control_flow.logical_not(nn.reduce_all(initial_finished))
     sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
     outputs = None
 
@@ -1588,7 +1588,7 @@ def _dynamic_decode_declarative(
     global_finished.stop_gradient = True
     step_idx = tensor.fill_constant(shape=[1], dtype="int64", value=0)
 
-    cond = control_flow.logical_not((nn.reduce_all(initial_finished)))
+    cond = control_flow.logical_not(nn.reduce_all(initial_finished))
     if max_step_num is not None:
         max_step_num = tensor.fill_constant(
             shape=[1], dtype="int64", value=max_step_num

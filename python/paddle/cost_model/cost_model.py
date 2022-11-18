@@ -66,7 +66,7 @@ class CostModel:
         static_cost_data_path = os.path.join(
             os.path.dirname(__file__), "static_op_benchmark.json"
         )
-        with open(static_cost_data_path, 'r') as load_f:
+        with open(static_cost_data_path) as load_f:
             load_dict = json.load(load_f)
         self._static_cost_data = load_dict
         # return all static cost data

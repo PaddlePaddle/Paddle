@@ -91,7 +91,7 @@ def set_config(config=None):
         config_dict = config
     elif isinstance(config, str):
         try:
-            with open(config, 'r') as filehandle:
+            with open(config) as filehandle:
                 config_dict = json.load(filehandle)
         except Exception as e:
             print('Load config error: {}'.format(e))

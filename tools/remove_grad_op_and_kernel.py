@@ -48,7 +48,7 @@ def update_operator_cmake(cmake_file):
     code1 = 'if(ON_INFER)\nadd_subdirectory(optimizers)\nendif()'
     code2 = 'if(ON_INFER)\nfile(GLOB LOSS_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*loss_op.cc")\nstring(REPLACE ".cc" "" LOSS_OPS "${LOSS_OPS}")\nendif()'
 
-    with open(cmake_file, 'r') as f:
+    with open(cmake_file) as f:
         content = ''.join(f.readlines())
         content = content.replace(pat1, code1)
 
@@ -130,7 +130,7 @@ if __name__ == '__main__':
             custom_pattern2 = custom_pattern2[:-1]
 
         all_matches = []
-        with open(op_file, 'r', encoding='utf-8') as f:
+        with open(op_file, encoding='utf-8') as f:
             content = ''.join(f.readlines())
 
             op, op_count = remove_grad_op_and_kernel(

@@ -368,7 +368,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
     apis = []
 
     for each_api_yaml in api_yaml_path:
-        with open(each_api_yaml, 'r') as f:
+        with open(each_api_yaml) as f:
             api_list = yaml.load(f, Loader=yaml.FullLoader)
             if api_list:
                 apis.extend(api_list)

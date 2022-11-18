@@ -60,7 +60,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
     If arg`expercted` is 'success', it will register an Optest case and expect to pass.
     Otherwise, it will register an API case and check the expect failure.
     """
-    cls_name = "{0}_{1}_shape_{2}_diag_{3}".format(
+    cls_name = "{}_{}_shape_{}_diag_{}".format(
         expected, op_type, Xshape, diagonal
     )
     errmsg = {
@@ -77,7 +77,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
             paddle.enable_static()
 
             data = fluid.data(shape=Xshape, dtype='float64', name=cls_name)
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 eval(expected.split(':')[-1]), errmsg[expected]
             ):
                 getattr(tensor, op_type)(x=data, diagonal=diagonal)

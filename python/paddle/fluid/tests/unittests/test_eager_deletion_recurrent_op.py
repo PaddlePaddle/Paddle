@@ -355,9 +355,7 @@ class EagerDeletionRecurrentOpMultipleMemoryTest(EagerDeletionRecurrentOpTest1):
 
     class PySimpleRNN3(PyRNNBase):
         def __init__(self, input_shape, output_shape):
-            super(
-                EagerDeletionRecurrentOpMultipleMemoryTest.PySimpleRNN3, self
-            ).__init__(input_shape, output_shape)
+            super().__init__(input_shape, output_shape)
 
             seq_len, batch_size, input_dim = input_shape
             self.h_boot1 = np.random.normal(
@@ -456,9 +454,7 @@ class EagerDeletionRecurrentOpNoMemBootTest(EagerDeletionRecurrentOpTest1):
 
     class PySimpleRNN4(PyRNNBase):
         def __init__(self, input_shape, output_shape):
-            super(
-                EagerDeletionRecurrentOpNoMemBootTest.PySimpleRNN4, self
-            ).__init__(input_shape, output_shape)
+            super().__init__(input_shape, output_shape)
             men_dim = input_shape
             self.mems = np.zeros(shape=men_dim).astype("float32")
 

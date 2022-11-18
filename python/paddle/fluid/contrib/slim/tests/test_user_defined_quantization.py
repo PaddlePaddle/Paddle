@@ -118,7 +118,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
             return fluid.optimizer.MomentumOptimizer(0.0001, 0.9)
 
         def load_dict(mapping_table_path):
-            with open(mapping_table_path, 'r') as file:
+            with open(mapping_table_path) as file:
                 data = file.read()
                 data = json.loads(data)
                 return data

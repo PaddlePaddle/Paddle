@@ -317,7 +317,7 @@ class WeightedRandomSampler(Sampler):
         idxs = _weighted_sample(
             self.weights, self.num_samples, self.replacement
         )
-        return iter(idxs.reshape((-1)).tolist())
+        return iter(idxs.reshape(-1).tolist())
 
     def __len__(self):
         mul = np.prod(self.weights.shape) // self.weights.shape[-1]

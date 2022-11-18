@@ -644,7 +644,7 @@ class TestAssign(unittest.TestCase):
 
         program = framework.Program()
         block = program.global_block()
-        np_array = numpy.random.random((10000)).astype(dtype)
+        np_array = numpy.random.random(10000).astype(dtype)
         for _ in range(2):
             block.create_parameter(
                 dtype=np_array.dtype,

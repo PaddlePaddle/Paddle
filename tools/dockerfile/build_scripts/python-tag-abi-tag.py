@@ -18,4 +18,4 @@
 
 from wheel.pep425tags import get_abbr_impl, get_impl_ver, get_abi_tag
 
-print("{0}{1}-{2}".format(get_abbr_impl(), get_impl_ver(), get_abi_tag()))
+print("{}{}-{}".format(get_abbr_impl(), get_impl_ver(), get_abi_tag()))

@@ -900,7 +900,7 @@ class OpTest(unittest.TestCase):
                 for name in attrs_sig
             ]
             results = []
-            api_ignore_param_list = set(['name', 'dtype', 'out', 'output'])
+            api_ignore_param_list = {'name', 'dtype', 'out', 'output'}
             idx_of_op_proto_arguments = 0
             for idx, arg_name in enumerate(api_params):
                 if arg_name in api_ignore_param_list:

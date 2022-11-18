@@ -57,7 +57,7 @@ skipped_phi_api_list_file = "./skipped_phi_api.json"
 
 def get_skipped_kernel_list():
     skiped_kernel_list = []
-    with open(skipped_phi_api_list_file, 'r') as f:
+    with open(skipped_phi_api_list_file) as f:
         skiped_api_list = json.load(f)
     infer_meta_data = get_api_yaml_info("../../")
     for api in infer_meta_data:
@@ -71,11 +71,11 @@ def get_skipped_kernel_list():
 
 def get_api_yaml_info(file_path):
     apis = []
-    with open(file_path + "/paddle/phi/api/yaml/api.yaml", 'r') as f:
+    with open(file_path + "/paddle/phi/api/yaml/api.yaml") as f:
         api_list = yaml.load(f, Loader=yaml.FullLoader)
         if api_list:
             apis.extend(api_list)
-    with open(file_path + "/paddle/phi/api/yaml/legacy_api.yaml", 'r') as f:
+    with open(file_path + "/paddle/phi/api/yaml/legacy_api.yaml") as f:
         legacy_api_list = yaml.load(f, Loader=yaml.FullLoader)
         if legacy_api_list:
             apis.extend(legacy_api_list)
@@ -292,7 +292,7 @@ def get_kernel_target(kernel_alias_):
 
 
 def main():
-    with open(kernel_types_info_file, "r") as f:
+    with open(kernel_types_info_file) as f:
         load_dict = json.load(f)
 
         head = generate_dialect_head()

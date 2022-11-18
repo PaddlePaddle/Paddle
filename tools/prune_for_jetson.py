@@ -79,7 +79,7 @@ def prune_phi_kernels():
 
         op_name = os.path.split(op_file)[1]
         all_matches = []
-        with open(op_file, 'r', encoding='utf-8') as f:
+        with open(op_file, encoding='utf-8') as f:
             content = ''.join(f.readlines())
             op_pattern = r'PD_REGISTER_KERNEL\(.*?\).*?\{.*?\}'
             op, op_count = find_kernel(content, op_pattern)
@@ -123,7 +123,7 @@ def append_fluid_kernels():
             + "file(APPEND ${pybind_file} \"USE_OP__(%s);\\n\")\n" % op
         )
 
-    with open(file_name, 'r', encoding='utf-8') as f:
+    with open(file_name, encoding='utf-8') as f:
         content = ''.join(f.readlines())
 
     location_str = "nv_library(\n  tensorrt_op_teller\n  SRCS op_teller.cc\n  DEPS framework_proto device_context)"
@@ -152,7 +152,7 @@ def append_fluid_kernels():
     )
 
     for op_file in all_op:
-        with open(op_file, 'r', encoding='utf-8') as f:
+        with open(op_file, encoding='utf-8') as f:
             content = ''.join(f.readlines())
 
         for op in op_white_list:

@@ -25,7 +25,7 @@ class Segment:
         self.end_idx = end_idx
 
     def __str__(self):
-        return '(Segment: %s, %s, %s)' % (
+        return '(Segment: {}, {}, {})'.format(
             self.chunk_type,
             self.start_idx,
             self.end_idx,

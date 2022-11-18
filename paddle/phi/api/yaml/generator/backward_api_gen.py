@@ -313,7 +313,7 @@ def generate_backward_api(
 
     bw_apis = []
     for each_api_yaml in backward_yaml_path:
-        with open(each_api_yaml, 'r') as f:
+        with open(each_api_yaml) as f:
             api_list = yaml.load(f, Loader=yaml.FullLoader)
             if api_list:
                 bw_apis.extend(api_list)

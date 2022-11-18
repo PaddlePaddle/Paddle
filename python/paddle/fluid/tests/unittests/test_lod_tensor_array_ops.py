@@ -235,7 +235,7 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
 class TestLoDTensorArrayError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x = np.random.random((10)).astype("float32")
+            x = np.random.random(10).astype("float32")
             x2 = layers.data(name='x', shape=[10])
             table = lod_rank_table(x2, level=0)
 
@@ -244,7 +244,7 @@ class TestLoDTensorArrayError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_x_Variable)
 
-            table2 = np.random.random((2)).astype("int64")
+            table2 = np.random.random(2).astype("int64")
 
             def test_table_Variable():
                 rank_table = lod_tensor_to_array(x=x2, table=table2)
@@ -267,7 +267,7 @@ class TestLoDTensorArrayError(unittest.TestCase):
 class TestArrayLoDTensorError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x = np.random.random((10)).astype("float32")
+            x = np.random.random(10).astype("float32")
             x2 = layers.data(name='x', shape=[10])
             table = lod_rank_table(x2, level=0)
             array = lod_tensor_to_array(x2, table)
@@ -277,7 +277,7 @@ class TestArrayLoDTensorError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_x_Variable)
 
-            table2 = np.random.random((2)).astype("int64")
+            table2 = np.random.random(2).astype("int64")
 
             def test_table_Variable():
                 rank_table = array_to_lod_tensor(x=array, table=table2)

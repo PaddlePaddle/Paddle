@@ -44,7 +44,7 @@ UNK_IDX = 0
 def load_label_dict(filename):
     d = dict()
     tag_dict = set()
-    with open(filename, 'r') as f:
+    with open(filename) as f:
         for i, line in enumerate(f):
             line = line.strip()
             if line.startswith("B-"):
@@ -63,7 +63,7 @@ def load_label_dict(filename):
 
 def load_dict(filename):
     d = dict()
-    with open(filename, 'r') as f:
+    with open(filename) as f:
         for i, line in enumerate(f):
             d[line.strip()] = i
     return d

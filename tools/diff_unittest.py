@@ -17,7 +17,7 @@
 import sys
 
 try:
-    f1 = open(sys.argv[1], 'r')
+    f1 = open(sys.argv[1])
     origin = f1.read()
     origin = origin.splitlines()
 except:
@@ -26,7 +26,7 @@ else:
     f1.close()
 
 try:
-    f2 = open(sys.argv[2], 'r')
+    f2 = open(sys.argv[2])
     new = f2.read()
     new = new.splitlines()
 except:

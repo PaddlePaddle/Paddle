@@ -20,7 +20,7 @@ sys.path.append("..")
 from launch_function_helper import wait, _find_free_port
 from multiprocessing import Process
 
-os.environ['GLOG_vmodule'] = str("gen_bkcl_id_op*=10,gen_comm_id*=10")
+os.environ['GLOG_vmodule'] = "gen_bkcl_id_op*=10,gen_comm_id*=10"
 
 import paddle
 from paddle.fluid import core

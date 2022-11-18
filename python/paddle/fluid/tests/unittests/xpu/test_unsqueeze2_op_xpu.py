@@ -113,7 +113,7 @@ class XPUTestUnsqueeze2Op(XPUOpTestWrapper):
             axes_tensor_list = []
             for index, ele in enumerate(self.axes):
                 axes_tensor_list.append(
-                    ("axes" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("axes" + str(index), np.ones(1).astype('int32') * ele)
                 )
 
             self.inputs = {

@@ -26,9 +26,9 @@ class TestPsTrainerPass(PsPassTestBase):
         pass
 
     def check(self, file1, file2):
-        with open(file1, 'r', encoding='utf-8') as f:
+        with open(file1, encoding='utf-8') as f:
             text1 = f.read()
-        with open(file2, 'r', encoding='utf-8') as f:
+        with open(file2, encoding='utf-8') as f:
             text2 = f.read()
         if text1 == text2:
             return True

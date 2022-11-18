@@ -6814,7 +6814,7 @@ def lod_append(x, level):
     try:
         from collections.abc import Iterable
     except:
-        from collections import Iterable
+        from collections.abc import Iterable
     if x is None:
         raise ValueError("Input(x) can't be None.")
     if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):

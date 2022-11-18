@@ -1004,7 +1004,7 @@ class TestDygraphGuardWithError(unittest.TestCase):
     def func_without_guard(self):
         with fluid.dygraph.guard():
             x = paddle.to_tensor(np.zeros([10, 10]))
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             TypeError, "Please use `with fluid.dygraph.guard()"
         ):
             y = fluid.layers.matmul(x, x)

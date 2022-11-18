@@ -24,7 +24,7 @@ from paddle.fluid.framework import Program
 try:
     from collections.abc import Sequence
 except:
-    from collections import Sequence
+    from collections.abc import Sequence
 
 
 class Location:

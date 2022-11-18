@@ -109,7 +109,7 @@ def add_import_skip_return(file, pattern_import, pattern_skip, pattern_return):
     file_data = ""
 
     # change file
-    with open(file, "r", encoding="utf-8") as f:
+    with open(file, encoding="utf-8") as f:
         for line in f:
             # add import skip_check_grad_ci
             match_obj = pattern_1.search(line)
@@ -145,7 +145,7 @@ def get_op_list(op_list_file='list_op.txt'):
     :return: list of op
     """
     op_list = []
-    with open(op_list_file, "r", encoding="utf-8") as f:
+    with open(op_list_file, encoding="utf-8") as f:
         for line in f:
             if line in black_list:
                 continue

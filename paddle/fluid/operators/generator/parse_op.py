@@ -20,7 +20,7 @@ from parse_utils import parse_op_entry
 
 
 def main(op_yaml_path, output_path, backward):
-    with open(op_yaml_path, "rt") as f:
+    with open(op_yaml_path) as f:
         ops = yaml.safe_load(f)
         if ops is None:
             ops = []
@@ -30,7 +30,7 @@ def main(op_yaml_path, output_path, backward):
                 for op in ops
             ]
 
-    with open(output_path, "wt") as f:
+    with open(output_path, "w") as f:
         yaml.safe_dump(ops, f, default_flow_style=None, sort_keys=False)
 
 

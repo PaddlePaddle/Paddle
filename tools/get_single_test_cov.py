@@ -18,8 +18,8 @@ import re
 
 
 def getFNDAFile(rootPath, test):
-    filename = '%s/build/ut_map/%s/coverage.info.tmp' % (rootPath, test)
-    fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
+    filename = '{}/build/ut_map/{}/coverage.info.tmp'.format(rootPath, test)
+    fn_filename = '{}/build/ut_map/{}/fnda.tmp'.format(rootPath, test)
     os.system('touch %s' % fn_filename)
     try:
         f = open(filename)
@@ -30,22 +30,22 @@ def getFNDAFile(rootPath, test):
     lines = f.readlines()
     for line in lines:
         line = line.replace('\n', '')
-        if line.startswith(('SF:')):
-            os.system('echo %s >> %s' % (line, fn_filename))
-        elif line.startswith(('FNDA:')):
+        if line.startswith('SF:'):
+            os.system('echo {} >> {}'.format(line, fn_filename))
+        elif line.startswith('FNDA:'):
             hit = int(line.split('FNDA:')[1].split(',')[0])
             if hit != 0:
-                os.system('echo %s >> %s' % (line, fn_filename))
+                os.system('echo {} >> {}'.format(line, fn_filename))
     f.close()
 
 
 def analysisFNDAFile(rootPath, test):
-    related_ut_map_file = '%s/build/ut_map/%s/related_%s.txt' % (
+    related_ut_map_file = '{}/build/ut_map/{}/related_{}.txt'.format(
         rootPath,
         test,
         test,
     )
-    notrelated_ut_map_file = '%s/build/ut_map/%s/notrelated_%s.txt' % (
+    notrelated_ut_map_file = '{}/build/ut_map/{}/notrelated_{}.txt'.format(
         rootPath,
         test,
         test,
@@ -61,7 +61,7 @@ def analysisFNDAFile(rootPath, test):
         print("make related.txt and not_related.txt failed")
         return
 
-    fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
+    fn_filename = '{}/build/ut_map/{}/fnda.tmp'.format(rootPath, test)
     try:
         f = open(fn_filename)
         print("oepn %s succesfully" % fn_filename)
@@ -94,11 +94,13 @@ def analysisFNDAFile(rootPath, test):
             if not OP_REGIST:
                 related_file_list.append(clazz_filename)
                 os.system(
-                    'echo %s >> %s' % (clazz_filename, related_ut_map_file)
+                    'echo {} >> {}'.format(clazz_filename, related_ut_map_file)
                 )
             else:
                 os.system(
-                    'echo %s >> %s' % (clazz_filename, notrelated_ut_map_file)
+                    'echo {} >> {}'.format(
+                        clazz_filename, notrelated_ut_map_file
+                    )
                 )
         else:
             if clazz_filename != '':
@@ -113,7 +115,7 @@ def analysisFNDAFile(rootPath, test):
 
 
 def getCovinfo(rootPath, test):
-    ut_map_path = '%s/build/ut_map/%s' % (rootPath, test)
+    ut_map_path = '{}/build/ut_map/{}'.format(rootPath, test)
     os.system(
         'cd %s && lcov --capture -d . -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
         % ut_map_path

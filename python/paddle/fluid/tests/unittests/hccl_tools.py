@@ -1,5 +1,3 @@
-# -*- coding:UTF-8 -*-
-
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -139,7 +137,7 @@ def main():
 
     # construct hccn_table
     device_ips = {}
-    with open('/etc/hccn.conf', 'r') as fin:
+    with open('/etc/hccn.conf') as fin:
         for hccn_item in fin.readlines():
             if hccn_item.strip().startswith('address_'):
                 device_id, device_ip = hccn_item.split('=')

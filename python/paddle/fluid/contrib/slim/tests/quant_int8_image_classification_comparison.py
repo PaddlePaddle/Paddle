@@ -264,12 +264,12 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
     def _summarize_performance(self, fp32_fps, fp32_lat, int8_fps, int8_lat):
         _logger.info('--- Performance summary ---')
         _logger.info(
-            'FP32: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
+            'FP32: avg fps: {:.2f}, avg latency: {:.4f} ms'.format(
                 fp32_fps, fp32_lat
             )
         )
         _logger.info(
-            'INT8: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
+            'INT8: avg fps: {:.2f}, avg latency: {:.4f} ms'.format(
                 int8_fps, int8_lat
             )
         )
@@ -279,17 +279,17 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
     ):
         _logger.info('--- Accuracy summary ---')
         _logger.info(
-            'Accepted top1 accuracy drop threshold: {0}. (condition: (FP32_top1_acc - IN8_top1_acc) <= threshold)'.format(
+            'Accepted top1 accuracy drop threshold: {}. (condition: (FP32_top1_acc - IN8_top1_acc) <= threshold)'.format(
                 threshold
             )
         )
         _logger.info(
-            'FP32: avg top1 accuracy: {0:.4f}, avg top5 accuracy: {1:.4f}'.format(
+            'FP32: avg top1 accuracy: {:.4f}, avg top5 accuracy: {:.4f}'.format(
                 fp32_acc1, fp32_acc5
             )
         )
         _logger.info(
-            'INT8: avg top1 accuracy: {0:.4f}, avg top5 accuracy: {1:.4f}'.format(
+            'INT8: avg top1 accuracy: {:.4f}, avg top5 accuracy: {:.4f}'.format(
                 int8_acc1, int8_acc5
             )
         )
@@ -316,11 +316,11 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
         self._debug = test_case_args.debug
 
         _logger.info('Quant FP32 & INT8 prediction run.')
-        _logger.info('Quant model: {0}'.format(quant_model_path))
-        _logger.info('Dataset: {0}'.format(data_path))
-        _logger.info('Batch size: {0}'.format(batch_size))
-        _logger.info('Batch number: {0}'.format(batch_num))
-        _logger.info('Accuracy drop threshold: {0}.'.format(acc_diff_threshold))
+        _logger.info('Quant model: {}'.format(quant_model_path))
+        _logger.info('Dataset: {}'.format(data_path))
+        _logger.info('Batch size: {}'.format(batch_size))
+        _logger.info('Batch number: {}'.format(batch_num))
+        _logger.info('Accuracy drop threshold: {}.'.format(acc_diff_threshold))
 
         _logger.info('--- Quant FP32 prediction start ---')
         val_reader = paddle.batch(

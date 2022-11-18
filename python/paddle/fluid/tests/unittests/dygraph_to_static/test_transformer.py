@@ -108,7 +108,7 @@ def train_static(args, batch_generator):
             # the best cross-entropy value with label smoothing
             loss_normalizer = -(
                 (1.0 - args.label_smooth_eps)
-                * np.log((1.0 - args.label_smooth_eps))
+                * np.log(1.0 - args.label_smooth_eps)
                 + args.label_smooth_eps
                 * np.log(
                     args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20
@@ -221,8 +221,7 @@ def train_dygraph(args, batch_generator):
         )
         # the best cross-entropy value with label smoothing
         loss_normalizer = -(
-            (1.0 - args.label_smooth_eps)
-            * np.log((1.0 - args.label_smooth_eps))
+            (1.0 - args.label_smooth_eps) * np.log(1.0 - args.label_smooth_eps)
             + args.label_smooth_eps
             * np.log(args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20)
         )

@@ -142,7 +142,7 @@ class TestCheckCompiler(TestABIBase):
 class TestRunCMDException(unittest.TestCase):
     def test_exception(self):
         for verbose in [True, False]:
-            with self.assertRaisesRegexp(RuntimeError, "Failed to run command"):
+            with self.assertRaisesRegex(RuntimeError, "Failed to run command"):
                 cmd = "fake cmd"
                 utils.run_cmd(cmd, verbose)
 

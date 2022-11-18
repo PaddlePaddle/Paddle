@@ -25,8 +25,8 @@ import paddle
 from . import functional as F
 
 if sys.version_info < (3, 3):
-    Sequence = collections.Sequence
-    Iterable = collections.Iterable
+    Sequence = collections.abc.Sequence
+    Iterable = collections.abc.Iterable
 else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
@@ -132,7 +132,7 @@ class Compose:
         format_string = self.__class__.__name__ + '('
         for t in self.transforms:
             format_string += '\n'
-            format_string += '    {0}'.format(t)
+            format_string += '    {}'.format(t)
         format_string += '\n)'
         return format_string
 

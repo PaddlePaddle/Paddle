@@ -192,7 +192,7 @@ class AscendParserBase:
         self.op = op
         assert (
             self.op.type == self.parser_name
-        ), "op [%s] != parser_name[%s]" % (self.op.type, self.parser_name)
+        ), "op [{}] != parser_name[{}]".format(self.op.type, self.parser_name)
         # print("begin to parse op %s" % (self.parser_name))
         geop_list, index_list = self._apply()
         self.update_output(geop_list, index_list)
@@ -217,7 +217,7 @@ class AscendParserBase:
         tensor = core.GETensor(tensor_desc)
 
         data = (
-            (value * np.ones((shape)))
+            (value * np.ones(shape))
             .reshape(shape)
             .astype(self.ascend_helper.dtype2np(dtype))
         )
@@ -280,7 +280,7 @@ class AscendParserBase:
         )
         tensor = core.GETensor(tensor_desc)
 
-        data = np.ones((2)).astype("int32").reshape([2])
+        data = np.ones(2).astype("int32").reshape([2])
         data[0] = 64
         buf = data.tobytes()
         data_8 = np.frombuffer(buf, dtype=np.uint8)

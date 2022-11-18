@@ -78,8 +78,7 @@ def cache(reader):
     all_data = tuple(reader())
 
     def __impl__():
-        for item in all_data:
-            yield item
+        yield from all_data
 
     return __impl__
 
@@ -120,8 +119,7 @@ def map_readers(func, *readers):
         rs = []
         for r in readers:
             rs.append(r())
-        for e in map(func, *rs):
-            yield e
+        yield from map(func, *rs)
 
     return reader
 
@@ -163,14 +161,12 @@ def shuffle(reader, buf_size):
             buf.append(e)
             if len(buf) >= buf_size:
                 random.shuffle(buf)
-                for b in buf:
-                    yield b
+                yield from buf
                 buf = []
 
         if len(buf) > 0:
             random.shuffle(buf)
-            for b in buf:
-                yield b
+            yield from buf
 
     return data_reader
 
@@ -230,8 +226,7 @@ def chain(*readers):
         for r in readers:
             rs.append(r())
 
-        for e in itertools.chain(*rs):
-            yield e
+        yield from itertools.chain(*rs)
 
     return reader
 

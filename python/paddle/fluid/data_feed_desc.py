@@ -84,7 +84,7 @@ class DataFeedDesc:
     def __init__(self, proto_file):
         self.proto_desc = data_feed_pb2.DataFeedDesc()
         self.proto_desc.pipe_command = "cat"
-        with open(proto_file, 'r') as f:
+        with open(proto_file) as f:
             text_format.Parse(f.read(), self.proto_desc)
         if self.proto_desc.name == "MultiSlotDataFeed":
             self.__name_to_index = {

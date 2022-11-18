@@ -249,7 +249,7 @@ class TestBoxCoderOpWithVariance(OpTest):
         self.op_type = "box_coder"
         lod = [[1, 1, 1, 1, 1]]
         prior_box = np.random.random((30, 4)).astype('float32')
-        prior_box_var = np.random.random((4)).astype('float32')
+        prior_box_var = np.random.random(4).astype('float32')
         target_box = np.random.random((30, 81, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
@@ -281,7 +281,7 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
     def setUp(self):
         self.lod = [[1, 1, 1, 1, 1]]
         self.prior_box = np.random.random((30, 4)).astype('float32')
-        self.prior_box_var = np.random.random((4)).astype('float32')
+        self.prior_box_var = np.random.random(4).astype('float32')
         self.target_box = np.random.random((30, 81, 4)).astype('float32')
         self.code_type = "DecodeCenterSize"
         self.box_normalized = False

@@ -44,7 +44,7 @@ def remove_useless_file(rootPath):
     all_file_paddle_list = get_all_paddle_file(rootPath)
     ut_file_map_new = {}
     ut_file_map = "%s/build/ut_file_map.json" % rootPath
-    with open(ut_file_map, 'r') as load_f:
+    with open(ut_file_map) as load_f:
         load_dict = json.load(load_f)
     for key in load_dict:
         if key in all_file_paddle_list:
@@ -65,24 +65,24 @@ def handle_ut_file_map(rootPath):
     # if testdir is not made,write the test into prec_delta
     get_all_uts(rootPath)
     all_ut = '%s/build/all_uts_paddle' % rootPath
-    with open(all_ut, 'r') as f:
+    with open(all_ut) as f:
         all_ut_list = []
         for ut in f.readlines():
             ut = ut.replace('\n', '')
             all_ut_list.append(ut.strip())
         f.close()
     for ut in all_ut_list:
-        filedir = '%s/build/ut_map/%s' % (rootPath, ut)
+        filedir = '{}/build/ut_map/{}'.format(rootPath, ut)
         if not os.path.exists(filedir):
             not_success_file.write('%s\n' % ut)
             utNotSuccess_list.append(ut)
     # if fnda.tmp not exists,write the test into prec_delta
     for ut in files:
         count = count + 1
-        print("ut %s: %s" % (count, ut))
-        coverage_info = '%s/%s/fnda.tmp' % (ut_map_path, ut)
+        print("ut {}: {}".format(count, ut))
+        coverage_info = '{}/{}/fnda.tmp'.format(ut_map_path, ut)
         if os.path.exists(coverage_info):
-            filename = '%s/%s/related_%s.txt' % (ut_map_path, ut, ut)
+            filename = '{}/{}/related_{}.txt'.format(ut_map_path, ut, ut)
             try:
                 f = open(filename)
                 print("oepn %s succesfully" % filename)
@@ -118,7 +118,7 @@ def handle_ut_file_map(rootPath):
 
     for ut in files:
         if ut not in utNotSuccess_list:
-            filename = '%s/%s/notrelated_%s.txt' % (ut_map_path, ut, ut)
+            filename = '{}/{}/notrelated_{}.txt'.format(ut_map_path, ut, ut)
             try:
                 f = open(filename)
                 print("oepn %s succesfully" % filename)
@@ -147,7 +147,7 @@ def notsuccessfuc(rootPath):
     count = 0
     # ut failed!!
     for ut in files:
-        coverage_info = '%s/%s/fnda.tmp' % (ut_map_path, ut)
+        coverage_info = '{}/{}/fnda.tmp'.format(ut_map_path, ut)
         if os.path.exists(coverage_info):
             pass
         else:
@@ -157,7 +157,7 @@ def notsuccessfuc(rootPath):
     # ut not exec
 
     get_all_uts(rootPath)
-    with open("/paddle/build/all_uts_paddle", "r") as f:
+    with open("/paddle/build/all_uts_paddle") as f:
         data = f.readlines()
     for ut in data:
         ut = ut.replace('\n', '').strip()
@@ -180,14 +180,14 @@ def ut_file_map_supplement(rootPath):
         'cd /pre_test_tmp && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/ut_file_map.json --no-check-certificate'
     )
     ut_file_map_old = "/pre_test_tmp/ut_file_map.json"
-    with open(ut_file_map_new, 'r') as load_f:
+    with open(ut_file_map_new) as load_f:
         load_dict_new = json.load(load_f)
-    with open(ut_file_map_old, 'r') as f:
+    with open(ut_file_map_old) as f:
         load_dict_old = json.load(f)
 
     all_uts_paddle = '%s/build/all_uts_paddle' % rootPath
 
-    with open(all_uts_paddle, 'r') as f:
+    with open(all_uts_paddle) as f:
         all_uts_paddle_list = []
         for ut in f.readlines():
             all_uts_paddle_list.append(ut.strip())
@@ -202,19 +202,19 @@ def ut_file_map_supplement(rootPath):
     )
     prec_delta_old = '/pre_test_tmp/prec_delta'
     prec_delta_new = "%s/build/prec_delta" % rootPath
-    with open(prec_delta_old, 'r') as f:
+    with open(prec_delta_old) as f:
         prec_delta_old_list = []
         for ut in f.readlines():
             prec_delta_old_list.append(ut.strip())
         f.close()
-    with open(prec_delta_new, 'r') as f:
+    with open(prec_delta_new) as f:
         prec_delta_new_list = []
         for ut in f.readlines():
             prec_delta_new_list.append(ut.strip())
         f.close()
 
     for ut in prec_delta_old_list:
-        filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, ut)
+        filename = '{}/build/ut_map/{}/fnda.tmp'.format(rootPath, ut)
         if ut in all_uts_paddle_list:
             if not os.path.exists(filename) and ut not in prec_delta_new_list:
                 prec_delta_new_list.append(ut)
@@ -230,7 +230,7 @@ def ut_file_map_supplement(rootPath):
 
 def utmap_analysis(rootPath):
     ut_file_map_new = "%s/build/ut_file_map.json" % rootPath
-    with open(ut_file_map_new, 'r') as load_f:
+    with open(ut_file_map_new) as load_f:
         load_dict_new = json.load(load_f)
     print(len(load_dict_new))
     for filename in load_dict_new:

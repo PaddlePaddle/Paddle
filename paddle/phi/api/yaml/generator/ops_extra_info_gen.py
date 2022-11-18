@@ -70,7 +70,7 @@ def parse_attr(attr_str):
 
 def generate_extra_info(op_compat_yaml_path, ops_extra_info_path):
     compat_apis = []
-    with open(op_compat_yaml_path, 'rt') as f:
+    with open(op_compat_yaml_path) as f:
         compat_apis = yaml.safe_load(f)
 
     def get_op_name(api_item):

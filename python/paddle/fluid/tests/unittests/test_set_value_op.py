@@ -502,7 +502,7 @@ def create_test_value_int32(parent):
         def set_dtype(self):
             self.dtype = "int32"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueInt32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueInt32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -522,7 +522,7 @@ def create_test_value_int64(parent):
         def set_dtype(self):
             self.dtype = "int64"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueInt64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueInt64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -542,7 +542,7 @@ def create_test_value_fp16(parent):
         def set_dtype(self):
             self.dtype = "float16"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Valuefp16")
+    cls_name = "{}_{}".format(parent.__name__, "Valuefp16")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -562,7 +562,7 @@ def create_test_value_fp32(parent):
         def set_dtype(self):
             self.dtype = "float32"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueFp32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueFp32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -582,7 +582,7 @@ def create_test_value_fp64(parent):
         def set_dtype(self):
             self.dtype = "float64"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueFp64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueFp64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -602,7 +602,7 @@ def create_test_value_bool(parent):
         def set_dtype(self):
             self.dtype = "bool"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueBool")
+    cls_name = "{}_{}".format(parent.__name__, "ValueBool")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -623,7 +623,7 @@ def create_test_value_numpy_int32(parent):
         def set_dtype(self):
             self.dtype = "int32"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyInt32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyInt32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -643,7 +643,7 @@ def create_test_value_numpy_int64(parent):
         def set_dtype(self):
             self.dtype = "int64"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyInt64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyInt64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -663,7 +663,7 @@ def create_test_value_numpy_fp32(parent):
         def set_dtype(self):
             self.dtype = "float32"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyFp32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyFp32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -683,7 +683,7 @@ def create_test_value_numpy_fp64(parent):
         def set_dtype(self):
             self.dtype = "float64"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyFp64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyFp64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -703,7 +703,7 @@ def create_test_value_numpy_bool(parent):
         def set_dtype(self):
             self.dtype = "bool"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueNumpyBool")
+    cls_name = "{}_{}".format(parent.__name__, "ValueNumpyBool")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -728,7 +728,7 @@ def create_test_value_tensor_int32(parent):
         def _get_answer(self):
             self.data[0, 1] = 3
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorInt32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorInt32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -752,7 +752,7 @@ def create_test_value_tensor_int64(parent):
         def _get_answer(self):
             self.data[0, 1] = 3
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorInt64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorInt64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -776,7 +776,7 @@ def create_test_value_tensor_fp32(parent):
         def _get_answer(self):
             self.data[0, 1] = 3
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorFp32")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorFp32")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -800,7 +800,7 @@ def create_test_value_tensor_fp64(parent):
         def _get_answer(self):
             self.data[0, 1] = 3
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorFp64")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorFp64")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -824,7 +824,7 @@ def create_test_value_tensor_bool(parent):
         def _get_answer(self):
             self.data[0, 1] = False
 
-    cls_name = "{0}_{1}".format(parent.__name__, "ValueTensorBool")
+    cls_name = "{}_{}".format(parent.__name__, "ValueTensorBool")
     TestValueInt.__name__ = cls_name
     globals()[cls_name] = TestValueInt
 
@@ -904,7 +904,7 @@ class TestSetValueValueShape5(TestSetValueApi):
 # 4. Test error
 class TestError(TestSetValueBase):
     def _value_type_error(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             TypeError,
             "Only support to assign an integer, float, numpy.ndarray or paddle.Tensor",
         ):
@@ -913,7 +913,7 @@ class TestError(TestSetValueBase):
             x[0] = value
 
     def _dtype_error(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             TypeError,
             "When assign a numpy.ndarray, integer or float to a paddle.Tensor, ",
         ):
@@ -921,17 +921,17 @@ class TestError(TestSetValueBase):
             y[0] = 1
 
     def _step_error(self):
-        with self.assertRaisesRegexp(ValueError, "step can not be 0"):
+        with self.assertRaisesRegex(ValueError, "step can not be 0"):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[0:1:0] = self.value
 
     def _ellipsis_error(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             IndexError, "An index can only have a single ellipsis"
         ):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[..., ...] = self.value
-        with self.assertRaisesRegexp(ValueError, "the start or end is None"):
+        with self.assertRaisesRegex(ValueError, "the start or end is None"):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             one = paddle.ones([1])
             x[::one] = self.value

@@ -154,7 +154,7 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
                 helper_profiler.stop()
 
         self.assertTrue(os.path.exists(self.perf_path))
-        with open(self.perf_path, 'r') as load_f:
+        with open(self.perf_path) as load_f:
             stat_res = json.load(load_f)
             self.assertTrue(len(stat_res) > 0)
 

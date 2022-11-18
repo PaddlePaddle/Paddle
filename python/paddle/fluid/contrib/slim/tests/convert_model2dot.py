@@ -69,11 +69,11 @@ def generate_dot_for_model(model_path, save_graph_dir, save_graph_name):
         if not os.path.exists(save_graph_dir):
             os.makedirs(save_graph_dir)
         model_name = os.path.basename(os.path.normpath(save_graph_dir))
-        if save_graph_name is '':
+        if save_graph_name == '':
             save_graph_name = model_name
         graph.draw(save_graph_dir, save_graph_name, graph.all_op_nodes())
         print(
-            "Success! Generated dot and pdf files for {0} model, that can be found at {1} named {2}.\n".format(
+            "Success! Generated dot and pdf files for {} model, that can be found at {} named {}.\n".format(
                 model_name, save_graph_dir, save_graph_name
             )
         )

@@ -26,7 +26,7 @@ legacy_api_yaml_file = "/paddle/phi/api/yaml/legacy_api.yaml"
 
 def get_skipped_kernel_list():
     skiped_kernel_list = []
-    with open(skipped_phi_api_list_file, 'r') as f:
+    with open(skipped_phi_api_list_file) as f:
         skiped_api_list = json.load(f)
     infer_meta_data = []
     api_meta_data = get_api_yaml_info(api_yaml_file)
@@ -80,13 +80,13 @@ def parse_args():
 
 
 def get_api_yaml_info(file_path):
-    f = open(file_path, "r")
+    f = open(file_path)
     cont = f.read()
     return yaml.load(cont, Loader=yaml.FullLoader)
 
 
 def get_kernel_info(file_path):
-    f = open(file_path, "r")
+    f = open(file_path)
     cont = f.readlines()
     ret = []
     prev = []
@@ -108,7 +108,7 @@ def get_kernel_info(file_path):
 
 
 def get_infermeta_info(file_path):
-    f = open(file_path, "r")
+    f = open(file_path)
     cont = f.readlines()
     return [l.strip() for l in cont if l.strip() != ""]
 
@@ -118,7 +118,7 @@ def get_attr_info(file_path):
     phi_gpu.argsort.float64.any $axisBool$descending
     """
     ret = {}
-    with open(file_path, 'r') as f:
+    with open(file_path) as f:
         cont = f.readlines()
         for l in cont:
             datas = l.strip().split(' ')

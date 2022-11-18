@@ -410,9 +410,7 @@ class Normal(Distribution):
         zero_tmp = tensor.fill_constant_batch_size_like(
             self.loc + self.scale, batch_shape, self.loc.dtype, 0.0
         )
-        return (
-            0.5 + 0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp))
-        )
+        return 0.5 + 0.5 * math.log(2 * math.pi) + nn.log(self.scale + zero_tmp)
 
     def log_prob(self, value):
         """Log probability density/mass function.

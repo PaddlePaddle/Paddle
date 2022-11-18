@@ -21,18 +21,16 @@ from test_imperative_base import new_program_scope
 
 class TestBasicGRUApiName(unittest.TestCase):
     def setUp(self):
-        self.name_set = set(
-            [
-                "test1_fw_w_0_gate",
-                "test1_fw_w_0_candidate",
-                "test1_fw_b_0_gate",
-                "test1_fw_b_0_candidate",
-                "test1_bw_w_0_gate",
-                "test1_bw_w_0_candidate",
-                "test1_bw_b_0_gate",
-                "test1_bw_b_0_candidate",
-            ]
-        )
+        self.name_set = {
+            "test1_fw_w_0_gate",
+            "test1_fw_w_0_candidate",
+            "test1_fw_b_0_gate",
+            "test1_fw_b_0_candidate",
+            "test1_bw_w_0_gate",
+            "test1_bw_w_0_candidate",
+            "test1_bw_b_0_gate",
+            "test1_bw_b_0_candidate",
+        }
 
     def test_name(self):
         batch_size = 20
@@ -80,18 +78,16 @@ class TestBasicGRUApiName(unittest.TestCase):
 
 class TestBasicLSTMApiName(unittest.TestCase):
     def setUp(self):
-        self.name_set = set(
-            [
-                "test1_fw_w_0",
-                "test1_fw_b_0",
-                "test1_fw_w_1",
-                "test1_fw_b_1",
-                "test1_bw_w_0",
-                "test1_bw_b_0",
-                "test1_bw_w_1",
-                "test1_bw_b_1",
-            ]
-        )
+        self.name_set = {
+            "test1_fw_w_0",
+            "test1_fw_b_0",
+            "test1_fw_w_1",
+            "test1_fw_b_1",
+            "test1_bw_w_0",
+            "test1_bw_b_0",
+            "test1_bw_w_1",
+            "test1_bw_b_1",
+        }
 
     def test_name(self):
         batch_size = 20

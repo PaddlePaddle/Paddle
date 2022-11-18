@@ -637,7 +637,7 @@ def train_loop(
     # the best cross-entropy value with label smoothing
     loss_normalizer = -(
         (1.0 - TrainTaskConfig.label_smooth_eps)
-        * np.log((1.0 - TrainTaskConfig.label_smooth_eps))
+        * np.log(1.0 - TrainTaskConfig.label_smooth_eps)
         + TrainTaskConfig.label_smooth_eps
         * np.log(
             TrainTaskConfig.label_smooth_eps
@@ -978,7 +978,7 @@ class DataReader:
         else:
             for fpath in fpaths:
                 if not os.path.isfile(fpath):
-                    raise IOError("Invalid file: %s" % fpath)
+                    raise OSError("Invalid file: %s" % fpath)
 
                 with open(fpath, "rb") as f:
                     for line in f:

@@ -201,7 +201,7 @@ def __bootstrap__():
 
     if num_threads > 1:
         print(
-            'WARNING: OMP_NUM_THREADS set to {0}, not 1. The computation '
+            'WARNING: OMP_NUM_THREADS set to {}, not 1. The computation '
             'speed will not be optimized if you use data parallel. It will '
             'fail if this PaddlePaddle binary is compiled with OpenBlas since'
             ' OpenBlas does not support multi-threads.'.format(num_threads),

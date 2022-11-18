@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -104,7 +102,7 @@ def classify_cases_by_mem(rootPath):
     with open("/pre_test/classify_case_by_cardNum.json", "w") as f:
         json.dump(all_tests_by_card, f)
 
-    with open("/pre_test/ut_mem_map.json", 'r') as load_f:
+    with open("/pre_test/ut_mem_map.json") as load_f:
         new_lastest_mem = json.load(load_f)
     no_parallel_case = '^job$'
     for cardType in all_tests_by_card:

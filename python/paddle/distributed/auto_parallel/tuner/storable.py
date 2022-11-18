@@ -33,7 +33,7 @@ class Storable:
         return str(path)
 
     def load(self, path):
-        with open(path, "r") as f:
+        with open(path) as f:
             state_data = f.read()
         state = json.loads(state_data)
         self.set_state(state)

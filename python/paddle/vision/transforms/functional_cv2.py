@@ -23,8 +23,8 @@ import paddle
 from paddle.utils import try_import
 
 if sys.version_info < (3, 3):
-    Sequence = collections.Sequence
-    Iterable = collections.Iterable
+    Sequence = collections.abc.Sequence
+    Iterable = collections.abc.Iterable
 else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable

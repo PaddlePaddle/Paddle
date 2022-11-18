@@ -509,7 +509,7 @@ def start_local_trainers(
 
 def pull_worker_log(tp):
     if tp.log_fn:
-        with open(tp.log_fn.name, 'r') as fin:
+        with open(tp.log_fn.name) as fin:
             fin.seek(tp.log_offset, 0)
             for line in fin:
                 try:
@@ -571,5 +571,5 @@ def watch_local_trainers(procs, nranks):
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
     for arg, value in sorted(vars(args).items()):
-        print("%s: %s" % (arg, value))
+        print("{}: {}".format(arg, value))
     print("------------------------------------------------")

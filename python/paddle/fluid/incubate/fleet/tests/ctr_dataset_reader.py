@@ -80,7 +80,7 @@ def prepare_data():
     file_dir_name = download_file()
     meta_file_path = os.path.join(file_dir_name, 'data.meta.txt')
     train_file_path = os.path.join(file_dir_name, 'train.txt')
-    with open(meta_file_path, "r") as f:
+    with open(meta_file_path) as f:
         lines = f.readlines()
     err_info = "wrong meta format"
     assert len(lines) == 2, err_info

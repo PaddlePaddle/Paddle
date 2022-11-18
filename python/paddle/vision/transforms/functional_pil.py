@@ -21,8 +21,8 @@ import numpy as np
 import paddle
 
 if sys.version_info < (3, 3):
-    Sequence = collections.Sequence
-    Iterable = collections.Iterable
+    Sequence = collections.abc.Sequence
+    Iterable = collections.abc.Iterable
 else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable

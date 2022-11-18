@@ -761,10 +761,9 @@ class Layer:
             if layer is None:
                 continue
             layer_prefix = prefix + ('.' if prefix else '') + key
-            for p, l in layer.named_sublayers(
+            yield from layer.named_sublayers(
                 prefix=layer_prefix, include_self=True, layers_set=layers_set
-            ):
-                yield p, l
+            )
 
     def register_buffer(self, name, tensor, persistable=True):
         """
@@ -1633,7 +1632,7 @@ class Layer:
                 match_res = _check_match(key_name, param)
                 matched_param_state.append(match_res)
             except ValueError as err:
-                warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
+                warnings.warn("Skip loading for {}. ".format(key) + str(err))
 
         if _non_static_mode():
             for param, state in matched_param_state:

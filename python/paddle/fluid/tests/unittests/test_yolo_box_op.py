@@ -20,13 +20,13 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 def sigmoid(x):
-    return 1.0 / (1.0 + np.exp(((-1.0) * x)))
+    return 1.0 / (1.0 + np.exp((-1.0) * x))
 
 
 def YoloBox(x, img_size, attrs):
     (n, c, h, w) = x.shape
     anchors = attrs['anchors']
-    an_num = int((len(anchors) // 2))
+    an_num = int(len(anchors) // 2)
     class_num = attrs['class_num']
     conf_thresh = attrs['conf_thresh']
     downsample = attrs['downsample_ratio']
@@ -118,7 +118,7 @@ class TestYoloBoxOp(OpTest):
 
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
-        an_num = int((len(self.anchors) // 2))
+        an_num = int(len(self.anchors) // 2)
         self.batch_size = 32
         self.class_num = 2
         self.conf_thresh = 0.5
@@ -139,7 +139,7 @@ class TestYoloBoxOp(OpTest):
 class TestYoloBoxOpNoClipBbox(TestYoloBoxOp):
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
-        an_num = int((len(self.anchors) // 2))
+        an_num = int(len(self.anchors) // 2)
         self.batch_size = 32
         self.class_num = 2
         self.conf_thresh = 0.5
@@ -160,7 +160,7 @@ class TestYoloBoxOpNoClipBbox(TestYoloBoxOp):
 class TestYoloBoxOpScaleXY(TestYoloBoxOp):
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
-        an_num = int((len(self.anchors) // 2))
+        an_num = int(len(self.anchors) // 2)
         self.batch_size = 32
         self.class_num = 2
         self.conf_thresh = 0.5
@@ -181,7 +181,7 @@ class TestYoloBoxOpScaleXY(TestYoloBoxOp):
 class TestYoloBoxOpIoUAware(TestYoloBoxOp):
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
-        an_num = int((len(self.anchors) // 2))
+        an_num = int(len(self.anchors) // 2)
         self.batch_size = 32
         self.class_num = 2
         self.conf_thresh = 0.5
@@ -272,7 +272,7 @@ class TestYoloBoxStatic(unittest.TestCase):
 class TestYoloBoxOpHW(TestYoloBoxOp):
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
-        an_num = int((len(self.anchors) // 2))
+        an_num = int(len(self.anchors) // 2)
         self.batch_size = 32
         self.class_num = 2
         self.conf_thresh = 0.5

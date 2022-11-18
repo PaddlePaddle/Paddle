@@ -167,7 +167,7 @@ class Conll05st(Dataset):
     def _load_label_dict(self, filename):
         d = dict()
         tag_dict = set()
-        with open(filename, 'r') as f:
+        with open(filename) as f:
             for i, line in enumerate(f):
                 line = line.strip()
                 if line.startswith("B-"):
@@ -185,7 +185,7 @@ class Conll05st(Dataset):
 
     def _load_dict(self, filename):
         d = dict()
-        with open(filename, 'r') as f:
+        with open(filename) as f:
             for i, line in enumerate(f):
                 d[line.strip()] = i
         return d

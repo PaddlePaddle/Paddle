@@ -38,7 +38,7 @@ def analysisBuildTime():
     filename = '%s/build/build-time' % root_path
     getUsefulBuildTimeFile(filename)
     os.system('rm -rf %s/tools/tempbuildTime.txt' % root_path)
-    with open('%s/tools/analysis_build_time' % root_path, 'r') as f:
+    with open('%s/tools/analysis_build_time' % root_path) as f:
         lines = f.readlines()
         for line in lines:
             try:

@@ -167,7 +167,7 @@ class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
-        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+        self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
             self._find_free_port(),
             self._find_free_port(),
         )
@@ -278,9 +278,9 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
-        with open(path0, "r") as f:
+        with open(path0) as f:
             sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
-        with open(path1, "r") as f:
+        with open(path1) as f:
             sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
         return (
             pickle.loads(tr0_out),

@@ -147,7 +147,9 @@ class DistributedStrategy:
     def __setattr__(self, key, value):
         if self.__lock_attr and not hasattr(self, key):
             raise TypeError(
-                "%s is not a attribute of %s" % (key, self.__class__.__name__)
+                "{} is not a attribute of {}".format(
+                    key, self.__class__.__name__
+                )
             )
         object.__setattr__(self, key, value)
 
@@ -181,7 +183,7 @@ class DistributedStrategy:
             strategy = fleet.DistributedStrategy()
             strategy.load_from_prototxt("dist_strategy.prototxt")
         """
-        with open(pb_file, 'r') as f:
+        with open(pb_file) as f:
             self.strategy = google.protobuf.text_format.Merge(
                 str(f.read()), self.strategy
             )

@@ -21,7 +21,7 @@ from codegen_utils import GetInplacedFunctionName
 #########################
 # Global Configurations #
 #########################
-skipped_forward_api_names = set([])
+skipped_forward_api_names = set()
 
 
 def SkipAPIGeneration(forward_api_name):

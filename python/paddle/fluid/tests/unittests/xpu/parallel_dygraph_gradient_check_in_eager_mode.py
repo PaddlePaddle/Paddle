@@ -31,7 +31,7 @@ out_dim = 20
 
 class SimpleNet(fluid.Layer):
     def __init__(self, train_id):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.w1 = self.create_parameter(
             shape=[in_dim, out_dim], dtype="float32"
         )

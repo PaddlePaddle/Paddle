@@ -1275,7 +1275,7 @@ def _debug_string_(proto, throw_on_error=True):
     error_fields = list()
     if not proto.IsInitialized(error_fields) and throw_on_error:
         raise ValueError(
-            "{0} are not initialized.\nThe message is {1}:\n".format(
+            "{} are not initialized.\nThe message is {}:\n".format(
                 error_fields, proto
             )
         )
@@ -1441,8 +1441,8 @@ class Variable(metaclass=VariableMetaClass):
             self.desc.set_type(type)
         elif self.desc.type() != type:
             raise ValueError(
-                "Variable '{0}' has been created before. The "
-                "previous type is {1}, the new type is {2}. They"
+                "Variable '{}' has been created before. The "
+                "previous type is {}, the new type is {}. They"
                 " are not matched".format(self.name, self.desc.type(), type)
             )
 
@@ -1454,8 +1454,8 @@ class Variable(metaclass=VariableMetaClass):
                 shape = tuple(shape)
                 if shape != old_shape:
                     raise ValueError(
-                        "Variable '{0}' has been created before. The previous "
-                        "shape is {1}, the new shape is {2}. They are not "
+                        "Variable '{}' has been created before. The previous "
+                        "shape is {}, the new shape is {}. They are not "
                         "matched.".format(self.name, old_shape, shape)
                     )
         if dtype is not None:
@@ -1465,9 +1465,9 @@ class Variable(metaclass=VariableMetaClass):
                 old_dtype = self.dtype
                 if dtype != old_dtype:
                     raise ValueError(
-                        "Variable '{0}' has been created before. "
-                        "The previous data type is {1}, the new "
-                        "data type is {2}. They are not "
+                        "Variable '{}' has been created before. "
+                        "The previous data type is {}, the new "
+                        "data type is {}. They are not "
                         "matched.".format(self.name, old_dtype, dtype)
                     )
 
@@ -1477,9 +1477,9 @@ class Variable(metaclass=VariableMetaClass):
             else:
                 if lod_level != self.lod_level:
                     raise ValueError(
-                        "Variable '{0}' has been created before. "
-                        "The previous lod_level is {1}, the new "
-                        "lod_level is {2}. They are not "
+                        "Variable '{}' has been created before. "
+                        "The previous lod_level is {}, the new "
+                        "lod_level is {}. They are not "
                         "matched".format(self.name, self.lod_level, lod_level)
                     )
         if persistable is not None:
@@ -1488,9 +1488,9 @@ class Variable(metaclass=VariableMetaClass):
             else:
                 if persistable != self.persistable:
                     raise ValueError(
-                        "Variable '{0}' has been created before."
-                        "The previous persistable is {1}, the new "
-                        "persistable is {2}. They are not matched".format(
+                        "Variable '{}' has been created before."
+                        "The previous persistable is {}, the new "
+                        "persistable is {}. They are not matched".format(
                             self.name, self.persistable, persistable
                         )
                     )
@@ -1816,7 +1816,9 @@ class Variable(metaclass=VariableMetaClass):
         if with_details:
             additional_attr = ("error_clip",)
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
+                res_str += "{}: {}\n".format(
+                    attr_name, getattr(self, attr_name)
+                )
 
         return res_str
 
@@ -3789,7 +3791,7 @@ class Block:
         if var:
             return var
         else:
-            raise ValueError("Var {0} is not found recursively".format(name))
+            raise ValueError("Var {} is not found recursively".format(name))
 
     def all_parameters(self):
         return list(self.iter_parameters())
@@ -6597,8 +6599,7 @@ class Program:
                 # var label : LOD_TENSOR.shape(-1, 1).dtype(int64).stop_gradient(True)
         """
         for each_block in self.blocks:
-            for each_var in list(each_block.vars.values()):
-                yield each_var
+            yield from list(each_block.vars.values())
 
     def all_parameters(self):
         """
@@ -6813,18 +6814,16 @@ class Program:
                     vars_dict[name].set_value(value, scope)
                 except ValueError as err:
                     warnings.warn(
-                        ("Skip loading for '{}'. ".format(name) + str(err))
+                        "Skip loading for '{}'. ".format(name) + str(err)
                     )
                 except TypeError as err:
                     warnings.warn(
-                        ("Skip loading for '{}'. ".format(name) + str(err))
+                        "Skip loading for '{}'. ".format(name) + str(err)
                     )
             else:
                 warnings.warn(
-                    (
-                        "Skip loading for '{0}'. Because '{0}' not in the program.".format(
-                            name
-                        )
+                    "Skip loading for '{0}'. Because '{0}' not in the program.".format(
+                        name
                     )
                 )
 
@@ -6934,7 +6933,9 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
                 "need_clip",
             )
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
+                res_str += "{}: {}\n".format(
+                    attr_name, getattr(self, attr_name)
+                )
         else:
             res_str = Variable.to_string(self, throw_on_error, False)
         return res_str

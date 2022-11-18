@@ -82,6 +82,10 @@ repos:
         entry: bash ./tools/codestyle/pylint_pre_commit.hook
         language: system
         files: \.(py)$
+-   repo: https://github.com/asottile/pyupgrade
+    rev: v3.2.2
+    hooks:
+    -   id: pyupgrade
 # For C++ files
 -   repo: local
     hooks:

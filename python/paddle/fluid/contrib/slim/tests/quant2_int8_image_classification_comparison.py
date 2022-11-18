@@ -314,14 +314,14 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
 
     def _print_performance(self, title, fps, lat):
         _logger.info(
-            '{0}: avg fps: {1:.2f}, avg latency: {2:.4f} ms'.format(
+            '{}: avg fps: {:.2f}, avg latency: {:.4f} ms'.format(
                 title, fps, lat
             )
         )
 
     def _print_accuracy(self, title, acc1, acc5):
         _logger.info(
-            '{0}: avg top1 accuracy: {1:.4f}, avg top5 accuracy: {2:.4f}'.format(
+            '{}: avg top1 accuracy: {:.4f}, avg top5 accuracy: {:.4f}'.format(
                 title, acc1, acc5
             )
         )
@@ -343,7 +343,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
 
     def _compare_accuracy(self, threshold, quant_acc1, int8_acc1):
         _logger.info(
-            'Accepted top1 accuracy drop threshold: {0}. (condition: (Quant_top1_acc - IN8_top1_acc) <= threshold && Quant_top1_acc > 0.5 && INT8_top1_acc > 0.5)'.format(
+            'Accepted top1 accuracy drop threshold: {}. (condition: (Quant_top1_acc - IN8_top1_acc) <= threshold && Quant_top1_acc > 0.5 && INT8_top1_acc > 0.5)'.format(
                 threshold
             )
         )
@@ -353,7 +353,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
         assert quant_acc1 - int8_acc1 <= threshold
 
     def _strings_from_csv(self, string):
-        return set(s.strip() for s in string.split(','))
+        return {s.strip() for s in string.split(',')}
 
     def _ints_from_csv(self, string):
         return set(map(int, string.split(',')))
@@ -383,7 +383,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                 test_case_args.ops_to_quantize
             )
 
-        self._op_ids_to_skip = set([-1])
+        self._op_ids_to_skip = {-1}
         if test_case_args.op_ids_to_skip:
             self._op_ids_to_skip = self._ints_from_csv(
                 test_case_args.op_ids_to_skip

@@ -57,7 +57,7 @@ class TestAffineChannelOp(OpTest):
         self.check_grad(['Scale', 'Bias'], 'Out', no_grad_set=set('X'))
 
     def test_check_grad_stopgrad_dscale_dbias(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set(['Scale', 'Bias']))
+        self.check_grad(['X'], 'Out', no_grad_set={'Scale', 'Bias'})
 
     def init_test_case(self):
         self.shape = [2, 100, 3, 3]

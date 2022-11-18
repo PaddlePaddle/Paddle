@@ -251,7 +251,7 @@ def is_required_match(requirestr, cbtitle='not-specified'):
         None - skipped  # trick
     """
     global SAMPLE_CODE_TEST_CAPACITY, RUN_ON_DEVICE  # readonly
-    requires = set(['cpu'])
+    requires = {'cpu'}
     if requirestr:
         for r in requirestr.split(','):
             rr = r.strip().lower()
@@ -446,7 +446,7 @@ def execute_samplecode(tfname):
     end_time = time.time()
 
     if subprc.returncode != 0:
-        with open(tfname, 'r') as f:
+        with open(tfname) as f:
             logger.warning(
                 """Sample code error found in %s:
 -----------------------

@@ -36,8 +36,8 @@ def sigmoid_focal_loss_forward(
         a = int(idx / num_classes)
         d = int(idx % num_classes)
         label = label_data[a]
-        c_pos = float((int(label) == int(d + 1)))
-        c_neg = float(((int(label) != -1) & (int(label) != (d + 1))))
+        c_pos = float(int(label) == int(d + 1))
+        c_neg = float((int(label) != -1) & (int(label) != (d + 1)))
         fg_num = max(fg_num_data, 1)
         z_neg = (1.0 - alpha) / fg_num
         z_pos = alpha / fg_num

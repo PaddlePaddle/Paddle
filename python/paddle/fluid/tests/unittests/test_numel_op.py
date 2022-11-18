@@ -23,7 +23,7 @@ class TestNumelOp(OpTest):
     def setUp(self):
         self.op_type = "size"
         self.init()
-        x = np.random.random((self.shape)).astype("float64")
+        x = np.random.random(self.shape).astype("float64")
         self.inputs = {
             'Input': x,
         }

@@ -106,7 +106,7 @@ def generate_intermediate_api(
 
     apis = []
     for each_api_yaml in api_yaml_path:
-        with open(each_api_yaml, 'r') as f:
+        with open(each_api_yaml) as f:
             api_list = yaml.load(f, Loader=yaml.FullLoader)
             if api_list:
                 apis.extend(api_list)
@@ -120,7 +120,7 @@ def generate_intermediate_api(
     dygraph_header_file.write(sparse_namespace_pair[0])
     dygraph_source_file.write(sparse_namespace_pair[0])
 
-    with open(sparse_api_yaml_path, 'r') as f:
+    with open(sparse_api_yaml_path) as f:
         sparse_apis = yaml.load(f, Loader=yaml.FullLoader)
 
     for api in sparse_apis:

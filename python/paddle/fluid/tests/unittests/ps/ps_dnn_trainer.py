@@ -71,7 +71,7 @@ class YamlHelper:
                 use_full_loader = False
 
         if os.path.isfile(config):
-            with open(config, 'r', encoding="utf-8") as rb:
+            with open(config, encoding="utf-8") as rb:
                 if use_full_loader:
                     _config = yaml.load(rb.read(), Loader=yaml.FullLoader)
                 else:

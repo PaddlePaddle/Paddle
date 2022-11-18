@@ -120,7 +120,7 @@ class TestSequenceUnpadOpError(unittest.TestCase):
 
         def test_length_variable():
             x1 = fluid.data(name='x1', shape=[10, 5], dtype='float32')
-            len1 = np.random.random((10)).astype("int64")
+            len1 = np.random.random(10).astype("int64")
             fluid.layers.sequence_unpad(x=x1, length=len1)
 
         self.assertRaises(TypeError, test_length_variable)

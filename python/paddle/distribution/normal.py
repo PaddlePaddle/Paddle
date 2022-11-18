@@ -30,7 +30,7 @@ from paddle.fluid.layers import (
 try:
     from collections.abc import Iterable
 except:
-    from collections import Iterable
+    from collections.abc import Iterable
 
 
 class Normal(distribution.Distribution):
@@ -248,7 +248,7 @@ class Normal(distribution.Distribution):
         )
         return elementwise_add(
             0.5 + zero_tmp,
-            0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp)),
+            0.5 * math.log(2 * math.pi) + nn.log(self.scale + zero_tmp),
             name=name,
         )
 

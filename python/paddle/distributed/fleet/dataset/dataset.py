@@ -295,7 +295,7 @@ class DatasetBase:
             test_file(str): local test file path
         """
 
-        f = open(test_file, "r")
+        f = open(test_file)
         var_len = len(var_list)
 
         while True:

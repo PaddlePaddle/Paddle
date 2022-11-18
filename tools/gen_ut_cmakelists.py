@@ -563,7 +563,7 @@ class CMakeGenerator:
 
         # check whether the generated file are thge same with the existing file, ignoring the blank chars
         # if the are same, skip the weiting process
-        with open(f"{current_work_dir}/CMakeLists.txt", "r") as old_cmake_file:
+        with open(f"{current_work_dir}/CMakeLists.txt") as old_cmake_file:
             char_seq = old_cmake_file.read().split()
         char_seq = "".join(char_seq)
 

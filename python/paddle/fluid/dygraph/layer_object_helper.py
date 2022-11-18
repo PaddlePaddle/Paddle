@@ -66,7 +66,7 @@ class LayerObjectHelper(LayerHelperBase):
     def _input(self, inputs_in):
         inputs = self._multiple_input(inputs_in)
         if len(inputs) != 1:
-            raise "{0} layer only takes one input in".format(self.layer_type)
+            raise "{} layer only takes one input in".format(self.layer_type)
         return inputs[0]
 
     def _multiple_param_attr(self, length, param_attr_in=None):
@@ -102,8 +102,7 @@ class LayerObjectHelper(LayerHelperBase):
         inputs = inputs_in if (inputs_in is not None) else []
         inputs = self._multiple_input(inputs)
         param_attrs = self._multiple_param_attr(len(inputs), param_attr_in)
-        for ipt, param_attr in zip(inputs, param_attrs):
-            yield ipt, param_attr
+        yield from zip(inputs, param_attrs)
 
     def input_dtype(self, inputs_in):
         """Get input data type
@@ -137,7 +136,7 @@ class LayerObjectHelper(LayerHelperBase):
         param = self.main_program.global_block().var(name)
         if not isinstance(param, Parameter):
             raise ValueError(
-                "no Parameter name %s found in %s" % (name, self.name)
+                "no Parameter name {} found in {}".format(name, self.name)
             )
         return param
 

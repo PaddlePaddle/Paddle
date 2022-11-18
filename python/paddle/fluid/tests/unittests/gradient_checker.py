@@ -25,7 +25,7 @@ from paddle.fluid.framework import _test_eager_guard
 try:
     from collections.abc import Sequence
 except:
-    from collections import Sequence
+    from collections.abc import Sequence
 
 
 def _product(t):

@@ -70,7 +70,7 @@ def load_program_binary(model_filename):
 
 def load_program_text(model_filename):
     """load program from human-readable text file"""
-    with open(model_filename, "r") as f:
+    with open(model_filename) as f:
         program_desc_text = f.read()
 
     prog_desc = framework_pb2.ProgramDesc()
@@ -203,7 +203,7 @@ def reader(batch_size, fn, dim):
     shape = [batch_size] + shape
     dim = dim * batch_size
 
-    for line in open(fn, 'r'):
+    for line in open(fn):
         fields = line.strip().split(' ')
         fields = [float(d) for d in fields]
         while len(fields) >= dim:

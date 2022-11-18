@@ -353,12 +353,12 @@ class TestErrorWithInitFromStaticMode(unittest.TestCase):
         net = Net()
 
         self.program_translator.enable(True)
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             self.program_translator.get_output(net.forward, self.x)
 
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError, "only available in dynamic mode"
         ):
             self.program_translator.get_program(net.forward, self.x)

@@ -488,7 +488,9 @@ class PretrainedTokenizer:
                 resolved_vocab_files[file_id] = path
             else:
                 print(
-                    "Downloading %s and saved to %s" % (file_path, default_root)
+                    "Downloading {} and saved to {}".format(
+                        file_path, default_root
+                    )
                 )
                 try:
                     resolved_vocab_files[file_id] = get_path_from_url(
@@ -510,7 +512,7 @@ class PretrainedTokenizer:
             "tokenizer_config_file", None
         )
         if tokenizer_config_file is not None:
-            with open(tokenizer_config_file, 'r', encoding="utf-8") as f:
+            with open(tokenizer_config_file, encoding="utf-8") as f:
                 init_kwargs = json.load(f)
         else:
             init_kwargs = init_configuration
@@ -622,7 +624,7 @@ class PretrainedTokenizer:
             Vocab: An instance of `Vocab`.
         """
         token_to_idx = {}
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             for index, line in enumerate(f):
                 token = line.rstrip('\n')
                 token_to_idx[token] = int(index)
