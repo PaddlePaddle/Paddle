@@ -23,7 +23,7 @@ __all__ = []
 @framework.dygraph_only
 def backward(tensors, grad_tensors=None, retain_graph=False):
     """
-    Compute the backward gradients of given tensors. test=docs_preview
+    Compute the backward gradients of given tensors. test=docs_preview.
 
     Args:
         tensors(list of Tensors): the tensors which the gradient to be computed. The tensors can not contain the same tensor.
