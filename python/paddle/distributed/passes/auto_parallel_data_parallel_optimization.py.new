@@ -570,7 +570,7 @@ class DataParallelOptimizationPass(PassBase):
                 continue
 
             if is_data_parallel_reduce_op(op):
-                coalesce_var_name = op.out_arg_names[0]
+                coalesce_var_name = op.output_arg_names[0]
                 prior_allreduce_deps[coalesce_var_name] = [
                     idx,
                     None,
@@ -579,7 +579,7 @@ class DataParallelOptimizationPass(PassBase):
                 not_sync_coalesces.append(coalesce_var_name)
                 continue
 
-            for out_name in op.out_arg_names:
+            for out_name in op.output_arg_names: 
                 var_name = vars_to_coalesce_map.get(out_name, None)
                 if var_name in not_sync_coalesces:
                     prior_allreduce_deps[var_name][1] = out_name
@@ -599,7 +599,7 @@ class DataParallelOptimizationPass(PassBase):
                 continue
 
             if is_data_parallel_reduce_op(op):
-                coalesce_var_name = op.out_arg_names[0]
+                coalesce_var_name = op.input_arg_names[0]
                 post_allreduce_deps[coalesce_var_name] = [
                     None,
                     coalesce_var_name,
@@ -608,7 +608,7 @@ class DataParallelOptimizationPass(PassBase):
                 not_sync_coalesces.append(coalesce_var_name)
                 continue
 
-            for out_name in op.out_arg_names:
+            for out_name in op.input_arg_names:
                 var_name = vars_to_coalesce_map.get(out_name, None)
                 if var_name in not_sync_coalesces:
                     post_allreduce_deps[var_name][0] = idx
