@@ -1284,7 +1284,7 @@ void BindDistributed(py::module *m) {
   auto processGroupBKCL =
       py::class_<distributed::ProcessGroupBKCL,
                  std::shared_ptr<distributed::ProcessGroupBKCL>>(
-          *m, "ProcessGroupBKCL", ProcessGroup)
+          *m, "ProcessGroupBKCL", ProcessGroupStream)
           .def(py::init<const std::shared_ptr<distributed::Store> &,
                         int,
                         int,
