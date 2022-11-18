@@ -17,24 +17,21 @@ limitations under the License. */
 namespace phi {
 
 struct GraphEngineIRProperties {
-  static size_t GUUIDGenerator() {
-    static size_t guuid_ins = 0;
-    return guuid_ins++;
-  }
-
-  GraphEngineIRProperties() : guuid(GUUIDGenerator()) {}
+  GraphEngineIRProperties() {}
 
   GraphEngineIRProperties(bool persistable, bool parameter)
-      : is_persistable(persistable),
-        is_parameter(parameter),
-        guuid(GUUIDGenerator()) {}
+      : is_persistable(persistable), is_parameter(parameter) {}
 
-  GraphEngineIRProperties(bool persistable, bool parameter, size_t id)
-      : is_persistable(persistable), is_parameter(parameter), guuid(id) {}
+  bool IsPersistable() { return is_persistable; }
+
+  void SetIsPersistable(bool persistable) { is_persistable = persistable; }
+
+  bool IsParameter() { return is_parameter; }
+
+  void SetIsParameter(bool parameter) { is_parameter = parameter; }
 
   bool is_persistable{false};
   bool is_parameter{false};
-  size_t guuid;
 };
 
 }  // namespace phi
