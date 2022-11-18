@@ -46,6 +46,7 @@ __all__ = [
     'sampled_softmax_with_cross_entropy',
     'softmax_with_cross_entropy',
     'rank_loss',
+    'margin_rank_loss',
     'teacher_student_sigmoid_loss',
     'huber_loss',
     'kldiv_loss',
