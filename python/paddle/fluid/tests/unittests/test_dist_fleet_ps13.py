@@ -60,13 +60,13 @@ class TestPSPassWithBow(unittest.TestCase):
                 cos_q_pt,
             )
             loss_op2 = fluid.layers.elementwise_add(loss_op1, cos_q_nt)
-            loss_op3 = paddle.maximum(
+            loss_op3 = fluid.layers.elementwise_max(
                 fluid.layers.fill_constant_batch_size_like(
                     input=loss_op2, shape=[-1, 1], value=0.0, dtype='float32'
                 ),
                 loss_op2,
             )
-            avg_cost = fluid.layers.mean(loss_op3)
+            avg_cost = paddle.mean(loss_op3)
             return avg_cost
 
         is_distributed = False
