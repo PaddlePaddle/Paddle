@@ -970,6 +970,7 @@
   kernel :
     func : increment
   inplace : (x -> out)
+  backward : increment_grad
 
 - op : index_add
   args : (Tensor x, Tensor index,  Tensor add_value, int axis)

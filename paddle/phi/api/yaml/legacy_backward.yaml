@@ -333,7 +333,7 @@
     use_gpudnn : true
 
 - backward_op : crop_grad
-  forward : crop_tensor (Tensor x, IntArray shape, IntArray offsets) -> Tensor(out)
+  forward : crop (Tensor x, IntArray shape, IntArray offsets) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, IntArray offsets)
   output : Tensor(x_grad)
   infer_meta :
@@ -1408,15 +1408,6 @@
     layout: out_grad
   backward : reshape_double_grad
   inplace : (out_grad -> x_grad)
-
-- backward_op : reverse_array_grad
-  forward : reverse_array (Tensor[] x, IntArray axis) -> Tensor[](out)
-  args : (Tensor[] out_grad, IntArray axis)
-  output : Tensor[](x_grad){out_grad.size()}
-  infer_meta :
-    func : ReverseArrayInferMeta
-  kernel :
-    func : reverse
 
 - backward_op : reverse_grad
   forward : reverse (Tensor x, IntArray axis) -> Tensor(out)

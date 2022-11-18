@@ -77,16 +77,21 @@ execute_process(
     ./parsed_ops/ops.parsed.yaml ./parsed_ops/legacy_ops.parsed.yaml
     --backward_yaml_paths ./parsed_ops/backward_ops.parsed.yaml
     ./parsed_ops/legacy_backward_ops.parsed.yaml
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "ops validation failed, exiting.")
+endif()
+
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
     ./parsed_ops/sparse_ops.parsed.yaml --backward_yaml_paths
     ./parsed_ops/sparse_backward.parsed.yaml
-  RESULT_VARIABLE _results)
-foreach(_result in ${_results})
-  if(${_result})
-    message(FATAL_ERROR "ops validation failed, exiting.")
-  endif()
-endforeach()
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "sparse ops validation failed, exiting.")
+endif()
 
 # code generation for op, op makers, and argument mapping functions
 message(
