@@ -97,14 +97,13 @@ __global__ void dequantize_kernel(T* output,
                                   const int m,  // hidden
                                   const int n,  // batch size
                                   const float quant_in_scale,
-                                  const float* dequant_out_scale_data,
-                                  const int quant_out_scale_offset) {
+                                  const float* dequant_out_scale_data) {
   int m_id = blockIdx.x * blockDim.x + threadIdx.x;  // hidden
   int n_id = blockIdx.y * blockDim.y + threadIdx.y;  // batch size
 
   bool check = ((m_id < m) && (n_id < n));
   if (check) {
-    float out_scale = dequant_out_scale_data[quant_out_scale_offset + m_id];
+    float out_scale = dequant_out_scale_data[m_id];
     output[n_id * m + m_id] =
         static_cast<T>(static_cast<float>(input[n_id * m + m_id]) *
                        quant_in_scale / out_scale);
@@ -118,8 +117,7 @@ void dequantize_kernel_launcher(const int32_t* input,
                                 const int hidden_units,  // n
                                 gpuStream_t stream,
                                 const float quant_in_scale,
-                                const float* dequant_out_scale_data,
-                                const int quant_out_scale_offset) {
+                                const float* dequant_out_scale_data) {
   dim3 grid((hidden_units + 31) / 32, (batch_size + 31) / 32);
   dim3 block(32, 32);
 
@@ -128,8 +126,7 @@ void dequantize_kernel_launcher(const int32_t* input,
                                                 hidden_units,
                                                 batch_size,
                                                 quant_in_scale,
-                                                dequant_out_scale_data,
-                                                quant_out_scale_offset);
+                                                dequant_out_scale_data);
 }
 
 }  // namespace operators

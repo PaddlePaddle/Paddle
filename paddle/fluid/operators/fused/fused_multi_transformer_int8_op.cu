@@ -48,16 +48,16 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
     // dequant output scales, tensor, size = [num_layers, n], n is gemm output
     // size
-    auto *qkv_out_scale = ctx.Input<phi::DenseTensor>("QKVOutScale");
-    auto *out_linear_out_scale =
-        ctx.Input<phi::DenseTensor>("OutLinearOutScale");
-    auto *ffn1_out_scale = ctx.Input<phi::DenseTensor>("FFN1OutScale");
-    auto *ffn2_out_scale = ctx.Input<phi::DenseTensor>("FFN2OutScale");
+    auto qkv_out_scales = ctx.MultiInput<phi::DenseTensor>("QKVOutScale");
+    auto out_linear_out_scales =
+        ctx.MultiInput<phi::DenseTensor>("OutLinearOutScale");
+    auto ffn1_out_scales = ctx.MultiInput<phi::DenseTensor>("FFN1OutScale");
+    auto ffn2_out_scales = ctx.MultiInput<phi::DenseTensor>("FFN2OutScale");
 
-    int qkv_out_scale_n = qkv_out_scale->dims()[1];
-    int out_linear_out_scale_n = out_linear_out_scale->dims()[1];
-    int ffn1_out_scale_n = ffn1_out_scale->dims()[1];
-    int ffn2_out_scale_n = ffn2_out_scale->dims()[1];
+    int qkv_out_scale_n = qkv_out_scales[0]->dims()[1];
+    int out_linear_out_scale_n = out_linear_out_scales[0]->dims()[1];
+    int ffn1_out_scale_n = ffn1_out_scales[0]->dims()[1];
+    int ffn2_out_scale_n = ffn2_out_scales[0]->dims()[1];
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
@@ -305,8 +305,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                    &output_workspace,
                                    &qkv_out,
                                    qkv_in_scale[i],
-                                   qkv_out_scale,
-                                   i * qkv_out_scale_n,
+                                   qkv_out_scales[i],
                                    quant_round_type,
                                    quant_max_bound,
                                    quant_min_bound);
@@ -319,8 +318,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                    &output_workspace,
                                    &qkv_out,
                                    qkv_in_scale[i],
-                                   qkv_out_scale,
-                                   i * qkv_out_scale_n,
+                                   qkv_out_scales[i],
                                    quant_round_type,
                                    quant_max_bound,
                                    quant_min_bound);
@@ -332,8 +330,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           &qkv_out,
                                           &output_workspace,
                                           &qkv_out,
-                                          qkv_out_scale,
-                                          i * qkv_out_scale_n);
+                                          qkv_out_scales[i]);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step2";
@@ -441,8 +438,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                           &output_workspace,
                                           nullptr,
                                           out_linear_in_scale[i],
-                                          out_linear_out_scale,
-                                          i * out_linear_out_scale_n,
+                                          out_linear_out_scales[i],
                                           quant_round_type,
                                           quant_max_bound,
                                           quant_min_bound);
@@ -473,8 +469,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             ln_mean_data,
             ln_var_data,
             out_linear_in_scale[i],
-            out_linear_out_scale->data<float>(),
-            i * out_linear_out_scale_n,
+            out_linear_out_scales[i]->data<float>(),
             ffn1_in_scale[i],
             quant_round_type,
             quant_max_bound,
@@ -518,8 +513,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                            &output_workspace,
                                            nullptr,
                                            ffn1_in_scale[i],
-                                           ffn1_out_scale,
-                                           i * ffn1_out_scale_n,
+                                           ffn1_out_scales[i],
                                            quant_round_type,
                                            quant_max_bound,
                                            quant_min_bound);
@@ -539,8 +533,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             input_workspace.data<int8_t>(),
             ffn1_dropout_mask_data,
             ffn1_in_scale[i],
-            ffn1_out_scale->data<float>(),
-            i * ffn1_out_scale_n,
+            ffn1_out_scales[i]->data<float>(),
             ffn2_in_scale[i],
             quant_round_type,
             quant_max_bound,
@@ -574,8 +567,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                                            &output_workspace,
                                            nullptr,
                                            ffn2_in_scale[i],
-                                           ffn2_out_scale,
-                                           i * ffn2_out_scale_n,
+                                           ffn2_out_scales[i],
                                            quant_round_type,
                                            quant_max_bound,
                                            quant_min_bound);
@@ -616,8 +608,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
               ln_mean_data,
               ln_var_data,
               ffn2_in_scale[i],
-              ffn2_out_scale->data<float>(),
-              i * ffn2_out_scale_n,
+              ffn2_out_scales[i]->data<float>(),
               qkv_in_scale[i + 1],
               quant_round_type,
               quant_max_bound,
@@ -631,8 +622,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
               buf1->data<T>(),
               dropout_mask_out_data,
               ffn2_in_scale[i],
-              ffn2_out_scale->data<float>(),
-              i * ffn2_out_scale_n,
+              ffn2_out_scales[i]->data<float>(),
               1.0);
         }
       } else {

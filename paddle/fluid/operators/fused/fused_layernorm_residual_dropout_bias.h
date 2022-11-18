@@ -442,7 +442,6 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
     OutType *__restrict__ y_ptr,
     const float quant_last_in_scale = 1.0,
     const float *__restrict__ quant_out_scale_ptr = nullptr,
-    const int quant_out_scale_offset = 0,
     const float quant_next_in_scale = 1.0,
     const int quant_round_type = 1,
     const float quant_max_bound = 127.0,
@@ -504,9 +503,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
       phi::Load<InType, VecSize>(x_ptr + row * ELTS_PER_ROW + col * VecSize,
                                  &x_input[it]);
       if (quant_out_scale_ptr != nullptr) {
-        phi::Load<float, VecSize>(
-            quant_out_scale_ptr + quant_out_scale_offset + col * VecSize,
-            &dequant_out_scale[it]);
+        phi::Load<float, VecSize>(quant_out_scale_ptr + col * VecSize,
+                                  &dequant_out_scale[it]);
       }
       col += THREADS_PER_ROW;
     }
@@ -752,7 +750,6 @@ void LaunchLayernormResidualDropoutBias(
     const phi::GPUContext &ctx,
     const float quant_last_in_scale = 1.0,
     const float *dequant_out_scale_data = nullptr,
-    const int quant_out_scale_offset = 0,
     const float quant_next_in_scale = 1.0,
     const int quant_round_type = 1,
     const float quant_max_bound = 127.0,
@@ -844,7 +841,6 @@ void LaunchLayernormResidualDropoutBias(
                                                      layernorm_dst,           \
                                                      quant_last_in_scale,     \
                                                      dequant_out_scale_data,  \
-                                                     quant_out_scale_offset,  \
                                                      quant_next_in_scale,     \
                                                      quant_round_type,        \
                                                      quant_max_bound,         \
