@@ -570,8 +570,9 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
         assert isinstance(
             input, list
         ), "The 'input' in tensor_array_to_tensor must be list"
-        from .nn import stack, concat
+        from .nn import concat
         from ..dygraph import to_variable
+        from paddle import stack
 
         op = stack if use_stack else concat
         res = op(input, axis=axis)
@@ -917,17 +918,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if force_cpu:
             place = core.CPUPlace()
         if isinstance(shape, (list, tuple)):
-            for item in shape:
-                if not isinstance(item, Variable):
-                    shape = list(
-                        map(
-                            lambda x: x.numpy().flat[0]
-                            if isinstance(x, Variable)
-                            else x,
-                            shape,
-                        )
-                    )
-                    break
+            shape = utils.convert_shape_to_list(shape)
 
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)

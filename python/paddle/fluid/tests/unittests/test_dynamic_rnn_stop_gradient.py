@@ -46,7 +46,7 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
             layers.unsqueeze(layers.range(0, bs, 1, dtype=bs.dtype), [1]),
             [-1, beam_size],
         )
-        topk_coordinates = layers.stack([batch_pos, indices], axis=2)
+        topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = stop_gradient
         score = layers.gather_nd(x, topk_coordinates)
         layers.increment(x=step_idx, value=1.0, in_place=True)
