@@ -96,6 +96,7 @@ TEST(AnalysisPredictor, analysis_on) {
 #else
   config.DisableGpu();
 #endif
+  config.EnableNewProfile();
   LOG(INFO) << config.Summary();
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
