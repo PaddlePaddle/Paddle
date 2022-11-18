@@ -93,7 +93,6 @@ void MatmulKernel(const Context &dev_ctx,
                   bool transpose_x,
                   bool transpose_y,
                   DenseTensor *out) {
-  ////////
   if (dev_ctx.HasDnnAttr("head_number")) {
     const auto head_number =
         PADDLE_GET_CONST(int, dev_ctx.GetDnnAttr("head_number"));
