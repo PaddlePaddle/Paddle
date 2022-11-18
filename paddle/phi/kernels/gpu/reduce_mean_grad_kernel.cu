@@ -29,7 +29,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           bool keep_dim,
                           bool reduce_all,
                           DenseTensor* x_grad) {
-  reduce_all = recompute_reduce_all(x, dims);
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = x.dims().size();
   std::vector<int> reduce_dims =
