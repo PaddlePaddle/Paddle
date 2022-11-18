@@ -25,7 +25,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/phi/backends/gpu/cuda/cuda_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 
 #define MATRIX_SOFTMAX_ALIGN_BYTES 16
 #define MATRIX_SOFTMAX_THREAHOLD 100000
