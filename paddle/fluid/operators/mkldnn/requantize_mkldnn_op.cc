@@ -24,7 +24,6 @@ namespace operators {
 
 using dnnl::memory;
 using dnnl::reorder;
-using platform::to_void_cast;
 using Tensor = phi::DenseTensor;
 
 namespace {
@@ -88,10 +87,10 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     if (reorder_p == nullptr) {
       auto src_dt = framework::ToMKLDNNDataType(
           framework::TransToProtoVarType(input->dtype()));
-      auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
+      auto dst_dt = with_shift ? framework::OneDNNDataType::u8 : src_dt;
 
       src_memory = std::make_shared<dnnl::memory>(
-          input->mem_desc(), engine, to_void_cast<T>(input_data));
+          input->mem_desc(), engine, phi::funcs::to_void_cast<T>(input_data));
 
       auto xstrides = input->mem_desc().data.format_desc.blocking.strides;
 
@@ -112,11 +111,11 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
             clip_to_uint8(shift_out - reorder_scale * shift_in);
         std::memset(output_data, reorder_shift, output->numel());
         dst_memory = std::make_shared<dnnl::memory>(
-            dst_md, engine, to_void_cast<uint8_t>(output_data));
+            dst_md, engine, phi::funcs::to_void_cast<uint8_t>(output_data));
       } else {
         T* output_data = output->mutable_data<T>(ctx.GetPlace());
         dst_memory = std::make_shared<dnnl::memory>(
-            dst_md, engine, to_void_cast<T>(output_data));
+            dst_md, engine, phi::funcs::to_void_cast<T>(output_data));
       }
 
       auto reorder_pd =
@@ -129,7 +128,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     } else {
       src_memory =
           std::static_pointer_cast<dnnl::memory>(dev_ctx.GetBlob(key_src_mem));
-      src_memory->set_data_handle(to_void_cast<T>(input_data));
+      src_memory->set_data_handle(phi::funcs::to_void_cast<T>(input_data));
 
       dst_memory =
           std::static_pointer_cast<dnnl::memory>(dev_ctx.GetBlob(key_dst_mem));
