@@ -16,6 +16,7 @@ import unittest
 import paddle.fluid as fluid
 import numpy as np
 import os
+import paddle
 
 
 class SimpleFCLayer(fluid.dygraph.Layer):

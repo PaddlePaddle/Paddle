@@ -103,7 +103,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
 
         super().__init__()
         self._num_channels = num_channels
-        self._pool = paddle.nn.AdaptiveAvgPool2D(output_size(1, 1))
+        self._pool = paddle.nn.AdaptiveAvgPool2D(output_size=(1, 1))
         self._squeeze = paddle.nn.Linear(
             num_channels,
             num_channels // reduction_ratio,
@@ -284,7 +284,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
-        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(output_size(1, 1))
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(output_size=(1, 1))
         import math
 
         stdv = 1.0 / math.sqrt(2048 * 1.0)

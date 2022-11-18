@@ -16,7 +16,7 @@ import sys
 import time
 import unittest
 import numpy as np
-
+import paddle
 import paddle.fluid as fluid
 from paddle.io import DataLoader
 from paddle.nn import Linear
