@@ -341,13 +341,14 @@ class ClipGradByGloblNormPass(PassBase):
                     j = idx - 1
                     prior_op = None
                     while j > 0:
-                        prior_op = block.ops[j]
-                        op_type = prior_op.type
+                        op_type = block.ops[j].type
                         if op_type in [
                             'update_loss_scaling',
                             'check_finite_and_unscale',
                         ] or op_type.endswith("_grad"):
+                            prior_op = block.ops[j]
                             break
+                            j -= 1
                     assert (
                         prior_op is not None
                     ), "Unexception: ClipByGlobalNorm could not find priory depend op"
