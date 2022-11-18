@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.1 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <tuple>
 
-namespace paddle {
-namespace platform {
+namespace phi {
+namespace funcs {
 template <int Arity, typename... Args>
 struct IsPointerArgs {
   static_assert(Arity == sizeof...(Args), "Arity and Args not match!");
@@ -57,5 +57,5 @@ struct FunctionTraits<ReturnType(Args...)> {
   using ArgsTuple = std::tuple<Args...>;
 };
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
