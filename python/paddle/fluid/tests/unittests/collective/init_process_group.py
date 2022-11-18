@@ -30,11 +30,11 @@ class TestProcessGroupFp32(unittest.TestCase):
             paddle.distributed.init_parallel_env()
             paddle.distributed.new_group()
             group = paddle.distributed.new_group([-1, -2])
-            assert group.process_group == None
+            assert group.process_group is None
 
             group = paddle.distributed.collective.Group(-1, 2, 0, [-1, -2])
             ret = paddle.distributed.barrier(group)
-            assert ret == None
+            assert ret is None
         paddle.enable_static()
         in_tensor = paddle.empty((1, 2))
         in_tensor2 = paddle.empty((1, 2))

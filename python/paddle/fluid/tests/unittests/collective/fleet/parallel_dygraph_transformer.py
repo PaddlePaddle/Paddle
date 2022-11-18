@@ -36,7 +36,7 @@ Note(chenweihang): To compare loss of single-card and multi-card
 """
 
 
-class TrainTaskConfig(object):
+class TrainTaskConfig:
     """
     TrainTaskConfig
     """
@@ -61,7 +61,7 @@ class TrainTaskConfig(object):
     label_smooth_eps = 0.1
 
 
-class ModelHyperParams(object):
+class ModelHyperParams:
     # These following five vocabularies related configurations will be set
     # automatically according to the passed vocabulary path and special tokens.
     # size of source word dictionary.
@@ -242,7 +242,7 @@ pos_inp2 = position_encoding_init(
 
 class PrePostProcessLayer(Layer):
     def __init__(self, d_model, process_cmd, shape_len=None):
-        super(PrePostProcessLayer, self).__init__()
+        super().__init__()
         for cmd in process_cmd:
             if cmd == "n":
                 self._layer_norm = LayerNorm(
@@ -274,7 +274,7 @@ class PrePostProcessLayer(Layer):
 
 class PositionwiseFeedForwardLayer(Layer):
     def __init__(self, d_inner_hid, d_hid, dropout_rate):
-        super(PositionwiseFeedForwardLayer, self).__init__()
+        super().__init__()
         self._i2h = Linear(d_hid, d_inner_hid, act="relu")
         self._h2o = Linear(d_inner_hid, d_hid)
         self._dropout_rate = dropout_rate
@@ -304,7 +304,7 @@ class MultiHeadAttentionLayer(Layer):
         gather_idx=None,
         static_kv=False,
     ):
-        super(MultiHeadAttentionLayer, self).__init__()
+        super().__init__()
         self._n_head = n_head
         self._d_key = d_key
         self._d_value = d_value
@@ -389,7 +389,7 @@ class EncoderSubLayer(Layer):
         postprocess_cmd="da",
     ):
 
-        super(EncoderSubLayer, self).__init__()
+        super().__init__()
         self._preprocess_cmd = preprocess_cmd
         self._postprocess_cmd = postprocess_cmd
         self._prepostprocess_dropout = prepostprocess_dropout
@@ -457,7 +457,7 @@ class EncoderLayer(Layer):
         postprocess_cmd="da",
     ):
 
-        super(EncoderLayer, self).__init__()
+        super().__init__()
         self._preprocess_cmd = preprocess_cmd
         self._encoder_sublayers = list()
         self._prepostprocess_dropout = prepostprocess_dropout
@@ -505,7 +505,7 @@ class PrepareEncoderDecoderLayer(Layer):
         word_emb_param_name=None,
         pos_enc_param_name=None,
     ):
-        super(PrepareEncoderDecoderLayer, self).__init__()
+        super().__init__()
         self._src_max_len = src_max_len
         self._src_emb_dim = src_emb_dim
         self._src_vocab_size = src_vocab_size
@@ -577,7 +577,7 @@ class WrapEncoderLayer(Layer):
         """
         The wrapper assembles together all needed layers for the encoder.
         """
-        super(WrapEncoderLayer, self).__init__()
+        super().__init__()
 
         self._prepare_encoder_layer = PrepareEncoderDecoderLayer(
             src_vocab_size,
@@ -625,7 +625,7 @@ class DecoderSubLayer(Layer):
         cache=None,
         gather_idx=None,
     ):
-        super(DecoderSubLayer, self).__init__()
+        super().__init__()
         self._postprocess_cmd = postprocess_cmd
         self._preprocess_cmd = preprocess_cmd
         self._prepostprcess_dropout = prepostprocess_dropout
@@ -731,7 +731,7 @@ class DecoderLayer(Layer):
         caches=None,
         gather_idx=None,
     ):
-        super(DecoderLayer, self).__init__()
+        super().__init__()
         self._pre_process_layer = PrePostProcessLayer(
             d_model, preprocess_cmd, 3
         )
@@ -802,7 +802,7 @@ class WrapDecoderLayer(Layer):
         """
         The wrapper assembles together all needed layers for the encoder.
         """
-        super(WrapDecoderLayer, self).__init__()
+        super().__init__()
 
         self._prepare_decoder_layer = PrepareEncoderDecoderLayer(
             trg_vocab_size,
@@ -882,7 +882,7 @@ class TransFormer(Layer):
         is_test=False,
         is_sparse=False,
     ):
-        super(TransFormer, self).__init__()
+        super().__init__()
         self._label_smooth_eps = label_smooth_eps
         self._trg_vocab_size = trg_vocab_size
         if weight_sharing:

@@ -162,14 +162,12 @@ class SliceOp : public framework::OperatorWithKernel {
         // reorders, because if blocked dimension is not divisible by 8 or
         // 16(depending on which blocking format is used) submemory cannot be
         // created, so in that scenario a fallback is needed
-        auto tmp_md = dnnl::memory::desc(
-            phi::vectorize(ctx.Input<phi::DenseTensor>("Input")->dims()),
-            dnnl::memory::data_type::f32,
-            ctx.Input<phi::DenseTensor>("Input")->format());
-        if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
+        if (ctx.Input<phi::DenseTensor>("Input")
+                ->mem_desc()
+                .data.format_desc.blocking.inner_nblks == 0)
           return framework::OpKernelType(input_data_type,
                                          ctx.GetPlace(),
-                                         phi::DataLayout::kMKLDNN,
+                                         phi::DataLayout::ONEDNN,
                                          framework::LibraryType::kMKLDNN);
       }
 #endif
@@ -337,16 +335,12 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
-      auto tmp_md = dnnl::memory::desc(
-          phi::vectorize(
-              ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"))
-                  ->dims()),
-          dnnl::memory::data_type::f32,
-          ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"))->format());
-      if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
+      if (ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"))
+              ->mem_desc()
+              .data.format_desc.blocking.inner_nblks == 0)
         return framework::OpKernelType(input_data_type,
                                        ctx.GetPlace(),
-                                       phi::DataLayout::kMKLDNN,
+                                       phi::DataLayout::ONEDNN,
                                        framework::LibraryType::kMKLDNN);
     }
 #endif

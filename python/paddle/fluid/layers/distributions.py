@@ -19,6 +19,7 @@ from . import nn
 import math
 import numpy as np
 import warnings
+import paddle
 
 from ..data_feeder import (
     convert_dtype,
@@ -30,7 +31,7 @@ from ..data_feeder import (
 __all__ = ['Uniform', 'Normal', 'Categorical', 'MultivariateNormalDiag']
 
 
-class Distribution(object):
+class Distribution:
     """
     Distribution is the abstract base class for probability distributions.
     """
@@ -660,7 +661,7 @@ class MultivariateNormalDiag(Distribution):
         one_diag = tensor.diag(
             tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
         )
-        det_diag = nn.reduce_prod(value + one_all - one_diag)
+        det_diag = paddle.prod(value + one_all - one_diag)
 
         return det_diag
 
@@ -671,7 +672,7 @@ class MultivariateNormalDiag(Distribution):
         one_diag = tensor.diag(
             tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
         )
-        inv_diag = nn.elementwise_pow(value, (one_all - 2 * one_diag))
+        inv_diag = paddle.pow(value, (one_all - 2 * one_diag))
 
         return inv_diag
 

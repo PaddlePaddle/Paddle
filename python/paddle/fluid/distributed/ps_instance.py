@@ -14,7 +14,7 @@
 from .helper import MPIHelper
 
 
-class PaddlePSInstance(object):
+class PaddlePSInstance:
     """
     PaddlePSInstance class is used to generate A instance of server or worker
     Args:

@@ -56,7 +56,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -93,6 +92,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/jit.h"
+#include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -610,6 +610,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindEager(&m);
   BindEagerStringTensor(&m);
   BindCudaStream(&m);
+  BindXpuStream(&m);
   BindJit(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -1324,6 +1325,10 @@ All parameter, weight, gradient are variables in Paddle.
                         paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetZeroAllocator(place)
                             .get());
+                    context->SetHostZeroAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(paddle::platform::CPUPlace())
+                            .get());
                     return context;
                   })
       .def_static(
@@ -1347,6 +1352,10 @@ All parameter, weight, gradient are variables in Paddle.
       context->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(place)
+          .get());
+      context->SetHostZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(paddle::platform::CPUPlace())
           .get());
       return context;
 #endif
@@ -1408,6 +1417,10 @@ All parameter, weight, gradient are variables in Paddle.
       context->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
         .GetZeroAllocator(place)
+        .get());
+      context->SetHostZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+        .GetZeroAllocator(paddle::platform::CPUPlace())
         .get());
       context->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()

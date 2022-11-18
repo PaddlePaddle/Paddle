@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -48,7 +48,7 @@ void EyeKernel(const Context& ctx,
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(ctx, out, static_cast<T>(0));
   int64_t num_eyes = (std::min)(rows, columns);
-  paddle::platform::ForRange<Context> for_range(ctx, num_eyes);
+  phi::funcs::ForRange<Context> for_range(ctx, num_eyes);
   EyeFunctor<T> functor(columns, out_data);
   for_range(functor);
 }

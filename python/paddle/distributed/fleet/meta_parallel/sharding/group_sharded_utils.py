@@ -140,7 +140,7 @@ class GroupShardedClipGrad:
 
         clip_var = layers.elementwise_div(
             x=max_global_norm,
-            y=layers.elementwise_max(x=global_norm_var, y=max_global_norm),
+            y=paddle.maximum(x=global_norm_var, y=max_global_norm),
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
@@ -245,9 +245,7 @@ def GroupShardedScaler(scaler):
         is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
 
         paddle.distributed.all_reduce(
-            is_found_inf,
-            op=paddle.distributed.ReduceOp.MAX,
-            group=optimizer._group,
+            is_found_inf, op=paddle.distributed.ReduceOp.MAX, group=None
         )
         self._found_inf = is_found_inf.numpy()[0]
 

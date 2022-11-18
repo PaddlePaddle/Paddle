@@ -37,7 +37,7 @@ from paddle.fluid.io import (
 paddle.enable_static()
 
 
-class InferModel(object):
+class InferModel:
     def __init__(self, list):
         self.program = list[0]
         self.feed_var_names = list[1]
@@ -449,7 +449,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertTrue(isinstance(res2, bytes))
         # test if variables in program is empty
         res = paddle.static.io._serialize_persistables(Program(), None)
-        self.assertEqual(res, None)
+        self.assertIsNone(res)
         self.assertRaises(
             TypeError,
             paddle.static.io.deserialize_persistables,

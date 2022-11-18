@@ -120,7 +120,7 @@ def init_parallel_env():
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
 
@@ -176,6 +176,7 @@ def init_parallel_env():
         or core.is_compiled_with_xpu()
         or core.is_compiled_with_npu()
         or core.is_compiled_with_mlu()
+        or backend == "xccl"
     ):
         raise NotImplementedError(
             "If you want to use CPU-only version, please use 'gloo' as backend"

@@ -14,7 +14,6 @@
 
 import multiprocessing
 import os
-import six
 import sys
 import threading
 
@@ -162,7 +161,7 @@ class BlockGuardServ(BlockGuard):
     def __init__(self, server):
         if not (isinstance(server, ListenAndServ)):
             raise TypeError("BlockGuardServ takes a ListenAndServ")
-        super(BlockGuardServ, self).__init__(server.helper.main_program)
+        super().__init__(server.helper.main_program)
         self.server = server
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -170,10 +169,10 @@ class BlockGuardServ(BlockGuard):
             return False
 
         self.server.complete_op()
-        return super(BlockGuardServ, self).__exit__(exc_type, exc_val, exc_tb)
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
-class ListenAndServ(object):
+class ListenAndServ:
     """
     **ListenAndServ Layer**
 
@@ -523,10 +522,10 @@ def _py_reader(
                     if reader.exited:
                         break
                 feed_queue.close()
-            except Exception as ex:
+            except Exception as e:
                 feed_queue.kill()
                 logging.warn('Your decorated reader has raised an exception!')
-                six.reraise(*sys.exc_info())
+                raise e
 
         reader.thread = threading.Thread(
             target=__provider_thread__, args=(_current_expected_place(),)

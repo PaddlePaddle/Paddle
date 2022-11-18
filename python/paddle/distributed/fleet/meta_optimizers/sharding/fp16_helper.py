@@ -18,12 +18,12 @@ from paddle.distributed.fleet.meta_optimizers.common import (
     OpRole,
 )
 
-from paddle.fluid import core
+from paddle.framework import core
 
 __all__ = []
 
 
-class FP16Utils(object):
+class FP16Utils:
     def __init__(self):
         pass
 

@@ -26,7 +26,7 @@ paddle.seed(1024)
 class SimpleNet(fluid.Layer):
     def __init__(self):
         # bias is unused parameters, and it share with net_a
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.net_a = Linear(input_dim=10, output_dim=5)
         self.net_b = Linear(10, 10)
         self.bias = self.net_a.bias

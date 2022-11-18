@@ -27,7 +27,7 @@ import paddle.nn.functional as F
 
 class ReshapeHelp(Layer):
     def __init__(self, shape):
-        super(ReshapeHelp, self).__init__()
+        super().__init__()
         self.shape = shape
 
     def forward(self, x):
@@ -47,9 +47,7 @@ class MLPForVirtualStageLayerTest(PipelineLayer):
             LayerDesc(nn.Linear, 2, self.num_classes),
             LayerDesc(nn.Linear, self.num_classes, 2),
         ]
-        super(MLPForVirtualStageLayerTest, self).__init__(
-            layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs
-        )
+        super().__init__(layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
 
 
 class TestPipeLayerAPI(unittest.TestCase):

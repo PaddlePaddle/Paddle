@@ -23,7 +23,7 @@ from paddle.fluid.contrib.sparsity.asp import ASPHelper
 
 class MyLayer(paddle.nn.Layer):
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
         self.conv1 = paddle.nn.Conv2D(
             in_channels=3, out_channels=2, kernel_size=3, padding=2
         )

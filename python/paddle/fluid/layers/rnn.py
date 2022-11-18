@@ -62,7 +62,7 @@ __all__ = [
 ]
 
 
-class RNNCell(object):
+class RNNCell:
     """
         :api_attr: Static Graph
 
@@ -160,7 +160,7 @@ class RNNCell(object):
                 return True
             return isinstance(seq, Sequence) and not isinstance(seq, str)
 
-        class Shape(object):
+        class Shape:
             def __init__(self, shape):
                 self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
 
@@ -544,7 +544,7 @@ def rnn(
         )
 
 
-class ArrayWrapper(object):
+class ArrayWrapper:
     def __init__(self, x):
         self.array = [x]
 
@@ -623,7 +623,7 @@ def _rnn_dynamic_graph(
         )
 
     final_outputs = map_structure(
-        lambda x: nn.stack(x.array, axis=time_step_index), outputs
+        lambda x: paddle.stack(x.array, axis=time_step_index), outputs
     )
 
     if is_reverse:
@@ -823,7 +823,7 @@ def birnn(
     return outputs, final_states
 
 
-class Decoder(object):
+class Decoder:
     """
         :api_attr: Static Graph
 
@@ -1167,7 +1167,7 @@ class BeamSearchDecoder(Decoder):
             ),
             [1, self.beam_size],
         )
-        topk_coordinates = nn.stack([batch_pos, indices], axis=2)
+        topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = True
         return nn.gather_nd(x, topk_coordinates)
 
@@ -1317,10 +1317,8 @@ class BeamSearchDecoder(Decoder):
         scores = nn.reshape(scores, [-1, self.beam_size * self.vocab_size])
         # TODO: add grad for topk then this beam search can be used to train
         topk_scores, topk_indices = paddle.topk(x=scores, k=self.beam_size)
-        beam_indices = nn.elementwise_floordiv(
-            topk_indices, self.vocab_size_tensor
-        )
-        token_indices = nn.elementwise_mod(topk_indices, self.vocab_size_tensor)
+        beam_indices = paddle.floor_divide(topk_indices, self.vocab_size_tensor)
+        token_indices = paddle.remainder(topk_indices, self.vocab_size_tensor)
         next_log_probs = self._gather(
             nn.reshape(log_probs, [-1, self.beam_size * self.vocab_size]),
             topk_indices,
@@ -1548,7 +1546,9 @@ def _dynamic_decode_imperative(
         if max_step_num is not None and step_idx > max_step_num:
             break
 
-    final_outputs = map_structure(lambda x: nn.stack(x.array, axis=0), outputs)
+    final_outputs = map_structure(
+        lambda x: paddle.stack(x.array, axis=0), outputs
+    )
     final_states = states
 
     try:
@@ -1869,7 +1869,7 @@ def dynamic_decode(
         )
 
 
-class DecodeHelper(object):
+class DecodeHelper:
     """
     DecodeHelper is the base class for any helper instance used in `BasicDecoder`.
     It provides interface to implement sampling and produce inputs for the next
@@ -2299,9 +2299,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
                 structure of) tensor variable[s], and `finished` is a tensor with \
                 bool data type.
         """
-        super(SampleEmbeddingHelper, self).__init__(
-            embedding_fn, start_tokens, end_token
-        )
+        super().__init__(embedding_fn, start_tokens, end_token)
         self.softmax_temperature = (
             tensor.fill_constant(
                 shape=[1], dtype="float32", value=softmax_temperature

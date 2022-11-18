@@ -259,13 +259,13 @@ def _update_input_info(inputs):
     return shapes, dtypes
 
 
-class StaticGraphAdapter(object):
+class StaticGraphAdapter:
     """
     Model traning/inference with a static graph.
     """
 
     def __init__(self, model):
-        super(StaticGraphAdapter, self).__init__()
+        super().__init__()
         self.model = model
         # with `_build_once` gone, parameters are now created in `__init__`
         # so we need to keep track of the parameters already created
@@ -734,9 +734,9 @@ class StaticGraphAdapter(object):
         self._compiled_progs[mode] = compiled_prog
 
 
-class DynamicGraphAdapter(object):
+class DynamicGraphAdapter:
     def __init__(self, model):
-        super(DynamicGraphAdapter, self).__init__()
+        super().__init__()
         self.model = model
         self._nranks = ParallelEnv().nranks
         self._local_rank = ParallelEnv().local_rank
@@ -1006,7 +1006,7 @@ class DynamicGraphAdapter(object):
             self.model._scaler = None
 
 
-class Model(object):
+class Model:
     """
     An Model object is network with training and inference features.
     Dynamic graph and static graph are supported at the same time,
@@ -1335,7 +1335,7 @@ class Model(object):
 
                 class Mnist(nn.Layer):
                     def __init__(self):
-                        super(Mnist, self).__init__()
+                        super().__init__()
                         self.net = nn.Sequential(
                             nn.Flatten(1),
                             nn.Linear(784, 200),
@@ -1713,7 +1713,7 @@ class Model(object):
                 evaluation at the end of epoch. If None, will not do evaluation.
                 An instance of paddle.io.Dataset or paddle.io.Dataloader
                 is recomended. Default: None.
-            batch_size (int, optional): The batch size of train_data and eval_data. When
+            batch_size (int|list, optional): The batch size of train_data and eval_data. When
                 train_data and eval_data are both the instance of Dataloader, this
                 parameter will be ignored. Default: 1.
             epochs (int, optional): The number of epochs to train the model. Default: 1.
@@ -1836,10 +1836,20 @@ class Model(object):
         """
         assert train_data is not None, "train_data must be given!"
 
+        if isinstance(batch_size, (tuple, list)) and all(
+            [isinstance(x, int) for x in batch_size]
+        ):
+            assert (
+                len(batch_size) == 2
+            ), "batch_size length error, expected train_batch_size and eval_batch_size."
+            train_batch_size, eval_batch_size = batch_size
+        elif isinstance(batch_size, int):
+            train_batch_size, eval_batch_size = batch_size, batch_size
+
         if isinstance(train_data, Dataset):
             train_sampler = DistributedBatchSampler(
                 train_data,
-                batch_size=batch_size,
+                batch_size=train_batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last,
             )
@@ -1855,7 +1865,7 @@ class Model(object):
 
         if eval_data is not None and isinstance(eval_data, Dataset):
             eval_sampler = DistributedBatchSampler(
-                eval_data, batch_size=batch_size
+                eval_data, batch_size=eval_batch_size
             )
             eval_loader = DataLoader(
                 eval_data,
@@ -2078,7 +2088,7 @@ class Model(object):
 
                 class MnistDataset(paddle.vision.datasets.MNIST):
                     def __init__(self, mode, return_label=True):
-                        super(MnistDataset, self).__init__(mode=mode)
+                        super().__init__(mode=mode)
                         self.return_label = return_label
 
                     def __getitem__(self, idx):

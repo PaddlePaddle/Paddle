@@ -165,7 +165,7 @@ class TestExpm1API(unittest.TestCase):
         # The input dtype must be float16, float32, float64.
 
 
-class TestParameter(object):
+class TestParameter:
     def test_out_name(self):
         with fluid.program_guard(fluid.Program()):
             np_x = np.array([0.1])
@@ -2238,19 +2238,6 @@ class TestSoftRelu(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
 
-class TestSoftReluOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program()):
-            # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.soft_relu, 1)
-            # The input dtype must be float16, float32, float64.
-            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-            self.assertRaises(TypeError, fluid.layers.soft_relu, x_int32)
-            # support the input dtype is float16
-            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
-            fluid.layers.soft_relu(x_fp16)
-
-
 def elu(x, alpha):
     out_ref = np.where(x > 0, x, alpha * (np.exp(x) - 1))
     return out_ref.astype(x.dtype)
@@ -2989,7 +2976,7 @@ class TestSTanhAPI(unittest.TestCase):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', [10, 12])
-            out = fluid.layers.stanh(x, self.scale_a, self.scale_b)
+            out = paddle.stanh(x, self.scale_a, self.scale_b)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
@@ -3551,7 +3538,7 @@ class TestSwishAPI(unittest.TestCase):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
-            out = fluid.layers.swish(x)
+            out = paddle.nn.functional.swish(x)
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_swish(self.x_np)

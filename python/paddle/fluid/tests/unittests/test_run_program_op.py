@@ -467,7 +467,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
 
 class Net(paddle.nn.Layer):
     def __init__(self):
-        super(Net, self).__init__()
+        super().__init__()
         self.fc1 = paddle.nn.Linear(10, 10)
         self.fc2 = paddle.nn.Linear(10, 1)
 
