@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 
 from functools import reduce
-from paddle.optimizer import Momentum
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
@@ -24,7 +23,7 @@ from paddle import framework
 from paddle.framework import core
 from paddle.common_ops_import import LayerHelper
 from paddle.fluid.clip import GradientClipByNorm, append_gradient_clip_ops
-from paddle.fluid.optimizer import Optimizer
+from paddle.fluid.optimizer import Optimizer, Momentum
 from paddle.fluid.dygraph import base as imperative_base
 
 
