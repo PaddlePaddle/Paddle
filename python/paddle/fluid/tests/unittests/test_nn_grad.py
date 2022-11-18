@@ -116,15 +116,13 @@ class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
 class TestReshapeDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        x_shape = [3, 12]
-        expand_times = [4, 9]
+        x_shape = [1, 12]
         eps = 0.005
         dtype = np.float64
 
         x = layers.data('x', x_shape, False, dtype)
         x.persistable = True
-        out = paddle.repeat_interleave(x, 4, 0)
-        out = paddle.repeat_interleave(out, 9, 1)
+        out = paddle.expand(x, [4, 12])
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
 
         gradient_checker.double_grad_check(
