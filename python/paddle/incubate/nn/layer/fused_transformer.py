@@ -854,7 +854,7 @@ class FusedTransformerEncoderLayer(Layer):
                 `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (Tensor, optional): It is an instance of `MultiHeadAttention.Cache`.
-                See `TransformerEncoderLayer.gen_cache` for more details. It is
+                See :ref:`api_paddle_nn_TransformerEncoderLayer`.gen_cache for more details. It is
                 only used for inference and should be None for training. Default
                 None.
 

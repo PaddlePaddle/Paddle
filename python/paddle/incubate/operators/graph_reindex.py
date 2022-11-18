@@ -61,11 +61,11 @@ def graph_reindex(
                             should be the same with `x`.
         count (Tensor): The neighbor count of the input nodes `x`. And the
                         data type should be int32.
-        value_buffer (Tensor|None): Value buffer for hashtable. The data type should
-                                    be int32, and should be filled with -1.
-        index_buffer (Tensor|None): Index buffer for hashtable. The data type should
-                                    be int32, and should be filled with -1.
-        flag_buffer_hashtable (bool): Whether to use buffer for hashtable to speed up.
+        value_buffer (Tensor, optional): Value buffer for hashtable. The data type should
+                                    be int32, and should be filled with -1. Default is None.
+        index_buffer (Tensor, optional): Index buffer for hashtable. The data type should
+                                    be int32, and should be filled with -1. Default is None.
+        flag_buffer_hashtable (bool, optional): Whether to use buffer for hashtable to speed up.
                                       Default is False. Only useful for gpu version currently.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.

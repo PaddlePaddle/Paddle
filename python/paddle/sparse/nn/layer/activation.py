@@ -60,6 +60,7 @@ class ReLU(Layer):
 
 class Softmax(Layer):
     r"""
+
     Sparse Softmax Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Note:

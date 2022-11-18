@@ -51,10 +51,10 @@ def graph_khop_sampler(
         sample_sizes (list|tuple): The number of neighbors and number of layers we want
                                    to sample. The data type should be int, and the shape
                                    should only have one dimension.
-        sorted_eids (Tensor): The sorted edge ids, should not be None when `return_eids`
+        sorted_eids (Tensor, optional): The sorted edge ids, should not be None when `return_eids`
                               is True. The shape should be [num_edges, 1], and the data
-                              type should be the same with `row`.
-        return_eids (bool): Whether to return the id of the sample edges. Default is False.
+                              type should be the same with `row`. Default is None.
+        return_eids (bool, optional): Whether to return the id of the sample edges. Default is False.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
@@ -80,8 +80,7 @@ def graph_khop_sampler(
             colptr = paddle.to_tensor(colptr, dtype="int64")
             nodes = paddle.to_tensor(nodes, dtype="int64")
 
-            edge_src, edge_dst, sample_index, reindex_nodes = \
-                paddle.incubate.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
+            edge_src, edge_dst, sample_index, reindex_nodes = paddle.incubate.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
 
     """
 
