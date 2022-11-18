@@ -640,7 +640,7 @@ struct Qk_dot<float16, 4> {
   static inline __device__ float dot(const uint32_t (&q)[N],
                                      const uint32_t (&k)[N],
                                      float inv_sqrt_dh) {
-#ifdef MMHA_USE_HMMA_FOR_REDUCTION &&__CUDA_ARCH__ >= 750
+#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && __CUDA_ARCH__ >= 750
     return qk_hmma_dot_(q, k, inv_sqrt_dh);
 #else
     return qk_dot_<4>(q, k, inv_sqrt_dh);
@@ -1103,7 +1103,7 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
   if (params.timestep < 32) {
     MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 64, stream);
   } else if (params.timestep < 2048) {
-#ifdef MMHA_USE_HMMA_FOR_REDUCTION &&__CUDA_ARCH__ >= 750
+#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && __CUDA_ARCH__ >= 750
     MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 256, stream);
 #else
     MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 2, THREADS_PER_VALUE, 128, stream);
