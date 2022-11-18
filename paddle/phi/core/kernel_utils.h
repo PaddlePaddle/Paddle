@@ -17,8 +17,10 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/cplus_string.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -26,7 +28,6 @@
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
 #include "paddle/phi/core/type_defs.h"
-#include "paddle/phi/core/vocab.h"
 
 namespace phi {
 
@@ -167,24 +168,6 @@ namespace phi {
     }                                                                     \
   }
 
-#define PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE_PTR(attr_type)            \
-  template <typename... Tail>                                                  \
-  struct KernelCallHelper<attr_type, Tail...> {                                \
-    template <int dev_ctx_idx,                                                 \
-              int in_idx,                                                      \
-              int attr_idx,                                                    \
-              int out_idx,                                                     \
-              typename... PreviousArgs>                                        \
-    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {          \
-      static_assert(out_idx == 0,                                              \
-                    "Kernel's Attributes should appear before Outputs.");      \
-      attr_type arg = const_cast<attr_type>(ctx->AttrAt<attr_type>(attr_idx)); \
-      KernelCallHelper<Tail...>::                                              \
-          template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(        \
-              ctx, pargs..., arg);                                             \
-    }                                                                          \
-  }
-
 #define PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(attr_type) \
   template <typename... Tail>                                             \
   struct KernelCallHelper<const attr_type&, Tail...> {                    \
@@ -283,7 +266,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(DenseTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
-  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(Vocab);
+  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(ExtendedTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(TensorBase);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRows);
@@ -315,7 +298,6 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataType);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(DataLayout);
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(Place);
-  PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE_PTR(std::string*);
   PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(std::string);
   PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(Scalar);
   PD_SPECIALIZE_KernelCallHelper_FOR_CONST_ATTRIBUTE_REF(IntArray);
@@ -344,6 +326,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(StringTensor);
 
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(TensorArray);
+  PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(CPlusString);
 
   /* End case */
   template <typename T>

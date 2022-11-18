@@ -22,14 +22,14 @@ KernelSignature SaveCombineOpArgumentMapping(
     return KernelSignature(
         "save_combine_tensor",
         {"X"},
-        {"file_path", "overwrite", "save_as_fp16", "save_to_memory", "Y"},
-        {});
+        {"file_path", "overwrite", "save_as_fp16", "save_to_memory"},
+        {"Y"});
   } else {
     return KernelSignature(
         "save_combine_vocab",
         {"X"},
-        {"file_path", "overwrite", "save_as_fp16", "save_to_memory", "Y"},
-        {});
+        {"file_path", "overwrite", "save_as_fp16", "save_to_memory"},
+        {"Y"});
   }
 }
 

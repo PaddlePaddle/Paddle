@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/core/kernel_context.h"
+#include <glog/logging.h>
 
 namespace phi {
 
@@ -123,8 +124,6 @@ const AttrType& KernelContext::AttrAt(size_t idx) const {
   }
 }
 
-using string_ptr = std::string*;
-
 template const bool& KernelContext::AttrAt(size_t idx) const;
 template const int& KernelContext::AttrAt(size_t idx) const;
 template const int64_t& KernelContext::AttrAt(size_t idx) const;
@@ -144,6 +143,5 @@ template const IntArray& KernelContext::AttrAt(size_t idx) const;
 template const DataType& KernelContext::AttrAt(size_t idx) const;
 template const DataLayout& KernelContext::AttrAt(size_t idx) const;
 template const Place& KernelContext::AttrAt(size_t idx) const;
-template const string_ptr& KernelContext::AttrAt(size_t idx) const;
 
 }  // namespace phi

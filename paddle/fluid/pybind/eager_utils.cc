@@ -514,9 +514,9 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
   return dtype;
 }
 
-phi::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos) {
+paddle::framework::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos) {
   if (PyDict_Check(obj)) {
-    return ::pybind11::handle(obj).cast<phi::Vocab>();
+    return ::pybind11::handle(obj).cast<paddle::framework::Vocab>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be dict, but got %s",
@@ -808,7 +808,7 @@ PyObject* ToPyObject(
   return dict;
 }
 
-PyObject* ToPyObject(const phi::Vocab& value) {
+PyObject* ToPyObject(const paddle::framework::Vocab& value) {
   PyObject* dict = PyDict_New();
   for (const auto& map_iter : value) {
     // Convert Key

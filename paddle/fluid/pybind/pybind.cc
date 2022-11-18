@@ -942,7 +942,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def("get_bytes",
            [](Variable &self) {
-             return py::bytes(*self.GetMutable<std::string>());
+             return py::bytes(*(self.GetMutable<String>()->Get()));
            })
       .def("set_string_list",
            [](Variable &self, Strings str_list) {

@@ -2982,6 +2982,13 @@ void OperatorWithKernel::BuildPhiKernelContext(
           // Note: If the input LoDTensorArray size is 0, the output
           // LoDTensorArray is also 0
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (!var->IsInitialized()) {
+          // The following is for RAW type of var
+          if (output_defs[i].type_index ==
+              std::type_index(typeid(phi::CPlusString*))) {
+            tensor_out = var->template GetMutable<phi::CPlusString>();
+          }
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",
@@ -3081,20 +3088,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           }
         }
         break;
-      case phi::AttributeType::STRING_PTR: {
-        // std::string* is ragard as attr in PHI,
-        // but it is regard as output in Fluid.
-        auto it = ctx.outputs.find(attr_names[i]);
-        if (it == ctx.outputs.end() || it->second.empty()) {
-          phi_kernel_context->EmplaceBackAttr(nullptr);
-          continue;
-        }
-        auto* var = (it->second)[0];
-        if (var->template IsType<std::string>()) {
-          phi_kernel_context->EmplaceBackAttr(
-              var->template GetMutable<std::string>());
-        }
-      } break;
+
       case phi::AttributeType::SCALARS: {
         PADDLE_ENFORCE_NE(
             attr_iter,

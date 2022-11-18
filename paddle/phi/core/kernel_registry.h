@@ -23,11 +23,11 @@
 
 #include "paddle/phi/core/custom_kernel.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_utils.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/type_defs.h"
-#include "paddle/phi/core/vocab.h"
 
 namespace phi {
 
@@ -101,8 +101,8 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                               default_tensor_layout,
                               default_key.dtype(),
                               arg_type);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<const Vocab*>&))) {
+      } else if (arg_type == std::type_index(typeid(
+                                 const std::vector<const ExtendedTensor*>&))) {
         args_def->AppendInput(default_key.backend(),
                               default_tensor_layout,
                               default_key.dtype(),
@@ -198,6 +198,11 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
                                default_tensor_layout,
                                default_key.dtype(),
                                arg_type);
+      } else if (arg_type == std::type_index(typeid(CPlusString*))) {
+        args_def->AppendOutput(default_key.backend(),
+                               default_tensor_layout,
+                               default_key.dtype(),
+                               arg_type);
       } else if (arg_type == std::type_index(typeid(bool))) {
         args_def->AppendAttribute(AttributeType::BOOL);
       } else if (arg_type == std::type_index(typeid(int))) {
@@ -210,8 +215,6 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
         args_def->AppendAttribute(AttributeType::FLOAT64);
       } else if (arg_type == std::type_index(typeid(std::string))) {
         args_def->AppendAttribute(AttributeType::STRING);
-      } else if (arg_type == std::type_index(typeid(std::string*))) {
-        args_def->AppendAttribute(AttributeType::STRING_PTR);
       } else if (arg_type ==
                  std::type_index(typeid(const std::vector<bool>&))) {
         args_def->AppendAttribute(AttributeType::BOOLS);

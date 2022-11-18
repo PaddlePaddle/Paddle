@@ -20,6 +20,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/platform/place.h"
@@ -29,7 +30,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
-#include "paddle/phi/core/vocab.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 namespace paddle {
@@ -74,7 +74,7 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
-phi::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos);
+paddle::framework::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos);
 std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos);
 std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
                                                      ssize_t arg_pos);
@@ -114,7 +114,7 @@ PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
-PyObject* ToPyObject(const phi::Vocab& value);
+PyObject* ToPyObject(const paddle::framework::Vocab& value);
 
 class PyTensorHook : public egr::TensorHook {
  public:

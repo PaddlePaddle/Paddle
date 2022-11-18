@@ -12,16 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/save_combine_kernel.h"
-
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/fluid/operators/save_combine_op.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/save_combine_kernel_impl.h"
 
 PD_REGISTER_KERNEL(save_combine_tensor,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SaveCombineTensorKernel,
+                   paddle::operators::SaveCombineTensorKernel,
                    int,
                    int64_t,
                    float,
@@ -30,7 +28,7 @@ PD_REGISTER_KERNEL(save_combine_tensor,
 PD_REGISTER_KERNEL(save_combine_vocab,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SaveCombineVocabKernel,
+                   paddle::operators::SaveCombineVocabKernel,
                    int,
                    int64_t,
                    float,
