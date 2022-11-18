@@ -113,30 +113,6 @@ class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
-class TestExpandDoubleGradCheck(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        x_shape = [1, 12]
-        eps = 0.005
-        dtype = np.float64
-
-        x = layers.data('x', x_shape, False, dtype)
-        x.persistable = True
-        out = paddle.expand(x, [4, 12])
-        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
-
-        gradient_checker.double_grad_check(
-            [x], out, x_init=x_arr, place=place, eps=eps
-        )
-
-    def test_grad(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
-
-
 class TestReshapeDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
