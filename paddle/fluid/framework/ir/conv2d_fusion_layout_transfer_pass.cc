@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/data_layout_transfer_pass.h"
+#include "paddle/fluid/framework/ir/conv2d_fusion_layout_transfer_pass.h"
 
 #include <string>
 #include <unordered_map>
@@ -131,7 +131,7 @@ void InsertLayoutTransOp(ir::Graph *graph,
 
 }  // namespace
 
-void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
+void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
       platform::errors::PreconditionNotMet("graph should not be nullptr."));
@@ -142,12 +142,12 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
                     true,
                     platform::errors::InvalidArgument(
                         "the graph should be main graph when applying "
-                        "data_layout_transfer_pass"));
+                        "conv2d_fusion_layout_transfer_pass"));
 
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::Fatal("scope must not be nullptr when applying "
-                              "data_layout_transfer_pass"));
+                              "conv2d_fusion_layout_transfer_pass"));
 
   // Not support multiple block now.
   std::unordered_map<ir::Node *, ir::Node *> cache;
@@ -274,5 +274,5 @@ void DataLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(data_layout_transfer_pass,
-              paddle::framework::ir::DataLayoutTransferPass);
+REGISTER_PASS(conv2d_fusion_layout_transfer_pass,
+              paddle::framework::ir::Conv2dFusionLayoutTransferPass);
