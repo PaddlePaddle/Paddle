@@ -113,7 +113,7 @@ class TestReduceSumWithDimDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
-class TestReshapeDoubleGradCheck(unittest.TestCase):
+class TestExpandDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         x_shape = [1, 12]
@@ -137,7 +137,7 @@ class TestReshapeDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
-class TestExpandDoubleGradCheck(unittest.TestCase):
+class TestReshapeDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         x_shape = [3, 12]
