@@ -249,7 +249,7 @@ class NextInstructionList {
  public:
   void AddDirectRun(size_t id) { direct_run_.push_back(id); }
 
-  void ADDEventRun(size_t id) { event_wait_run_.push_back(id); }
+  void AddEventRun(size_t id) { event_wait_run_.push_back(id); }
 
   void AddSyncRun(size_t id) { synchronize_run_.push_back(id); }
 
@@ -266,18 +266,19 @@ class NextInstructionList {
 };
 
 struct EventInter {
-  explicit EventInter(size_t var_id,
+  explicit EventInter(size_t instr_id,
                       std::shared_ptr<platform::DeviceEvent> event,
                       platform::DeviceType waiter_type)
-      : var_id_(var_id), event_(event), waiter_type_(waiter_type) {}
-  size_t var_id_;
+      : instr_id_(instr_id), event_(event), waiter_type_(waiter_type) {}
+  size_t instr_id_;
   std::shared_ptr<platform::DeviceEvent> event_;
   platform::DeviceType waiter_type_;
 };
 
 enum class OpFuncType {
-  kQueueSync = 0,   // CPU kernel, block host
-  kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
+  kCpuSync,  // CPU kernel, block host
+  kGpuSync,  // GPU or other device kernel without asynchronous operation
+  kGpuAsync  // GPU or other device kernel with asynchronous operation
 };
 class RuntimeInferShapeContext;
 
@@ -287,6 +288,7 @@ struct OpFuncNode {
   std::string execution_stream_{kDefaultStream};
   std::map<std::string, std::vector<int>> input_index;
   std::map<std::string, std::vector<int>> output_index;
+  // TODO(Ruibiao): Remove no_data_transform_index
   std::unordered_set<int> no_data_transform_index;
 
   std::map<int, int> inplace_back_map;
@@ -310,6 +312,17 @@ class Instruction {
   bool IsArtificial() const { return is_artificial_; }
 
   size_t Id() const;
+
+  void AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event,
+                        platform::DeviceType waiter_type);
+
+  void AddEventToWait(size_t instr_id,
+                      std::shared_ptr<platform::DeviceEvent> event,
+                      platform::DeviceType waiter_type);
+
+  void RecordEvent(const Place& place) const;
+
+  void WaitEvent(const Place& place) const;
 
   const std::map<std::string, std::vector<int>>& Inputs() const;
 
@@ -357,18 +370,6 @@ class Instruction {
 
   void ClearInplace();
 
-  const std::vector<EventInter>& InputEvents() const;
-
-  const std::vector<EventInter>& OutputEvents() const;
-
-  void AddInputEvent(size_t var_id,
-                     std::shared_ptr<platform::DeviceEvent> event,
-                     platform::DeviceType waiter_type);
-
-  void AddOutputEvent(size_t var_id,
-                      std::shared_ptr<platform::DeviceEvent> event,
-                      platform::DeviceType waiter_type);
-
   Priority GetPriority() const { return priority_; }
 
  private:
@@ -376,6 +377,10 @@ class Instruction {
                         // to assist scheduling and no need to be executed.
 
   size_t id_;
+
+  std::unique_ptr<EventInter> event_to_record_;
+  std::vector<EventInter> events_to_wait_;
+
   OpFuncNode op_func_node_;
   const platform::DeviceContext& dev_ctx_;  // not owned
   const Priority priority_;
@@ -387,9 +392,6 @@ class Instruction {
   std::vector<size_t> gc_check_vars_;
 
   NextInstructionList next_instruction_;
-
-  std::vector<EventInter> intput_events_;
-  std::vector<EventInter> output_events_;
 
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };

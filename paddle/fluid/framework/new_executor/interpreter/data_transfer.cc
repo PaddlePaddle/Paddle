@@ -196,9 +196,16 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
     dev_ctx->Wait();
   }
 #endif
-  // NOTE(Aurelius84): data_transform_op is expensive operation, so we tag them
-  // as kQueueSync and execute them in thread pool.
-  new_op_func_node.type_ = OpFuncType::kQueueSync;
+
+  // MemcpyD2H is synchronous, see
+  // https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html#api-sync-behavior__memcpy-async
+  // for more detial.
+  if (op_type == kMemcpyD2H && platform::is_gpu_place(dev_ctx->GetPlace())) {
+    new_op_func_node.type_ = OpFuncType::kGpuSync;
+  } else {
+    new_op_func_node.type_ = OpFuncType::kGpuAsync;
+  }
+
   new_op_func_node.dev_ctx_ = dev_ctx;
   new_op_func_node.operator_base_ = op;
   VLOG(3) << "Run " << op_type << " done.";

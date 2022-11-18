@@ -488,18 +488,15 @@ void InterpreterCore::BuildInplace() {
 }
 
 void InterpreterCore::BuildOperatorDependences() {
-  // analysis the dependences between ops, set the dependecy_count_ and Call
-  // Schedule
+  // analysis the dependences between ops, set the dependecy_count_
   auto op_nums = vec_instruction_.size();
   dependecy_count_.resize(op_nums);
   auto op2downstream = dependency_builder_.Build(
       vec_instruction_,
       /*is_sequential_run=*/FLAGS_new_executor_sequential_run);
+
   for (size_t op = 0; op < vec_instruction_.size(); ++op) {
     auto op_list = op2downstream[op];
-    std::vector<size_t> downsteam_vector(op_list.begin(), op_list.end());
-    stream_analyzer_.Schedule(downsteam_vector, &vec_instruction_, op);
-
     for (auto inst_id : op_list) {
       dependecy_count_[inst_id]++;
     }
@@ -537,6 +534,8 @@ void InterpreterCore::Convert(
   }
 
   BuildOperatorDependences();
+
+  stream_analyzer_.ConstructEvents(dependency_builder_, &vec_instruction_);
 
   // calculate last_live_ops_
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
@@ -635,7 +634,7 @@ void InterpreterCore::Convert(
   BuildSkipShareLoDInfo();
 
   bool inplaced = false;
-  for (auto inst : vec_instruction_) {
+  for (const Instruction& inst : vec_instruction_) {
     if (inst.OpBase()->Type() == "share_buffer" ||
         inst.OpBase()->Type() == "share_data") {
       VLOG(4) << "Already inplaced, skip inplace now.";
@@ -851,7 +850,7 @@ void InterpreterCore::RunNextInstructions(
     return deps_[next_id]->CheckAndDecrease();
   };
 
-  if (instr.KernelType() == OpFuncType::kQueueAsync) {
+  if (instr.KernelType() == OpFuncType::kGpuAsync) {
     // move all sync_ops into other threads
     for (size_t next_id : next_instr.SyncRunIds()) {
       if (IsReady(next_id)) {
@@ -899,7 +898,7 @@ void InterpreterCore::RunNextInstructions(
       if (IsReady(next_id)) {
         // only keep one sync op running in current thread
         if (first_op == -1 &&
-            vec_instruction_[next_id].KernelType() == OpFuncType::kQueueSync) {
+            vec_instruction_[next_id].KernelType() == OpFuncType::kCpuSync) {
           first_op = next_id;
           continue;
         }
@@ -924,9 +923,11 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     auto& instr_node = vec_instruction_.at(instr_id);
     VLOG(5) << __func__ << " OP id:" << instr_node.Id()
             << " name:" << instr_node.OpBase()->Type() << " type:"
-            << (instr_node.KernelType() == OpFuncType::kQueueSync
-                    ? "kQueueSync"
-                    : "kQueueAsync")
+            << (instr_node.KernelType() == OpFuncType::kCpuSync
+                    ? "kCpuSync"
+                    : (instr_node.KernelType() == OpFuncType::kGpuSync
+                           ? "kGpuSync"
+                           : "kGpuAsync"))
             << " runs on " << platform::GetCurrentThreadName();
 
     auto* op = instr_node.OpBase();
@@ -934,7 +935,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
         op->Type(), platform::TracerEventType::Operator, 1);
 
     try {
-      interpreter::WaitEvent(instr_node, place_);
+      instr_node.WaitEvent(place_);
 
       if (!instr_node.IsArtificial()) {
         RunInstruction(instr_node);
@@ -942,7 +943,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
         interpreter::LogDeviceMemoryStats(place_);
       }
 
-      interpreter::RecordEvent(instr_node, place_);
+      instr_node.RecordEvent(place_);
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
       exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
@@ -984,7 +985,7 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
       "RecordStreamForGC is only implemented when compiled with GPU."));
 #else
   if (!IsInterpretercoreFastGCEnabled() ||
-      instr.KernelType() != OpFuncType::kQueueAsync) {
+      instr.KernelType() != OpFuncType::kGpuAsync) {
     return;
   }
   platform::RecordEvent record(

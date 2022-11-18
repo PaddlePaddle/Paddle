@@ -17,6 +17,7 @@
 #include <memory>
 #include <vector>
 
+#include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/device_event.h"
@@ -25,37 +26,56 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
+enum class DownstreamRunType { kDirectRun, kSyncRun, kEventRun };
+
 class StreamAnalyzer {
  public:
-  using Place = platform::Place;
   using DeviceContext = platform::DeviceContext;
+  using Place = platform::Place;
 
   explicit StreamAnalyzer(const Place& place) : place_(place) {}
 
   ~StreamAnalyzer() {}
 
-  void Schedule(const std::vector<size_t>& downstream_ops,
-                std::vector<Instruction>* instructions,
-                size_t op_index);
+  void ConstructEvents(const DependencyBuilder& dependency_builder,
+                       std::vector<Instruction>* instructions) const;
 
-  DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node);
+  platform::DeviceContext* ParseDeviceContext(
+      const OpFuncNode& op_func_node) const;
 
  private:
-  std::vector<size_t> GetNeedEventVarIds(const Instruction& cur_instr,
-                                         const Instruction& next_instr);
+  bool HasDataDependency(const Instruction& cur_instr,
+                         const Instruction& next_instr) const;
 
-  void ConstructEventForVar(const std::vector<size_t>& new_event_var_id,
-                            Instruction* next_instr,
-                            platform::DeviceType waiter_type,
-                            const Place& place);
+  void AnalyseAllEventInfo(
+      const std::vector<Instruction>& instructions,
+      const std::vector<size_t>& startup_instrs,
+      const DependencyBuilder& dependency_builder,
+      std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
+          event_info_map) const;
 
-  bool IsDirectRun(Instruction& cur_instr,  // NOLINT
-                   const Instruction& next_instr);
+  void AnalyseAllRunType(
+      const std::map<size_t, std::set<size_t>>& downstream_map,
+      const std::vector<size_t>& startup_instrs,
+      std::vector<Instruction>* instructions) const;
 
-  platform::DeviceType GetWaiterType(const Instruction& instr);
+  void AnalyseEventInfoForTwoInstructions(
+      const std::vector<Instruction>& instructions,
+      const size_t cur_instr_id,
+      const size_t next_instr_id,
+      std::set<size_t>* waiter_instr_ids) const;
+
+  void ShrinkEventInfo(
+      const DependencyBuilder& dependency_builder,
+      std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
+          event_info_map) const;
+
+  platform::DeviceType GetWaiterType(const Instruction& instr) const;
+
+  DownstreamRunType AnalyseRunTypeForTwoInstructions(
+      const Instruction& cur_instr, const Instruction& next_instr) const;
 
   const Place place_;
-  std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
 };
 
 }  // namespace interpreter

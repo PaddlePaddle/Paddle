@@ -19,10 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/phi/core/utils/rw_lock.h"
-
-#define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
-#define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
@@ -688,6 +685,43 @@ Instruction::Instruction(size_t id,
 
 size_t Instruction::Id() const { return id_; }
 
+void Instruction::WaitEvent(const Place& place) const {
+  // If InterpreterCore in on CPUPlace, do nothing.
+  if (platform::is_cpu_place(place)) {
+    return;
+  }
+
+  VLOG(6) << "Deal StreamWaitEventOrSync for " << this->OpBase()->Type();
+
+  for (const EventInter& event_iter : events_to_wait_) {
+    platform::RecordEvent record(
+        "WaitStreamEvent", platform::TracerEventType::UserDefined, 10);
+    VLOG(6) << "Wait instruction: " << event_iter.instr_id_
+            << " 's event with waiter_type: " << event_iter.waiter_type_;
+    event_iter.event_->Wait(event_iter.waiter_type_, &dev_ctx_);
+  }
+}
+
+void Instruction::RecordEvent(const Place& place) const {
+  platform::RecordEvent record(
+      "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
+  if (event_to_record_) {
+    VLOG(6) << "Record event at instruction: " << id_;
+    event_to_record_->event_->Record(&dev_ctx_);
+  }
+}
+
+void Instruction::AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event,
+                                   platform::DeviceType waiter_type) {
+  event_to_record_ = std::make_unique<EventInter>(id_, event, waiter_type);
+}
+
+void Instruction::AddEventToWait(size_t instr_id,
+                                 std::shared_ptr<platform::DeviceEvent> event,
+                                 platform::DeviceType waiter_type) {
+  events_to_wait_.emplace_back(instr_id, event, waiter_type);
+}
+
 const std::map<std::string, std::vector<int>>& Instruction::Inputs() const {
   return op_func_node_.input_index;
 }
@@ -785,26 +819,6 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 }
 
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
-
-const std::vector<EventInter>& Instruction::InputEvents() const {
-  return intput_events_;
-}
-
-const std::vector<EventInter>& Instruction::OutputEvents() const {
-  return output_events_;
-}
-
-void Instruction::AddInputEvent(size_t var_id,
-                                std::shared_ptr<platform::DeviceEvent> event,
-                                platform::DeviceType waiter_type) {
-  intput_events_.emplace_back(var_id, event, waiter_type);
-}
-
-void Instruction::AddOutputEvent(size_t var_id,
-                                 std::shared_ptr<platform::DeviceEvent> event,
-                                 platform::DeviceType waiter_type) {
-  output_events_.emplace_back(var_id, event, waiter_type);
-}
 
 }  // namespace framework
 }  // namespace paddle
