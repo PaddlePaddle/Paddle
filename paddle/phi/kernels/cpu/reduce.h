@@ -72,7 +72,7 @@ void BoolReduceKernel(const DeviceContext& dev_ctx,
                       bool keep_dim,
                       bool reduce_all,
                       phi::DenseTensor* output) {
-  reduce_all = recompute_reduce_all(x, dims);
+  reduce_all = recompute_reduce_all(input, dims);
   dev_ctx.template Alloc<OutT>(output);
 
   // The dims has full dim, set the reduce_all is True
