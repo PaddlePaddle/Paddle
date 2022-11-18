@@ -137,11 +137,11 @@ def lm_model(hidden_size,
                 default_initializer=fluid.initializer.Constant(0.0))
             bias_arr.append(bias_1)
 
-            pre_hidden = layers.slice(init_hidden,
+            pre_hidden = paddle.slice(init_hidden,
                                       axes=[0],
                                       starts=[i],
                                       ends=[i + 1])
-            pre_cell = layers.slice(init_cell,
+            pre_cell = paddle.slice(init_cell,
                                     axes=[0],
                                     starts=[i],
                                     ends=[i + 1])
@@ -165,19 +165,19 @@ def lm_model(hidden_size,
                 gate_input = layers.matmul(x=nn, y=weight_1)
 
                 gate_input = layers.elementwise_add(gate_input, bias)
-                i = layers.slice(gate_input,
+                i = paddle.slice(gate_input,
                                  axes=[1],
                                  starts=[0],
                                  ends=[hidden_size])
-                j = layers.slice(gate_input,
+                j = paddle.slice(gate_input,
                                  axes=[1],
                                  starts=[hidden_size],
                                  ends=[hidden_size * 2])
-                f = layers.slice(gate_input,
+                f = paddle.slice(gate_input,
                                  axes=[1],
                                  starts=[hidden_size * 2],
                                  ends=[hidden_size * 3])
-                o = layers.slice(gate_input,
+                o = paddle.slice(gate_input,
                                  axes=[1],
                                  starts=[hidden_size * 3],
                                  ends=[hidden_size * 4])
@@ -211,12 +211,12 @@ def lm_model(hidden_size,
             c = rnnout[i * 2 + 1]
             m.stop_gradient = True
             c.stop_gradient = True
-            last_h = layers.slice(m,
+            last_h = paddle.slice(m,
                                   axes=[0],
                                   starts=[num_steps - 1],
                                   ends=[num_steps])
             last_hidden_array.append(last_h)
-            last_c = layers.slice(c,
+            last_c = paddle.slice(c,
                                   axes=[0],
                                   starts=[num_steps - 1],
                                   ends=[num_steps])
@@ -253,11 +253,11 @@ def lm_model(hidden_size,
                 default_initializer=fluid.initializer.Constant(0.0))
             bias_arr.append(bias_1)
 
-            pre_hidden = layers.slice(init_hidden,
+            pre_hidden = paddle.slice(init_hidden,
                                       axes=[0],
                                       starts=[i],
                                       ends=[i + 1])
-            pre_cell = layers.slice(init_cell,
+            pre_cell = paddle.slice(init_cell,
                                     axes=[0],
                                     starts=[i],
                                     ends=[i + 1])

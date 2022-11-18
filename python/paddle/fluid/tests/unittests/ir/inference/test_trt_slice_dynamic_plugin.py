@@ -18,6 +18,7 @@ from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
+import paddle
 
 
 #normal starts && ends
@@ -44,10 +45,7 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
-            slice_out = fluid.layers.slice(data,
-                                           axes=axes,
-                                           starts=starts,
-                                           ends=ends)
+            slice_out = paddle.slice(data, axes=axes, starts=starts, ends=ends)
 
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("float32"),

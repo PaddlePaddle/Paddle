@@ -1882,10 +1882,10 @@ class TrainingHelper(DecodeHelper):
 
         def _slice(x):  # TODO: use Variable.__getitem__
             axes = [0 if self.time_major else 1]
-            return nn.squeeze(nn.slice(x,
-                                       axes=axes,
-                                       starts=[next_time],
-                                       ends=[next_time + 1]),
+            return nn.squeeze(paddle.slice(x,
+                                           axes=axes,
+                                           starts=[next_time],
+                                           ends=[next_time + 1]),
                               axes=axes)
 
         next_inputs = map_structure(_slice, self.inputs_)

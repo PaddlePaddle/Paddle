@@ -394,15 +394,15 @@ def bmn_loss_func(pred_bm, pred_start, pred_end, gt_iou_map, gt_start, gt_end,
         loss = -1 * (loss_pos + loss_neg) / num_entries
         return loss
 
-    pred_bm_reg = fluid.layers.squeeze(fluid.layers.slice(pred_bm,
-                                                          axes=[1],
-                                                          starts=[0],
-                                                          ends=[1]),
+    pred_bm_reg = fluid.layers.squeeze(paddle.slice(pred_bm,
+                                                    axes=[1],
+                                                    starts=[0],
+                                                    ends=[1]),
                                        axes=[1])
-    pred_bm_cls = fluid.layers.squeeze(fluid.layers.slice(pred_bm,
-                                                          axes=[1],
-                                                          starts=[1],
-                                                          ends=[2]),
+    pred_bm_cls = fluid.layers.squeeze(paddle.slice(pred_bm,
+                                                    axes=[1],
+                                                    starts=[1],
+                                                    ends=[2]),
                                        axes=[1])
 
     bm_mask = _get_mask(cfg)

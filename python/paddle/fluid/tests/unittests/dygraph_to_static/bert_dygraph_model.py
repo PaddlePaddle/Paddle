@@ -260,10 +260,10 @@ class BertModelLayer(Layer):
         #
         #if not self.return_pooled_out:
         #    return enc_output
-        next_sent_feat = fluid.layers.slice(input=enc_output,
-                                            axes=[1],
-                                            starts=[0],
-                                            ends=[1])
+        next_sent_feat = paddle.slice(input=enc_output,
+                                      axes=[1],
+                                      starts=[0],
+                                      ends=[1])
         next_sent_feat = self.pooled_fc(next_sent_feat)
         next_sent_feat = fluid.layers.reshape(next_sent_feat,
                                               shape=[-1, self._emb_size])

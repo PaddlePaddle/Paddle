@@ -71,14 +71,14 @@ class SimpleLSTMRNN(fluid.Layer):
         self.hidden_array = []
 
         for i in range(self._num_layers):
-            pre_hidden = fluid.layers.slice(init_hidden,
-                                            axes=[0],
-                                            starts=[i],
-                                            ends=[i + 1])
-            pre_cell = fluid.layers.slice(init_cell,
-                                          axes=[0],
-                                          starts=[i],
-                                          ends=[i + 1])
+            pre_hidden = paddle.slice(init_hidden,
+                                      axes=[0],
+                                      starts=[i],
+                                      ends=[i + 1])
+            pre_cell = paddle.slice(init_cell,
+                                    axes=[0],
+                                    starts=[i],
+                                    ends=[i + 1])
             pre_hidden = fluid.layers.reshape(pre_hidden,
                                               shape=[-1, self._hidden_size])
             pre_cell = fluid.layers.reshape(pre_cell,
@@ -88,10 +88,10 @@ class SimpleLSTMRNN(fluid.Layer):
 
         res = []
         for index in range(self._num_steps):
-            self._input = fluid.layers.slice(input_embedding,
-                                             axes=[1],
-                                             starts=[index],
-                                             ends=[index + 1])
+            self._input = paddle.slice(input_embedding,
+                                       axes=[1],
+                                       starts=[index],
+                                       ends=[index + 1])
             self._input = fluid.layers.reshape(self._input,
                                                shape=[-1, self._hidden_size])
             for k in range(self._num_layers):
