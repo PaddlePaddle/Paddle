@@ -270,8 +270,6 @@ class NaturalExpDecay(LearningRateDecay):
         self.staircase = staircase
 
     def step(self):
-        import paddle
-
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
             div_res = paddle.floor(div_res)
@@ -356,8 +354,6 @@ class ExponentialDecay(LearningRateDecay):
         self.staircase = staircase
 
     def step(self):
-        import paddle
-
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
             div_res = paddle.floor(div_res)
@@ -437,8 +433,6 @@ class InverseTimeDecay(LearningRateDecay):
         self.staircase = staircase
 
     def step(self):
-        import paddle
-
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
             div_res = paddle.floor(div_res)
@@ -524,8 +518,6 @@ class PolynomialDecay(LearningRateDecay):
         self.cycle = cycle
 
     def step(self):
-        import paddle
-
         tmp_step_num = self.step_num
         tmp_decay_steps = self.decay_steps
         if self.cycle:
@@ -601,8 +593,6 @@ class CosineDecay(LearningRateDecay):
         self.epochs = epochs
 
     def step(self):
-        import paddle
-
         cur_epoch = paddle.floor(
             self.create_lr_var(self.step_num / self.step_each_epoch)
         )
