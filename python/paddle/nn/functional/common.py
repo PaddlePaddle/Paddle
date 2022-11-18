@@ -759,75 +759,75 @@ def upsample(
     `paddle.nn.functional.adaptive_avg_pool2d` or `paddle.nn.functional.adaptive_avg_pool3d`.
 
     Example:
-    .. code-block:: text
+        .. code-block:: text
 
-        For scale_factor:
-            if align_corners = True && out_size > 1 :
-              scale_factor = (in_size-1.0)/(out_size-1.0)
+            For scale_factor:
+                if align_corners = True && out_size > 1 :
+                scale_factor = (in_size-1.0)/(out_size-1.0)
+                else:
+                scale_factor = float(in_size/out_size)
+            Linear interpolation:
+                if:
+                    align_corners = False , align_mode = 0
+                    input : (N,C,W_in)
+                    output: (N,C,W_out) where:
+                    W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+                else:
+                    input : (N,C,W_in)
+                    output: (N,C,W_out) where:
+                    W_out = W_{in} * scale_{factor}
+            Nearest neighbor interpolation:
+            if:
+                align_corners = False
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = floor (H_{in} * scale_{factor})
+                W_out = floor (W_{in} * scale_{factor})
             else:
-              scale_factor = float(in_size/out_size)
-        Linear interpolation:
+                align_corners = True
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = round(H_{in} * scale_{factor})
+                W_out = round(W_{in} * scale_{factor})
+
+            Bilinear interpolation:
             if:
                 align_corners = False , align_mode = 0
-                input : (N,C,W_in)
-                output: (N,C,W_out) where:
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = (H_{in}+0.5) * scale_{factor} - 0.5
                 W_out = (W_{in}+0.5) * scale_{factor} - 0.5
             else:
-                input : (N,C,W_in)
-                output: (N,C,W_out) where:
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = H_{in} * scale_{factor}
                 W_out = W_{in} * scale_{factor}
-        Nearest neighbor interpolation:
-          if:
-              align_corners = False
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = floor (H_{in} * scale_{factor})
-              W_out = floor (W_{in} * scale_{factor})
-          else:
-              align_corners = True
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = round(H_{in} * scale_{factor})
-              W_out = round(W_{in} * scale_{factor})
-
-        Bilinear interpolation:
-          if:
-              align_corners = False , align_mode = 0
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-          else:
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = H_{in} * scale_{factor}
-              W_out = W_{in} * scale_{factor}
-        Bicubic interpolation:
-          if:
-              align_corners = False
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-          else:
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = H_{in} * scale_{factor}
-              W_out = W_{in} * scale_{factor}
-        Trilinear interpolation:
-          if:
-              align_corners = False , align_mode = 0
-              input : (N,C,D_in,H_in,W_in)
-              output: (N,C,D_out,H_out,W_out) where:
-              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
-              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
-              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-          else:
-              input : (N,C,D_in,H_in,W_in)
-              output: (N,C,D_out,H_out,W_out) where:
-              D_out = D_{in} * scale_{factor}
-              H_out = H_{in} * scale_{factor}
-              W_out = W_{in} * scale_{factor}
+            Bicubic interpolation:
+            if:
+                align_corners = False
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+                W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+            else:
+                input : (N,C,H_in,W_in)
+                output: (N,C,H_out,W_out) where:
+                H_out = H_{in} * scale_{factor}
+                W_out = W_{in} * scale_{factor}
+            Trilinear interpolation:
+            if:
+                align_corners = False , align_mode = 0
+                input : (N,C,D_in,H_in,W_in)
+                output: (N,C,D_out,H_out,W_out) where:
+                D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+                H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+                W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+            else:
+                input : (N,C,D_in,H_in,W_in)
+                output: (N,C,D_out,H_out,W_out) where:
+                D_out = D_{in} * scale_{factor}
+                H_out = H_{in} * scale_{factor}
+                W_out = W_{in} * scale_{factor}
 
     For details of linear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Linear_interpolation.
