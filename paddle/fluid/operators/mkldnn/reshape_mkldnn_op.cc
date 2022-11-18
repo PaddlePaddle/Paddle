@@ -30,8 +30,6 @@ enum class ReshapeKernelOpName {
 namespace paddle {
 namespace operators {
 
-using platform::to_void_cast;
-
 static std::vector<int> extract_shape(
     const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
   std::vector<int> vec_new_shape;
@@ -73,16 +71,12 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
     auto x_vec_dims = phi::vectorize(x_dims);
 
-    dnnl::memory::data_type x_type =
-        framework::ToMKLDNNDataType(framework::TransToProtoVarType(x->dtype()));
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims,
-        framework::TransToProtoVarType(x->dtype()),
-        x_type,
-        onednn_engine);
+    auto x_type = phi::funcs ::ToOneDNNDataType(x->dtype());
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        x_vec_dims, x->dtype(), x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x->mem_desc(), platform::to_void_cast(x->data<T>()));
+        x->mem_desc(), phi::funcs::to_void_cast(x->data<T>()));
     out->Resize(x_dims);  // to match x numel, format is changed later
     // reorder is done into a plain tag to allow usage with blocked formats
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
@@ -347,16 +341,12 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
 
     auto dout_vec_dims = phi::vectorize(dout->dims());
 
-    dnnl::memory::data_type dout_type = framework::ToMKLDNNDataType(
-        framework::TransToProtoVarType(dout->dtype()));
-    platform::ReorderMKLDNNHandler reorder_handler(
-        dout_vec_dims,
-        framework::TransToProtoVarType(dout->dtype()),
-        dout_type,
-        onednn_engine);
+    auto dout_type = phi::funcs::ToOneDNNDataType(dout->dtype());
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        dout_vec_dims, dout->dtype(), dout_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc(), phi::funcs::to_void_cast(dout->data<T>()));
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
         dx, this->getPlainFormatTag(dout), ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,

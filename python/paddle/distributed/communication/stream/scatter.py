@@ -53,11 +53,11 @@ def _scatter_tensor_in_dygraph(
 
     if use_calc_stream:
         return group.process_group.scatter_tensor_on_calc_stream(
-            in_tensor, out_tensor, src_rank_in_group
+            out_tensor, in_tensor, src_rank_in_group
         )
 
     task = group.process_group.scatter_tensor(
-        in_tensor, out_tensor, src_rank_in_group, sync_op
+        out_tensor, in_tensor, src_rank_in_group, sync_op
     )
     if sync_op:
         task.wait()
@@ -80,11 +80,11 @@ def _scatter_in_dygraph(
 
     if use_calc_stream:
         return group.process_group.scatter_on_calc_stream(
-            tensor_list, tensor, src_rank_in_group
+            tensor, tensor_list, src_rank_in_group
         )
 
     task = group.process_group.scatter(
-        tensor_list, tensor, src_rank_in_group, sync_op
+        tensor, tensor_list, src_rank_in_group, sync_op
     )
     if sync_op:
         task.wait()
