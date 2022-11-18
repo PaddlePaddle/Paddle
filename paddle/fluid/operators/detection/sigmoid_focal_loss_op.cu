@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/detection/sigmoid_focal_loss_op.h"
-#include "paddle/fluid/operators/math.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace paddle {
 namespace operators {
@@ -55,15 +55,16 @@ __global__ void GPUSigmoidFocalLossForward(const T *x_data,
     T s_pos = alpha / fg_num;
 
     // p = 1. / 1. + expf(-x)
-    T p = 1. / (1. + real_exp(-x));
+    T p = 1. / (1. + phi::funcs::real_exp(-x));
 
     // (1 - p)**gamma * log(p)
     T term_pos = std::pow(static_cast<T>(1. - p), gamma) *
-                 real_log(p > FLT_MIN ? p : FLT_MIN);
+                 phi::funcs::real_log(p > FLT_MIN ? p : FLT_MIN);
     // p**gamma * log(1 - p)
-    T term_neg =
-        std::pow(p, gamma) *
-        (-1. * x * (x >= 0) - real_log(1. + real_exp(x - 2. * x * (x >= 0))));
+    T term_neg = std::pow(p, gamma) *
+                 (-1. * x * (x >= 0) -
+                  phi::funcs::real_log(
+                      1. + phi::funcs::real_exp(x - 2. * x * (x >= 0))));
 
     out_data[i] = 0.0;
     out_data[i] += -c_pos * term_pos * s_pos;
@@ -96,17 +97,20 @@ __global__ void GPUSigmoidFocalLossBackward(const T *x_data,
     T c_pos = static_cast<T>(g == (d + 1));
     T c_neg = static_cast<T>((g != -1) & (g != (d + 1)));
 
-    T p = 1. / (1. + real_exp(-x));
+    T p = 1. / (1. + phi::funcs::real_exp(-x));
 
     // (1-p)**g * (1 - p - g*p*log(p))
-    T term_pos = std::pow(static_cast<T>(1. - p), gamma) *
-                 (1. - p - (p * gamma * real_log(p > FLT_MIN ? p : FLT_MIN)));
+    T term_pos =
+        std::pow(static_cast<T>(1. - p), gamma) *
+        (1. - p -
+         (p * gamma * phi::funcs::real_log(p > FLT_MIN ? p : FLT_MIN)));
     // (p**g) * (g*(1-p)*log(1-p) - p)
-    T term_neg =
-        std::pow(p, gamma) *
-        ((-1. * x * (x >= 0) - real_log(1. + real_exp(x - 2. * x * (x >= 0)))) *
-             (1. - p) * gamma -
-         p);
+    T term_neg = std::pow(p, gamma) *
+                 ((-1. * x * (x >= 0) -
+                   phi::funcs::real_log(
+                       1. + phi::funcs::real_exp(x - 2. * x * (x >= 0)))) *
+                      (1. - p) * gamma -
+                  p);
 
     dx_data[i] = 0.0;
     dx_data[i] += -c_pos * s_pos * term_pos;

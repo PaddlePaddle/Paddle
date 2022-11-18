@@ -21,7 +21,7 @@
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 namespace paddle {
-namespace distributed {
+namespace pybind {
 
 template <typename DeviceContext, typename T>
 struct ConcatDenseTensor {
@@ -113,6 +113,10 @@ void ConcatDenseTensorWithType(const DeviceContext &dev_ctx,
       ConcatDenseTensor<DeviceContext, phi::dtype::float16>()(
           dev_ctx, t_list, p_out);
       break;
+    case phi::DataType::BFLOAT16:
+      ConcatDenseTensor<DeviceContext, phi::dtype::bfloat16>()(
+          dev_ctx, t_list, p_out);
+      break;
     case phi::DataType::FLOAT32:
       ConcatDenseTensor<DeviceContext, float>()(dev_ctx, t_list, p_out);
       break;
@@ -148,6 +152,10 @@ void SplitDenseTensorWithType(const DeviceContext &dev_ctx,
       break;
     case phi::DataType::FLOAT16:
       SplitDenseTensor<DeviceContext, phi::dtype::float16>()(
+          dev_ctx, t_in, p_list);
+      break;
+    case phi::DataType::BFLOAT16:
+      SplitDenseTensor<DeviceContext, phi::dtype::bfloat16>()(
           dev_ctx, t_in, p_list);
       break;
     case phi::DataType::FLOAT32:
@@ -249,5 +257,10 @@ void SplitTensor(const phi::DeviceContext &dev_ctx,
   }
 }
 
-}  //  namespace distributed
+inline std::vector<int64_t> GetDefaultSplitSizes(const phi::DenseTensor &tensor,
+                                                 int world_size) {
+  return std::vector<int64_t>(world_size, tensor.dims()[0] / world_size);
+}
+
+}  //  namespace pybind
 }  //  namespace paddle

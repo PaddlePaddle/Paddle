@@ -164,6 +164,10 @@ class DenseTensor : public TensorBase,
 
   void* data();
 
+  /// \brief Get whether the storage_properties is inited.
+  /// \return The init status of storage_properties.
+  bool storage_properties_initialized() const;
+
   /// \brief Returns the storage_properties of the tensor.
   /// \return The storage_properties of the tensor.
   template <typename DeviceT>
