@@ -220,12 +220,6 @@ class LayerList(Layer):
 
     def _get_abs_idx(self, idx):
         if isinstance(idx, int):
-            if not (-len(self) <= idx < len(self)):
-                raise IndexError(
-                    'index {} is out of range, should be an integer in range [{}, {})'.format(
-                        idx, -len(self), len(self)
-                    )
-                )
             if idx < 0:
                 idx += len(self)
         return idx
@@ -300,11 +294,6 @@ class LayerList(Layer):
                 linears.insert(-1, another)
                 print(linears[-2] is another) # True
         """
-        assert isinstance(index, int) and -len(self._sub_layers) <= index < len(
-            self._sub_layers
-        ), "index should be an integer in range [{}, {})".format(
-            -len(self), len(self)
-        )
 
         index = self._get_abs_idx(index)
         for i in range(len(self._sub_layers), index, -1):
