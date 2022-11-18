@@ -190,11 +190,12 @@ class ProcessGroup {
         GetBackendName()));
   }
 
-  virtual std::shared_ptr<ProcessGroup::Task> Send(phi::DenseTensor*,
-                                                   int dst_rank,
-                                                   int64_t offset,
-                                                   int64_t numel,
-                                                   bool sync_op) {
+  virtual std::shared_ptr<ProcessGroup::Task> Send(
+      const phi::DenseTensor& tensor,
+      int dst_rank,
+      int64_t offset,
+      int64_t numel,
+      bool sync_op) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "ProcessGroup%s does not support send with sync_op flag.",
         GetBackendName()));
