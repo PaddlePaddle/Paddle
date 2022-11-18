@@ -63,7 +63,8 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
                                           "shift for signed input."));
     }
 
-    auto& dev_ctx = ctx.template device_context<platform::MKLDNNDeviceContext>();
+    auto& dev_ctx =
+        ctx.template device_context<platform::MKLDNNDeviceContext>();
 
     auto src_tz = phi::vectorize(input->dims());
 
@@ -79,31 +80,29 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     float reorder_scale = scale_out / scale_in;
     attrs.set_output_scales(mask, {reorder_scale});
     if (with_shift) {
+      uint8_t reorder_shift =
+          clip_to_uint8(shift_out - reorder_scale * shift_in);
       attrs.set_zero_points(
-          DNNL_ARG_SRC, mask, {static_cast<int32_t>(shift_in)});
-      attrs.set_zero_points(
-          DNNL_ARG_DST, mask, {static_cast<int32_t>(shift_out)});
-    }     
+          DNNL_ARG_DST, mask, {static_cast<int32_t>(reorder_shift)});
+    }
 
     phi::funcs::ReorderOneDNNHandler reorder_handler(
-      src_tz,
-      src_paddle_dt,
-      phi::funcs::ToOneDNNDataType(src_paddle_dt),
-      dst_paddle_dt,
-      phi::funcs::ToOneDNNDataType(dst_paddle_dt),
-      dev_ctx.GetEngine());
+        src_tz,
+        src_paddle_dt,
+        phi::funcs::ToOneDNNDataType(src_paddle_dt),
+        dst_paddle_dt,
+        phi::funcs::ToOneDNNDataType(dst_paddle_dt),
+        dev_ctx.GetEngine());
 
     auto src_memory_p = reorder_handler.AcquireSrcMemory(
         input->mem_desc(), phi::funcs::to_void_cast(input->data<T>()));
-    
     auto dst_memory_p = reorder_handler.AcquireDstMemory(
-        output, src_tz, vstrides, dev_ctx.GetPlace());                            
+        output, src_tz, vstrides, dev_ctx.GetPlace());
 
-    auto reorder_p = reorder_handler.AcquireReorder(
-        dst_memory_p, src_memory_p, attrs);
+    auto reorder_p =
+        reorder_handler.AcquireReorder(dst_memory_p, src_memory_p, attrs);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-
     reorder_p->execute(astream, *src_memory_p, *dst_memory_p);
     astream.wait();
 
