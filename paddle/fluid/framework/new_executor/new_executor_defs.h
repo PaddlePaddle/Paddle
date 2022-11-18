@@ -268,8 +268,6 @@ struct OpFuncNode {
   std::string execution_stream_{kDefaultStream};
   std::map<std::string, std::vector<int>> input_index;
   std::map<std::string, std::vector<int>> output_index;
-  // TODO(Ruibiao): Remove no_data_transform_index
-  std::unordered_set<int> no_data_transform_index;
 
   std::map<int, int> inplace_back_map;
 

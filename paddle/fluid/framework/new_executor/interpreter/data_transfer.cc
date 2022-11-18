@@ -444,8 +444,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 
   VariableNameMap new_ins(op_base->Inputs());
   VariableNameMap new_outs(op_base->Outputs());
-  // record the no need transform variable index.
-  std::unordered_set<int> no_data_transform_index;
 
   const std::unordered_set<std::string>* no_buffer_ins = nullptr;
   auto& no_buffer_inferer = op_base->Info().NoNeedBufferVarsInferer();
@@ -567,12 +565,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         if (op_base->Type() == "fetch_v2") {
           op_base->SetAttr("deepcopy", false);
         }
-      } else {
-        // record no need data transformer input var_id
-        VLOG(3) << op_base->Type()
-                << " found no data_transform var: " << var_name
-                << " with id: " << var_scope->VarId(var_name);
-        no_data_transform_index.emplace(var_scope->VarId(var_name));
       }
     }
   }
@@ -583,7 +575,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
     op_base->Inputs() = new_ins;
     op_base->Outputs() = new_outs;
   }
-  op_func_node->no_data_transform_index = std::move(no_data_transform_index);
 }
 
 void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,

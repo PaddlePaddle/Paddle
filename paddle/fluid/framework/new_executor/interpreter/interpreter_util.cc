@@ -477,14 +477,6 @@ void HandleOperatorBase(const platform::Place& place,
   op_func_node->type_ = AnalyseOpFuncType(*op_func_node, place);
   op_func_node->kernel_func_ = nullptr;
   op_base->Run(*local_scope, place);  // Run without data transformer.
-  std::unordered_set<int> no_data_transform_index;
-  for (auto& it : op_func_node->input_index) {
-    for (auto& id : it.second) {
-      no_data_transform_index.emplace(id);
-    }
-  }
-  op_func_node->no_data_transform_index =
-      no_data_transform_index;  // all index is no-need-transform
   op_func_node->dev_ctx_ = dev_ctx;
 }
 

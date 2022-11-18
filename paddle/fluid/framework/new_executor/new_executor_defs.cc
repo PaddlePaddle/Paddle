@@ -717,10 +717,6 @@ const std::map<std::string, std::vector<int>>& Instruction::Outputs() const {
   return op_func_node_.output_index;
 }
 
-const std::unordered_set<int>& Instruction::NoDataTransformVars() const {
-  return op_func_node_.no_data_transform_index;
-}
-
 OpKernelComputeFunc Instruction::KernelFunc() const {
   return op_func_node_.kernel_func_;
 }
