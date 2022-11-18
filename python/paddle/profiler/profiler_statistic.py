@@ -94,6 +94,7 @@ class HostStatisticNode:
         self.self_gpu_time = 0
         self.general_gpu_time = 0  # besides kernel, include time of gpu events like memcpy and memset
         self.self_general_gpu_time = 0
+        self.flops = 0
 
     def cal_statistic(self):
         for child in self.children_node:
@@ -118,6 +119,13 @@ class HostStatisticNode:
                 self.self_gpu_time += device.end_ns - device.start_ns
             self.general_gpu_time += device.end_ns - device.start_ns
             self.self_general_gpu_time += device.end_ns - device.start_ns
+        if self.hostnode.type == TracerEventType.Operator:
+            op_name = self.hostnode.name.replace(' compute', '').replace(
+                ' dygraph', ''
+            )
+            self.flops = flops(
+                op_name, self.hostnode.input_shapes, self.hostnode.attributes
+            )
 
     @property
     def end_ns(self):
@@ -452,11 +460,15 @@ class EventSummary:
         def add_call(self):
             self.call += 1
 
+        def add_flops(self, flops):
+            self._flops += flops
+
         def add_item(self, node):
             self.add_call()
             self.add_cpu_time(node.cpu_time)
             self.add_gpu_time(node.gpu_time)
             self.add_general_gpu_time(node.general_gpu_time)
+            self.add_flops(node.flops)
             for child in node.children_node:
                 if child.type != TracerEventType.Operator:
                     if child.name not in self.operator_inners:
@@ -471,20 +483,6 @@ class EventSummary:
                     if name not in self.devices:
                         self.devices[name] = EventSummary.DeviceItem(name)
                     self.devices[name].add_item(devicenode)
-
-            self._flops = flops(
-                self.name.strip(' compute').strip(' dygraph'),
-                node.input_shapes,
-                **node.attributes
-            )
-
-            '''
-            print(self.name, node.name, "---"*20)
-            print("attributes", node.attributes)
-            print("input_shapes", node.input_shapes)
-            print("op_id", node.op_id)
-            print("flops", self._flops)
-            '''
 
     class GeneralItem:
         def __init__(self, name):
@@ -1416,7 +1414,7 @@ def _build_table(
                                     ),
                                     format_ratio(gpu_ratio),
                                 ),
-                                innerop_node.flops,
+                                '-',
                             ]
                             all_row_values.append(row_values)
                             for (
@@ -1523,7 +1521,7 @@ def _build_table(
                 'Calls',
                 'CPU Total / Avg / Max / Min / Ratio(%)',
                 'GPU Total / Avg / Max / Min / Ratio(%)',
-                'FLOPS',
+                'FLOPs',
             ]
             row_format_list = [""]
             header_sep_list = [""]

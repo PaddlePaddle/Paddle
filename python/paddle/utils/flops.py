@@ -12,18 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from numpy import prod
+from typing import Union
 
 _FLOPS_COMPUTE_FUNC_MAP = {}
 
 
-def flops(op_type: str, input_shapes: tuple, **attrs) -> int:
+def prod(s):
+    p = 1
+    for v in s:
+        p *= v
+    return p
+
+
+def flops(op_type: str, input_shapes: Union[tuple, dict], attrs) -> int:
     """
     count flops for operation.
 
     Args:
         op_type (str): the type of operation.
-        input_shapes (tuple|list|dict): the shapes of inputs.
+        input_shapes (tuple|dict): the shapes of inputs.
         attrs (dict): the attributes of the operation.
 
     Returns:
@@ -113,9 +120,9 @@ def _layer_norm_flops(input_shapes, **attrs):
 def _matmul_flops(input_shapes, **attrs):
     x_shape = input_shapes[0]
     y_shape = input_shapes[1]
-    if attrs['transpose_X']:
+    if attrs['transpose_x']:
         x_shape[-1], x_shape[-2] = x_shape[-2], x_shape[-1]
-    if attrs['transpose_Y']:
+    if attrs['transpose_x']:
         y_shape[-1], y_shape[-2] = y_shape[-2], y_shape[-1]
     dim_x = len(x_shape)
     dim_y = len(y_shape)
