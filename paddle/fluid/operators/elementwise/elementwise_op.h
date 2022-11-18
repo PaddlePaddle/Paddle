@@ -174,8 +174,8 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // When elementwise is first oneDNN op (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-          (tensor.layout() != phi::DataLayout::kMKLDNN) &&
+      if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+          (tensor.layout() != phi::DataLayout::ONEDNN) &&
           paddle::platform::MKLDNNDeviceContext::tls()
                   .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,

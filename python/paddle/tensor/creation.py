@@ -65,12 +65,12 @@ def linspace(start, stop, num, dtype=None, name=None):
     Return fixed number of evenly spaced values within a given interval.
 
     Args:
-        start(int|float|Tensor): The input :attr:`start` is start variable of range. It is a scalar, \
-            or a Tensor of shape [1] with input data type int32, int64, float32 or float64.
-        stop(int|float|Tensor): The input :attr:`stop` is start variable of range. It is a scalar, \
-            or a Tensor of shape [1] with input data type int32, int64, float32 or float64.
-        num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int scalar, \
-            or a Tensor of shape [1] with data type int32.
+        start(int|float|Tensor): The input :attr:`start` is start of range. It is a int, float, \
+            or a 0-D Tensor with data type int32, int64, float32 or float64.
+        stop(int|float|Tensor): The input :attr:`stop` is start variable of range. It is a int, float, \
+            or a 0-D Tensor with data type int32, int64, float32 or float64.
+        num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int, \
+            or a 0-D Tensor with data type int32.
         dtype(np.dtype|str, optional): The data type of output tensor, it could be
             int32, int64, float32 and float64. Default: if None, the data type is float32.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -620,7 +620,9 @@ def ones(shape, dtype=None, name=None):
     Create a Tensor of specified :attr:`shape` and :attr:`dtype` and fill it with 1.
 
     Args:
-        shape (tuple|list|Tensor): Shape of the Tensor to be created, the data type of shape should be int32 or int64.
+        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            If ``shape`` is a list or tuple, the elements of it should be integers or 0-D Tensor with shape [].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (np.dtype|str, optional): Data type of output Tensor, it should be one of
             bool, float16, float32, float64, int32 and int64. If it is set to None, the data type will be float32.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -633,21 +635,25 @@ def ones(shape, dtype=None, name=None):
 
             import paddle
 
-            # default dtype for ones OP
+            # shape is a list/tuple
             data1 = paddle.ones(shape=[3, 2])
             # [[1. 1.]
             #  [1. 1.]
             #  [1. 1.]]
 
-            data2 = paddle.ones(shape=[2, 2], dtype='int32')
-            # [[1 1]
-            #  [1 1]]
-
             # shape is a Tensor
-            shape = paddle.full(shape=[2], dtype='int32', fill_value=2)
-            data3 = paddle.ones(shape=shape, dtype='int32')
-            # [[1 1]
-            #  [1 1]]
+            shape = paddle.to_tensor([3, 2])
+            data2 = paddle.ones(shape=shape)
+            # [[1. 1.]
+            #  [1. 1.]
+            #  [1. 1.]]
+
+            # shape is a Tensor List
+            shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
+            data3 = paddle.ones(shape=shape)
+            # [[1. 1.]
+            #  [1. 1.]
+            #  [1. 1.]]
     """
     if dtype is None:
         dtype = 'float32'
@@ -690,7 +696,9 @@ def zeros(shape, dtype=None, name=None):
     Creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
     Args:
-        shape(tuple|list|Tensor): Shape of the Tensor to be created, the data type of ``shape`` is int32 or int64.
+        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the date type is float32.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
@@ -702,21 +710,27 @@ def zeros(shape, dtype=None, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
+            import paddle
 
-          data = paddle.zeros(shape=[3, 2], dtype='float32')
-          # [[0. 0.]
-          #  [0. 0.]
-          #  [0. 0.]]
-          data = paddle.zeros(shape=[2, 2])
-          # [[0. 0.]
-          #  [0. 0.]]
+            # shape is a list/tuple
+            data1 = paddle.zeros(shape=[3, 2])
+            # [[0. 0.]
+            #  [0. 0.]
+            #  [0. 0.]]
 
-          # shape is a Tensor
-          shape = paddle.full(shape=[2], dtype='int32', fill_value=2)
-          data3 = paddle.zeros(shape=shape, dtype='int32')
-          # [[0 0]
-          #  [0 0]]
+            # shape is a Tensor
+            shape = paddle.to_tensor([3, 2])
+            data2 = paddle.zeros(shape=shape)
+            # [[0. 0.]
+            #  [0. 0.]
+            #  [0. 0.]]
+
+            # shape is a Tensor List
+            shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
+            data3 = paddle.zeros(shape=shape)
+            # [[0. 0.]
+            #  [0. 0.]
+            #  [0. 0.]]
     """
     if dtype is None:
         dtype = 'float32'
@@ -844,12 +858,11 @@ def full(shape, fill_value, dtype=None, name=None):
     Return a Tensor with the ``fill_value`` which size is same as ``shape``.
 
     Args:
-        shape(list|tuple|Tensor): Shape of the Tensor to be created.
-                The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
-                the elements of it should be integers or Tensors with shape [1].
-                If ``shape`` is an Tensor, it should be an 1-D Tensor.
-        fill_value(bool|float|int|Tensor): The constant value
-            used to initialize the Tensor to be created. If ``fill_value`` is an Tensor, it must be an 1-D Tensor.
+        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
+        fill_value(bool|float|int|Tensor): The constant value used to initialize the Tensor to be created.
+            If ``fill_value`` is an Tensor, it shoule be an 0-D Tensor which represents a scalar.
         dtype(np.dtype|str, optional): Data type of the output Tensor
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created Tensor is `float32`.
@@ -863,26 +876,32 @@ def full(shape, fill_value, dtype=None, name=None):
 
             import paddle
 
-            data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64')
-            #[[0]
-            # [0]]
+            # shape is a list/tuple
+            data1 = paddle.full(shape=[3, 2], fill_value=1.)
+            # [[1. 1.]
+            #  [1. 1.]
+            #  [1. 1.]]
 
-            # attr shape is a list which contains Tensor.
-            positive_2 = paddle.full([1], 2, "int32")
-            data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5)
-            # [[1.5 1.5]]
+            # shape is a Tensor
+            shape = paddle.to_tensor([3, 2])
+            data2 = paddle.full(shape=shape, fill_value=2.)
+            # [[2. 2.]
+            #  [2. 2.]
+            #  [2. 2.]]
 
-            # attr shape is a Tensor.
-            shape = paddle.full([2], 2, "int32")
-            data4 = paddle.full(shape=shape, dtype='bool', fill_value=True)
-            # [[True True]
-            #  [True True]]
+            # shape is a Tensor List
+            shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
+            data3 = paddle.full(shape=shape, fill_value=3.)
+            # [[3. 3.]
+            #  [3. 3.]
+            #  [3. 3.]]
 
-            # attr fill_value is a Tensor.
-            val = paddle.full([1], 2.0, "float32")
-            data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32')
-            # [[2.0]
-            #  [2.0]]
+            # fill_value is a Tensor.
+            val = paddle.full([], 2.0, "float32")
+            data5 = paddle.full(shape=[3, 2], fill_value=val)
+            # [[2. 2.]
+            #  [2. 2.]
+            #  [2. 2.]]
     """
 
     if dtype is None:
@@ -904,16 +923,17 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
     Parameters:
         start(float|int|Tensor): Start of interval. The interval includes this
             value. If ``end`` is None, the half-open interval is [0, ``start``).
-            If ``start`` is a Tensor, it is a 1-D Tensor with shape [1], with
-            data type int32, int64, float32, float64. Default is 0.
+            If ``start`` is a Tensor, it is a 0-D Tensor which represents a scalar
+            and data type is int32, int64, float32, float64. Default is 0.
         end(float|int|Tensor, optional): End of interval. The interval does not
-            include this value. If ``end`` is a Tensor, it is a 1-D Tensor with
-            shape [1], with data type int32, int64, float32, float64. If ``end``
-            is None, the half-open interval is [0, ``start``). Default is None.
+            include this value. If ``end`` is a Tensor, it is a 0-D Tensor which
+            represents a scalar and data type is int32, int64, float32, float64.
+            If ``end`` is None, the half-open interval is [0, ``start``).
+            Default is None.
         step(float|int|Tensor, optional): Spacing between values. For any out,
             it is the istance between two adjacent values, out[i+1] - out[i].
-            If ``step`` is a Tensor, it is a 1-D Tensor with shape [1], with
-            data type int32, int64, float32, float64. Default is 1.
+            If ``step`` is a Tensor, it is a 0-D Tensor which represents a scalar
+            and data type is int32, int64, float32, float64. . Default is 1.
         dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: int32, int64, float32, float64.
             If ``dytpe`` is None, the data type is float32. Default is None.
@@ -939,7 +959,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             out3 = paddle.arange(4.999, dtype='float32')
             # [0., 1., 2., 3., 4.]
 
-            start_var = paddle.to_tensor([3])
+            start_var = paddle.to_tensor(3)
             out4 = paddle.arange(start_var, 7)
             # [3, 4, 5, 6]
 
@@ -1174,7 +1194,7 @@ def triu(x, diagonal=0, name=None):
 
 def meshgrid(*args, **kwargs):
     """
-    Takes a list of N tensors as input *args, each of which is 1-dimensional vector, and creates N-dimensional grids.
+    Takes a list of N tensors as input :attr:`*args`, each of which is 1-dimensional vector, and creates N-dimensional grids.
 
     Args:
         *args(Tensor|list of Tensor) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,),
@@ -1501,10 +1521,9 @@ def empty(shape, dtype=None, name=None):
     Returns a Tensor with uninitialized data which size is same as ``shape``.
 
     Args:
-        shape(list|tuple|Tensor): Shape of the Tensor to be created.
-                The data type of dimension of shape is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
-                the elements of it should be integers or Tensors with shape [1].
-                If ``shape`` is an Tensor, it should be an 1-D Tensor.
+        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of the output Tensor
             which can be bool, float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created Tensor use global default dtype (see ``get_default_dtype``
@@ -1519,30 +1538,25 @@ def empty(shape, dtype=None, name=None):
 
             import paddle
 
-            paddle.set_device("cpu")  # and use cpu device
+            # shape is a list/tuple
+            data1 = paddle.empty(shape=[3, 2])
+            # [[1. 1.]
+            #  [1. 1.]
+            #  [1. 1.]]
 
-            # example 1: argument ``shape`` is a list which doesn't contain Tensor.
-            data1 = paddle.empty(shape=[2, 3], dtype='float32')
-            print(data1)
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [[0.00000000, 0.        , 0.00000000],
-            #         [0.        , 0.29652897, 0.09356152]])       # uninitialized
+            # shape is a Tensor
+            shape = paddle.to_tensor([3, 2])
+            data2 = paddle.empty(shape=shape)
+            # [[1. 1.]
+            #  [1. 1.]
+            #  [1. 1.]]
 
-            # example 2: argument ``shape`` is a Tensor, the data type must be int64 or int32.
-            shape_data = paddle.to_tensor([2, 3]).astype('int32')
-            data2 = paddle.empty(shape=shape_data, dtype='float32')
-            print(data2)
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [[-0.50543123, -0.09872390, -0.92634487],
-            #         [-0.51007903, -0.02454148,  1.29315734]])    # uninitialized
-
-            # example 3: argument ``shape`` is a list which contains Tensor.
-            dim2 = paddle.to_tensor([3]).astype('int32')
-            data3 = paddle.empty(shape=[2, dim2], dtype='float32')
-            print(data3)
-            # Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [[ 0.00000000,  0.        , -0.92634487],
-            #         [-0.51007903, -0.02454148,  1.29315734]])    # uninitialized
+            # shape is a Tensor List
+            shape = [paddle.to_tensor(3), paddle.to_tensor(2)]
+            data3 = paddle.empty(shape=shape)
+            # [[1. 1.]
+            #  [1. 1.]
+            #  [1. 1.]]
     """
 
     if dtype is None:

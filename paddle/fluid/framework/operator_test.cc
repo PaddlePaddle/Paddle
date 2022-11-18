@@ -429,61 +429,6 @@ REGISTER_OP_CPU_KERNEL(
     indicate_other_data_type_test,
     paddle::framework::EmptyTestKernel<phi::CPUContext, int>);
 
-TEST(IndicateVarDataTypeTest, lodtensor) {
-  paddle::framework::InitDevices();
-  paddle::framework::proto::OpDesc op_desc;
-  op_desc.set_type("indicate_lod_tensor_data_type_test");
-  BuildVar("phi::DenseTensor", {"lodtensor_1"}, op_desc.add_inputs());
-
-  paddle::platform::CPUPlace cpu_place;
-  paddle::framework::Scope scope;
-
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  auto* var = scope.Var("lodtensor_1");
-  var->GetMutable<phi::DenseTensor>();
-
-  bool caught = false;
-  try {
-    op->Run(scope, cpu_place);
-  } catch (paddle::platform::EnforceNotMet& err) {
-    caught = true;
-    std::string ex_msg = err.what();
-    EXPECT_TRUE(
-        ex_msg.find(
-            "The indicate_lod_tensor_data_type_test Op's Input Variable "
-            "`phi::DenseTensor` contains uninitialized phi::DenseTensor.") !=
-        std::string::npos);
-  }
-  ASSERT_TRUE(caught);
-}
-
-TEST(IndicateVarDataTypeTest, selectedrows) {
-  paddle::framework::InitDevices();
-  paddle::framework::proto::OpDesc op_desc;
-  op_desc.set_type("indicate_selected_rows_data_type_test");
-  BuildVar("SelectedRows", {"selected_rows_1"}, op_desc.add_inputs());
-
-  paddle::platform::CPUPlace cpu_place;
-  paddle::framework::Scope scope;
-
-  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  auto* var = scope.Var("selected_rows_1");
-  var->GetMutable<phi::SelectedRows>();
-
-  bool caught = false;
-  try {
-    op->Run(scope, cpu_place);
-  } catch (paddle::platform::EnforceNotMet& err) {
-    caught = true;
-    std::string ex_msg = err.what();
-    EXPECT_TRUE(
-        ex_msg.find("The indicate_selected_rows_data_type_test Op's "
-                    "Input Variable `SelectedRows` contains uninitialized "
-                    "phi::DenseTensor.") != std::string::npos);
-  }
-  ASSERT_TRUE(caught);
-}
-
 TEST(IndicateVarDataTypeTest, other) {
   paddle::framework::InitDevices();
   paddle::framework::proto::OpDesc op_desc;

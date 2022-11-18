@@ -52,7 +52,6 @@ def _reduce_scatter_tensor_in_dygraph(
     caller="reduce_scatter",
 ):
     op_type = _get_reduce_op(op, caller)
-    group = _get_global_group() if group is None else group
 
     _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
 
@@ -74,7 +73,6 @@ def _reduce_scatter_in_dygraph(
     tensor, tensor_list, op, group, sync_op, use_calc_stream
 ):
     op_type = _get_reduce_op(op, "reduce_scatter")
-    group = _get_global_group() if group is None else group
 
     _check_tensor_list_shape(tensor_list, tensor.shape, group.nranks)
 
@@ -149,6 +147,7 @@ def reduce_scatter(
         )
 
     if framework.in_dygraph_mode():
+        group = _get_global_group() if group is None else group
         if paddle.is_tensor(tensor_or_tensor_list):
             return _reduce_scatter_tensor_in_dygraph(
                 tensor,
@@ -230,6 +229,7 @@ def _reduce_scatter_base(
         )
 
     if framework.in_dygraph_mode():
+        group = _get_global_group() if group is None else group
         return _reduce_scatter_tensor_in_dygraph(
             out_tensor,
             in_tensor,

@@ -57,7 +57,7 @@ void TensorCopyImpl(const TENSOR& src,
   // oneDNN tensors due to padding may be of bigger size
   // than numel()*size(type())
   auto dst_ptr =
-      src.layout() == DataLayout::kMKLDNN
+      src.layout() == DataLayout::ONEDNN
           ? dst->mutable_data(dst_place, src.dtype(), src.memory_size())
           : dst->mutable_data(dst_place, src.dtype());
 #else
@@ -72,7 +72,7 @@ void TensorCopyImpl(const TENSOR& src,
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
 #ifdef PADDLE_WITH_MKLDNN
-  auto size = src.layout() == DataLayout::kMKLDNN
+  auto size = src.layout() == DataLayout::ONEDNN
                   ? src.memory_size()
                   : src.numel() * framework::DataTypeSize(src.dtype());
 #else
@@ -471,7 +471,7 @@ void TensorCopySync(const phi::DenseTensor& src,
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
 #ifdef PADDLE_WITH_MKLDNN
-  if (src.layout() == DataLayout::kMKLDNN) {
+  if (src.layout() == DataLayout::ONEDNN) {
     dst->set_mem_desc(src.mem_desc());
   }
 #endif
@@ -1244,11 +1244,6 @@ std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
   os << "  - place: " << t.place() << "\n";
   os << "  - shape: [" << t.dims() << "]\n";
   os << "  - layout: " << phi::DataLayoutToString(t.layout()) << "\n";
-
-#ifdef PADDLE_WITH_MKLDNN
-  os << "  - format: "
-     << dnnl_fmt_tag2str(static_cast<dnnl_format_tag_t>(t.format())) << "\n";
-#endif
 
   DenseTensor tensor;
   tensor.Resize(t.dims());

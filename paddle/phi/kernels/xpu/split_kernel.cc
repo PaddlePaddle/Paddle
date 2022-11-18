@@ -25,22 +25,23 @@ void SplitKernel(const Context& dev_ctx,
                  const IntArray& sections,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   int axis = axis_scalar.to<int>();
   auto in_dims = x.dims();
   auto input_shape = vectorize<int>(in_dims);
-  std::vector<T*> out_ptrs;
+  std::vector<XPUType*> out_ptrs;
   std::vector<int> split_lists;
   for (size_t j = 0; j < outs.size(); ++j) {
     dev_ctx.template Alloc<T>(outs[j]);
-    out_ptrs.push_back(outs[j]->data<T>());
+    out_ptrs.push_back(reinterpret_cast<XPUType*>(outs[j]->data<T>()));
     split_lists.push_back(outs[j]->dims()[axis]);
   }
-  int r = xpu::split<T>(dev_ctx.x_context(),
-                        x.data<T>(),
-                        out_ptrs,
-                        input_shape,
-                        split_lists,
-                        axis);
+  int r = xpu::split<XPUType>(dev_ctx.x_context(),
+                              reinterpret_cast<const XPUType*>(x.data<T>()),
+                              out_ptrs,
+                              input_shape,
+                              split_lists,
+                              axis);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "split");
 }
 
@@ -62,6 +63,13 @@ void SplitWithNumKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(split, XPU, ALL_LAYOUT, phi::SplitKernel, float, int) {}
 PD_REGISTER_KERNEL(
-    split_with_num, XPU, ALL_LAYOUT, phi::SplitWithNumKernel, float, int) {}
+    split, XPU, ALL_LAYOUT, phi::SplitKernel, float, int, phi::dtype::float16) {
+}
+PD_REGISTER_KERNEL(split_with_num,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SplitWithNumKernel,
+                   float,
+                   int,
+                   phi::dtype::float16) {}

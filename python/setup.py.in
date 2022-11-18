@@ -413,6 +413,7 @@ packages=['paddle',
           'paddle.autograd',
           'paddle.device',
           'paddle.device.cuda',
+          'paddle.device.xpu',
           'paddle.version',
           'paddle.profiler',
           'paddle.geometric',
@@ -776,7 +777,7 @@ with redirect_stdout():
         project_urls = {
             'Homepage': 'https://www.paddlepaddle.org.cn/',
             'Downloads': 'https://github.com/paddlepaddle/paddle'
-        }, 
+        },
         license='Apache Software License',
         packages=packages,
         install_requires=setup_requires,
