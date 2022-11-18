@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+from functools import reduce
 from paddle.optimizer import Momentum
 from .meta_optimizer_base import MetaOptimizerBase
 import logging
 
 __all__ = []
 
+from paddle.fluid.layers import tensor
+import paddle
 from paddle import framework
 from paddle.framework import core
 from paddle.common_ops_import import LayerHelper
@@ -169,7 +172,9 @@ class DGCMomentumOptimizer(Optimizer):
         if is_new_var:
             helper.set_variable_initializer(
                 counter,
-                initializer=Constant(value=float(begin - 1), force_cpu=True),
+                initializer=paddle.nn.Constant(
+                    value=float(begin - 1), force_cpu=True
+                ),
             )
             helper.main_program.global_block()._prepend_op(
                 type='increment',
@@ -190,14 +195,16 @@ class DGCMomentumOptimizer(Optimizer):
         if is_new_var:
             helper.set_variable_initializer(
                 counter,
-                initializer=Constant(value=float(value), force_cpu=True),
+                initializer=paddle.nn.Constant(
+                    value=float(value), force_cpu=True
+                ),
             )
             counter.stop_gradient = True
 
         return counter
 
     def _append_dgc_ops(self, param_and_grads):
-        main_program = default_main_program()
+        main_program = paddle.static.default_main_program()
         main_program._enable_dgc = True
 
         # step counter
@@ -304,7 +311,7 @@ class DGCMomentumOptimizer(Optimizer):
         helper = LayerHelper("dgc_clip_by_norm_op", **args)
 
         if name is None:
-            name = unique_name.generate_with_ignorable_key(
+            name = paddle.fluid.unique_name.generate_with_ignorable_key(
                 ".".join([helper.name, 'tmp'])
             )
 

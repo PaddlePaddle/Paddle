@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import os
-
+import paddle
 from paddle.framework import core
 from paddle.utils import unique_name
 from ..base.private_helper_function import wait_server_ready
