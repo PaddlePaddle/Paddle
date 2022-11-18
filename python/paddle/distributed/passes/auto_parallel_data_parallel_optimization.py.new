@@ -631,7 +631,7 @@ class DataParallelOptimizationPass(PassBase):
         print("###########"*6)
         print(dep_var_pairs)
         print("###########"*6)
-        dep_var_pairs.sort(key=lambda x: x[0], reversed=True)
+        dep_var_pairs.sort(key=lambda x: x[0], reverse=True)
         for idx, prior_name, post_name in dep_var_pairs:
             prior_var = block.var(prior_name)
             post_var = block.var(post_name)
