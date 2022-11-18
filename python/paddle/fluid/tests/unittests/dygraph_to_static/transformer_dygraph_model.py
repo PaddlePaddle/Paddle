@@ -338,7 +338,7 @@ class WrapEncoder(Layer):
 
     def forward(self, src_word, src_pos, src_slf_attn_bias):
         word_emb = self.word_embedder(src_word)
-        word_emb = layers.scale(x=word_emb, scale=self.emb_dim**0.5)
+        word_emb = paddle.scale(x=word_emb, scale=self.emb_dim**0.5)
         pos_enc = self.pos_encoder(src_pos)
         pos_enc.stop_gradient = True
         emb = word_emb + pos_enc
@@ -542,7 +542,7 @@ class WrapDecoder(Layer):
         caches=None,
     ):
         word_emb = self.word_embedder(trg_word)
-        word_emb = layers.scale(x=word_emb, scale=self.emb_dim**0.5)
+        word_emb = paddle.scale(x=word_emb, scale=self.emb_dim**0.5)
         pos_enc = self.pos_encoder(trg_pos)
         pos_enc.stop_gradient = True
         emb = word_emb + pos_enc

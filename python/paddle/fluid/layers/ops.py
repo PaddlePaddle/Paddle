@@ -94,7 +94,7 @@ for _OP in set(__all__):
     globals()[_OP] = generate_layer_fn(_OP)
 
 # It is a hot fix in some unittest using:
-#   fluid.layers.scale(x=x, scale=10.0, out=out_var)
+#   paddle.scale(x=x, scale=10.0, out=out_var)
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
 

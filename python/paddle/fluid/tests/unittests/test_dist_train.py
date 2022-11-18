@@ -20,6 +20,7 @@ import signal
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.layers.io import ListenAndServ
@@ -150,7 +151,7 @@ class TestSendOp(unittest.TestCase):
                 append_batch_size=False,
             )
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
-            o = layers.scale(x=x, scale=10.0)
+            o = paddle.scale(x=x, scale=10.0)
         exe = fluid.Executor(place)
         self.local_out = exe.run(main, fetch_list=[o])
 

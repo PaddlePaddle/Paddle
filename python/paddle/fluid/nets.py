@@ -15,6 +15,7 @@
 from . import layers
 from .data_feeder import check_variable_and_dtype, convert_dtype
 from ..utils import deprecated
+import paddle
 
 __all__ = [
     "simple_img_conv_pool",
@@ -618,7 +619,7 @@ def scaled_dot_product_attention(
     v = __split_heads(v, num_heads)
 
     key_dim_per_head = keys.shape[-1] // num_heads
-    scaled_q = layers.scale(x=q, scale=key_dim_per_head**-0.5)
+    scaled_q = paddle.scale(x=q, scale=key_dim_per_head**-0.5)
     product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
 
     weights = layers.reshape(

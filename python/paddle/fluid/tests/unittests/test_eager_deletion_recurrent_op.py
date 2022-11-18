@@ -155,7 +155,7 @@ class EagerDeletionRecurrentOpTest1(unittest.TestCase):
             h_pre = rnn.memory(init=h_boot)
             x_t = rnn.step_input(x)
 
-            h = layers.scale(
+            h = paddle.scale(
                 x=layers.elementwise_add(x=h_pre, y=x_t),
                 scale=self.py_rnn.scale,
             )
@@ -429,8 +429,8 @@ class EagerDeletionRecurrentOpMultipleMemoryTest(EagerDeletionRecurrentOpTest1):
             h_pre2 = rnn.memory(init=h_boot2)
             x_t = rnn.step_input(x)
 
-            mem1 = layers.scale(x=h_pre1, scale=1.0)
-            mem2 = layers.scale(x=h_pre2, scale=1.0)
+            mem1 = paddle.scale(x=h_pre1, scale=1.0)
+            mem2 = paddle.scale(x=h_pre2, scale=1.0)
             out = layers.sums(input=[mem1, x_t, mem2])
 
             rnn.update_memory(h_pre1, mem1)
@@ -689,7 +689,7 @@ class EagerDeletionFarwardOnlyRnnAndBackwardRnnTest(
                 h_pre = forward_only_rnn.memory(init=h_boot)
                 x_t = forward_only_rnn.step_input(x)
 
-                h = layers.scale(
+                h = paddle.scale(
                     x=layers.elementwise_add(x=h_pre, y=x_t),
                     scale=self.py_rnn.scale,
                 )
@@ -705,7 +705,7 @@ class EagerDeletionFarwardOnlyRnnAndBackwardRnnTest(
                 h_pre = rnn.memory(init=h_boot)
                 x_t = rnn.step_input(x)
 
-                h = layers.scale(
+                h = paddle.scale(
                     x=layers.elementwise_add(x=h_pre, y=x_t),
                     scale=self.py_rnn.scale,
                 )

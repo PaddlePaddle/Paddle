@@ -152,7 +152,6 @@ __all__ = [
     'unique_with_counts',
     'expand',
     'expand_as',
-    'scale',
     'elementwise_add',
     'elementwise_div',
     'elementwise_sub',
@@ -12648,103 +12647,6 @@ def _elementwise_op(helper):
         inputs={'X': x, 'Y': y},
         outputs={'Out': out},
         attrs={'axis': axis, 'use_mkldnn': use_mkldnn},
-    )
-    return helper.append_activation(out)
-
-
-def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
-    """
-
-    Putting scale and bias to the input Tensor as following:
-
-    ``bias_after_scale`` is True:
-
-    .. math::
-                            Out=scale*X+bias
-
-    ``bias_after_scale`` is False:
-
-    .. math::
-                            Out=scale*(X+bias)
-
-    Args:
-        x(Tensor): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
-        scale(float|Tensor): The scale factor of the input, it should be a float number or a Tensor with shape [1] and data type as float32.
-        bias(float): The bias to be put on the input.
-        bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
-        act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Tensor: Output tensor of scale operator, with shape and data type same as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            # scale as a float32 number
-            import paddle
-
-            data = paddle.randn(shape=[2,3], dtype='float32')
-            res = paddle.scale(data, scale=2.0, bias=1.0)
-
-        .. code-block:: python
-
-            # scale with parameter scale as a Tensor
-            import paddle
-
-            data = paddle.randn(shape=[2, 3], dtype='float32')
-            factor = paddle.to_tensor([2], dtype='float32')
-            res = paddle.scale(data, scale=factor, bias=1.0)
-
-    """
-
-    if in_dygraph_mode():
-        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
-        return dygraph_utils._append_activation_in_dygraph(out)
-    if _non_static_mode():
-        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
-        out = _legacy_C_ops.scale(
-            x,
-            'scale',
-            float(_scale),
-            'bias',
-            float(bias),
-            'bias_after_scale',
-            bias_after_scale,
-        )
-        return dygraph_utils._append_activation_in_dygraph(out)
-
-    check_variable_and_dtype(
-        x,
-        "x",
-        [
-            'float16',
-            'uint16',
-            'float32',
-            'float64',
-            'int8',
-            'int16',
-            'int32',
-            'int64',
-            'uint8',
-        ],
-        "scale",
-    )
-    inputs = {'X': [x]}
-    attrs = {
-        'bias': float(bias),
-        'bias_after_scale': bias_after_scale,
-    }
-    if isinstance(scale, Variable):
-        inputs['ScaleTensor'] = [scale]
-    else:
-        attrs['scale'] = float(scale)
-    helper = LayerHelper('scale', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs
     )
     return helper.append_activation(out)
 

@@ -19,6 +19,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
+import paddle
 
 
 class TRTScaleTest(InferencePassTest):
@@ -38,9 +39,7 @@ class TRTScaleTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_scale(self, data):
-        return fluid.layers.scale(
-            x=data, scale=2.0, bias=-1.0, bias_after_scale=False
-        )
+        return paddlescale(x=data, scale=2.0, bias=-1.0, bias_after_scale=False)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -70,7 +69,7 @@ class TRTScaleShape2Test(InferencePassTest):
         self.fetch_list = [out]
 
     def append_scale(self, data):
-        return fluid.layers.scale(
+        return paddle.scale(
             x=data, scale=2.0, bias=-1.0, bias_after_scale=False
         )
 
