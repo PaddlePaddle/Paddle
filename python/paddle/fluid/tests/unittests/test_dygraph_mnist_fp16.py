@@ -58,23 +58,22 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
         if pool_type == 'max':
             if global_pooling:
-                self._pool2d =  paddle.nn.AdaptiveMaxPool2D(output_size=(1,1))
+                self._pool2d = paddle.nn.AdaptiveMaxPool2D(output_size=(1, 1))
             else:
                 self._pool2d = paddle.nn.MaxPool2D(
-                        kernel_size=pool_size,
-                        stride=pool_stride,
-                        padding=pool_padding
+                    kernel_size=pool_size,
+                    stride=pool_stride,
+                    padding=pool_padding,
                 )
         elif pool_type == "avg":
             if global_pooling:
-                self._pool2d =  paddle.nn.AdaptiveAvgPool2D(output_size=(1,1))
+                self._pool2d = paddle.nn.AdaptiveAvgPool2D(output_size=(1, 1))
             else:
                 self._pool2d = paddle.nn.AvgPool2D(
-                        kernel_size=pool_size,
-                        stride=pool_stride,
-                        padding=pool_padding
+                    kernel_size=pool_size,
+                    stride=pool_stride,
+                    padding=pool_padding,
                 )
-
 
     def forward(self, inputs):
         x = self._conv2d(inputs)
@@ -115,9 +114,7 @@ class MNIST(fluid.dygraph.Layer):
             self.pool_2_shape,
             10,
             param_attr=paddle.ParamAttr(
-                initializer=paddle.nn.initializer.Normal(
-                    mean=0.0, std=scale
-                )
+                initializer=paddle.nn.initializer.Normal(mean=0.0, std=scale)
             ),
             dtype=dtype,
         )

@@ -25,9 +25,7 @@ SEED = 2020
 class Pool2D(fluid.dygraph.Layer):
     def __init__(self):
         super().__init__()
-        self.pool2d = paddle.nn.AvgPool2D(
-            kernel_size=2, stride=1
-        )
+        self.pool2d = paddle.nn.AvgPool2D(kernel_size=2, stride=1)
 
     @declarative
     def forward(self, x):

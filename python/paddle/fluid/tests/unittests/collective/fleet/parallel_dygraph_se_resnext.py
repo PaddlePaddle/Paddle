@@ -135,7 +135,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
         y = self._pool(input)
         y = fluid.layers.reshape(y, shape=[-1, self._num_channels])
         y = self._squeeze(y)
-        y =  paddle.nn.functional.relu(y)
+        y = paddle.nn.functional.relu(y)
         y = self._excitation(y)
         y = paddle.nn.functional.sigmoid(y)
         y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
@@ -230,9 +230,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = paddle.nn.MaxPool2D(
-                kernel_size=3, stride=2, padding=1
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
         elif layers == 101:
             cardinality = 32
             reduction_ratio = 16
@@ -245,9 +243,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = paddle.nn.MaxPool2D(
-                kernel_size=3, stride=2, padding=1
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
         elif layers == 152:
             cardinality = 64
             reduction_ratio = 16
@@ -274,9 +270,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=1,
                 act='relu',
             )
-            self.pool = paddle.nn.MaxPool2D(
-                kernel_size=3, stride=2, padding=1
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
 
         self.bottleneck_block_list = []
         num_channels = 64

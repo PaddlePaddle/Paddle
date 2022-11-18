@@ -145,9 +145,7 @@ class ImperativeLenet(paddle.nn.Layer):
         self.fc = Sequential(
             Linear(in_features=400, out_features=120),
             Linear(in_features=120, out_features=84),
-            Linear(
-                in_features=84, out_features=num_classes
-            ),
+            Linear(in_features=84, out_features=num_classes),
         )
 
     def forward(self, inputs):

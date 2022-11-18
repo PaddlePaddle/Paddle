@@ -19,6 +19,7 @@ from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard
 import paddle
 
+
 class MLP(fluid.Layer):
     def __init__(self, input_size):
         super().__init__()

@@ -257,10 +257,14 @@ class TestRegularizer(unittest.TestCase):
     def test_repeated_regularization(self):
         l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
         l2 = fluid.regularizer.L2Decay(regularization_coeff=0.01)
-        fc_param_attr = paddle.ParamAttr(regularizer=paddle.regularizer.L1Decay())
+        fc_param_attr = paddle.ParamAttr(
+            regularizer=paddle.regularizer.L1Decay()
+        )
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x = fluid.layers.uniform_random([2, 2, 3])
-            out = fluid.layers.fc(x, 5, param_attr=fluid.ParamAttr(regularizer=l1))
+            out = fluid.layers.fc(
+                x, 5, param_attr=fluid.ParamAttr(regularizer=l1)
+            )
             loss = fluid.layers.reduce_sum(out)
             sgd = fluid.optimizer.SGD(learning_rate=0.1, regularization=l2)
             sgd.minimize(loss)

@@ -25,13 +25,17 @@ class AutoPruneLayer0(fluid.Layer):
         self.linear1 = paddle.nn.Linear(
             input_size,
             5,
-            weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=2)),
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=2)
+            ),
             bias_attr=False,
         )
         self.linear2 = paddle.nn.Linear(
             5,
             5,
-            weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=2)),
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=2)
+            ),
             bias_attr=False,
         )
 
@@ -49,13 +53,17 @@ class AutoPruneLayer1(fluid.Layer):
         self.linear1 = paddle.nn.Linear(
             input_size,
             5,
-            weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=2)),
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=2)
+            ),
             bias_attr=False,
         )
         self.linear2 = paddle.nn.Linear(
             5,
             5,
-            weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=2)),
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=2)
+            ),
             bias_attr=False,
         )
 

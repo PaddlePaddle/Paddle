@@ -214,12 +214,8 @@ def dyfunc_Linear(input):
 
 
 def dyfunc_Pool2D(input):
-    paddle.nn.AvgPool2D(
-        kernel_size=2, stride=1
-    )
-    pool2d = paddle.nn.AvgPool2D(
-        kernel_size=2, stride=1
-    )
+    paddle.nn.AvgPool2D(kernel_size=2, stride=1)
+    pool2d = paddle.nn.AvgPool2D(kernel_size=2, stride=1)
     res = pool2d(input)
     return res
 

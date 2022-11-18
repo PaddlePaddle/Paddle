@@ -166,9 +166,7 @@ class ResNet(fluid.dygraph.Layer):
         self.conv = ConvBNLayer(
             num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu'
         )
-        self.pool2d_max = paddle.nn.MaxPool2D(
-            kernel_size=3, stride=2
-        )
+        self.pool2d_max = paddle.nn.MaxPool2D(kernel_size=3, stride=2)
 
         self.bottleneck_block_list = []
         for block in range(len(depth)):
@@ -188,9 +186,7 @@ class ResNet(fluid.dygraph.Layer):
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
-        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(
-            output_size=(1, 1)
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(output_size=(1, 1))
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
 
@@ -212,7 +208,7 @@ class ResNet(fluid.dygraph.Layer):
         y = self.pool2d_avg(y)
         y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
         pred = self.out(y)
-        pred = paddle.nn.functional.softmax(pred) 
+        pred = paddle.nn.functional.softmax(pred)
 
         return pred
 

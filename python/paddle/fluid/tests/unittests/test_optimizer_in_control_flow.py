@@ -160,6 +160,7 @@ class DygraphLayer(fluid.dygraph.Layer):
         )
 
         self.act_2 = paddle.nn.Softmax()
+
     def forward(self, inputs):
         hidden = self.fc_1(inputs)
         prediction = self.fc_2(hidden)

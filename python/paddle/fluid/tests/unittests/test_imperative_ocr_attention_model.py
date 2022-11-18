@@ -22,7 +22,7 @@ from paddle.fluid.dygraph.nn import (
     Embedding,
     GRUUnit,
 )
-from paddle.nn import Linear 
+from paddle.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard
@@ -297,9 +297,7 @@ class SimpleAttention(fluid.dygraph.Layer):
     def __init__(self, decoder_size):
         super().__init__()
 
-        self.fc_1 = Linear(
-            decoder_size, decoder_size, bias_attr=False
-        )
+        self.fc_1 = Linear(decoder_size, decoder_size, bias_attr=False)
         self.fc_2 = Linear(decoder_size, 1, bias_attr=False)
 
     def forward(self, encoder_vec, encoder_proj, decoder_state):
@@ -346,9 +344,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
         self.gru_unit = GRUUnit(
             size=decoder_size * 3, param_attr=None, bias_attr=None
         )
-        self.out_layer = Linear(
-            decoder_size, num_classes + 2, bias_attr=None
-        )
+        self.out_layer = Linear(decoder_size, num_classes + 2, bias_attr=None)
 
         self.decoder_size = decoder_size
 

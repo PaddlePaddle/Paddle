@@ -90,7 +90,9 @@ class TestLayer(LayerTest):
                 self.linear1 = paddle.nn.Linear(
                     input_size, linear1_size, bias_attr=False
                 )
-                self.linear2 = paddle.nn.Linear(linear1_size, 1, bias_attr=False)
+                self.linear2 = paddle.nn.Linear(
+                    linear1_size, 1, bias_attr=False
+                )
 
             def forward(self, x, do_linear2=False):
                 ret = self.linear1(x)
@@ -1701,7 +1703,9 @@ class TestLayer(LayerTest):
             images = layers.data(
                 name='pixel', shape=[3, 6, 6, 6], dtype='float32'
             )
-            conv3d = paddle.nn.Conv3D(in_channels=3, out_channels=3, kernel_size=2)
+            conv3d = paddle.nn.Conv3D(
+                in_channels=3, out_channels=3, kernel_size=2
+            )
             ret = conv3d(images)
             static_ret2 = self.get_static_graph_result(
                 feed={'pixel': np.ones([2, 3, 6, 6, 6], dtype='float32')},
@@ -1711,12 +1715,16 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 images = np.ones([2, 3, 6, 6, 6], dtype='float32')
-                conv3d = paddle.nn.Conv3D(in_channels=3, out_channels=3, kernel_size=2)
+                conv3d = paddle.nn.Conv3D(
+                    in_channels=3, out_channels=3, kernel_size=2
+                )
                 dy_eager_ret = conv3d(base.to_variable(images))
                 dy_eager_rlt_value = dy_eager_ret.numpy()
 
             images = np.ones([2, 3, 6, 6, 6], dtype='float32')
-            conv3d = paddle.nn.Conv3D(in_channels=3, out_channels=3, kernel_size=2)
+            conv3d = paddle.nn.Conv3D(
+                in_channels=3, out_channels=3, kernel_size=2
+            )
             dy_ret = conv3d(base.to_variable(images))
             dy_rlt_value = dy_ret.numpy()
 
@@ -1778,7 +1786,9 @@ class TestLayer(LayerTest):
                     custom_weight
                 )
             )
-            conv3d1 = paddle.nn.Conv3D(in_channels=3, out_channels=3, kernel_size=2)
+            conv3d1 = paddle.nn.Conv3D(
+                in_channels=3, out_channels=3, kernel_size=2
+            )
             conv3d2 = paddle.nn.Conv3D(
                 in_channels=3,
                 out_channels=3,

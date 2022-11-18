@@ -15,11 +15,9 @@
 import unittest
 import numpy as np
 
-import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -1458,7 +1456,6 @@ class TestPool2DAPI_Error(unittest.TestCase):
             )
 
         self.assertRaises(ValueError, run_5)
-
 
 
 if __name__ == '__main__':

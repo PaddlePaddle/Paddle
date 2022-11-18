@@ -86,9 +86,7 @@ class CNN(fluid.dygraph.Layer):
             self.fc_hid_dim,
         )
         self._fc1_act = paddle.nn.Softmax()
-        self._fc_prediction = Linear(
-            self.fc_hid_dim, self.class_dim
-        )
+        self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
 
     @declarative
     def forward(self, inputs, label=None):
@@ -128,15 +126,9 @@ class BOW(fluid.dygraph.Layer):
             dtype='float32',
             is_sparse=False,
         )
-        self._fc1 = Linear(
-            self.hid_dim, self.hid_dim
-        )
-        self._fc2 = Linear(
-            self.hid_dim, self.fc_hid_dim
-        )
-        self._fc_prediction = Linear(
-            self.fc_hid_dim, self.class_dim
-        )
+        self._fc1 = Linear(self.hid_dim, self.hid_dim)
+        self._fc2 = Linear(self.hid_dim, self.fc_hid_dim)
+        self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
 
     @declarative
     def forward(self, inputs, label=None):
@@ -181,12 +173,8 @@ class GRU(fluid.dygraph.Layer):
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
         h_0 = to_variable(h_0)
         self._fc1 = Linear(self.hid_dim, self.hid_dim * 3)
-        self._fc2 = Linear(
-            self.hid_dim, self.fc_hid_dim
-        )
-        self._fc_prediction = Linear(
-            self.fc_hid_dim, self.class_dim
-        )
+        self._fc2 = Linear(self.hid_dim, self.fc_hid_dim)
+        self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
         self._gru = DynamicGRU(size=self.hid_dim, h_0=h_0)
 
     @declarative
@@ -233,12 +221,8 @@ class BiGRU(fluid.dygraph.Layer):
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
         h_0 = to_variable(h_0)
         self._fc1 = Linear(self.hid_dim, self.hid_dim * 3)
-        self._fc2 = Linear(
-            self.hid_dim * 2, self.fc_hid_dim
-        )
-        self._fc_prediction = Linear(
-            self.fc_hid_dim, self.class_dim
-        )
+        self._fc2 = Linear(self.hid_dim * 2, self.fc_hid_dim)
+        self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
         self._gru_forward = DynamicGRU(
             size=self.hid_dim, h_0=h_0, is_reverse=False
         )

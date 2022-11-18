@@ -159,7 +159,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def tearDown(self):
         cmd = 'rm -rf post_training_quantization'
         os.system(cmd)
-        pass
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):

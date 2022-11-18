@@ -18,7 +18,6 @@ import itertools
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.dygraph.nn as nn
 from paddle.fluid.dygraph import to_variable, Layer
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 

@@ -103,7 +103,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
 
         super().__init__()
         self._num_channels = num_channels
-        self._pool = paddle.nn.AdaptiveAvgPool2D(output_size(1, 1)) 
+        self._pool = paddle.nn.AdaptiveAvgPool2D(output_size(1, 1))
         self._squeeze = paddle.nn.Linear(
             num_channels,
             num_channels // reduction_ratio,
@@ -121,6 +121,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
         )
 
         self.act_2 = paddle.nn.Softmax()
+
     def forward(self, input):
         y = self._pool(input)
         y = fluid.layers.reshape(y, shape=[-1, self._num_channels])
@@ -219,9 +220,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = paddle.nn.MaxPool2D(
-                kernel_size=3, stride=2, padding=1
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
         elif layers == 101:
             cardinality = 32
             reduction_ratio = 16
@@ -234,9 +233,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=2,
                 act='relu',
             )
-            self.pool = paddle.nn.MaxPool2D(
-                kernel_size=3, stride=2, padding=1
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
         elif layers == 152:
             cardinality = 64
             reduction_ratio = 16
@@ -263,9 +260,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 stride=1,
                 act='relu',
             )
-            self.pool = paddle.nn.MaxPool2D(
-                kernel_size=3, stride=2, padding=1
-            )
+            self.pool = paddle.nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
 
         self.bottleneck_block_list = []
         num_channels = 64

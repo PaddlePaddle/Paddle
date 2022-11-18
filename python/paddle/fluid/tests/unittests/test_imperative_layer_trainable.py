@@ -20,6 +20,7 @@ import paddle.fluid.dygraph as dygraph
 from paddle.fluid.framework import _test_eager_guard
 import paddle
 
+
 class TestImperativeLayerTrainable(unittest.TestCase):
     def func_set_trainable(self):
         with fluid.dygraph.guard():

@@ -49,8 +49,7 @@ class DMF(fluid.Layer):
             self._user_layers.append(
                 self.add_sublayer(
                     'user_layer_act_%d' % i,
-                    paddle.nn.ReLU(
-                    ),
+                    paddle.nn.ReLU(),
                 )
             )
             self._item_layers.append(
@@ -65,10 +64,10 @@ class DMF(fluid.Layer):
             self._item_layers.append(
                 self.add_sublayer(
                     'item_layer_act_%d' % i,
-                    paddle.nn.ReLU(
-                    ),
+                    paddle.nn.ReLU(),
                 )
             )
+
     def forward(self, users, items):
         users = self._user_latent(users)
         items = self._item_latent(items)
@@ -99,11 +98,9 @@ class MLP(fluid.Layer):
             self._match_layers.append(
                 self.add_sublayer(
                     'match_layer_act_%d' % i,
-                    paddle.nn.ReLU(
-                    ),
+                    paddle.nn.ReLU(),
                 )
             )
-
 
     def forward(self, users, items):
         users = self._user_latent(users)

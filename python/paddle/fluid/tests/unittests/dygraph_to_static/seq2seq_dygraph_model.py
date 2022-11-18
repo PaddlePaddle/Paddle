@@ -169,8 +169,11 @@ class BaseModel(fluid.dygraph.Layer):
         self.fc = paddle.nn.Linear(
             self.hidden_size,
             self.tar_vocab_size,
-            weight_attr=paddle.ParamAttr(initializer=
-                paddle.nn.initializer.Uniform(low=-self.init_scale, high=self.init_scale)),
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                )
+            ),
             bias_attr=False,
         )
 
@@ -621,8 +624,10 @@ class AttentionModel(fluid.dygraph.Layer):
             self.hidden_size,
             weight_attr=paddle.ParamAttr(
                 name="self_attn_fc",
-                initializer=
-                paddle.nn.initializer.Uniform(low=-self.init_scale, high=self.init_scale)),
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                ),
+            ),
             bias_attr=False,
         )
 
@@ -631,8 +636,9 @@ class AttentionModel(fluid.dygraph.Layer):
             self.hidden_size,
             weight_attr=paddle.ParamAttr(
                 name="self_concat_fc",
-                initializer=
-                paddle.nn.initializer.Uniform(low=-self.init_scale, high=self.init_scale)),
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                ),
             ),
             bias_attr=False,
         )
@@ -641,9 +647,10 @@ class AttentionModel(fluid.dygraph.Layer):
             self.hidden_size,
             self.tar_vocab_size,
             weight_attr=paddle.ParamAttr(
-                name="self_fc", 
-                initializer=
-                paddle.nn.initializer.Uniform(low=-self.init_scale, high=self.init_scale)),
+                name="self_fc",
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-self.init_scale, high=self.init_scale
+                ),
             ),
             bias_attr=False,
         )
