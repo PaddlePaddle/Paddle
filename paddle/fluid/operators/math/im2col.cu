@@ -17,8 +17,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -466,8 +466,7 @@ __global__ void col2imOCF(const T* col_data,
 
         if (height_offset >= 0 && height_offset < im_height &&
             width_offset >= 0 && width_offset < im_width) {
-          paddle::platform::CudaAtomicAdd(im_data + im_offset,
-                                          col_data[col_offset]);
+          phi::CudaAtomicAdd(im_data + im_offset, col_data[col_offset]);
         }
       }
     }

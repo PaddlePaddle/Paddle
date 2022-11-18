@@ -614,7 +614,7 @@ class TestLayer(LayerTest):
             t6 = layers.data(name='t6', shape=[3, 3], dtype='float32')
 
             ret = layers.elementwise_add(t, t2)
-            ret = layers.elementwise_pow(ret, t3)
+            ret = paddle.pow(ret, t3)
             ret = layers.elementwise_div(ret, t4)
             ret = layers.elementwise_sub(ret, t5)
             ret = layers.elementwise_mul(ret, t6)
@@ -627,14 +627,14 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 ret = layers.elementwise_add(to_variable(n), to_variable(n2))
-                ret = layers.elementwise_pow(ret, to_variable(n3))
+                ret = paddle.pow(ret, to_variable(n3))
                 ret = layers.elementwise_div(ret, to_variable(n4))
                 ret = layers.elementwise_sub(ret, to_variable(n5))
                 dy_eager_ret = layers.elementwise_mul(ret, to_variable(n6))
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
             ret = layers.elementwise_add(to_variable(n), to_variable(n2))
-            ret = layers.elementwise_pow(ret, to_variable(n3))
+            ret = paddle.pow(ret, to_variable(n3))
             ret = layers.elementwise_div(ret, to_variable(n4))
             ret = layers.elementwise_sub(ret, to_variable(n5))
             dy_ret = layers.elementwise_mul(ret, to_variable(n6))
@@ -3240,7 +3240,9 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             theta = self._get_data("theta", shape=[2, 3], dtype='float32')
-            x = fluid.layers.affine_grid(theta, out_shape=[2, 3, 244, 244])
+            x = paddle.nn.functional.affine_grid(
+                theta, out_shape=[2, 3, 244, 244]
+            )
             return layers.pool2d(
                 x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)
             )
@@ -3630,14 +3632,6 @@ class TestBook(LayerTest):
                 param_attr=ParamAttr(initializer=Constant(1.0)),
                 name='prelu',
             )
-            return out
-
-    def make_soft_relu(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.soft_relu(input, threshold=30.0, name='soft_relu')
             return out
 
     def make_sigmoid(self):
@@ -4114,8 +4108,8 @@ class TestBook(LayerTest):
 
             theta = layers.data(name="theta", shape=[2, 3], dtype="float32")
             out_shape = layers.data(name="out_shape", shape=[-1], dtype="int32")
-            data_0 = layers.affine_grid(theta, out_shape)
-            data_1 = layers.affine_grid(theta, [5, 3, 28, 28])
+            data_0 = paddle.nn.functional.affine_grid(theta, out_shape)
+            data_1 = paddle.nn.functional.affine_grid(theta, [5, 3, 28, 28])
 
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)

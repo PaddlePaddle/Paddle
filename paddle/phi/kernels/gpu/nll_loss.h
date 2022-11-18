@@ -19,10 +19,10 @@
 #include <functional>
 #include <string>
 
-#include "paddle/fluid/operators/math.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
 static constexpr int kNumCUDAThreads = 512;

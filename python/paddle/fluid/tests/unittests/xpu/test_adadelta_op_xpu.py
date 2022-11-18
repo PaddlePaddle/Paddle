@@ -18,7 +18,6 @@ import sys
 
 sys.path.append("..")
 
-from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from op_test_xpu import XPUOpTest
@@ -88,7 +87,7 @@ class XPUTestAdadelta(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output()
 
-    class TestAdadeltaOp2(OpTest):
+    class TestAdadeltaOp2(XPUOpTest):
         '''Test Adadelta op with default attribute values'''
 
         def setUp(self):

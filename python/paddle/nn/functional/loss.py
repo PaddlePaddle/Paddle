@@ -1020,17 +1020,13 @@ def hsigmoid_loss(
     if in_dygraph_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
             input,
-            weight,
             label,
+            weight,
+            bias,
             path_table,
             path_code,
-            bias,
             num_classes,
             is_sparse,
-            0,
-            [],
-            [],
-            [],
             is_sparse,
         )
         return out
