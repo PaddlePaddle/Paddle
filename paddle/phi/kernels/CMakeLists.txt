@@ -84,7 +84,9 @@ if(WITH_NCCL OR WITH_RCCL)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_nccl)
 endif()
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_comm_utils)
-
+if(WITH_CUDNN_FRONTEND)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cudnn-frontend)
+endif()
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
