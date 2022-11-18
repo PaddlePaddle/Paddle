@@ -2984,7 +2984,6 @@ class TestBook(LayerTest):
                 "make_gaussian_random_batch_size_like",
                 "make_kldiv_loss",
                 "make_prelu",
-                "make_sampled_softmax_with_cross_entropy",
                 "make_sampling_id",
                 "make_uniform_random_batch_size_like",
             }
@@ -3090,18 +3089,6 @@ class TestBook(LayerTest):
                 dtype=dtype,
                 append_batch_size=append_batch_size,
             )
-
-    def make_sampled_softmax_with_cross_entropy(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            logits = self._get_data(name='Logits', shape=[256], dtype='float32')
-            label = self._get_data(name='Label', shape=[1], dtype='int64')
-            num_samples = 25
-            output = layers.sampled_softmax_with_cross_entropy(
-                logits, label, num_samples
-            )
-            return output
 
     def make_fit_a_line(self):
         with program_guard(
@@ -3235,33 +3222,6 @@ class TestBook(LayerTest):
             ignore_index = -1
             return layers.sigmoid_cross_entropy_with_logits(
                 x=dat, label=lbl, ignore_index=ignore_index
-            )
-
-    def make_hsigmoid(self):
-        self._force_to_use_cpu = True
-        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
-            x = self._get_data(name='x', shape=[2], dtype='float32')
-            y = self._get_data(name='y', shape=[2], dtype='int64')
-            return layers.hsigmoid(input=x, label=y, num_classes=2)
-
-        # test hsigmod with custom tree structure
-        program2 = Program()
-        with program_guard(program2):
-            x2 = self._get_data(name='x2', shape=[4, 8], dtype='float32')
-            y2 = self._get_data(name='y2', shape=[4], dtype='int64')
-            path_table = self._get_data(
-                name='path_table', shape=[4, 6], dtype='int64'
-            )
-            path_code = self._get_data(
-                name='path_code', shape=[4, 6], dtype='int64'
-            )
-            return layers.hsigmoid(
-                input=x2,
-                label=y2,
-                num_classes=6,
-                path_table=path_table,
-                path_code=path_code,
-                is_custom=True,
             )
 
     def make_pool2d(self):
@@ -3613,31 +3573,6 @@ class TestBook(LayerTest):
             return out
             return ids
 
-    def make_rank_loss(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            label = self._get_data(
-                name='label',
-                append_batch_size=False,
-                shape=[16, 1],
-                dtype="float32",
-            )
-            left = self._get_data(
-                name='left',
-                append_batch_size=False,
-                shape=[16, 1],
-                dtype="float32",
-            )
-            right = self._get_data(
-                name='right',
-                append_batch_size=False,
-                shape=[16, 1],
-                dtype="float32",
-            )
-            out = layers.rank_loss(label, left, right, name="rank_loss")
-            return out
-
     def make_shape(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3825,14 +3760,6 @@ class TestBook(LayerTest):
             label = self._get_data(name="label", shape=[30, 1], dtype="int64")
             mode = 'channel'
             out = layers.cross_entropy(x, label, False, 4)
-            return out
-
-    def make_bpr_loss(self):
-        self._force_to_use_cpu = True
-        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
-            x = self._get_data(name="x", shape=[30, 10], dtype="float32")
-            label = self._get_data(name="label", shape=[30, 1], dtype="int64")
-            out = layers.bpr_loss(x, label)
             return out
 
     def make_expand(self):
