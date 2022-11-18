@@ -93,7 +93,7 @@ class OrthogonalStrategy:
         """
         assert (
             name in self._list_of_strategy_name
-        ), "Strategy group {} is not created.".format(name)
+        ), f"Strategy group {name} is not created."
         return self._name_to_group_dict[name]
 
     def fused_strategy_group(self, name):
@@ -108,7 +108,7 @@ class OrthogonalStrategy:
         """
         assert (
             name in self._name_to_fused_group_dict
-        ), "Fused strategy group {} is not created.".format(name)
+        ), f"Fused strategy group {name} is not created."
         return self._name_to_fused_group_dict[name]
 
     def rank_in_strategy(self, name):
@@ -123,7 +123,7 @@ class OrthogonalStrategy:
         """
         assert (
             name in self._list_of_strategy_name
-        ), "Strategy group {} is not created.".format(name)
+        ), f"Strategy group {name} is not created."
         return self._name_to_group_dict[name].group.rank
 
     def _check_valid_strategy(self):

@@ -90,7 +90,7 @@ class Container:
         for k, v in self._env.items():
             assert isinstance(k, str) and isinstance(
                 v, str
-            ), 'env {}:{} must be str'.format(k, v)
+            ), f'env {k}:{v} must be str'
 
     def _get_fd(self, pth):
         if not pth:

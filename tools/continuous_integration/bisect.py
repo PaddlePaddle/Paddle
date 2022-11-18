@@ -66,13 +66,13 @@ parser.add_argument(
 args = parser.parse_args()
 
 if not args.log_file:
-    args.log_file = '/tmp/{}...{}.log'.format(args.good_commit, args.bad_commit)
+    args.log_file = f'/tmp/{args.good_commit}...{args.bad_commit}.log'
 
 
 def print_arguments():
     print('-----------  Configuration Arguments -----------')
     for arg, value in sorted(vars(args).iteritems()):
-        print('{}: {}'.format(arg, value))
+        print(f'{arg}: {value}')
     print('------------------------------------------------')
 
 
@@ -128,7 +128,7 @@ while True:
     try:
         subprocess.check_output([cmd], shell=True)
     except subprocess.CalledProcessError as e:
-        sys.stderr.write('failed to build commit: {}\n{}\n'.format(pick, e))
+        sys.stderr.write(f'failed to build commit: {pick}\n{e}\n')
         exit()
     # test the selected branch.
     passed = True
@@ -143,7 +143,7 @@ while True:
     except subprocess.CalledProcessError as e:
         passed = False
         last_culprit = pick
-    sys.stdout.write('eval {} passed: {}\n'.format(pick, passed))
+    sys.stdout.write(f'eval {pick} passed: {passed}\n')
     if passed:
         if pick_idx == 0:
             break

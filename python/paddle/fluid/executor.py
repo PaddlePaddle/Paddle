@@ -402,7 +402,7 @@ def _add_feed_fetch_ops(
         for i, var in enumerate(fetch_list):
             assert isinstance(var, Variable) or isinstance(
                 var, str
-            ), "Wrong type for fetch_list[{}]: {}".format(i, type(var))
+            ), f"Wrong type for fetch_list[{i}]: {type(var)}"
             global_block.append_op(
                 type=fetch_op,
                 inputs={'X': [var]},
@@ -629,7 +629,7 @@ class FetchHandler:
     def handler(self, res_dict):
         for key in res_dict:
             if type(res_dict[key]) is np.ndarray:
-                sys.stdout.write("{}[0]: {} ".format(key, res_dict[key][0]))
+                sys.stdout.write(f"{key}[0]: {res_dict[key][0]} ")
         sys.stdout.write("\n")
 
     @staticmethod
@@ -2722,7 +2722,7 @@ class Executor:
             for i, var in enumerate(fetch_list):
                 assert isinstance(var, Variable) or isinstance(
                     var, str
-                ), "Wrong type for fetch_list[{}]: {}".format(i, type(var))
+                ), f"Wrong type for fetch_list[{i}]: {type(var)}"
                 global_block.append_op(
                     type=fetch_op,
                     inputs={'X': [var]},

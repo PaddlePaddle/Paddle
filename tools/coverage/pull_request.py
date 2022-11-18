@@ -53,7 +53,7 @@ def get_files(args):
     pull = get_pull(args.pull_id)
 
     for file in pull.get_files():
-        print('/paddle/{}'.format(file.filename))
+        print(f'/paddle/{file.filename}')
 
 
 def diff(args):
@@ -68,7 +68,7 @@ def diff(args):
     pull = get_pull(args.pull_id)
 
     for file in pull.get_files():
-        print('+++ {}'.format(file.filename))
+        print(f'+++ {file.filename}')
         print(file.patch)
 
 

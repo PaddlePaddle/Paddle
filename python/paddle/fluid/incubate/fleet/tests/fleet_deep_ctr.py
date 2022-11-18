@@ -209,7 +209,7 @@ def train(args):
         dataset.set_thread(thread_num)
 
         for epoch_id in range(10):
-            logger.info("epoch {} start".format(epoch_id))
+            logger.info(f"epoch {epoch_id} start")
             pass_start = time.time()
             dataset.set_filelist(filelist)
             exe.train_from_dataset(
@@ -221,9 +221,7 @@ def train(args):
                 debug=False,
             )
             pass_time = time.time() - pass_start
-            logger.info(
-                "epoch {} finished, pass_time {}".format(epoch_id, pass_time)
-            )
+            logger.info(f"epoch {epoch_id} finished, pass_time {pass_time}")
         fleet.stop_worker()
 
 

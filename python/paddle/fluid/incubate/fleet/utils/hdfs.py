@@ -102,7 +102,7 @@ class HDFSClient(FS):
 
         if configs:
             for k, v in configs.items():
-                config_command = '-D{}={}'.format(k, v)
+                config_command = f'-D{k}={v}'
                 self.pre_commands.append(config_command)
 
         self._time_out = time_out
@@ -113,7 +113,7 @@ class HDFSClient(FS):
         )
 
     def _run_cmd(self, cmd, redirect_stderr=False):
-        exe_cmd = "{} -{}".format(self._base_cmd, cmd)
+        exe_cmd = f"{self._base_cmd} -{cmd}"
         ret, output = core.shell_execute_cmd(exe_cmd, 0, 0, redirect_stderr)
         ret = int(ret)
         if ret == 134:
@@ -139,7 +139,7 @@ class HDFSClient(FS):
         return self._ls_dir(fs_path)
 
     def _ls_dir(self, fs_path):
-        cmd = "ls {}".format(fs_path)
+        cmd = f"ls {fs_path}"
         ret, lines = self._run_cmd(cmd)
 
         if ret != 0:
@@ -176,7 +176,7 @@ class HDFSClient(FS):
         return self._is_dir(fs_path)
 
     def _is_dir(self, fs_path):
-        cmd = "test -d {}".format(fs_path, redirect_stderr=True)
+        cmd = f"test -d {fs_path}"
         ret, lines = self._run_cmd(cmd)
         if ret:
             # other error
@@ -195,7 +195,7 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def is_exist(self, fs_path):
-        cmd = "ls {} ".format(fs_path)
+        cmd = f"ls {fs_path} "
         ret, out = self._run_cmd(cmd, redirect_stderr=True)
         if ret != 0:
             for l in out:
@@ -208,17 +208,17 @@ class HDFSClient(FS):
     # can't retry
     def upload(self, local_path, fs_path):
         if self.is_exist(fs_path):
-            raise FSFileExistsError("{} exists".format(fs_path))
+            raise FSFileExistsError(f"{fs_path} exists")
 
         local = LocalFS()
         if not local.is_exist(local_path):
-            raise FSFileNotExistsError("{} not exists".format(local_path))
+            raise FSFileNotExistsError(f"{local_path} not exists")
 
         return self._try_upload(local_path, fs_path)
 
     @_handle_errors()
     def _try_upload(self, local_path, fs_path):
-        cmd = "put {} {}".format(local_path, fs_path)
+        cmd = f"put {local_path} {fs_path}"
         ret = 0
         try:
             ret, lines = self._run_cmd(cmd)
@@ -231,16 +231,16 @@ class HDFSClient(FS):
     # can't retry
     def download(self, fs_path, local_path):
         if self.is_exist(local_path):
-            raise FSFileExistsError("{} exists".format(local_path))
+            raise FSFileExistsError(f"{local_path} exists")
 
         if not self.is_exist(fs_path):
-            raise FSFileNotExistsError("{} not exits".format(fs_path))
+            raise FSFileNotExistsError(f"{fs_path} not exits")
 
         return self._try_download(fs_path, local_path)
 
     @_handle_errors()
     def _try_download(self, fs_path, local_path):
-        cmd = "get {} {}".format(fs_path, local_path)
+        cmd = f"get {fs_path} {local_path}"
         ret = 0
         try:
             ret, lines = self._run_cmd(cmd)
@@ -258,7 +258,7 @@ class HDFSClient(FS):
 
         out_hdfs = False
 
-        cmd = "mkdir {} ".format(fs_path)
+        cmd = f"mkdir {fs_path} "
         ret, out = self._run_cmd(cmd, redirect_stderr=True)
         if ret != 0:
             for l in out:
@@ -269,7 +269,7 @@ class HDFSClient(FS):
                 raise ExecuteError(cmd)
 
         if out_hdfs and not self.is_exist(fs_path):
-            cmd = "mkdir -p {}".format(fs_path)
+            cmd = f"mkdir -p {fs_path}"
             ret, lines = self._run_cmd(cmd)
             if ret != 0:
                 raise ExecuteError(cmd)
@@ -280,18 +280,16 @@ class HDFSClient(FS):
 
         if test_exists:
             if not self.is_exist(fs_src_path):
-                raise FSFileNotExistsError(
-                    "{} is not exists".format(fs_src_path)
-                )
+                raise FSFileNotExistsError(f"{fs_src_path} is not exists")
 
             if self.is_exist(fs_dst_path):
-                raise FSFileExistsError("{} exists already".format(fs_dst_path))
+                raise FSFileExistsError(f"{fs_dst_path} exists already")
 
         return self._try_mv(fs_src_path, fs_dst_path)
 
     @_handle_errors()
     def _try_mv(self, fs_src_path, fs_dst_path):
-        cmd = "mv {} {}".format(fs_src_path, fs_dst_path)
+        cmd = f"mv {fs_src_path} {fs_dst_path}"
         ret = 0
         try:
             ret, _ = self._run_cmd(cmd)
@@ -303,13 +301,13 @@ class HDFSClient(FS):
             raise e
 
     def _rmr(self, fs_path):
-        cmd = "rmr {}".format(fs_path)
+        cmd = f"rmr {fs_path}"
         ret, _ = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError(cmd)
 
     def _rm(self, fs_path):
-        cmd = "rm {}".format(fs_path)
+        cmd = f"rm {fs_path}"
         ret, _ = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError(cmd)
@@ -335,7 +333,7 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def _touchz(self, fs_path):
-        cmd = "touchz {}".format(fs_path)
+        cmd = f"touchz {fs_path}"
         ret, _ = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError

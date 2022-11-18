@@ -94,7 +94,7 @@ def set_config(config=None):
             with open(config) as filehandle:
                 config_dict = json.load(filehandle)
         except Exception as e:
-            print('Load config error: {}'.format(e))
+            print(f'Load config error: {e}')
             warnings.warn("Use default configuration for auto-tuning.")
 
     if "kernel" in config_dict:

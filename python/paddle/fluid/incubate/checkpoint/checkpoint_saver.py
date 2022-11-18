@@ -78,8 +78,8 @@ class CheckpointSaver:
             max_no = -1
         max_no += 1
 
-        real_path = "{}/{}.{}".format(path, self._checkpoint_prefix, max_no)
-        tmp_path = "{}.tmp".format(real_path)
+        real_path = f"{path}/{self._checkpoint_prefix}.{max_no}"
+        tmp_path = f"{real_path}.tmp"
         saved_path = tmp_path
 
         from paddle.distributed.fleet.utils.fs import LocalFS
@@ -93,14 +93,14 @@ class CheckpointSaver:
             )
 
             if trainer_id is not None:
-                cache_path = "{}.{}".format(cache_path, trainer_id)
+                cache_path = f"{cache_path}.{trainer_id}"
 
             if not local_fs.is_exist(cache_path):
                 local_fs.mkdirs(cache_path)
             else:
                 assert local_fs.is_dir(
                     cache_path
-                ), "cache path:{} must be a directory".format(cache_path)
+                ), f"cache path:{cache_path} must be a directory"
 
             saved_path = cache_path
 
@@ -151,7 +151,7 @@ class CheckpointSaver:
             )
 
             if trainer_id is not None:
-                cache_path = "{}.{}".format(cache_path, trainer_id)
+                cache_path = f"{cache_path}.{trainer_id}"
 
             if not local_fs.is_exist(local_cache_path):
                 local_fs.mkdirs(local_cache_path)

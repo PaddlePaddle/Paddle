@@ -197,7 +197,7 @@ def run_shell_command(cmd):
 def get_dso_path(core_so, dso_name):
     if core_so and dso_name:
         return run_shell_command(
-            "ldd {}|grep {}|awk '{{print $3}}'".format(core_so, dso_name)
+            f"ldd {core_so}|grep {dso_name}|awk '{{print $3}}'"
         )
     else:
         return None
@@ -210,7 +210,7 @@ def load_dso(dso_absolute_path):
 
             cdll.LoadLibrary(dso_absolute_path)
         except:
-            warnings.warn("Load {} failed".format(dso_absolute_path))
+            warnings.warn(f"Load {dso_absolute_path} failed")
 
 
 def pre_load(dso_name):

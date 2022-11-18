@@ -7731,7 +7731,7 @@ def image_resize(
 
     if out_shape is None and scale is None:
         raise ValueError("One of out_shape and scale must not be None.")
-    helper = LayerHelper('{}_interp'.format(resample_type), **locals())
+    helper = LayerHelper(f'{resample_type}_interp', **locals())
     dtype = helper.input_dtype()
 
     if len(input.shape) == 3 and data_format not in ['NCW', 'NWC']:
@@ -7902,7 +7902,7 @@ def image_resize(
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
-        type='{}_interp'.format(resample_type),
+        type=f'{resample_type}_interp',
         inputs=inputs,
         outputs={"Out": out},
         attrs=attrs,
@@ -11521,8 +11521,8 @@ def _elementwise_op(helper):
     x = helper.kwargs.get('x', None)
     y = helper.kwargs.get('y', None)
 
-    assert x is not None, 'x cannot be None in {}'.format(op_type)
-    assert y is not None, 'y cannot be None in {}'.format(op_type)
+    assert x is not None, f'x cannot be None in {op_type}'
+    assert y is not None, f'y cannot be None in {op_type}'
     check_variable_and_dtype(
         x,
         'x',

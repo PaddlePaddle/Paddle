@@ -565,12 +565,12 @@ class OperatorDistributedAttribute:
         )
 
         for arg_name, tensor_dist_attr in self.inputs_dist_attrs.items():
-            str += "\n\t\t{}'s (input): {},".format(arg_name, tensor_dist_attr)
+            str += f"\n\t\t{arg_name}'s (input): {tensor_dist_attr},"
 
         for arg_name, tensor_dist_attr in self.outputs_dist_attrs.items():
-            str += "\n\t\t{}'s (output): {},".format(arg_name, tensor_dist_attr)
+            str += f"\n\t\t{arg_name}'s (output): {tensor_dist_attr},"
 
-        str += "\n\t\timpl type: {}, ".format(self._impl_type)
-        str += "impl idx: {}".format(self._impl_idx)
+        str += f"\n\t\timpl type: {self._impl_type}, "
+        str += f"impl idx: {self._impl_idx}"
         str += "\n\t}"
         return str

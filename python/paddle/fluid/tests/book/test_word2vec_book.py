@@ -160,7 +160,7 @@ def train(
                 if math.isnan(float(avg_cost_np[0])):
                     sys.exit("got NaN loss, training failed.")
 
-        raise AssertionError("Cost is too large {:2.2}".format(avg_cost_np[0]))
+        raise AssertionError(f"Cost is too large {avg_cost_np[0]:2.2}")
 
     if is_local:
         train_loop(fluid.default_main_program())
@@ -277,7 +277,7 @@ def infer(target, save_dirname=None):
         np_data = np.array(results[0])
         infer_out = infer_outputs[0].data.float_data()
         for a, b in zip(np_data[0], infer_out):
-            assert np.isclose(a, b, rtol=5e-5), "a: {}, b: {}".format(a, b)
+            assert np.isclose(a, b, rtol=5e-5), f"a: {a}, b: {b}"
 
 
 def main(target, is_sparse, is_parallel, use_bf16, pure_bf16):

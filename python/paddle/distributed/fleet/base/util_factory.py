@@ -380,7 +380,7 @@ class UtilBase:
         ]
         pruned_vars = OrderedDict(pruned_vars)
         pruned_vars_name = [name for name in pruned_vars]
-        print("persistable vars in pruned program: {}".format(pruned_vars_name))
+        print(f"persistable vars in pruned program: {pruned_vars_name}")
 
         # feed and fetch op is added in pruned program when pruning, not need to be found in train program
         feed_fetch_type_list = [
@@ -683,5 +683,5 @@ class UtilBase:
                 )
             for i, v in enumerate(fetch_list):
                 print("fetch_targets name: %s" % v.name)
-                print("fetch_targets: {}".format(results[i]))
+                print(f"fetch_targets: {results[i]}")
             return results

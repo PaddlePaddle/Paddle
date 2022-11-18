@@ -138,7 +138,7 @@ class DistributedOperator:
                         tensor_name, tensor_dist_attr
                     )
         else:
-            assert False, "Cannot recognize the {} parameter.".format(dist_attr)
+            assert False, f"Cannot recognize the {dist_attr} parameter."
         return new_dist_attr
 
     def validate_dist_attr(self):
@@ -235,7 +235,7 @@ class DistributedOperator:
                 arg_name, annotated_str, is_parameter_str, dims_mapping
             )
 
-        str += ", pipeline stage: {}".format(None)
+        str += f", pipeline stage: {None}"
 
         str += ", dist_impl idx: {} , dist_impl type {} }}".format(
             self.dist_attr._impl_idx, self.dist_attr._impl_type

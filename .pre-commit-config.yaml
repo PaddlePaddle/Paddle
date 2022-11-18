@@ -86,6 +86,7 @@ repos:
     rev: v3.2.2
     hooks:
     -   id: pyupgrade
+        args: ["--py36-plus"]
 # For C++ files
 -   repo: local
     hooks:

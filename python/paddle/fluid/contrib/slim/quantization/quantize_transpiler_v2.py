@@ -298,13 +298,13 @@ class QuantizeTranspilerV2:
         """
         quant_dequant_var = block.create_var(
             type=in_var.type,
-            name="{}.quant_dequant".format(in_var.name),
+            name=f"{in_var.name}.quant_dequant",
             shape=in_var.shape,
             dtype=in_var.dtype,
         )
         scale_var = self._helper.create_parameter(
             attr=ParamAttr(
-                name="{}.quant_dequant.scale".format(in_var.name),
+                name=f"{in_var.name}.quant_dequant.scale",
                 initializer=Constant(0.0),
                 trainable=False,
             ),
@@ -331,14 +331,14 @@ class QuantizeTranspilerV2:
         """
         quant_dequant_var = block.create_var(
             type=in_var.type,
-            name="{}.quant_dequant".format(in_var.name),
+            name=f"{in_var.name}.quant_dequant",
             shape=in_var.shape,
             dtype=in_var.dtype,
         )
 
         scale_var = self._helper.create_parameter(
             attr=ParamAttr(
-                name="{}.quant_dequant.scale".format(in_var.name),
+                name=f"{in_var.name}.quant_dequant.scale",
                 initializer=Constant(0.0),
                 trainable=False,
             ),
@@ -350,7 +350,7 @@ class QuantizeTranspilerV2:
         if not is_test:
             state_var = self._helper.create_parameter(
                 attr=ParamAttr(
-                    name="{}.quant_dequant.state".format(in_var.name),
+                    name=f"{in_var.name}.quant_dequant.state",
                     initializer=Constant(0),
                     trainable=False,
                 ),
@@ -361,7 +361,7 @@ class QuantizeTranspilerV2:
 
             accum_var = self._helper.create_parameter(
                 attr=ParamAttr(
-                    name="{}.quant_dequant.accum".format(in_var.name),
+                    name=f"{in_var.name}.quant_dequant.accum",
                     initializer=Constant(0),
                     trainable=False,
                 ),
@@ -398,14 +398,14 @@ class QuantizeTranspilerV2:
         """
         quant_dequant_var = block.create_var(
             type=in_var.type,
-            name="{}.quant_dequant".format(in_var.name),
+            name=f"{in_var.name}.quant_dequant",
             shape=in_var.shape,
             dtype=in_var.dtype,
         )
 
         scale_var = self._helper.create_parameter(
             attr=ParamAttr(
-                name="{}.quant_dequant.scale".format(in_var.name),
+                name=f"{in_var.name}.quant_dequant.scale",
                 initializer=Constant(0.0),
                 trainable=False,
             ),
@@ -434,7 +434,7 @@ class QuantizeTranspilerV2:
         """
         scale_var = self._helper.create_parameter(
             attr=ParamAttr(
-                name="{}.outscale.scale".format(in_var.name),
+                name=f"{in_var.name}.outscale.scale",
                 initializer=Constant(0.0),
                 trainable=False,
             ),
@@ -450,7 +450,7 @@ class QuantizeTranspilerV2:
         if not is_test:
             state_var = self._helper.create_parameter(
                 attr=ParamAttr(
-                    name="{}.outscale.state".format(in_var.name),
+                    name=f"{in_var.name}.outscale.state",
                     initializer=Constant(0),
                     trainable=False,
                 ),
@@ -461,7 +461,7 @@ class QuantizeTranspilerV2:
 
             accum_var = self._helper.create_parameter(
                 attr=ParamAttr(
-                    name="{}.outscale.accum".format(in_var.name),
+                    name=f"{in_var.name}.outscale.accum",
                     initializer=Constant(0),
                     trainable=False,
                 ),
@@ -478,7 +478,7 @@ class QuantizeTranspilerV2:
         if has_out_var:
             out_var = block.create_var(
                 type=in_var.type,
-                name="{}.tmp".format(in_var.name),
+                name=f"{in_var.name}.tmp",
                 shape=in_var.shape,
                 dtype=in_var.dtype,
             )

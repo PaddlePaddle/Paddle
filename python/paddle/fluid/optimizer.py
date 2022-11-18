@@ -334,7 +334,7 @@ class Optimizer:
                 load_para_np = load_para
             else:
                 raise RuntimeError(
-                    "State dict type {} not supprt".format(str(type(load_para)))
+                    f"State dict type {str(type(load_para))} not supprt"
                 )
 
             assert (
@@ -356,13 +356,13 @@ class Optimizer:
             for para_name, var_tmp in v.items():
                 assert (
                     var_tmp.name in state_dict
-                ), "optimizer variable {} not found".format(var_tmp.name)
+                ), f"optimizer variable {var_tmp.name} not found"
                 _load_state_para(state_dict, var_tmp)
 
         for k, v in self._global_accumulators.items():
             assert (
                 v.name in state_dict
-            ), "optimizer variable {} not found".format(v.name)
+            ), f"optimizer variable {v.name} not found"
             _load_state_para(state_dict, v)
 
     # [aliases] Compatible with old method names
@@ -769,7 +769,7 @@ class Optimizer:
         if name in self._global_accumulators:
             if framework._non_static_mode():
                 return self._global_accumulators[name]
-            raise Exception("Global accumulator {} already exists".format(name))
+            raise Exception(f"Global accumulator {name} already exists")
         if shape is None:
             shape = [1]  # most case, global accumulator is of shape [1]
         assert isinstance(self.helper, LayerHelper)
@@ -840,7 +840,7 @@ class Optimizer:
         if self._name is not None:
             name = self._name + "_" + name
         if name not in self._global_accumulators:
-            raise Exception("Global accumulator {} does not exist".format(name))
+            raise Exception(f"Global accumulator {name} does not exist")
         return self._global_accumulators[name]
 
     def _update_param_device_map(self, parameters_and_grads, target_block):
@@ -5506,7 +5506,7 @@ class PipelineOptimizer:
                 )
             assert op.has_attr(
                 self._op_role_key
-            ), "op ({}) has no {} attribute.".format(op.type, self._op_role_key)
+            ), f"op ({op.type}) has no {self._op_role_key} attribute."
             op_role = op.attr(self._op_role_key)
             assert (
                 int(op_role) in valid_op_role_value
@@ -6085,7 +6085,7 @@ class PipelineOptimizer:
             grad_segment = grad_param_segment[0]
             merged_grad_segment = grad_param_segment[2]
             fused_grad = main_block.create_var(
-                name='FusedGrad_{}'.format(grad_segment[0].name),
+                name=f'FusedGrad_{grad_segment[0].name}',
                 dtype=grad_segment[0].dtype,
                 persistable=False,
                 stop_gradient=False,
@@ -6098,7 +6098,7 @@ class PipelineOptimizer:
             )
             fused_merged_grad_name = (
                 fused_merged_grad_name_prefix
-                + '_{}'.format(merged_grad_segment[0].name)
+                + f'_{merged_grad_segment[0].name}'
             )
             fused_merged_grad = main_block.create_var(
                 name=fused_merged_grad_name,
@@ -6617,7 +6617,7 @@ class PipelineOptimizer:
                     continue
                 insert_index = backward_insert_index
             else:
-                raise ValueError("Unknown op_role: {}".format(op_role))
+                raise ValueError(f"Unknown op_role: {op_role}")
             op_inputs = dict()
             for name in op.input_names:
                 op_inputs[name] = op.input(name)
@@ -6692,7 +6692,7 @@ class PipelineOptimizer:
         for key in required_keys:
             assert (
                 key in pipeline_opt
-            ), 'Please use pipeline with fleet to use {}.'.format(key)
+            ), f'Please use pipeline with fleet to use {key}.'
         self.local_rank = pipeline_opt['local_rank']
         self.schedule_mode = pipeline_opt['schedule_mode']
         self.micro_batch_size = pipeline_opt['micro_batch_size']
@@ -7108,7 +7108,7 @@ class RecomputeOptimizer(Optimizer):
             len(self.un_fetch_checkpoint_names) > 0
         ), "Could NOT found checkpoint to fetch"
         checkpoint_name = self.un_fetch_checkpoint_names.pop(-1)
-        logging.debug("Record fetch [{}]".format(checkpoint_name))
+        logging.debug(f"Record fetch [{checkpoint_name}]")
         self.idx2insertions[idx] = ("fetch", checkpoint_name)
 
         return checkpoint_name
@@ -7120,15 +7120,15 @@ class RecomputeOptimizer(Optimizer):
         ), "expected to offload [{}] but got [{}]".format(
             expected_checkpoint_name, checkpoint_name
         )
-        logging.debug("Record offload [{}]".format(checkpoint_name))
+        logging.debug(f"Record offload [{checkpoint_name}]")
         self.idx2insertions[idx] = ("offload", checkpoint_name)
 
     def _record_sync_op(self, idx, checkpoint_name):
         assert (
             checkpoint_name not in self.synced_checkpoints
-        ), "Try to sync the checkpoint [{}] twice".format(checkpoint_name)
+        ), f"Try to sync the checkpoint [{checkpoint_name}] twice"
         self.synced_checkpoints.add(checkpoint_name)
-        logging.debug("Record offload sync [{}]".format(checkpoint_name))
+        logging.debug(f"Record offload sync [{checkpoint_name}]")
         self.idx2insertions[idx] = ("sync", checkpoint_name)
 
     def _parse_backward(self):
@@ -7211,13 +7211,11 @@ class RecomputeOptimizer(Optimizer):
                 operation, checkpoint_name = self.idx2insertions[op_idx]
                 if operation == "fetch":
                     self._insert_fetch_op(op_idx, checkpoint_name)
-                    logging.debug(
-                        "Insert [{}] fetch op.".format(checkpoint_name)
-                    )
+                    logging.debug(f"Insert [{checkpoint_name}] fetch op.")
                     del self.idx2insertions[op_idx]
                 elif operation == "sync":
                     self._insert_sync_op(op_idx, checkpoint_name)
-                    logging.debug("Sync [{}] fetch op.".format(checkpoint_name))
+                    logging.debug(f"Sync [{checkpoint_name}] fetch op.")
         self.block._sync_with_cpp()
         assert (
             len(self.idx2insertions) == 0
@@ -7341,7 +7339,7 @@ class RecomputeOptimizer(Optimizer):
                 if input_var in need_offload_checkpoint_names:
                     assert (
                         input_var not in self.synced_checkpoints
-                    ), "checkpoint [{}] used after sync".format(input_var)
+                    ), f"checkpoint [{input_var}] used after sync"
                     self.checkpoint_usage_count_and_idx[input_var]['count'] += 1
                     self.checkpoint_usage_count_and_idx[input_var]['idx'] = idx
 
@@ -7366,14 +7364,12 @@ class RecomputeOptimizer(Optimizer):
                 operation, checkpoint_name = self.idx2insertions[op_idx]
                 if operation == "offload":
                     self._insert_offload_op(op_idx, checkpoint_name)
-                    logging.debug(
-                        "Insert [{}] offload op.".format(checkpoint_name)
-                    )
+                    logging.debug(f"Insert [{checkpoint_name}] offload op.")
                     del self.idx2insertions[op_idx]
                 elif operation == "sync":
                     self._insert_sync_op(op_idx, checkpoint_name)
                     logging.debug(
-                        "Insert [{}] offload_sync op.".format(checkpoint_name)
+                        f"Insert [{checkpoint_name}] offload_sync op."
                     )
                     del self.idx2insertions[op_idx]
 

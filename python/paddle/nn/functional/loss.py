@@ -1463,9 +1463,7 @@ def nll_loss(
     input_shape = list(input.shape)
     input_dims = len(input_shape)
     if input_dims < 2:
-        raise ValueError(
-            'Expected 2 or more dimensions (got {})'.format(input_dims)
-        )
+        raise ValueError(f'Expected 2 or more dimensions (got {input_dims})')
     n = input_shape[0]
     c = input_shape[1]
     if in_dygraph_mode():
@@ -2707,11 +2705,11 @@ def cross_entropy(
             label_max = paddle.max(valid_label)
             if label_min < 0:
                 raise ValueError(
-                    "Target {} is out of lower bound.".format(label_min.item())
+                    f"Target {label_min.item()} is out of lower bound."
                 )
             if label_max >= input.shape[axis]:
                 raise ValueError(
-                    "Target {} is out of upper bound.".format(label_max.item())
+                    f"Target {label_max.item()} is out of upper bound."
                 )
         if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
             if not soft_label:

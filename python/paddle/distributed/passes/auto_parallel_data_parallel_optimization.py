@@ -145,7 +145,7 @@ class DataParallelOptimizationPass(PassBase):
                     continue
                 assert op.has_attr(
                     "ring_id"
-                ), "Unexception: comm op [{}] has NOT ring id.".format(str(op))
+                ), f"Unexception: comm op [{str(op)}] has NOT ring id."
                 group = ring_id_to_process_group(op.attr("ring_id"))
 
                 assert (
@@ -451,7 +451,7 @@ class DataParallelOptimizationPass(PassBase):
 
             # create coalecse tensor
             group.coalesce_var = block.create_var(
-                name=unique_name.generate('coalecse_grad_{}'.format(i)),
+                name=unique_name.generate(f'coalecse_grad_{i}'),
                 dtype=group.dtype,
                 persistable=False,
                 stop_gradient=True,
@@ -462,7 +462,7 @@ class DataParallelOptimizationPass(PassBase):
                 scale_op = block.ops[group.scale_op_idx]
                 assert (
                     scale_op.type == 'scale'
-                ), "should found scale op but found {}".format(str(scale_op))
+                ), f"should found scale op but found {str(scale_op)}"
                 scale_op._rename_input(
                     scale_op.input_arg_names[0], group.coalesce_var.name
                 )
@@ -565,7 +565,7 @@ class DataParallelOptimizationPass(PassBase):
                     len(individual_grads)
                 )
             )
-            self._logger.info("individual gradient {}".format(individual_grads))
+            self._logger.info(f"individual gradient {individual_grads}")
 
 
 class GradientsGroup:

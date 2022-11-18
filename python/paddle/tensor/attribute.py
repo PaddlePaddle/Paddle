@@ -169,9 +169,7 @@ def is_complex(x):
             # False
     """
     if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
-        raise TypeError(
-            "Expected Tensor, but received type of x: {}".format(type(x))
-        )
+        raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
     is_complex_dtype = (
         dtype == core.VarDesc.VarType.COMPLEX64
@@ -203,9 +201,7 @@ def is_floating_point(x):
             # False
     """
     if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
-        raise TypeError(
-            "Expected Tensor, but received type of x: {}".format(type(x))
-        )
+        raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
     is_fp_dtype = (
         dtype == core.VarDesc.VarType.FP32
@@ -243,9 +239,7 @@ def is_integer(x):
             # True
     """
     if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
-        raise TypeError(
-            "Expected Tensor, but received type of x: {}".format(type(x))
-        )
+        raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
     is_int_dtype = (
         dtype == core.VarDesc.VarType.UINT8

@@ -678,7 +678,7 @@ class AdaptiveAvgPool1D(Layer):
         return F.adaptive_avg_pool1d(input, self.output_size, self.name)
 
     def extra_repr(self):
-        return 'output_size={}'.format(self.output_size)
+        return f'output_size={self.output_size}'
 
 
 class AdaptiveAvgPool2D(Layer):
@@ -763,7 +763,7 @@ class AdaptiveAvgPool2D(Layer):
         )
 
     def extra_repr(self):
-        return 'output_size={}'.format(self._output_size)
+        return f'output_size={self._output_size}'
 
 
 class AdaptiveAvgPool3D(Layer):
@@ -855,7 +855,7 @@ class AdaptiveAvgPool3D(Layer):
         )
 
     def extra_repr(self):
-        return 'output_size={}'.format(self._output_size)
+        return f'output_size={self._output_size}'
 
 
 class AdaptiveMaxPool1D(Layer):
@@ -1196,7 +1196,7 @@ class MaxUnPool1D(Layer):
         )
 
     def extra_repr(self):
-        return 'output_size={}'.format(self.output_size)
+        return f'output_size={self.output_size}'
 
 
 class MaxUnPool2D(Layer):
@@ -1284,7 +1284,7 @@ class MaxUnPool2D(Layer):
         )
 
     def extra_repr(self):
-        return 'output_size={}'.format(self.output_size)
+        return f'output_size={self.output_size}'
 
 
 class MaxUnPool3D(Layer):
@@ -1375,4 +1375,4 @@ class MaxUnPool3D(Layer):
         )
 
     def extra_repr(self):
-        return 'output_size={}'.format(self.output_size)
+        return f'output_size={self.output_size}'

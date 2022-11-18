@@ -504,7 +504,7 @@ class QuantizationTransformPass:
         """
         Insert fake_quantize_abs_max op in the graph.
         """
-        assert var_node.is_var(), '{} is not a var'.format(var_node.name())
+        assert var_node.is_var(), f'{var_node.name()} is not a var'
 
         quant_var_node = graph.create_var_node(
             name=self._quantized_var_name(name),
@@ -550,7 +550,7 @@ class QuantizationTransformPass:
         """
         Insert fake_quantize_range_abs_max on the graph.
         """
-        assert var_node.is_var(), '{} is not a var'.format(var_node.name())
+        assert var_node.is_var(), f'{var_node.name()} is not a var'
 
         quant_var_node = graph.create_var_node(
             name=self._quantized_var_name(name),
@@ -737,7 +737,7 @@ class QuantizationTransformPass:
         """
         Insert fake_channel_wise_quantize_abs_max op in the graph.
         """
-        assert var_node.is_var(), '{} is not a var'.format(var_node.name())
+        assert var_node.is_var(), f'{var_node.name()} is not a var'
 
         quant_var_node = graph.create_var_node(
             name=self._quantized_var_name(name),
@@ -786,7 +786,7 @@ class QuantizationTransformPass:
         """
         Insert fake_dequantize_op in the graph.
         """
-        assert var_node.is_var(), '{} is not a var'.format(var_node.name())
+        assert var_node.is_var(), f'{var_node.name()} is not a var'
 
         dequant_var_node = graph.create_var_node(
             name=self._dequantized_var_name(var_node.name()),
@@ -815,7 +815,7 @@ class QuantizationTransformPass:
         """
         Insert fake_channel_wise_dequantize_max_abs in the graph.
         """
-        assert var_node.is_var(), '{} is not a var'.format(var_node.name())
+        assert var_node.is_var(), f'{var_node.name()} is not a var'
 
         dequant_var_node = graph.create_var_node(
             name=self._dequantized_var_name(var_node.name()),
@@ -1979,12 +1979,12 @@ class AddQuantDequantPass:
     ):
         """Insert fake_quantize_dequantize_moving_average_abs_max op."""
         quant_var_node = graph.create_var_node(
-            name="{}.quant_dequant".format(var_node.name()),
+            name=f"{var_node.name()}.quant_dequant",
             var_type=var_node.type(),
             shape=var_node.shape(),
             var_dtype=var_node.dtype(),
         )
-        scale_name = "{}.quant_dequant@scale".format(var_node.name())
+        scale_name = f"{var_node.name()}.quant_dequant@scale"
         data_type = (
             'float64'
             if var_node.dtype() == core.VarDesc.VarType.FP64
@@ -2007,7 +2007,7 @@ class AddQuantDequantPass:
             scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
 
         scale_in_node = graph.create_persistable_node(
-            name="{}.quant_dequant@scale".format(var_node.name()),
+            name=f"{var_node.name()}.quant_dequant@scale",
             var_type=core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
             var_dtype=var_node.dtype(),
@@ -2126,7 +2126,7 @@ class InsertQuantizeLinear:
         self._scale_dict = scale_dict
 
     def insert_quant_op(self, graph, var_node, var_name=None):
-        assert var_node.is_var(), '{} is not a var'.format(var_node.name())
+        assert var_node.is_var(), f'{var_node.name()} is not a var'
         var_name = var_node.name() if not var_name else var_name
         quant_var_node = graph.create_var_node(
             name=self._quantized_var_name(var_name),
@@ -2260,7 +2260,7 @@ class InsertQuantizeLinear:
         return quant_var_node, scale_var_node
 
     def insert_dequant_op(self, graph, var_node, scale_var_node):
-        assert var_node.is_var(), '{} is not a var'.format(var_node.name())
+        assert var_node.is_var(), f'{var_node.name()} is not a var'
 
         dequant_var_node = graph.create_var_node(
             name=self._dequantized_var_name(var_node.name()),
@@ -3202,11 +3202,11 @@ class AddQuantDequantForInferencePass:
         return "%s@scale" % (var_name)
 
     def _insert_quant_dequant_op(self, graph, var_node):
-        assert var_node.is_var(), '{} is not a var'.format(var_node.name())
+        assert var_node.is_var(), f'{var_node.name()} is not a var'
         var_name = var_node.name()
         quant_axis = -1
         quant_var_node = graph.create_var_node(
-            name="{}.quantized".format(var_name),
+            name=f"{var_name}.quantized",
             var_type=var_node.type(),
             shape=var_node.shape(),
             var_dtype=var_node.dtype(),
@@ -3217,11 +3217,11 @@ class AddQuantDequantForInferencePass:
         try:
             zero_point_node = graph._find_node_by_name(
                 graph.all_persistable_nodes(),
-                "{}@zero_point".format(quant_var_node.name()),
+                f"{quant_var_node.name()}@zero_point",
             )
         except:
             zero_point_node = graph.create_persistable_node(
-                name="{}@zero_point".format(quant_var_node.name()),
+                name=f"{quant_var_node.name()}@zero_point",
                 var_type=core.VarDesc.VarType.LOD_TENSOR,
                 shape=scale_var_node.shape(),
                 var_dtype=core.VarDesc.VarType.INT32,
@@ -3256,7 +3256,7 @@ class AddQuantDequantForInferencePass:
 
         # add dequant_linear node
         dequant_var_node = graph.create_var_node(
-            name="{}.dequantized".format(quant_var_node.name()),
+            name=f"{quant_var_node.name()}.dequantized",
             var_type=quant_var_node.type(),
             shape=quant_var_node.shape(),
             var_dtype=quant_var_node.dtype(),

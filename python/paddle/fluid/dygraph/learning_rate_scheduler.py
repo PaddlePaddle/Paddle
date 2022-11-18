@@ -768,7 +768,7 @@ class LinearLrWarmup(LearningRateDecay):
         self.start_lr = start_lr
         assert (
             end_lr > start_lr
-        ), "end_lr {} must be greater than start_lr {}".format(end_lr, start_lr)
+        ), f"end_lr {end_lr} must be greater than start_lr {start_lr}"
         self.lr_ratio_before_warmup = (float(end_lr) - float(start_lr)) / float(
             warmup_steps
         )
@@ -1027,7 +1027,7 @@ class _LearningRateEpochDecay(LearningRateDecay):
                 % type(learning_rate)
             )
         if learning_rate < 0:
-            raise ValueError("Invalid learning rate: {}".format(learning_rate))
+            raise ValueError(f"Invalid learning rate: {learning_rate}")
 
         self.base_lr = float(learning_rate)
 

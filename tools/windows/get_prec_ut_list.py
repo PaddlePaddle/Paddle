@@ -31,7 +31,7 @@ def get_prec_ut_list(all_test_cases, prec_test_cases):
         if case in prec_test_cases_list_new:
             case_to_run.append(case)
         else:
-            print("{} will not run in PRECISION_TEST mode.".format(case))
+            print(f"{case} will not run in PRECISION_TEST mode.")
 
     with open(file_path, 'w') as f:
         f.write('\n'.join(case_to_run))

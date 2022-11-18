@@ -197,7 +197,7 @@ class TestFleetBase(unittest.TestCase):
 
     def tearDown(self):
         t = time.time() - self.startTime
-        print('{}: {:.3f}'.format(self.__class__.__name__, t))
+        print(f'{self.__class__.__name__}: {t:.3f}')
 
     def setUp(self):
         self.startTime = time.time()
@@ -369,8 +369,8 @@ class TestFleetBase(unittest.TestCase):
         )
 
         if self._model_dir:
-            tr_cmd += " --model_dir {}".format(self._model_dir)
-            ps_cmd += " --model_dir {}".format(self._model_dir)
+            tr_cmd += f" --model_dir {self._model_dir}"
+            ps_cmd += f" --model_dir {self._model_dir}"
 
         # Run dist train to compare with local results
         ps0, ps1 = self._start_pserver(ps_cmd, env)
@@ -431,7 +431,7 @@ class TestFleetBase(unittest.TestCase):
                     basename
                 )
             )
-            os.system("cat {}".format(logx))
+            os.system(f"cat {logx}")
             print(
                 "================== Error {} end =====================\n".format(
                     basename

@@ -435,7 +435,7 @@ class TestAutoParallelCluster(unittest.TestCase):
         self.assertAlmostEqual(link0_machine1.bandwidth, 1)
         self.assertAlmostEqual(link0_machine1.latency, 0)
 
-        str = "cluster: {}".format(cluster)
+        str = f"cluster: {cluster}"
 
 
 if __name__ == '__main__':

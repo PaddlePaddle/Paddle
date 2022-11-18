@@ -303,9 +303,7 @@ def is_api_in_module(node, module_prefix):
         from paddle.fluid.dygraph import to_variable
         from paddle import to_tensor
 
-        return eval(
-            "_is_api_in_module_helper({}, '{}')".format(func_str, module_prefix)
-        )
+        return eval(f"_is_api_in_module_helper({func_str}, '{module_prefix}')")
     except Exception:
         return False
 
@@ -354,7 +352,7 @@ def _delete_keywords_from(node):
     func_src = astor.to_source(gast.gast_to_ast(node.func))
     import paddle.fluid as fluid
 
-    full_args = eval("inspect.getargspec({})".format(func_src))
+    full_args = eval(f"inspect.getargspec({func_src})")
     full_args_name = full_args[0]
 
     node.keywords = [k for k in node.keywords if k.arg in full_args_name]
@@ -436,11 +434,9 @@ def update_args_of_func(node, dygraph_node, method_name):
     import paddle.fluid as fluid
 
     if method_name == "__init__" or eval(
-        "issubclass({}, fluid.dygraph.Layer)".format(class_src)
+        f"issubclass({class_src}, fluid.dygraph.Layer)"
     ):
-        full_args = eval(
-            "inspect.getargspec({}.{})".format(class_src, method_name)
-        )
+        full_args = eval(f"inspect.getargspec({class_src}.{method_name})")
         full_args_name = [
             arg_name for arg_name in full_args[0] if arg_name != "self"
         ]
@@ -572,7 +568,7 @@ def get_temp_dir():
     """
     Return @to_static temp directory.
     """
-    dir_name = "paddle/to_static_tmp/{pid}".format(pid=os.getpid())
+    dir_name = f"paddle/to_static_tmp/{os.getpid()}"
     temp_dir = os.path.join(os.path.expanduser('~/.cache'), dir_name)
     is_windows = sys.platform.startswith('win')
     if is_windows:

@@ -175,7 +175,7 @@ def run_check():
             "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html"
         )
 
-        print("\n Original Error is: {}".format(e))
+        print(f"\n Original Error is: {e}")
         print(
             "Your Paddle Fluid is installed successfully ONLY for SINGLE GPU or CPU! "
             "\n Let's start deep Learning with Paddle Fluid now"

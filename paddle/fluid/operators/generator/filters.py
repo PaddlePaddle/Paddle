@@ -32,7 +32,7 @@ from type_mapping import (
 
 
 def quote(s):
-    return '"{}"'.format(s)
+    return f'"{s}"'
 
 
 # ------------------------------ attr -------------------------------------
@@ -84,16 +84,16 @@ def to_sr_output_type(s):
 # -------------- transform argument names from yaml to opmaker ------------
 def to_opmaker_name(s):
     if s.endswith("_grad"):
-        return 'GradVarName("{}")'.format(s[:-5])
+        return f'GradVarName("{s[:-5]}")'
     else:
-        return '"{}"'.format(s)
+        return f'"{s}"'
 
 
 def to_opmaker_name_cstr(s):
     if s.endswith("_grad"):
-        return '"{}@GRAD"'.format(s[:-5])
+        return f'"{s[:-5]}@GRAD"'
     else:
-        return '"{}"'.format(s)
+        return f'"{s}"'
 
 
 def to_pascal_case(s):
@@ -122,11 +122,9 @@ def cartesian_prod_attrs(attrs):
         type_name = attr["typename"]
         name = attr["name"]
         if type_name == "Scalar":
-            items.append((name, "{}Tensor".format(name)))
+            items.append((name, f"{name}Tensor"))
         elif type_name == "IntArray":
-            items.append(
-                (name, "{}Tensor".format(name), "{}TensorList".format(name))
-            )
+            items.append((name, f"{name}Tensor", f"{name}TensorList"))
         else:
             items.append((name,))
 

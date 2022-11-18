@@ -26,9 +26,9 @@ from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\custom_linear\\custom_linear.pyd'.format(get_build_directory())
+file = f'{get_build_directory()}\\custom_linear\\custom_linear.pyd'
 if os.name == 'nt' and os.path.isfile(file):
-    cmd = 'del {}'.format(file)
+    cmd = f'del {file}'
     run_cmd(cmd, True)
 
 custom_ops = load(

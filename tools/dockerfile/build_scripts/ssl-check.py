@@ -34,11 +34,11 @@ else:
 
     EXC = IOError
 
-print("Connecting to {} should work".format(GOOD_SSL))
+print(f"Connecting to {GOOD_SSL} should work")
 urlopen(GOOD_SSL)
 print("...it did, yay.")
 
-print("Connecting to {} should fail".format(BAD_SSL))
+print(f"Connecting to {BAD_SSL} should fail")
 try:
     urlopen(BAD_SSL)
     # If we get here then we failed:

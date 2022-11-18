@@ -434,7 +434,7 @@ def interpolate(
         elif len(x.shape) == 5:
             return paddle.nn.functional.adaptive_avg_pool3d(x, size)
 
-    helper = LayerHelper('{}_interp_v2'.format(resample_type), **locals())
+    helper = LayerHelper(f'{resample_type}_interp_v2', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     if len(x.shape) == 3 and data_format not in ['NCW', 'NWC']:
         raise ValueError(
@@ -691,7 +691,7 @@ def interpolate(
         return out
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
-        type='{}_interp_v2'.format(resample_type),
+        type=f'{resample_type}_interp_v2',
         inputs=inputs,
         outputs={"Out": out},
         attrs=attrs,
@@ -1623,7 +1623,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         3,
         4,
         5,
-    ], "input tesor dimension must be in [3, 4, 5] but got {}".format(x_dim)
+    ], f"input tesor dimension must be in [3, 4, 5] but got {x_dim}"
 
     supported_format_map = {
         3: ["NCL", "NLC"],

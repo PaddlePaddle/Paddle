@@ -218,7 +218,7 @@ def repr_op(opdesc):
     for var in opdesc.inputs:
         key = var.parameter
         value = args2value(var.arguments)
-        inputs.append("{}={}".format(key, value))
+        inputs.append(f"{key}={value}")
     for var in opdesc.outputs:
         value = args2value(var.arguments)
         outputs.append(value)

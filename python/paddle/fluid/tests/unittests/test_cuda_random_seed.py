@@ -49,8 +49,8 @@ class TestGeneratorSeed(unittest.TestCase):
         x_third = fluid.layers.uniform_random(
             [2, 10], dtype="float32", min=0.0, max=1.0
         )
-        print("x: {}".format(x.numpy()))
-        print("x_again: {}".format(x_again.numpy()))
+        print(f"x: {x.numpy()}")
+        print(f"x_again: {x_again.numpy()}")
         x = x + x_again + x_third
         y = fluid.layers.dropout(x, 0.5)
 

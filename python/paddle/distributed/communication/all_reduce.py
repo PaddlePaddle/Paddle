@@ -84,4 +84,4 @@ def all_reduce(tensor, op=ReduceOp.SUM, group=None, sync_op=True):
             tensor, 'use_calc_stream', use_calc_stream, 'ring_id', ring_id
         )
     else:
-        raise ValueError("Unknown parameter: {}.".format(op))
+        raise ValueError(f"Unknown parameter: {op}.")

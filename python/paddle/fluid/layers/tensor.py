@@ -1998,7 +1998,7 @@ def eye(
         if isinstance(attr, ((Variable, core.VarBase, core.eager.Tensor))):
             assert len(attr.shape) == 1 and attr.shape[0] in [1, -1]
         elif not isinstance(attr, int) or attr < 0:
-            raise TypeError("{} should be a non-negative int.".format(message))
+            raise TypeError(f"{message} should be a non-negative int.")
 
     _check_attr(num_rows, "num_rows")
     if not isinstance(dtype, core.VarDesc.VarType):

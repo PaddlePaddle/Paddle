@@ -710,9 +710,7 @@ def _setitem_impl_(var, item, value):
 
             for i in slice_item:
                 if not isinstance(i, bool):
-                    raise TypeError(
-                        "Doesn't support {} in index list.".format(type(i))
-                    )
+                    raise TypeError(f"Doesn't support {type(i)} in index list.")
 
             if len(item) != 1:
                 raise IndexError(

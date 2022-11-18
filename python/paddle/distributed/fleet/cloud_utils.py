@@ -64,9 +64,7 @@ paddlecloud environment.".format(
                     paddle_ports_num >= len(devices_per_proc)
                     and paddle_port != args_port
                 ):
-                    logger.warning(
-                        "Use Cloud specified port:{}.".format(paddle_port)
-                    )
+                    logger.warning(f"Use Cloud specified port:{paddle_port}.")
                     started_port = paddle_port
 
             except Exception as e:

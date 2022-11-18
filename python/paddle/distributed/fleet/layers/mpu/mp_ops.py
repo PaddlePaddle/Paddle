@@ -243,7 +243,7 @@ def _mp_allreduce(
 
     if in_dygraph_mode():
         group = collective._get_default_group() if group is None else group
-        assert op == ReduceOp.SUM, "Unknown parameter: {}.".format(op)
+        assert op == ReduceOp.SUM, f"Unknown parameter: {op}."
 
         from paddle.autograd import PyLayer
 
@@ -296,7 +296,7 @@ def _mp_allreduce(
                 ring_id,
             )
         else:
-            raise ValueError("Unknown parameter: {}.".format(op))
+            raise ValueError(f"Unknown parameter: {op}.")
 
     op_type = 'mp_allreduce_sum'
     helper = LayerHelper(op_type, **locals())
@@ -392,7 +392,7 @@ class _Linear(layers.Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'in_features={}, out_features={}, dtype={}{}'.format(
             self.weight.shape[0], self.weight.shape[1], self._dtype, name_str
         )

@@ -117,7 +117,7 @@ class AutoCheckpointChecker:
                 ), "hdfs environ must set"
 
         except Exception as e:
-            logger.fatal("exception:{}".format(e))
+            logger.fatal(f"exception:{e}")
             sys.exit(1)
 
     def get_range_checkpoint_path(self, name):
@@ -131,7 +131,7 @@ class AutoCheckpointChecker:
         )
 
     def get_job_path(self):
-        return "{}/{}".format(self.hdfs_checkpoint_path, self.job_id)
+        return f"{self.hdfs_checkpoint_path}/{self.job_id}"
 
     @property
     def save_checkpoint_inter(self):
@@ -237,7 +237,7 @@ class ExeTrainStatus(SerializableBase):
         return not self == t
 
     def serialize(self, path):
-        file_name = "{}/{}".format(path, self._file_name)
+        file_name = f"{path}/{self._file_name}"
         with open(file_name, 'w') as f:
             s = self._serialize()
             f.write(s)
@@ -250,7 +250,7 @@ class ExeTrainStatus(SerializableBase):
 
     def deserialize(self, path):
         d = None
-        file_name = "{}/{}".format(path, self._file_name)
+        file_name = f"{path}/{self._file_name}"
         with open(file_name) as f:
             s = f.read()
             self._deserialize(s)
@@ -299,7 +299,7 @@ class TrainEpochRange(SerializableBase):
             self._save_checkpoint_inter = self._checker.save_checkpoint_inter
         assert (
             self._save_checkpoint_inter >= 0
-        ), "checkpointer:{} must >=0".format(self._save_checkpoint_inter)
+        ), f"checkpointer:{self._save_checkpoint_inter} must >=0"
         self._last_checkpoint_time = time.time()
 
         self._load_cp_nos = None
@@ -346,7 +346,7 @@ class TrainEpochRange(SerializableBase):
                 local_cache_path=self._checker._fs_cache,
             )
             cps.append(t)
-            logger.debug("look for valid:{} t:{}".format(i, t._serialize()))
+            logger.debug(f"look for valid:{i} t:{t._serialize()}")
             if epoch_no < 0:
                 epoch_no = t._epoch_no
             else:
@@ -356,7 +356,7 @@ class TrainEpochRange(SerializableBase):
 
     def _get_last_valid_checkpoint(self):
         self._load_cp_nos = self._cper.get_checkpoint_no(self._checkpoint_path)
-        logger.info("find checkpoint nos:{}".format(self._load_cp_nos))
+        logger.info(f"find checkpoint nos:{self._load_cp_nos}")
 
         if len(self._load_cp_nos) < 1:
             self._restored_from = CONST_MEMORYINIT
@@ -373,9 +373,7 @@ class TrainEpochRange(SerializableBase):
             self._restored_from = CONST_CHECKPOINT
             self._checkpoint_epoch_no = self._epoch_no
 
-            logger.info(
-                "load tain_epoch_range checkpoint:{}".format(self._serialize())
-            )
+            logger.info(f"load tain_epoch_range checkpoint:{self._serialize()}")
 
         elif g_acp_type == CONST_DACP_TYPE:
             t, i = self._look_for_valid(self._load_cp_nos)
@@ -393,11 +391,9 @@ class TrainEpochRange(SerializableBase):
 
             self._restored_from = CONST_CHECKPOINT
             self._checkpoint_epoch_no = self._epoch_no
-            logger.info(
-                "load tain_epoch_range checkpoint:{}".format(self._serialize())
-            )
+            logger.info(f"load tain_epoch_range checkpoint:{self._serialize()}")
         else:
-            assert False, "not supported acp_type:{}".format(g_acp_type)
+            assert False, f"not supported acp_type:{g_acp_type}"
 
     def _to_dict(self):
         d = {
@@ -418,7 +414,7 @@ class TrainEpochRange(SerializableBase):
         return self._name
 
     def serialize(self, path):
-        file_name = "{}/{}".format(path, self._file_name)
+        file_name = f"{path}/{self._file_name}"
         with open(file_name, 'w') as f:
             s = self._serialize()
             f.write(s)
@@ -442,7 +438,7 @@ class TrainEpochRange(SerializableBase):
 
     def deserialize(self, path):
         d = None
-        file_name = "{}/{}".format(path, self._file_name)
+        file_name = f"{path}/{self._file_name}"
         with open(file_name) as f:
             d = json.load(f)
 
@@ -504,7 +500,7 @@ class TrainEpochRange(SerializableBase):
                 elif g_acp_type == CONST_DACP_TYPE:
                     self._save_checkpoint()
                 else:
-                    assert False, "not supported acp_type:{}".format(g_acp_type)
+                    assert False, f"not supported acp_type:{g_acp_type}"
             self._last_checkpoint_time = time.time()
 
     def _save_checkpoint(self):
@@ -532,7 +528,7 @@ class TrainEpochRange(SerializableBase):
 
             e[t._key] = t
 
-            logger.debug("save executor checkpoint:{}".format(t._serialize()))
+            logger.debug(f"save executor checkpoint:{t._serialize()}")
 
         if len(self._exe_status) > 0:
             self._cper.save_checkpoint(
@@ -541,7 +537,7 @@ class TrainEpochRange(SerializableBase):
                 local_cache_path=self._checker._fs_cache,
             )
             logger.info(
-                "save train_epoch_range checkpoint:{}".format(self._serialize())
+                f"save train_epoch_range checkpoint:{self._serialize()}"
             )
 
             self._generate_flag()
@@ -618,7 +614,7 @@ def _can_auto_checkpoint(prog):
 
 
 def _get_running_key(exe_name, program_name):
-    return "{}_{}".format(exe_name, program_name)
+    return f"{exe_name}_{program_name}"
 
 
 def _get_checker():
@@ -654,7 +650,7 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=None):
         return
 
     g_acp_type = CONST_ACP_TYPE
-    logger.info("acp_type:{}".format(g_acp_type))
+    logger.info(f"acp_type:{g_acp_type}")
 
     global g_train_epoch_range
     try:
@@ -712,7 +708,7 @@ def _auto_checkpoint(exe, prog):
                 local_cache_path=g_checker._fs_cache,
             )
             t._restored_from = CONST_CHECKPOINT
-            logger.info("load executor checkpoint {}".format(t))
+            logger.info(f"load executor checkpoint {t}")
         t._exe = exe
         t._program = program
         t._epoch_no = g_train_epoch_range.get()

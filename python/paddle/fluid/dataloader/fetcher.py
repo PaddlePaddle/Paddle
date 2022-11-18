@@ -37,7 +37,7 @@ class _DatasetFetcher:
     #       ecah sample processing in the batch
     def fetch(self, batch_indices, done_event=None):
         raise NotImplementedError(
-            "'fetch' not implement for class {}".format(self.__class__.__name__)
+            f"'fetch' not implement for class {self.__class__.__name__}"
         )
 
     def _log_warning(self):

@@ -91,9 +91,7 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                 while step < num:
                     fp.seek(imgs_offset + img_size * step)
                     img = fp.read(img_size)
-                    img = struct.unpack_from(
-                        '{}f'.format(img_ch * img_w * img_h), img
-                    )
+                    img = struct.unpack_from(f'{img_ch * img_w * img_h}f', img)
                     img = np.array(img)
                     img.shape = (img_ch, img_w, img_h)
                     fp.seek(labels_offset + label_size * step)
@@ -255,9 +253,7 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
             infer_total_time = time.time() - infer_start_time
             acc1_avg = np.mean(infer_accs1)
             acc5_avg = np.mean(infer_accs5)
-            _logger.info(
-                'Total inference run time: {:.2f} s'.format(infer_total_time)
-            )
+            _logger.info(f'Total inference run time: {infer_total_time:.2f} s')
 
             return outputs, acc1_avg, acc5_avg, fps_avg, latency_avg
 
@@ -316,11 +312,11 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
         self._debug = test_case_args.debug
 
         _logger.info('Quant FP32 & INT8 prediction run.')
-        _logger.info('Quant model: {}'.format(quant_model_path))
-        _logger.info('Dataset: {}'.format(data_path))
-        _logger.info('Batch size: {}'.format(batch_size))
-        _logger.info('Batch number: {}'.format(batch_num))
-        _logger.info('Accuracy drop threshold: {}.'.format(acc_diff_threshold))
+        _logger.info(f'Quant model: {quant_model_path}')
+        _logger.info(f'Dataset: {data_path}')
+        _logger.info(f'Batch size: {batch_size}')
+        _logger.info(f'Batch number: {batch_num}')
+        _logger.info(f'Accuracy drop threshold: {acc_diff_threshold}.')
 
         _logger.info('--- Quant FP32 prediction start ---')
         val_reader = paddle.batch(

@@ -72,7 +72,7 @@ class DistributedTensor:
                 )
             )
         if rank is not None and not (isinstance(rank, int) and rank >= 0):
-            raise ValueError("The rank must >= 0, but got {}".format(rank))
+            raise ValueError(f"The rank must >= 0, but got {rank}")
 
         # NOTE: Only support even sharding now
         if shard_sizes is not None:
@@ -343,11 +343,9 @@ class DistributedTensor:
             return kwargs
 
         if rank is not None and not (isinstance(rank, int) and rank >= 0):
-            raise ValueError("The rank must >= 0, but got {}".format(rank))
+            raise ValueError(f"The rank must >= 0, but got {rank}")
         if block is not None and not isinstance(block, Block):
-            raise TypeError(
-                "The block must be Block, but got {}.".format(type(block))
-            )
+            raise TypeError(f"The block must be Block, but got {type(block)}.")
         rank = paddle.distributed.get_rank() if rank is None else rank
 
         if block is None:
@@ -374,7 +372,7 @@ class DistributedTensor:
         rank = paddle.distributed.get_rank() if rank is None else rank
         assert (
             rank in self._local_tensor_map
-        ), "The rank {} local tensor has not been created.".format(rank)
+        ), f"The rank {rank} local tensor has not been created."
         return self._local_tensor_map[rank]
 
     def __deepcopy__(self, memo):
@@ -404,7 +402,7 @@ class DistributedTensor:
             annotated_str, self.dist_attr.process_mesh
         )
 
-        str += ", is_parameter: {}".format(self.serial_tensor.is_parameter)
+        str += f", is_parameter: {self.serial_tensor.is_parameter}"
 
         if self.dist_attr.is_annotated("dims_mapping"):
             annotated_str = "annotated"
@@ -418,11 +416,11 @@ class DistributedTensor:
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += ", shard_mask ({}): {}".format(annotated_str, None)
+        str += f", shard_mask ({annotated_str}): {None}"
 
         if self.dist_attr.is_annotated("offload_device"):
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += ", offload_device ({}): {} }}".format(annotated_str, None)
+        str += f", offload_device ({annotated_str}): {None} }}"
         return str

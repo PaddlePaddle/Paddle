@@ -85,7 +85,7 @@ def download_concat(cache_folder, zip_path):
         download(data_urls[i], cache_folder, data_md5s[i])
         file_name = os.path.join(cache_folder, data_urls[i].split('/')[-1])
         file_names.append(file_name)
-        print("Downloaded part {}\n".format(file_name))
+        print(f"Downloaded part {file_name}\n")
     with open(zip_path, "wb") as outfile:
         for fname in file_names:
             shutil.copyfileobj(open(fname, 'rb'), outfile)
@@ -178,7 +178,7 @@ def run_convert():
             )
         download_concat(cache_folder, zip_path)
         convert_Imagenet_tar2bin(zip_path, output_file)
-    print("\nSuccess! The binary file can be found at {}".format(output_file))
+    print(f"\nSuccess! The binary file can be found at {output_file}")
 
 
 def convert_Imagenet_local2bin(args):

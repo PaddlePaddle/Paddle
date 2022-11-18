@@ -249,9 +249,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
             ppses = ppses[skip_batch_num:]
             pps_avg = np.average(ppses)
             acc_avg = float(np.sum(total_correct)) / float(total_samples)
-            _logger.info(
-                'Total inference run time: {:.2f} s'.format(infer_total_time)
-            )
+            _logger.info(f'Total inference run time: {infer_total_time:.2f} s')
 
             return acc_avg, pps_avg, latency_avg
 
@@ -263,7 +261,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         )
 
     def _print_accuracy(self, title, acc):
-        _logger.info('{}: avg accuracy: {:.6f}'.format(title, acc))
+        _logger.info(f'{title}: avg accuracy: {acc:.6f}')
 
     def _summarize_performance(self, int8_pps, int8_lat, fp32_pps, fp32_lat):
         _logger.info('--- Performance summary ---')
@@ -333,14 +331,14 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         ), 'The --targets option, if used, must contain at least one of the targets: "quant", "int8", "fp32".'
 
         _logger.info('Quant & INT8 prediction run.')
-        _logger.info('Quant model: {}'.format(quant_model_path))
+        _logger.info(f'Quant model: {quant_model_path}')
         if fp32_model_path:
-            _logger.info('FP32 model: {}'.format(fp32_model_path))
-        _logger.info('Dataset: {}'.format(data_path))
-        _logger.info('Labels: {}'.format(labels_path))
-        _logger.info('Batch size: {}'.format(batch_size))
-        _logger.info('Batch number: {}'.format(batch_num))
-        _logger.info('Accuracy drop threshold: {}.'.format(acc_diff_threshold))
+            _logger.info(f'FP32 model: {fp32_model_path}')
+        _logger.info(f'Dataset: {data_path}')
+        _logger.info(f'Labels: {labels_path}')
+        _logger.info(f'Batch size: {batch_size}')
+        _logger.info(f'Batch number: {batch_num}')
+        _logger.info(f'Accuracy drop threshold: {acc_diff_threshold}.')
         _logger.info(
             'Quantized ops: {}.'.format(
                 ','.join(self._quantized_ops)

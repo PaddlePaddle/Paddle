@@ -192,7 +192,7 @@ class TestFleetHeterBase(unittest.TestCase):
 
     def tearDown(self):
         t = time.time() - self.startTime
-        print('{}: {:.3f}'.format(self.__class__.__name__, t))
+        print(f'{self.__class__.__name__}: {t:.3f}')
 
     def setUp(self):
         self.startTime = time.time()

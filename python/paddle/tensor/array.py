@@ -206,7 +206,7 @@ def array_write(x, i, array=None):
             )
     if array is None:
         array = helper.create_variable(
-            name="{}.out".format(helper.name),
+            name=f"{helper.name}.out",
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
             dtype=x.dtype,
         )
@@ -271,7 +271,7 @@ def create_array(dtype, initialized_list=None):
 
     helper = LayerHelper("array", **locals())
     tensor_array = helper.create_variable(
-        name="{}.out".format(helper.name),
+        name=f"{helper.name}.out",
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
         dtype=dtype,
     )

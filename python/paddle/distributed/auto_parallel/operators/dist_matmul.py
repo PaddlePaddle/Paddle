@@ -284,7 +284,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
     assert (
         dist_attr is not None
-    ), "backward op [{}] don't have dist attribute !".format(str(backward_op))
+    ), f"backward op [{str(backward_op)}] don't have dist attribute !"
 
     # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
     if rank_id not in dist_attr.process_mesh.processes:
@@ -736,7 +736,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.processes:
@@ -751,7 +751,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -1121,7 +1121,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.processes:
@@ -1136,7 +1136,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -1639,7 +1639,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.processes:
@@ -1654,7 +1654,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -2021,7 +2021,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.processes:
@@ -2036,7 +2036,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -2529,7 +2529,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.processes:
@@ -2544,7 +2544,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -2921,7 +2921,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.processes:
@@ -2936,7 +2936,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name

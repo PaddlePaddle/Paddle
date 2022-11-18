@@ -258,7 +258,7 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
                 self.filepath
             ),
             'inner_func()',
-            'File "{}", line 26, in inner_func'.format(self.filepath),
+            f'File "{self.filepath}", line 26, in inner_func',
             'def inner_func():',
             'fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
             '<--- HERE',
@@ -311,7 +311,7 @@ class TestErrorStaticLayerCallInCompiletime_3(
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 89, in forward'.format(self.filepath),
+            f'File "{self.filepath}", line 89, in forward',
             '@paddle.jit.to_static',
             'def forward(self):',
             'self.test_func()',
@@ -399,7 +399,7 @@ class TestJitSaveInCompiletime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 78, in forward'.format(self.filepath),
+            f'File "{self.filepath}", line 78, in forward',
             'def forward(self, x):',
             'y = self._linear(x)',
             'z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
@@ -433,9 +433,9 @@ class TestSuggestionErrorInRuntime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 116, in forward'.format(self.filepath),
+            f'File "{self.filepath}", line 116, in forward',
             'return self.inner_net.forward(x)',
-            'File "{}", line 125, in forward'.format(self.filepath),
+            f'File "{self.filepath}", line 125, in forward',
             'def forward(self, x):',
             'out = paddle.matmul(self.w, x)',
             '<--- HERE',

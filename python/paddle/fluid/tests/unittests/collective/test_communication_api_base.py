@@ -64,11 +64,11 @@ class CommunicationTestDistBase(unittest.TestCase):
             temp_log_dir_name = os.path.basename(self._log_dir.name)
             dir_name = os.path.join(self._save_log_dir, temp_log_dir_name)
             if not os.path.isdir(dir_name):
-                print("The running logs will copy to {}".format(dir_name))
+                print(f"The running logs will copy to {dir_name}")
                 shutil.copytree(self._log_dir.name, dir_name)
             else:
                 raise RuntimeError(
-                    "Directory {} exists, failed to save log.".format(dir_name)
+                    f"Directory {dir_name} exists, failed to save log."
                 )
 
 

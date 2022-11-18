@@ -18,8 +18,8 @@ import re
 
 
 def getFNDAFile(rootPath, test):
-    filename = '{}/build/ut_map/{}/coverage.info.tmp'.format(rootPath, test)
-    fn_filename = '{}/build/ut_map/{}/fnda.tmp'.format(rootPath, test)
+    filename = f'{rootPath}/build/ut_map/{test}/coverage.info.tmp'
+    fn_filename = f'{rootPath}/build/ut_map/{test}/fnda.tmp'
     os.system('touch %s' % fn_filename)
     try:
         f = open(filename)
@@ -31,11 +31,11 @@ def getFNDAFile(rootPath, test):
     for line in lines:
         line = line.replace('\n', '')
         if line.startswith('SF:'):
-            os.system('echo {} >> {}'.format(line, fn_filename))
+            os.system(f'echo {line} >> {fn_filename}')
         elif line.startswith('FNDA:'):
             hit = int(line.split('FNDA:')[1].split(',')[0])
             if hit != 0:
-                os.system('echo {} >> {}'.format(line, fn_filename))
+                os.system(f'echo {line} >> {fn_filename}')
     f.close()
 
 
@@ -61,7 +61,7 @@ def analysisFNDAFile(rootPath, test):
         print("make related.txt and not_related.txt failed")
         return
 
-    fn_filename = '{}/build/ut_map/{}/fnda.tmp'.format(rootPath, test)
+    fn_filename = f'{rootPath}/build/ut_map/{test}/fnda.tmp'
     try:
         f = open(fn_filename)
         print("oepn %s succesfully" % fn_filename)
@@ -93,9 +93,7 @@ def analysisFNDAFile(rootPath, test):
                     break
             if not OP_REGIST:
                 related_file_list.append(clazz_filename)
-                os.system(
-                    'echo {} >> {}'.format(clazz_filename, related_ut_map_file)
-                )
+                os.system(f'echo {clazz_filename} >> {related_ut_map_file}')
             else:
                 os.system(
                     'echo {} >> {}'.format(
@@ -115,7 +113,7 @@ def analysisFNDAFile(rootPath, test):
 
 
 def getCovinfo(rootPath, test):
-    ut_map_path = '{}/build/ut_map/{}'.format(rootPath, test)
+    ut_map_path = f'{rootPath}/build/ut_map/{test}'
     os.system(
         'cd %s && lcov --capture -d . -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
         % ut_map_path

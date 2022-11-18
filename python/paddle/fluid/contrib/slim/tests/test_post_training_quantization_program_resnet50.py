@@ -150,7 +150,7 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
             cnt += len(data)
 
             if (batch_id + 1) % 100 == 0:
-                print("{} images,".format(batch_id + 1))
+                print(f"{batch_id + 1} images,")
                 sys.stdout.flush()
             if (batch_id + 1) == iterations:
                 break
@@ -188,9 +188,7 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
         try:
             os.system("mkdir " + self.int8_model)
         except Exception as e:
-            print(
-                "Failed to create {} due to {}".format(self.int8_model, str(e))
-            )
+            print(f"Failed to create {self.int8_model} due to {str(e)}")
             sys.exit(-1)
 
         place = fluid.CPUPlace()
@@ -292,7 +290,7 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
             self.int8_model, batch_size, infer_iterations
         )
 
-        print("---Post training quantization of {} method---".format(algo))
+        print(f"---Post training quantization of {algo} method---")
         print(
             "FP32 {}: batch_size {}, throughput {} images/second, latency {} second, accuracy {}.".format(
                 model, batch_size, fp32_throughput, fp32_latency, fp32_acc1

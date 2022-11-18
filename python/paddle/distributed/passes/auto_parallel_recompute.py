@@ -134,7 +134,7 @@ class RecomputeState(ProgramStats):
                 segments.pop(i)
 
         for i, (idx1, idx2) in enumerate(segments):
-            logging.info("recompute segment[{}]".format(i))
+            logging.info(f"recompute segment[{i}]")
             logging.info(
                 "segment start op: [{}]: [{}] [{}]".format(
                     self._ops[idx1].desc.type(),

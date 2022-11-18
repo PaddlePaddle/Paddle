@@ -85,7 +85,7 @@ class Trial(Storable):
                 print(tv + ":", value)
 
         if self.score is not None:
-            print("Score: {}".format(self.score))
+            print(f"Score: {self.score}")
 
     def get_state(self):
         return {
@@ -137,7 +137,7 @@ class OptimizationTunerTrial(Trial):
 
         length = max_k + max_v + spacing
 
-        h1_format = "    " + "|{{:^{}s}}|\n".format(length)
+        h1_format = "    " + f"|{{:^{length}s}}|\n"
         h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
             max_k, " " * spacing, max_v
         )
@@ -152,7 +152,7 @@ class OptimizationTunerTrial(Trial):
 
         for name in self._changed_configs:
             draws += border + "\n"
-            draws += h1_format.format("{} auto=True <-> {}".format(name, name))
+            draws += h1_format.format(f"{name} auto=True <-> {name}")
             draws += line + "\n"
             my_configs = getattr(self.space, name)
             keys = my_configs.to_dict().keys()

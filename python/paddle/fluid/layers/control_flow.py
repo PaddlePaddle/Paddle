@@ -677,7 +677,7 @@ class StaticRNN:
 
     def _assert_in_rnn_block_(self, method):
         if self.status != StaticRNN.IN_RNN_BLOCK:
-            raise ValueError("You must invoke {} in rnn block".format(method))
+            raise ValueError(f"You must invoke {method} in rnn block")
 
     def memory(
         self,
@@ -1844,7 +1844,7 @@ def array_write(x, i, array=None):
             )
     if array is None:
         array = helper.create_variable(
-            name="{}.out".format(helper.name),
+            name=f"{helper.name}.out",
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
             dtype=x.dtype,
         )
@@ -1903,7 +1903,7 @@ def create_array(dtype, initialized_list=None):
 
     helper = LayerHelper("array", **locals())
     tensor_array = helper.create_variable(
-        name="{}.out".format(helper.name),
+        name=f"{helper.name}.out",
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
         dtype=dtype,
     )
@@ -4232,9 +4232,7 @@ class DynamicRNN:
 
     def _assert_in_rnn_block_(self, method):
         if self.status != DynamicRNN.IN_RNN:
-            raise ValueError(
-                "{} can only be invoked inside rnn block.".format(method)
-            )
+            raise ValueError(f"{method} can only be invoked inside rnn block.")
 
 
 def switch_case(branch_index, branch_fns, default=None, name=None):
@@ -4382,7 +4380,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             if not callable(fn):
                 raise TypeError(
                     _error_message(
-                        "The type of function for key {}".format(key),
+                        f"The type of function for key {key}",
                         "branch_fns",
                         "switch_case",
                         "callable",

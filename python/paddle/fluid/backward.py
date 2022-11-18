@@ -1001,7 +1001,7 @@ def _append_backward_ops_with_checkpoints_(
         recompute_segments = segments
 
     for i, (idx1, idx2) in enumerate(recompute_segments):
-        _logger.info("recompute segment[{}]".format(i))
+        _logger.info(f"recompute segment[{i}]")
         _logger.info(
             "segment start op: [{}]: [{}]".format(
                 ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()
@@ -1012,7 +1012,7 @@ def _append_backward_ops_with_checkpoints_(
                 ops[idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()
             )
         )
-        _logger.info("recompute segment[{}]".format(i))
+        _logger.info(f"recompute segment[{i}]")
         _logger.info(
             "segment start op: [{}]: [{}]".format(
                 ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()

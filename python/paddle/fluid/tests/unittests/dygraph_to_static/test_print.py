@@ -77,7 +77,7 @@ def dyfunc_print_with_format(x):
             keywords=[]))
     """
     x_v = fluid.dygraph.to_variable(x)
-    print("PrintVariable: {}".format(x_v))
+    print(f"PrintVariable: {x_v}")
 
 
 # 4. print VarBase with format 2

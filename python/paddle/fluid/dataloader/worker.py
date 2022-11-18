@@ -60,7 +60,7 @@ class _DatasetKind:
                 dataset, auto_collate_batch, collate_fn, drop_last
             )
         else:
-            raise NotImplementedError("unknown Dataset kind {}".format(kind))
+            raise NotImplementedError(f"unknown Dataset kind {kind}")
 
 
 class ParentWatchDog:

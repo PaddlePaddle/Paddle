@@ -48,7 +48,7 @@ def getPyCovResult(params):
     ut = params[1]
     print("ut: %s" % ut)
     startTime = int(time.time())
-    path = '{}/build/pytest/{}'.format(rootPath, ut)
+    path = f'{rootPath}/build/pytest/{ut}'
     os.system('cd %s && coverage combine `ls python-coverage.data.*`' % path)
     os.system('cd %s && pwd && coverage xml -i -o python-coverage.xml' % path)
     xml_path = '%s/python-coverage.xml' % path

@@ -790,7 +790,7 @@ class RNN(Layer):
             sequence_length=sequence_length,
             time_major=self.time_major,
             is_reverse=self.is_reverse,
-            **kwargs
+            **kwargs,
         )
         return final_outputs, final_states
 
@@ -877,7 +877,7 @@ class BiRNN(Layer):
             initial_states,
             sequence_length,
             self.time_major,
-            **kwargs
+            **kwargs,
         )
         return outputs, final_states
 
@@ -1299,7 +1299,7 @@ class SimpleRNN(RNNBase):
         elif activation == "relu":
             mode = "RNN_RELU"
         else:
-            raise ValueError("Unknown activation '{}'".format(activation))
+            raise ValueError(f"Unknown activation '{activation}'")
         self.activation = activation
         super().__init__(
             mode,

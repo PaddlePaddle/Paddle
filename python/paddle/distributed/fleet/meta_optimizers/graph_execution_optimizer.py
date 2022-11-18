@@ -83,7 +83,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
 
             for i in range(1, build_strategy.nccl_comm_num):
                 startup_program.global_block().create_var(
-                    name="NCCLID_{}".format(i),
+                    name=f"NCCLID_{i}",
                     persistable=True,
                     type=core.VarDesc.VarType.RAW,
                 )
@@ -91,12 +91,12 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             if build_strategy.use_hierarchical_allreduce:
                 for i in range(0, build_strategy.nccl_comm_num):
                     startup_program.global_block().create_var(
-                        name="Hierarchical_inter_NCCLID_{}".format(i),
+                        name=f"Hierarchical_inter_NCCLID_{i}",
                         persistable=True,
                         type=core.VarDesc.VarType.RAW,
                     )
                     startup_program.global_block().create_var(
-                        name="Hierarchical_exter_NCCLID_{}".format(i),
+                        name=f"Hierarchical_exter_NCCLID_{i}",
                         persistable=True,
                         type=core.VarDesc.VarType.RAW,
                     )
@@ -124,7 +124,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             ), "Baidu Kunlun Communication Library(BKCL) currently do not support multi machines."
             for i in range(1, build_strategy.bkcl_comm_num):
                 startup_program.global_block().create_var(
-                    name="BKCLID_{}".format(i),
+                    name=f"BKCLID_{i}",
                     persistable=True,
                     type=core.VarDesc.VarType.RAW,
                 )

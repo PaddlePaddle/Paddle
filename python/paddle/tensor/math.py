@@ -551,8 +551,8 @@ def _elementwise_op(helper):
 
     out = helper.kwargs.get('out', None)
 
-    assert x is not None, 'x cannot be None in {}'.format(original_op_type)
-    assert y is not None, 'y cannot be None in {}'.format(original_op_type)
+    assert x is not None, f'x cannot be None in {original_op_type}'
+    assert y is not None, f'y cannot be None in {original_op_type}'
     check_variable_and_dtype(
         x,
         'x',
@@ -4830,7 +4830,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             axes,
             'infer_flags',
             infer_flags,
-            *attrs_1
+            *attrs_1,
         )
         starts_2 = [1]
         attrs_2 += ('starts', starts_2)
@@ -4846,7 +4846,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             axes,
             'infer_flags',
             infer_flags,
-            *attrs_2
+            *attrs_2,
         )
 
         if x.dtype == paddle.bool:

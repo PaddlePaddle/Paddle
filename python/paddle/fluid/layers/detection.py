@@ -3327,7 +3327,7 @@ def retinanet_detection_output(
     for i, bbox in enumerate(bboxes):
         check_variable_and_dtype(
             bbox,
-            'bbox{}'.format(i),
+            f'bbox{i}',
             ['float32', 'float64'],
             'retinanet_detection_output',
         )
@@ -3335,7 +3335,7 @@ def retinanet_detection_output(
     for i, score in enumerate(scores):
         check_variable_and_dtype(
             score,
-            'score{}'.format(i),
+            f'score{i}',
             ['float32', 'float64'],
             'retinanet_detection_output',
         )
@@ -3343,7 +3343,7 @@ def retinanet_detection_output(
     for i, anchor in enumerate(anchors):
         check_variable_and_dtype(
             anchor,
-            'anchor{}'.format(i),
+            f'anchor{i}',
             ['float32', 'float64'],
             'retinanet_detection_output',
         )

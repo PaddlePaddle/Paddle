@@ -851,7 +851,7 @@ def search_pyramid_hash(
         for param in distribute_update_vars:
             if param not in special_name_list:
                 raise ValueError(
-                    "Pyramid Hash layer didn't have parameter {}".format(param)
+                    f"Pyramid Hash layer didn't have parameter {param}"
                 )
         distribute_update_vars_str = ",".join(distribute_update_vars)
 

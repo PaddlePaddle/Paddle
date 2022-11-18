@@ -183,10 +183,10 @@ def prepare_fake_data(file_nums=4, file_lines=500):
     Create fake data with same type as avazu_ctr_data
     """
     file_dir = tempfile.mkdtemp()
-    warnings.warn("Fake data write in {}".format(file_dir))
+    warnings.warn(f"Fake data write in {file_dir}")
     for file_index in range(file_nums):
         with open(
-            os.path.join(file_dir, "ctr_train_data_part_{}".format(file_index)),
+            os.path.join(file_dir, f"ctr_train_data_part_{file_index}"),
             'w+',
         ) as fin:
             file_str = ""
@@ -194,9 +194,7 @@ def prepare_fake_data(file_nums=4, file_lines=500):
             for line_index in range(file_lines - 1):
                 file_str += gen_fake_line()
             fin.write(file_str)
-            warnings.warn(
-                "Write done ctr_train_data_part_{}".format(file_index)
-            )
+            warnings.warn(f"Write done ctr_train_data_part_{file_index}")
 
     file_list = [os.path.join(file_dir, x) for x in os.listdir(file_dir)]
     assert len(file_list) == file_nums

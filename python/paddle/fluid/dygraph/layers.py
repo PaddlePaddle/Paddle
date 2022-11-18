@@ -820,7 +820,7 @@ class Layer:
         elif name == '':
             raise KeyError("The name of buffer can not be empty.")
         elif hasattr(self, name) and name not in self._buffers:
-            raise KeyError("attribute '{}' already exists.".format(name))
+            raise KeyError(f"attribute '{name}' already exists.")
         elif tensor is not None and not (
             type(tensor) == core.VarBase or type(tensor) == core.eager.Tensor
         ):
@@ -1107,7 +1107,7 @@ class Layer:
         elif name == '':
             raise KeyError("The name of parameter can not be empty.")
         elif hasattr(self, name) and name not in self._parameters:
-            raise KeyError("The parameter '{}' already exists.".format(name))
+            raise KeyError(f"The parameter '{name}' already exists.")
         elif parameter is not None and not isinstance(
             parameter, framework.Parameter
         ):
@@ -1597,9 +1597,7 @@ class Layer:
         def _check_match(key, param):
             state = state_dict.get(key, None)
             if state is None:
-                raise ValueError(
-                    "{} is not found in the provided dict.".format(key)
-                )
+                raise ValueError(f"{key} is not found in the provided dict.")
             if isinstance(state, dict) or isinstance(state, list):
                 if len(state) != len(param):
                     raise ValueError(
@@ -1632,7 +1630,7 @@ class Layer:
                 match_res = _check_match(key_name, param)
                 matched_param_state.append(match_res)
             except ValueError as err:
-                warnings.warn("Skip loading for {}. ".format(key) + str(err))
+                warnings.warn(f"Skip loading for {key}. " + str(err))
 
         if _non_static_mode():
             for param, state in matched_param_state:

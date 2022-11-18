@@ -401,7 +401,7 @@ if __name__ == '__main__':
     else:
         for erroritem in ErrorSet:
             print(
-                "Error, new function {} is unreachable".format(erroritem),
+                f"Error, new function {erroritem} is unreachable",
                 file=sys.stderr,
             )
         sys.exit(1)

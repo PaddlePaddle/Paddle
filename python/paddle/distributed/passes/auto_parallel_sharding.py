@@ -729,7 +729,7 @@ def _insert_reduce_op(
 ):
     assert (
         root_id >= 0
-    ), "root id should be a positive int, but now root id is {}".format(root_id)
+    ), f"root id should be a positive int, but now root id is {root_id}"
     new_op = block._insert_op_without_sync(
         insert_idx,
         type='c_reduce_sum',
@@ -947,7 +947,7 @@ def partition_parameters(params, group_size, algor="greedy_even"):
                 k, sum([get_var_size(var) for var in v])
             )
         )
-        _logger.info("Params in this rank: {}.".format([var.name for var in v]))
+        _logger.info(f"Params in this rank: {[var.name for var in v]}.")
 
     return rank_to_params
 
@@ -1002,9 +1002,7 @@ def re_order_program(block, param_grads, dist_context):
         assert len(block.ops) == num_ops
 
     # TODO reorder gradient clip order
-    _logger.info(
-        "Sharding the Order of param being used: {}.".format(use_order)
-    )
+    _logger.info(f"Sharding the Order of param being used: {use_order}.")
     return [pname_to_pg_pairs[p] for p in use_order]
 
 
@@ -1071,9 +1069,7 @@ def _fuse_overlap_parameter_comm_stage_two(
 
         assert len(group) >= 1
         if len(group) > 1:
-            coalesce_var_name = unique_name.generate(
-                'coalecse_param_{}'.format(i)
-            )
+            coalesce_var_name = unique_name.generate(f'coalecse_param_{i}')
             startup_block.create_var(
                 name=coalesce_var_name,
                 dtype=group.dtype,
@@ -1212,11 +1208,9 @@ class ShardingInfo:
 
     def get_param_grad(self, param_name):
         if not self.is_in_local_shard(param_name):
-            raise ValueError(
-                "param[{}] not in current rank.".format(param_name)
-            )
+            raise ValueError(f"param[{param_name}] not in current rank.")
         if param_name not in self.params_grads:
-            raise ValueError('param[{}] not in params_grads'.format(param_name))
+            raise ValueError(f'param[{param_name}] not in params_grads')
         return self.params_grads.get(param_name, None)
 
 

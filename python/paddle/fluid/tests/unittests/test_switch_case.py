@@ -83,31 +83,31 @@ class TestAPISwitchCase(unittest.TestCase):
                 res[0],
                 1,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 1),
+                err_msg=f'result is {res[0]} but answer is {1}',
             )
             np.testing.assert_allclose(
                 res[1],
                 2,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 2),
+                err_msg=f'result is {res[0]} but answer is {2}',
             )
             np.testing.assert_allclose(
                 res[2],
                 3,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 3),
+                err_msg=f'result is {res[0]} but answer is {3}',
             )
             np.testing.assert_allclose(
                 res[3],
                 2,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 2),
+                err_msg=f'result is {res[0]} but answer is {2}',
             )
             np.testing.assert_allclose(
                 res[4],
                 2,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 2),
+                err_msg=f'result is {res[0]} but answer is {2}',
             )
 
     def test_return_var_tuple(self):
@@ -236,19 +236,19 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                 res[0],
                 1,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[0], 1),
+                err_msg=f'result is {res[0]} but answer is {1}',
             )
             np.testing.assert_allclose(
                 res[1],
                 2,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[1], 2),
+                err_msg=f'result is {res[1]} but answer is {2}',
             )
             np.testing.assert_allclose(
                 res[2],
                 3,
                 rtol=1e-05,
-                err_msg='result is {} but answer is {}'.format(res[2], 3),
+                err_msg=f'result is {res[2]} but answer is {3}',
             )
 
 

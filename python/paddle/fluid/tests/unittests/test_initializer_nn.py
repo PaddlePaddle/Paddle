@@ -352,10 +352,10 @@ class TestUniform(unittest.TestCase):
 
         min_value, max_value = get_uniform_min_and_max(linear.weight.numpy())
         self.assertTrue(
-            min_value >= -0.5, 'min value {} should >= -0.5'.format(min_value)
+            min_value >= -0.5, f'min value {min_value} should >= -0.5'
         )
         self.assertTrue(
-            max_value <= 0.5, 'max value {} should <= 0.5'.format(max_value)
+            max_value <= 0.5, f'max value {max_value} should <= 0.5'
         )
 
 

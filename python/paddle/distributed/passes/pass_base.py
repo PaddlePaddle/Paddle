@@ -130,7 +130,7 @@ def register_pass(name):
 
 def new_pass(name, pass_attrs={}):
     pass_class = PassBase._REGISTERED_PASSES.get(name)
-    assert pass_class is not None, "Pass {} is not registered".format(name)
+    assert pass_class is not None, f"Pass {name} is not registered"
     pass_obj = pass_class()
     for k, v in pass_attrs.items():
         pass_obj.set_attr(k, v)

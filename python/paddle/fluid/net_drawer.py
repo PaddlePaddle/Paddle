@@ -71,7 +71,7 @@ def draw_node(op):
 
 def draw_edge(var_parent, op, var, arg):
     edge = VAR_STYLE
-    edge["label"] = "{}({})".format(var.parameter, arg)
+    edge["label"] = f"{var.parameter}({arg})"
     edge["head_name"] = op.type
     edge["tail_name"] = var_parent[arg]
     return edge
@@ -122,7 +122,7 @@ def draw_graph(startup_program, main_program, **kwargs):
         graph_attr=GRAPH_STYLE,
         node_attr=OP_STYLE,
         edge_attr=VAR_STYLE,
-        **kwargs
+        **kwargs,
     )
 
     var_dict = {}

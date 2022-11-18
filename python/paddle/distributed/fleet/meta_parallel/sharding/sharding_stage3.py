@@ -199,7 +199,7 @@ class ShardingStage3(nn.Layer):
         for param in trainable_params:
             assert hasattr(
                 param, "fw_storage"
-            ), "Find {} don't have fw_storage attribute.".format(param.name)
+            ), f"Find {param.name} don't have fw_storage attribute."
 
             param.fw_storage.clear_gradient(False)
             param.fw_storage._gradient_set_empty(False)
@@ -511,7 +511,7 @@ class ShardingStage3(nn.Layer):
         for param in trainable_params:
             assert hasattr(
                 param, "fw_storage"
-            ), "Find {} don't have fw_storage attribute".format(param.name)
+            ), f"Find {param.name} don't have fw_storage attribute"
             # Gradient average
             if self._offload:
                 with device_guard(device="cpu"):

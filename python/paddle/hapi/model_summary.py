@@ -470,11 +470,10 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     total_size = total_params_size + total_output_size + total_input_size
 
     summary_str += "=" * table_width['table_width'] + "\n"
-    summary_str += "Total params: {:,}".format(total_params) + "\n"
-    summary_str += "Trainable params: {:,}".format(trainable_params) + "\n"
+    summary_str += f"Total params: {total_params:,}" + "\n"
+    summary_str += f"Trainable params: {trainable_params:,}" + "\n"
     summary_str += (
-        "Non-trainable params: {:,}".format(total_params - trainable_params)
-        + "\n"
+        f"Non-trainable params: {total_params - trainable_params:,}" + "\n"
     )
     summary_str += "-" * table_width['table_width'] + "\n"
     summary_str += "Input size (MB): %0.2f" % total_input_size + "\n"

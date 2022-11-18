@@ -66,7 +66,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         download(data_url, self.download_path, data_md5)
         file_name = data_url.split('/')[-1]
         zip_path = os.path.join(self.cache_folder, file_name)
-        print('Data is downloaded at {}'.format(zip_path))
+        print(f'Data is downloaded at {zip_path}')
 
         data_cache_folder = os.path.join(self.cache_folder, folder_name)
         self.cache_unzipping(data_cache_folder, zip_path)
@@ -216,7 +216,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             self.int8_model_path, batch_size, infer_iterations
         )
 
-        print("---Post training quantization of {} method---".format(algo))
+        print(f"---Post training quantization of {algo} method---")
         print(
             "FP32 {}: batch_size {}, throughput {} img/s, latency {} s, acc1 {}.".format(
                 model_name, batch_size, fp32_throughput, fp32_latency, fp32_acc1

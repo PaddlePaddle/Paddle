@@ -56,7 +56,7 @@ def get_os_info():
     else:
         plat = None
         ver = None
-    envs['os_info'] = "{} {}".format(plat, ver)
+    envs['os_info'] = f"{plat} {ver}"
 
 
 def get_python_info():
@@ -116,7 +116,7 @@ def get_cudnn_info():
         cmd.format(cudnn_header_path, 'CUDNN_PATCHLEVEL')
     )
 
-    envs['cudnn_version'] = "{}.{}.{}".format(major, minor, patch_level)
+    envs['cudnn_version'] = f"{major}.{minor}.{patch_level}"
 
 
 def get_driver_info():

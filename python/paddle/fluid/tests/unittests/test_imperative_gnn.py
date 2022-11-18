@@ -182,7 +182,7 @@ class TestDygraphGNN(unittest.TestCase):
         np.testing.assert_allclose(
             static_weight, model2_gc_weight_value, rtol=1e-05
         )
-        sys.stderr.write('{} {}\n'.format(static_loss, loss_value))
+        sys.stderr.write(f'{static_loss} {loss_value}\n')
 
     def test_gnn_float32(self):
         with _test_eager_guard():

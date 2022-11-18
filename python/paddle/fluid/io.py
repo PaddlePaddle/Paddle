@@ -125,9 +125,7 @@ def _open_file_buffer(path_or_buffer, mode):
         elif 'r' in mode:
             return _buffer_reader(path_or_buffer)
         else:
-            raise ValueError(
-                "Expected 'r' or 'w' in mode but got {}".format(mode)
-            )
+            raise ValueError(f"Expected 'r' or 'w' in mode but got {mode}")
 
 
 def _is_memory_buffer(buffer):
@@ -594,7 +592,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
                 index = block_id if is_slice else idx
                 slices[index] = slice
-                slice_varnames[index] = "{}.slice.{}".format(slice.name, idx)
+                slice_varnames[index] = f"{slice.name}.slice.{idx}"
                 remote_varnames[index] = slice.name
                 endpoints[index] = endpoint
 
@@ -1216,7 +1214,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                 )
             else:
                 origin = load_block.create_var(
-                    name="{}".format(origin_var.name),
+                    name=f"{origin_var.name}",
                     type=origin_var.type,
                     shape=origin_var.shape,
                     dtype=origin_var.dtype,
@@ -1979,7 +1977,7 @@ def save(program, model_path, protocol=4, **configs):
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
-            "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
+            f"Expected 1<'protocol'<5, but received protocol={protocol}"
         )
 
     dir_name = os.path.dirname(model_path)
@@ -2236,7 +2234,7 @@ def load(program, model_path, executor=None, var_list=None):
         opt_file_name = model_prefix + ".pdopt"
         assert os.path.exists(
             opt_file_name
-        ), "Optimizer file [{}] not exits".format(opt_file_name)
+        ), f"Optimizer file [{opt_file_name}] not exits"
 
         if executor:
             paddle.fluid.core._create_loaded_parameter(
@@ -2415,7 +2413,7 @@ def load_program_state(model_path, var_list=None):
 
     assert os.path.exists(
         parameter_file_name
-    ), "Parameter file [{}] not exits".format(parameter_file_name)
+    ), f"Parameter file [{parameter_file_name}] not exits"
 
     with open(parameter_file_name, 'rb') as f:
         # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'

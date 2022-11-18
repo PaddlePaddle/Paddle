@@ -50,7 +50,7 @@ class TestFusionSeqPoolConcatOp(OpTest):
                 compute_seqpool_sqrt(x, offset, out)
             else:
                 raise Exception("Unsupported pool type!")
-            inputs.append(('x_{}'.format(i), (x, lod)))
+            inputs.append((f'x_{i}', (x, lod)))
             outs.append(out)
             i = i + 1
 

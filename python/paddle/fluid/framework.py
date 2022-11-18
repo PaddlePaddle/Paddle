@@ -1288,7 +1288,7 @@ def _varbase_creator(
     shape=None,
     dtype=None,
     persistable=None,
-    **kwargs
+    **kwargs,
 ):
     if dtype is not None:
         if not isinstance(dtype, core.VarDesc.VarType):
@@ -1409,7 +1409,7 @@ class Variable(metaclass=VariableMetaClass):
         is_data=False,
         need_check_feed=False,
         belong_to_optimizer=False,
-        **kwargs
+        **kwargs,
     ):
         self.block = block
         if name is None:
@@ -1752,7 +1752,7 @@ class Variable(metaclass=VariableMetaClass):
                 stop_gradient=self.stop_gradient,
             )
         else:
-            var_str = "{name} : {type})".format(name=self.name, type=type_str)
+            var_str = f"{self.name} : {type_str})"
 
         if self.is_parameter:
             if self.trainable:
@@ -2429,7 +2429,7 @@ class Variable(metaclass=VariableMetaClass):
         var_temp = scope.find_var(self.name)
         if var_temp is None:
             raise ValueError(
-                "Can not find Variable '{}' in the Scope.".format(self.name)
+                f"Can not find Variable '{self.name}' in the Scope."
             )
         t = var_temp.get_tensor()
         return t
@@ -2502,7 +2502,7 @@ class Variable(metaclass=VariableMetaClass):
         var_temp = scope.find_var(self.name)
         if var_temp is None:
             raise ValueError(
-                "Can not find Variable '{}' in the Scope.".format(self.name)
+                f"Can not find Variable '{self.name}' in the Scope."
             )
 
         t = var_temp.get_tensor()
@@ -2859,9 +2859,7 @@ class Operator:
                             frame[0], frame[1], frame[2]
                         )
                     )
-                    op_attrs[callstack_var_name].append(
-                        '    {}'.format(frame[3])
-                    )
+                    op_attrs[callstack_var_name].append(f'    {frame[3]}')
 
             self.desc.set_type(type)
             proto = OpProtoHolder.instance().get_op_proto(type)
@@ -2909,7 +2907,7 @@ class Operator:
                     found = find_name(inputs, in_proto.name)
                     assert (
                         found or in_proto.dispensable
-                    ), "Input {} not found".format(in_proto.name)
+                    ), f"Input {in_proto.name} not found"
                     if found:
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, (list, tuple)):
@@ -3070,18 +3068,18 @@ class Operator:
         )
         outputs_str = "{"
         for i in range(0, len(self.output_names)):
-            outputs_str += "{name}=".format(name=self.output_names[i])
+            outputs_str += f"{self.output_names[i]}="
             o = self.output(self.output_names[i])
-            outputs_str += "{value}".format(value=o)
+            outputs_str += f"{o}"
             if i != len(self.output_names) - 1:
                 outputs_str += ", "
         outputs_str += "}"
 
         inputs_str = "{"
         for i in range(0, len(self.input_names)):
-            inputs_str += "{name}=".format(name=self.input_names[i])
+            inputs_str += f"{self.input_names[i]}="
             o = self.input(self.input_names[i])
-            inputs_str += "{value}".format(value=o)
+            inputs_str += f"{o}"
 
             if i != len(self.input_names) - 1:
                 inputs_str += ", "
@@ -3630,9 +3628,9 @@ class Block:
             type(skip_op_callstack)
         )
         block_str = "{ // block "
-        block_str += "{}\n".format(self.idx)
+        block_str += f"{self.idx}\n"
         for var in list(self.vars.values()):
-            block_str += "    {}\n".format(var._to_readable_code())
+            block_str += f"    {var._to_readable_code()}\n"
         block_str += "\n"
         for op in self.ops:
             block_str += "    {}\n".format(
@@ -3791,7 +3789,7 @@ class Block:
         if var:
             return var
         else:
-            raise ValueError("Var {} is not found recursively".format(name))
+            raise ValueError(f"Var {name} is not found recursively")
 
     def all_parameters(self):
         return list(self.iter_parameters())
@@ -5137,9 +5135,7 @@ class IrGraph:
             )
             if exited_code != 0:
                 print('The dot command is needed for creating pdf files.')
-                print(
-                    'The {} is saved as the dot filetype.'.format(dot_file_path)
-                )
+                print(f'The {dot_file_path} is saved as the dot filetype.')
 
         remove_ctr_vars = set()
         if remove_ctr_var:
@@ -5147,7 +5143,7 @@ class IrGraph:
                 if node.is_ctrl_var():
                     remove_ctr_vars.add(node)
             self.safe_remove_nodes(remove_ctr_vars)
-        print('Total ops num = {}.'.format(len(self.all_op_nodes())))
+        print(f'Total ops num = {len(self.all_op_nodes())}.')
 
         if marked_nodes is not None:
             if not isinstance(marked_nodes, set):
@@ -6813,13 +6809,9 @@ class Program:
                 try:
                     vars_dict[name].set_value(value, scope)
                 except ValueError as err:
-                    warnings.warn(
-                        "Skip loading for '{}'. ".format(name) + str(err)
-                    )
+                    warnings.warn(f"Skip loading for '{name}'. " + str(err))
                 except TypeError as err:
-                    warnings.warn(
-                        "Skip loading for '{}'. ".format(name) + str(err)
-                    )
+                    warnings.warn(f"Skip loading for '{name}'. " + str(err))
             else:
                 warnings.warn(
                     "Skip loading for '{0}'. Because '{0}' not in the program.".format(
@@ -6858,7 +6850,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         shape,
         dtype,
         type=core.VarDesc.VarType.LOD_TENSOR,
-        **kwargs
+        **kwargs,
     ):
         if shape is None:
             raise ValueError("The shape of Parameter should not be None")
@@ -6879,7 +6871,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
             shape=shape,
             dtype=dtype,
             type=type,
-            **kwargs
+            **kwargs,
         )
         self.trainable = kwargs.get('trainable', True)
 

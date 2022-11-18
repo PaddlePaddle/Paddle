@@ -18,10 +18,10 @@ import numpy as np
 
 def get_var_and_memory_size(block, var_name, batch_size=None):
     var = block._find_var_recursive(var_name)
-    assert var is not None, "Variable {} cannot be found".format(var_name)
+    assert var is not None, f"Variable {var_name} cannot be found"
     assert (
         var.type == core.VarDesc.VarType.LOD_TENSOR
-    ), "Variable {} is not Tensor".format(var_name)
+    ), f"Variable {var_name} is not Tensor"
     shape = list(var.shape)
     if not shape:
         return var, 0

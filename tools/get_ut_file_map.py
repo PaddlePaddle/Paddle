@@ -72,17 +72,17 @@ def handle_ut_file_map(rootPath):
             all_ut_list.append(ut.strip())
         f.close()
     for ut in all_ut_list:
-        filedir = '{}/build/ut_map/{}'.format(rootPath, ut)
+        filedir = f'{rootPath}/build/ut_map/{ut}'
         if not os.path.exists(filedir):
             not_success_file.write('%s\n' % ut)
             utNotSuccess_list.append(ut)
     # if fnda.tmp not exists,write the test into prec_delta
     for ut in files:
         count = count + 1
-        print("ut {}: {}".format(count, ut))
-        coverage_info = '{}/{}/fnda.tmp'.format(ut_map_path, ut)
+        print(f"ut {count}: {ut}")
+        coverage_info = f'{ut_map_path}/{ut}/fnda.tmp'
         if os.path.exists(coverage_info):
-            filename = '{}/{}/related_{}.txt'.format(ut_map_path, ut, ut)
+            filename = f'{ut_map_path}/{ut}/related_{ut}.txt'
             try:
                 f = open(filename)
                 print("oepn %s succesfully" % filename)
@@ -118,7 +118,7 @@ def handle_ut_file_map(rootPath):
 
     for ut in files:
         if ut not in utNotSuccess_list:
-            filename = '{}/{}/notrelated_{}.txt'.format(ut_map_path, ut, ut)
+            filename = f'{ut_map_path}/{ut}/notrelated_{ut}.txt'
             try:
                 f = open(filename)
                 print("oepn %s succesfully" % filename)
@@ -147,7 +147,7 @@ def notsuccessfuc(rootPath):
     count = 0
     # ut failed!!
     for ut in files:
-        coverage_info = '{}/{}/fnda.tmp'.format(ut_map_path, ut)
+        coverage_info = f'{ut_map_path}/{ut}/fnda.tmp'
         if os.path.exists(coverage_info):
             pass
         else:
@@ -214,7 +214,7 @@ def ut_file_map_supplement(rootPath):
         f.close()
 
     for ut in prec_delta_old_list:
-        filename = '{}/build/ut_map/{}/fnda.tmp'.format(rootPath, ut)
+        filename = f'{rootPath}/build/ut_map/{ut}/fnda.tmp'
         if ut in all_uts_paddle_list:
             if not os.path.exists(filename) and ut not in prec_delta_new_list:
                 prec_delta_new_list.append(ut)
