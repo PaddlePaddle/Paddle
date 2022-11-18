@@ -162,7 +162,7 @@ def decoder_decode(context, is_sparse):
         # update the break condition: up to the max length or all candidates of
         # source sentences have ended.
         length_cond = pd.less_than(x=counter, y=array_len)
-        finish_cond = pd.logical_not(pd.is_empty(x=selected_ids))
+        finish_cond = paddle.logical_not(pd.is_empty(x=selected_ids))
         pd.logical_and(x=length_cond, y=finish_cond, out=cond)
 
     translation_ids, translation_scores = pd.beam_search_decode(
