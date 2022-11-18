@@ -37,6 +37,8 @@ from ...fluid.framework import (
 
 __all__ = []
 
+kIgnoreIndex = -100
+
 
 def dice_loss(input, label, epsilon=0.00001, name=None):
     r"""
