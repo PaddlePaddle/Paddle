@@ -24,7 +24,6 @@ from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.common import Linear, Dropout
 from paddle.nn.layer.transformer import _convert_attention_mask
 from paddle import tensor
-from paddle.fluid import layers
 import unittest
 from op_test_xpu import XPUOpTest
 from paddle.fluid.framework import default_main_program
@@ -162,7 +161,7 @@ class XPUTestFusedAttentionOp(XPUOpTestWrapper):
 
             # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
             # --> [B, n_head, seq_len, out_seq_len]
-            qk_out = layers.matmul(
+            qk_out = tensor.matmul(
                 x=q_out * self.head_dim**-0.5, y=k_out, transpose_y=True
             )
 
