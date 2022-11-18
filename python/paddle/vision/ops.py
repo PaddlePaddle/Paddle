@@ -1305,7 +1305,7 @@ def distribute_fpn_proposals(
 
     .. math::
         roi\_scale &= \sqrt{BBoxArea(fpn\_roi)} \\
-        level = floor(&\log(\\frac{roi\_scale}{refer\_scale}) + refer\_level)
+        level &= floor(\log(\frac{roi\_scale}{refer\_scale}) + refer\_level)
 
     where BBoxArea is a function to compute the area of each roi.
 
