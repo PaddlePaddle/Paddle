@@ -80,6 +80,7 @@ class PlacementPassTest {
                                              "l"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::SELECTED_ROWS);
+      var->SetDataType(framework::proto::VarType::FP32);
       if (v == "weights" || v == "bias") {
         var->SetPersistable(true);
       }
@@ -162,8 +163,8 @@ class PlacementPassTest {
 };
 
 TEST(MKLDNNPlacementPass, enable_conv_relu) {
-  // 1 conv (1 conv is always true) + 2 relu (1 relu is always true) + 0 pool
-  PlacementPassTest().MainTest({"conv2d", "relu"}, 3);
+  // 2 conv (1 conv is always true) + 2 relu (1 relu is always true) + 0 pool
+  PlacementPassTest().MainTest({"conv2d", "relu"}, 4);
 }
 
 TEST(MKLDNNPlacementPass, enable_relu_pool) {
@@ -172,8 +173,9 @@ TEST(MKLDNNPlacementPass, enable_relu_pool) {
 }
 
 TEST(MKLDNNPlacementPass, enable_all) {
-  // 1 conv (1 conv is always true) + 2 relu (1 relu is always true) + 1 pool
-  PlacementPassTest().MainTest({}, 4);
+  // 2 conv (1 conv is always true) + 2 relu (1 relu is always true) + 1 pool +
+  // 1 concat
+  PlacementPassTest().MainTest({}, 6);
 }
 
 TEST(MKLDNNPlacementPass, placement_name) {
