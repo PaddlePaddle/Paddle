@@ -22,7 +22,6 @@ from paddle.fluid.proto import framework_pb2
 from paddle.static import Program
 from paddle.fluid import debugger
 from google.protobuf import text_format
-import paddle.fluid as fluid
 import paddle.framework as framework
 from collections import OrderedDict
 from paddle.fluid import core
@@ -641,7 +640,7 @@ class UtilBase:
                             dtype=feed_config.feeded_vars_types[i],
                         )
                         feed_tensors.append(
-                            fluid.create_lod_tensor(
+                            paddle.fluid.create_lod_tensor(
                                 t, [[1] * config.batch_size], place
                             )
                         )
@@ -670,7 +669,7 @@ class UtilBase:
                     )
                     for i in range(len(feed_config.feeded_vars_names))
                 ]
-                feeder = fluid.DataFeeder(feed_list=feed_vars, place=place)
+                feeder = paddle.fluid.DataFeeder(feed_list=feed_vars, place=place)
                 batch_feed = feed_gen(
                     config.batch_size,
                     feed_config.feeded_vars_dims,
