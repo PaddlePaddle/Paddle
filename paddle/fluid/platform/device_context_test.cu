@@ -103,11 +103,8 @@ TEST(Device, GPUContext) {
 
 TEST(Device, HostZeroAllocator) {
   using paddle::platform::CUDAPlace;
-  using phi::GPUContext;
 
-  phi::GPUContext gpu_context(CUDAPlace(0));
-  auto device_context =
-      std::make_unique<phi::GPUContext>(std::move(gpu_context));
+  auto device_context = std::make_unique<phi::GPUContext>(CUDAPlace(0));
   device_context->SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(CUDAPlace(0), device_context->stream())
@@ -136,6 +133,11 @@ TEST(Device, HostZeroAllocator) {
   ASSERT_EQ(tensor.place().GetType(), phi::AllocationType::CPU);
   ASSERT_EQ(tensor.numel(), 0);
   ASSERT_EQ(tensor.dtype(), phi::DataType::FLOAT32);
+
+  phi::GPUContext gpu_context(CUDAPlace(0));
+  gpu_context.SetHostZeroAllocator(&device_context->GetHostZeroAllocator());
+  gpu_context.HostAlloc<float>(&tensor);
+  ASSERT_EQ(tensor.place().GetType(), phi::AllocationType::CPU);
 }
 
 TEST(Device, DeviceContextPool) {
