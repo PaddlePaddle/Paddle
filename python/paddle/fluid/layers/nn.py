@@ -137,7 +137,6 @@ __all__ = [
     'brelu',
     'leaky_relu',
     'flatten',
-    'stack',
     'pad2d',
     'unique',
     'unique_with_counts',
@@ -160,7 +159,6 @@ __all__ = [
     'size',
     'logical_and',
     'logical_or',
-    'logical_xor',
     'logical_not',
     'clip',
     'clip_by_norm',
@@ -10246,147 +10244,6 @@ def flatten(x, axis=1, name=None):
     return out
 
 
-def stack(x, axis=0, name=None):
-    """
-
-    This OP stacks all the inputs :code:`x` along axis.
-
-    .. code-block:: text
-
-        Case 1:
-
-          Input:
-            x[0].shape = [1, 2]
-            x[0].data = [ [1.0 , 2.0 ] ]
-            x[1].shape = [1, 2]
-            x[1].data = [ [3.0 , 4.0 ] ]
-            x[2].shape = [1, 2]
-            x[2].data = [ [5.0 , 6.0 ] ]
-
-          Attrs:
-            axis = 0
-
-          Output:
-            Out.dims = [3, 1, 2]
-            Out.data =[ [ [1.0, 2.0] ],
-                        [ [3.0, 4.0] ],
-                        [ [5.0, 6.0] ] ]
-
-
-        Case 2:
-
-
-          Input:
-            x[0].shape = [1, 2]
-            x[0].data = [ [1.0 , 2.0 ] ]
-            x[1].shape = [1, 2]
-            x[1].data = [ [3.0 , 4.0 ] ]
-            x[2].shape = [1, 2]
-            x[2].data = [ [5.0 , 6.0 ] ]
-
-
-          Attrs:
-            axis = 1 or axis = -2
-
-          Output:
-            Out.shape = [1, 3, 2]
-            Out.data =[ [ [1.0, 2.0]
-                          [3.0, 4.0]
-                          [5.0, 6.0] ] ]
-
-
-    Args:
-        x (list(Variable)|tuple(Variable)): Input :code:`x` can be a :code:`list` or :code:`tuple` of Tensors, the shapes of all these Tensors
-                                     must be the same. Supposing input is N dims
-                                     Tensors :math:`[d_0, d_1, ..., d_{n-1}]`, the output is N+1 dims
-                                     Tensor :math:`[d_0, d_1, d_{axis-1}, len(x), d_{axis}, ..., d_{n-1}]`.
-                                     Supported data types: float32, float64, int32, int64.
-        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
-                              where ``R`` is the number of dimensions of the first input tensor ``x[0]``.
-                              If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
-        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
-
-
-    Returns:
-        Variable: The stacked Tensor, has same data type with input Tensors. Output dim is :math:`rank(x[0])+1`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            # set batch size=None
-            x1 = fluid.data(name='x1', shape=[None, 1, 2], dtype='int32')
-            x2 = fluid.data(name='x2', shape=[None, 1, 2], dtype='int32')
-            # stack Tensor list
-            data = layers.stack([x1,x2]) # stack according to axis 0, data.shape=[2, None, 1, 2]
-
-            data = layers.stack([x1,x2], axis=1) # stack according to axis 1, data.shape=[None, 2, 1, 2]
-
-
-    """
-    axis = 0 if axis is None else axis
-
-    if in_dygraph_mode():
-        return _C_ops.stack(x, axis)
-
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.stack(x, 'axis', axis)
-
-    if not isinstance(x, list) and not isinstance(x, tuple):
-        # NOTE:(zhiqiu) Only support Variable as input if the Variable is a LOD_TENSOR_ARRAY create by create_array, array_write, array_read, etc.
-        # In that case, Variable is array of tensors indeed.
-        if (
-            isinstance(x, Variable)
-            and x.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-        ):
-            x = [x]
-        else:
-            raise TypeError(
-                "The type of '%s' in %s must be %s, but received %s"
-                % (
-                    'x',
-                    'stack',
-                    'list[Tensor], tuple[Tensor] or TensorArray',
-                    type(x),
-                )
-            )
-
-    helper = LayerHelper('stack', **locals())
-
-    out = helper.create_variable_for_type_inference(x[0].dtype)
-    if x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-        assert len(x) == 1, (
-            "If the elements of 'x' in stack are Variable(LoDTensorArray), "
-            "number of the elements must be 1, but received %s." % len(x)
-        )
-        out_index = helper.create_variable_for_type_inference(dtype="int32")
-
-        for i in x:
-            check_variable_and_dtype(
-                i,
-                'x',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
-                'stack',
-            )
-
-        helper.append_op(
-            type='tensor_array_to_tensor',
-            inputs={'X': x[0]},
-            outputs={'Out': [out], 'OutIndex': [out_index]},
-            attrs={'axis': axis, 'use_stack': True},
-        )
-    else:
-        helper.append_op(
-            type='stack',
-            inputs={'X': x},
-            outputs={'Y': out},
-            attrs={'axis': axis},
-        )
-
-    return out
-
-
 @deprecated(since='2.0.0', update_to="paddle.expand")
 def expand(x, expand_times, name=None):
     """
@@ -12409,49 +12266,6 @@ def logical_or(x, y, out=None, name=None):
         return _C_ops.logical_or(x, y)
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True
-    )
-
-
-def logical_xor(x, y, out=None, name=None):
-    r"""
-
-    ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
-    Each element of ``out`` is calculated by
-
-    .. math::
-
-        out = (x || y) \&\& !(x \&\& y)
-
-    .. note::
-        ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import numpy as np
-
-            x_data = np.array([True, False], dtype=np.bool_).reshape([2, 1])
-            y_data = np.array([True, False, True, False], dtype=np.bool_).reshape([2, 2])
-            x = paddle.to_tensor(x_data)
-            y = paddle.to_tensor(y_data)
-            res = paddle.logical_xor(x, y)
-            print(res) # [[False,  True], [ True, False]]
-    """
-    if in_dygraph_mode():
-        return _C_ops.logical_xor(x, y)
-
-    return _logical_op(
-        op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True
     )
 
 
