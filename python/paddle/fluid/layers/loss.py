@@ -37,6 +37,7 @@ from paddle import _C_ops, _legacy_C_ops
 __all__ = [
     'cross_entropy',
     'square_error_cost',
+    'warpctc',
     'nce',
     'softmax_with_cross_entropy',
     'sigmoid_cross_entropy_with_logits',
