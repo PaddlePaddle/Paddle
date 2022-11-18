@@ -16,7 +16,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/operators/conv_op.h"
-#include "paddle/phi/kernels/onednn/conv_function.h"
 
 namespace paddle {
 namespace operators {
