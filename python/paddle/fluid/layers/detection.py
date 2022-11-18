@@ -1677,7 +1677,7 @@ def ssd_loss(location,
         raise ValueError("Only support mining_type == max_negative now.")
 
     num, num_prior, num_class = confidence.shape
-    conf_shape = nn.shape(confidence)
+    conf_shape = paddle.shape(confidence)
 
     def __reshape_to_2d(var):
         return nn.flatten(x=var, axis=2)

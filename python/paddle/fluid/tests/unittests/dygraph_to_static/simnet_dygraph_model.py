@@ -19,6 +19,7 @@ from functools import reduce
 from paddle.fluid.dygraph import declarative
 from paddle.fluid.dygraph import Embedding, Layer, Linear
 from paddle.static import Variable
+import paddle
 
 
 class EmbeddingLayer(object):
@@ -205,7 +206,7 @@ class ConstantLayer(object):
         operation
         """
         shape = list(shape)
-        input_shape = fluid.layers.shape(input)
+        input_shape = paddle.shape(input)
         shape[0] = input_shape[0]
         constant = fluid.layers.fill_constant(shape, dtype, value)
         return constant

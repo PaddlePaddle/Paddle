@@ -306,8 +306,7 @@ def bmn_loss_func(pred_bm, pred_start, pred_end, gt_iou_map, gt_start, gt_end,
                                             inplace=False)
             gt_label.stop_gradient = True
             pmask = fluid.layers.cast(x=(gt_label > 0.5), dtype=DATATYPE)
-            num_entries = fluid.layers.cast(fluid.layers.shape(pmask),
-                                            dtype=DATATYPE)
+            num_entries = fluid.layers.cast(paddle.shape(pmask), dtype=DATATYPE)
             num_positive = fluid.layers.cast(fluid.layers.reduce_sum(pmask),
                                              dtype=DATATYPE)
             ratio = num_entries / num_positive

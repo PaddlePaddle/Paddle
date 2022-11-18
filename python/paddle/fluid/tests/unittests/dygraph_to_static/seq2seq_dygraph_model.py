@@ -265,7 +265,7 @@ class BaseModel(fluid.dygraph.Layer):
                                                        label=label,
                                                        soft_label=False)
         loss = fluid.layers.squeeze(loss, axes=[2])
-        max_tar_seq_len = fluid.layers.shape(tar)[1]
+        max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(tar_sequence_length,
                                               maxlen=max_tar_seq_len,
                                               dtype='float32')
@@ -733,7 +733,7 @@ class AttentionModel(fluid.dygraph.Layer):
                                                        label=label,
                                                        soft_label=False)
         loss = fluid.layers.squeeze(loss, axes=[2])
-        max_tar_seq_len = fluid.layers.shape(tar)[1]
+        max_tar_seq_len = paddle.shape(tar)[1]
         tar_mask = fluid.layers.sequence_mask(tar_sequence_length,
                                               maxlen=max_tar_seq_len,
                                               dtype='float32')

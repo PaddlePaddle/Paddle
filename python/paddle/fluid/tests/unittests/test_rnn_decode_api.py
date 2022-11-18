@@ -212,7 +212,7 @@ class Seq2SeqModel(object):
                 batch_ref=encoder_output, shape=[encoder_output.shape[-1]])
         ]
         src_mask = layers.sequence_mask(src_length,
-                                        maxlen=layers.shape(src)[1],
+                                        maxlen=paddle.shape(src)[1],
                                         dtype="float32")
         encoder_padding_mask = (src_mask - 1.0) * 1e9
         encoder_padding_mask = layers.unsqueeze(encoder_padding_mask, [1])
@@ -342,7 +342,7 @@ class MLE(object):
 
     def learn(self, probs, label, weight=None, length=None):
         loss = layers.cross_entropy(input=probs, label=label, soft_label=False)
-        max_seq_len = layers.shape(probs)[1]
+        max_seq_len = paddle.shape(probs)[1]
         mask = layers.sequence_mask(length, maxlen=max_seq_len, dtype="float32")
         loss = loss * mask
         loss = layers.reduce_mean(loss, dim=[0])
