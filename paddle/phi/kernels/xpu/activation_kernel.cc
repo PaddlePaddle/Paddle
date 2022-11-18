@@ -213,9 +213,14 @@ void PowKernel(const Context& dev_ctx,
                        static_cast<void*>(&pow_factor),
                        sizeof(T));
 
-  // broadcast_pow(Context* ctx, const T* x, const T* y, T* z, const
-  // std::vector<int>& xshape, const std::vector<int>& yshape);
   auto x_dims = vectorize<int>(x.dims());
+  // use [1] to replace [], because xpu not support []
+  if (x_dims.size() == 0) {
+    x_dims = std::vector<int>({1});
+  }
+
+  // broadcast_pow(Context* ctx, const T* x, const T* y, T* z, const
+  //    std::vector<int>& xshape, const std::vector<int>& yshape);
   int r =
       xpu::broadcast_pow(xpu_context, x_data, factor_data, y_data, x_dims, {1});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
@@ -451,6 +456,9 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}
 
+PD_REGISTER_KERNEL(
+    square, XPU, ALL_LAYOUT, phi::SquareKernel, float, phi::dtype::float16) {}
+
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
@@ -463,4 +471,3 @@ PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
-PD_REGISTER_ACTIVATION_KERNEL(square, SquareKernel)

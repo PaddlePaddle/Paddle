@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,22 +15,22 @@
 #pragma once
 
 #include "math.h"  // NOLINT
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/hostdevice.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace funcs {
 
-inline HOSTDEVICE platform::float16 real_exp(platform::float16 x) {
-  return static_cast<platform::float16>(::expf(static_cast<float>(x)));
+inline HOSTDEVICE phi::dtype::float16 real_exp(phi::dtype::float16 x) {
+  return static_cast<phi::dtype::float16>(::expf(static_cast<float>(x)));
 }
 
 inline HOSTDEVICE float real_exp(float x) { return ::expf(x); }
 
 inline HOSTDEVICE double real_exp(double x) { return ::exp(x); }
 
-inline HOSTDEVICE platform::float16 real_log(platform::float16 x) {
-  return static_cast<platform::float16>(::logf(static_cast<float>(x)));
+inline HOSTDEVICE phi::dtype::float16 real_log(phi::dtype::float16 x) {
+  return static_cast<phi::dtype::float16>(::logf(static_cast<float>(x)));
 }
 
 inline HOSTDEVICE float real_log(float x) { return ::logf(x); }
@@ -41,5 +41,5 @@ inline HOSTDEVICE float real_min(float x, float y) { return ::fminf(x, y); }
 
 inline HOSTDEVICE double real_min(double x, double y) { return ::fmin(x, y); }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

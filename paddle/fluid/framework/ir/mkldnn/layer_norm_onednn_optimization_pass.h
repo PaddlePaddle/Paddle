@@ -12,17 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-namespace phi {
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
-KernelSignature IndexSelectGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "index_select_grad", {"X", "Index", "Out@GRAD"}, {"dim"}, {"X@GRAD"});
-}
+namespace paddle {
+namespace framework {
+namespace ir {
 
-}  // namespace phi
+class LayerNormOneDNNOptimizationPass : public FusePassBase {
+ public:
+  virtual ~LayerNormOneDNNOptimizationPass() {}
 
-PD_REGISTER_ARG_MAPPING_FN(index_select_grad,
-                           phi::IndexSelectGradOpArgumentMapping);
+ protected:
+  void ApplyImpl(Graph *graph) const override;
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

@@ -12,14 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-namespace phi {
+#include "paddle/phi/core/dense_tensor.h"
 
-KernelSignature HistogramOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("histogram", {"X"}, {"bins", "min", "max"}, {"Out"});
+namespace paddle {
+namespace distributed {
+
+inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor &tensor,
+                                         int64_t offset,
+                                         int64_t numel) {
+  phi::DenseTensor tensor_flattened;
+  tensor_flattened.ShareDataWith(tensor);
+  tensor_flattened.Resize({tensor.numel()});
+  return tensor_flattened.Slice(offset, offset + numel);
 }
 
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(histogram, phi::HistogramOpArgumentMapping);
+}  //  namespace distributed
+}  //  namespace paddle

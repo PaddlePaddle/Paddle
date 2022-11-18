@@ -16,16 +16,16 @@
 
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
-#include "paddle/phi/kernels/tril_grad_kernel.h"
+#include "paddle/phi/kernels/tril_triu_grad_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void TrilGradKernel(const Context& ctx,
-                    const DenseTensor& out_grad,
-                    int diagonal,
-                    bool lower,
-                    DenseTensor* x_grad) {
+void TrilTriuGradKernel(const Context& ctx,
+                        const DenseTensor& out_grad,
+                        int diagonal,
+                        bool lower,
+                        DenseTensor* x_grad) {
   const auto* dout_data = out_grad.data<T>();
   auto* dx_data = ctx.template Alloc<T>(x_grad);
 
@@ -38,6 +38,22 @@ void TrilGradKernel(const Context& ctx,
   phi::funcs::TrilTriuCompute<T> tril_triu_grad_computer(
       dout_data, diagonal, lower, H, W, dx_data);
   for_range(tril_triu_grad_computer);
+}
+
+template <typename T, typename Context>
+void TrilGradKernel(const Context& ctx,
+                    const DenseTensor& out_grad,
+                    int diagonal,
+                    DenseTensor* x_grad) {
+  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, true, x_grad);
+}
+
+template <typename T, typename Context>
+void TriuGradKernel(const Context& ctx,
+                    const DenseTensor& out_grad,
+                    int diagonal,
+                    DenseTensor* x_grad) {
+  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, false, x_grad);
 }
 
 }  // namespace phi
