@@ -27,7 +27,6 @@ from .... import unique_name
 
 from ....framework import Program, program_guard, default_startup_program
 from ....data import data
-from ....layers import mean
 from ....executor import scope_guard
 from ....framework import _get_paddle_place
 from . import utils

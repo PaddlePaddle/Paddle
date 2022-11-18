@@ -35,11 +35,9 @@ from ..unique_name import generate as unique_name
 import logging
 from ..data_feeder import check_dtype, check_type
 from paddle.fluid.framework import static_only
-from ..framework import (
-    _get_paddle_place,
-    _current_expected_place,
-    _set_expected_place,
-)
+
+from ..framework import _get_paddle_place, _current_expected_place, _set_expected_place
+import paddle
 
 __all__ = [
     'data',
@@ -687,7 +685,7 @@ def py_reader(
              # User defined network. Here a simple regression as example
              predict = fluid.layers.fc(input=img, size=10, act='softmax')
              loss = fluid.layers.cross_entropy(input=predict, label=label)
-             return fluid.layers.mean(loss)
+             return paddle.mean(loss)
 
          # Create train_main_prog and train_startup_prog
          train_main_prog = fluid.Program()
@@ -792,7 +790,7 @@ def create_py_reader_by_data(
               # User defined network. Here a simple regression as example
               predict = fluid.layers.fc(input=img, size=10, act='softmax')
               loss = fluid.layers.cross_entropy(input=predict, label=label)
-              return fluid.layers.mean(loss)
+              return paddle.mean(loss)
 
           MEMORY_OPT = False
           USE_CUDA = False
