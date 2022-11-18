@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
@@ -27,6 +28,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
+using phi::backends::gpu::GpuLaunchConfig;
 
 template <typename T>
 class AttnMatmulINT8 {
@@ -36,6 +38,9 @@ class AttnMatmulINT8 {
       : dev_ctx_(dev_ctx), m_(m), n_(n), k_(k), compute_bias_(compute_bias) {
     auto helper = std::make_shared<CublasLtHelper>(m, k, n);
     helpers_.emplace_back(helper);
+    gpu_config_ = std::make_unique<GpuLaunchConfig>(
+        phi::backends::gpu::GetGpuLaunchConfig1D(
+            dev_ctx, m * n, DequantKernelVecSize));
   }
   ~AttnMatmulINT8() {}
 
@@ -73,6 +78,7 @@ class AttnMatmulINT8 {
                                   m_,
                                   n_,
                                   dev_ctx_.stream(),
+                                  gpu_config_.get(),
                                   quant_in_scale,
                                   dequant_out_scale->data<float>());
 
@@ -126,6 +132,7 @@ class AttnMatmulINT8 {
                                   m_,
                                   n_,
                                   dev_ctx_.stream(),
+                                  gpu_config_.get(),
                                   quant_in_scale,
                                   dequant_out_scale->data<float>());
 
@@ -181,6 +188,7 @@ class AttnMatmulINT8 {
 
   int compute_bias_;
   std::vector<std::shared_ptr<CublasLtHelper>> helpers_;
+  std::unique_ptr<GpuLaunchConfig> gpu_config_;
 };
 
 }  // namespace operators

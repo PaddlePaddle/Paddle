@@ -36,16 +36,7 @@ struct CublasLtAlgoParam {
   size_t workspace_size;
 };
 
-const std::map<std::tuple<int, int, int>, CublasLtAlgoParam> AlgoParamCache{
-    {{1, 1024, 1024}, {11, 0, 1, 0, 0, 0, 0, 0}},
-    {{1, 1024, 3072}, {11, 0, 0, 0, 0, 0, 0, 0}},
-    {{1, 4096, 1024}, {21, 0, 0, 15, 5, 4, 18, 20480}},
-    {{1, 1024, 4096}, {21, 0, 0, 15, 0, 0, 18, 0}},
-    {{128, 1024, 1024}, {21, 0, 0, 15, 0, 0, 23, 0}},
-    {{128, 1024, 3072}, {21, 0, 0, 15, 0, 0, 18, 0}},
-    {{128, 4096, 1024}, {21, 0, 0, 18, 5, 4, 21, 2621440}},
-    {{128, 1024, 4096}, {21, 0, 0, 18, 0, 0, 21, 0}},
-};
+const std::map<std::tuple<int, int, int>, CublasLtAlgoParam> AlgoParamCache{};
 
 class CublasLtHelper {
  public:
@@ -134,6 +125,10 @@ class CublasLtHelper {
     int reductionScheme = 0;
     int stages = 23;
     workspace_size_ = 0;
+    if (m >= 128) {
+      tile = 20;
+      stages = 17;
+    }
 
     std::tuple<int, int, int> key(m_, k_, n_);
     if (AlgoParamCache.count(key) != 0) {

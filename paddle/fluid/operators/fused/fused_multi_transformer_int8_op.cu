@@ -114,6 +114,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
                             "The place of input(TimeStep) must be CPUPlace."));
       // cache_seq_len
       int time_step_value = time_step->data<int>()[0];
+      VLOG(1) << "time_step " << time_step_value;
       PADDLE_ENFORCE_GT(time_step_value,
                         0,
                         platform::errors::PreconditionNotMet(
@@ -132,6 +133,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     transpose_out_2.Resize({{3, bsz, num_head, seq_len, dim_head}});
     auto *transpose_out_2_data =
         dev_ctx.Alloc<T>(&transpose_out_2, transpose_out_2.numel() * sizeof(T));
+
     qk_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
     auto *qk_out_data = dev_ctx.Alloc<T>(&qk_out, qk_out.numel() * sizeof(T));
 
@@ -237,11 +239,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     int m_max = bsz_seq, k_max = std::max(dim_embed, dim_ffn),
         n_max = std::max({output_size, dim_embed, dim_ffn});
 
-    input_workspace.Resize(
-        {{32 * ((m_max + 32 - 1) / 32), (k_max + 31) / 32 * 32}});
+    // input_workspace.Resize(
+    //     {{32 * ((m_max + 32 - 1) / 32), (k_max + 31) / 32 * 32}});
+    input_workspace.Resize({{(m_max * k_max + 31) / 32 * 32}});
     dev_ctx.Alloc<int8_t>(&input_workspace,
                           input_workspace.numel() * sizeof(int8_t));
-    output_workspace.Resize({{n_max * 4, (m_max + 31) / 32 * 32 * 4}});
+    // output_workspace.Resize({{n_max, (m_max + 31) / 32 * 32}});
+    output_workspace.Resize({{(n_max * m_max + 31) / 32 * 32}});
     dev_ctx.Alloc<int32_t>(&output_workspace,
                            output_workspace.numel() * sizeof(int32_t));
 
@@ -275,6 +279,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < layers; ++i) {
       // step1. layer_norm
+      VLOG(1) << i;
       if (i == 0 && pre_layer_norm) {
         auto *ln_scale_data = ln_scales[i]->data<U>();
         auto *ln_bias_data = ln_biases[i]->data<U>();
