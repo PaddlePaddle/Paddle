@@ -220,8 +220,8 @@ framework::OpKernelType ConvOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "Input") &&
-      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
@@ -470,8 +470,8 @@ framework::OpKernelType ConvOpGrad::GetKernelTypeForVar(
   // bias are having shape in NCHW order
   if (((var_name == "Input") ||
        (var_name == framework::GradVarName("Output"))) &&
-      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
-      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");

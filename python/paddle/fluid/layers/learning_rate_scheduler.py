@@ -23,6 +23,7 @@ strategy according to this module.
 import math
 import numbers
 
+import paddle
 from . import control_flow
 from . import nn
 from . import ops
@@ -109,9 +110,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
 
             a = global_step**-0.5
             b = (warmup_steps**-1.5) * global_step
-            lr_value = (
-                learning_rate * (d_model**-0.5) * nn.elementwise_min(a, b)
-            )
+            lr_value = learning_rate * (d_model**-0.5) * paddle.minimum(a, b)
 
             return lr_value
 
@@ -364,9 +363,7 @@ def polynomial_decay(
                 decay_steps_var = tensor.fill_constant(
                     shape=[1], dtype='float32', value=float(decay_steps)
                 )
-                global_step = nn.elementwise_min(
-                    x=global_step, y=decay_steps_var
-                )
+                global_step = paddle.minimum(x=global_step, y=decay_steps_var)
 
             decayed_lr = (learning_rate - end_learning_rate) * (
                 (1 - global_step / decay_steps) ** power

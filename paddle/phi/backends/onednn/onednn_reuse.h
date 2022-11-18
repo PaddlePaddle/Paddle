@@ -35,10 +35,19 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = dnnl::memory;
 
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
+
+template <typename T>
+bool constexpr is_int8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}
+
+template <typename T>
+constexpr bool is_bfloat16() {
+  return std::is_same<T, phi::dtype::bfloat16>::value;
+}
 
 static void AppendActivation(const OneDNNContext& dev_ctx,
                              dnnl::post_ops& post_ops,  // NOLINT
@@ -99,6 +108,42 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
     post_ops.append_eltwise(
         activation_scale, activation_type->second, fuse_alpha, fuse_beta);
   }
+}
+
+static std::unordered_map<std::string, std::string> GetAttributeMap(
+    std::string act_type) {
+  std::unordered_map<std::string, std::string> attr_map;
+  if (act_type == "swish") {
+    attr_map.emplace("beta", "fuse_alpha");
+  } else if (act_type == "relu6") {
+    attr_map.emplace("threshold", "fuse_alpha");
+  } else if (act_type == "hard_sigmoid") {
+    attr_map.emplace("slope", "fuse_alpha");
+    attr_map.emplace("offset", "fuse_beta");
+  } else if (act_type == "clip") {
+    attr_map.emplace("min", "fuse_alpha");
+    attr_map.emplace("max", "fuse_beta");
+  } else {
+    attr_map.emplace("alpha", "fuse_alpha");
+    attr_map.emplace("beta", "fuse_beta");
+  }
+  return attr_map;
+}
+
+static std::vector<std::string> GetSupportedActivations() {
+  return std::vector<std::string>{"abs",
+                                  "clip",
+                                  "gelu",
+                                  "hard_sigmoid",
+                                  "hard_swish",
+                                  "leaky_relu",
+                                  "mish",
+                                  "relu",
+                                  "relu6",
+                                  "sigmoid",
+                                  "sqrt",
+                                  "swish",
+                                  "tanh"};
 }
 
 template <typename T,
