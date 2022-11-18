@@ -49,7 +49,7 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     auto *in_tensor = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in);
     // NOTE(zhiqiu): hot fix, allow empty tensor of kMKLDNN layout to run this
     // op
-    if (in_tensor->layout() != DataLayout::kMKLDNN) {
+    if (in_tensor->layout() != DataLayout::ONEDNN) {
       PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(),
                         true,
                         platform::errors::PreconditionNotMet(

@@ -324,7 +324,7 @@ class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     if (data_layout == DataLayout::kNCHW) {
-      using AccT = typename details::MPTypeTrait<T>::Type;
+      using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
       constexpr int vec_size = sizeof(float4) / sizeof(T);
       int size = group_size * imsize;
       const int max_num_threads = 1024;

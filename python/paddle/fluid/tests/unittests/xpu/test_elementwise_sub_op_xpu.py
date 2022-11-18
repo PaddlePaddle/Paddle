@@ -80,6 +80,30 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
                     no_grad_set=set('Y'),
                 )
 
+    class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(-1, 1, []).astype(self.dtype),
+                'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
+            }
+            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+    class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(-1, 1, [13, 17]).astype(self.dtype),
+                'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
+            }
+            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+    class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
+        def init_input_output(self):
+            self.inputs = {
+                'X': np.random.uniform(-1, 1, []).astype(self.dtype),
+                'Y': np.random.uniform(-1, 1, [13, 17]).astype(self.dtype),
+            }
+            self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
     @skip_check_grad_ci(
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )

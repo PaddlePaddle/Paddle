@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from ..common import is_optimizer_op, OP_ROLE_KEY, OpRole, is_update_op
-from paddle.fluid import core, unique_name
+from paddle.framework import core
+from paddle.utils import unique_name
 
 __all__ = []
 

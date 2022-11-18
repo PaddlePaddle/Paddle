@@ -940,6 +940,29 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   return bn_out_var;
 }
 
+PDNode *patterns::LayerNormShiftScale::operator()() {
+  auto layer_norm_in = pattern->NewNode(layer_norm_in_repr())
+                           ->AsInput()
+                           ->assert_is_op_input("layer_norm", "X");
+  auto layer_norm_bias = pattern->NewNode(layer_norm_bias_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("layer_norm", "Bias");
+  auto layer_norm_scale = pattern->NewNode(layer_norm_scale_repr())
+                              ->AsInput()
+                              ->assert_is_op_input("layer_norm", "Scale");
+
+  auto layer_norm_op =
+      pattern->NewNode(layer_norm_op_repr())->assert_is_op("layer_norm");
+
+  auto layer_norm_out = pattern->NewNode(layer_norm_out_repr())
+                            ->assert_is_op_output("layer_norm", "Y")
+                            ->AsOutput();
+
+  layer_norm_op->LinksFrom({layer_norm_in, layer_norm_bias, layer_norm_scale})
+      .LinksTo({layer_norm_out});
+  return layer_norm_out;
+}
+
 PDNode *patterns::OperatorActivation::operator()(
     const std::string &operator_type, const std::string &activation_type) {
   auto *preceding_op =
@@ -961,6 +984,7 @@ PDNode *patterns::OperatorActivation::operator()(
 PDNode *patterns::Squeeze2Transpose2::operator()() {
   auto *squeeze2_op_in = pattern->NewNode(squeeze2_op_in_repr())
                              ->AsInput()
+                             ->assert_has_n_outputs(1)
                              ->assert_is_op_input("squeeze2", "X");
   auto *squeeze2_op = pattern->NewNode(squeeze2_op_repr())
                           ->assert_is_op("squeeze2")
@@ -2765,7 +2789,8 @@ PDNode *patterns::QuantizePlacement::operator()(
 PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>({"cast",
+      std::unordered_set<std::string>({"bilinear_interp_v2",
+                                       "cast",
                                        "clip",
                                        "concat",
                                        "conv2d",
