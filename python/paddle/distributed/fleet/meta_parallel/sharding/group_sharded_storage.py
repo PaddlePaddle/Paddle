@@ -28,6 +28,23 @@ import paddle
 from paddle.fluid import core
 from .group_sharded_utils import Type, device_guard
 
+from paddle.distributed.utils.log_utils import get_logger
+logger = get_logger("DEBUG", __file__)
+
+
+def host_to_device(x, dev_id, blocking=True):
+    if paddle.is_compiled_with_cuda():
+        place = paddle.CUDAPlace(dev_id)
+    elif paddle.is_compiled_with_npu():
+        place = paddle.NPUPlace(dev_id)
+    elif paddle.is_compiled_with_xpu():
+        place = paddle.XPUPlace(dev_id)
+    else:
+        raise EnvironmentError("Only supported compiled paddle with gpu/rocm, npu and xpu , but current verison is compiled with cpu.")
+    
+    return x._copy_to(place, blocking)
+
+
 
 class InternalStorage:
     """
@@ -133,7 +150,11 @@ class ParamStorage(InternalStorage):
 
         if convert_gpu:
             # buffer convert from cpu to cuda
-            self.buffer = self.buffer.cuda(self.dev_id)
+            logger.debug(f"converting 2 gpu")
+            # self.buffer = self.buffer.cuda(self.dev_id)
+            self.buffer = host_to_device(self.buffer, self.dev_id)
+
+            logger.debug(f"converted 2 gpu end")
 
         self._fill = 0
 
