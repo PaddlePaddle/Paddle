@@ -56,7 +56,6 @@ from ..data_feeder import (
     check_type,
     check_dtype,
 )
-import paddle
 from paddle.utils import deprecated
 from paddle import _C_ops, _legacy_C_ops
 
@@ -134,11 +133,9 @@ __all__ = [
     'prelu',
     'brelu',
     'leaky_relu',
-    'soft_relu',
     'flatten',
     'stack',
     'pad2d',
-    'unstack',
     'unique',
     'unique_with_counts',
     'expand',
@@ -148,10 +145,6 @@ __all__ = [
     'elementwise_div',
     'elementwise_sub',
     'elementwise_mul',
-    'elementwise_min',
-    'elementwise_pow',
-    'elementwise_mod',
-    'elementwise_floordiv',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
@@ -10113,57 +10106,6 @@ def leaky_relu(x, alpha=0.02, name=None):
     return paddle.nn.functional.leaky_relu(x, alpha, name)
 
 
-def soft_relu(x, threshold=40.0, name=None):
-    r"""
-
-    SoftRelu Activation Operator.
-
-    $out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$
-
-    Args:
-        x(Variable): Input of soft_relu operator. Data type can be float32, float64.
-        threshold(float, optional): The threshold value of soft_relu, default value being 40.0.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Variable(Tensor|LoDTensor)): Output of soft_relu operator, shape and LoD same as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import numpy as np
-            import paddle
-
-            paddle.enable_static()
-            inputs = fluid.layers.data(name="x", shape=[2, 2], dtype="float32")
-            output = fluid.layers.soft_relu(inputs, threshold=20.0)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-
-            img = np.array([[0, 1],[2, 3]]).astype(np.float32)
-
-            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-            print(res) # [array([[0.6931472, 1.3132616], [2.126928 , 3.0485873]], dtype=float32)]
-    """
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'soft_relu'
-    )
-
-    helper = LayerHelper('soft_relu', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='soft_relu',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'threshold': threshold},
-    )
-    return out
-
-
 def flatten(x, axis=1, name=None):
     r"""
     **Flatten op**
@@ -10464,68 +10406,6 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod, out_val_if_empty=0):
     )
 
     return [out, loss_weight]
-
-
-def unstack(x, axis=0, num=None):
-    """
-    :alias_main: paddle.unstack
-        :alias: paddle.unstack,paddle.tensor.unstack,paddle.tensor.manipulation.unstack
-        :old_api: paddle.fluid.layers.unstack
-
-    **UnStack Layer**
-
-    This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
-
-    If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
-    If :code:`num` is None, it would be inferred from :code:`x.shape[axis]`,
-    and if :code:`x.shape[axis]` <= 0 or is unknown, :code:`ValueError` is
-    raised.
-
-    Args:
-        x (Tensor): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
-        axis (int): The axis along which the input is unstacked.
-        num (int|None): The number of output variables.
-
-    Returns:
-        list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
-
-    Raises:
-        ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            x = paddle.ones(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
-            y = paddle.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
-
-    """
-
-    if _non_static_mode():
-        if num is None:
-            num = x.shape[axis]
-        if num == 0:
-            return []
-        return _legacy_C_ops.unstack(x, num, 'axis', int(axis), 'num', num)
-
-    helper = LayerHelper('unstack', **locals())
-    if num is None:
-        if axis is None or x.shape[axis] <= 0:
-            raise ValueError('unknown unstack number')
-        else:
-            num = x.shape[axis]
-
-    outs = []
-    for _ in range(num):
-        outs.append(helper.create_variable_for_type_inference(x.dtype))
-
-    helper.append_op(
-        type='unstack',
-        inputs={'X': [x]},
-        outputs={'Y': outs},
-        attrs={'axis': axis, 'num': num},
-    )
-    return outs
 
 
 @deprecated(since='2.0.0', update_to="paddle.expand")
@@ -12320,187 +12200,11 @@ def elementwise_mul(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
-def elementwise_min(x, y, axis=-1, act=None, name=None):
-    """
-        :alias_main: paddle.elementwise_min
-            :alias: paddle.elementwise_min,paddle.tensor.elementwise_min,paddle.tensor.math.elementwise_min
-            :old_api: paddle.fluid.layers.elementwise_min
-
-    Examples:
-
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = fluid.layers.elementwise_min(x, y)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) #[1, 3, 2]
-
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                    "y": np.zeros((3, 4)).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-            y = fluid.data(name="y", shape=[3,4], dtype='float32')
-            z = fluid.layers.elementwise_min(x, y, axis=1)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
-    """
-    if _non_static_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_min'
-        )
-
-    return _elementwise_op(LayerHelper('elementwise_min', **locals()))
-
-
-def elementwise_pow(x, y, axis=-1, act=None, name=None):
-    """
-
-    Examples:
-
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = fluid.layers.elementwise_pow(x, y)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) #[2, 243, 16]
-    """
-    if _non_static_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_pow'
-        )
-    return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
-
-
-@deprecated(since="2.0.0", update_to="paddle.remainder")
-def elementwise_mod(x, y, axis=-1, act=None, name=None):
-    """
-
-    Examples:
-
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.array([10, 15, 8]).astype('int32'),
-                    "y": np.array([3, 6, 5]).astype('int32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3], dtype='int32')
-            y = fluid.data(name="y", shape=[3], dtype='int32')
-            z = fluid.layers.elementwise_mod(x, y)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) #[1, 3, 3]
-    """
-    if _non_static_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_mod'
-        )
-
-    return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
-
-
-@deprecated(since="2.0.0", update_to="paddle.floor_divide")
-def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
-    """
-
-    Examples:
-
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            import paddle
-
-            def gen_data():
-                return {
-                    "x": np.array([10, 15, 8]).astype('int32'),
-                    "y": np.array([3, 7, 5]).astype('int32')
-                }
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3], dtype='int32')
-            y = fluid.data(name="y", shape=[3], dtype='int32')
-            z = fluid.layers.elementwise_floordiv(x, y)
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) #[3, 2, 1]
-    """
-    if _non_static_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_floordiv'
-        )
-
-    return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
-
-
 for func in [
     elementwise_add,
     elementwise_div,
     elementwise_sub,
     elementwise_mul,
-    elementwise_pow,
-    elementwise_min,
-    elementwise_mod,
-    elementwise_floordiv,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
 

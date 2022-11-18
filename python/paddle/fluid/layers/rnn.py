@@ -1317,10 +1317,8 @@ class BeamSearchDecoder(Decoder):
         scores = nn.reshape(scores, [-1, self.beam_size * self.vocab_size])
         # TODO: add grad for topk then this beam search can be used to train
         topk_scores, topk_indices = paddle.topk(x=scores, k=self.beam_size)
-        beam_indices = nn.elementwise_floordiv(
-            topk_indices, self.vocab_size_tensor
-        )
-        token_indices = nn.elementwise_mod(topk_indices, self.vocab_size_tensor)
+        beam_indices = paddle.floor_divide(topk_indices, self.vocab_size_tensor)
+        token_indices = paddle.remainder(topk_indices, self.vocab_size_tensor)
         next_log_probs = self._gather(
             nn.reshape(log_probs, [-1, self.beam_size * self.vocab_size]),
             topk_indices,
