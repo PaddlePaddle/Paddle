@@ -106,6 +106,8 @@ class FusedConvOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
         .SetDefault(false);
+    AddAttr<bool>("use_mkldnn", "(bool, default false) Used in mkldnn kernel")
+        .SetDefault(true);
     AddComment(R"DOC(
 Convolution Operator.
 
