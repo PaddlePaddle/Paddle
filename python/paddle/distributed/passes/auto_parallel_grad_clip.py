@@ -26,6 +26,7 @@ from ..auto_parallel.utils import (
     OP_ROLE_KEY,
     OpRole,
     _get_comm_group,
+    insert_dependencies_for_two_vars,
 )
 from ..auto_parallel.dist_attribute import (
     TensorDistributedAttribute,
@@ -335,6 +336,39 @@ class ClipGradByGloblNormPass(PassBase):
                 input_name = op.input("X")[0]
                 input_var = block.vars[input_name]
                 if paddle.distributed.get_world_size() > 1:
+
+                    # NOTE add naive deps for global norm sync in graph exe
+                    j = idx - 1
+                    prior_op = None
+                    while j > 0:
+                        prior_op = block.ops[j]
+                        op_type = prior_op.type
+                        if op_type in [
+                            'update_loss_scaling',
+                            'check_finite_and_unscale',
+                        ] or op_type.endswith("_grad"):
+                            break
+                    assert (
+                        prior_op is not None
+                    ), "Unexception: ClipByGlobalNorm could not find priory depend op"
+                    prior_var = block.vars[prior_op.output_arg_names[0]]
+                    assert (
+                        prior_var is not None
+                    ), "Unexception: ClipByGlobalNorm could not find priory depend var"
+                    insert_dependencies_for_two_vars(
+                        block,
+                        idx - 1,
+                        prior_var,
+                        input_var,
+                        self.clip_helper.dist_context,
+                        OpRole.Optimize,
+                        process_mesh=[
+                            -1
+                        ],  # hack to avoid initialize the dist attr for coalesc var
+                        is_recompute=False,
+                        sync=False,
+                    )
+
                     offset = 0
                     if input_name in removed_tmp_var:
                         removed_tmp_var.remove(input_name)
