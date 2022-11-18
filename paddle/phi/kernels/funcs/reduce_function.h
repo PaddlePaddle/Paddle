@@ -1332,6 +1332,7 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all) {
+  reduce_all = recompute_reduce_all(x, dims);
   dev_ctx.template Alloc<OutT>(output);
 
   if (reduce_all) {

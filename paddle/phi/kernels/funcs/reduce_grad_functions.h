@@ -121,6 +121,7 @@ void LaunchReduceGradKernel(const Context& dev_ctx,
                             Functor functor,
                             const std::vector<int>& dims,
                             bool reduce_all = false) {
+  reduce_all = recompute_reduce_all(x, dims);
   if (reduce_all) {
     auto x = phi::EigenVector<T>::Flatten(*input0);
     auto x_reduce = phi::EigenVector<T>::Flatten(*input1);

@@ -77,6 +77,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* x_grad) {
+  bool reduce_all = recompute_reduce_all(x, dims);
   if (dims.size() == 1) {
     if (out_grad.dtype() != x.dtype()) {
       DenseTensorMeta x_grad_meta(
