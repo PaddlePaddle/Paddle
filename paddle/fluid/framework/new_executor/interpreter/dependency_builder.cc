@@ -221,7 +221,7 @@ void DependencyBuilder::AddDependencyForRandomOp() {
                                                "gaussian_random",
                                                "truncated_gaussian_random",
                                                "uniform_random",
-                                               "randsize_t",
+                                               "randint",
                                                "randperm",
                                                "exponential",
                                                "sampling_id",
@@ -334,7 +334,7 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
 void DependencyBuilder::BuildDownstreamMap() {
   auto var2min_rw_op =
       std::map<size_t, std::list<size_t>>();  // # map from variable id to read
-                                              // / write op id.
+                                              //  write op id.
   auto var2recent_write_op =
       std::map<size_t, size_t>();  // # map from variable to recent write op.
   auto op2dependences =
