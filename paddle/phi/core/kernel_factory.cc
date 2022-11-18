@@ -28,6 +28,9 @@ namespace phi {
 
 const static Kernel empty_kernel;  // NOLINT
 
+std::string kernel_selection_error_message(const std::string& kernel_name,
+                                           const KernelKey& target_key);
+
 uint32_t KernelKey::Hash::operator()(const KernelKey& key) const {
   uint32_t hash_value = 0;
   // |----31-20------|---19-12---|---11-8----|---7-0---|
@@ -141,9 +144,10 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU,
       true,
       phi::errors::NotFound(
-          "The kernel with key %s of kernel `%s` is not registered.",
+          "The kernel with key %s of kernel `%s` is not registered. %s",
           kernel_key,
-          kernel_name));
+          kernel_name,
+          kernel_selection_error_message(kernel_name, kernel_key)));
 
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
@@ -168,10 +172,11 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
         kernel_iter,
         iter->second.end(),
         phi::errors::NotFound(
-            "The kernel with key %s of kernel `%s` is not registered and"
-            " fail to fallback to CPU one.",
+            "The kernel with key %s of kernel `%s` is not registered and "
+            "fail to fallback to CPU one. %s",
             kernel_key,
-            kernel_name));
+            kernel_name,
+            kernel_selection_error_message(kernel_name, kernel_key)));
 
     VLOG(3) << "missing " << kernel_key.backend() << " kernel: " << kernel_name
             << ", expected_kernel_key:" << kernel_key
@@ -184,12 +189,13 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       kernel_iter,
       iter->second.end(),
       phi::errors::NotFound(
-          "The kernel with key %s of kernel `%s` is not registered and"
-          " the current value of FLAGS_enable_api_kernel_fallback(bool,"
+          "The kernel with key %s of kernel `%s` is not registered. %s "
+          "The current value of FLAGS_enable_api_kernel_fallback(bool,"
           " default true) is false. If you want to fallback this kernel"
           " to CPU one, please set the flag true before run again.",
           kernel_key,
-          kernel_name));
+          kernel_name,
+          kernel_selection_error_message(kernel_name, kernel_key)));
 
   return {kernel_iter->second, false};
 }
@@ -342,6 +348,95 @@ std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
   os << "}";
 
   return os;
+}
+
+// return all kernel selection error message of specific kernel_name:
+// 1. If target_key not supports target backend, output "Selected wrong Backend
+// ..."
+// 2. If target_key not supports target datatype, output "Selected wrong
+// DataType ..."
+// 3. `target_key` is still not supported, output all kernel keys of
+// corresponding kernel_name:
+// {
+//   (CPU, NCHW, [int8, int16, ...]);
+//   (GPU, Undefined(AnyLayout), [float32, float64, ...]);
+//   ...
+// }
+std::string kernel_selection_error_message(const std::string& kernel_name,
+                                           const KernelKey& target_key) {
+  PADDLE_ENFORCE_NE(
+      KernelFactory::Instance().kernels().find(kernel_name),
+      KernelFactory::Instance().kernels().end(),
+      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+
+  // Init data structure
+  bool support_backend = false;
+  bool support_dtype = false;
+  std::unordered_map<std::string, std::vector<std::string>> all_kernel_key;
+  std::unordered_set<std::string> backend_set;
+  std::unordered_set<std::string> dtype_set;
+
+  // Record all kernel information of kernel_name
+  for (auto iter : KernelFactory::Instance().kernels()[kernel_name]) {
+    KernelKey kernel_key = iter.first;
+    if (kernel_key.backend() == target_key.backend()) {
+      support_backend = true;
+      if (kernel_key.dtype() == target_key.dtype()) {
+        support_dtype = true;
+      }
+      dtype_set.insert(
+          paddle::experimental::DataTypeToString(kernel_key.dtype()));
+    }
+    backend_set.insert(
+        paddle::experimental::BackendToString(kernel_key.backend()));
+    all_kernel_key[paddle::experimental::BackendToString(kernel_key.backend()) +
+                   ", " + phi::DataLayoutToString(kernel_key.layout())]
+        .push_back(paddle::experimental::DataTypeToString(kernel_key.dtype()));
+  }
+  // 1. If target_key not supports target backend, output "Selected wrong
+  // Backend ..."
+  if (!support_backend) {
+    std::string error_message = "";
+    for (auto iter = backend_set.begin(); iter != backend_set.end(); ++iter) {
+      error_message += *iter;
+      error_message += ", ";
+    }
+    error_message = error_message.substr(0, error_message.length() - 2);
+    return "Selected wrong Backend `" +
+           paddle::experimental::BackendToString(target_key.backend()) +
+           "`. Paddle support following Backends: " + error_message + ".";
+  }
+  // 2. If target_key not supports target datatype, output "Selected wrong
+  // DataType ..."
+  if (!support_dtype) {
+    std::string error_message = "";
+    for (auto iter = dtype_set.begin(); iter != dtype_set.end(); ++iter) {
+      error_message += *iter;
+      error_message += ", ";
+    }
+    error_message = error_message.substr(0, error_message.length() - 2);
+    return "Selected wrong DataType `" +
+           paddle::experimental::DataTypeToString(target_key.dtype()) +
+           "`. Paddle support following DataTypes: " + error_message + ".";
+  }
+  // 3. `target_key` is still not supported, output all kernel keys of
+  // corresponding kernel_name
+  std::string message = "Currently, paddle support following kernel keys of `" +
+                        kernel_name + "`: { ";
+  for (auto iter = all_kernel_key.begin(); iter != all_kernel_key.end();
+       ++iter) {
+    message += "(" + iter->first + ", [";
+    std::vector<std::string>& dtype_vec = iter->second;
+    for (std::size_t i = 0; i < dtype_vec.size(); ++i) {
+      message += dtype_vec[i];
+      if (i + 1 != dtype_vec.size()) {
+        message += ", ";
+      }
+    }
+    message += "]); ";
+  }
+  message += "}.";
+  return message;
 }
 
 }  // namespace phi

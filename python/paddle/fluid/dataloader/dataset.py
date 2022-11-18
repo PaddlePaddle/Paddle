@@ -89,19 +89,20 @@ class IterableDataset(Dataset):
     An abstract class to encapsulate methods and behaviors of iterable datasets.
 
     All datasets in iterable-style (can only get sample one by one sequentially, like
-    a Python iterator) should be a subclass of `paddle.io.IterableDataset`. All subclasses should
+    a Python iterator) should be a subclass of :ref:`api_paddle_io_IterableDataset` . All subclasses should
     implement following methods:
 
-    :code:`__iter__`: yield sample sequentially. This method is required by reading dataset sample in :code:`paddle.io.DataLoader`.
+    :code:`__iter__`: yield sample sequentially. This method is required by reading dataset sample in :ref:`api_paddle_io_DataLoader` .
 
     .. note::
         do not implement :code:`__getitem__` and :code:`__len__` in IterableDataset, should not be called either.
 
-    see :code:`paddle.io.DataLoader`.
+    see :ref:`api_paddle_io_DataLoader` .
 
     Examples:
 
         .. code-block:: python
+            :name: code-example1
 
             import numpy as np
             from paddle.io import IterableDataset
@@ -128,9 +129,10 @@ class IterableDataset(Dataset):
     among workers as follows. In both the methods, worker information that can be getted in
     a worker process by `paddle.io.get_worker_info` will be needed.
 
-    Example 1: splitting data copy in each worker in :code:`__iter__`
+    splitting data copy in each worker in :code:`__iter__`
 
         .. code-block:: python
+            :name: code-example2
 
             import math
             import paddle
@@ -169,9 +171,10 @@ class IterableDataset(Dataset):
                 print(data)
                 # outputs: [2, 5, 3, 6, 4, 7]
 
-    Example 2: splitting data copy in each worker by :code:`worker_init_fn`
+    splitting data copy in each worker by :code:`worker_init_fn`
 
         .. code-block:: python
+            :name: code-example3
 
             import math
             import paddle
@@ -370,16 +373,16 @@ class ComposeDataset(Dataset):
 
 class ChainDataset(IterableDataset):
     """
-    A Dataset which chains multiple iterable-tyle datasets.
+    A Dataset which chains multiple iterable-style datasets.
 
     This dataset is used for assembling multiple datasets which should
-    be :code:`paddle.io.IterableDataset`.
+    be :ref:`api_paddle_io_IterableDataset`.
 
     Args:
-        datasets(list of Dataset): List of datasets to be chainned.
+        datasets(list of IterableDatasets): List of datasets to be chainned.
 
     Returns:
-        Dataset: A Dataset which chains fields of multiple datasets.
+        paddle.io.IterableDataset: A Dataset which chains fields of multiple datasets.
 
     Examples:
 

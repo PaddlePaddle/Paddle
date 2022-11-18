@@ -230,7 +230,7 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
 #ifdef PADDLE_WITH_MKLDNN
 
   // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
-  if (in_layout == phi::DataLayout::kMKLDNN &&
+  if (in_layout == phi::DataLayout::ONEDNN &&
       var_name == framework::GradVarName("Filter") && is_fetch_v2) {
     VLOG(4) << "Match special case(Filter && fetch_v2) " << var_name;
     out_layout = phi::DataLayout::kNCHW;
@@ -484,9 +484,9 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           // MKL-DNN shape of Var may differ from kNHWC Var
           // In such situation corressponding resized Var
           // has to be created and registered
-          if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
+          if ((tensor_in->layout() == DataLayout::ONEDNN) &&
               (var->IsType<phi::DenseTensor>() == true) &&
-              (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
+              (expected_kernel_key.data_layout_ != DataLayout::ONEDNN) &&
               (paddle::platform::MKLDNNDeviceContext::tls()
                    .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
             VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
