@@ -652,7 +652,7 @@ class DataParallelOptimizationPass(PassBase):
             return True
 
         for idx, op in reversed(list(enumerate(block.ops))):
-            if is_data_parallel_reduce_op(op)
+            if is_data_parallel_reduce_op(op):
                 op._set_attr('use_calc_stream', True)
                 op.dist_attr.execution_stream = self.gradient_sync_stream
 
