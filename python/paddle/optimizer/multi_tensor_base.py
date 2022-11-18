@@ -226,15 +226,12 @@ class MultiTensorBase(Optimizer):
 
                 i = 0
                 use_multi_tensor_adam = True
-                for beta1_pow, beta2_pow, lr in zip(
-                    self._beta1_pow_acc_dict[key][param_group_idx],
-                    self._beta2_pow_acc_dict[key][param_group_idx],
-                    lr_dict[key],
-                ):
+                for lr in lr_dict[key]:
                     if i == 0:
                         lr_first = lr
                     if lr_first != lr:
                         use_multi_tensor_adam = False
+                    i = i + 1
 
                 if framework._non_static_mode():
 
@@ -288,15 +285,21 @@ class MultiTensorBase(Optimizer):
                             )
                     else:
                         if use_multi_tensor_adam:
+                            found_inf = self._get_auxiliary_var('found_inf')
                             _, _, _, _, _, _ = _legacy_C_ops.multi_tensor_adam(
                                 self._param_dict[key][param_group_idx],
                                 grad_dict[key],
                                 lr_dict[key][0],
                                 self._moment1_dict[key][param_group_idx],
                                 self._moment2_dict[key][param_group_idx],
-                                self.beta1_pow_acc[param_group_idx],
-                                self.beta2_pow_acc[param_group_idx],
+                                self._beta1_pow_acc_dict[key][param_group_idx][
+                                    0
+                                ],
+                                self._beta2_pow_acc_dict[key][param_group_idx][
+                                    0
+                                ],
                                 master_weight,
+                                found_inf,
                                 self._param_dict[key][param_group_idx],
                                 self._moment1_dict[key][param_group_idx],
                                 self._moment2_dict[key][param_group_idx],
@@ -307,12 +310,12 @@ class MultiTensorBase(Optimizer):
                                     0
                                 ],
                                 master_weight,
-                                'epsilon',
-                                self._epsilon,
                                 'beta1',
                                 _beta1,
                                 'beta2',
                                 _beta2,
+                                'epsilon',
+                                self._epsilon,
                                 'chunk_size',
                                 self._chunk_size,
                                 'weight_decay',

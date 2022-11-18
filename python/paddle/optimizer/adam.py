@@ -212,7 +212,7 @@ class Adam(MultiTensorBase):
         self._chunk_size = chunk_size
         self._master_weights = {}
         self._use_adamw = False
-        self._weight_decay = weight_decay
+        self._weight_decay = 0.0
         self._default_dict = {
             'beta1': beta1,
             'beta2': beta2,
