@@ -258,7 +258,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                          kSlotSmallVectorSize>
         grad_output_tensors = (*node)(
             node_input_buffer->Buffers(), create_graph, is_general_grad);
-
+    VLOG(1) << "grad node name." << node->name();
     if (!inputs.empty() && is_general_grad) {
       GeneralGrad::Instance().SetResultForEnddingNodes(grad_output_tensors,
                                                        node);
