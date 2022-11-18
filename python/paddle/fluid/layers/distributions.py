@@ -675,7 +675,7 @@ class MultivariateNormalDiag(Distribution):
         one_diag = tensor.diag(
             tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
         )
-        inv_diag = nn.elementwise_pow(value, (one_all - 2 * one_diag))
+        inv_diag = paddle.pow(value, (one_all - 2 * one_diag))
 
         return inv_diag
 

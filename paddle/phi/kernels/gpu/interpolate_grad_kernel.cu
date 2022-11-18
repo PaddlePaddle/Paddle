@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/interpolate_grad_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -96,12 +96,11 @@ __global__ void KeLinearInterpBw(T* in,
     const T* out_pos = &out[out_id_w];
 
     if (data_layout == DataLayout::kNCHW) {
-      paddle::platform::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(&in_pos[w_id], w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos[w_id], w1lambda * out_pos[0]);
     } else {
-      paddle::platform::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(&in_pos[w_id * num_channels],
-                                      w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos[w_id * num_channels], w1lambda * out_pos[0]);
     }
   }
 }
@@ -141,7 +140,7 @@ __global__ void KeNearestNeighborInterpNCHWBw(T* in,
     while (nc_id < nc) {
       T* in_pos = &in[in_index];
       const T out_pos = out[out_index];
-      paddle::platform::CudaAtomicAdd(in_pos, out_pos);
+      phi::CudaAtomicAdd(in_pos, out_pos);
       in_index += in_index_stride;
       out_index += out_index_stride;
       nc_id += nc_stride;
@@ -194,7 +193,7 @@ __global__ void KeNearestNeighborInterpBw(
                     in_img_idx * num_channels + channel_id];
 
     const T out_pos = out[tid];
-    paddle::platform::CudaAtomicAdd(in_pos, out_pos);
+    phi::CudaAtomicAdd(in_pos, out_pos);
   }
 }
 
@@ -218,7 +217,7 @@ __inline__ __device__ T PartialBlockMin(T val,
     }
   } else {
     shared_last_val = std::numeric_limits<T>::max();
-    paddle::platform::CudaAtomicMin(&shared_last_val, val);
+    phi::CudaAtomicMin(&shared_last_val, val);
     shared[wid] = shared_last_val;
     shared_last_idx = wid;
   }
@@ -308,33 +307,27 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
                                     ? (in_top_max_index - in_top_min_index)
                                     : (in_bot_max_index - in_bot_min_index);
     if (h_id != 0) {
-      paddle::platform::CudaAtomicAdd(
-          &s_data[0][input_index - in_top_min_index],
-          h2lambda * w2lambda * value);
-      paddle::platform::CudaAtomicAdd(
-          &s_data[0][top_right_index - in_top_min_index],
-          h2lambda * w1lambda * value);
-      paddle::platform::CudaAtomicAdd(
-          &s_data[1][bot_left_index - in_bot_min_index],
-          h1lambda * w2lambda * value);
-      paddle::platform::CudaAtomicAdd(
-          &s_data[1][bot_right_index - in_bot_min_index],
-          h1lambda * w1lambda * value);
+      phi::CudaAtomicAdd(&s_data[0][input_index - in_top_min_index],
+                         h2lambda * w2lambda * value);
+      phi::CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
+                         h2lambda * w1lambda * value);
+      phi::CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
+                         h1lambda * w2lambda * value);
+      phi::CudaAtomicAdd(&s_data[1][bot_right_index - in_bot_min_index],
+                         h1lambda * w1lambda * value);
     } else {
-      paddle::platform::CudaAtomicAdd(
-          &s_data[0][top_right_index - in_top_min_index],
-          (h2lambda + h1lambda) * w1lambda * value);
-      paddle::platform::CudaAtomicAdd(
-          &s_data[1][bot_left_index - in_bot_min_index],
-          (h1lambda + h2lambda) * w2lambda * value);
+      phi::CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
+                         (h2lambda + h1lambda) * w1lambda * value);
+      phi::CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
+                         (h1lambda + h2lambda) * w2lambda * value);
     }
     __syncthreads();
 
     if (threadIdx.x <= upper_limit_share_idx) {
-      paddle::platform::CudaAtomicAdd(&in[in_top_min_index + threadIdx.x],
-                                      s_data[0][threadIdx.x]);
-      paddle::platform::CudaAtomicAdd(&in[in_bot_min_index + threadIdx.x],
-                                      s_data[1][threadIdx.x]);
+      phi::CudaAtomicAdd(&in[in_top_min_index + threadIdx.x],
+                         s_data[0][threadIdx.x]);
+      phi::CudaAtomicAdd(&in[in_bot_min_index + threadIdx.x],
+                         s_data[1][threadIdx.x]);
     }
   }
 }
@@ -387,17 +380,14 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
 
     T d2val = out[index];
 
-    paddle::platform::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1, w1),
-                                    h0lambda * w0lambda * d2val);
-    paddle::platform::CudaAtomicAdd(
-        in + GetInputIndex(nc, in_h, in_w, h1, w1 + x_id),
-        h0lambda * w1lambda * d2val);
-    paddle::platform::CudaAtomicAdd(
-        in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1),
-        h1lambda * w0lambda * d2val);
-    paddle::platform::CudaAtomicAdd(
-        in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1 + x_id),
-        h1lambda * w1lambda * d2val);
+    phi::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1, w1),
+                       h0lambda * w0lambda * d2val);
+    phi::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1, w1 + x_id),
+                       h0lambda * w1lambda * d2val);
+    phi::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1),
+                       h1lambda * w0lambda * d2val);
+    phi::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1 + x_id),
+                       h1lambda * w1lambda * d2val);
   }
 }
 
@@ -446,12 +436,12 @@ __global__ void KeBilinearInterpBw(T* in,
     T value = out[tid];
     T* in_pos = &in[out_id_h * in_chw + in_img_idy * in_w * num_channels +
                     in_img_idx * num_channels + channel_id];
-    paddle::platform::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * value);
-    paddle::platform::CudaAtomicAdd(&in_pos[w_id * num_channels],
-                                    h2lambda * w1lambda * value);
-    paddle::platform::CudaAtomicAdd(&in_pos[h_id * in_w * num_channels],
-                                    h1lambda * w2lambda * value);
-    paddle::platform::CudaAtomicAdd(
+    phi::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * value);
+    phi::CudaAtomicAdd(&in_pos[w_id * num_channels],
+                       h2lambda * w1lambda * value);
+    phi::CudaAtomicAdd(&in_pos[h_id * in_w * num_channels],
+                       h1lambda * w2lambda * value);
+    phi::CudaAtomicAdd(
         &in_pos[h_id * in_w * num_channels + w_id * num_channels],
         h1lambda * w1lambda * value);
   }
@@ -530,8 +520,8 @@ __global__ void KeBicubicInterpBw(T* in,
           in_pos = &in[out_id_h * input_w + access_y * in_img_w * num_channels +
                        access_x * num_channels + channel_id];
         }
-        paddle::platform::CudaAtomicAdd(
-            &in_pos[0], (out_pos[0] * y_coeffs[j] * x_coeffs[i]));
+        phi::CudaAtomicAdd(&in_pos[0],
+                           (out_pos[0] * y_coeffs[j] * x_coeffs[i]));
       }
     }
   }
@@ -629,26 +619,22 @@ __global__ void KeTrilinearInterpBw(T* in,
       const T* out_pos = &out[out_id_h * output_w + out_id_w];
 
       // trilinear interpolation grad
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[0], d2lambda * h2lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[w_id], d2lambda * h2lambda * w1lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[h_id * in_img_w],
-          d2lambda * h1lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[h_id * in_img_w + w_id],
-          d2lambda * h1lambda * w1lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[0], d1lambda * h2lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[w_id], d1lambda * h2lambda * w1lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[h_id * in_img_w],
-          d1lambda * h1lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[h_id * in_img_w + w_id],
-          d1lambda * h1lambda * w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos1[0],
+                         d2lambda * h2lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos1[w_id],
+                         d2lambda * h2lambda * w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos1[h_id * in_img_w],
+                         d2lambda * h1lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos1[h_id * in_img_w + w_id],
+                         d2lambda * h1lambda * w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos2[0],
+                         d1lambda * h2lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos2[w_id],
+                         d1lambda * h2lambda * w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos2[h_id * in_img_w],
+                         d1lambda * h1lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos2[h_id * in_img_w + w_id],
+                         d1lambda * h1lambda * w1lambda * out_pos[0]);
     } else {
       int in_pos1_idx = out_id_h * input_w +
                         in_img_idt * in_img_h * in_img_w * num_channels +
@@ -661,26 +647,22 @@ __global__ void KeTrilinearInterpBw(T* in,
       const T* out_pos = &out[out_id_h * output_w + out_id_w];
 
       // trilinear interpolation grad
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[0], d2lambda * h2lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[w_id * num_channels],
-          d2lambda * h2lambda * w1lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[h_id * in_img_w * num_channels],
-          d2lambda * h1lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
+      phi::CudaAtomicAdd(&in_pos1[0],
+                         d2lambda * h2lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos1[w_id * num_channels],
+                         d2lambda * h2lambda * w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos1[h_id * in_img_w * num_channels],
+                         d2lambda * h1lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(
           &in_pos1[h_id * in_img_w * num_channels + w_id * num_channels],
           d2lambda * h1lambda * w1lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[0], d1lambda * h2lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[w_id * num_channels],
-          d1lambda * h2lambda * w1lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[h_id * in_img_w * num_channels],
-          d1lambda * h1lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
+      phi::CudaAtomicAdd(&in_pos2[0],
+                         d1lambda * h2lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos2[w_id * num_channels],
+                         d1lambda * h2lambda * w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos2[h_id * in_img_w * num_channels],
+                         d1lambda * h1lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(
           &in_pos2[h_id * in_img_w * num_channels + w_id * num_channels],
           d1lambda * h1lambda * w1lambda * out_pos[0]);
     }
@@ -751,7 +733,7 @@ __global__ void KeNearestNeighbor3DInterpBw(T* in,
                    in_img_idx * num_channels + channel_id];
     }
     const T out_pos = out[out_id_h * output_w + out_id_w];
-    paddle::platform::CudaAtomicAdd(in_pos, out_pos);
+    phi::CudaAtomicAdd(in_pos, out_pos);
   }
 }
 
