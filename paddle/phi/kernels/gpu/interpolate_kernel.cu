@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/interpolate_kernel.h"
 
-#include "paddle/phi/backends/gpu/cuda/cuda_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"

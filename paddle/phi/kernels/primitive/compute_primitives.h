@@ -21,7 +21,7 @@
 #include <hip/hip_fp16.h>
 #endif
 
-#include "paddle/phi/backends/gpu/cuda/cuda_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/common/float16.h"
 
 namespace phi {

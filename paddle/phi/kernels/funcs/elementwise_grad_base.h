@@ -24,7 +24,7 @@ limitations under the License. */
 #if defined(__NVCC__) || defined(__HIPCC__)
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/phi/backends/gpu/cuda/cuda_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 

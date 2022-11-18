@@ -27,7 +27,7 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
-#include "paddle/phi/backends/gpu/cuda/cuda_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
