@@ -22,6 +22,7 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_auto_parallel_gradient_merge_pass")
   list(REMOVE_ITEM TEST_OPS
        "test_auto_parallel_data_parallel_optimization_pass")
+  list(REMOVE_ITEM TEST_OPS "test_dist_fuse_gemm_epilogue_pass")
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
