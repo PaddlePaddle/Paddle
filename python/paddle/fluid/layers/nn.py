@@ -14,7 +14,8 @@
 """
 All layers just related to the neural network.
 """
-
+import os
+import inspect
 import warnings
 
 import numpy as np
@@ -22,7 +23,7 @@ import numpy as np
 import paddle
 from ..layer_helper import LayerHelper
 from paddle.fluid.framework import _in_legacy_dygraph
-from ..initializer import Normal, Constant
+from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import (
     Variable,
     OpProtoHolder,
