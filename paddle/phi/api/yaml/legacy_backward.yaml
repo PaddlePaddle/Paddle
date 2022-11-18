@@ -681,12 +681,6 @@
   output : Tensor(x_grad)
   invoke : imag_grad_impl(out_grad, x_grad)
 
-- backward_op : increment_grad
-  forward : increment (Tensor x, float value) -> Tensor(out)
-  args : (Tensor out, float value)
-  output : Tensor(x_grad)
-  invoke : increment (out, -value)
-
 - backward_op : index_add_grad
   forward : index_add(Tensor x, Tensor index,  Tensor add_value, int axis) -> Tensor(out)
   args : (Tensor index, Tensor add_value, Tensor out_grad, int axis)
