@@ -102,7 +102,6 @@ class ProcessGroupGloo : public ProcessGroup {
       const std::shared_ptr<paddle::distributed::Store>& store,
       int rank,
       int world_size,
-      const platform::Place& place,
       int gid,
       std::shared_ptr<GlooOptions> options);
 
@@ -111,6 +110,8 @@ class ProcessGroupGloo : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,
       const phi::DenseTensor& in_tensor,
+      int64_t offset,  // for compatibility, no use now
+      int64_t numel,   // for compatibility, no use now
       bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> Broadcast(
@@ -118,6 +119,16 @@ class ProcessGroupGloo : public ProcessGroup {
       const phi::DenseTensor& in_tensor,
       const BroadcastOptions& opts,
       bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
+                                             const phi::DenseTensor& in_tensor,
+                                             const ReduceOptions& opts,
+                                             bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Scatter(phi::DenseTensor* out_tensor,
+                                              const phi::DenseTensor& in_tensor,
+                                              const ScatterOptions& opts,
+                                              bool sync_op) override;
 
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> Broadcast(
@@ -157,19 +168,7 @@ class ProcessGroupGloo : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
-      const ReduceOptions& opts,
-      bool sync_op) override;
-
-  std::shared_ptr<ProcessGroup::Task> Reduce(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
       const ReduceOptions& opts) override;
-
-  std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      const ScatterOptions&,
-      bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> Scatter(
       std::vector<phi::DenseTensor>& in_tensors,

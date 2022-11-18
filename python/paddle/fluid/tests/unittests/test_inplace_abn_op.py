@@ -80,7 +80,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     if activation == 'leaky_relu':
                         bn = paddle.nn.functional.leaky_relu(bn, alpha)
                     if activation == 'elu':
-                        bn = fluid.layers.elu(bn, alpha)
+                        bn = paddle.nn.functional.elu(bn, alpha)
 
                 # NOTE: in inplace mode input and output of bn
                 # may have same name, multiply 1. to generate
