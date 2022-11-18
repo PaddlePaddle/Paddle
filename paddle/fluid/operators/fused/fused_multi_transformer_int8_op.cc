@@ -58,6 +58,12 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
     CHECK_INPUTS(FFN1Weight);
     CHECK_INPUTS(FFN2Weight);
 
+    // scale
+    CHECK_INPUTS(QKVOutScale);
+    CHECK_INPUTS(OutLinearOutScale);
+    CHECK_INPUTS(FFN1OutScale);
+    CHECK_INPUTS(FFN2OutScale);
+
     CHECK_OUTPUT(Out);
 
     // x: qkv's input [batch_size, seq_len, dim_embed]

@@ -129,6 +129,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       auto* any_op_desc = dequantize_linear_op_out->outputs[i]->Op();
       any_op_desc->SetAttr("Input_scale_" + quantize_linear_op_x->Var()->Name(),
                            input_scale);
+
       // link x to any_op2
       any_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
                                quantize_linear_op_x->Var()->Name());

@@ -1765,6 +1765,39 @@ struct DeleteWeightQuantDequantLinearOpPattern : public PatternBase {
   PATTERN_DECL_NODE(any_op2);
 };
 
+struct DeleteWeightDequantLinearOpEncoderPattern : public PatternBase {
+  DeleteWeightDequantLinearOpEncoderPattern(PDPattern* pattern,
+                                            const std::string& name_scope)
+      : PatternBase(pattern,
+                    name_scope,
+                    "delete_weight_quant_dequant_linear_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_x);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
+  PATTERN_DECL_NODE(while0);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
+struct DeleteWeightDequantLinearOpDecoderPattern : public PatternBase {
+  DeleteWeightDequantLinearOpDecoderPattern(PDPattern* pattern,
+                                            const std::string& name_scope)
+      : PatternBase(pattern,
+                    name_scope,
+                    "delete_weight_quant_dequant_linear_op_pattern") {}
+
+  void operator()();
+
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_x);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_scale);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op);
+  PATTERN_DECL_NODE(weight_dequantize_linear_op_out);
+  PATTERN_DECL_NODE(any_op2);
+};
+
 struct DeleteQuantDequantLinearOpPattern : public PatternBase {
   DeleteQuantDequantLinearOpPattern(PDPattern* pattern,
                                     const std::string& name_scope)
