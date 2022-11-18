@@ -282,12 +282,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
   return task;
 }
 
-const phi::DeviceContext& ProcessGroupBKCL::GetDeviceContext(
+phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
     const Place& place) const {
   return GetDeviceContext(place, /*use_calc_stream*/ false);
 }
 
-const phi::DeviceContext& ProcessGroupBKCL::GetDeviceContext(
+phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
   const std::string& key = GetKeyFromPlace(place);
   if (use_calc_stream) {

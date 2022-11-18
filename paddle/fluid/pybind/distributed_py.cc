@@ -271,14 +271,14 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 auto in_dense = *p_in_tensor;
 
-                const auto &dev_ctx = self.GetDeviceContext(in_tensor.place());
+                auto *dev_ctx = self.GetDeviceContext(in_tensor.place());
                 auto task = self.AllGather(out_dense,
                                            in_dense,
                                            /*offset*/ 0,
                                            /*numel*/ -1,
                                            sync_op);
-                SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
-                task->UpdateWaitChain(dev_ctx);
+                SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
+                task->UpdateWaitChain(*dev_ctx);
                 return task;
               },
               py::arg("out"),
@@ -334,7 +334,7 @@ void BindDistributed(py::module *m) {
                 auto in_dense = *p_in_tensor;
 
                 // in_tensor_list should not be empty
-                const auto &dev_ctx =
+                auto *dev_ctx =
                     self.GetDeviceContext(in_tensor_list.back().place());
                 int world_size = self.GetSize();
                 auto task =
@@ -343,8 +343,8 @@ void BindDistributed(py::module *m) {
                                   GetDefaultSplitSizes(*out_dense, world_size),
                                   GetDefaultSplitSizes(in_dense, world_size),
                                   sync_op);
-                SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
-                task->UpdateWaitChain(dev_ctx);
+                SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
+                task->UpdateWaitChain(*dev_ctx);
                 return task;
               },
               py::arg("out"),
@@ -770,15 +770,14 @@ void BindDistributed(py::module *m) {
                     in_tensor.impl());
                 auto in_dense = *p_in_tensor;
 
-                const auto &dev_ctx =
-                    self.GetDeviceContext(in_tensor.place(), true);
+                auto *dev_ctx = self.GetDeviceContext(in_tensor.place(), true);
                 auto task = self.AllGather(out_dense,
                                            in_dense,
                                            /*offset*/ 0,
                                            /*numel*/ -1,
                                            /*sync_op*/ true,
                                            /*use_calc_stream*/ true);
-                SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
+                SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
                 return task;
               },
               py::arg("out"),
@@ -886,7 +885,7 @@ void BindDistributed(py::module *m) {
                 auto in_dense = *p_in_tensor;
 
                 // in_tensor_list should not be empty
-                const auto &dev_ctx = self.GetDeviceContext(
+                auto *dev_ctx = self.GetDeviceContext(
                     in_tensor_list.back().place(), /*use_calc_stream*/ true);
                 int world_size = self.GetSize();
                 auto task =
@@ -896,7 +895,7 @@ void BindDistributed(py::module *m) {
                                   GetDefaultSplitSizes(in_dense, world_size),
                                   /*sync_op*/ true,
                                   /*use_calc_stream*/ true);
-                SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
+                SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
                 return task;
               },
               py::arg("out"),

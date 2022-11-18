@@ -180,9 +180,8 @@ class ProcessGroupGloo : public ProcessGroup {
 
   std::string GetBackendName() const override { return "GLOO"; }
 
-  const phi::DeviceContext& GetDeviceContext(
-      const Place& place) const override {
-    return *platform::DeviceContextPool::Instance().Get(place);
+  phi::DeviceContext* GetDeviceContext(const Place& place) const override {
+    return platform::DeviceContextPool::Instance().Get(place);
   }
 
   // Helper functions for Gloo.

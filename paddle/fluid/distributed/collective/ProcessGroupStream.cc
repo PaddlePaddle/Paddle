@@ -20,7 +20,7 @@ namespace distributed {
 ProcessGroupStream::ProcessGroupStream(int rank, int size, int gid)
     : ProcessGroup(rank, size, gid) {}
 
-const phi::DeviceContext& ProcessGroupStream::GetDeviceContext(
+phi::DeviceContext* ProcessGroupStream::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
   PADDLE_THROW(platform::errors::Unimplemented(
       "ProcessGroup%s does not support get device_context.", GetBackendName()));

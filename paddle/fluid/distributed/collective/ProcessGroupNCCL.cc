@@ -94,17 +94,17 @@ void ProcessGroupNCCL::GroupEnd() {
   NCCL_CHECK(platform::dynload::ncclGroupEnd());
 }
 
-const phi::DeviceContext& ProcessGroupNCCL::GetDeviceContext(
+phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
     const Place& place) const {
   return GetDeviceContext(place, /*use_calc_stream*/ false);
 }
 
-const phi::DeviceContext& ProcessGroupNCCL::GetDeviceContext(
+phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
   const std::string& key = GetKeyFromPlace(place);
   if (use_calc_stream) {
     const auto& iter = place_to_calc_ctx_.find(key);
-    return *iter->second;
+    return iter->second;
   } else {
     const auto& iter = place_to_comm_ctx_.find(key);
     PADDLE_ENFORCE_NE(
@@ -112,7 +112,7 @@ const phi::DeviceContext& ProcessGroupNCCL::GetDeviceContext(
         place_to_comm_ctx_.end(),
         platform::errors::NotFound(
             "Cannot find the device context in this process group."));
-    return *iter->second;
+    return iter->second.get();
   }
 }
 
