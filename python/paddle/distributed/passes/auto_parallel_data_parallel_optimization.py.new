@@ -27,6 +27,7 @@ from paddle.distributed.auto_parallel.utils import (
     find_higher_order_backward_op,
     is_loss_grad_op,
     is_optimize_op,
+    is_forward_op,
     ring_id_to_process_group,
     get_var_numel,
     use_standalone_executor,
