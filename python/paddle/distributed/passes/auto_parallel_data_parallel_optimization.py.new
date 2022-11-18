@@ -629,7 +629,7 @@ class DataParallelOptimizationPass(PassBase):
 
         # Update program IR insert dependencise op
         dep_var_pairs = list(
-            set(prior_allreduce_deps.values() + post_allreduce_deps.values())
+            set(prior_allreduce_deps.values()) + set(post_allreduce_deps.values())
         )
         dep_var_pairs.sort(key=lambda x: x[0], reversed=True)
         for idx, prior_name, post_name in dep_var_pairs:
