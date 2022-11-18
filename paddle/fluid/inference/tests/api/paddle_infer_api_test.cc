@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,15 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cuda_runtime.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include <cstring>
-#include <numeric>
-
 #include "gflags/gflags.h"
-#include "paddle/fluid/inference/tests/api/trt_test_helper.h"
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle_infer {
 
@@ -59,7 +55,108 @@ TEST(Predictor, use_gpu) {
   std::vector<float> out_data;
   out_data.resize(out_num);
   output_t->CopyToCpu(out_data.data());
-  predictor->ClearIntermediateTensor();
+}
+
+TEST(Predictor, use_gpu_fp16_no_ir) {
+  LOG(INFO) << GetVersion();
+  UpdateDllFlag("conv_workspace_size_limit", "4000");
+  std::string model_dir = FLAGS_infer_model + "/model";
+
+  auto get_out_data = [&](PrecisionType Precision) {
+    Config config;
+    config.SetModel(model_dir + "/model", model_dir + "/params");
+    config.EnableUseGpu(100, 0, Precision);
+    config.EnableMemoryOptim(true);
+    config.SwitchIrOptim(false);
+
+    auto predictor = CreatePredictor(config);
+
+    std::vector<int> in_shape = {1, 3, 318, 318};
+    int in_num = std::accumulate(
+        in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
+          return a * b;
+        });
+
+    std::vector<float> input(in_num, 0.005);
+
+    auto input_names = predictor->GetInputNames();
+    auto input_t = predictor->GetInputHandle(input_names[0]);
+
+    input_t->Reshape(in_shape);
+    input_t->CopyFromCpu(input.data());
+    predictor->Run();
+
+    auto output_names = predictor->GetOutputNames();
+    auto output_t = predictor->GetOutputHandle(output_names[0]);
+    std::vector<int> output_shape = output_t->shape();
+    int out_num = std::accumulate(
+        output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
+    std::vector<float> out_data;
+    out_data.resize(out_num);
+    output_t->CopyToCpu(out_data.data());
+
+    return out_data;
+  };
+
+  auto fp16_out_data = get_out_data(PrecisionType::kHalf);
+  auto fp32_out_data = get_out_data(PrecisionType::kFloat32);
+
+  CHECK_EQ(fp16_out_data.size(), fp32_out_data.size());
+
+  for (size_t i = 0; i < fp16_out_data.size(); i++) {
+    EXPECT_NEAR(fp16_out_data[i], fp32_out_data[i], 0.5);
+  }
+}
+
+TEST(Predictor, use_gpu_fp16_with_ir) {
+  LOG(INFO) << GetVersion();
+  UpdateDllFlag("conv_workspace_size_limit", "4000");
+  std::string model_dir = FLAGS_infer_model + "/model";
+
+  auto get_out_data = [&](PrecisionType Precision) {
+    Config config;
+    config.SetModel(model_dir + "/model", model_dir + "/params");
+    config.EnableUseGpu(100, 0, Precision);
+    config.EnableMemoryOptim(true);
+    config.SwitchIrOptim(true);
+
+    auto predictor = CreatePredictor(config);
+
+    std::vector<int> in_shape = {1, 3, 318, 318};
+    int in_num = std::accumulate(
+        in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
+          return a * b;
+        });
+
+    std::vector<float> input(in_num, 0.005);
+
+    auto input_names = predictor->GetInputNames();
+    auto input_t = predictor->GetInputHandle(input_names[0]);
+
+    input_t->Reshape(in_shape);
+    input_t->CopyFromCpu(input.data());
+    predictor->Run();
+
+    auto output_names = predictor->GetOutputNames();
+    auto output_t = predictor->GetOutputHandle(output_names[0]);
+    std::vector<int> output_shape = output_t->shape();
+    int out_num = std::accumulate(
+        output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
+    std::vector<float> out_data;
+    out_data.resize(out_num);
+    output_t->CopyToCpu(out_data.data());
+
+    return out_data;
+  };
+
+  auto fp16_out_data = get_out_data(PrecisionType::kHalf);
+  auto fp32_out_data = get_out_data(PrecisionType::kFloat32);
+
+  CHECK_EQ(fp16_out_data.size(), fp32_out_data.size());
+
+  for (size_t i = 0; i < fp16_out_data.size(); i++) {
+    EXPECT_NEAR(fp16_out_data[i], fp32_out_data[i], 0.5);
+  }
 }
 
 TEST(PredictorPool, basic) {
