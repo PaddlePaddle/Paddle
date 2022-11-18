@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/tril_kernel.h"
+#include "paddle/phi/kernels/tril_triu_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -20,11 +20,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TrilKernel(const Context& ctx,
-                const DenseTensor& x,
-                int diagonal,
-                bool lower,
-                DenseTensor* out) {
+void TrilTriuKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    int diagonal,
+                    bool lower,
+                    DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(out);
   auto xshape = vectorize<int>(x.dims());
@@ -46,6 +46,25 @@ void TrilKernel(const Context& ctx,
   }
 }
 
+template <typename T, typename Context>
+void TrilKernel(const Context& ctx,
+                const DenseTensor& x,
+                int diagonal,
+                DenseTensor* out) {
+  TrilTriuKernel<T, Context>(ctx, x, diagonal, true, out);
+}
+
+template <typename T, typename Context>
+void TriuKernel(const Context& ctx,
+                const DenseTensor& x,
+                int diagonal,
+                DenseTensor* out) {
+  TrilTriuKernel<T, Context>(ctx, x, diagonal, false, out);
+}
+
 }  // namespace phi
 
+PD_REGISTER_KERNEL(
+    tril_triu, XPU, ALL_LAYOUT, phi::TrilTriuKernel, int, float) {}
 PD_REGISTER_KERNEL(tril, XPU, ALL_LAYOUT, phi::TrilKernel, int, float) {}
+PD_REGISTER_KERNEL(triu, XPU, ALL_LAYOUT, phi::TriuKernel, int, float) {}

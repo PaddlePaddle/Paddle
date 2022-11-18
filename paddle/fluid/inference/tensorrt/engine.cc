@@ -150,8 +150,12 @@ void TensorRTEngine::FreezeNetwork() {
                               "Call InitNetwork first to initialize network."));
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
+#if IS_TRT_VERSION_GE(8300)
+  infer_builder_config_->setMemoryPoolLimit(
+      nvinfer1::MemoryPoolType::kWORKSPACE, max_workspace_);
+#else
   infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
-
+#endif
   bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();

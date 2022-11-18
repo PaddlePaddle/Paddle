@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 
-KernelSignature IndexSelectGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "index_select_grad", {"X", "Index", "Out@GRAD"}, {"dim"}, {"X@GRAD"});
-}
+template <typename T, typename Context>
+void NPUIdentityKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const int format,
+                       DenseTensor* out);
 
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(index_select_grad,
-                           phi::IndexSelectGradOpArgumentMapping);
