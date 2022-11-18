@@ -299,14 +299,6 @@ class DataParallelOptimizationPass(PassBase):
                 if use_standalone_executor():
                     op._set_attr('use_calc_stream', True)
                     op.dist_attr.execution_stream = self.gradient_sync_stream
-                    insert_dependencies_for_two_ops(
-                        block,
-                        idx,
-                        block.ops[op.idx - 1],
-                        op,
-                        self.dist_context,
-                        sync=False,
-                    )
                 else:
                     op._set_attr('use_calc_stream', False)
                 ring_id = op.attr("ring_id")
@@ -496,6 +488,7 @@ class DataParallelOptimizationPass(PassBase):
             ), "should found c_allreduce_sum op but found {}".format(
                 str(allreduce_op)
             )
+            print(str(allreduce_op), allreduce_op.input_arg_names[0], group.coalesce_var.name)
             allreduce_op._rename_input(
                 allreduce_op.input_arg_names[0], group.coalesce_var.name
             )

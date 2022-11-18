@@ -1412,6 +1412,8 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
 def naive_set_dist_op_attr_for_program_by_mesh(
     new_op, process_mesh, ctx, is_recompute=False
 ):
+    if not is_recompute:
+        return
     assert process_mesh is not None
 
     new_op_dist_attr = OperatorDistributedAttribute()
