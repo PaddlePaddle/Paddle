@@ -118,8 +118,8 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const bool softLabel,
     const int ignore_index,
     const int axis_dim) {
+  T* loss_data = ctx.Alloc<T>(out);
   const T* prob_data = prob->data<T>();
-  T* loss_data = out->mutable_data<T>(ctx.GetPlace());
 
   int batch_size = prob->dims()[0];
   int class_num = prob->dims()[1];
