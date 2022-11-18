@@ -30,7 +30,7 @@ from paddle.distributed.auto_parallel.utils import (
     ring_id_to_process_group,
     get_var_numel,
     use_standalone_executor,
-    insert_dependencies_for_two_ops,
+    insert_dependencies_for_two_vars,
 )
 
 # add new optimizers supporting rescale_grad here
@@ -100,7 +100,7 @@ class DataParallelOptimizationPass(PassBase):
                 self._prune_grad_scaling()
                 self._calc_comm_overlap()
                 grad_group = self._fuse_allreduce()
-                self._add_dependencies()
+                self._add_dependencies(grad_group)
                 self.summary(grad_group)
 
     def _prune_grad_scaling(self):
@@ -296,11 +296,7 @@ class DataParallelOptimizationPass(PassBase):
                 assert op.has_attr('use_calc_stream')
                 assert op.has_attr('ring_id')
 
-                if use_standalone_executor():
-                    op._set_attr('use_calc_stream', True)
-                    op.dist_attr.execution_stream = self.gradient_sync_stream
-                else:
-                    op._set_attr('use_calc_stream', False)
+                op._set_attr('use_calc_stream', False)
                 ring_id = op.attr("ring_id")
                 block._insert_op_without_sync(
                     idx,
@@ -645,7 +641,7 @@ class DataParallelOptimizationPass(PassBase):
             )
         block._sync_with_cpp()
 
-        # remove naive synchronization
+        # remove naive synchronization & assign allreduce stream
         def remove_cond(op):
             if op.type is not "c_wait_compute":
                 return False
@@ -656,6 +652,10 @@ class DataParallelOptimizationPass(PassBase):
             return True
 
         for idx, op in reversed(list(enumerate(block.ops))):
+            if is_data_parallel_reduce_op(op)
+                op._set_attr('use_calc_stream', True)
+                op.dist_attr.execution_stream = self.gradient_sync_stream
+
             if remove_cond(op) :
                 block._remove_op(idx, sync=False)
 
