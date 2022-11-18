@@ -375,7 +375,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
             h, _, _ = self.gru_unit(decoder_inputs, hidden_mem)
             hidden_mem = h
             out = self.out_layer(h)
-            out = paddle.sparse.nn.functional.softmax(out)
+            out = paddle.nn.functional.softmax(out)
             res.append(out)
 
         res1 = fluid.layers.concat(res, axis=1)
