@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -156,47 +156,65 @@ CUDA_ATOMIC_WRAPPER(Add, float16) {
 }
 #endif
 
+template <typename T, bool IsAvailable, typename NVType, typename NVVec2Type>
+struct VecAtomicAddHelperBase {
+  static constexpr auto kIsAvailable = IsAvailable;
+  using NVT = NVType;
+  using NVVec2T = NVVec2Type;
+};
+
+template <typename T>
+struct VecAtomicAddHelper : VecAtomicAddHelperBase<T, false, void, void> {};
+
+#if CUDA_VERSION >= 10000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+template <>
+struct VecAtomicAddHelper<float16>
+    : VecAtomicAddHelperBase<float16, true, __half, __half2> {};
+#endif
+
+#if CUDA_VERSION >= 11000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+template <>
+struct VecAtomicAddHelper<bfloat16>
+    : VecAtomicAddHelperBase<bfloat16, true, __nv_bfloat16, __nv_bfloat162> {};
+#endif
+
 // The performance of "atomicAdd(half* )" is bad, but for "atomicAdd(half2* )"
 // is good. So for fp16 type, we can use "atomicAdd(half2* )" to speed up.
-template <
-    typename T,
-    typename std::enable_if<std::is_same<float16, T>::value>::type * = nullptr>
+template <typename T,
+          typename std::enable_if<VecAtomicAddHelper<T>::kIsAvailable>::type * =
+              nullptr>
 __device__ __forceinline__ void fastAtomicAdd(T *tensor,
                                               size_t index,
                                               const size_t numel,
                                               T value) {
-#if ((CUDA_VERSION < 10000) || \
-     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
-  CudaAtomicAdd(reinterpret_cast<float16 *>(tensor) + index,
-                static_cast<float16>(value));
-#else
   // whether the address is 32-byte aligned.
-  __half *target_addr = reinterpret_cast<__half *>(tensor + index);
+  using NVT = typename VecAtomicAddHelper<T>::NVT;
+  using NVVec2T = typename VecAtomicAddHelper<T>::NVVec2T;
+  NVT *target_addr = reinterpret_cast<NVT *>(tensor + index);
   bool aligned_half2 =
-      (reinterpret_cast<std::uintptr_t>(target_addr) % sizeof(__half2) == 0);
+      (reinterpret_cast<std::uintptr_t>(target_addr) % sizeof(NVVec2T) == 0);
 
   if (aligned_half2 && index < (numel - 1)) {
-    __half2 value2;
-    value2.x = *reinterpret_cast<__half *>(&value);
-    value2.y = __int2half_rz(0);
-    atomicAdd(reinterpret_cast<__half2 *>(target_addr), value2);
+    NVVec2T value2;
+    value2.x = *reinterpret_cast<NVT *>(&value);
+    value2.y = 0.0;
+    atomicAdd(reinterpret_cast<NVVec2T *>(target_addr), value2);
 
   } else if (!aligned_half2 && index > 0) {
-    __half2 value2;
-    value2.x = __int2half_rz(0);
-    value2.y = *reinterpret_cast<__half *>(&value);
-    atomicAdd(reinterpret_cast<__half2 *>(target_addr - 1), value2);
+    NVVec2T value2;
+    value2.x = 0.0;
+    value2.y = *reinterpret_cast<NVT *>(&value);
+    atomicAdd(reinterpret_cast<NVVec2T *>(target_addr - 1), value2);
 
   } else {
-    atomicAdd(reinterpret_cast<__half *>(tensor) + index,
-              *reinterpret_cast<__half *>(&value));
+    atomicAdd(reinterpret_cast<NVT *>(tensor) + index,
+              *reinterpret_cast<NVT *>(&value));
   }
-#endif
 }
 
-template <
-    typename T,
-    typename std::enable_if<!std::is_same<float16, T>::value>::type * = nullptr>
+template <typename T,
+          typename std::enable_if<!VecAtomicAddHelper<T>::kIsAvailable>::type
+              * = nullptr>
 __device__ __forceinline__ void fastAtomicAdd(T *arr,
                                               size_t index,
                                               const size_t numel,
@@ -551,16 +569,16 @@ CUDA_ATOMIC_WRAPPER(Min, float16) {
 }
 #endif
 
-#ifdef PADDLE_CUDA_FP16
 #ifdef PADDLE_WITH_CUDA
 /*
  * One thead block deals with elementwise atomicAdd for vector of len.
  * @in: [x1, x2, x3, ...]
  * @out:[y1+x1, y2+x2, y3+x3, ...]
  * */
-template <
-    typename T,
-    typename std::enable_if<!std::is_same<float16, T>::value>::type * = nullptr>
+
+template <typename T,
+          typename std::enable_if<!VecAtomicAddHelper<T>::kIsAvailable>::type
+              * = nullptr>
 __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
     const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
   for (int i = tid; i < len; i += threads_per_block) {
@@ -569,31 +587,27 @@ __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
 }
 
 // Note: assume that len is even. If len is odd, call fastAtomicAdd directly.
-template <
-    typename T,
-    typename std::enable_if<std::is_same<float16, T>::value>::type * = nullptr>
+template <typename T,
+          typename std::enable_if<VecAtomicAddHelper<T>::kIsAvailable>::type * =
+              nullptr>
 __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
     const int64_t len, int tid, int threads_per_block, const T *in, T *out) {
-#if ((CUDA_VERSION < 10000) || \
-     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
-  for (int i = tid; i < len; i += threads_per_block) {
-    CudaAtomicAdd(&out[i], in[i]);
-  }
-#else
   int i = 0;
   int loops = len / 2 * 2;
 
+  using NVT = typename VecAtomicAddHelper<T>::NVT;
+  using NVVec2T = typename VecAtomicAddHelper<T>::NVVec2T;
   bool aligned_half2 =
-      (reinterpret_cast<std::uintptr_t>(out) % sizeof(__half2) == 0);
+      (reinterpret_cast<std::uintptr_t>(out) % sizeof(NVT) == 0);
 
   if (aligned_half2) {
     for (i = tid * 2; i < loops; i += threads_per_block * 2) {
-      __half2 value2;
+      NVVec2T value2;
       T value_1 = in[i];
       T value_2 = in[i + 1];
-      value2.x = *reinterpret_cast<__half *>(&value_1);
-      value2.y = *reinterpret_cast<__half *>(&value_2);
-      atomicAdd(reinterpret_cast<__half2 *>(&out[i]), value2);
+      value2.x = *reinterpret_cast<NVT *>(&value_1);
+      value2.y = *reinterpret_cast<NVT *>(&value_2);
+      atomicAdd(reinterpret_cast<NVVec2T *>(&out[i]), value2);
     }
     for (; i < len; i += threads_per_block) {
       fastAtomicAdd(out, i, len, in[i]);
@@ -603,8 +617,7 @@ __device__ __forceinline__ void VectorizedAtomicAddPerBlock(
       fastAtomicAdd(out, i, len, in[i]);
     }
   }
-#endif
 }
-#endif
+
 #endif
 }  // namespace phi
