@@ -245,26 +245,6 @@ class VariableScope {
   std::vector<std::pair<std::string, int>> data_transfer_added_vars_;
 };
 
-class NextInstructionList {
- public:
-  void AddDirectRun(size_t id) { direct_run_.push_back(id); }
-
-  void AddEventRun(size_t id) { event_wait_run_.push_back(id); }
-
-  void AddSyncRun(size_t id) { synchronize_run_.push_back(id); }
-
-  const std::vector<size_t>& DirectRunIds() const { return direct_run_; }
-
-  const std::vector<size_t>& EventRunIds() const { return event_wait_run_; }
-
-  const std::vector<size_t>& SyncRunIds() const { return synchronize_run_; }
-
- private:
-  std::vector<size_t> direct_run_;
-  std::vector<size_t> event_wait_run_;
-  std::vector<size_t> synchronize_run_;
-};
-
 struct EventInter {
   explicit EventInter(size_t instr_id,
                       std::shared_ptr<platform::DeviceEvent> event,
@@ -311,14 +291,34 @@ class Instruction {
 
   bool IsArtificial() const { return is_artificial_; }
 
-  size_t Id() const;
+  const std::vector<size_t>& NextInstrsInDifferenceThread() const {
+    return next_instrs_in_different_thread;
+  }
+
+  const std::vector<size_t>& NextInstrsInSameThread() const {
+    return next_instrs_in_same_thread;
+  }
+
+  size_t Id() const { return id_; }
 
   void AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event,
-                        platform::DeviceType waiter_type);
+                        platform::DeviceType waiter_type) {
+    event_to_record_ = std::make_unique<EventInter>(id_, event, waiter_type);
+  }
 
   void AddEventToWait(size_t instr_id,
                       std::shared_ptr<platform::DeviceEvent> event,
-                      platform::DeviceType waiter_type);
+                      platform::DeviceType waiter_type) {
+    events_to_wait_.emplace_back(instr_id, event, waiter_type);
+  }
+
+  void AddNextInstrInDifferentThread(size_t id) {
+    next_instrs_in_different_thread.push_back(id);
+  }
+
+  void AddNextInstrInSameThread(size_t id) {
+    next_instrs_in_same_thread.push_back(id);
+  }
 
   void RecordEvent(const Place& place) const;
 
@@ -339,10 +339,6 @@ class Instruction {
   const std::map<int, int>& InplaceBackMap() const;
 
   OperatorBase* OpBase() const;
-
-  NextInstructionList& NextInstructions();
-
-  const NextInstructionList& NextInstructions() const;
 
   void AddGCCheckVar(size_t id);
 
@@ -378,6 +374,9 @@ class Instruction {
 
   size_t id_;
 
+  std::vector<size_t> next_instrs_in_different_thread;
+  std::vector<size_t> next_instrs_in_same_thread;
+
   std::unique_ptr<EventInter> event_to_record_;
   std::vector<EventInter> events_to_wait_;
 
@@ -390,8 +389,6 @@ class Instruction {
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
   std::vector<size_t> gc_check_vars_;
-
-  NextInstructionList next_instruction_;
 
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };

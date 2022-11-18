@@ -683,8 +683,6 @@ Instruction::Instruction(size_t id,
                         "Required id >= 0, but received id = %d", id));
 }
 
-size_t Instruction::Id() const { return id_; }
-
 void Instruction::WaitEvent(const Place& place) const {
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place)) {
@@ -709,17 +707,6 @@ void Instruction::RecordEvent(const Place& place) const {
     VLOG(6) << "Record event at instruction: " << id_;
     event_to_record_->event_->Record(&dev_ctx_);
   }
-}
-
-void Instruction::AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event,
-                                   platform::DeviceType waiter_type) {
-  event_to_record_ = std::make_unique<EventInter>(id_, event, waiter_type);
-}
-
-void Instruction::AddEventToWait(size_t instr_id,
-                                 std::shared_ptr<platform::DeviceEvent> event,
-                                 platform::DeviceType waiter_type) {
-  events_to_wait_.emplace_back(instr_id, event, waiter_type);
 }
 
 const std::map<std::string, std::vector<int>>& Instruction::Inputs() const {
@@ -754,14 +741,6 @@ OperatorBase* Instruction::OpBase() const {
       op_base,
       platform::errors::PreconditionNotMet("op_base shall not be nullptr."));
   return op_base.get();
-}
-
-NextInstructionList& Instruction::NextInstructions() {
-  return next_instruction_;
-}
-
-const NextInstructionList& Instruction::NextInstructions() const {
-  return next_instruction_;
 }
 
 void Instruction::AddGCCheckVar(size_t id) { gc_check_vars_.push_back(id); }

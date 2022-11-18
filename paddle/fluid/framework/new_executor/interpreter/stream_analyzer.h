@@ -26,7 +26,7 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-enum class DownstreamRunType { kDirectRun, kSyncRun, kEventRun };
+enum DownstreamRunType { kDirectRun, kSyncRun, kEventRun };
 
 class StreamAnalyzer {
  public:
@@ -49,18 +49,18 @@ class StreamAnalyzer {
 
   void AnalyseAllEventInfo(
       const std::vector<Instruction>& instructions,
-      const std::vector<size_t>& startup_instrs,
-      const DependencyBuilder& dependency_builder,
+      const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
       std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
-          event_info_map) const;
+          event_info) const;
 
   void AnalyseAllRunType(
+      const std::vector<Instruction>& instructions,
       const std::map<size_t, std::set<size_t>>& downstream_map,
-      const std::vector<size_t>& startup_instrs,
-      std::vector<Instruction>* instructions) const;
+      std::vector<std::vector<std::vector<size_t>>>* run_type_info) const;
 
   void AnalyseEventInfoForTwoInstructions(
       const std::vector<Instruction>& instructions,
+      const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
       const size_t cur_instr_id,
       const size_t next_instr_id,
       std::set<size_t>* waiter_instr_ids) const;

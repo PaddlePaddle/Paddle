@@ -61,39 +61,37 @@ class ContextManager {
   std::unordered_map<std::string, DeviceContextMap> ctx_pool_;
 };
 
+inline std::string RunTypeToString(DownstreamRunType run_type) {
+  if (run_type == DownstreamRunType::kDirectRun) {
+    return "DirectRun";
+  } else if (run_type == DownstreamRunType::kSyncRun) {
+    return "SyncRun";
+  } else {
+    return "EventRun";
+  }
+}
+
 void StreamAnalyzer::ConstructEvents(
     const DependencyBuilder& dependency_builder,
     std::vector<Instruction>* instructions) const {
-  // parse startup op
   const std::map<size_t, std::set<size_t>>& downstream_map =
       dependency_builder.OpDownstreamMap();
   const size_t instr_num = instructions->size();
-  std::vector<bool> is_startup_instrs(instr_num, true);
-  std::vector<size_t> startup_instrs;
-  for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
-    auto it = downstream_map.find(instr_id);
-    if (it != downstream_map.end()) {
-      for (size_t next_instr_id : it->second) {
-        is_startup_instrs[next_instr_id] = false;
-      }
-    }
-  }
-  for (size_t instr_id = 0; instr_id < instr_num; ++instr_id) {
-    if (is_startup_instrs[instr_id]) {
-      startup_instrs.push_back(instr_id);
-    }
-  }
+  std::vector<std::vector<std::vector<size_t>>> run_type_info(
+      instr_num,
+      std::vector<std::vector<size_t>>(
+          /*number_of_run_type = */ 3));  // instr_id -> run_type ->
+                                          // next_instr_id
+  AnalyseAllRunType(*instructions, downstream_map, &run_type_info);
 
   std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>
-      event_info_map;  // DeviceContext -> waiter_instr_id -> recorder_instr_ids
-  AnalyseAllRunType(downstream_map, startup_instrs, instructions);
-  AnalyseAllEventInfo(
-      *instructions, startup_instrs, dependency_builder, &event_info_map);
-  ShrinkEventInfo(dependency_builder, &event_info_map);
+      event_info;  // DeviceContext -> waiter_instr_id -> recorder_instr_ids
+  AnalyseAllEventInfo(*instructions, run_type_info, &event_info);
+  ShrinkEventInfo(dependency_builder, &event_info);
 
   // Construct events
   std::map<size_t, std::shared_ptr<DeviceEvent>> instr2event;
-  for (auto& context_item : event_info_map) {
+  for (auto& context_item : event_info) {
     for (auto& waiter_item : context_item.second) {
       size_t waiter_instr_id = waiter_item.first;
       std::set<size_t>& recorder_instr_ids = waiter_item.second;
@@ -235,106 +233,53 @@ bool StreamAnalyzer::HasDataDependency(const Instruction& cur_instr,
 
 void StreamAnalyzer::AnalyseAllEventInfo(
     const std::vector<Instruction>& instructions,
-    const std::vector<size_t>& startup_instrs,
-    const DependencyBuilder& dependency_builder,
+    const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
     std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
-        event_info_map) const {
-  std::queue<size_t> queue;
-  std::vector<bool> is_visited_instrs(instructions.size(), false);
-  for (size_t startup_instr_id : startup_instrs) {
-    queue.push(startup_instr_id);
-    is_visited_instrs[startup_instr_id] = true;
-  }
-
-  while (!queue.empty()) {
-    size_t cur_instr_id = queue.front();
-    queue.pop();
-
+        event_info) const {
+  for (size_t cur_instr_id = 0; cur_instr_id < instructions.size();
+       ++cur_instr_id) {
     const Instruction& cur_instr = instructions[cur_instr_id];
-    const NextInstructionList& next_instructions = cur_instr.NextInstructions();
+    const std::vector<std::vector<size_t>>& next_instr_list =
+        run_type_info[cur_instr_id];
     std::set<size_t> waiter_instr_ids;
 
-    std::vector<size_t> next_instr_ids = next_instructions.SyncRunIds();
+    std::vector<size_t> next_instr_ids =
+        next_instr_list[DownstreamRunType::kSyncRun];
     next_instr_ids.insert(next_instr_ids.end(),
-                          next_instructions.EventRunIds().begin(),
-                          next_instructions.EventRunIds().end());
+                          next_instr_list[DownstreamRunType::kEventRun].begin(),
+                          next_instr_list[DownstreamRunType::kEventRun].end());
     for (size_t next_instr_id : next_instr_ids) {
-      AnalyseEventInfoForTwoInstructions(
-          instructions, cur_instr_id, next_instr_id, &waiter_instr_ids);
+      AnalyseEventInfoForTwoInstructions(instructions,
+                                         run_type_info,
+                                         cur_instr_id,
+                                         next_instr_id,
+                                         &waiter_instr_ids);
     }
 
     for (size_t waiter_instr_id : waiter_instr_ids) {
-      (*event_info_map)[&(cur_instr.DeviceContext())][waiter_instr_id].insert(
+      (*event_info)[&(cur_instr.DeviceContext())][waiter_instr_id].insert(
           cur_instr_id);
-    }
-
-    next_instr_ids.insert(next_instr_ids.end(),
-                          next_instructions.DirectRunIds().begin(),
-                          next_instructions.DirectRunIds().end());
-    for (size_t next_instr_id : next_instr_ids) {
-      if (!is_visited_instrs[next_instr_id]) {
-        queue.push(next_instr_id);
-        is_visited_instrs[next_instr_id] = true;
-      }
     }
   }
 }
 
 void StreamAnalyzer::AnalyseAllRunType(
+    const std::vector<Instruction>& instructions,
     const std::map<size_t, std::set<size_t>>& downstream_map,
-    const std::vector<size_t>& startup_instrs,
-    std::vector<Instruction>* instructions) const {
-  std::queue<size_t> queue;
-  std::vector<bool> is_visited_instrs(instructions->size(), false);
-  for (size_t startup_instr_id : startup_instrs) {
-    queue.push(startup_instr_id);
-    is_visited_instrs[startup_instr_id] = true;
-  }
+    std::vector<std::vector<std::vector<size_t>>>* run_type_info) const {
+  for (auto& item : downstream_map) {
+    size_t cur_instr_id = item.first;
+    const Instruction& cur_instr = instructions[item.first];
+    for (size_t next_instr_id : item.second) {
+      const Instruction& next_instr = instructions[next_instr_id];
+      DownstreamRunType run_type =
+          AnalyseRunTypeForTwoInstructions(cur_instr, next_instr);
 
-  while (!queue.empty()) {
-    size_t cur_instr_id = queue.front();
-    queue.pop();
-    auto it = downstream_map.find(cur_instr_id);
-    if (it != downstream_map.end()) {
-      Instruction& cur_instr = instructions->at(cur_instr_id);
-      NextInstructionList& next_instructions = cur_instr.NextInstructions();
-      for (size_t next_instr_id : it->second) {
-        Instruction& next_instr = instructions->at(next_instr_id);
-        DownstreamRunType run_type =
-            AnalyseRunTypeForTwoInstructions(cur_instr, next_instr);
-        switch (run_type) {
-          case DownstreamRunType::kDirectRun:
-            next_instructions.AddDirectRun(next_instr_id);
-            VLOG(6) << "DirectRun: " << cur_instr.OpBase()->Type() << "("
-                    << cur_instr_id << ") -> " << next_instr.OpBase()->Type()
-                    << "(" << next_instr_id << ")";
-            break;
-          case DownstreamRunType::kSyncRun:
-            next_instructions.AddSyncRun(next_instr_id);
-            VLOG(6) << "SyncRun: " << cur_instr.OpBase()->Type() << "("
-                    << cur_instr_id << ") -> " << next_instr.OpBase()->Type()
-                    << "(" << next_instr_id << ")";
-            break;
-          case DownstreamRunType::kEventRun:
-            next_instructions.AddEventRun(next_instr_id);
-            VLOG(6) << "EventRun: " << cur_instr.OpBase()->Type() << "("
-                    << cur_instr_id << ") -> " << next_instr.OpBase()->Type()
-                    << "(" << next_instr_id << ")";
-            break;
-          default:
-            PADDLE_THROW(phi::errors::Unavailable(
-                "Unrecognized DownstreamRunType from %s(%d) to %s(%d).",
-                cur_instr.OpBase()->Type(),
-                cur_instr_id,
-                next_instr.OpBase()->Type(),
-                next_instr_id));
-        }
+      (*run_type_info)[cur_instr_id][run_type].push_back(next_instr_id);
 
-        if (!is_visited_instrs[next_instr_id]) {
-          queue.push(next_instr_id);
-          is_visited_instrs[next_instr_id] = true;
-        }
-      }
+      VLOG(6) << RunTypeToString(run_type) << ": " << cur_instr.OpBase()->Type()
+              << "(" << cur_instr_id << ") -> " << next_instr.OpBase()->Type()
+              << "(" << next_instr_id << ")";
     }
   }
 }
@@ -342,6 +287,7 @@ void StreamAnalyzer::AnalyseAllRunType(
 // The caller should guarantee cur_instr and next_instr is kSyncRun or kEventRun
 void StreamAnalyzer::AnalyseEventInfoForTwoInstructions(
     const std::vector<Instruction>& instructions,
+    const std::vector<std::vector<std::vector<size_t>>>& run_type_info,
     const size_t cur_instr_id,
     const size_t next_instr_id,
     std::set<size_t>* waiter_instr_ids) const {
@@ -356,9 +302,9 @@ void StreamAnalyzer::AnalyseEventInfoForTwoInstructions(
   // direct-run-instrs. When next_instr has too many direct-run-instrs, it may
   // perform worse than add event directly between cur_instr and next_instr.
   for (size_t instr_id :
-       instructions[next_instr_id].NextInstructions().DirectRunIds()) {
+       run_type_info[next_instr_id][DownstreamRunType::kDirectRun]) {
     AnalyseEventInfoForTwoInstructions(
-        instructions, cur_instr_id, instr_id, waiter_instr_ids);
+        instructions, run_type_info, cur_instr_id, instr_id, waiter_instr_ids);
   }
 }
 
@@ -367,8 +313,8 @@ void StreamAnalyzer::AnalyseEventInfoForTwoInstructions(
 void StreamAnalyzer::ShrinkEventInfo(
     const DependencyBuilder& dependency_builder,
     std::map<const DeviceContext*, std::map<size_t, std::set<size_t>>>*
-        event_info_map) const {
-  for (auto& context_item : *event_info_map) {
+        event_info) const {
+  for (auto& context_item : *event_info) {
     for (auto& waiter_item : context_item.second) {
       size_t waiter_instr_id = waiter_item.first;
       std::set<size_t>& recorder_instr_ids = waiter_item.second;
