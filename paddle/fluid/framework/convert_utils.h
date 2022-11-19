@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/utils/data_type.h"
 
@@ -28,7 +29,10 @@ using DataLayout = phi::DataLayout;
 using phi::DataTypeToString;
 using phi::SizeOf;
 using phi::TransToPhiDataType;
-using phi::TransToProtoVarType;
+
+inline proto::VarType::Type TransToProtoVarType(const DataType& dtype) {
+  return static_cast<proto::VarType::Type>(phi::TransToProtoVarType(dtype));
+}
 
 }  // namespace framework
 }  // namespace paddle

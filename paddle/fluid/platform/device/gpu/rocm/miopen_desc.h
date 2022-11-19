@@ -37,7 +37,7 @@ namespace platform {
 template <typename T>
 inline miopenDataType_t ToCudnnDataType(const T& t) {
   auto type = framework::ToDataType(t);
-  return ToCudnnDataType(phi::TransToPhiDataType[type]);
+  return ToCudnnDataType(phi::TransToPhiDataType(type));
 }
 
 inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {

@@ -131,7 +131,7 @@ enum ProtoVarType {
   PSTRING = 29
 };
 
-DataType TransToPhiDataType(const int& dtype) {
+inline DataType TransToPhiDataType(const int& dtype) {
   // Set the order of case branches according to the frequency with
   // the data type is used
   switch (dtype) {
@@ -166,7 +166,7 @@ DataType TransToPhiDataType(const int& dtype) {
   }
 }
 
-int TransToProtoVarType(const DataType& dtype) {
+inline int TransToProtoVarType(const DataType& dtype) {
   // Set the order of case branches according to the frequency with
   // the data type is used
   switch (dtype) {

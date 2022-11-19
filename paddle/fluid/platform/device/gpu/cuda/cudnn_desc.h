@@ -37,7 +37,7 @@ namespace platform {
 template <typename T>
 inline cudnnDataType_t ToCudnnDataType(const T& t) {
   auto type = framework::ToDataType(t);
-  return ToCudnnDataType(phi::TransToPhiDataType[type]);
+  return ToCudnnDataType(phi::TransToPhiDataType(type));
 }
 
 template <typename T>
