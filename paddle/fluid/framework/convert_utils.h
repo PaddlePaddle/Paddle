@@ -36,9 +36,6 @@ DataType TransToPhiDataType(
 paddle::framework::proto::VarType::Type TransToProtoVarType(
     const DataType& dtype);
 
-size_t DataTypeSize(DataType dtype);
-DataType String2DataType(const std::string& str);
-
 using phi::DataTypeToString;
 using phi::SizeOf;
 
