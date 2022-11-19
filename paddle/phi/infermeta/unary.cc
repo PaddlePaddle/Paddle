@@ -133,9 +133,9 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "The attribute of dtype in argmin/argmax must be [%s] or [%s], but "
           "received [%s]",
-          phi::DataType2String(DataType::INT32),
-          phi::DataType2String(DataType::INT64),
-          phi::DataType2String(var_type_map[dtype])));
+          phi::DataTypeToString(DataType::INT32),
+          phi::DataTypeToString(DataType::INT64),
+          phi::DataTypeToString(var_type_map[dtype])));
 
   if (!config.is_runtime && axis.FromTensor()) {
     std::vector<int64_t> vec;

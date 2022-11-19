@@ -39,7 +39,8 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
 size_t DataTypeSize(DataType dtype);
 DataType String2DataType(const std::string& str);
 
-using phi::DataType2String;
+using phi::DataTypeToString;
+using phi::SizeOf;
 
 }  // namespace framework
 }  // namespace paddle

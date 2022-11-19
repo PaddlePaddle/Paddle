@@ -138,40 +138,6 @@ inline DataType ToRealType(const DataType& type) {
   }
 }
 
-inline std::string DataType2String(DataType dtype) {
-  switch (dtype) {
-    case DataType::BOOL:
-      return "bool";
-    case DataType::INT8:
-      return "int8";
-    case DataType::UINT8:
-      return "uint8";
-    case DataType::INT16:
-      return "int16";
-    case DataType::INT32:
-      return "int32";
-    case DataType::INT64:
-      return "int64";
-    case DataType::FLOAT16:
-      return "float16";
-    case DataType::FLOAT32:
-      return "float32";
-    case DataType::FLOAT64:
-      return "float64";
-    case DataType::COMPLEX64:
-      return "complex64";
-    case DataType::COMPLEX128:
-      return "complex128";
-    case DataType::PSTRING:
-      return "pstring";
-    case DataType::BFLOAT16:
-      return "bfloat16";
-    default:
-      PADDLE_THROW(
-          errors::InvalidArgument("Unknow phi::DataType, the int value = %d.",
-                                  static_cast<int>(dtype)));
-      return "";
-  }
-}
-
+using paddle::experimental::DataTypeToString;
+using paddle::experimental::SizeOf;
 }  // namespace phi
