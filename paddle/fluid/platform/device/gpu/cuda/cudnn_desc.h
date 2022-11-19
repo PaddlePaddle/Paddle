@@ -23,9 +23,9 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 class DenseTensor;
@@ -37,7 +37,7 @@ namespace platform {
 template <typename T>
 inline cudnnDataType_t ToCudnnDataType(const T& t) {
   auto type = framework::ToDataType(t);
-  return ToCudnnDataType(type);
+  return ToCudnnDataType(var_type_map[type]);
 }
 
 template <typename T>
@@ -68,21 +68,20 @@ inline std::vector<T> TransformDimOrder(const std::vector<T>& dims) {
 }
 
 template <>
-inline cudnnDataType_t ToCudnnDataType(
-    const framework::proto::VarType::Type& t) {
+inline cudnnDataType_t ToCudnnDataType(const phi::DataType& t) {
   cudnnDataType_t type = CUDNN_DATA_FLOAT;
   switch (t) {
-    case framework::proto::VarType::FP16:
+    case phi::DataType::FLOAT16:
       type = CUDNN_DATA_HALF;
       break;
-    case framework::proto::VarType::FP32:
+    case phi::DataType::FLOAT32:
       type = CUDNN_DATA_FLOAT;
       break;
-    case framework::proto::VarType::FP64:
+    case phi::DataType::FLOAT64:
       type = CUDNN_DATA_DOUBLE;
       break;
 #if CUDNN_VERSION_MIN(8, 1, 0)
-    case framework::proto::VarType::BF16:
+    case phi::DataType::BFLOAT16:
       type = CUDNN_DATA_BFLOAT16;
       break;
 #endif
@@ -152,12 +151,12 @@ class TensorDescriptor {
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
-        desc_.get(),
-        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
-        dims_with_group.size(),
-        dims_with_group.data(),
-        strides.data()));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cudnnSetTensorNdDescriptor(desc_.get(),
+                                            ToCudnnDataType(tensor.dtype()),
+                                            dims_with_group.size(),
+                                            dims_with_group.data(),
+                                            strides.data()));
   }
 
   void set(const std::vector<int>& dims,
@@ -179,8 +178,7 @@ class TensorDescriptor {
 
   void set(const phi::DenseTensor& tensor, const cudnnTensorFormat_t format) {
     auto dims = phi::vectorize<int>(tensor.dims());
-    auto dtype =
-        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype()));
+    auto dtype = ToCudnnDataType(tensor.dtype());
     set(dims, format, dtype);
   }
 
@@ -232,8 +230,7 @@ class FilterDescriptor {
            const cudnnTensorFormat_t format,
            const int groups = 1) {
     auto dims = phi::vectorize<int>(tensor.dims());
-    auto dtype =
-        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype()));
+    auto dtype = ToCudnnDataType(tensor.dtype());
     set(dims, format, dtype, groups);
   }
 
