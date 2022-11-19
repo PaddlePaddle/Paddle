@@ -135,7 +135,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
           "received [%s]",
           phi::DataTypeToString(DataType::INT32),
           phi::DataTypeToString(DataType::INT64),
-          phi::DataTypeToString(var_type_map[dtype])));
+          phi::DataTypeToString(phi::TransToPhiDataType[dtype])));
 
   if (!config.is_runtime && axis.FromTensor()) {
     std::vector<int64_t> vec;
@@ -177,7 +177,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
   auto x_rank = x_dims.size();
   if (int_axis < 0) int_axis += x_rank;
   if (config.is_runtime) {
-    if (dtype == map_to_var_type[DataType::INT32]) {
+    if (dtype == phi::TransToProtoVarType[DataType::INT32]) {
       int64_t all_element_num = 0;
       if (flatten) {
         all_element_num = phi::product(x_dims);
