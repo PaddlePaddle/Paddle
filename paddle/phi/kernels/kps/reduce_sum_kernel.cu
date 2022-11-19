@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <climits>
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include <limits>
 #include "paddle/phi/core/enforce.h"
