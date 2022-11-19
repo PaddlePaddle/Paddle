@@ -197,13 +197,17 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   }
 #endif
 
-  // MemcpyD2H is synchronous, see
-  // https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html#api-sync-behavior__memcpy-async
-  // for more detial.
-  if (op_type == kMemcpyD2H && platform::is_gpu_place(dev_ctx->GetPlace())) {
-    new_op_func_node.type_ = OpFuncType::kGpuSync;
+  if (platform::is_gpu_place(dev_ctx->GetPlace())) {
+    // MemcpyD2H is synchronous, see
+    // https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html#api-sync-behavior__memcpy-async
+    // for more detial.
+    if (op_type == kMemcpyD2H) {
+      new_op_func_node.type_ = OpFuncType::kGpuSync;
+    } else {
+      new_op_func_node.type_ = OpFuncType::kGpuAsync;
+    }
   } else {
-    new_op_func_node.type_ = OpFuncType::kGpuAsync;
+    new_op_func_node.type_ = OpFuncType::kCpuSync;
   }
 
   new_op_func_node.dev_ctx_ = dev_ctx;

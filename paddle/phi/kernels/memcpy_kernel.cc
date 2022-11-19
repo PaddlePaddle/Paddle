@@ -82,6 +82,12 @@ void MemcpyD2HKernel(const Context& dev_ctx,
       // fails. So we specify out's place here.
       out->mutable_data(CPUPlace());
       Copy(dev_ctx, x, CPUPlace(), false, out);
+      // NOTE(copy from Aurelius84): host <-> device memory copies of a memory
+      // block of 64 KB or less are asynchronous. See
+      // https://forums.developer.nvidia.com/t/host-device-memory-copies-up-to-64-kb-are-asynchronous/17907
+      if (x.memory_size() <= WAIT_THRESHOLD) {
+        dev_ctx.Wait();
+      }
       break;
 
     case 1:
