@@ -20,12 +20,11 @@
 #include <type_traits>
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/core/macros.h"
 
 #include "paddle/utils/variant.h"
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 struct FlagInfo {
   using ValueType =
@@ -51,7 +50,7 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap();
       static_assert(std::is_same<FlagDeclaredType, ::std::string>::value ||   \
                         std::is_arithmetic<FlagDeclaredType>::value,          \
                     "FLAGS should be std::string or arithmetic type");        \
-      auto *instance = ::paddle::platform::GetMutableExportedFlagInfoMap();   \
+      auto *instance = ::phi::GetMutableExportedFlagInfoMap();                \
       auto &info = (*instance)[#__name];                                      \
       info.name = #__name;                                                    \
       info.value_ptr = &(FLAGS_##__name);                                     \
@@ -96,5 +95,4 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap();
   __PADDLE_DEFINE_EXPORTED_FLAG(                                \
       name, true, ::std::string, string, default_value, doc)
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi

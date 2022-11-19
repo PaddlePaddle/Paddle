@@ -24,9 +24,9 @@
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
 PADDLE_DEFINE_EXPORTED_string(static_executor_perfstat_filepath,

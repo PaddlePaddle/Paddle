@@ -14,12 +14,9 @@
 
 #pragma once
 
-namespace paddle {
-namespace platform {
-
+namespace phi {
 static constexpr int kDefaultConvWorkspaceSizeLimitMB = 512;
 
 int GetDefaultConvWorkspaceSizeLimitMB();
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi

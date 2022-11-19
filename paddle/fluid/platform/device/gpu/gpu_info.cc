@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
@@ -32,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"

@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/cudnn_workspace_helper.h"
+#include "paddle/phi/core/cudnn_workspace_helper.h"
 
 #include <cstdlib>
 #include <string>
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 static int GetDefaultConvWorkspaceSizeLimitMBImpl() {
   const char *env_str = std::getenv("FLAGS_conv_workspace_size_limit");
@@ -31,5 +30,4 @@ int GetDefaultConvWorkspaceSizeLimitMB() {
   return workspace_size;
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi

@@ -18,8 +18,8 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/flags.h"
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
     free_idle_chunk,

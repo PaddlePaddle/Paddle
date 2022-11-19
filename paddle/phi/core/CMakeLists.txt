@@ -1,6 +1,14 @@
 # compatible utils used for fluid op system
 add_subdirectory(compat)
 
+cc_library(
+  flags
+  SRCS flags.cc
+  DEPS gflags)
+cc_library(
+  cudnn_workspace_helper
+  SRCS cudnn_workspace_helper.cc
+  DEPS)
 cc_library(errors SRCS errors.cc)
 set(phi_enforce_deps errors flags)
 if(WITH_GPU)
