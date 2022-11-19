@@ -27,10 +27,7 @@ from paddle.fluid.layers import (
     tensor,
 )
 
-try:
-    from collections.abc import Iterable
-except:
-    from collections import Iterable
+from collections.abc import Iterable
 
 
 class Normal(distribution.Distribution):

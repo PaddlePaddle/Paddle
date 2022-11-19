@@ -60,6 +60,8 @@ from ..data_feeder import (
 )
 from paddle.utils import deprecated
 from paddle import _C_ops, _legacy_C_ops
+from collections.abc import Iterable
+
 
 __all__ = [
     'fc',
@@ -6808,10 +6810,6 @@ def lod_append(x, level):
             x = fluid.layers.data(name='x', shape=[6, 10], lod_level=1)
             out = fluid.layers.lod_append(x, [1,1,1,1,1,1])
     """
-    try:
-        from collections.abc import Iterable
-    except:
-        from collections import Iterable
     if x is None:
         raise ValueError("Input(x) can't be None.")
     if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
