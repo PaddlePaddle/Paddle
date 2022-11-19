@@ -19,6 +19,7 @@ import numpy as np
 from operator import mul
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle
 from op_test import OpTest, skip_check_grad_ci
 from paddle.fluid.framework import _test_eager_guard
 from testsuite import create_op
@@ -324,6 +325,37 @@ class TestGroupNormEager(unittest.TestCase):
                 self.assertEqual((
                     tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()).all(),
                                  True)
+
+
+class TestGroupNormEager_fp32(unittest.TestCase):
+    def test_dygraph_api(self):
+        self.dtype = np.float32
+        self.shape = (8, 32, 32)
+        input = np.random.random(self.shape).astype(self.dtype)
+
+        with fluid.dygraph.guard():
+            tensor_1 = fluid.dygraph.to_variable(input)
+            tensor_1.stop_gradient = False
+            groupNorm = fluid.dygraph.nn.GroupNorm(channels=32, groups=4)
+            ret1 = groupNorm(tensor_1)
+            ret1.backward()
+            with _test_eager_guard():
+                tensor_eager_1 = fluid.dygraph.to_variable(input)
+                tensor_eager_1.stop_gradient = False
+                groupNorm_eager = paddle.nn.GroupNorm(
+                    channels=32, groups=4
+                )
+
+                paddle.assign(paddle.cast(groupNorm_eager.weight, 'float32'), groupNorm_eager.weight)
+                paddle.assign(paddle.cast(groupNorm_eager.bias, 'float32'), groupNorm_eager.bias)
+                ret2 = groupNorm_eager(tensor_eager_1)
+                ret2.backward()
+                self.assertEqual(
+                    (
+                        tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()
+                    ).all(),
+                    True,
+                )
 
 
 if __name__ == '__main__':
