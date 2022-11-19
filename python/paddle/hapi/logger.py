@@ -16,7 +16,7 @@ import os
 import sys
 import logging
 
-from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.parallel_env import ParallelEnv
 
 __all__ = []
 

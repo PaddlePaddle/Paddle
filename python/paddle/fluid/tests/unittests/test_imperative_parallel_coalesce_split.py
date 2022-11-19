@@ -20,7 +20,13 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.parallel import DataParallel
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import (
+
+# from paddle.fluid.dygraph.parallel import (
+#     _coalesce_tensors,
+#     _split_tensors,
+#     _reshape_inplace,
+# )
+from paddle.distributed.parallel_env import (
     _coalesce_tensors,
     _split_tensors,
     _reshape_inplace,

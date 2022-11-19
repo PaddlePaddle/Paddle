@@ -33,7 +33,7 @@ from paddle.fluid.layers.utils import flatten
 from paddle.fluid.executor import global_scope, _to_name_str
 from paddle.fluid.framework import Operator, _non_static_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.parallel_env import ParallelEnv
 from paddle.distributed import fleet
 
 from .callbacks import config_callbacks

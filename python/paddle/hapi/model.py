@@ -31,7 +31,7 @@ from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.parallel_env import ParallelEnv
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX
 from paddle.fluid.dygraph.io import INFER_PARAMS_SUFFIX
 from paddle.fluid.layers.utils import flatten

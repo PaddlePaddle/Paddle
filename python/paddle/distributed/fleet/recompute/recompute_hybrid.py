@@ -171,7 +171,7 @@ class _HPRecomputeFunction(PyLayer):
             tensor_shapes = ctx.tensor_shapes
             tensors = list(ctx.saved_tensor())
 
-            device_id = paddle.distributed.ParallelEnv().device_id
+            device_id = paddle.distributed.parallel_env.ParallelEnv().device_id
             for i, idx in enumerate(tensor_indices):
                 if ctx.partition:
                     state = tensors[i].stop_gradient

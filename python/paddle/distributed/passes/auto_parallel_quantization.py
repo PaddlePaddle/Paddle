@@ -15,7 +15,7 @@
 import paddle
 
 from paddle.fluid import core, framework
-from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.parallel_env import ParallelEnv
 from paddle.fluid.contrib.slim.quantization import utils
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPassV2
 from paddle.fluid.contrib.slim.quantization import AddQuantDequantPassV2

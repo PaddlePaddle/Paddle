@@ -20,7 +20,7 @@ import paddle
 from paddle.fluid import core
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.parallel_env import ParallelEnv
 
 
 class TestProcessGroupFp32(unittest.TestCase):

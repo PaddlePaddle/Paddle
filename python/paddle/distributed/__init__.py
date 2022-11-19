@@ -64,7 +64,7 @@ from .entry_attr import ProbabilityEntry  # noqa: F401
 from .entry_attr import CountFilterEntry  # noqa: F401
 from .entry_attr import ShowClickEntry  # noqa: F401
 
-from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
+from .parallel_env import ParallelEnv  # noqa: F401
 
 from . import cloud_utils  # noqa: F401
 

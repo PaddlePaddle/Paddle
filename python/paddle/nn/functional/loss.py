@@ -2047,7 +2047,7 @@ def margin_cross_entropy(
     if group is not False:
         ring_id = 0 if group is None else group.id
         if core.is_compiled_with_dist():
-            parallel_env = paddle.distributed.ParallelEnv()
+            parallel_env = paddle.distributed.parallel_env.ParallelEnv()
             global_rank = parallel_env.rank
             rank = (
                 global_rank

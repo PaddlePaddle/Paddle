@@ -20,12 +20,12 @@ import time
 import paddle
 
 # deprecated module import
+from .parallel_env import ParallelEnv
 from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.framework import _set_expected_place
-from paddle.fluid.dygraph import parallel_helper
+from paddle.framework import in_dygraph_mode
+from paddle.framework import _set_expected_place
+from paddle.framework import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
-from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )  # noqa: F401

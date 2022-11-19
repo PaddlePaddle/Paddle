@@ -324,7 +324,7 @@ class PipelineLayer(Layer):
         import paddle.distributed as dist
         from paddle.distributed import fleet
 
-        self.device_id = dist.ParallelEnv().device_id
+        self.device_id = dist.parallel_env.ParallelEnv().device_id
         self.layers = layers
         self._loss_fn = loss_fn
         self._topo = topology

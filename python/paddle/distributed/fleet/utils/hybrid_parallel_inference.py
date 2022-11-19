@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from collections import defaultdict
-from paddle.fluid.framework import Block, Program
-from paddle.fluid.framework import _non_static_mode
+from paddle.framework import Block
+import paddle.static.Program as Program
+from paddle.framework import _non_static_mode
 import paddle.fluid.core as core
 import paddle.distributed.fleet as fleet
 import numpy as np

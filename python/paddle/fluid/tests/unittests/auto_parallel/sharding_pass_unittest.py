@@ -18,7 +18,7 @@ import numpy as np
 import paddle
 
 from paddle.distributed.fleet import auto
-from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.parallel_env import ParallelEnv
 from get_gpt_model import FakeDataset, generate_model
 
 paddle.enable_static()

@@ -20,7 +20,7 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.parallel_env import ParallelEnv
 from paddle.utils import try_import
 
 from .progressbar import ProgressBar

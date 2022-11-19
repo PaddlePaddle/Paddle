@@ -23,7 +23,7 @@ from paddle.fluid import core
 from datetime import timedelta
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.distributed.parallel_env import ParallelEnv
 
 
 def init_process_group(strategy=None):

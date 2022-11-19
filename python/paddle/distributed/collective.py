@@ -17,11 +17,10 @@ import os
 import pickle
 import io
 import datetime
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import in_dygraph_mode
-from ..fluid.framework import _non_static_mode
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.layers.tensor import fill_constant
+from paddle.common_ops_import import LayerHelper
+from paddle.framework import in_dygraph_mode
+from paddle.framework import _non_static_mode
+from paddle.common_ops_import import check_variable_and_dtype
 import paddle
 import paddle.fluid.core as core
 from paddle import _legacy_C_ops
@@ -47,7 +46,7 @@ _global_env = None
 def _get_global_env():
     global _global_env
     if not _global_env:
-        _global_env = paddle.distributed.ParallelEnv()
+        _global_env = paddle.distributed.parallel_env.ParallelEnv()
     return _global_env
 
 
@@ -245,7 +244,7 @@ def barrier(group=None):
 
     ring_id = 0 if group is None else group.id
 
-    temp = fill_constant([1], dtype="int32", value="1")
+    temp = paddle.full([1], dtype="int32", value="1")
     if _non_static_mode():
         return _legacy_C_ops.barrier(temp, temp, 'ring_id', ring_id)
 
@@ -408,7 +407,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     tmp = (
         paddle.to_tensor([1], dtype="int32")
         if _non_static_mode()
-        else fill_constant([0], dtype="int32", value="1")
+        else paddle.full([0], dtype="int32", value="1")
     )
     paddle.distributed.all_reduce(tmp, sync_op=True)
     paddle.distributed.wait(tmp)

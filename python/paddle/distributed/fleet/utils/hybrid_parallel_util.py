@@ -15,12 +15,12 @@
 from paddle import framework
 import paddle
 from paddle.fluid import core
-from paddle.fluid.dygraph.parallel import (
+from paddle.distributed.parallel_env import (
     _split_tensors,
     sync_params_buffers,
     build_groups,
 )
-from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+from paddle.framework import in_dygraph_mode, _in_legacy_dygraph
 from .log_util import logger
 
 __all__ = []

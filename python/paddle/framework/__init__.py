@@ -35,6 +35,7 @@ from ..fluid.core import VarBase  # noqa: F401
 from ..fluid import core  # noqa: F401
 from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
 from ..fluid.dygraph.base import grad  # noqa: F401
+from ..fluid.dygraph import parallel_helper
 from .io import save  # noqa: F401
 from .io import load  # noqa: F401
 from ..fluid.dygraph.parallel import DataParallel  # noqa: F401
@@ -47,6 +48,10 @@ from ..fluid.framework import set_flags  # noqa: F401
 from ..fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
 from ..fluid.dygraph.base import disable_dygraph as enable_static  # noqa: F401
 from ..fluid.framework import _non_static_mode as in_dynamic_mode  # noqa: F401
+from ..fluid.framework import Block, ParamBase  # noqa: F401
+from ..fluid.framework import dygraph_only  # noqa: F401
+from ..fluid.framework import _set_expected_place
+
 from ..fluid.framework import (  # noqa: F401
     _non_static_mode,  # temporary used for hackson
 )
