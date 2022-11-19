@@ -141,7 +141,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
     def backward(ctx, *args, **kwargs):
         raise RuntimeError(
             "primitive operator does NOT have backward function, op type: {}".format(
-                str(op.type)
+                str(op.type)  # noqa: F821
             )
         )
 

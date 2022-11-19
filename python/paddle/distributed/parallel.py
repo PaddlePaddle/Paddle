@@ -176,6 +176,7 @@ def init_parallel_env():
         or core.is_compiled_with_xpu()
         or core.is_compiled_with_npu()
         or core.is_compiled_with_mlu()
+        or backend == "xccl"
     ):
         raise NotImplementedError(
             "If you want to use CPU-only version, please use 'gloo' as backend"

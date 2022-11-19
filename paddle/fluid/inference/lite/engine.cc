@@ -89,6 +89,14 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
         cfg.nnadapter_model_cache_buffer[i]);
   }
 #endif
+
+  if (cfg.use_opencl) {
+    lite_cxx_config.set_opencl_binary_path_name(cfg.opencl_bin_path,
+                                                cfg.opencl_bin_name);
+    lite_cxx_config.set_opencl_tune(cfg.opencl_tune_mode);
+    lite_cxx_config.set_opencl_precision(cfg.opencl_precision_type);
+  }
+
   // create predictor
   std::shared_ptr<paddle::lite_api::PaddlePredictor> p =
       paddle::lite_api::CreatePaddlePredictor(lite_cxx_config);

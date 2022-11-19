@@ -57,11 +57,11 @@ def _reduce_scatter_tensor_in_dygraph(
 
     if use_calc_stream:
         return group.process_group.reduce_scatter_tensor_on_calc_stream(
-            in_tensor, out_tensor, op_type
+            out_tensor, in_tensor, op_type
         )
 
     task = group.process_group.reduce_scatter_tensor(
-        in_tensor, out_tensor, op_type, sync_op
+        out_tensor, in_tensor, op_type, sync_op
     )
     if sync_op:
         task.wait()
@@ -78,11 +78,11 @@ def _reduce_scatter_in_dygraph(
 
     if use_calc_stream:
         return group.process_group.reduce_scatter_on_calc_stream(
-            tensor_list, tensor, op_type
+            tensor, tensor_list, op_type
         )
 
     task = group.process_group.reduce_scatter(
-        tensor_list, tensor, op_type, sync_op
+        tensor, tensor_list, op_type, sync_op
     )
     if sync_op:
         task.wait()
