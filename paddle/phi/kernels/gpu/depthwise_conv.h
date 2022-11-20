@@ -27,7 +27,7 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -92,7 +92,7 @@ class DepthwiseConvFilterGradFunctor {
 template <typename T>
 __forceinline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-    val += platform::CudaShuffleDownSync(lane_mask, val, mask);
+    val += phi::backends::gpu::CudaShuffleDownSync(lane_mask, val, mask);
   return val;
 }
 

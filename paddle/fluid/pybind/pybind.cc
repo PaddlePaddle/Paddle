@@ -1324,6 +1324,10 @@ All parameter, weight, gradient are variables in Paddle.
                         paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetZeroAllocator(place)
                             .get());
+                    context->SetHostZeroAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(paddle::platform::CPUPlace())
+                            .get());
                     return context;
                   })
       .def_static(
@@ -1347,6 +1351,10 @@ All parameter, weight, gradient are variables in Paddle.
       context->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(place)
+          .get());
+      context->SetHostZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(paddle::platform::CPUPlace())
           .get());
       return context;
 #endif
@@ -1408,6 +1416,10 @@ All parameter, weight, gradient are variables in Paddle.
       context->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
         .GetZeroAllocator(place)
+        .get());
+      context->SetHostZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+        .GetZeroAllocator(paddle::platform::CPUPlace())
         .get());
       context->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()

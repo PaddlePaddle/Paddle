@@ -130,6 +130,15 @@ FUNCTION_SET_DEVICE_TEMPLATE = """{}    if (paddle::platform::is_gpu_place(place
         "PaddlePaddle should compile with CUSTOM_DEVICE if use CustomPlace."));
 #endif
     }}
+    if (paddle::platform::is_xpu_place(place)) {{
+#if defined(PADDLE_WITH_XPU)
+      phi::backends::xpu::SetXPUDeviceId(place.device);
+      VLOG(4) <<"CurrentDeviceId: " << phi::backends::xpu::GetXPUCurrentDeviceId() << " from " << (int)place.device;
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+        "PaddlePaddle should compile with XPU if use XPUPlace."));
+#endif
+    }}
 """
 
 FUNCTION_NAME_TEMPLATE = "{}{}{}"

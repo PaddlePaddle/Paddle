@@ -226,6 +226,7 @@ class ExtraInfoUtils {
           {"conv2d_grad", {"Bias"}},
           {"depthwise_conv2d", {"Bias", "ResidualData"}},
           {"depthwise_conv2d_grad", {"Bias"}},
+          {"conv2d_transpose", {"Bias"}},
           {"conv3d", {"ResidualData"}}};
   std::vector<std::string> empty_extra_input_names_;
 };
