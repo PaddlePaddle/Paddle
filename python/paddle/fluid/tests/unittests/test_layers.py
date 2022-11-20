@@ -3373,13 +3373,6 @@ class TestBook(LayerTest):
             )
             return layers.space_to_depth(data, 3)
 
-    def make_lrn(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(name='data', shape=[6, 2, 2], dtype='float32')
-            return layers.lrn(data)
-
     def make_get_places(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
