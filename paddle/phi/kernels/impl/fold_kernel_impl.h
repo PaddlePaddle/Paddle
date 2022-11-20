@@ -36,9 +36,7 @@ void FoldKernel(const Context& ctx,
   const int batch_size = static_cast<int>(x.dims()[0]);
   ctx.template Alloc<T>(out);
 
-  paddle::operators::math::
-      Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-          col2im;
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
   const auto& x_dims = x.dims();
 
   int output_height = (output_sizes[0] + 2 * paddings[0] -

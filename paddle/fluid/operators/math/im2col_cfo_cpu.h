@@ -16,11 +16,10 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 /**
  * The most common im2col algorithm.
@@ -317,6 +316,5 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
   }
 }
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

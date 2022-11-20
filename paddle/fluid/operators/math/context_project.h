@@ -100,7 +100,8 @@ class ContextProjectFunctor {
                   phi::DenseTensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, float> im2col_ocf;
+    phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
+        im2col_ocf;
 
     std::vector<int> dilation({1, 1});
     std::vector<int> padding({up_pad, 0, down_pad, 0});
@@ -230,7 +231,8 @@ class ContextProjectGradFunctor {
                   phi::DenseTensor* col) {
     auto lod_level_0 = in.lod()[0];
 
-    math::Col2ImFunctor<math::ColFormat::kOCF, DeviceContext, float> col2im_ocf;
+    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
+        col2im_ocf;
 
     std::vector<int> dilation({1, 1});
     std::vector<int> padding({up_pad, 0, down_pad, 0});

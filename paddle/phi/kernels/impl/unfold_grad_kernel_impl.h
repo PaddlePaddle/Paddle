@@ -56,9 +56,7 @@ void UnfoldGradKernel(const Context& ctx,
   DDim out_matrix_shape = make_ddim(
       {x_dims[1], kernel_sizes[0], kernel_sizes[1], out_height, out_width});
 
-  paddle::operators::math::
-      Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-          col2im;
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
 
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(ctx, x_grad, static_cast<T>(0));
