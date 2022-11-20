@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/operators/math/im2col_cfo_cpu.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/kernels/funcs/im2col_cfo_cpu.h"
 
 template <typename DeviceContext, typename Place>
 void testIm2col() {

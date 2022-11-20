@@ -24,7 +24,6 @@ math_library(context_project DEPS im2col math_function)
 math_library(cross_entropy)
 math_library(cos_sim_functor)
 math_library(depthwise_conv)
-math_library(im2col)
 math_library(sample_prob)
 math_library(sampler DEPS generator)
 

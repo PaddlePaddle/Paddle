@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
