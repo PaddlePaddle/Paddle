@@ -410,8 +410,8 @@ void RecordedGpuFree(void *p, size_t size, int dev_id) {
 CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle,
                               size_t size,
                               const CUmemAllocationProp *prop,
-                              unsigned long long flags,
-                              int dev_id) {  // NOLINT
+                              unsigned long long flags,  // NOLINT
+                              int dev_id) {
   return RecordedGpuMallocHelper::Instance(dev_id)->MemCreate(
       handle, size, prop, flags);
 }
