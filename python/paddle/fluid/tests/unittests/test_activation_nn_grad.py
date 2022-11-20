@@ -449,7 +449,7 @@ class TestLogDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', shape, False, dtype)
         x.persistable = True
-        y = layers.log(x)
+        y = paddle.log(x)
 
         x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
 

@@ -3532,7 +3532,7 @@ def beam_search(
                 name='probs', shape=[None, 10000], dtype='float32')
             topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
             accu_scores = fluid.layers.elementwise_add(
-                x=fluid.layers.log(x=topk_scores),
+                x=paddle.log(x=topk_scores),
                 y=fluid.layers.reshape(pre_scores, shape=[-1]),
                 axis=0)
             selected_ids, selected_scores = fluid.layers.beam_search(

@@ -23,6 +23,7 @@ import glob
 import random
 import tarfile
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
@@ -1835,7 +1836,7 @@ def fast_decode(
                 input=layers.softmax(logits), k=beam_size
             )
             accu_scores = layers.elementwise_add(
-                x=layers.log(topk_scores),
+                x=paddle.log(topk_scores),
                 y=layers.reshape(pre_scores, shape=[-1]),
                 axis=0,
             )
