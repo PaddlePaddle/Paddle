@@ -1712,7 +1712,7 @@ class Executor:
                 return False
 
             use_standalone_executor_for_distribution = os.environ.get(
-                'FLAGS_CONVERT_GRAPH_TO_PROGRAM', True
+                'FLAGS_CONVERT_GRAPH_TO_PROGRAM', None
             ) in [1, '1', True, 'True', 'true']
 
             compiled = isinstance(

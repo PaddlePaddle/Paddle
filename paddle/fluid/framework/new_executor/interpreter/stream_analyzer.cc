@@ -291,16 +291,40 @@ void StreamAnalyzer::AnalyseEventInfoForTwoInstructions(
     const size_t cur_instr_id,
     const size_t next_instr_id,
     std::set<size_t>* waiter_instr_ids) const {
+  // NOTE(Ruibiao): Though depend_op as next_instr is no_need_buffer, we should
+  // also wait event for it. Because depend_op is used to build dependencies for
+  // fused vars in some scenarios. In those cases, we do not know which vars may
+  // lead a implicit data dependency. For example,
+  // ###
+  // ### fused_var = fuse_op(var0, ...)
+  // ### var1 = op1(fused_var)
+  // ### var0 = depend_op(var0, fused_var)
+  // ### var2 = op2(var0)
+  // ###
+  // If op1 are cross-stream with depend_op and op2, then we have:
+  // ###
+  // ### event_run : op1 -> depend_op
+  // ### direct_run : depend_op -> op2
+  // ###
+  // There is actually a data dependency between op1 and op2 that var0 and
+  // fused_var share the same tensor. However, as the dependency is implicit, we
+  // can only add event for it with the help of depend_op.
   if (HasDataDependency(instructions[cur_instr_id],
-                        instructions[next_instr_id])) {
+                        instructions[next_instr_id]) ||
+      run_type_info[next_instr_id][DownstreamRunType::kSyncRun].size() ||
+      run_type_info[next_instr_id][DownstreamRunType::kEventRun].size() ||
+      instructions[next_instr_id].OpBase()->Type() == "depend") {
     waiter_instr_ids->insert(next_instr_id);
     return;
   }
 
-  // NOTE(Ruibiao): If no data dependency from cur_instr to next_instr, we try
-  // to recursively add events between cur_instr and next_instr's
-  // direct-run-instrs. When next_instr has too many direct-run-instrs, it may
-  // perform worse than add event directly between cur_instr and next_instr.
+  // NOTE(Ruibiao): If no data dependency from cur_instr to next_instr, and
+  // simultaneously next_instr has neither sync_run nor event_run downstream
+  // instr, we try to recursively add events between cur_instr and next_instr's
+  // direct-run-instrs. This can delay the event wait and achieve better
+  // scheduling performance in some scenarios. However, when next_instr has too
+  // many direct-run-instrs, it may perform worse than add event directly
+  // between cur_instr and next_instr.
   for (size_t instr_id :
        run_type_info[next_instr_id][DownstreamRunType::kDirectRun]) {
     AnalyseEventInfoForTwoInstructions(
