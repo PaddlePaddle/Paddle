@@ -19,6 +19,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
+import paddle
 
 
 class TRTGatherNdTest(InferencePassTest):
@@ -26,7 +27,7 @@ class TRTGatherNdTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[-1, 3, 4], dtype="float32")
             index = fluid.data(name="index", shape=[-1, 2, 2], dtype="int32")
-            gather_nd = fluid.layers.gather_nd(data, index)
+            gather_nd = paddle.gather_nd(data, index)
             out = fluid.layers.batch_norm(gather_nd, is_test=True)
 
         self.feeds = {
@@ -63,7 +64,7 @@ class TRTGatherNdFp16Test(InferencePassTest):
                 name="data", shape=[-1, 1280, 192], dtype="float32"
             )
             index = fluid.data(name="index", shape=[-1, 1028, 2], dtype="int32")
-            gather_nd = fluid.layers.gather_nd(data, index)
+            gather_nd = paddle.gather_nd(data, index)
             out = fluid.layers.batch_norm(gather_nd, is_test=True)
 
         index_data = np.zeros((1, 1028, 2), dtype='int32')

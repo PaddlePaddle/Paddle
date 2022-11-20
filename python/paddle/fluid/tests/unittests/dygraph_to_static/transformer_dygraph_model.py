@@ -763,7 +763,7 @@ class Transformer(Layer):
 
         def gather(input, indices, batch_pos):
             topk_coordinates = fluid.layers.stack([batch_pos, indices], axis=2)
-            return layers.gather_nd(input, topk_coordinates)
+            return paddle.gather_nd(input, topk_coordinates)
 
         # run encoder
         enc_output = self.encoder(src_word, src_pos, src_slf_attn_bias)

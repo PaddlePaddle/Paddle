@@ -197,7 +197,7 @@ class BaseModel(fluid.dygraph.Layer):
 
     def _gather(self, x, indices, batch_pos):
         topk_coordinates = fluid.layers.stack([batch_pos, indices], axis=2)
-        return fluid.layers.gather_nd(x, topk_coordinates)
+        return paddle.gather_nd(x, topk_coordinates)
 
     @declarative
     def forward(self, inputs):
@@ -681,7 +681,7 @@ class AttentionModel(fluid.dygraph.Layer):
 
     def _gather(self, x, indices, batch_pos):
         topk_coordinates = fluid.layers.stack([batch_pos, indices], axis=2)
-        return fluid.layers.gather_nd(x, topk_coordinates)
+        return paddle.gather_nd(x, topk_coordinates)
 
     def attention(self, query, enc_output, mask=None):
         query = fluid.layers.unsqueeze(query, [1])
