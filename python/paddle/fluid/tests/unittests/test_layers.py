@@ -3689,14 +3689,6 @@ class TestBook(LayerTest):
             )
             return out
 
-    def make_soft_relu(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.soft_relu(input, threshold=30.0, name='soft_relu')
-            return out
-
     def make_sigmoid(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -4031,13 +4023,13 @@ class TestBook(LayerTest):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
         ):
-            layers.range(0, 10, 2, 'int32')
-            layers.range(0.1, 10.0, 0.2, 'float32')
-            layers.range(0.1, 10.0, 0.2, 'float64')
+            paddle.arange(0, 10, 2, 'int32')
+            paddle.arange(0.1, 10.0, 0.2, 'float32')
+            paddle.arange(0.1, 10.0, 0.2, 'float64')
             start = layers.fill_constant(shape=[1], value=0.1, dtype="float32")
             end = layers.fill_constant(shape=[1], value=10.0, dtype="float32")
             step = layers.fill_constant(shape=[1], value=0.2, dtype="float32")
-            y = layers.range(start, end, step, 'float64')
+            y = paddle.arange(start, end, step, 'float64')
             return y
 
     def make_spectral_norm(self):
