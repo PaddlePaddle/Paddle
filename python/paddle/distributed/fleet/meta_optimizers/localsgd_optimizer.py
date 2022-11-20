@@ -199,7 +199,9 @@ class LocalSGDOptimizer(MetaOptimizerBase):
             def begin_localsgd():
                 paddle.static.nn.cond(step - last_step == k_steps, communicate)
 
-            paddle.static.cond(step > begin_step, begin_localsgd, communicate)
+            paddle.static.nn.cond(
+                step > begin_step, begin_localsgd, communicate
+            )
         return minimized
 
 
