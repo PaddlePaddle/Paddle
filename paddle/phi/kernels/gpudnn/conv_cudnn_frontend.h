@@ -17,7 +17,6 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -26,6 +25,32 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace phi {
+
+inline cudnnDataType_t ToCudnnDataType(
+    const paddle::experimental::DataType& t) {
+  cudnnDataType_t type = CUDNN_DATA_FLOAT;
+  switch (t) {
+    case paddle::experimental::DataType::FLOAT16:
+      type = CUDNN_DATA_HALF;
+      break;
+    case paddle::experimental::DataType::FLOAT32:
+      type = CUDNN_DATA_FLOAT;
+      break;
+    case paddle::experimental::DataType::FLOAT64:
+      type = CUDNN_DATA_DOUBLE;
+      break;
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    case paddle::experimental::DataType::BFLOAT16:
+      type = CUDNN_DATA_BFLOAT16;
+      break;
+#endif
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "DataType < %s > is not supported in cudnn.",
+          paddle::experimental::DataTypeToString(t)));
+  }
+  return type;
+}
 
 class CudnnFrontendConvHelper {
  public:
@@ -95,8 +120,7 @@ class CudnnFrontendConvHelper {
         .setStrides(strides.size(), strides.data())
         .setId(id)
         .setAlignment(GetAlignment(tensor))
-        .setDataType(paddle::platform::ToCudnnDataType(
-            paddle::framework::TransToProtoVarType(tensor->dtype())))
+        .setDataType(ToCudnnDataType(tensor->dtype()))
         .build();
   }
 
