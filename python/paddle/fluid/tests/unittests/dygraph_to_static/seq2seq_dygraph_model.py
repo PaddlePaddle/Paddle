@@ -682,7 +682,7 @@ class AttentionModel(fluid.dygraph.Layer):
     def _gather(self, x, indices, batch_pos):
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         return paddle.gather_nd(x, topk_coordinates)
-        
+
     def attention(self, query, enc_output, mask=None):
         query = fluid.layers.unsqueeze(query, [1])
         memory = self.attn_fc(enc_output)
