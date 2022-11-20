@@ -510,7 +510,7 @@ void ProcessGroupNCCL::SyncCalcStream(const Place& place) {
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::RunFnInNCCLEnv(
-    const std::function<void(ncclComm_t, gpuStream_t)>& fn,
+    std::function<void(ncclComm_t, gpuStream_t)> fn,
     const phi::DenseTensor& tensor,
     CommType comm_type,
     bool sync_op,

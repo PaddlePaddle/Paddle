@@ -208,7 +208,7 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   void CreateNCCLEnvCache(const Place& place, const std::string& place_key);
 
   std::shared_ptr<ProcessGroup::Task> RunFnInNCCLEnv(
-      const std::function<void(ncclComm_t, gpuStream_t)>& fn,
+      std::function<void(ncclComm_t, gpuStream_t)> fn,
       const phi::DenseTensor& tensor,
       CommType comm_type,
       bool sync_op,
