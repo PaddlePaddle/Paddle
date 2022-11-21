@@ -104,9 +104,10 @@ __global__ void dequantize_kernel(T* output,
   bool check = ((m_id < m) && (n_id < n));
   if (check) {
     float out_scale = dequant_out_scale_data[m_id];
-    output[n_id * m + m_id] =
-        static_cast<T>(static_cast<float>(input[n_id * m + m_id]) *
-                       quant_in_scale / out_scale);
+    output[n_id * m + m_id] = static_cast<T>(
+        static_cast<float>(input[n_id * m + m_id]) * quant_in_scale
+        //  / out_scale
+    );
   }
 }
 

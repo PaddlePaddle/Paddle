@@ -24,6 +24,29 @@ namespace dyl = paddle::platform::dynload;
 
 namespace paddle {
 namespace operators {
+
+struct CublasLtAlgoParam {
+  int algoId;
+  int swizzle;
+  int customOption;
+  int tile;
+  int splitK_val;
+  int reductionScheme;
+  int stages;
+  size_t workspace_size;
+};
+
+const std::map<std::tuple<int, int, int>, CublasLtAlgoParam> AlgoParamCache{
+    {{1, 1024, 1024}, {11, 0, 1, 0, 0, 0, 0, 0}},
+    {{1, 1024, 3072}, {11, 0, 0, 0, 0, 0, 0, 0}},
+    {{1, 4096, 1024}, {21, 0, 0, 15, 5, 4, 18, 20480}},
+    {{1, 1024, 4096}, {21, 0, 0, 15, 0, 0, 18, 0}},
+    {{128, 1024, 1024}, {21, 0, 0, 15, 0, 0, 23, 0}},
+    {{128, 1024, 3072}, {21, 0, 0, 15, 0, 0, 18, 0}},
+    {{128, 4096, 1024}, {21, 0, 0, 18, 5, 4, 21, 2621440}},
+    {{128, 1024, 4096}, {21, 0, 0, 18, 0, 0, 21, 0}},
+};
+
 class CublasLtHelper {
  public:
   CublasLtHelper(int m, int k, int n)
@@ -99,38 +122,32 @@ class CublasLtHelper {
             "cublasLtMatrixLayoutCreate execution error"
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
-  }
-  ~CublasLtHelper() {
-    if (handle_) dyl::cublasLtDestroy(handle_);
-    if (matmul_desc_) dyl::cublasLtMatmulDescDestroy(matmul_desc_);
-    if (A_desc_) dyl::cublasLtMatrixLayoutDestroy(A_desc_);
-    if (B_desc_) dyl::cublasLtMatrixLayoutDestroy(B_desc_);
-    if (C_desc_) dyl::cublasLtMatrixLayoutDestroy(C_desc_);
-  }
 
-  void GEMM(int8_t* A_dev,
-            const int8_t* B_dev,
-            int32_t* C_dev,
-            cudaStream_t stream) {
-    cublasStatus_t status;
+#if CUDA_VERSION >= 11020
+    VLOG(1) << m_ << " " << k_ << " " << n_;
 
-#if __CUDA_ARCH__ >= 800 && CUDA_VERSION >= 11020
-    cublasLtMatmulAlgo_t algo;
     int algoId = 21;
     int swizzle = 0;
     int customOption = 0;
     int tile = 15;
     int splitK_val = 0;
     int reductionScheme = 0;
-#if CUDA_VERSION >= 11000
     int stages = 23;
-#endif
+    workspace_size_ = 0;
 
-#if CUBLAS_VER_MAJOR < 11
-    cudaDataType_t cudaComputeType = CUDA_R_32I;
-#else
-    cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32I;
-#endif
+    std::tuple<int, int, int> key(m_, k_, n_);
+    if (AlgoParamCache.count(key) != 0) {
+      VLOG(1) << "Hit!";
+      auto value = AlgoParamCache.at(key);
+      algoId = value.algoId;
+      swizzle = value.swizzle;
+      customOption = value.customOption;
+      tile = value.tile;
+      splitK_val = value.splitK_val;
+      reductionScheme = value.reductionScheme;
+      stages = value.stages;
+      workspace_size_ = value.workspace_size;
+    }
 
     dyl::cublasLtMatmulAlgoInit(handle_,
                                 cudaComputeType,
@@ -140,30 +157,50 @@ class CublasLtHelper {
                                 CUDA_R_32I,
                                 CUDA_R_32I,
                                 algoId,
-                                &algo);
+                                &algo_);
     dyl::cublasLtMatmulAlgoConfigSetAttribute(
-        &algo,
+        &algo_,
         CUBLASLT_ALGO_CONFIG_CUSTOM_OPTION,
         &(customOption),
         sizeof(customOption));
     dyl::cublasLtMatmulAlgoConfigSetAttribute(
-        &algo, CUBLASLT_ALGO_CONFIG_TILE_ID, &(tile), sizeof(tile));
-    dyl::cublasLtMatmulAlgoConfigSetAttribute(&algo,
+        &algo_, CUBLASLT_ALGO_CONFIG_TILE_ID, &(tile), sizeof(tile));
+    dyl::cublasLtMatmulAlgoConfigSetAttribute(&algo_,
                                               CUBLASLT_ALGO_CONFIG_SPLITK_NUM,
                                               &(splitK_val),
                                               sizeof(splitK_val));
     dyl::cublasLtMatmulAlgoConfigSetAttribute(
-        &algo, CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING, &(swizzle), sizeof(swizzle));
+        &algo_,
+        CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING,
+        &(swizzle),
+        sizeof(swizzle));
     dyl::cublasLtMatmulAlgoConfigSetAttribute(
-        &algo,
+        &algo_,
         CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME,
         &(reductionScheme),
         sizeof(int));
 #if CUDA_VERSION >= 11000
     dyl::cublasLtMatmulAlgoConfigSetAttribute(
-        &algo, CUBLASLT_ALGO_CONFIG_STAGES_ID, &(stages), sizeof(stages));
+        &algo_, CUBLASLT_ALGO_CONFIG_STAGES_ID, &(stages), sizeof(stages));
 #endif
 #endif
+  }
+  ~CublasLtHelper() {
+    // if (handle_) dyl::cublasLtDestroy(handle_);
+    // if (matmul_desc_) dyl::cublasLtMatmulDescDestroy(matmul_desc_);
+    // if (A_desc_) dyl::cublasLtMatrixLayoutDestroy(A_desc_);
+    // if (B_desc_) dyl::cublasLtMatrixLayoutDestroy(B_desc_);
+    // if (C_desc_) dyl::cublasLtMatrixLayoutDestroy(C_desc_);
+  }
+
+  void GEMM(int8_t* A_dev,
+            const int8_t* B_dev,
+            int32_t* C_dev,
+            cudaStream_t stream,
+            void* workspace = nullptr) {
+    VLOG(1) << "calc" << m_ << " " << k_ << " " << n_;
+    cublasStatus_t status;
+
     status = dyl::cublasLtMatmul(handle_,
                                  matmul_desc_,
                                  &alpha_,
@@ -176,13 +213,14 @@ class CublasLtHelper {
                                  C_desc_,
                                  C_dev,
                                  C_desc_,
-#if __CUDA_ARCH__ >= 800 && CUDA_VERSION >= 11020
-                                 &algo,
+#if CUDA_VERSION >= 11020
+                                 &algo_,
+                                 //  nullptr,// workspace
+                                 workspace,
+                                 workspace_size_,
 #else
-                                 nullptr,
+                                 hshshsh
 #endif
-                                 nullptr,
-                                 0,
                                  stream);
     PADDLE_ENFORCE_EQ(
         status,
@@ -199,12 +237,17 @@ class CublasLtHelper {
   cublasLtMatrixLayout_t A_desc_;
   cublasLtMatrixLayout_t B_desc_;
   cublasLtMatrixLayout_t C_desc_;
+
+  cublasLtMatmulAlgo_t algo_;
+
   int32_t alpha_;
   int32_t beta_;
 
   int m_;
   int k_;
   int n_;
+
+  size_t workspace_size_;
 };
 
 }  // namespace operators

@@ -370,7 +370,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             kwargs['Out']
         )
 
-        Ids_var = main_block.var(kwargs['Ids'][0])
+        # Ids_var = main_block.var(kwargs['Ids'][0])
+        Ids_var = main_block._var_recursive(kwargs['Ids'][0])
         Weight_var = main_block._var_recursive(kwargs['W'][0])
         Out_var = main_block.var(kwargs['Out'][0])
 

@@ -542,7 +542,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
           if (std::is_same<InType, int32_t>::value) {
             T tmp = (static_cast<T>(static_cast<float>(x_input[it][jt]) *
                                     quant_last_in_scale /
-                                    dequant_out_scale[it][jt]) +
+                                    // dequant_out_scale[it][jt]) +
+                                    1.0) +
                      bias[it][jt]) *
                         static_cast<T>(mask_vec[it][jt]) * factor +
                     residual[it][jt];
@@ -566,7 +567,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
             // for int32 input, we need to dequantize.
             T tmp = static_cast<T>(static_cast<float>(x_input[it][jt]) *
                                    quant_last_in_scale /
-                                   dequant_out_scale[it][jt]) *
+                                   //  dequant_out_scale[it][jt]) *
+                                   1.0) *
                         static_cast<T>(mask_vec[it][jt]) * factor +
                     residual[it][jt];
             x[it][jt] = tmp;

@@ -97,11 +97,13 @@ class AttnMatmulINT8 {
                                 phi::DenseTensor* input,
                                 const phi::DenseTensor* bias,
                                 phi::DenseTensor* output,
-                                phi::DenseTensor* bias_out) {
+                                phi::DenseTensor* bias_out,
+                                void* workspace = nullptr) {
     helpers_[0]->GEMM(input->data<int8_t>(),
                       weight->data<int8_t>(),
                       output->data<int32_t>(),
-                      dev_ctx_.stream());
+                      dev_ctx_.stream(),
+                      workspace);
   }
 
   // This function is used to execute GEMM, with input and output's types are

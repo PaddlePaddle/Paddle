@@ -232,7 +232,7 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
             dev_ctx, bsz_seq, dim_embed, ffn2_dropout_param, epsilon);
 
     // []. init workspace for cublasLt transform
-    Tensor input_workspace, output_workspace;
+    Tensor input_workspace, output_workspace, cublaslt_workspace;
     // for input and output transform data is CUBLASLT_ORDER_COL32 format,
     int m_max = bsz_seq, k_max = std::max(dim_embed, dim_ffn),
         n_max = std::max({output_size, dim_embed, dim_ffn});
@@ -244,6 +244,10 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     output_workspace.Resize({{n_max * 4, (m_max + 31) / 32 * 32 * 4}});
     dev_ctx.Alloc<int32_t>(&output_workspace,
                            output_workspace.numel() * sizeof(int32_t));
+
+    cublaslt_workspace.Resize({{3000000}});
+    dev_ctx.Alloc<int8_t>(&cublaslt_workspace,
+                          cublaslt_workspace.numel() * sizeof(int8_t));
 
     // calc
     auto *out = ctx.Output<phi::DenseTensor>("Out");
@@ -499,11 +503,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
       // step6. ffn matmul1
 
       if (pre_layer_norm) {
-        ffn1_linear_compute.ComputeForwardINT8ToINT8(ffn1_weights[i],
-                                                     &input_workspace,
-                                                     nullptr,
-                                                     &output_workspace,
-                                                     nullptr);
+        ffn1_linear_compute.ComputeForwardINT8ToINT8(
+            ffn1_weights[i],
+            &input_workspace,
+            nullptr,
+            &output_workspace,
+            nullptr,
+            cublaslt_workspace.data<int8_t>());
       } else {
         ffn1_linear_compute.ComputeForward(ffn1_weights[i],
                                            buf1,
@@ -553,11 +559,13 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
 
       // step8. ffn matmul2
       if (pre_layer_norm) {
-        ffn2_linear_compute.ComputeForwardINT8ToINT8(ffn2_weights[i],
-                                                     &input_workspace,
-                                                     nullptr,
-                                                     &output_workspace,
-                                                     nullptr);
+        ffn2_linear_compute.ComputeForwardINT8ToINT8(
+            ffn2_weights[i],
+            &input_workspace,
+            nullptr,
+            &output_workspace,
+            nullptr,
+            cublaslt_workspace.data<int8_t>());
       } else {
         ffn2_linear_compute.ComputeForward(ffn2_weights[i],
                                            &ffn1_dropout_out,
