@@ -65,10 +65,8 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
 #endif
-    if (hookfunc_.size()) {
-      for (auto &func : hookfunc_) {
-        func(op.get());
-      }
+    for (auto &func : hookfunc_) {
+      func(op.get());
     }
   }
 #ifdef PADDLE_WITH_INFERENCE_NVTX
