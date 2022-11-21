@@ -614,7 +614,7 @@ class TestLayer(LayerTest):
             t6 = layers.data(name='t6', shape=[3, 3], dtype='float32')
 
             ret = layers.elementwise_add(t, t2)
-            ret = layers.elementwise_pow(ret, t3)
+            ret = paddle.pow(ret, t3)
             ret = layers.elementwise_div(ret, t4)
             ret = layers.elementwise_sub(ret, t5)
             ret = layers.elementwise_mul(ret, t6)
@@ -627,14 +627,14 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 ret = layers.elementwise_add(to_variable(n), to_variable(n2))
-                ret = layers.elementwise_pow(ret, to_variable(n3))
+                ret = paddle.pow(ret, to_variable(n3))
                 ret = layers.elementwise_div(ret, to_variable(n4))
                 ret = layers.elementwise_sub(ret, to_variable(n5))
                 dy_eager_ret = layers.elementwise_mul(ret, to_variable(n6))
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
             ret = layers.elementwise_add(to_variable(n), to_variable(n2))
-            ret = layers.elementwise_pow(ret, to_variable(n3))
+            ret = paddle.pow(ret, to_variable(n3))
             ret = layers.elementwise_div(ret, to_variable(n4))
             ret = layers.elementwise_sub(ret, to_variable(n5))
             dy_ret = layers.elementwise_mul(ret, to_variable(n6))
@@ -649,14 +649,12 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             with _test_eager_guard():
-                min_eager_ret = layers.elementwise_min(
-                    to_variable(n), to_variable(n2)
-                )
+                min_eager_ret = paddle.minimum(to_variable(n), to_variable(n2))
                 max_eager_ret = paddle.maximum(to_variable(n), to_variable(n2))
                 min_eager_ret_value = min_eager_ret.numpy()
                 max_eager_ret_value = max_eager_ret.numpy()
 
-            min_ret = layers.elementwise_min(to_variable(n), to_variable(n2))
+            min_ret = paddle.minimum(to_variable(n), to_variable(n2))
             max_ret = paddle.maximum(to_variable(n), to_variable(n2))
             min_ret_value = min_ret.numpy()
             max_ret_value = max_ret.numpy()
@@ -3280,7 +3278,9 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             theta = self._get_data("theta", shape=[2, 3], dtype='float32')
-            x = fluid.layers.affine_grid(theta, out_shape=[2, 3, 244, 244])
+            x = paddle.nn.functional.affine_grid(
+                theta, out_shape=[2, 3, 244, 244]
+            )
             return layers.pool2d(
                 x, pool_size=[5, 3], pool_stride=[1, 2], pool_padding=(2, 1)
             )
@@ -3298,38 +3298,6 @@ class TestBook(LayerTest):
                 pool_stride=[1, 2, 3],
                 pool_padding=(2, 1, 1),
             )
-
-    def make_adaptive_pool2d(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[3, 224, 224], dtype='float32')
-            return layers.adaptive_pool2d(x, [3, 3], pool_type='avg')
-            pool, mask = layers.adaptive_pool2d(x, [3, 3], require_index=True)
-            return pool
-            return mask
-            return layers.adaptive_pool2d(x, 3, pool_type='avg')
-            pool, mask = layers.adaptive_pool2d(x, 3, require_index=True)
-            return pool
-            return mask
-
-    def make_adaptive_pool3d(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(
-                name='x', shape=[3, 244, 224, 224], dtype='float32'
-            )
-            return layers.adaptive_pool3d(x, [3, 3, 3], pool_type='avg')
-            pool, mask = layers.adaptive_pool3d(
-                x, [3, 3, 3], require_index=True
-            )
-            return pool
-            return mask
-            return layers.adaptive_pool3d(x, 3, pool_type='avg')
-            pool, mask = layers.adaptive_pool3d(x, 3, require_index=True)
-            return pool
-            return mask
 
     def make_lstm_unit(self):
         with program_guard(
@@ -3620,15 +3588,6 @@ class TestBook(LayerTest):
             output = layers.l2_normalize(x, axis=1)
             return output
 
-    def make_crop(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[3, 5], dtype="float32")
-            y = self._get_data(name='y', shape=[2, 3], dtype="float32")
-            output = layers.crop(x, shape=y)
-            return output
-
     def make_mean_iou(self):
         with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
             x = self._get_data(name='x', shape=[16], dtype='int32')
@@ -3719,14 +3678,6 @@ class TestBook(LayerTest):
                 param_attr=ParamAttr(initializer=Constant(1.0)),
                 name='prelu',
             )
-            return out
-
-    def make_soft_relu(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = layers.soft_relu(input, threshold=30.0, name='soft_relu')
             return out
 
     def make_sigmoid(self):
@@ -4063,13 +4014,13 @@ class TestBook(LayerTest):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
         ):
-            layers.range(0, 10, 2, 'int32')
-            layers.range(0.1, 10.0, 0.2, 'float32')
-            layers.range(0.1, 10.0, 0.2, 'float64')
+            paddle.arange(0, 10, 2, 'int32')
+            paddle.arange(0.1, 10.0, 0.2, 'float32')
+            paddle.arange(0.1, 10.0, 0.2, 'float64')
             start = layers.fill_constant(shape=[1], value=0.1, dtype="float32")
             end = layers.fill_constant(shape=[1], value=10.0, dtype="float32")
             step = layers.fill_constant(shape=[1], value=0.2, dtype="float32")
-            y = layers.range(start, end, step, 'float64')
+            y = paddle.arange(start, end, step, 'float64')
             return y
 
     def make_spectral_norm(self):
@@ -4169,55 +4120,6 @@ class TestBook(LayerTest):
                 )
             )
 
-    def test_linear_chain_crf(self):
-        with self.static_graph():
-            label_dict_len = 10
-            feature = layers.data(name='feature', shape=[784], dtype='float32')
-            label = layers.data(name='label', shape=[1], dtype='int64')
-            emission = layers.fc(input=feature, size=10)
-            crf = layers.linear_chain_crf(
-                input=emission, label=label, param_attr=ParamAttr(name="crfw")
-            )
-            crf_decode = layers.crf_decoding(
-                input=emission, param_attr=ParamAttr(name="crfw")
-            )
-            self.assertIsNotNone(crf)
-            self.assertIsNotNone(crf_decode)
-            return layers.chunk_eval(
-                input=crf_decode,
-                label=label,
-                chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) // 2,
-            )
-
-    def test_linear_chain_crf_padding(self):
-        with self.static_graph():
-            label_dict_len, max_len = 10, 20
-            feature = layers.data(
-                name='feature', shape=[max_len, 784], dtype='float32'
-            )
-            label = layers.data(name='label', shape=[max_len], dtype='int64')
-            length = layers.data(name='length', shape=[1], dtype='int64')
-            emission = layers.fc(input=feature, size=10, num_flatten_dims=2)
-            crf = layers.linear_chain_crf(
-                input=emission,
-                label=label,
-                length=length,
-                param_attr=ParamAttr(name="crfw"),
-            )
-            crf_decode = layers.crf_decoding(
-                input=emission, length=length, param_attr=ParamAttr(name="crfw")
-            )
-            self.assertIsNotNone(crf)
-            self.assertIsNotNone(crf_decode)
-            return layers.chunk_eval(
-                input=crf_decode,
-                label=label,
-                seq_length=length,
-                chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) // 2,
-            )
-
     def test_im2sequence(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
@@ -4258,8 +4160,8 @@ class TestBook(LayerTest):
 
             theta = layers.data(name="theta", shape=[2, 3], dtype="float32")
             out_shape = layers.data(name="out_shape", shape=[-1], dtype="int32")
-            data_0 = layers.affine_grid(theta, out_shape)
-            data_1 = layers.affine_grid(theta, [5, 3, 28, 28])
+            data_0 = paddle.nn.functional.affine_grid(theta, out_shape)
+            data_1 = paddle.nn.functional.affine_grid(theta, [5, 3, 28, 28])
 
             self.assertIsNotNone(data_0)
             self.assertIsNotNone(data_1)
@@ -4372,29 +4274,6 @@ class TestBook(LayerTest):
                 input=seqs, offset=offset, length=length
             )
             return out
-
-    def test_filter_by_instag(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x1 = layers.data(
-                name='Ins', shape=[32, 1], dtype='float32', lod_level=0
-            )
-            x2 = layers.data(
-                name='Ins_tag',
-                shape=[32, 1],
-                dtype='int64',
-                lod_level=0,
-                stop_gradient=True,
-            )
-            x3 = layers.create_global_var(
-                shape=[1, 1],
-                value=20,
-                dtype='int64',
-                persistable=True,
-                force_cpu=True,
-                name='Filter_tag',
-            )
-            out1, out2 = layers.filter_by_instag(x1, x2, x3, is_lod=True)
 
     def test_shuffle_batch(self):
         # TODO(minqiyang): dygraph do not support lod now

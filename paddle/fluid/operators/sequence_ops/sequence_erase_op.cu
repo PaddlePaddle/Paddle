@@ -16,11 +16,11 @@ limitations under the License. */
 #include <thrust/host_vector.h>
 
 #include "paddle/fluid/operators/sequence_ops/sequence_erase_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
-using platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 using LoDTensor = phi::DenseTensor;
 
 template <typename T>
