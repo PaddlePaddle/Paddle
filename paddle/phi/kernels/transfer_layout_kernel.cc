@@ -175,8 +175,8 @@ void TransferLayoutKernel(const Context& dev_ctx,
 #else
   TransferLayoutGeneral<Context>(dev_ctx,
                                  x,
-                                 static_cast<DataLayout>(dst_layout),
                                  static_cast<DataLayout>(src_layout),
+                                 static_cast<DataLayout>(dst_layout),
                                  out);
 #endif
 }
