@@ -39,7 +39,7 @@ def _is_numpy_image(img):
 
 
 def to_tensor(pic, data_format='CHW'):
-    """Converts a ``PIL.Image`` or ``numpy.ndarray`` to paddle.Tensor.
+    """Converts a ``PIL.Image`` or ``numpy.ndarray`` to ``paddle.Tensor``.
 
     See ``ToTensor`` for more details.
 
