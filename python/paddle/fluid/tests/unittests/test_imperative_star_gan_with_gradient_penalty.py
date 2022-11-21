@@ -441,7 +441,7 @@ def gradient_penalty(f, real, fake, no_grad_set, cfg):
         fluid.layers.reduce_sum(fluid.layers.square(gradient), dim=1) + epsilon
     )
 
-    gp = paddle.mean(fluid.layers.square(norm - 1.0))
+    gp = paddle.mean(paddle.square(norm - 1.0))
     return gp
 
 
@@ -450,9 +450,7 @@ def get_generator_loss(
 ):
     fake_img = generator(image_real, label_trg)
     rec_img = generator(fake_img, label_org)
-    g_loss_rec = paddle.mean(
-        fluid.layers.abs(fluid.layers.elementwise_sub(image_real, rec_img))
-    )
+    g_loss_rec = paddle.mean(paddle.abs(paddle.subtract(image_real, rec_img)))
 
     pred_fake, cls_fake = discriminator(fake_img)
 

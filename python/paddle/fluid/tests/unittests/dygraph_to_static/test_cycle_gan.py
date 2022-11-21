@@ -89,28 +89,22 @@ class Cycle_Gan(fluid.dygraph.Layer):
         cyc_A = self.build_generator_resnet_9blocks_b(fake_B)
         cyc_B = self.build_generator_resnet_9blocks_a(fake_A)
 
-        diff_A = fluid.layers.abs(
-            fluid.layers.elementwise_sub(x=input_A, y=cyc_A)
-        )
-        diff_B = fluid.layers.abs(
-            fluid.layers.elementwise_sub(x=input_B, y=cyc_B)
-        )
+        diff_A = paddle.abs(fluid.layers.elementwise_sub(x=input_A, y=cyc_A))
+        diff_B = paddle.abs(fluid.layers.elementwise_sub(x=input_B, y=cyc_B))
         cyc_A_loss = paddle.mean(diff_A) * lambda_A
         cyc_B_loss = paddle.mean(diff_B) * lambda_B
         cyc_loss = cyc_A_loss + cyc_B_loss
 
         fake_rec_A = self.build_gen_discriminator_a(fake_B)
-        g_A_loss = paddle.mean(fluid.layers.square(fake_rec_A - 1))
+        g_A_loss = paddle.mean(paddle.square(fake_rec_A - 1))
 
         fake_rec_B = self.build_gen_discriminator_b(fake_A)
-        g_B_loss = paddle.mean(fluid.layers.square(fake_rec_B - 1))
+        g_B_loss = paddle.mean(paddle.square(fake_rec_B - 1))
         G = g_A_loss + g_B_loss
         idt_A = self.build_generator_resnet_9blocks_a(input_B)
         idt_loss_A = (
             paddle.mean(
-                fluid.layers.abs(
-                    fluid.layers.elementwise_sub(x=input_B, y=idt_A)
-                )
+                paddle.abs(fluid.layers.elementwise_sub(x=input_B, y=idt_A))
             )
             * lambda_B
             * lambda_identity
@@ -119,9 +113,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
         idt_B = self.build_generator_resnet_9blocks_b(input_A)
         idt_loss_B = (
             paddle.mean(
-                fluid.layers.abs(
-                    fluid.layers.elementwise_sub(x=input_A, y=idt_B)
-                )
+                paddle.abs(fluid.layers.elementwise_sub(x=input_A, y=idt_B))
             )
             * lambda_A
             * lambda_identity
