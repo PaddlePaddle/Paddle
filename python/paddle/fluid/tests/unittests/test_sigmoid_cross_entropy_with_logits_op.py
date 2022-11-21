@@ -23,7 +23,7 @@ import paddle
 
 
 def test_fluid_sigmoid(x, label, normalize=False, ignore_index=-100):
-    return paddle.nn.functional.sigmoid_cross_entropy_with_logits(
+    return paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits(
         x, label, int(ignore_index), normalize=normalize
     )
 
@@ -289,7 +289,7 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
                         [[1, 1, 1, 1]],
                         fluid.CPUPlace(),
                     )
-                    paddle.nn.functional.sigmoid_cross_entropy_with_logits(
+                    paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits(
                         x1, lab1
                     )
 
@@ -304,7 +304,7 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
                     lab2 = fluid.layers.data(
                         name='lab2', shape=[3, 4, 5, 6], dtype="int32"
                     )
-                    paddle.nn.functional.sigmoid_cross_entropy_with_logits(
+                    paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits(
                         x2, lab2
                     )
 

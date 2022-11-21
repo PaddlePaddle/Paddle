@@ -889,9 +889,7 @@ def binary_cross_entropy_with_logits(
     if reduction == 'none' and pos_weight is None and weight is None:
         sigmoid_name = name
 
-    out = paddle.nn.functional.sigmoid_cross_entropy_with_logits(
-        logit, label, name=sigmoid_name
-    )
+    out = sigmoid_cross_entropy_with_logits(logit, label, name=sigmoid_name)
 
     one = paddle.full(shape=[1], fill_value=1.0, dtype=logit.dtype)
     if pos_weight is not None:
@@ -4083,7 +4081,7 @@ def sigmoid_cross_entropy_with_logits(
 
             input = paddle.rand(shape=[10], dtype='float32')
             label = paddle.rand(shape=[10], dtype='float32')
-            loss = paddle.nn.functional.sigmoid_cross_entropy_with_logits(input, label,
+            loss = paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits(input, label,
                                                             ignore_index=-1, normalize=True)
             print(loss)
     """
