@@ -77,6 +77,9 @@ void BindPSGPUWrapper(py::module* m) {
 #endif
       .def("finalize",
            &framework::PSGPUWrapper::Finalize,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_mode",
+           &framework::PSGPUWrapper::SetMode,
            py::call_guard<py::gil_scoped_release>());
 }  // end PSGPUWrapper
 #ifdef PADDLE_WITH_PSLIB

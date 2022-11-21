@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include "paddle/fluid/platform/enforce.h"
 
+DECLARE_bool(gpugraph_debug_gpu_memory);
+
 namespace paddle {
 namespace framework {
 
@@ -75,6 +77,9 @@ class CudaDeviceRestorer {
 };
 
 inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
+  if (!FLAGS_gpugraph_debug_gpu_memory) {
+    return;
+  }
   CudaDeviceRestorer r;
 
   size_t avail{0};
@@ -93,6 +98,9 @@ inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
 }
 
 inline void debug_gpu_memory_info(const char* desc) {
+  if (!FLAGS_gpugraph_debug_gpu_memory) {
+    return;
+  }
   CudaDeviceRestorer r;
 
   int device_num = 0;

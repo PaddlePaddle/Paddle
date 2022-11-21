@@ -568,7 +568,7 @@ if(WITH_PYTHON)
   endif()
 
   if(NOT APPLE AND NOT WIN32)
-    target_link_libraries(paddle_pybind rt)
+    target_link_libraries(paddle_pybind rt -static-libgcc -static-libstdc++)
   endif()
 
   if(WITH_ROCM)

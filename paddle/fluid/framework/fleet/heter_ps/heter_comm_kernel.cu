@@ -16,6 +16,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace framework {
@@ -89,6 +90,18 @@ __global__ void calc_shard_index_kernel(KeyType* d_keys,
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     shard_index[i] = d_keys[i] % total_gpu;
+  }
+}
+
+template <typename KeyType, typename T>
+__global__ void calc_node_shard_index_kernel(KeyType* d_keys,
+                                             const size_t len,
+                                             T* shard_index,
+                                             const int total_gpu,
+                                             const int node_num) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    shard_index[i] = (d_keys[i] / total_gpu) % node_num;
   }
 }
 
@@ -175,21 +188,17 @@ __global__ void merge_gradients_embedx_kernel(const KeyType* d_keys,
 
   if (i < n) {
     size_t value_idx = i / grad_dim;
-    size_t field_idx = i % grad_dim;
-    uint32_t start = offset[value_idx];
-    uint32_t num = fea_num[value_idx];
-    int ori_index = index[start];
-    float* in = (float*)(input + size_t(ori_index) * grad_value_size);
-    float* out = (float*)(output + value_idx * grad_value_size);
-    merger.update_embedx(out, in, field_idx, gpu_accessor);
-    KeyType key = d_keys[value_idx];
-    if (key != 0) {
-      for (int j = 1; j < num; ++j) {
-        int ori_index = index[start + j];
-        float* in = (float*)(input + size_t(ori_index) * grad_value_size);
-        merger.merge_embedx(out, in, field_idx, gpu_accessor);
-      }
+    const uint32_t& start = offset[value_idx];
+    const uint32_t& num = fea_num[value_idx];
+
+    double val = 0;
+    uint32_t off =
+        gpu_accessor.common_push_value.EmbedxGIndex() + (i % grad_dim);
+    for (uint32_t j = 0; j < num; ++j) {
+      val +=
+          ((float*)(&input[size_t(index[start + j]) * grad_value_size]))[off];
     }
+    ((float*)(&output[value_idx * grad_value_size]))[off] = val;
   }
 }
 
@@ -277,15 +286,23 @@ __global__ void unpack_merged_vals_kernel(const KeyType* d_keys,
 }
 
 template <typename TUnit, typename T>
-__global__ void scatter_dvals_by_unit_kernel(TUnit* d_dest_vals,
-                                             const TUnit* d_src_vals,
-                                             T* idx,
-                                             size_t len,
-                                             size_t val_size_unit) {
+__global__ void gather_keys_kernel(TUnit* d_dest_vals,
+                                   const TUnit* d_src_vals,
+                                   T* idx,
+                                   size_t len) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
-    size_t pos = idx[i / val_size_unit] * val_size_unit + (i % val_size_unit);
-    d_dest_vals[i] = d_src_vals[pos];
+    d_dest_vals[i] = d_src_vals[idx[i]];
+  }
+}
+template <typename TUnit, typename T>
+__global__ void scatter_keys_kernel(TUnit* d_dest_vals,
+                                    const TUnit* d_src_vals,
+                                    T* idx,
+                                    size_t len) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    d_dest_vals[idx[i]] = d_src_vals[i];
   }
 }
 
@@ -295,6 +312,19 @@ __global__ void gather_dvals_by_unit_kernel(TUnit* d_dest_vals,
                                             T* idx,
                                             size_t len,
                                             const size_t val_size_unit) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    size_t pos = idx[i / val_size_unit] * val_size_unit + (i % val_size_unit);
+    d_dest_vals[i] = d_src_vals[pos];
+  }
+}
+
+template <typename TUnit, typename T>
+__global__ void scatter_dvals_by_unit_kernel(TUnit* d_dest_vals,
+                                             const TUnit* d_src_vals,
+                                             T* idx,
+                                             size_t len,
+                                             const size_t val_size_unit) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     size_t pos = idx[i / val_size_unit] * val_size_unit + (i % val_size_unit);
@@ -335,6 +365,18 @@ void HeterCommKernel::calc_shard_index(KeyType* d_keys,
   size_t c_len = (size_t)len;
   calc_shard_index_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_keys, c_len, shard_index, total_gpu);
+}
+template <typename KeyType, typename T, typename StreamType>
+void HeterCommKernel::calc_node_shard_index(const KeyType* d_keys,
+                                            long long len,
+                                            T* shard_index,
+                                            const int& total_devs,
+                                            const int& node_num,
+                                            const StreamType& stream) {
+  int grid_size = (len - 1) / block_size_ + 1;
+  size_t c_len = (size_t)len;
+  calc_node_shard_index_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_keys, c_len, shard_index, total_devs, node_num);
 }
 
 template <typename KeyType, typename T, typename StreamType>
@@ -429,7 +471,6 @@ void HeterCommKernel::reduce_by_key(void* d_temp_storage,
                                                             stream,
                                                             debug_synchronous));
 }
-
 template <typename KeyType,
           typename T,
           typename StreamType,
@@ -446,7 +487,7 @@ void HeterCommKernel::dy_mf_fill_shard_grads(KeyType* d_shard_keys,
   int grid_size = (len - 1) / block_size_ + 1;
   size_t c_len = (size_t)len;
 
-  const size_t grad_value_size_float = grad_value_size / sizeof(float);
+  const size_t grad_value_size_float = size_t(grad_value_size / sizeof(float));
   // d_keys to d_shard_keys
   fill_shard_key_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_shard_keys, d_keys, idx, c_len);
@@ -454,7 +495,7 @@ void HeterCommKernel::dy_mf_fill_shard_grads(KeyType* d_shard_keys,
   CHECK((grad_value_size % sizeof(float)) == 0);
   size_t N = len * grad_value_size_float;
   grid_size = (N - 1) / block_size_ + 1;
-  scatter_dvals_by_unit_kernel<<<grid_size, block_size_, 0, stream>>>(
+  gather_dvals_by_unit_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_shard_grads, d_grads, idx, N, grad_value_size_float);
 }
 
@@ -512,7 +553,7 @@ void HeterCommKernel::dy_mf_fill_dvals(float* d_shard_vals,
   size_t N = len * val_size_float;
   const int grid_size = (N - 1) / block_size_ + 1;
   // fill by float, d_shard_vals to d_vals
-  gather_dvals_by_unit_kernel<<<grid_size, block_size_, 0, stream>>>(
+  scatter_dvals_by_unit_kernel<<<grid_size, block_size_, 0, stream>>>(
       d_vals, d_shard_vals, idx, N, val_size_float);
 }
 
@@ -666,6 +707,332 @@ void HeterCommKernel::unpack_merged_vals(size_t n,
       val_size,
       n);
 }
+template <typename KeyType, typename T, typename StreamType>
+void HeterCommKernel::gather_keys(KeyType* d_shard_keys,
+                                  const KeyType* d_keys,
+                                  T* idx,
+                                  long long len,
+                                  const StreamType& stream) {
+  size_t N = len;
+  int grid_size = (N - 1) / block_size_ + 1;
+  // d_keys -> d_shard_keys
+  gather_keys_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_shard_keys, d_keys, idx, N);
+}
+template <typename KeyType, typename T, typename StreamType>
+void HeterCommKernel::scatter_keys(const KeyType* d_shard_keys,
+                                   KeyType* d_keys,
+                                   T* idx,
+                                   long long len,
+                                   const StreamType& stream) {
+  size_t N = len;
+  int grid_size = (N - 1) / block_size_ + 1;
+  // d_shard_keys -> d_keys
+  scatter_keys_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_keys, d_shard_keys, idx, N);
+}
+template <typename T, typename StreamType>
+void HeterCommKernel::gather_vals(float* d_shard_vals,
+                                  const float* d_vals,
+                                  T* idx,
+                                  long long len,
+                                  size_t value_bytes,
+                                  const StreamType& stream) {
+  const size_t value_size_float = size_t(value_bytes / sizeof(float));
+  size_t N = len * value_size_float;
+  int grid_size = (N - 1) / block_size_ + 1;
+  // d_vals -> d_shard_vals
+  gather_dvals_by_unit_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_shard_vals, d_vals, idx, N, value_size_float);
+}
+template <typename T, typename StreamType>
+void HeterCommKernel::scatter_vals(const float* d_shard_vals,
+                                   float* d_vals,
+                                   T* idx,
+                                   long long len,
+                                   size_t value_bytes,
+                                   const StreamType& stream) {
+  const size_t val_size_float = size_t(value_bytes / sizeof(float));
+  CHECK((value_bytes % sizeof(float)) == 0);
+  size_t N = len * val_size_float;
+  const int grid_size = (N - 1) / block_size_ + 1;
+  // fill by float, d_shard_vals to d_vals
+  scatter_dvals_by_unit_kernel<<<grid_size, block_size_, 0, stream>>>(
+      d_vals, d_shard_vals, idx, N, val_size_float);
+}
+template <typename KeyType>
+__global__ void check_valid_values_kernel(const int type,
+                                          const size_t N,
+                                          const KeyType* keys,
+                                          const char* input,
+                                          const size_t value_bytes,
+                                          const int num,
+                                          bool debug) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < N) {
+    const float* val = (const float*)(input + i * value_bytes);
+    if (debug && (i == 0 || i == (N - 1))) {
+      if (keys != nullptr) {
+        printf(
+            "type=%d, id=%lu, bytes=%lu, key=%lu, "
+            "values=[%f,%f,%f,%f,%f,%f,%f,%f]\n",
+            type,
+            i,
+            value_bytes,
+            uint64_t(keys[i]),
+            val[0],
+            val[1],
+            val[2],
+            val[3],
+            val[4],
+            val[5],
+            val[6],
+            val[7]);
+      } else {
+        printf("type=%d, id=%lu, bytes=%lu, values=[%f,%f,%f,%f,%f,%f,%f,%f]\n",
+               type,
+               i,
+               value_bytes,
+               val[0],
+               val[1],
+               val[2],
+               val[3],
+               val[4],
+               val[5],
+               val[6],
+               val[7]);
+      }
+    }
+    for (int k = 0; k < num; ++k) {
+      auto& c = val[k];
+      if (isnan(c)) {
+        if (keys != nullptr) {
+          PADDLE_ENFORCE(false,
+                         "nan type %d, id=%lu, offset=%d, float=%f, key=%lu, "
+                         "values=[%f,%f,%f,%f,%f,%f,%f,%f]\n",
+                         type,
+                         i,
+                         k,
+                         c,
+                         uint64_t(keys[i]),
+                         val[0],
+                         val[1],
+                         val[2],
+                         val[3],
+                         val[4],
+                         val[5],
+                         val[6],
+                         val[7]);
+        } else {
+          PADDLE_ENFORCE(false,
+                         "nan type %d, id=%lu, offset=%d, float=%f\n",
+                         type,
+                         i,
+                         k,
+                         c);
+        }
+      } else if (isinf(c)) {
+        if (keys != nullptr) {
+          PADDLE_ENFORCE(false,
+                         "inf type %d, id=%lu, offset=%d, float=%f, key=%lu, "
+                         "values=[%f,%f,%f,%f,%f,%f,%f,%f]\n",
+                         type,
+                         i,
+                         k,
+                         c,
+                         uint64_t(keys[i]),
+                         val[0],
+                         val[1],
+                         val[2],
+                         val[3],
+                         val[4],
+                         val[5],
+                         val[6],
+                         val[7]);
+        } else {
+          PADDLE_ENFORCE(false,
+                         "inf type %d, id=%lu, offset=%d, float=%f\n",
+                         type,
+                         i,
+                         k,
+                         c);
+        }
+      } else if (int(c) > 1e+30 || int(c) < -(1e+30)) {
+        if (keys != nullptr) {
+          PADDLE_ENFORCE(false,
+                         "err type %d, id=%lu, offset=%d, float=%f, key=%lu, "
+                         "values=[%f,%f,%f,%f,%f,%f,%f,%f]\n",
+                         type,
+                         i,
+                         k,
+                         c,
+                         uint64_t(keys[i]),
+                         val[0],
+                         val[1],
+                         val[2],
+                         val[3],
+                         val[4],
+                         val[5],
+                         val[6],
+                         val[7]);
+        } else {
+          PADDLE_ENFORCE(false,
+                         "err type %d, id=%lu, offset=%d, float=%f, int=%d\n",
+                         type,
+                         i,
+                         k,
+                         c,
+                         int(c));
+        }
+      }
+    }
+  }
+}
+template <typename KeyType, typename StreamType>
+void HeterCommKernel::check_valid_values(const int& type,
+                                         const size_t& N,
+                                         const KeyType* keys,
+                                         const char* input,
+                                         const size_t& value_bytes,
+                                         const StreamType& stream,
+                                         bool debug) {
+  CHECK((value_bytes % sizeof(float)) == 0);
+  const int grid_size = (N - 1) / block_size_ + 1;
+  const int num = int(value_bytes / sizeof(float));
+  check_valid_values_kernel<<<grid_size, block_size_, 0, stream>>>(
+      type, N, keys, input, value_bytes, num, debug);
+}
+
+template <typename GPUAccessor>
+__global__ void scale_grad_kernel(const size_t N,
+                                  char* grads,
+                                  const size_t value_bytes,
+                                  const size_t grad_dim,
+                                  GPUAccessor& accessor) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < N) {
+    size_t idx = i / grad_dim;
+    size_t field_id = i % grad_dim;
+
+    float* vals = (float*)(&grads[idx * value_bytes]);
+    float& show = vals[accessor.common_push_value.ShowIndex()];
+    if (show > 0.0) {
+      vals[accessor.common_push_value.EmbedGIndex() + field_id] /= show;
+    }
+  }
+}
+
+template <typename StreamType, typename GPUAccessor>
+void HeterCommKernel::scale_grad(const size_t& len,
+                                 char* grads,
+                                 const size_t& value_bytes,
+                                 const size_t& max_mif_dim,
+                                 const StreamType& stream,
+                                 GPUAccessor& gpu_accessor) {
+  const size_t grad_dim = (max_mif_dim + 1);
+  const size_t N = len * grad_dim;
+  const int grid_size = (N - 1) / block_size_ + 1;
+  scale_grad_kernel<<<grid_size, block_size_, 0, stream>>>(
+      N, grads, value_bytes, grad_dim, gpu_accessor);
+}
+__device__ __forceinline__ int16_t float_int16(const float& val,
+                                               const float& bound) {
+  if (val >= bound) {
+    return 32767;
+  } else if (val <= -bound) {
+    return -32767;
+  }
+  if (val > 0.0) {
+    return int16_t((val * 32767.0 / bound) + 0.5);
+  }
+  return int16_t((val * 32767.0 / bound) - 0.5);
+}
+__global__ void compress_kernel(const size_t N,
+                                const float* in,
+                                const size_t float_num,
+                                const size_t head_off,
+                                char* out,
+                                const size_t new_bytes,
+                                const float bound) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < N) {
+    size_t idx = i / float_num;
+    size_t off = i % float_num;
+
+    if (off < head_off) {
+      *((float*)&out[idx * new_bytes + off * sizeof(float)]) = in[i];
+    } else {
+      int16_t* dest =
+          (int16_t*)(&out[idx * new_bytes + head_off * sizeof(float)]);
+      dest[off - head_off] = float_int16(in[i], bound);
+    }
+  }
+}
+// compress
+template <typename StreamType>
+size_t HeterCommKernel::compress_values(const size_t& len,
+                                        const char* in_vals,
+                                        char* out_vals,
+                                        const size_t& value_bytes,
+                                        const size_t& embedx_dim,
+                                        const float& max_bound,
+                                        const StreamType& stream) {
+  const size_t new_bytes = value_bytes - sizeof(int16_t) * embedx_dim;
+  const size_t float_num = size_t(value_bytes / sizeof(float));
+  const size_t head_off = float_num - embedx_dim;
+  const size_t N = len * float_num;
+  const int grid_size = (N - 1) / block_size_ + 1;
+  compress_kernel<<<grid_size, block_size_, 0, stream>>>(N,
+                                                         (const float*)in_vals,
+                                                         float_num,
+                                                         head_off,
+                                                         out_vals,
+                                                         new_bytes,
+                                                         max_bound);
+  return new_bytes;
+}
+__device__ __forceinline__ float int16_float(const int16_t& val,
+                                             const float& bound) {
+  return float(val * bound / 32767.0);
+}
+__global__ void uncompress_kernel(const size_t N,
+                                  const char* in,
+                                  const size_t new_bytes,
+                                  float* out,
+                                  const size_t float_num,
+                                  const size_t head_off,
+                                  const float bound) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < N) {
+    size_t idx = i / float_num;
+    size_t off = i % float_num;
+
+    if (off < head_off) {
+      out[i] = *((const float*)&in[idx * new_bytes + off * sizeof(float)]);
+    } else {
+      const int16_t* src =
+          (const int16_t*)(&in[idx * new_bytes + head_off * sizeof(float)]);
+      out[i] = int16_float(src[off - head_off], bound);
+    }
+  }
+}
+// uncompress
+template <typename StreamType>
+void HeterCommKernel::uncompress_values(const size_t& len,
+                                        const char* in_vals,
+                                        char* out_vals,
+                                        const size_t& value_bytes,
+                                        const size_t& embedx_dim,
+                                        const float& max_bound,
+                                        const StreamType& stream) {
+  const size_t new_bytes = value_bytes - sizeof(int16_t) * embedx_dim;
+  const size_t float_num = size_t(value_bytes / sizeof(float));
+  const size_t head_off = float_num - embedx_dim;
+  const size_t N = len * float_num;
+  const int grid_size = (N - 1) / block_size_ + 1;
+  uncompress_kernel<<<grid_size, block_size_, 0, stream>>>(
+      N, in_vals, new_bytes, (float*)out_vals, float_num, head_off, max_bound);
+}
 
 template void HeterCommKernel::fill_idx<int, cudaStream_t>(
     int* idx, long long len, const cudaStream_t& stream);
@@ -679,6 +1046,14 @@ template void HeterCommKernel::calc_shard_offset<int, cudaStream_t>(
     long long len,
     int total_devs,
     const cudaStream_t& stream);
+template void HeterCommKernel::calc_shard_offset<uint32_t, cudaStream_t>(
+    uint32_t* idx,
+    uint32_t* left,
+    uint32_t* right,
+    long long len,
+    int total_devs,
+    const cudaStream_t& stream);
+
 template void
 HeterCommKernel::calc_shard_index<unsigned long, int, cudaStream_t>(
     unsigned long* d_keys,
@@ -694,6 +1069,56 @@ template void HeterCommKernel::calc_shard_index<long, int, cudaStream_t>(
     int total_devs,
     const cudaStream_t& stream);
 
+template void
+HeterCommKernel::calc_shard_index<unsigned long, uint32_t, cudaStream_t>(
+    unsigned long* d_keys,
+    long long len,
+    uint32_t* shard_index,
+    int total_devs,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::calc_shard_index<long, uint32_t, cudaStream_t>(
+    long* d_keys,
+    long long len,
+    uint32_t* shard_index,
+    int total_devs,
+    const cudaStream_t& stream);
+
+template void
+HeterCommKernel::calc_node_shard_index<unsigned long, int, cudaStream_t>(
+    const unsigned long* d_keys,
+    long long len,
+    int* shard_index,
+    const int& total_devs,
+    const int& node_num,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::calc_node_shard_index<long, int, cudaStream_t>(
+    const long* d_keys,
+    long long len,
+    int* shard_index,
+    const int& total_devs,
+    const int& node_num,
+    const cudaStream_t& stream);
+
+template void
+HeterCommKernel::calc_node_shard_index<unsigned long, uint32_t, cudaStream_t>(
+    const unsigned long* d_keys,
+    long long len,
+    uint32_t* shard_index,
+    const int& total_devs,
+    const int& node_num,
+    const cudaStream_t& stream);
+
+template void
+HeterCommKernel::calc_node_shard_index<long, uint32_t, cudaStream_t>(
+    const long* d_keys,
+    long long len,
+    uint32_t* shard_index,
+    const int& total_devs,
+    const int& node_num,
+    const cudaStream_t& stream);
+
 template void HeterCommKernel::fill_shard_key<long, int, cudaStream_t>(
     long* d_shard_keys,
     long* d_keys,
@@ -705,6 +1130,21 @@ template void HeterCommKernel::fill_shard_key<unsigned long, int, cudaStream_t>(
     unsigned long* d_shard_keys,
     unsigned long* d_keys,
     int* idx,
+    long long len,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::fill_shard_key<long, uint32_t, cudaStream_t>(
+    long* d_shard_keys,
+    long* d_keys,
+    uint32_t* idx,
+    long long len,
+    const cudaStream_t& stream);
+
+template void
+HeterCommKernel::fill_shard_key<unsigned long, uint32_t, cudaStream_t>(
+    unsigned long* d_shard_keys,
+    unsigned long* d_keys,
+    uint32_t* idx,
     long long len,
     const cudaStream_t& stream);
 
@@ -748,6 +1188,19 @@ template void HeterCommKernel::sort_pairs<int, int, cudaStream_t>(
     int* d_keys_out,
     const int* d_values_in,
     int* d_values_out,
+    int num_items,
+    int begin_bit,
+    int end_bit,
+    cudaStream_t stream,
+    bool debug_synchronous);
+
+template void HeterCommKernel::sort_pairs<uint32_t, uint32_t, cudaStream_t>(
+    void* d_temp_storage,
+    size_t& temp_storage_bytes,  // NOLINT
+    const uint32_t* d_keys_in,   // NOLINT
+    uint32_t* d_keys_out,
+    const uint32_t* d_values_in,
+    uint32_t* d_values_out,
     int num_items,
     int begin_bit,
     int end_bit,
@@ -823,6 +1276,14 @@ template void HeterCommKernel::dy_mf_fill_dvals<int, cudaStream_t>(
     size_t val_size,
     const cudaStream_t& stream);
 
+template void HeterCommKernel::dy_mf_fill_dvals<uint32_t, cudaStream_t>(
+    float* d_shard_vals,
+    float* d_vals,
+    uint32_t* idx,
+    long long len,
+    size_t val_size,
+    const cudaStream_t& stream);
+
 template void HeterCommKernel::split_segments<cudaStream_t>(
     const uint32_t* d_fea_num_info,
     size_t n,
@@ -891,6 +1352,126 @@ template void HeterCommKernel::unpack_merged_vals<uint32_t, cudaStream_t>(
     const uint32_t* d_restore_idx,
     void* d_vals,
     size_t val_size,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::gather_keys<uint64_t, int, cudaStream_t>(
+    uint64_t* d_shard_keys,
+    const uint64_t* d_keys,
+    int* idx,
+    long long len,
+    const cudaStream_t& stream);
+template void HeterCommKernel::gather_keys<long, int, cudaStream_t>(
+    long* d_shard_keys,
+    const long* d_keys,
+    int* idx,
+    long long len,
+    const cudaStream_t& stream);
+template void HeterCommKernel::gather_keys<uint64_t, uint32_t, cudaStream_t>(
+    uint64_t* d_shard_keys,
+    const uint64_t* d_keys,
+    uint32_t* idx,
+    long long len,
+    const cudaStream_t& stream);
+template void HeterCommKernel::gather_keys<long, uint32_t, cudaStream_t>(
+    long* d_shard_keys,
+    const long* d_keys,
+    uint32_t* idx,
+    long long len,
+    const cudaStream_t& stream);
+template void HeterCommKernel::scatter_keys<uint64_t, int, cudaStream_t>(
+    const uint64_t* d_shard_keys,
+    uint64_t* d_keys,
+    int* idx,
+    long long len,
+    const cudaStream_t& stream);
+
+template void HeterCommKernel::scatter_keys<long, int, cudaStream_t>(
+    const long* d_shard_keys,
+    long* d_keys,
+    int* idx,
+    long long len,
+    const cudaStream_t& stream);
+template void HeterCommKernel::scatter_keys<uint64_t, uint32_t, cudaStream_t>(
+    const uint64_t* d_shard_keys,
+    uint64_t* d_keys,
+    uint32_t* idx,
+    long long len,
+    const cudaStream_t& stream);
+template void HeterCommKernel::scatter_keys<long, uint32_t, cudaStream_t>(
+    const long* d_shard_keys,
+    long* d_keys,
+    uint32_t* idx,
+    long long len,
+    const cudaStream_t& stream);
+template void HeterCommKernel::gather_vals<int, cudaStream_t>(
+    float* d_shard_vals,
+    const float* d_vals,
+    int* idx,
+    long long len,
+    size_t value_bytes,
+    const cudaStream_t& stream);
+template void HeterCommKernel::gather_vals<uint32_t, cudaStream_t>(
+    float* d_shard_vals,
+    const float* d_vals,
+    uint32_t* idx,
+    long long len,
+    size_t value_bytes,
+    const cudaStream_t& stream);
+template void HeterCommKernel::scatter_vals<int, cudaStream_t>(
+    const float* d_shard_vals,
+    float* d_vals,
+    int* idx,
+    long long len,
+    size_t value_bytes,
+    const cudaStream_t& stream);
+template void HeterCommKernel::scatter_vals<uint32_t, cudaStream_t>(
+    const float* d_shard_vals,
+    float* d_vals,
+    uint32_t* idx,
+    long long len,
+    size_t value_bytes,
+    const cudaStream_t& stream);
+template void HeterCommKernel::check_valid_values<long, cudaStream_t>(
+    const int& type,
+    const size_t& N,
+    const long* keys,
+    const char* input,
+    const size_t& value_bytes,
+    const cudaStream_t& stream,
+    bool debug);
+template void HeterCommKernel::check_valid_values<uint64_t, cudaStream_t>(
+    const int& type,
+    const size_t& N,
+    const uint64_t* keys,
+    const char* input,
+    const size_t& value_bytes,
+    const cudaStream_t& stream,
+    bool debug);
+template void
+HeterCommKernel::scale_grad<cudaStream_t, CommonFeatureValueAccessor>(
+    const size_t& len,
+    char* grads,
+    const size_t& value_bytes,
+    const size_t& grad_dim,
+    const cudaStream_t& stream,
+    CommonFeatureValueAccessor& gpu_accessor);
+// compress
+template size_t HeterCommKernel::compress_values<cudaStream_t>(
+    const size_t& len,
+    const char* in_vals,
+    char* out_vals,
+    const size_t& value_bytes,
+    const size_t& embedx_dim,
+    const float& max_bound,
+    const cudaStream_t& stream);
+// uncompress
+template void HeterCommKernel::uncompress_values<cudaStream_t>(
+    const size_t& len,
+    const char* in_vals,
+    char* out_vals,
+    const size_t& value_bytes,
+    const size_t& embedx_dim,
+    const float& max_bound,
     const cudaStream_t& stream);
 #endif
 

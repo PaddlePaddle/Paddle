@@ -421,14 +421,27 @@ class LocalSGD(Collective):
 class SingleProcessMultiThread(GradAllReduce):
     '''
     '''
-
     def __init__(self):
         GradAllReduce.__init__(self, 1)
         self.mode = "single_process_multi_thread"
 
     def _transpile_startup_program(self):
-        block = self.startup_program.global_block()
-        block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+        # block = self.startup_program.global_block()
+        # block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+        if len(self.endpoints) > 1:
+            print("begin to _transpile_startup_program for multi-node")
+            print("current_endpoint: ", self.current_endpoint)
+            print("total endpoints: ", self.endpoints)
+            print("rank: %d, ring_id: %d" % (self.rank, self.nrings))
+            for ring_id in range(self.nrings):
+                self._init_communicator(self.startup_program,
+                                        self.current_endpoint, self.endpoints,
+                                        self.rank, ring_id, self.wait_port,
+                                        True)
+        else:
+            print("begin to _transpile_startup_program for single-node")
+            block = self.startup_program.global_block()
+            block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
 
 
 class MultiThread(GradAllReduce):

@@ -981,10 +981,30 @@ PADDLE_DEFINE_EXPORTED_int32(
     gpugraph_dedup_pull_push_mode,
     0,
     "enable dedup keys while pull push sparse, default 0");
-PADDLE_DEFINE_EXPORTED_bool(
-    gpugraph_load_node_list_into_hbm,
-    true,
-    "enable load_node_list_into_hbm, default true");
+PADDLE_DEFINE_EXPORTED_bool(gpugraph_load_node_list_into_hbm,
+                            true,
+                            "enable load_node_list_into_hbm, default true");
+PADDLE_DEFINE_EXPORTED_int32(gpugraph_sparse_table_storage_mode,
+                             0,
+                             "parse_table_storage_mode, default 0");
+PADDLE_DEFINE_EXPORTED_bool(enable_auto_detect_gpu_topo,
+                            true,
+                            "enable auto detect gpu topo, default true");
+PADDLE_DEFINE_EXPORTED_bool(enable_auto_rdma_trans,
+                            true,
+                            "enable auto gpu rdma trans, default true");
+PADDLE_DEFINE_EXPORTED_bool(enable_tracker_all2all,
+                            false,
+                            "enable tracker all2all log, default false");
+PADDLE_DEFINE_EXPORTED_bool(enable_all2all_use_fp16,
+                            false,
+                            "enable all2all use fp16, default false");
+PADDLE_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,
+                            false,
+                            "enable sparse inner gather, default false");
+PADDLE_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
+                            false,
+                            "enable debug gpu memory, default false");
 /**
  * ProcessGroupNCCL related FLAG
  * Name: nccl_blocking_wait

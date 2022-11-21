@@ -71,7 +71,6 @@ __global__ void PullDedupCopy(const size_t N,
     int x = key2slot[i];
     int y = i - slot_lens[x];
 
-    assert(slot_dims[x] == hidden);
     float* dest_ptr = dest[x] + y * hidden;
     // 0 key fill zero
     if (total_keys[i] == 0) {
@@ -92,10 +91,11 @@ __global__ void PullDedupCopy(const size_t N,
         *(dest_ptr + off) = src_ptr[accessor.EmbedWIndex()];
         break;
       default:
-        if (src_ptr[accessor.MfSizeIndex()] == 0) {
+        int embedx_id = off - 3;
+        if (embedx_id >= int(src_ptr[accessor.MfSizeIndex()])) {
           *(dest_ptr + off) = 0;
         } else {
-          *(dest_ptr + off) = src_ptr[accessor.EmbedxWIndex() + off - 3];
+          *(dest_ptr + off) = src_ptr[accessor.EmbedxWIndex() + embedx_id];
         }
         break;
     }
@@ -127,9 +127,9 @@ __global__ void PushCopyWithPool(float* dest,
     int y = i - (x ? len[low - 1] : 0);
     float* cur = (float*)((char*)dest + i * grad_value_size);
 
-    cur[gpu_accessor.common_push_value.SlotIndex()] = (float)slot_vector[x];
+    cur[gpu_accessor.common_push_value.SlotIndex()] = float(slot_vector[x]);
     int mf_dim = mf_dim_vector[x];
-    cur[gpu_accessor.common_push_value.MfDimIndex()] = mf_dim;
+    cur[gpu_accessor.common_push_value.MfDimIndex()] = float(mf_dim);
 
     cur[gpu_accessor.common_push_value.ShowIndex()] =
         *(src[x] + y * (mf_dim + 3));
@@ -174,8 +174,8 @@ __global__ void PushMergeCopyAtomic(const size_t N,
     int mf_dim = slot_dims[x] - 3;
     switch (off) {
       case 0:
-        cur[accessor.SlotIndex()] = (float)slot_vector[x];
-        cur[accessor.MfDimIndex()] = mf_dim;
+        cur[accessor.SlotIndex()] = float(slot_vector[x]);
+        cur[accessor.MfDimIndex()] = float(mf_dim);
         paddle::platform::CudaAtomicAdd(&cur[accessor.ShowIndex()],
                                         *(ptr + off));
         break;
@@ -189,12 +189,11 @@ __global__ void PushMergeCopyAtomic(const size_t N,
         break;
       default:
         int embedx_idx = off - 3;
-        if (mf_dim < embedx_idx) {
-          return;
+        if (embedx_idx < mf_dim) {
+          paddle::platform::CudaAtomicAdd(
+              &cur[accessor.EmbedxGIndex() + embedx_idx],
+              *(ptr + off) * -1. * bs);
         }
-        paddle::platform::CudaAtomicAdd(
-            &cur[accessor.EmbedxGIndex() + embedx_idx],
-            *(ptr + off) * -1. * bs);
         break;
     }
   }
@@ -233,8 +232,8 @@ __global__ void PushMergeCopy(const size_t N,
     if (total_keys[i] == 0) {
       switch (off) {
         case 0:
-          cur[accessor.SlotIndex()] = 0;
-          cur[accessor.MfDimIndex()] = 0;
+          cur[accessor.SlotIndex()] = float(0);
+          cur[accessor.MfDimIndex()] = float(0);
           cur[accessor.ShowIndex()] = 0.0;
           break;
         case 1:
@@ -262,8 +261,8 @@ __global__ void PushMergeCopy(const size_t N,
 
     switch (off) {
       case 0:
-        cur[accessor.SlotIndex()] = (float)slot_vector[x];
-        cur[accessor.MfDimIndex()] = mf_dim;
+        cur[accessor.SlotIndex()] = float(slot_vector[x]);
+        cur[accessor.MfDimIndex()] = float(mf_dim);
         SUM_GRAD_VALUE
         cur[accessor.ShowIndex()] = val;
         break;
@@ -277,12 +276,12 @@ __global__ void PushMergeCopy(const size_t N,
         break;
       default:
         int embedx_idx = off - 3;
-        if (mf_dim < embedx_idx) {
+        if (embedx_idx < mf_dim) {
+          SUM_GRAD_VALUE
+          cur[accessor.EmbedxGIndex() + embedx_idx] = val * -1. * bs;
+        } else {
           cur[accessor.EmbedxGIndex() + embedx_idx] = 0.0;
-          return;
         }
-        SUM_GRAD_VALUE
-        cur[accessor.EmbedxGIndex() + embedx_idx] = val * -1. * bs;
         break;
     }
   }

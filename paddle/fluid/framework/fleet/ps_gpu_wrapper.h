@@ -219,6 +219,11 @@ class PSGPUWrapper {
   void build_pull_thread();
   void build_task();
   void DumpToMem();
+  // set mode
+  void SetMode(bool infer_mode) {
+    infer_mode_ = infer_mode;
+    VLOG(0) << "set infer mode=" << infer_mode;
+  }
 
   void Finalize() {
     VLOG(3) << "PSGPUWrapper Begin Finalize.";
@@ -243,6 +248,10 @@ class PSGPUWrapper {
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
     HeterPs_->show_table_collisions();
+    if (HeterPs_ != NULL) {
+      delete HeterPs_;
+      HeterPs_ = NULL;
+    }
     if (device_caches_ != nullptr) {
       delete[] device_caches_;
       device_caches_ = nullptr;
@@ -261,6 +270,12 @@ class PSGPUWrapper {
       auto gloo = paddle::framework::GlooWrapper::GetInstance();
       if (gloo->Size() > 1) {
         multi_node_ = 1;
+        resource_->set_multi_node(multi_node_);
+        optimizer_config_.multi_node = true;
+        VLOG(0) << "init multi node gpu server";
+      } else {
+        optimizer_config_.multi_node = false;
+        VLOG(0) << "init single node gpu server";
       }
 #else
       PADDLE_THROW(
@@ -293,10 +308,15 @@ class PSGPUWrapper {
         opts.setRoot(0);
         gloo::broadcast(opts);
 
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
         for (int i = 0; i < dev_size; ++i) {
+          platform::CUDADeviceGuard guard(dev_ids[i]);
           platform::dynload::ncclCommInitRank(
               &inter_comms_[i], gloo->Size(), inter_ncclids_[i], gloo->Rank());
         }
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+
+        rank_id_ = gloo->Rank();
         node_size_ = gloo->Size();
 #else
         PADDLE_THROW(
@@ -692,7 +712,7 @@ class PSGPUWrapper {
       uint64_t,
       std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
       local_tables_;
-  HeterPsBase* HeterPs_;
+  HeterPsBase* HeterPs_ = NULL;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
   std::shared_ptr<HeterPsResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
@@ -714,6 +734,7 @@ class PSGPUWrapper {
   double time_4 = 0.0;
 
   int multi_node_{0};
+  int rank_id_;
   int node_size_;
   uint64_t table_id_;
   int gpu_graph_mode_ = 0;
@@ -776,6 +797,10 @@ class PSGPUWrapper {
   std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
   std::vector<std::shared_ptr<ThreadPool>> cpu_work_pool_;
   OptimizerConfig optimizer_config_;
+  // gradient push count
+  uint64_t grad_push_count_ = 0;
+  // infer mode
+  bool infer_mode_ = false;
 
  protected:
   static bool is_initialized_;

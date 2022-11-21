@@ -42,7 +42,7 @@ limitations under the License. */
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
 #endif
-
+#include "paddle/phi/core/enforce.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
 
 namespace paddle {
@@ -210,6 +210,8 @@ class HashTable {
   void clear(cudaStream_t stream = 0) { container_->clear_async(stream); }
 
   void show_collision(int id) { return container_->print_collision(id); }
+  // infer mode
+  void set_mode(bool infer_mode) { infer_mode_ = infer_mode; }
 
   std::unique_ptr<phi::RWLock> rwlock_{nullptr};
 
@@ -228,6 +230,7 @@ class HashTable {
   size_t max_mf_dim_ = 8;
   size_t pull_feature_value_size_;
   size_t push_grad_value_size_;
+  bool infer_mode_ = false;
 };
 }  // end namespace framework
 }  // end namespace paddle

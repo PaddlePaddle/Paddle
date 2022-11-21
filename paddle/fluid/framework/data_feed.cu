@@ -1565,7 +1565,7 @@ void GraphDataGenerator::SetConfig(
   train_table_cap_ = graph_config.train_table_cap();
   infer_table_cap_ = graph_config.infer_table_cap();
   epoch_finish_ = false;
-  VLOG(0) << "Confirm GraphConfig, walk_degree : " << walk_degree_
+  VLOG(1) << "Confirm GraphConfig, walk_degree : " << walk_degree_
           << ", walk_len : " << walk_len_ << ", window : " << window_
           << ", once_sample_startid_len : " << once_sample_startid_len_
           << ", sample_times_one_chunk : " << repeat_time_

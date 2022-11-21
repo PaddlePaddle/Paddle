@@ -243,7 +243,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
 
   std::string data_set_name = std::string(typeid(*dataset_).name());
 
-  VLOG(0) << "gpu_graph_mode_:" << gpu_graph_mode_;
+  VLOG(1) << "gpu_graph_mode_:" << gpu_graph_mode_;
   if (!gpu_graph_mode_) {
     if (data_set_name.find("SlotRecordDataset") != std::string::npos) {
       VLOG(0) << "ps_gpu_wrapper use SlotRecordDataset";
@@ -341,14 +341,13 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
               << " seconds.";
     }
   } else {
-    VLOG(0) << "PreBuild in GpuGraph mode";
     SlotRecordDataset* dataset = (SlotRecordDataset*)(dataset_);
     const std::vector<uint64_t>& vec_data = dataset->GetGpuGraphTotalKeys();
-    VLOG(0) << "GpuGraphTotalKeys: " << vec_data.size();
     timeline.Start();
     add_key_to_local(vec_data);
     timeline.Pause();
-    VLOG(0) << "add_key_to_local cost " << timeline.ElapsedSec() << " seconds.";
+    VLOG(0) << "GpuGraphTotalKeys: " << vec_data.size()
+        << ", add_key_to_local cost " << timeline.ElapsedSec() << " seconds.";
   }
 
   add_key_to_gputask(gpu_task);
@@ -776,18 +775,20 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
           sleep(300);
           exit(-1);
         } else {
-          VLOG(0) << "FleetWrapper Pull sparse to local done with table size: "
+          VLOG(1) << "FleetWrapper Pull sparse to local done with table size: "
                   << local_dim_keys[i][j].size();
         }
       };
 
   threads.resize(thread_keys_shard_num_ * multi_mf_dim_);
 
+  uint64_t total_key = 0;
   std::vector<std::future<void>> task_futures;
   for (int i = 0; i < thread_keys_shard_num_; i++) {
     for (int j = 0; j < multi_mf_dim_; j++) {
       task_futures.emplace_back(
           pull_thread_pool_[i]->enqueue(ptl_dynamic_mf_func, i, j));
+      total_key += local_dim_keys[i][j].size();
     }
   }
   for (auto& f : task_futures) {
@@ -795,8 +796,8 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   }
   task_futures.clear();
   timeline.Pause();
-  VLOG(0) << "pull sparse from CpuPS into GpuPS cost " << timeline.ElapsedSec()
-          << " seconds.";
+  VLOG(0) << "pull sparse from CpuPS into GpuPS total keys " << total_key
+      << ", cost " << timeline.ElapsedSec() << " seconds.";
   if (multi_node_) {
     auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
     if (!gloo_wrapper->IsInitialized()) {
@@ -1056,11 +1057,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
             << feature_keys_count[i];
     size_max = std::max(size_max, feature_keys_count[i]);
   }
-
-  if (HeterPs_) {
-    delete HeterPs_;
-    HeterPs_ = nullptr;
-  }
   if (size_max <= 0) {
     VLOG(0) << "Skip build gpu ps cause feasign nums = " << size_max;
     return;
@@ -1068,13 +1064,15 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   std::vector<std::thread> threads(device_num);
   auto accessor_wrapper_ptr =
       GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
-  HeterPs_ = HeterPsBase::get_instance(
-      size_max, resource_, fleet_config_, accessor_class_, optimizer_type_);
+  if (HeterPs_ == NULL) {
+    HeterPs_ = HeterPsBase::get_instance(
+        size_max, resource_, fleet_config_, accessor_class_, optimizer_type_);
 #ifdef PADDLE_WITH_CUDA
-  HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_);
-  HeterPs_->set_sparse_sgd(optimizer_config_);
-  HeterPs_->set_embedx_sgd(optimizer_config_);
+    HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_, rank_id_);
+    HeterPs_->set_sparse_sgd(optimizer_config_);
+    HeterPs_->set_embedx_sgd(optimizer_config_);
 #endif
+  }
   stagetime.Pause();
   VLOG(0) << "card: "
           << " BuildGPUTask create HeterPs_ costs: " << stagetime.ElapsedSec()
@@ -1092,7 +1090,6 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     std::shared_ptr<char> build_values(new char[feature_value_size * real_len],
                                        [](char* p) { delete[] p; });
     char* test_build_values = build_values.get();
-
     for (size_t k = start; k < end; k++) {
 #ifdef PADDLE_WITH_PSLIB
       float* val =
@@ -1128,6 +1125,10 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
           val->mf[x] = 0;
         }
       }
+      VLOG(5) << "build " << k << " : "
+              << feature_value_accessor_.ParseToString(
+                     val,
+                     feature_value_accessor_.common_feature_value.Dim(mf_dim));
 #endif
 #ifdef PADDLE_WITH_PSCORE
       void* val =
@@ -1146,8 +1147,11 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     cpu_reday_channels_[i]->Put(task);
   };
 
-  auto build_dymf_hbm_pool = [this, &gpu_task, &accessor_wrapper_ptr](int i) {
+  auto build_dymf_hbm_pool = [this, &gpu_task, &accessor_wrapper_ptr, &feature_keys_count](int i) {
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    // reset table
+    this->HeterPs_->reset_table(i, feature_keys_count[i], optimizer_config_, optimizer_config_, infer_mode_);
+    // insert hbm table
     std::vector<std::thread> threads(multi_mf_dim_);
     for (int j = 0; j < multi_mf_dim_; j++) {
       auto& device_dim_keys = gpu_task->device_dim_keys_[i][j];
@@ -1458,6 +1462,12 @@ void PSGPUWrapper::SparseTableToHbm() {
 }
 
 void PSGPUWrapper::HbmToSparseTable() {
+  // hbm no update not need dump
+  if (grad_push_count_ == 0) {
+    return;
+  }
+  grad_push_count_ = 0;
+
   if (!current_task_) {
     PADDLE_THROW(
         platform::errors::Fatal("[EndPass] current task has been ended."));
@@ -1891,6 +1901,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
                                   const std::vector<int64_t>& slot_lengths,
                                   const int hidden_size,
                                   const int batch_size) {
+  ++grad_push_count_;
   platform::Timer all_timer;
   platform::Timer push_gpups_timer;
   all_timer.Start();
