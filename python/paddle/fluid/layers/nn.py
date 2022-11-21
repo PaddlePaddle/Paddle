@@ -124,7 +124,6 @@ __all__ = [
     'random_crop',
     'mean_iou',
     'relu',
-    'selu',
     'log',
     'crop',
     'crop_tensor',
@@ -9070,78 +9069,6 @@ def relu(x, name=None):
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out}
-    )
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.selu")
-def selu(x, scale=None, alpha=None, name=None):
-    r"""
-
-    Selu Operator.
-
-    The equation is:
-
-    .. math::
-        selu= \\lambda*
-        \\begin{cases}
-            x                      &\\quad \\text{ if } x>0 \n
-            \\alpha * e^x - \\alpha  &\\quad \\text{ if } x<=0
-        \\end{cases}
-
-
-    The input `X` can carry the LoD (Level of Details) information,
-    or not. And the output shares the LoD information with input `X`.
-
-    Args:
-        x (Variable): The input N-D Tensor.
-        scale(float, optional): lambda in selu activation function,
-            the default value is 1.0507009873554804934193349852946.
-            For more information about this value, please refer
-            to: https://arxiv.org/abs/1706.02515.
-        alpha(float, optional): alpha in selu activation function,
-            the default value is 1.6732632423543772848170429916717.
-            For more information about this value, please refer
-            to: https://arxiv.org/abs/1706.02515.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
-
-
-    Returns:
-        Variable(Tensor|LoDTensor): The output Tensor or LoDTensor with the same shape and LoD information as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            import numpy as np
-            paddle.enable_static()
-
-            inputs = fluid.layers.data(name="x", shape=[2, 2], dtype="float32")
-            output = fluid.layers.selu(inputs)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-
-            img = np.array([[0, 1],[2, 3]]).astype(np.float32)
-
-            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-            print(res) # [array([[0.      , 1.050701],[2.101402, 3.152103]], dtype=float32)]
-    """
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'selu')
-
-    helper = LayerHelper('selu', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    attrs = {}
-    if scale is not None:
-        attrs["scale"] = scale
-    if alpha is not None:
-        attrs["alpha"] = alpha
-
-    helper.append_op(
-        type="selu", inputs={"X": x}, outputs={"Out": out}, attrs=attrs
     )
     return out
 
