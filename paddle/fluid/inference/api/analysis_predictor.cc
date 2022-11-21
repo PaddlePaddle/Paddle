@@ -2215,12 +2215,6 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
 }
 
 void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
-  if (config_.enable_memory_optim()) {
-    LOG(WARNING) << "If you want to run output hook function, you should "
-                    "use config.EnableMemoryOptim(false) to turn off memory "
-                    "reuse!";
-    return;
-  }
   static std::once_flag register_hook_flag;
   std::call_once(register_hook_flag, [this] {
     executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
