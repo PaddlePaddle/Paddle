@@ -526,6 +526,19 @@ struct ConvBN : public PatternBase {
   PATTERN_DECL_NODE(bn_saved_variance);
 };
 
+struct LayerNormShiftScale : public PatternBase {
+  LayerNormShiftScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "layer_norm_shift_scale") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(layer_norm_in);
+  PATTERN_DECL_NODE(layer_norm_op);
+  PATTERN_DECL_NODE(layer_norm_bias);
+  PATTERN_DECL_NODE(layer_norm_scale);
+  PATTERN_DECL_NODE(layer_norm_out);
+};
+
 struct OperatorActivation : public PatternBase {
   OperatorActivation(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "operator_activation") {}

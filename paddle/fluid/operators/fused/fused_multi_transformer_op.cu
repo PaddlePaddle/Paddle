@@ -59,13 +59,16 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
     bool compute_bias = qkv_biases.size() > 0 && time_step == nullptr;
     // (transA, transB, compute_bias) = (false, trans_qkvw, false)
+    // Since we fused QKVBias into QKVBiasAddTransposeSplit kernel, here we set
+    // compute_bias as false.
     auto qkv_compute = AttnMatMul<T>(dev_ctx,
                                      false,
                                      trans_qkvw,
                                      bsz_seq,
                                      output_size,
                                      input_size,
-                                     compute_bias);
+                                     /*compute_bias=*/false);
+
     Tensor qkv_out;
     qkv_out.Resize({{bsz, seq_len, 3, num_head, dim_head}});
     auto *qkv_out_data =
@@ -110,10 +113,15 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       out_seq_len += cache_offset;
     }
 
-    Tensor transpose_out_2, qk_out;
-    transpose_out_2.Resize({{3, bsz, num_head, seq_len, dim_head}});
-    auto *transpose_out_2_data =
-        dev_ctx.Alloc<T>(&transpose_out_2, transpose_out_2.numel() * sizeof(T));
+    Tensor q_transpose_out, kv_transpose_out, qk_out;
+    q_transpose_out.Resize({{bsz, num_head, seq_len, dim_head}});
+    auto *q_transpose_out_data =
+        dev_ctx.Alloc<T>(&q_transpose_out, q_transpose_out.numel() * sizeof(T));
+
+    kv_transpose_out.Resize({{2, bsz, num_head, seq_len, dim_head}});
+    auto *kv_transpose_out_data = dev_ctx.Alloc<T>(
+        &kv_transpose_out, kv_transpose_out.numel() * sizeof(T));
+
     qk_out.Resize({{bsz, num_head, seq_len, out_seq_len}});
     auto *qk_out_data = dev_ctx.Alloc<T>(&qk_out, qk_out.numel() * sizeof(T));
 
@@ -305,19 +313,29 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         Tensor *pre_cache_kv_out_tmp =
             cache_offset > 0 ? &pre_cache_kv_out : nullptr;
         Tensor *src_mask_tmp = cache_offset > 0 ? &src_mask_out : nullptr;
-        fmha_compute.ComputeForward(qkv_out,
-                                    pre_cache_kv_tensor,
-                                    src_mask,
-                                    &transpose_out_2,
-                                    pre_cache_kv_out_tmp,
-                                    &qk_out,
-                                    src_mask_tmp,
-                                    &softmax_out,
-                                    &attn_dropout_mask_out,
-                                    &attn_dropout_out,
-                                    &qktv_out,
-                                    &fmha_out);
-
+        qkv_bias_add_transpose_split<T>(dev_ctx,
+                                        q_transpose_out_data,
+                                        kv_transpose_out_data,
+                                        qkv_out_data,
+                                        qkv_bias->data<T>(),
+                                        bsz,
+                                        num_head,
+                                        seq_len,
+                                        dim_head,
+                                        compute_bias);
+        fmha_compute.ComputeForwardWithoutTranspose(qkv_out,
+                                                    pre_cache_kv_tensor,
+                                                    src_mask,
+                                                    &q_transpose_out,
+                                                    &kv_transpose_out,
+                                                    pre_cache_kv_out_tmp,
+                                                    &qk_out,
+                                                    src_mask_tmp,
+                                                    &softmax_out,
+                                                    &attn_dropout_mask_out,
+                                                    &attn_dropout_out,
+                                                    &qktv_out,
+                                                    &fmha_out);
         const T *k_ptr = nullptr;
         const T *v_ptr = nullptr;
 
@@ -329,11 +347,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
           v_ptr = k_ptr + k_size;
         } else {
           // [3, bsz, num_head, seq_len, head_dim]
-          T *qkv_data = transpose_out_2_data;
-          int64_t q_size = bsz * seq_len * num_head * dim_head;
-          int64_t k_size = q_size;
-          const T *q_ptr = qkv_data;
-          k_ptr = q_ptr + q_size;
+          int64_t k_size = bsz * seq_len * num_head * dim_head;
+          const T *q_ptr = q_transpose_out_data;
+          k_ptr = kv_transpose_out_data;
           v_ptr = k_ptr + k_size;
         }
 
@@ -358,18 +374,29 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                           dim_head);
       } else {  // not generation
         // TODO(wangxi): can remove dropout in inference
-        fmha_compute.ComputeForward(qkv_out,
-                                    cache_kv,
-                                    src_mask,
-                                    &transpose_out_2,
-                                    cache_kv_out,
-                                    &qk_out,
-                                    nullptr,
-                                    &softmax_out,
-                                    &attn_dropout_mask_out,
-                                    &attn_dropout_out,
-                                    &qktv_out,
-                                    &fmha_out);
+        qkv_bias_add_transpose_split<T>(dev_ctx,
+                                        q_transpose_out_data,
+                                        kv_transpose_out_data,
+                                        qkv_out_data,
+                                        qkv_bias->data<T>(),
+                                        bsz,
+                                        num_head,
+                                        seq_len,
+                                        dim_head,
+                                        compute_bias);
+        fmha_compute.ComputeForwardWithoutTranspose(qkv_out,
+                                                    cache_kv,
+                                                    src_mask,
+                                                    &q_transpose_out,
+                                                    &kv_transpose_out,
+                                                    cache_kv_out,
+                                                    &qk_out,
+                                                    nullptr,
+                                                    &softmax_out,
+                                                    &attn_dropout_mask_out,
+                                                    &attn_dropout_out,
+                                                    &qktv_out,
+                                                    &fmha_out);
       }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step3";

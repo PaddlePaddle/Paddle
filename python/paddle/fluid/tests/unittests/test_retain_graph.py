@@ -30,7 +30,7 @@ class Generator(fluid.dygraph.Layer):
 
     def forward(self, x):
         x = self.conv1(x)
-        x = fluid.layers.tanh(x)
+        x = paddle.tanh(x)
         return x
 
 

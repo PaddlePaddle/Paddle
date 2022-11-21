@@ -45,14 +45,11 @@ __all__ = [
 def _convert_(name):
     """
     Formatting.
-
     Args:
        name: The name/alias
-
     This function takes in a name and converts it to a standard format of
     group1_group2. Where as per the regular expression, group1 can have
     alphabets and numbers and group2 has capital alphabets.
-
     """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
@@ -80,10 +77,8 @@ def _generate_doc_string_(
 ):
     """
     Generate docstring by OpProto
-
     Args:
         op_proto (framework_pb2.OpProto): a protobuf message typed OpProto
-
     Returns:
         str: the document string
     """
@@ -148,13 +143,10 @@ def _generate_doc_string_(
 
 def generate_layer_fn(op_type):
     """Register the Python layer for an Operator.
-
     Args:
        op_type: The name of the operator to be created.
-
     This function takes in the operator type (sigmoid, mean , average etc) and
     creates the operator functionality.
-
     """
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
     not_intermediate_outputs = [
@@ -271,13 +263,10 @@ def generate_layer_fn(op_type):
 
 def generate_activation_fn(op_type):
     """Register the Python layer for an Operator without Attribute.
-
     Args:
        op_type: The name of the operator to be created.
-
     This function takes in the operator type (sigmoid, exp , tanh etc) and
     creates the operator functionality.
-
     """
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
@@ -330,10 +319,8 @@ def generate_activation_fn(op_type):
 
 def generate_inplace_fn(inplace_op_type):
     """Register the Python layer for an Inplace Operator without Attribute.
-
     Args:
        inplace_op_type: The name of the inplace operator to be created.
-
     This function takes in the inplace operator type (exp_ , ceil_ etc) and
     creates the operator functionality.
     """
@@ -378,12 +365,10 @@ def templatedoc(op_type=None):
     """
     Decorator of layer function. It will use the docstring from the layer
     function as the template. The template arguments are:
-
     * ${comment}: The operator comment written in CPP.
     * ${{name}_comment}: The comment of ${name} written with AddAttr, AddOutput,
         and AddInput. The ${name} is Python snake style. i.e., xxx_xxx.
     * ${{name}_type}: The type of ${name}.
-
     Returns:
         Decorated function.
     """
@@ -438,7 +423,6 @@ def templatedoc(op_type=None):
 def add_sample_code(func, sample_code):
     """
     Append sample code for dynamically generated functions.
-
     Args:
        func: The function of the function to be append sample code to.
        sample_code: sample code session in rst format.
