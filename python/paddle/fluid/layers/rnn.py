@@ -17,6 +17,7 @@ from functools import partial, reduce
 import warnings
 
 import paddle
+import paddle.nn.functional as F
 from paddle.utils import deprecated
 from . import nn
 from . import tensor
@@ -1993,9 +1994,9 @@ class TrainingHelper(DecodeHelper):
         # extend inputs to avoid to slice out of range in `next_inputs`
         # may be easier and have better performance than condition_op
         self.inputs_ = map_structure(
-            lambda x: nn.pad(
+            lambda x: F.pad(
                 x,
-                paddings=([0, 1] + [0, 0] * (len(x.shape) - 1))
+                pad=([0, 1] + [0, 0] * (len(x.shape) - 1))
                 if time_major
                 else ([0, 0, 0, 1] + [0, 0] * (len(x.shape) - 2)),
             ),
