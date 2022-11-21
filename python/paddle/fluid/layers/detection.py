@@ -17,15 +17,13 @@ All layers just related to the detection neural network.
 
 import paddle
 
-from .layer_function_generator import generate_layer_fn
-from .layer_function_generator import autodoc, templatedoc
+from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
 from .. import core
 from .loss import softmax_with_cross_entropy
 from . import tensor
 from . import nn
-from . import ops
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 import math
 import numpy as np
@@ -332,8 +330,8 @@ def retinanet_target_assign(
 
     cls_logits = nn.reshape(x=cls_logits, shape=(-1, num_classes))
     bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
-    predicted_cls_logits = nn.gather(cls_logits, score_index)
-    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
+    predicted_cls_logits = paddle.gather(cls_logits, score_index)
+    predicted_bbox_pred = paddle.gather(bbox_pred, loc_index)
 
     return (
         predicted_cls_logits,
@@ -514,8 +512,8 @@ def rpn_target_assign(
 
     cls_logits = nn.reshape(x=cls_logits, shape=(-1, 1))
     bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
-    predicted_cls_logits = nn.gather(cls_logits, score_index)
-    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
+    predicted_cls_logits = paddle.gather(cls_logits, score_index)
+    predicted_bbox_pred = paddle.gather(bbox_pred, loc_index)
 
     return (
         predicted_cls_logits,

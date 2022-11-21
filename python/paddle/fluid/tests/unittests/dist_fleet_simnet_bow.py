@@ -74,7 +74,7 @@ def get_loss(cos_q_pt, cos_q_nt):
         cos_q_pt,
     )
     loss_op2 = fluid.layers.elementwise_add(loss_op1, cos_q_nt)
-    loss_op3 = fluid.layers.elementwise_max(
+    loss_op3 = paddle.maximum(
         fluid.layers.fill_constant_batch_size_like(
             input=loss_op2, shape=[-1, 1], value=0.0, dtype='float32'
         ),
@@ -130,7 +130,7 @@ def train_network(
     q_emb = fluid.layers.reshape(q_emb, [-1, emb_dim])
     # vsum
     q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
-    q_ss = fluid.layers.softsign(q_sum)
+    q_ss = paddle.nn.functional.softsign(q_sum)
     # fc layer after conv
     q_fc = fluid.layers.fc(
         input=q_ss,
@@ -157,7 +157,7 @@ def train_network(
     pt_emb = fluid.layers.reshape(pt_emb, [-1, emb_dim])
     # vsum
     pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
-    pt_ss = fluid.layers.softsign(pt_sum)
+    pt_ss = paddle.nn.functional.softsign(pt_sum)
     # fc layer
     pt_fc = fluid.layers.fc(
         input=pt_ss,
@@ -181,7 +181,7 @@ def train_network(
     nt_emb = fluid.layers.reshape(nt_emb, [-1, emb_dim])
     # vsum
     nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
-    nt_ss = fluid.layers.softsign(nt_sum)
+    nt_ss = paddle.nn.functional.softsign(nt_sum)
     # fc layer
     nt_fc = fluid.layers.fc(
         input=nt_ss,

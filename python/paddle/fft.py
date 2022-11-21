@@ -521,26 +521,29 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = np.mgrid[:4, :4, :4][1]
-            xp = paddle.to_tensor(x)
-            fftn_xp = paddle.fft.fftn(xp, axes=(1, 2)).numpy()
-            print(fftn_xp)
-            #  [[[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
+            arr = paddle.arange(4, dtype="float64")
+            x = paddle.meshgrid(arr, arr, arr)[1]
+
+            fftn_xp = paddle.fft.fftn(x, axes=(1, 2))
+            print(fftn_xp.numpy())
+            # [[[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]
-            #   [[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
+
+            #  [[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]
-            #   [[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
+
+            #  [[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]
-            #   [[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
+
+            #  [[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]]
@@ -901,15 +904,16 @@ def fft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = np.mgrid[:2, :2][1]
-            xp = paddle.to_tensor(x)
-            fft2_xp = paddle.fft.fft2(xp).numpy()
+            arr = paddle.arange(2, dtype="float64")
+            x = paddle.meshgrid(arr, arr)[0]
+
+            fft2_xp = paddle.fft.fft2(x)
             print(fft2_xp)
-            #  [[ 2.+0.j -2.+0.j]
-            #   [ 0.+0.j  0.+0.j]]
+            # Tensor(shape=[2, 2], dtype=complex128, place=Place(gpu:0), stop_gradient=True,
+            #        [[ (2+0j),  0j    ],
+            #         [(-2+0j),  0j    ]])
 
     """
     _check_at_least_ndim(x, 2)
@@ -971,15 +975,16 @@ def ifft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = np.mgrid[:2, :2][1]
-            xp = paddle.to_tensor(x)
-            ifft2_xp = paddle.fft.ifft2(xp).numpy()
+            arr = paddle.arange(2, dtype="float64")
+            x = paddle.meshgrid(arr, arr)[0]
+
+            ifft2_xp = paddle.fft.ifft2(x)
             print(ifft2_xp)
-            #  [[ 0.5+0.j -0.5+0.j]
-            #   [ 0. +0.j  0. +0.j]]
+            # Tensor(shape=[2, 2], dtype=complex128, place=Place(gpu:0), stop_gradient=True,
+            #        [[ (0.5+0j),  0j      ],
+            #         [(-0.5+0j),  0j      ]])
     """
     _check_at_least_ndim(x, 2)
     if s is not None:
@@ -1033,16 +1038,17 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     .. code-block:: python
 
         import paddle
-        import numpy as np
 
-        x = paddle.to_tensor(np.mgrid[:5, :5][0].astype(np.float32))
-        print(paddle.fft.rfft2(x))
-        # Tensor(shape=[5, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
-        #        [[ (50+0j)                                        ,  (1.1920928955078125e-07+0j)                    ,  0j                                             ],
-        #         [(-12.5+17.204774856567383j)                     , (-9.644234211236835e-08+7.006946134424652e-08j) ,  0j                                             ],
-        #         [(-12.500000953674316+4.061495304107666j)        , (3.6837697336977726e-08-1.1337477445749755e-07j),  0j                                             ],
-        #         [(-12.500000953674316-4.061495304107666j)        , (3.6837697336977726e-08+1.1337477445749755e-07j),  0j                                             ],
-        #         [(-12.5-17.204774856567383j)                     , (-9.644234211236835e-08-7.006946134424652e-08j) ,  0j                                             ]])
+        arr = paddle.arange(5, dtype="float64")
+        x = paddle.meshgrid(arr, arr)[0]
+
+        result = paddle.fft.rfft2(x)
+        print(result.numpy())
+        # [[ 50.  +0.j           0.  +0.j           0.  +0.j        ]
+        #  [-12.5+17.20477401j   0.  +0.j           0.  +0.j        ]
+        #  [-12.5 +4.0614962j    0.  +0.j           0.  +0.j        ]
+        #  [-12.5 -4.0614962j    0.  +0.j           0.  +0.j        ]
+        #  [-12.5-17.20477401j   0.  +0.j           0.  +0.j        ]]
     """
     _check_at_least_ndim(x, 2)
     if s is not None:
@@ -1192,13 +1198,20 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = np.mgrid[:5, :5][0].astype(np.float64)
-            xp = paddle.to_tensor(x)
-            ihfft2_xp = paddle.fft.ihfft2(xp).numpy()
-            print(ihfft2_xp)
+            arr = paddle.arange(5, dtype="float64")
+            x = paddle.meshgrid(arr, arr)[0]
+            print(x)
+            # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [[0., 0., 0., 0., 0.],
+            #         [1., 1., 1., 1., 1.],
+            #         [2., 2., 2., 2., 2.],
+            #         [3., 3., 3., 3., 3.],
+            #         [4., 4., 4., 4., 4.]])
+
+            ihfft2_xp = paddle.fft.ihfft2(x)
+            print(ihfft2_xp.numpy())
             # [[ 2. +0.j          0. +0.j          0. +0.j        ]
             #  [-0.5-0.68819096j  0. +0.j          0. +0.j        ]
             #  [-0.5-0.16245985j  0. +0.j          0. +0.j        ]
@@ -1250,15 +1263,11 @@ def fftfreq(n, d=1.0, dtype=None, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = np.array([3, 1, 2, 2, 3], dtype=float)
             scalar_temp = 0.5
-            n = x.size
-            fftfreq_xp = paddle.fft.fftfreq(n, d=scalar_temp)
+            fftfreq_xp = paddle.fft.fftfreq(5, d=scalar_temp)
             print(fftfreq_xp)
-
             #  Tensor(shape=[5], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #           [ 0.        ,  0.40000001,  0.80000001, -0.80000001, -0.40000001])
     """
@@ -1301,13 +1310,10 @@ def rfftfreq(n, d=1.0, dtype=None, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = np.array([3, 1, 2, 2, 3], dtype=float)
             scalar_temp = 0.3
-            n = x.size
-            rfftfreq_xp = paddle.fft.rfftfreq(n, d=scalar_temp)
+            rfftfreq_xp = paddle.fft.rfftfreq(5, d=scalar_temp)
             print(rfftfreq_xp)
 
             #  Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -1343,15 +1349,17 @@ def fftshift(x, axes=None, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = np.array([3, 1, 2, 2, 3], dtype=float)
-            n = x.size
-            fftfreq_xp = paddle.fft.fftfreq(n, d=0.3)
-            res = paddle.fft.fftshift(fftfreq_xp).numpy()
+            fftfreq_xp = paddle.fft.fftfreq(5, d=0.3)
+            print(fftfreq_xp)
+            # Tensor(shape=[5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [ 0.        ,  0.66666669,  1.33333337, -1.33333337, -0.66666669])
+
+            res = paddle.fft.fftshift(fftfreq_xp)
             print(res)
-            #  [-1.3333334 -0.6666667  0.         0.6666667  1.3333334]
+            # Tensor(shape=[5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-1.33333337, -0.66666669,  0.        ,  0.66666669,  1.33333337])
 
     """
     shape = paddle.shape(x)
@@ -1386,15 +1394,17 @@ def ifftshift(x, axes=None, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = np.array([3, 1, 2, 2, 3], dtype=float)
-            n = x.size
-            fftfreq_xp = paddle.fft.fftfreq(n, d=0.3)
-            res = paddle.fft.ifftshift(fftfreq_xp).numpy()
+            fftfreq_xp = paddle.fft.fftfreq(5, d=0.3)
+            print(fftfreq_xp)
+            # Tensor(shape=[5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [ 0.        ,  0.66666669,  1.33333337, -1.33333337, -0.66666669])
+
+            res = paddle.fft.ifftshift(fftfreq_xp)
             print(res)
-            #  [ 1.3333334 -1.3333334 -0.6666667  0.         0.6666667]
+            # Tensor(shape=[5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [ 1.33333337, -1.33333337, -0.66666669,  0.        ,  0.66666669])
 
     """
     shape = paddle.shape(x)

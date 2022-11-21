@@ -450,7 +450,8 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
             def communicate_avg_loss():
                 communicate()
                 self._generate_avg_loss(main_block, loss, avg_loss)
-                next_local_steps = paddle.cast(
+
+                next_local_steps = layers.cast(
                     paddle.ceil(
                         paddle.sqrt(
                             lr_0

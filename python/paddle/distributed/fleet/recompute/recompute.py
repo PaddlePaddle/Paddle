@@ -403,13 +403,10 @@ def recompute(function, *args, **kwargs):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
             from paddle.distributed.fleet.utils import recompute
             import random
-
             # required: gpu
-
             def get_fc_block(block_idx, input_size, is_last=False):
                 block_name = "block_" + str(block_idx)
                 block = paddle.nn.Sequential(
@@ -431,15 +428,12 @@ def recompute(function, *args, **kwargs):
                         block_name + "_fc_2",
                         paddle.nn.Linear(input_size, input_size, bias_attr=False)
                     )
-
                 return block
-
-
             class Naive_fc_net(paddle.nn.Layer):
                 def __init__(self, input_size=10,
                             recompute_blocks=[1, 3],
                             recompute_kwargs={}):
-                    super().__init__()
+                    super(Naive_fc_net, self).__init__()
                     self.recompute_blocks = recompute_blocks
                     self.recompute_kwargs = recompute_kwargs
                     self.runfunc0 = get_fc_block(0, input_size, is_last=False)
@@ -448,7 +442,6 @@ def recompute(function, *args, **kwargs):
                     self.runfunc3 = get_fc_block(3, input_size, is_last=False)
                     self.runfunc4 = get_fc_block(4, input_size, is_last=True)
                     self.total_func = [self.runfunc0, self.runfunc1, self.runfunc2, self.runfunc3, self.runfunc4]
-
                 def forward(self, inputs):
                     nums = len(self.total_func)
                     for i in range(nums):
@@ -457,15 +450,12 @@ def recompute(function, *args, **kwargs):
                         else:
                             inputs = self.total_func[i](inputs)
                     return inputs
-
             def run_model(cuda_state, recompute_block=[], recompute_kwargs={}):
                 gen = paddle.seed(10)
                 gen.manual_seed(10)
-                np.random.seed(10)
                 random.seed(10)
                 if cuda_state:
                     paddle.set_cuda_rng_state(cuda_state)
-
                 batch_size, input_size = 1, 10
                 model = Naive_fc_net(
                     input_size,
@@ -476,29 +466,24 @@ def recompute(function, *args, **kwargs):
                 param_ = []
                 grad_ = []
                 for _ in range(5):
-                    x_data = np.random.randn(batch_size, input_size).astype(np.float32)
-                    x = paddle.to_tensor(x_data)
+                    x = paddle.rand(shape=[batch_size, input_size], dtype="float32")
                     y_pred = model(x)
                     loss = y_pred.mean()
-                    loss_.append(np.asarray(loss).tolist())
+                    loss_.append(loss.item())
                     loss.backward()
                     optimizer.step()
-                    param_.append(np.asarray(model.parameters()[9]).tolist())
-                    grad_.append(np.asarray(model.parameters()[3]._grad_ivar()).tolist())
+                    param_.append(model.parameters()[9])
+                    grad_.append(model.parameters()[3]._grad_ivar())
                     optimizer.clear_grad()
-
                 return loss_, param_, grad_
-
             cuda_state = paddle.get_cuda_rng_state()
             # without recompute
             loss_ref, param_ref, grad_ref = run_model(
                 cuda_state, recompute_block=[]
             )
-
             loss, param, grad = run_model(cuda_state, recompute_block=[1, 2])
             print("normal_loss: {}, recompute_loss: {}".format(loss_ref, loss))
             # The result of the recompute_loss should be the same as the normal_loss.
-
     """
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
     preserve = kwargs.pop('preserve_rng_state', True)

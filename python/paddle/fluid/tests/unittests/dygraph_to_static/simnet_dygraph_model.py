@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
 
@@ -151,7 +152,7 @@ class ElementwiseMaxLayer:
         """
         operation
         """
-        max = fluid.layers.elementwise_max(x, y)
+        max = paddle.maximum(x, y)
         return max
 
 
@@ -230,7 +231,7 @@ class SoftsignLayer:
         """
         operation
         """
-        softsign = fluid.layers.softsign(input)
+        softsign = paddle.nn.functional.softsign(input)
         return softsign
 
 
