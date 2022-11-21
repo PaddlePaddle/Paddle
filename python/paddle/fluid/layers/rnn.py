@@ -674,8 +674,8 @@ def _rnn_static_graph(
     if not time_major:
         inputs = map_structure(_transpose_batch_time, inputs)
 
+    max_seq_len = nn.shape(flatten(inputs)[0])[0]
     if sequence_length:
-        max_seq_len = nn.shape(flatten(inputs)[0])[0]
         mask = sequence_lod.sequence_mask(
             sequence_length,
             maxlen=max_seq_len,
@@ -686,66 +686,45 @@ def _rnn_static_graph(
         inputs = map_structure(lambda x: tensor.reverse(x, axis=[0]), inputs)
         mask = tensor.reverse(mask, axis=[0]) if sequence_length else None
 
-    # StaticRNN
-    # rnn = control_flow.StaticRNN()
-    # with rnn.step():
-    #     inputs = map_structure(rnn.step_input, inputs)
-    #     states = map_structure(rnn.memory, initial_states)
-    #     copy_states = map_structure(lambda x: x, states)
-    #     outputs, new_states = cell(inputs, copy_states, **kwargs)
-    #     assert_same_structure(states, new_states)
-    #     if sequence_length:
-    #         step_mask = rnn.step_input(mask)
-    #         new_states = map_structure(
-    #             partial(_maybe_copy, step_mask=step_mask), states, new_states
-    #         )
+    with paddle.fluid.framework.device_guard("cpu"):
+        start_i = paddle.zeros([1], dtype="int64")
+        end = max_seq_len
 
-    #     map_structure(rnn.update_memory, states, new_states)
-    #     flat_outputs = flatten(outputs)
-    #     map_structure(rnn.step_output, outputs)
-    #     map_structure(rnn.step_output, new_states)
-
-    # rnn_out = rnn()
-    start_i = paddle.ones([1], dtype="int64")
-    if isinstance(inputs, (list, tuple)):
-        end = paddle.shape(inputs[0])[0]
-    else:
-        end = paddle.shape(inputs)[0]
-
-    end = paddle.cast(end, "int64")
-    cond = start_i < end
-    print(type(cond))
+        end = paddle.cast(end, "int64")
+        cond = start_i < end
     while_op = control_flow.While(cond)
 
-    out_array = control_flow.create_array(dtype="float64")  # change here
+    out_array = control_flow.create_array(dtype=flatten(inputs)[0].dtype)
+
     with while_op.block():
+
         step_in = inputs[start_i]
         outputs, new_states = cell(step_in, initial_states, **kwargs)
+        assert isinstance(outputs, paddle.fluid.framework.Variable)
 
-        for ns, os in zip(new_states, initial_states):
-            paddle.assign(ns, os)
+        assert_same_structure(new_states, initial_states)
+        if sequence_length:
+            step_mask = mask[start_i]
+            new_states = map_structure(
+                partial(_maybe_copy, step_mask=step_mask),
+                initial_states,
+                new_states,
+            )
+        map_structure(paddle.assign, new_states, initial_states)
 
-        paddle.fluid.layers.Print(outputs)
         control_flow.array_write(outputs, start_i, out_array)
 
-        print("outs", outputs)
+        with paddle.fluid.framework.device_guard("cpu"):
+            new_st_i = start_i + 1
+            new_cond = new_st_i < end
+            paddle.assign(new_st_i, start_i)
+            paddle.fluid.layers.less_than(x=new_st_i, y=end, cond=cond)
 
-        new_st_i = start_i + 1
-        new_cond = new_st_i < end
-        paddle.assign(new_st_i, start_i)
-        print(new_st_i.dtype)
-        print(end.dtype)
-        paddle.fluid.layers.less_than(x=new_st_i, y=end, cond=cond)
-
-    print("test", out_array.shape)
-
-    out, _ = paddle.fluid.layers.tensor_array_to_tensor(out_array)
+    out, _ = paddle.fluid.layers.tensor_array_to_tensor(
+        out_array, axis=0, use_stack=True
+    )
     final_outputs = out
-    # final_outputs = rnn_out[: len(flat_outputs)]
-    # final_outputs = pack_sequence_as(outputs, final_outputs)
-    # final_states = map_structure(lambda x: x[-1], rnn_out[len(flat_outputs) :])
     final_states = initial_states
-    # final_states = pack_sequence_as(new_states, final_states)
 
     if is_reverse:
         final_outputs = map_structure(
