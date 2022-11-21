@@ -21,22 +21,24 @@ import sys
 
 print("Testing SSL certificate checking for Python:", sys.version)
 
-if (sys.version_info[:2] < (2, 7) or sys.version_info[:2] < (3, 4)):
+if sys.version_info[:2] < (2, 7) or sys.version_info[:2] < (3, 4):
     print("This version never checks SSL certs; skipping tests")
     sys.exit(0)
 
 if sys.version_info[0] >= 3:
     from urllib.request import urlopen
+
     EXC = OSError
 else:
     from urllib import urlopen
+
     EXC = IOError
 
-print("Connecting to %s should work" % (GOOD_SSL, ))
+print("Connecting to %s should work" % (GOOD_SSL,))
 urlopen(GOOD_SSL)
 print("...it did, yay.")
 
-print("Connecting to %s should fail" % (BAD_SSL, ))
+print("Connecting to %s should fail" % (BAD_SSL,))
 try:
     urlopen(BAD_SSL)
     # If we get here then we failed:

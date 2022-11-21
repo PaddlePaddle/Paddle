@@ -17,7 +17,6 @@ import unittest
 
 
 class StaticShapeInferrenceTest(unittest.TestCase):
-
     def test_static_graph(self):
         paddle.enable_static()
         data = paddle.fluid.layers.data(name="x",

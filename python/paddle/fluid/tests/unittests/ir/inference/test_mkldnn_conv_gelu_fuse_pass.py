@@ -23,7 +23,6 @@ import hypothesis.strategies as st
 
 
 class TestConvGeluMkldnnFusePass(PassAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -39,45 +38,45 @@ class TestConvGeluMkldnnFusePass(PassAutoScanTest):
 
         def generate_input():
             if data_format == "NCHW":
-                return np.random.random([batch_size, 48, 64,
-                                         64]).astype(np.float32)
+                return np.random.random([batch_size, 48, 64, 64]).astype(
+                    np.float32
+                )
             else:
-                return np.random.random([batch_size, 64, 64,
-                                         48]).astype(np.float32)
+                return np.random.random([batch_size, 64, 64, 48]).astype(
+                    np.float32
+                )
 
         def generate_weight():
-            return np.random.random([16, int(48 / groups), 3,
-                                     3]).astype(np.float32)
+            return np.random.random([16, int(48 / groups), 3, 3]).astype(
+                np.float32
+            )
 
-        ops_config = [{
-            "op_type": "conv2d",
-            "op_inputs": {
-                "Input": ["input_data"],
-                "Filter": ["input_weight"]
+        ops_config = [
+            {
+                "op_type": "conv2d",
+                "op_inputs": {
+                    "Input": ["input_data"],
+                    "Filter": ["input_weight"],
+                },
+                "op_outputs": {"Output": ["conv_output"]},
+                "op_attrs": {
+                    "data_format": data_format,
+                    "dilations": dilations,
+                    "padding_algorithm": padding_algorithm,
+                    "groups": groups,
+                    "paddings": paddings,
+                    "strides": strides,
+                },
             },
-            "op_outputs": {
-                "Output": ["conv_output"]
+            {
+                "op_type": "gelu",
+                "op_inputs": {"X": ["conv_output"]},
+                "op_outputs": {"Out": ["gelu_output"]},
+                "op_attrs": {
+                    "approximate": approximate,
+                },
             },
-            "op_attrs": {
-                "data_format": data_format,
-                "dilations": dilations,
-                "padding_algorithm": padding_algorithm,
-                "groups": groups,
-                "paddings": paddings,
-                "strides": strides
-            }
-        }, {
-            "op_type": "gelu",
-            "op_inputs": {
-                "X": ["conv_output"]
-            },
-            "op_outputs": {
-                "Out": ["gelu_output"]
-            },
-            "op_attrs": {
-                "approximate": approximate,
-            },
-        }]
+        ]
 
         ops = self.generate_op_config(ops_config)
 
@@ -89,7 +88,8 @@ class TestConvGeluMkldnnFusePass(PassAutoScanTest):
             inputs={
                 "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
-            outputs=["gelu_output"])
+            outputs=["gelu_output"],
+        )
 
         return program_config
 
@@ -98,8 +98,9 @@ class TestConvGeluMkldnnFusePass(PassAutoScanTest):
         yield config, ["conv2d"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            passes=["conv_activation_mkldnn_fuse_pass"])
+        self.run_and_statis(
+            quant=False, passes=["conv_activation_mkldnn_fuse_pass"]
+        )
 
 
 if __name__ == "__main__":

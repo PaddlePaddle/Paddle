@@ -20,9 +20,8 @@ __all__ = []
 
 
 class ShardingParallel(MetaParallelBase):
-
     def __init__(self, layers, hcg, **kwargs):
-        super(ShardingParallel, self).__init__(layers, hcg, **kwargs)
+        super().__init__(layers, hcg, **kwargs)
 
     def _prepare_for_model(self):
         logger.info("start broadcast sharding parameters")

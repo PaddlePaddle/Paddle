@@ -102,31 +102,40 @@ class VOC2012(Dataset):
                 # <class 'numpy.ndarray'> (281, 500)
     """
 
-    def __init__(self,
-                 data_file=None,
-                 mode='train',
-                 transform=None,
-                 download=True,
-                 backend=None):
-        assert mode.lower() in ['train', 'valid', 'test'], \
-            "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
+    def __init__(
+        self,
+        data_file=None,
+        mode='train',
+        transform=None,
+        download=True,
+        backend=None,
+    ):
+        assert mode.lower() in [
+            'train',
+            'valid',
+            'test',
+        ], "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
 
         if backend is None:
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
                 "Expected backend are one of ['pil', 'cv2'], but got {}".format(
-                    backend))
+                    backend
+                )
+            )
         self.backend = backend
 
         self.flag = MODE_FLAG_MAP[mode.lower()]
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(data_file, VOC_URL,
-                                                        VOC_MD5, CACHE_DIR,
-                                                        download)
+            assert (
+                download
+            ), "data_file is not set and downloading automatically is disabled"
+            self.data_file = _check_exists_and_download(
+                data_file, VOC_URL, VOC_MD5, CACHE_DIR, download
+            )
         self.transform = transform
 
         # read dataset into memory

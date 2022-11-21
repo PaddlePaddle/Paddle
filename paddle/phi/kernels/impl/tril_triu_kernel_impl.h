@@ -39,4 +39,20 @@ void TrilTriuKernel(const Context& ctx,
   for_range(tril_triu_computer);
 }
 
+template <typename T, typename Context>
+void TrilKernel(const Context& ctx,
+                const DenseTensor& x,
+                int diagonal,
+                DenseTensor* out) {
+  TrilTriuKernel<T, Context>(ctx, x, diagonal, true, out);
+}
+
+template <typename T, typename Context>
+void TriuKernel(const Context& ctx,
+                const DenseTensor& x,
+                int diagonal,
+                DenseTensor* out) {
+  TrilTriuKernel<T, Context>(ctx, x, diagonal, false, out);
+}
+
 }  // namespace phi

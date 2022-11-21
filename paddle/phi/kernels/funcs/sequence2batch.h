@@ -16,10 +16,9 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
 namespace funcs {
@@ -27,7 +26,7 @@ namespace funcs {
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = paddle::framework::EigenMatrix<T, MajorType, IndexType>;
+using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 class CopyMatrixRowsFunctor {
@@ -132,7 +131,7 @@ class LoDTensor2BatchFunctor {
     // The max_seqlen represents batch size after rearranging the
     // input LodTensor. It is also the maximum length of input sequence.
 
-    paddle::framework::LoD batch_lods;
+    phi::LoD batch_lods;
     batch_lods.emplace_back(std::vector<size_t>{0});
     batch_lods.emplace_back(std::vector<size_t>{0});
     batch_lods.emplace_back(std::vector<size_t>{0});

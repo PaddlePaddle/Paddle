@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import create_bool_as_type  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.variable_trans_func import (  # noqa: F401
+    create_bool_as_type,
+    to_static_variable,
+)
 
 __all__ = []

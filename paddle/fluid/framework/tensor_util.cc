@@ -57,7 +57,7 @@ void TensorCopyImpl(const TENSOR& src,
   // oneDNN tensors due to padding may be of bigger size
   // than numel()*size(type())
   auto dst_ptr =
-      src.layout() == DataLayout::kMKLDNN
+      src.layout() == DataLayout::ONEDNN
           ? dst->mutable_data(dst_place, src.dtype(), src.memory_size())
           : dst->mutable_data(dst_place, src.dtype());
 #else
@@ -72,7 +72,7 @@ void TensorCopyImpl(const TENSOR& src,
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
 
 #ifdef PADDLE_WITH_MKLDNN
-  auto size = src.layout() == DataLayout::kMKLDNN
+  auto size = src.layout() == DataLayout::ONEDNN
                   ? src.memory_size()
                   : src.numel() * framework::DataTypeSize(src.dtype());
 #else
@@ -471,7 +471,7 @@ void TensorCopySync(const phi::DenseTensor& src,
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
 #ifdef PADDLE_WITH_MKLDNN
-  if (src.layout() == DataLayout::kMKLDNN) {
+  if (src.layout() == DataLayout::ONEDNN) {
     dst->set_mem_desc(src.mem_desc());
   }
 #endif
@@ -1108,6 +1108,48 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
 #endif
 }
 
+void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst) {
+  std::vector<int64_t> vec;
+  std::copy(src->dl_tensor.shape,
+            src->dl_tensor.shape + src->dl_tensor.ndim,
+            std::back_inserter(vec));
+
+  framework::DDim vddim = phi::make_ddim(vec);
+  dst->Resize(vddim);
+  ::DLDataType type = src->dl_tensor.dtype;
+
+  auto src_ptr = static_cast<const void*>(src->dl_tensor.data);
+  auto size = phi::product(vddim) * type.bits / 8;
+
+  if (src->dl_tensor.device.device_type == kDLCPU) {
+    platform::CPUPlace dst_place = platform::CPUPlace();
+    platform::CPUPlace src_place = platform::CPUPlace();
+    void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (src->dl_tensor.device.device_type == kDLGPU) {
+    platform::CUDAPlace dst_place =
+        platform::CUDAPlace(src->dl_tensor.device.device_id);
+    platform::CUDAPlace src_place =
+        platform::CUDAPlace(src->dl_tensor.device.device_id);
+    void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(dst_place);
+    // Fix copy by share allocation.
+    memory::Copy(dst_place,
+                 dst_ptr,
+                 src_place,
+                 src_ptr,
+                 size,
+                 reinterpret_cast<const phi::GPUContext&>(*ctx).stream());
+  }
+#endif
+  src->deleter(const_cast<DLManagedTensor*>(src));
+#ifdef PADDLE_WITH_XPU
+  PADDLE_THROW(platform::errors::Unimplemented("XPUPlace is not supported"));
+#endif
+}
+
 template <typename T>
 std::string format_tensor(const phi::DenseTensor& tensor) {
   // TODO(zhiqiu): use the print option to format tensor.
@@ -1202,11 +1244,6 @@ std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
   os << "  - place: " << t.place() << "\n";
   os << "  - shape: [" << t.dims() << "]\n";
   os << "  - layout: " << phi::DataLayoutToString(t.layout()) << "\n";
-
-#ifdef PADDLE_WITH_MKLDNN
-  os << "  - format: "
-     << dnnl_fmt_tag2str(static_cast<dnnl_format_tag_t>(t.format())) << "\n";
-#endif
 
   DenseTensor tensor;
   tensor.Resize(t.dims());

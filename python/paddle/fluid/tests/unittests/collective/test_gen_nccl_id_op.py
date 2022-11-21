@@ -34,30 +34,35 @@ def run_gen_ncc_id(attr):
 
     with paddle.static.program_guard(main_program, startup_program):
         nccl_id_var = startup_program.global_block().create_var(
-            name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
+            name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW
+        )
 
         for i in range(1, nccl_comm_num):
             startup_program.global_block().create_var(
                 name="NCCLID_{}".format(i),
                 persistable=True,
-                type=core.VarDesc.VarType.RAW)
+                type=core.VarDesc.VarType.RAW,
+            )
 
         if use_hallreduce:
             for i in range(0, nccl_comm_num):
                 startup_program.global_block().create_var(
                     name="Hierarchical_inter_NCCLID_{}".format(i),
                     persistable=True,
-                    type=core.VarDesc.VarType.RAW)
+                    type=core.VarDesc.VarType.RAW,
+                )
                 startup_program.global_block().create_var(
                     name="Hierarchical_exter_NCCLID_{}".format(i),
                     persistable=True,
-                    type=core.VarDesc.VarType.RAW)
+                    type=core.VarDesc.VarType.RAW,
+                )
 
         startup_program.global_block().append_op(
             type="gen_nccl_id",
             inputs={},
             outputs={"NCCLID": nccl_id_var},
-            attrs=attr)
+            attrs=attr,
+        )
 
     place = paddle.CPUPlace()
     exe = paddle.static.Executor(place)
@@ -65,7 +70,6 @@ def run_gen_ncc_id(attr):
 
 
 class TestGenNcclIdOp(unittest.TestCase):
-
     def setUp(self):
         try:
             self._dist_ut_port_0 = int(os.environ["PADDLE_DIST_UT_PORT"])
@@ -98,7 +102,7 @@ class TestGenNcclIdOp(unittest.TestCase):
         for i in range(nranks):
             attr['trainer_id'] = i
             # NOTE: multiprocessing cannot be covered by coverage
-            p = Process(target=run_gen_ncc_id, args=(attr, ))
+            p = Process(target=run_gen_ncc_id, args=(attr,))
             p.start()
             procs.append(p)
 

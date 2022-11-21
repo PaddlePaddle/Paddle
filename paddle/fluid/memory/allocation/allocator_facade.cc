@@ -238,7 +238,7 @@ class AllocatorFacadePrivate {
         // releate to non-default stream (i.e., the stream users pass in). The
         // default stream Allocator is built in the structure of
         // AllocatorFacadePrivate, while the non-default stream is build in a
-        // manner in GetAllocator function with 'create_if_not_found = ture'.
+        // manner in GetAllocator function with 'create_if_not_found = true'.
         // We make special treatment for the default stream for performance
         // reasons. Since most Alloc calls are for default stream in
         // application, treating it separately can avoid lots of overhead of

@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 
 #define MATRIX_SOFTMAX_ALIGN_BYTES 16
 #define MATRIX_SOFTMAX_THREAHOLD 100000
@@ -133,7 +133,7 @@ __device__ __forceinline__ void WarpReduceSum(T* sum) {
 #pragma unroll
     for (int i = 0; i < BatchSize; ++i) {
       T sum_val =
-          paddle::platform::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
+          phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
       sum[i] = sum[i] + sum_val;
     }
   }
@@ -146,7 +146,7 @@ __device__ __forceinline__ void WarpReduceMax(T* sum) {
 #pragma unroll
     for (int i = 0; i < BatchSize; ++i) {
       T max_val =
-          paddle::platform::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
+          phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
       sum[i] = max(sum[i], max_val);
     }
   }
@@ -1063,7 +1063,7 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
   auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                : MIOPEN_SOFTMAX_MODE_CHANNEL;
   auto algo = log_mode ? MIOPEN_SOFTMAX_LOG : MIOPEN_SOFTMAX_ACCURATE;
-  PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::miopenSoftmaxForward_V2(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxForward_V2(
       handle,
       paddle::platform::CudnnDataType<T>::kOne(),
       desc,
@@ -1078,7 +1078,7 @@ void SoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
   auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                : CUDNN_SOFTMAX_MODE_CHANNEL;
   auto algo = log_mode ? CUDNN_SOFTMAX_LOG : CUDNN_SOFTMAX_ACCURATE;
-  PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cudnnSoftmaxForward(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSoftmaxForward(
       handle,
       algo,
       mode,
@@ -1135,25 +1135,24 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
   auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                : MIOPEN_SOFTMAX_MODE_CHANNEL;
   auto algo = log_mode ? MIOPEN_SOFTMAX_LOG : MIOPEN_SOFTMAX_ACCURATE;
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::miopenSoftmaxBackward_V2(
-          handle,
-          paddle::platform::CudnnDataType<T>::kOne(),
-          desc,
-          out_data,
-          desc,
-          dout_data,
-          paddle::platform::CudnnDataType<T>::kZero(),
-          desc,
-          dx_data,
-          algo,
-          mode));
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxBackward_V2(
+      handle,
+      paddle::platform::CudnnDataType<T>::kOne(),
+      desc,
+      out_data,
+      desc,
+      dout_data,
+      paddle::platform::CudnnDataType<T>::kZero(),
+      desc,
+      dx_data,
+      algo,
+      mode));
 #else
   cudnnTensorDescriptor_t desc = scoped_desc.descriptor<T>(layout, tensor_dims);
   auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
                                : CUDNN_SOFTMAX_MODE_CHANNEL;
   auto algo = log_mode ? CUDNN_SOFTMAX_LOG : CUDNN_SOFTMAX_ACCURATE;
-  PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::cudnnSoftmaxBackward(
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSoftmaxBackward(
       handle,
       algo,
       mode,

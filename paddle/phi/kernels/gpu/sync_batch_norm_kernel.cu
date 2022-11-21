@@ -22,17 +22,16 @@ namespace phi {
 template <typename T, typename Context>
 void SyncBatchNormKernel(const Context &ctx,
                          const DenseTensor &x,
-                         const DenseTensor &scale,
-                         const DenseTensor &bias,
                          const DenseTensor &mean,
                          const DenseTensor &variance,
+                         const DenseTensor &scale,
+                         const DenseTensor &bias,
+                         bool is_test,
                          float momentum,
                          float epsilon_f,
                          const std::string &data_layout_str,
-                         bool is_test,
                          bool use_global_stats,
                          bool trainable_statistics,
-                         bool fuse_with_relu,
                          DenseTensor *y,
                          DenseTensor *mean_out,
                          DenseTensor *variance_out,
@@ -102,16 +101,8 @@ void SyncBatchNormKernel(const Context &ctx,
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    int global_gid = 0;
-    ncclComm_t comm = nullptr;
-
-    if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
-            global_gid)) {
-      auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
-          paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
-              global_gid));
-      comm = nccl_pg->NCCLComm(x.place());
-    } else {
+    ncclComm_t comm = static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
+    if (comm == nullptr) {
       comm = ctx.nccl_comm();
     }
 
