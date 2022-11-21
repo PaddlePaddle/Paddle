@@ -28,7 +28,7 @@ __all__ = []
     reason="paddle.incubate.segment_sum will be removed in future",
 )
 def segment_sum(data, segment_ids, name=None):
-    r"""
+    """
     Segment Sum Operator.
 
     This operator sums the elements of input `data` which with
@@ -45,7 +45,7 @@ def segment_sum(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       output (Tensor): the reduced result.
+       Tensor: the reduced result.
 
     Examples:
 
@@ -92,7 +92,7 @@ def segment_sum(data, segment_ids, name=None):
     reason="paddle.incubate.segment_mean will be removed in future",
 )
 def segment_mean(data, segment_ids, name=None):
-    r"""
+    """
     Segment mean Operator.
 
     Ihis operator calculate the mean value of input `data` which
@@ -110,7 +110,7 @@ def segment_mean(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       output (Tensor): the reduced result.
+       Tensor: the reduced result.
 
     Examples:
 
@@ -158,7 +158,7 @@ def segment_mean(data, segment_ids, name=None):
     reason="paddle.incubate.segment_min will be removed in future",
 )
 def segment_min(data, segment_ids, name=None):
-    r"""
+    """
     Segment min operator.
 
     This operator calculate the minimum elements of input `data` which with
@@ -175,7 +175,7 @@ def segment_min(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       output (Tensor): the reduced result.
+       Tensor: the reduced result.
 
     Examples:
 
@@ -224,7 +224,7 @@ def segment_min(data, segment_ids, name=None):
     reason="paddle.incubate.segment_max will be removed in future",
 )
 def segment_max(data, segment_ids, name=None):
-    r"""
+    """
     Segment max operator.
 
     This operator calculate the maximum elements of input `data` which with
@@ -241,7 +241,7 @@ def segment_max(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       output (Tensor): the reduced result.
+       Tensor: the reduced result.
 
     Examples:
 

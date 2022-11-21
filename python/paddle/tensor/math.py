@@ -3437,7 +3437,7 @@ def cumprod(x, dim=None, dtype=None, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, the result of cumprod operator.
+        Tensor: the result of cumprod operator.
 
     Examples:
         .. code-block:: python

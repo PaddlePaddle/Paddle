@@ -861,7 +861,7 @@ def gen_einsum_op(equation, *operands):
 
 
 def einsum(equation, *operands):
-    r"""
+    """
     einsum(equation, *operands)
 
     The current version of this API should be used in dygraph only mode.

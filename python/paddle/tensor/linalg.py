@@ -2020,7 +2020,7 @@ def slogdet(x, name=None):
 
 
 def svd(x, full_matrices=False, name=None):
-    r"""
+    """
     Computes the singular value decomposition of one matrix or a batch of regular matrices.
 
     Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
@@ -2042,7 +2042,7 @@ def svd(x, full_matrices=False, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tuple of 3 tensors: (U, S, VH). VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
+        Tuple of 3 tensors(U, S, VH): VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
 
     Examples:
         .. code-block:: python
