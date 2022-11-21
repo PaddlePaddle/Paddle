@@ -100,7 +100,7 @@ class DGCMomentumOptimizer(Optimizer):
 
         if regularization is not None:
             regular_coeff = regularization._regularization_coeff
-            from paddle.fluid.regularize import L1Decay, L2Decay
+            from paddle.fluid.regularizer import L1Decay, L2Decay
 
             if isinstance(regularization, L1Decay):
                 regular_type = 1
@@ -171,7 +171,7 @@ class DGCMomentumOptimizer(Optimizer):
         if is_new_var:
             helper.set_variable_initializer(
                 counter,
-                initializer=paddle.nn.initializer.Constant(
+                initializer=paddle.fluid.initializer.Constant(
                     value=float(begin - 1), force_cpu=True
                 ),
             )
@@ -194,7 +194,7 @@ class DGCMomentumOptimizer(Optimizer):
         if is_new_var:
             helper.set_variable_initializer(
                 counter,
-                initializer=paddle.nn.initializer.Constant(
+                initializer=paddle.fluid.initializer.Constant(
                     value=float(value), force_cpu=True
                 ),
             )
