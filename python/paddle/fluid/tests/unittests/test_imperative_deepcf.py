@@ -122,7 +122,7 @@ class DeepCF(fluid.Layer):
 
         users_emb = paddle.gather(self._rating_matrix, users)
         items_emb = paddle.gather(
-            fluid.layers.transpose(self._rating_matrix, [1, 0]), items
+            paddle.transpose(self._rating_matrix, [1, 0]), items
         )
         users_emb.stop_gradient = True
         items_emb.stop_gradient = True
