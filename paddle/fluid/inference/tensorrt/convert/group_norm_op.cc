@@ -34,7 +34,7 @@ class GroupNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid group_norm op";
+    VLOG(4) << "convert a fluid group_norm op to tensorrt group_norm plugin";
 
     framework::OpDesc op_desc(op, nullptr);
 
@@ -65,6 +65,7 @@ class GroupNormOpConverter : public OpConverter {
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
     if (engine_->with_dynamic_shape()) {
+      std::cout<<"@@in convert group norm, with fp16:"<<with_fp16<<std::endl;
       int gn_num = groups;
       std::vector<int64_t> mean_shape({gn_num});
       std::vector<int64_t> variance_shape({gn_num});
@@ -85,6 +86,7 @@ class GroupNormOpConverter : public OpConverter {
       RreplenishLayerAndOutput(
           groupnorm_layer, "group_norm", {output_name}, test_mode);
     } else {
+      std::cout<<"@@ in convert group norm, with fp16:"<<with_fp16<<std::endl;
       int gn_num = input_itensor->getDimensions().d[0] * groups;
       std::vector<int64_t> mean_shape({gn_num});
       std::vector<int64_t> variance_shape({gn_num});
