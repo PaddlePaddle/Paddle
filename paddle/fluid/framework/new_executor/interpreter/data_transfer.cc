@@ -184,32 +184,30 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
     (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
   }
 
-  // NOTE(winter-wang): in npu device, D2H kernel is asynchronous. need to
-  // explicit synchronization.
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (op_type == kMemcpyD2H && platform::is_npu_place(dev_ctx->GetPlace())) {
-    dev_ctx->Wait();
-  }
-#endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (op_type == kMemcpyD2H && platform::is_custom_place(dev_ctx->GetPlace())) {
-    dev_ctx->Wait();
-  }
-#endif
+  const phi::Place& place = dev_ctx->GetPlace();
 
-  if (platform::is_gpu_place(dev_ctx->GetPlace())) {
-    // MemcpyD2H is synchronous, see
+  // NOTE(winter-wang): in npu and custom device, D2H kernel is asynchronous.
+  // need to explicit synchronization.
+  if ((platform::is_npu_place(place) || platform::is_custom_place(place)) &&
+      op_type == kMemcpyD2H) {
+    dev_ctx->Wait();
+  }
+
+  if (platform::is_cpu_place(place)) {
+    new_op_func_node.type_ = OpFuncType::kCpuSync;
+  } else if (platform::is_gpu_place(place)) {
+    // MemcpyD2H in gpu is synchronous, see
     // https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html#api-sync-behavior__memcpy-async
     // for more detial.
-    if (op_type == kMemcpyD2H) {
-      new_op_func_node.type_ = OpFuncType::kGpuSync;
-    } else {
-      new_op_func_node.type_ = OpFuncType::kGpuAsync;
-    }
+    new_op_func_node.type_ =
+        (op_type == kMemcpyD2H ? OpFuncType::kGpuSync : OpFuncType::kGpuAsync);
+  } else if (platform::is_xpu_place(place)) {
+    // Memcpy in xpu is synchronous
+    new_op_func_node.type_ = OpFuncType::kGpuSync;
   } else {
-    new_op_func_node.type_ = OpFuncType::kCpuSync;
+    // Memcpy in npu and custom devices is asynchronous
+    new_op_func_node.type_ = OpFuncType::kGpuAsync;
   }
-
   new_op_func_node.dev_ctx_ = dev_ctx;
   new_op_func_node.operator_base_ = op;
   VLOG(3) << "Run " << op_type << " done.";
