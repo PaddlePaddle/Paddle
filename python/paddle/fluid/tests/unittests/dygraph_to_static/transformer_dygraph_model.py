@@ -14,6 +14,7 @@
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.dygraph import (
@@ -876,8 +877,8 @@ class Transformer(Layer):
             if layers.reduce_all(finished).numpy():
                 break
 
-        predict_ids = layers.stack(predict_ids, axis=0)
-        parent_ids = layers.stack(parent_ids, axis=0)
+        predict_ids = paddle.stack(predict_ids, axis=0)
+        parent_ids = paddle.stack(parent_ids, axis=0)
         finished_seq = paddle.transpose(
             layers.gather_tree(predict_ids, parent_ids), [1, 2, 0]
         )
