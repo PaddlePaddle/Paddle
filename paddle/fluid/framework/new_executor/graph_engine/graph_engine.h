@@ -80,7 +80,7 @@ class CustomGraphEngine final : public GraphEngine {
       auto* feed_list = feed_var->GetMutable<framework::FeedList>();
       VLOG(10) << "feed_list: " << feed_list << ", size=" << feed_list->size();
       for (size_t i = 0; i < feed_list->size(); ++i) {
-        VLOG(10) << "feed var " << i << " " << var_name;
+        VLOG(10) << "feed var " << i << " " << feed_names[i];
         auto var_name = feed_names[i];
         auto var_dims = paddle::get<0>(feed_list->at(i)).dims();
         oss << var_name << ":" << var_dims << ",";
