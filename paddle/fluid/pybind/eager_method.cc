@@ -1462,7 +1462,7 @@ static PyObject* tensor_method_set_string_list(TensorObject* self,
                                                PyObject* kwargs) {
   EAGER_TRY
   using Strings = std::vector<std::string>;
-  auto strings = CastPyArg2Strings(PyTuple_GET_ITEM(args, 0), 0);
+  auto strings = CastPyArg2VectorOfString(PyTuple_GET_ITEM(args, 0), 0);
   auto var_tensor = std::make_shared<egr::VariableCompatTensor>();
   *var_tensor->GetMutable<Strings>() = strings;
   self->tensor.set_impl(var_tensor);

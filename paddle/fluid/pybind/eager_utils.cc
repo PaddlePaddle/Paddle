@@ -289,6 +289,9 @@ std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
     }
   } else if (obj == Py_None) {
     return {};
+  } else if (PyObject_IsInstance(obj,
+                                 reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return {reinterpret_cast<TensorObject*>(obj)->tensor};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -335,6 +338,8 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
     }
   } else if (obj == Py_None) {
     return {};
+  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return {static_cast<int>(PyLong_AsLong(obj))};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -363,10 +368,30 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
             i));
       }
     }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GET_ITEM(obj, i);
+      if (PyObject_CheckLongOrConvertToLong(&item)) {
+        result.emplace_back(PyLong_AsSize_t(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of size_t, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (obj == Py_None) {
+    return {};
+  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return {PyLong_AsSize_t(obj)};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
-        "list, but got %s",
+        "list of size_t, but got %s",
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
@@ -487,6 +512,9 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
     }
   } else if (obj == Py_None) {
     return {};
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+    return {::pybind11::handle(obj).cast<phi::DenseTensor>()};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -527,7 +555,8 @@ std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
   }
 }
 
-std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos) {
+std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
+                                                  ssize_t arg_pos) {
   if (PyList_Check(obj)) {
     return ::pybind11::handle(obj).cast<std::vector<std::string>>();
   } else {
