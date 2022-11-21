@@ -4064,16 +4064,6 @@ class TestBook(LayerTest):
             loss = layers.kldiv_loss(x=x, target=target, reduction='batchmean')
             return loss
 
-    def make_temporal_shift(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[16, 4, 4], dtype="float32")
-            out = paddle.nn.functional.temporal_shift(
-                x, seg_num=2, shift_ratio=0.2
-            )
-            return out
-
     def make_shuffle_channel(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
