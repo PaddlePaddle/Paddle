@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-
 import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
 
@@ -232,7 +231,7 @@ class SoftsignLayer:
         """
         operation
         """
-        softsign = fluid.layers.softsign(input)
+        softsign = paddle.nn.functional.softsign(input)
         return softsign
 
 

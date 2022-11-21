@@ -72,7 +72,7 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
 
 
 def distributed_optimizer(*args, **kwargs):
-    if paddle.fluid.framework._non_static_mode():
+    if paddle.framework._non_static_mode():
         return _dygraph_distributed_optimizer(*args, **kwargs)
     else:
         return fleet.fleet.distributed_optimizer(*args, **kwargs)
