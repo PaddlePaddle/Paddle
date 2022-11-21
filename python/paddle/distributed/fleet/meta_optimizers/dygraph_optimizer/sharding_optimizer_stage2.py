@@ -28,7 +28,7 @@ from collections import OrderedDict
 
 import paddle
 import paddle.distributed as dist
-from paddle.fluid import core
+from paddle.framework import core
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.distributed.collective import (

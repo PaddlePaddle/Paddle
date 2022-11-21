@@ -16,13 +16,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void Pad2DConstNCHW(const int nthreads,
@@ -257,9 +257,8 @@ __global__ void Pad2DGradReflectNCHW(const int out_size,
     in_w = max(in_w, -in_w);
     in_h = min(in_h, 2 * in_height - in_h - 2);
     in_w = min(in_w, 2 * in_width - in_w - 2);
-    platform::CudaAtomicAdd(
-        &d_in_data[(nc * in_height + in_h) * in_width + in_w],
-        d_out_data[out_index]);
+    phi::CudaAtomicAdd(&d_in_data[(nc * in_height + in_h) * in_width + in_w],
+                       d_out_data[out_index]);
   }
 }
 
@@ -288,7 +287,7 @@ __global__ void Pad2DGradReflectNHWC(const int out_size,
     in_w = max(in_w, -in_w);
     in_h = min(in_h, in_height * 2 - in_h - 2);
     in_w = min(in_w, in_width * 2 - in_w - 2);
-    platform::CudaAtomicAdd(
+    phi::CudaAtomicAdd(
         &d_in_data[((n * in_height + in_h) * in_width + in_w) * channels + c],
         d_out_data[out_index]);
   }
@@ -313,9 +312,8 @@ __global__ void Pad2DGradEdgeNCHW(const int out_size,
     nc /= out_height;
     const int in_h = min(in_height - 1, max(out_h - pad_top, 0));
     const int in_w = min(in_width - 1, max(out_w - pad_left, 0));
-    platform::CudaAtomicAdd(
-        &d_in_data[(nc * in_height + in_h) * in_width + in_w],
-        d_out_data[out_index]);
+    phi::CudaAtomicAdd(&d_in_data[(nc * in_height + in_h) * in_width + in_w],
+                       d_out_data[out_index]);
   }
 }
 
@@ -340,7 +338,7 @@ __global__ void Pad2DGradEdgeNHWC(const int out_size,
     n /= out_height;
     const int in_h = min(in_height - 1, max(out_h - pad_top, 0));
     const int in_w = min(in_width - 1, max(out_w - pad_left, 0));
-    platform::CudaAtomicAdd(
+    phi::CudaAtomicAdd(
         &d_in_data[((n * in_height + in_h) * in_width + in_w) * channels + c],
         d_out_data[out_index]);
   }
