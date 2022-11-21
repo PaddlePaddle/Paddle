@@ -32,14 +32,14 @@ bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
     return false;
   }
 
-  auto data_type = op->inputs[0]->Var()->GetDataType();
   auto it = all_kernels.find(op_type);
   if (it != all_kernels.end()) {
     for (auto& kernel_pair : it->second) {
       if (platform::is_cpu_place(kernel_pair.first.place_) &&
-          (kernel_pair.first.library_type_ == LibraryType::kMKLDNN) &&
-          kernel_pair.first.data_type_ == data_type) {
-        return true;
+          (kernel_pair.first.library_type_ == LibraryType::kMKLDNN)) {
+        if (op->inputs.size() > 0 && op->inputs[0]->IsVar() &&
+            kernel_pair.first.data_type_ == op->inputs[0]->Var()->GetDataType())
+          return true;
       }
     }
   }
@@ -48,13 +48,13 @@ bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
       phi::TransToPhiKernelName(op_type));
 
   for (auto& kernel_pair : phi_kernels) {
-    if ((kernel_pair.first.backend() == phi::Backend::ONEDNN) &&
-        (kernel_pair.first.dtype() ==
-         framework::TransToPhiDataType(data_type))) {
-      return true;
+    if (kernel_pair.first.backend() == phi::Backend::ONEDNN) {
+      if (op->inputs.size() > 0 && op->inputs[0]->IsVar() &&
+          kernel_pair.first.dtype() == framework::TransToPhiDataType(
+                                           op->inputs[0]->Var()->GetDataType()))
+        return true;
     }
   }
-
   return false;
 }
 
