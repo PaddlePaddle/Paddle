@@ -36,7 +36,6 @@ from paddle.fluid.layers import (
 from paddle.fluid.layers import (
     cast,
     control_flow,
-    logical_and,
     logical_not,
     logical_or,
     nn,
@@ -235,7 +234,7 @@ def convert_logical_and(x_func, y_func):
 def _run_paddle_logical_and(x, y):
     x = cast_bool_if_necessary(x)
     y = cast_bool_if_necessary(y)
-    return logical_and(x, y)
+    return paddle.logical_and(x, y)
 
 
 def _run_py_logical_and(x_func, y_func):

@@ -26,6 +26,7 @@ from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from predictor_utils import PredictorTools
+import paddle
 
 SEED = 2000
 DATATYPE = 'float32'
@@ -359,9 +360,9 @@ def bmn_loss_func(
         gt_iou_map = fluid.layers.elementwise_mul(gt_iou_map, mask)
 
         u_hmask = fluid.layers.cast(x=gt_iou_map > 0.7, dtype=DATATYPE)
-        u_mmask = fluid.layers.logical_and(gt_iou_map <= 0.7, gt_iou_map > 0.3)
+        u_mmask = paddle.logical_and(gt_iou_map <= 0.7, gt_iou_map > 0.3)
         u_mmask = fluid.layers.cast(x=u_mmask, dtype=DATATYPE)
-        u_lmask = fluid.layers.logical_and(gt_iou_map <= 0.3, gt_iou_map >= 0.0)
+        u_lmask = paddle.logical_and(gt_iou_map <= 0.3, gt_iou_map >= 0.0)
         u_lmask = fluid.layers.cast(x=u_lmask, dtype=DATATYPE)
         u_lmask = fluid.layers.elementwise_mul(u_lmask, mask)
 

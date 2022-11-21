@@ -26,6 +26,7 @@ import tarfile
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
+import paddle
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
@@ -1861,7 +1862,7 @@ def fast_decode(
                 layers.assign(pre_caches[i]["v"], caches[i]["v"])
             length_cond = layers.less_than(x=step_idx, y=max_len)
             finish_cond = layers.logical_not(layers.is_empty(x=selected_ids))
-            layers.logical_and(x=length_cond, y=finish_cond, out=cond)
+            paddle.logical_and(x=length_cond, y=finish_cond, out=cond)
 
         finished_ids, finished_scores = layers.beam_search_decode(
             ids, scores, beam_size=beam_size, end_id=eos_idx
