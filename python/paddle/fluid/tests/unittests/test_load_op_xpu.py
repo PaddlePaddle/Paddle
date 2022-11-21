@@ -47,7 +47,7 @@ class TestLoadOpXpu(unittest.TestCase):
             )
         exe = fluid.Executor(fluid.XPUPlace(0))
         exe.run(start_prog)
-        fluid.io.save_persistables(
+        paddle.distributed.io.save_persistables(
             exe, dirname=self.model_path, main_program=main_prog
         )
 

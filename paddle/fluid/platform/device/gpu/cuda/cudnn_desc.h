@@ -40,12 +40,13 @@ inline cudnnDataType_t ToCudnnDataType(const T& t) {
   return ToCudnnDataType(type);
 }
 
-inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {
-  std::vector<int> transformed_dims(dims.begin(), dims.end());
+template <typename T>
+inline std::vector<T> TransformDimOrder(const std::vector<T>& dims) {
+  std::vector<T> transformed_dims(dims.begin(), dims.end());
   if (dims.size() < 4) {
     return transformed_dims;
   }
-  int H, W, D, C;
+  T H, W, D, C;
   if (dims.size() == 4) {
     H = dims[1];
     W = dims[2];
