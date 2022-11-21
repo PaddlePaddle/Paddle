@@ -20,8 +20,6 @@ limitations under the License. */
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/kernels/funcs/eigen/extensions.h"
-
 namespace phi {
 
 // Here we can't depend on the fluid proto::VarType, so we use the dtype enum
