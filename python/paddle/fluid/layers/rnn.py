@@ -17,6 +17,7 @@ from functools import partial, reduce
 import warnings
 
 import paddle
+import paddle.nn.functional as F
 from paddle.utils import deprecated
 from . import nn
 from . import tensor
@@ -1307,7 +1308,7 @@ class BeamSearchDecoder(Decoder):
                 self.noend_mask_tensor, "float64"
             )
 
-        step_log_probs = nn.log(nn.softmax(logits))
+        step_log_probs = F.log(nn.softmax(logits))
         step_log_probs = self._mask_probs(step_log_probs, beam_state.finished)
         log_probs = nn.elementwise_add(
             x=step_log_probs, y=beam_state.log_probs, axis=0

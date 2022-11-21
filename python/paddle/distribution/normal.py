@@ -26,6 +26,7 @@ from paddle.fluid.layers import (
     ops,
     tensor,
 )
+import paddle.nn.functional as F
 
 try:
     from collections.abc import Iterable
@@ -248,7 +249,7 @@ class Normal(distribution.Distribution):
         )
         return elementwise_add(
             0.5 + zero_tmp,
-            0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp)),
+            0.5 * math.log(2 * math.pi) + F.log((self.scale + zero_tmp)),
             name=name,
         )
 
@@ -266,7 +267,7 @@ class Normal(distribution.Distribution):
         value = self._check_values_dtype_in_probs(self.loc, value)
 
         var = self.scale * self.scale
-        log_scale = nn.log(self.scale)
+        log_scale = F.log(self.scale)
         return elementwise_sub(
             -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var),
             log_scale + math.log(math.sqrt(2.0 * math.pi)),
@@ -337,5 +338,5 @@ class Normal(distribution.Distribution):
         t1 = (self.loc - other.loc) / other.scale
         t1 = t1 * t1
         return elementwise_add(
-            0.5 * var_ratio, 0.5 * (t1 - 1.0 - nn.log(var_ratio)), name=name
+            0.5 * var_ratio, 0.5 * (t1 - 1.0 - F.log(var_ratio)), name=name
         )
