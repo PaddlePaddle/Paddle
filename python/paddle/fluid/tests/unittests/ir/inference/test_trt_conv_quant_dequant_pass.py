@@ -237,7 +237,7 @@ class QuantDequantTensorRTSubgraphPassConvTransposeTest(QuantDequantTest):
             data_reshape = fluid.layers.reshape(self.data, shape=[1, 4, 14, 14])
             self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
             label_shape = fluid.layers.reshape(self.label, shape=[1, 1, 1])
-            conv_out = fluid.layers.conv2d_transpose(
+            conv_out = paddle.static.nn.conv2d_transpose(
                 input=data_reshape,
                 num_filters=self.conv_num_filters,
                 filter_size=self.conv_filter_size,
