@@ -26,26 +26,32 @@ void SiluFusePass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
-  
+
   auto* sigmoid_in = gpd.mutable_pattern()->NewNode("sigmoid_in");
-  auto sigmoid_op = gpd.mutable_pattern()->NewNode("sigmoid_op")->assert_is_op("sigmoid");
-  auto sigmoid_out = gpd.mutable_pattern()->NewNode("sigmoid_out")
-                      ->assert_is_op_output("sigmoid")
-                      ->AsIntermediate();
-  auto elementwise_mul_op = gpd.mutable_pattern()->NewNode("elementwise_mul_op")->assert_is_op("elementwise_mul");
-  
-  auto elementwise_mul_out = gpd.mutable_pattern()->NewNode("elementwise_mul_out") ->assert_is_op_output("elementwise_mul")->AsOutput();
+  auto sigmoid_op =
+      gpd.mutable_pattern()->NewNode("sigmoid_op")->assert_is_op("sigmoid");
+  auto sigmoid_out = gpd.mutable_pattern()
+                         ->NewNode("sigmoid_out")
+                         ->assert_is_op_output("sigmoid")
+                         ->AsIntermediate();
+  auto elementwise_mul_op = gpd.mutable_pattern()
+                                ->NewNode("elementwise_mul_op")
+                                ->assert_is_op("elementwise_mul");
+
+  auto elementwise_mul_out = gpd.mutable_pattern()
+                                 ->NewNode("elementwise_mul_out")
+                                 ->assert_is_op_output("elementwise_mul")
+                                 ->AsOutput();
 
   sigmoid_op->LinksFrom({sigmoid_in}).LinksTo({sigmoid_out});
   elementwise_mul_op->LinksFrom({sigmoid_in, sigmoid_out})
       .LinksTo({elementwise_mul_out});
 
-
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     Node* sigmoid_in_node = subgraph.at(sigmoid_in);
     Node* sigmoid_op_node = subgraph.at(sigmoid_op);
-    //Node* sigmoid_out_node = subgraph.at(sigmoid_out);
+    // Node* sigmoid_out_node = subgraph.at(sigmoid_out);
     Node* elementwise_mul_op_node = subgraph.at(elementwise_mul_op);
     Node* elementwise_mul_out_node = subgraph.at(elementwise_mul_out);
 
@@ -55,7 +61,7 @@ void SiluFusePass::ApplyImpl(ir::Graph* graph) const {
     new_desc.SetOutput("Out", {elementwise_mul_out_node->Name()});
     new_desc.Flush();
 
-    std::unordered_set<const Node *> del_node_set;
+    std::unordered_set<const Node*> del_node_set;
     del_node_set.insert(sigmoid_op_node);
     del_node_set.insert(elementwise_mul_op_node);
     GraphSafeRemoveNodes(graph, del_node_set);
@@ -63,7 +69,6 @@ void SiluFusePass::ApplyImpl(ir::Graph* graph) const {
     auto fused_node = graph->CreateOpNode(&new_desc);
     IR_NODE_LINK_TO(sigmoid_in_node, fused_node);
     IR_NODE_LINK_TO(fused_node, elementwise_mul_out_node);
-
   };
   gpd(graph, handler);
 }
