@@ -882,7 +882,7 @@ def monkey_patch_varbase():
 
     @framework.dygraph_only
     def _set_use_cudnn(self, use_cudnn=True):
-        self._tensor_set_use_cudnn(use_cudnn)
+        return self._tensor_set_use_cudnn(use_cudnn)
 
     @framework.dygraph_only
     def _uva(self, device_id=0):

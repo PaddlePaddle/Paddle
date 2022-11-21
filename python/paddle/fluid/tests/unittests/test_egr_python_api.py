@@ -902,13 +902,15 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         with _test_eager_guard():
             self.assertTrue(in_dygraph_mode())
             x = paddle.to_tensor(np_x, dtype="float64")
-            x._set_use_cudnn(False)
-            x._set_use_cudnn(True)
+            y = x._set_use_cudnn(False)
+            np.testing.assert_array_equal(x.numpy(), y.numpy())
+            y = x._set_use_cudnn(True)
+            np.testing.assert_array_equal(x.numpy(), y.numpy())
 
         self.assertFalse(in_dygraph_mode())
         x = paddle.to_tensor(np_x, dtype="float64")
         with self.assertRaises(AttributeError):
-            x._set_use_cudnn(False)
+            x = x._set_use_cudnn(False)
 
 
 class EagerParamBaseUsageTestCase(unittest.TestCase):

@@ -1455,12 +1455,22 @@ static PyObject* tensor__set_use_cudnn(TensorObject* self,
           "function _set_use_cudnn is only effective for DenseTensor"));
 
   bool use_cudnn = pybind::CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
-  phi::DenseTensorMeta* dense_tensor_meta =
-      phi::DenseTensorUtils::GetMutableMeta(
-          static_cast<phi::DenseTensor*>(self->tensor.impl().get()));
-  dense_tensor_meta->use_cudnn = use_cudnn;
 
-  RETURN_PY_NONE
+  phi::DenseTensor* dense_tensor =
+      static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  phi::DenseTensorMeta target_dense_meta =
+      *(phi::DenseTensorUtils::GetMutableMeta(dense_tensor));
+  target_dense_meta.use_cudnn = use_cudnn;
+  // Share all other members of Tensor except use_cudnn
+  phi::DenseTensor target_dense_tensor;
+  target_dense_tensor.ShareDataWith(*dense_tensor);
+  target_dense_tensor.set_meta(target_dense_meta);
+  paddle::experimental::Tensor target_tensor(
+      std::make_shared<phi::DenseTensor>(target_dense_tensor),
+      self->tensor.name());
+  target_tensor.set_autograd_meta(self->tensor.mutable_autograd_meta());
+
+  return ToPyObject(target_tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
