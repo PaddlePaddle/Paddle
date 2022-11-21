@@ -244,24 +244,10 @@ class ProcessGroup {
         "ProcessGroup%s does not support send", GetBackendName()));
   }
 
-  virtual std::shared_ptr<ProcessGroup::Task> Send(
-      std::vector<phi::DenseTensor>&, int, bool) {  // NOLINT
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support send with sync_op flag",
-        GetBackendName()));
-  }
-
   virtual std::shared_ptr<ProcessGroup::Task> Recv(
       std::vector<phi::DenseTensor>&, int) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support recv", GetBackendName()));
-  }
-
-  virtual std::shared_ptr<ProcessGroup::Task> Recv(
-      std::vector<phi::DenseTensor>&, int, bool) {  // NOLINT
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support recv with sync_op flag",
-        GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
@@ -285,14 +271,6 @@ class ProcessGroup {
       std::vector<phi::DenseTensor>&) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support AllToAll", GetBackendName()));
-  }
-
-  virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      bool) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support alltoall", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(

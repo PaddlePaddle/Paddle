@@ -179,29 +179,6 @@ class ProcessGroupStream : public ProcessGroup {
                                                    int64_t numel,
                                                    bool sync_op,
                                                    bool use_calc_stream);
-
-  // TODO(sunyilun): methods below will be removed later
-  std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-      bool sync_op) override;
-
-  virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
-      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-      bool sync_op,
-      bool use_calc_stream);
-
-  std::shared_ptr<ProcessGroup::Task> Recv(
-      std::vector<phi::DenseTensor>& tensors,  // NOLINT
-      int src_rank,
-      bool sync_op) override;
-
-  virtual std::shared_ptr<ProcessGroup::Task> Recv(
-      std::vector<phi::DenseTensor>& tensors,  // NOLINT
-      int src_rank,
-      bool sync_op,
-      bool use_calc_stream);
 };
 
 }  // namespace distributed
