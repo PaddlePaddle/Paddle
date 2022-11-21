@@ -2628,10 +2628,6 @@ class QuantizationTransformPassV2(QuantizationTransformPass):
         if self._is_test is None:
             self._is_test = graph.is_test()
 
-        self.persistable_vars = [
-            p.name() for p in graph.all_persistable_nodes()
-        ]
-
         ops = graph.all_op_nodes()
         # Do the preproccess of quantization, such as skipping some ops
         # for not being quantized.
