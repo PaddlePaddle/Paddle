@@ -846,6 +846,23 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
 }
 
+// Note(zhangbo):
+// (1) What is "Trace"?
+// The OP execute scheduling rule adopted by Interpretercore by default is a
+// multi-threaded scheduling mode(see ExecuteInstructionList). By maintaining a
+// high-performance thread pool, the OP's execute scheduling is distributed to
+// the sub threads maintained by the thread pool, but the main thread does not
+// have any tasks. In Trace mode, the executor will execute directly in the main
+// thread according to the pre provided OP sequence(trace_execute_order_),
+// instead of being distributed to the thread pool.
+// (2) When we use "Trace"?
+// In dygraph to static, This scheduling causes that the execution of the
+// forward and backward OPs and the execution of the dygraph optimizer cannot be
+// executed in the same thread. Executing thread switch may cause cpu cache
+// miss. When a model is all KQueueAsync type OPs, all OPs will be distributed
+// to the DeviceThread for execution, and the multithreading scheduling will not
+// have any benefits. Therefore, in the dynamic to static, when the number of
+// KQueueAsync Ops is 0, we choose Trace mode.
 void InterpreterCore::TraceInstructionList(
     const std::vector<Instruction>& vec_instr) {
   unfinished_op_number_ = vec_instr.size();
@@ -1238,6 +1255,12 @@ void InterpreterCore::UpdateSyncOpNum() {
   VLOG(4) << "Update sync op num, sync op num is: " << sync_op_num_;
 }
 
+// Note(zhangbo):
+// When there is a KQueueSync type OP in the model, breadth traversal is better
+// than depth traversal. For example: OP(O) ->(direct_run)-> OP(A)
+// ->(sync_run)-> OP(B) OP(O) ->(direct_run)-> OP(C) ->(direct_run)-> OP(D) If B
+// is run before C, B may always block to wait for A to finish executing, but in
+// fact, C can be executed first during this time.
 void InterpreterCore::AnalyseTraceExecuteOrder() {
   VLOG(4) << "Analyze the execution order of Trace scheduling mode.";
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
