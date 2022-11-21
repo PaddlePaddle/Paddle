@@ -1171,7 +1171,35 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
     auto cache_kv_name = "cache_kv" + std::to_string(layer_idx);
     fused_multi_transformer_op_desc.SetInput("CacheKV", {cache_kv_name});
 
-    fused_multi_transformer_op_desc.SetInput("TimeStep", {"slice_out.0"});
+    VarDesc shape_out_desc("shape_out." + std::to_string(layer_idx));
+    shape_out_desc.SetDataType(proto::VarType::INT32);
+    shape_out_desc.SetPersistable(false);
+    auto* shape_out = graph->CreateVarNode(&shape_out_desc);
+
+    OpDesc shape_op_desc(layer_norm->Op()->Block());
+    shape_op_desc.SetType("shape");
+    shape_op_desc.SetInput("Input", {eltadd_qk_b->Name()});
+    shape_op_desc.SetOutput("Out", {shape_out->Name()});
+    auto* shape_op = graph->CreateOpNode(&shape_op_desc);
+
+    VarDesc slice_out_desc("slice_out." + std::to_string(layer_idx));
+    slice_out_desc.SetDataType(proto::VarType::INT32);
+    slice_out_desc.SetPersistable(false);
+    auto* slice_out = graph->CreateVarNode(&slice_out_desc);
+
+    OpDesc slice_op_desc(layer_norm->Op()->Block());
+    slice_op_desc.SetType("slice");
+    slice_op_desc.SetInput("Input", {shape_out->Name()});
+    slice_op_desc.SetOutput("Out", {slice_out->Name()});
+    std::vector<int> axes = {0};
+    std::vector<int> starts = {3};
+    std::vector<int> ends = {4};
+    slice_op_desc.SetAttr("axes", axes);
+    slice_op_desc.SetAttr("starts", starts);
+    slice_op_desc.SetAttr("ends", ends);
+    auto* slice_op = graph->CreateOpNode(&slice_op_desc);
+
+    fused_multi_transformer_op_desc.SetInput("TimeStep", {slice_out->Name()});
 
     // Out Linear input
     fused_multi_transformer_op_desc.SetInput("OutLinearW",
@@ -1272,42 +1300,12 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
     IR_NODE_LINK_TO(eltadd0_b, fused_multi_transformer);
     IR_NODE_LINK_TO(eltadd_qk_b, fused_multi_transformer);
 
-    if (layer_idx == 0) {
-      VarDesc shape_out_desc("shape_out.0");
-      shape_out_desc.SetDataType(proto::VarType::INT32);
-      shape_out_desc.SetPersistable(false);
-      auto* shape_out = graph->CreateVarNode(&shape_out_desc);
-
-      OpDesc shape_op_desc(layer_norm->Op()->Block());
-      shape_op_desc.SetType("shape");
-      shape_op_desc.SetInput("Input", {eltadd_qk_b->Name()});
-      shape_op_desc.SetOutput("Out", {shape_out->Name()});
-      auto* shape_op = graph->CreateOpNode(&shape_op_desc);
-
-      VarDesc slice_out_desc("slice_out.0");
-      slice_out_desc.SetDataType(proto::VarType::INT32);
-      slice_out_desc.SetPersistable(false);
-      auto* slice_out = graph->CreateVarNode(&slice_out_desc);
-
-      OpDesc slice_op_desc(layer_norm->Op()->Block());
-      slice_op_desc.SetType("slice");
-      slice_op_desc.SetInput("Input", {shape_out->Name()});
-      slice_op_desc.SetOutput("Out", {slice_out->Name()});
-      std::vector<int> axes = {0};
-      std::vector<int> starts = {3};
-      std::vector<int> ends = {4};
-      slice_op_desc.SetAttr("axes", axes);
-      slice_op_desc.SetAttr("starts", starts);
-      slice_op_desc.SetAttr("ends", ends);
-      auto* slice_op = graph->CreateOpNode(&slice_op_desc);
-
-      // TimeStep link
-      IR_NODE_LINK_TO(eltadd_qk_b, shape_op);
-      IR_NODE_LINK_TO(shape_op, shape_out);
-      IR_NODE_LINK_TO(shape_out, slice_op);
-      IR_NODE_LINK_TO(slice_op, slice_out);
-      IR_NODE_LINK_TO(slice_out, fused_multi_transformer)
-    }
+    // TimeStep link
+    IR_NODE_LINK_TO(eltadd_qk_b, shape_op);
+    IR_NODE_LINK_TO(shape_op, shape_out);
+    IR_NODE_LINK_TO(shape_out, slice_op);
+    IR_NODE_LINK_TO(slice_op, slice_out);
+    IR_NODE_LINK_TO(slice_out, fused_multi_transformer)
 
     IR_NODE_LINK_TO(matmul_linear_w, fused_multi_transformer);
     IR_NODE_LINK_TO(eltadd_linear_b, fused_multi_transformer);
@@ -1893,7 +1891,35 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
     auto cache_kv_name = "cache_kv" + std::to_string(layer_idx);
     fused_multi_transformer_op_desc.SetInput("CacheKV", {cache_kv_name});
 
-    fused_multi_transformer_op_desc.SetInput("TimeStep", {"slice_out.0"});
+    VarDesc shape_out_desc("shape_out." + std::to_string(layer_idx));
+    shape_out_desc.SetDataType(proto::VarType::INT32);
+    shape_out_desc.SetPersistable(false);
+    auto* shape_out = graph->CreateVarNode(&shape_out_desc);
+
+    OpDesc shape_op_desc(layer_norm->Op()->Block());
+    shape_op_desc.SetType("shape");
+    shape_op_desc.SetInput("Input", {eltadd_qk_b->Name()});
+    shape_op_desc.SetOutput("Out", {shape_out->Name()});
+    auto* shape_op = graph->CreateOpNode(&shape_op_desc);
+
+    VarDesc slice_out_desc("slice_out." + std::to_string(layer_idx));
+    slice_out_desc.SetDataType(proto::VarType::INT32);
+    slice_out_desc.SetPersistable(false);
+    auto* slice_out = graph->CreateVarNode(&slice_out_desc);
+
+    OpDesc slice_op_desc(layer_norm->Op()->Block());
+    slice_op_desc.SetType("slice");
+    slice_op_desc.SetInput("Input", {shape_out->Name()});
+    slice_op_desc.SetOutput("Out", {slice_out->Name()});
+    std::vector<int> axes = {0};
+    std::vector<int> starts = {3};
+    std::vector<int> ends = {4};
+    slice_op_desc.SetAttr("axes", axes);
+    slice_op_desc.SetAttr("starts", starts);
+    slice_op_desc.SetAttr("ends", ends);
+    auto* slice_op = graph->CreateOpNode(&slice_op_desc);
+
+    fused_multi_transformer_op_desc.SetInput("TimeStep", {slice_out->Name()});
 
     // Out Linear input
     fused_multi_transformer_op_desc.SetInput("OutLinearW",
@@ -1993,42 +2019,12 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
     IR_NODE_LINK_TO(eltadd0_b, fused_multi_transformer);
     IR_NODE_LINK_TO(eltadd_qk_b, fused_multi_transformer);
 
-    if (layer_idx == 0) {
-      VarDesc shape_out_desc("shape_out.0");
-      shape_out_desc.SetDataType(proto::VarType::INT32);
-      shape_out_desc.SetPersistable(false);
-      auto* shape_out = graph->CreateVarNode(&shape_out_desc);
-
-      OpDesc shape_op_desc(layer_norm->Op()->Block());
-      shape_op_desc.SetType("shape");
-      shape_op_desc.SetInput("Input", {eltadd_qk_b->Name()});
-      shape_op_desc.SetOutput("Out", {shape_out->Name()});
-      auto* shape_op = graph->CreateOpNode(&shape_op_desc);
-
-      VarDesc slice_out_desc("slice_out.0");
-      slice_out_desc.SetDataType(proto::VarType::INT32);
-      slice_out_desc.SetPersistable(false);
-      auto* slice_out = graph->CreateVarNode(&slice_out_desc);
-
-      OpDesc slice_op_desc(layer_norm->Op()->Block());
-      slice_op_desc.SetType("slice");
-      slice_op_desc.SetInput("Input", {shape_out->Name()});
-      slice_op_desc.SetOutput("Out", {slice_out->Name()});
-      std::vector<int> axes = {0};
-      std::vector<int> starts = {3};
-      std::vector<int> ends = {4};
-      slice_op_desc.SetAttr("axes", axes);
-      slice_op_desc.SetAttr("starts", starts);
-      slice_op_desc.SetAttr("ends", ends);
-      auto* slice_op = graph->CreateOpNode(&slice_op_desc);
-
-      // TimeStep link
-      IR_NODE_LINK_TO(eltadd_qk_b, shape_op);
-      IR_NODE_LINK_TO(shape_op, shape_out);
-      IR_NODE_LINK_TO(shape_out, slice_op);
-      IR_NODE_LINK_TO(slice_op, slice_out);
-      IR_NODE_LINK_TO(slice_out, fused_multi_transformer)
-    }
+    // TimeStep link
+    IR_NODE_LINK_TO(eltadd_qk_b, shape_op);
+    IR_NODE_LINK_TO(shape_op, shape_out);
+    IR_NODE_LINK_TO(shape_out, slice_op);
+    IR_NODE_LINK_TO(slice_op, slice_out);
+    IR_NODE_LINK_TO(slice_out, fused_multi_transformer)
 
     IR_NODE_LINK_TO(matmul_linear_w, fused_multi_transformer);
     IR_NODE_LINK_TO(eltadd_linear_b, fused_multi_transformer);
@@ -2587,7 +2583,35 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
     auto cache_kv_name = "cache_kv" + std::to_string(layer_idx);
     fused_multi_transformer_op_desc.SetInput("CacheKV", {cache_kv_name});
 
-    fused_multi_transformer_op_desc.SetInput("TimeStep", {"slice_out.0"});
+    VarDesc shape_out_desc("shape_out." + std::to_string(layer_idx));
+    shape_out_desc.SetDataType(proto::VarType::INT32);
+    shape_out_desc.SetPersistable(false);
+    auto* shape_out = graph->CreateVarNode(&shape_out_desc);
+
+    OpDesc shape_op_desc(layer_norm->Op()->Block());
+    shape_op_desc.SetType("shape");
+    shape_op_desc.SetInput("Input", {eltadd_qk_b->Name()});
+    shape_op_desc.SetOutput("Out", {shape_out->Name()});
+    auto* shape_op = graph->CreateOpNode(&shape_op_desc);
+
+    VarDesc slice_out_desc("slice_out." + std::to_string(layer_idx));
+    slice_out_desc.SetDataType(proto::VarType::INT32);
+    slice_out_desc.SetPersistable(false);
+    auto* slice_out = graph->CreateVarNode(&slice_out_desc);
+
+    OpDesc slice_op_desc(layer_norm->Op()->Block());
+    slice_op_desc.SetType("slice");
+    slice_op_desc.SetInput("Input", {shape_out->Name()});
+    slice_op_desc.SetOutput("Out", {slice_out->Name()});
+    std::vector<int> axes = {0};
+    std::vector<int> starts = {3};
+    std::vector<int> ends = {4};
+    slice_op_desc.SetAttr("axes", axes);
+    slice_op_desc.SetAttr("starts", starts);
+    slice_op_desc.SetAttr("ends", ends);
+    auto* slice_op = graph->CreateOpNode(&slice_op_desc);
+
+    fused_multi_transformer_op_desc.SetInput("TimeStep", {slice_out->Name()});
 
     // Out Linear input
     fused_multi_transformer_op_desc.SetInput("OutLinearW",
@@ -2693,42 +2717,12 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
     IR_NODE_LINK_TO(eltadd0_b, fused_multi_transformer);
     IR_NODE_LINK_TO(eltadd_qk_b, fused_multi_transformer);
 
-    if (layer_idx == 0) {
-      VarDesc shape_out_desc("shape_out.0");
-      shape_out_desc.SetDataType(proto::VarType::INT32);
-      shape_out_desc.SetPersistable(false);
-      auto* shape_out = graph->CreateVarNode(&shape_out_desc);
-
-      OpDesc shape_op_desc(layer_norm->Op()->Block());
-      shape_op_desc.SetType("shape");
-      shape_op_desc.SetInput("Input", {eltadd_qk_b->Name()});
-      shape_op_desc.SetOutput("Out", {shape_out->Name()});
-      auto* shape_op = graph->CreateOpNode(&shape_op_desc);
-
-      VarDesc slice_out_desc("slice_out.0");
-      slice_out_desc.SetDataType(proto::VarType::INT32);
-      slice_out_desc.SetPersistable(false);
-      auto* slice_out = graph->CreateVarNode(&slice_out_desc);
-
-      OpDesc slice_op_desc(layer_norm->Op()->Block());
-      slice_op_desc.SetType("slice");
-      slice_op_desc.SetInput("Input", {shape_out->Name()});
-      slice_op_desc.SetOutput("Out", {slice_out->Name()});
-      std::vector<int> axes = {0};
-      std::vector<int> starts = {3};
-      std::vector<int> ends = {4};
-      slice_op_desc.SetAttr("axes", axes);
-      slice_op_desc.SetAttr("starts", starts);
-      slice_op_desc.SetAttr("ends", ends);
-      auto* slice_op = graph->CreateOpNode(&slice_op_desc);
-
-      // TimeStep link
-      IR_NODE_LINK_TO(eltadd_qk_b, shape_op);
-      IR_NODE_LINK_TO(shape_op, shape_out);
-      IR_NODE_LINK_TO(shape_out, slice_op);
-      IR_NODE_LINK_TO(slice_op, slice_out);
-      IR_NODE_LINK_TO(slice_out, fused_multi_transformer)
-    }
+    // TimeStep link
+    IR_NODE_LINK_TO(eltadd_qk_b, shape_op);
+    IR_NODE_LINK_TO(shape_op, shape_out);
+    IR_NODE_LINK_TO(shape_out, slice_op);
+    IR_NODE_LINK_TO(slice_op, slice_out);
+    IR_NODE_LINK_TO(slice_out, fused_multi_transformer)
 
     IR_NODE_LINK_TO(matmul_linear_w, fused_multi_transformer);
     IR_NODE_LINK_TO(eltadd_linear_b, fused_multi_transformer);
