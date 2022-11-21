@@ -136,17 +136,26 @@ inline bool IsMixedType(VarType::Type type) {
 
 };  // namespace
 
+// The set of ops that support fp16 calculation and are considered
+// numerically-dangerous, slower and whose effects may also be observed in
+// downstream ops.
 void FloatToMixedPass::SetDefaultBlacklist() const {
-  // Copy from python/paddle/fluid/contrib/mixed_precision/fp16_lists.py
-
-  // The set of ops that support fp16 calculation and are considered
-  // numerically-dangerous and whose effects may also be observed in downstream
-  // ops.
   black_list_.insert({
+      // numerically-dangerous
+      "acos",
+      "asin",
+      "cosh",
+      "tan",
       "exp",
+      "expm1",
       "square",
       "log",
+      "log2",
+      "log10",
+      "log1p",
+      "logsumexp",
       "mean",
+      "rsqrt",
       "sum",
       "cos_sim",
       "softmax",
@@ -155,16 +164,11 @@ void FloatToMixedPass::SetDefaultBlacklist() const {
       "c_softmax_with_cross_entropy",
       "cross_entropy",
       "cross_entropy2",
-      // fp16 is slower than fp32, though fp16 is supported.
-      "lookup_table",
-      "lookup_table_v2",
-      "linear_interp_v2",
-      "nearest_interp_v2",
-      "bilinear_interp_v2",
-      "bicubic_interp_v2",
-      "trilinear_interp_v2",
+      "layer_norm",
+      "group_norm",
+      // slower than fp32
       "conv2d_transpose",
-      // default fp32 can avoid return inf when the sum value large than 65504.
+      // default fp32 can avoid return inf when the sum value large than 65504
       "reduce_sum",
   });
 }
@@ -225,11 +229,6 @@ void FloatToMixedPass::ApplyImpl(Graph* graph) const {
   VLOG(4) << "InsertCastOp done";
   RestoreOpOriginType();
   VLOG(4) << "RestoreOpOriginType done";
-
-  for (auto* graph : subgraphes_) {
-    CHECK_EQ(HasCircle(*graph), false);
-    CHECK_EQ(VarDescIsConsistency(*graph), true);
-  }
 }
 
 bool FloatToMixedPass::OpSupportPrecision(const std::string& op_type,
@@ -405,7 +404,6 @@ void FloatToMixedPass::UpdateOpPrecision() const {
                   << " is output of " << op_type;
         }
 
-        // code flag 2 related
         // the select_input op's input var should not convert to mixed. when
         // op's output var is select_input op's input var, the op should not run
         // mixed.
@@ -419,7 +417,6 @@ void FloatToMixedPass::UpdateOpPrecision() const {
           }
         }
 
-        // code flag 1 related
         // when op_1 only support cpu kernel. if op_2's intput var is op_1's
         // output var, then op_2 should not run mixed.
         if (GetOpOrignalType(op_type) != "feed" &&
@@ -447,7 +444,6 @@ void FloatToMixedPass::UpdateOpPrecision() const {
 
         if (op_run_mixed_.count(op_node->Op()->Type()) == 0) continue;
 
-        // code flag 1 related.
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
           if (!VarNodeHasDtype(in_var_node)) continue;
@@ -477,7 +473,6 @@ void FloatToMixedPass::UpdateOpPrecision() const {
           const auto& input_op_nodes =
               var_input_ops[real_out_var_node->Var()->Name()];
           if (vars_should_not_mixed.count(real_out_var_node->Var()->Name())) {
-            // code flag 2 related.
             not_run_mixed = true;
           } else {
             for (auto* node : input_op_nodes) {
@@ -500,6 +495,7 @@ void FloatToMixedPass::UpdateOpPrecision() const {
   } while (precision_updated);
 }
 
+// special ops, its weights should not be low precision.
 bool FloatToMixedPass::InputVarsNotConvert(Node* op_node,
                                            const std::string& var_name) const {
   CHECK_EQ(op_node->IsOp(), true);
