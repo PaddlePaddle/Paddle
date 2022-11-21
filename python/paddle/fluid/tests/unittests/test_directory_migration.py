@@ -99,7 +99,7 @@ class TestDirectory(unittest.TestCase):
             'paddle.static.nn.instance_norm',
             'paddle.static.nn.layer_norm',
             'paddle.static.nn.multi_box_head',
-            'paddle.static.nn.loss.nce',
+            'paddle.static.nn.nce',
             'paddle.static.nn.prelu',
             'paddle.static.nn.row_conv',
             'paddle.static.nn.spectral_norm',

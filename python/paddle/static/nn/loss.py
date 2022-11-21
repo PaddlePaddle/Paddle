@@ -112,13 +112,13 @@ def nce(
                 embs.append(emb)
 
             embs = paddle.concat(x=embs, axis=1)
-            loss = paddle.static.nn.loss.nce(input=embs, label=words[label_word],
+            loss = paddle.static.nn.nce(input=embs, label=words[label_word],
                         num_total_classes=dict_size, param_attr='nce.w_0',
                         bias_attr='nce.b_0')
 
             #or use custom distribution
             dist = np.array([0.05,0.5,0.1,0.3,0.05])
-            loss = paddle.static.nn.loss.nce(input=embs, label=words[label_word],
+            loss = paddle.static.nn.nce(input=embs, label=words[label_word],
                     num_total_classes=5, param_attr='nce.w_1',
                     bias_attr='nce.b_1',
                     num_neg_samples=3,
