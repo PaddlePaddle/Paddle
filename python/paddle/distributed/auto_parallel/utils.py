@@ -2175,9 +2175,9 @@ def insert_dependencies_for_two_vars(
     assert block.has_var(prior_var.name)
     assert block.has_var(post_var.name)
     if process_mesh is None:
-        process_mesh = (
-            prior_op_mesh
-        ) = dist_context.get_tensor_dist_attr_for_program(post_var).process_mesh
+        process_mesh = dist_context.get_tensor_dist_attr_for_program(
+            post_var
+        ).process_mesh
     assert process_mesh is not None
 
     depend_op = block._insert_op_without_sync(
