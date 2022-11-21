@@ -4249,29 +4249,6 @@ class TestBook(LayerTest):
             )
             return out
 
-    def test_filter_by_instag(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x1 = layers.data(
-                name='Ins', shape=[32, 1], dtype='float32', lod_level=0
-            )
-            x2 = layers.data(
-                name='Ins_tag',
-                shape=[32, 1],
-                dtype='int64',
-                lod_level=0,
-                stop_gradient=True,
-            )
-            x3 = layers.create_global_var(
-                shape=[1, 1],
-                value=20,
-                dtype='int64',
-                persistable=True,
-                force_cpu=True,
-                name='Filter_tag',
-            )
-            out1, out2 = layers.filter_by_instag(x1, x2, x3, is_lod=True)
-
     def test_shuffle_batch(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
