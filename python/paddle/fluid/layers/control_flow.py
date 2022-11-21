@@ -27,7 +27,7 @@ from ..framework import (
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
-from .nn import logical_and, logical_or
+from .nn import logical_or
 from .utils import (
     assert_same_structure,
     map_structure,
@@ -3266,12 +3266,13 @@ class Switch:
         else:
             pre_cond_num = len(self.pre_not_conditions)
             pre_not_cond = self.pre_not_conditions[pre_cond_num - 1]
-            new_not_cond = logical_and(
-                x=pre_not_cond, y=paddle.logical_not(x=condition)
+
+            new_not_cond = paddle.logical_and(
+                x=pre_not_cond, y=logical_not(x=condition)
             )
             self.pre_not_conditions.append(new_not_cond)
             cond_block = ConditionalBlock(
-                [logical_and(x=pre_not_cond, y=condition)],
+                [paddle.logical_and(x=pre_not_cond, y=condition)],
                 is_scalar_condition=True,
             )
 

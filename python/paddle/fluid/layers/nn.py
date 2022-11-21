@@ -146,7 +146,6 @@ __all__ = [
     'strided_slice',
     'shape',
     'size',
-    'logical_and',
     'logical_or',
     'clip',
     'clip_by_norm',
@@ -11150,46 +11149,6 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
         helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
 
     return out
-
-
-def logical_and(x, y, out=None, name=None):
-    r"""
-
-    ``logical_and`` operator computes element-wise logical AND on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
-    Each element of ``out`` is calculated by
-
-    .. math::
-
-        out = x \&\& y
-
-    .. note::
-        ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([True])
-            y = paddle.to_tensor([True, False, True, False])
-            res = paddle.logical_and(x, y)
-            print(res) # [True False True False]
-    """
-    if in_dygraph_mode():
-        return _C_ops.logical_and(x, y)
-
-    return _logical_op(
-        op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True
-    )
 
 
 def logical_or(x, y, out=None, name=None):
