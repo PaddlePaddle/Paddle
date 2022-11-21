@@ -23,7 +23,6 @@ from paddle.fluid import core
 from paddle.fluid import layers
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import dygraph_only
-from paddle.distributed import fleet, ParallelMode
 
 
 class Taskflow:
@@ -69,7 +68,7 @@ class GroupShardedClipGrad:
                 merge_grad = layers.get_tensor_from_selected_rows(
                     layers.merge_selected_rows(g)
                 )
-            square = layers.square(merge_grad)
+            square = paddle.square(merge_grad)
             sum_square = layers.reduce_sum(square)
 
             if p.dtype == paddle.float16:
@@ -134,7 +133,7 @@ class GroupShardedClipGrad:
         with device_guard(dev_id, "gpu"):
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
 
-        global_norm_var = layers.sqrt(global_norm_var)
+        global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
@@ -245,18 +244,8 @@ def GroupShardedScaler(scaler):
         self._found_inf = 1 if temp_found_inf_fp16 or temp_found_inf_fp32 else 0
         is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
 
-        hcg = fleet.fleet._hcg if hasattr(fleet.fleet, "_hcg") else None
-        hybrid_parallel = (
-            hcg is not None
-            and hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL
-        )
-
         paddle.distributed.all_reduce(
-            is_found_inf,
-            op=paddle.distributed.ReduceOp.MAX,
-            group=hcg.get_check_parallel_group()
-            if hybrid_parallel
-            else optimizer._group,
+            is_found_inf, op=paddle.distributed.ReduceOp.MAX, group=None
         )
         self._found_inf = is_found_inf.numpy()[0]
 
