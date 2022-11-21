@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.framework import core
-from paddle.fluid import unique_name
+from paddle.utils import unique_name
 from .pass_base import PassBase, PassType, register_pass
 import numpy as np
 

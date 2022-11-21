@@ -20,6 +20,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | dragonwarrior | Long Wang |
 | dyning | Yuning Du |
 | emailweixu | Wei Xu |
+| engineer1109 | Jia-Liang Wang |
 | gangliao | Gang Liao |
 | gongweibao | Wei-Bao Gong |
 | guru4elephant | Daxiang Dong |
