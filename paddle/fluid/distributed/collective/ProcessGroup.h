@@ -82,13 +82,8 @@ class ProcessGroup {
   };
 
  public:
-  explicit ProcessGroup(int rank, int size, int gid);
+  ProcessGroup(int rank, int size, int gid);
   virtual ~ProcessGroup() = default;
-  // TODO(dev): This constructor will be removed later.
-  explicit ProcessGroup(int rank,
-                        int size,
-                        const platform::Place& place,
-                        int gid);
 
   int GetRank() const { return rank_; }
 
@@ -290,12 +285,18 @@ class ProcessGroup {
   }
 
  protected:
-  const int rank_;
-  const int size_;
-  const platform::Place place_;
-  const int gid_;
+  int rank_;
+  int size_;
+  int gid_;
 };
 
+class ProcessGroupIdMap
+    : public std::unordered_map<int, std::shared_ptr<ProcessGroup>> {
+ public:
+  static ProcessGroupIdMap& GetInstance();
+};
+
+// TODO(dev): The following method will be removed soon.
 class ProcessGroupMapFromGid {
  public:
   bool has(int gid) {
