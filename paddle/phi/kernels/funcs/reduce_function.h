@@ -58,6 +58,7 @@ using dim3 = phi::kps::dim3;
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_utils.h"
 #include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
