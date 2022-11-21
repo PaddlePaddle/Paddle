@@ -212,7 +212,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
-    phi::DenseTensor* tensor,
+    const phi::DenseTensor& tensor,
     int dst_rank,
     int64_t offset,
     int64_t numel,
@@ -226,7 +226,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
-    phi::DenseTensor*,
+    const phi::DenseTensor& tensor,
     int dst_rank,
     int64_t offset,
     int64_t numel,

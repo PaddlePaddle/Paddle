@@ -168,7 +168,7 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                auto *out_dense = p_dense.get();
+                auto out_dense = *p_dense;
                 // numel == -1 indicates sending the whole tensor
                 return self.Send(
                     out_dense, dst, /*offset*/ 0, /*numel*/ -1, sync_op);
@@ -189,7 +189,7 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                auto *out_dense = p_dense.get();
+                auto out_dense = *p_dense;
 
                 int64_t numel = p_dense->numel();
                 int64_t send_numel = numel / nranks;
@@ -1126,7 +1126,7 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                auto *out_dense = p_dense.get();
+                auto out_dense = *p_dense;
                 // numel == -1 indicates sending the whole tensor
                 return self.Send(out_dense,
                                  dst,
@@ -1149,7 +1149,7 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto p_dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                auto *out_dense = p_dense.get();
+                auto out_dense = *p_dense;
 
                 int64_t numel = p_dense->numel();
                 int64_t send_numel = numel / nranks;

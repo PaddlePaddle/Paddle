@@ -168,18 +168,19 @@ class ProcessGroupStream : public ProcessGroup {
                                                    bool sync_op,
                                                    bool use_calc_stream);
 
-  std::shared_ptr<ProcessGroup::Task> Send(phi::DenseTensor* tensor,
+  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
                                            int dst_rank,
                                            int64_t offset,
                                            int64_t numel,
                                            bool sync_op) override;
 
-  virtual std::shared_ptr<ProcessGroup::Task> Send(phi::DenseTensor* tensor,
-                                                   int dst_rank,
-                                                   int64_t offset,
-                                                   int64_t numel,
-                                                   bool sync_op,
-                                                   bool use_calc_stream);
+  virtual std::shared_ptr<ProcessGroup::Task> Send(
+      const phi::DenseTensor& tensor,
+      int dst_rank,
+      int64_t offset,
+      int64_t numel,
+      bool sync_op,
+      bool use_calc_stream);
 };
 
 }  // namespace distributed
