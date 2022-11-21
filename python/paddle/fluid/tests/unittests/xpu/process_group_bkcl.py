@@ -18,6 +18,7 @@ import numpy as np
 import sys
 
 import paddle
+import paddle.distributed as dist
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.dygraph.parallel import ParallelEnv
 

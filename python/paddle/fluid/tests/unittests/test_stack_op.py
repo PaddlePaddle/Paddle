@@ -172,7 +172,7 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
             for i in range(self.iter_num):
                 fluid.layers.array_write(input, zero + i, tensor_array)
 
-            self.out_var = fluid.layers.stack(tensor_array, axis=self.axis)
+            self.out_var = paddle.stack(tensor_array, axis=self.axis)
 
     def test_case(self):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
