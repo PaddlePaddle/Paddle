@@ -34,7 +34,6 @@ void FusedConv2DKernel(const Context& dev_ctx,
                        bool fuse_residual_conn,
                        bool force_fp32_output,
                        DenseTensor* out) {
-  VLOG(1) << "############ ConvFusionMKLDNNKernel ##############";
   bool is_BFLOAT16 = mkldnn_data_type == "bfloat16";
 
   ConvOnednn<T>(dev_ctx,
@@ -74,7 +73,6 @@ void FusedDepthwiseConv2DKernel(
     bool fuse_residual_conn,
     bool force_fp32_output,
     DenseTensor* out) {
-  VLOG(1) << "############ FusedDepthwiseConv2DKernel ##############";
   bool is_BFLOAT16 = mkldnn_data_type == "bfloat16";
 
   ConvOnednn<T>(dev_ctx,
@@ -141,15 +139,6 @@ PD_REGISTER_KERNEL(fused_conv2d,
                    OneDNN,
                    ONEDNN,
                    phi::FusedConv2DKernel,
-                   float,
-                   phi::dtype::bfloat16,
-                   uint8_t,
-                   int8_t) {}
-
-PD_REGISTER_KERNEL(fused_depthwise_conv2d,
-                   OneDNN,
-                   ONEDNN,
-                   phi::FusedDepthwiseConv2DKernel,
                    float,
                    phi::dtype::bfloat16,
                    uint8_t,

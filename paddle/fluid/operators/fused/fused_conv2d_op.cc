@@ -140,49 +140,6 @@ $$
   }
 };
 
-class FusedConv2DOp : public operators::ConvOp {
- public:
-  using operators::ConvOp::ConvOp;
-};
-
-// template <typename T>
-// class Conv2DFusionMKLDNNKernel : public framework::OpKernel<T> {
-//  public:
-//   void Compute(const framework::ExecutionContext& ctx) const override {
-//     VLOG(1) << "############ Conv2DFusionMKLDNNKernel ##############";
-//     auto& dev_ctx =
-//         ctx.template device_context<phi::OneDNNContext>();
-//     dev_ctx.SetInputsName(ctx.GetOp().Inputs());
-
-//     const auto* input = ctx.Input<phi::DenseTensor>("Input");
-
-//     const auto* filter = ctx.Input<phi::DenseTensor>("Filter");
-//     const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
-//     const auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
-
-//     const auto& strides = ctx.Attr<std::vector<int>>("strides");
-//     const auto& paddings = ctx.Attr<std::vector<int>>("paddings");
-//     const auto& padding_algorithm =
-//     ctx.Attr<std::string>("padding_algorithm"); const auto& dilations =
-//     ctx.Attr<std::vector<int>>("dilations"); int groups =
-//     ctx.Attr<int>("groups"); const std::string& data_format =
-//     ctx.Attr<std::string>("data_format");
-
-//     bool is_BFLOAT16 = ctx.Attr<std::string>("mkldnn_data_type") ==
-//     "bfloat16";; const std::string& fuse_activation =
-//     ctx.Attr<std::string>("fuse_activation"); bool fuse_residual_conn =
-//     ctx.Attr<bool>("fuse_residual_connection"); bool force_fp32_output =
-//     ctx.Attr<bool>("force_fp32_output");
-
-//     auto* output = ctx.Output<phi::DenseTensor>("Output");
-
-//     phi::ConvOnednn<T>(dev_ctx, input, filter, bias, residual_param, strides,
-//     paddings, padding_algorithm, dilations, groups, data_format, true,
-//                             is_BFLOAT16, fuse_activation, fuse_residual_conn,
-//                             force_fp32_output, output);
-//   }
-// };
-
 }  // namespace operators
 }  // namespace paddle
 
