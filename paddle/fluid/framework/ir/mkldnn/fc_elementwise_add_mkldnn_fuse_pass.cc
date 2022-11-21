@@ -40,7 +40,7 @@ FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
       .IsNumGE(1)
       .End();
 
-  AddOpCompat(OpCompat("add_raw"))
+  AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
       .IsTensor()
       .End()
