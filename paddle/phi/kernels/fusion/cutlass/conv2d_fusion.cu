@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/conv2d_fusion.h"
 #include <algorithm>
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/fusion/conv2d_fusion.h"
 
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_all.h"
 
@@ -57,31 +57,32 @@ void Conv2dFusionKernel(const Context& ctx,
 
   if (residual) {
     if (activation == "relu") {
-      cutlass_conv2d_bias_add_relu((const half*)(x.data<T>()),
-                                   (const half*)(filter.data<T>()),
-                                   (const half*)(bias.data<T>()),
-                                   (const half*)(residual->data<T>()),
-                                   (half*)(output->data<T>()),
-                                   batch,
-                                   ic,
-                                   ih,
-                                   iw,
-                                   kh,
-                                   kw,
-                                   oc,
-                                   pad_h,
-                                   pad_w,
-                                   stride_h,
-                                   stride_w);
+      cutlass_conv2d_bias_add_relu(
+          reinterpret_cast<const half*>(x.data<T>()),
+          reinterpret_cast<const half*>(filter.data<T>()),
+          reinterpret_cast<const half*>(bias.data<T>()),
+          reinterpret_cast<const half*>(residual->data<T>()),
+          reinterpret_cast<half*>(output->data<T>()),
+          batch,
+          ic,
+          ih,
+          iw,
+          kh,
+          kw,
+          oc,
+          pad_h,
+          pad_w,
+          stride_h,
+          stride_w);
     } else {
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Cutlass now only support relu activation in a residual block"));
+          "Cutlass now only support relu activation in a residual block"));
     }
   } else if (activation == "relu") {
-    cutlass_conv2d_bias_relu((const half*)(x.data<T>()),
-                             (const half*)(filter.data<T>()),
-                             (const half*)(bias.data<T>()),
-                             (half*)(output->data<T>()),
+    cutlass_conv2d_bias_relu(reinterpret_cast<const half*>(x.data<T>()),
+                             reinterpret_cast<const half*>(filter.data<T>()),
+                             reinterpret_cast<const half*>(bias.data<T>()),
+                             reinterpret_cast<half*>(output->data<T>()),
                              batch,
                              ic,
                              ih,
@@ -94,10 +95,10 @@ void Conv2dFusionKernel(const Context& ctx,
                              stride_h,
                              stride_w);
   } else if (activation == "swish") {
-    cutlass_conv2d_bias_silu((const half*)(x.data<T>()),
-                             (const half*)(filter.data<T>()),
-                             (const half*)(bias.data<T>()),
-                             (half*)(output->data<T>()),
+    cutlass_conv2d_bias_silu(reinterpret_cast<const half*>(x.data<T>()),
+                             reinterpret_cast<const half*>(filter.data<T>()),
+                             reinterpret_cast<const half*>(bias.data<T>()),
+                             reinterpret_cast<half*>(output->data<T>()),
                              batch,
                              ic,
                              ih,
@@ -111,10 +112,10 @@ void Conv2dFusionKernel(const Context& ctx,
                              stride_w);
 
   } else if (activation == "identity") {
-    cutlass_conv2d_bias((const half*)(x.data<T>()),
-                        (const half*)(filter.data<T>()),
-                        (const half*)(bias.data<T>()),
-                        (half*)(output->data<T>()),
+    cutlass_conv2d_bias(reinterpret_cast<const half*>(x.data<T>()),
+                        reinterpret_cast<const half*>(filter.data<T>()),
+                        reinterpret_cast<const half*>(bias.data<T>()),
+                        reinterpret_cast<half*>(output->data<T>()),
                         batch,
                         ic,
                         ih,
@@ -127,10 +128,8 @@ void Conv2dFusionKernel(const Context& ctx,
                         stride_h,
                         stride_w);
   } else {
-
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-      "Cutlass does not support this activation: %s.", activation.c_str()));
-
+        "Cutlass does not support this activation: %s.", activation.c_str()));
   }
 }
 
