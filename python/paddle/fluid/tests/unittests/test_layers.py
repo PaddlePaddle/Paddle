@@ -2442,7 +2442,7 @@ class TestLayer(LayerTest):
             eye_tensor = paddle.eye(num_rows=3, num_columns=2)
             eye_tensor_rlt1 = paddle.eye(num_rows=3, num_columns=2)
             eye_tensor_rlt1 = paddle.unsqueeze(eye_tensor_rlt1, [0])
-            eye_tensor_rlt1 = paddle.expand(3, -1, -1)
+            eye_tensor_rlt1 = paddle.expand(eye_tensor_rlt1, [3, -1, -1])
 
             eye_tensor_rlt2 = paddle.eye(num_rows=3, num_columns=2)
             eye_tensor_rlt2 = paddle.unsqueeze(eye_tensor_rlt2, [0, 1])
@@ -3841,14 +3841,6 @@ class TestBook(LayerTest):
             x = self._get_data(name="x", shape=[30, 10], dtype="float32")
             label = self._get_data(name="label", shape=[30, 1], dtype="int64")
             out = layers.bpr_loss(x, label)
-            return out
-
-    def make_expand(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="input", shape=[10], dtype='int32')
-            out = paddle.expand(x, [2 * x.shape[1], -1])
             return out
 
     def make_uniform_random_batch_size_like(self):
