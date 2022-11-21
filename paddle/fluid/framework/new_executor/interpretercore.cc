@@ -689,7 +689,7 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
   }
 }
 
-void InterpreterCore::RunInstruction(const Instruction& instr_node) {
+void InterpreterCore::RunInstructionOp(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
@@ -812,6 +812,40 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
 }
 
+void InterpreterCore::RunInstruction(const Instruction& instr_node) {
+  VLOG(5) << __func__ << " OP id:" << instr_node.Id()
+          << " name:" << instr_node.OpBase()->Type() << " type:"
+          << (instr_node.KernelType() == OpFuncType::kQueueSync ? "kQueueSync"
+                                                                : "kQueueAsync")
+          << " runs on " << platform::GetCurrentThreadName();
+  auto* op = instr_node.OpBase();
+  platform::RecordEvent instruction_event(
+      op->Type(), platform::TracerEventType::Operator, 1);
+  try {
+    interpreter::WaitEvent(instr_node, place_);
+
+    if (!instr_node.IsArtificial()) {
+      RunInstructionOp(instr_node);
+      CheckGC(instr_node);
+      interpreter::LogDeviceMemoryStats(place_);
+    }
+
+    interpreter::RecordEvent(instr_node, place_);
+  } catch (platform::EnforceNotMet& ex) {
+    framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+    exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
+  } catch (platform::EOFException&) {
+    exception_holder_.Catch(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << op->Type() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    exception_holder_.Catch(std::current_exception());
+  } catch (...) {
+    LOG(WARNING) << op->Type() << " raises an unknown exception";
+    exception_holder_.Catch(std::current_exception());
+  }
+}
+
 void InterpreterCore::TraceInstructionList(
     const std::vector<Instruction>& vec_instr) {
   unfinished_op_number_ = vec_instr.size();
@@ -826,38 +860,7 @@ void InterpreterCore::TraceInstructionList(
     auto instr_id = trace_execute_order_[idx];
     auto& instr_node = vec_instruction_.at(instr_id);
 
-    VLOG(5) << __func__ << " OP id:" << instr_node.Id()
-            << " name:" << instr_node.OpBase()->Type() << " runs on "
-            << platform::GetCurrentThreadName();
-
-    auto* op = instr_node.OpBase();
-    platform::RecordEvent instruction_event(
-        op->Type(), platform::TracerEventType::Operator, 1);
-
-    try {
-      interpreter::WaitEvent(instr_node, place_);
-
-      if (!instr_node.IsArtificial()) {
-        RunInstruction(instr_node);
-        CheckGC(instr_node);
-        interpreter::LogDeviceMemoryStats(place_);
-      }
-
-      interpreter::RecordEvent(instr_node, place_);
-    } catch (platform::EnforceNotMet& ex) {
-      framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
-      exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
-    } catch (platform::EOFException&) {
-      exception_holder_.Catch(std::current_exception());
-    } catch (std::exception& ex) {
-      LOG(WARNING) << op->Type() << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
-      exception_holder_.Catch(std::current_exception());
-    } catch (...) {
-      LOG(WARNING) << op->Type() << " raises an unknown exception";
-      exception_holder_.Catch(std::current_exception());
-    }
+    RunInstruction(instr_node);
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";
@@ -1000,41 +1003,8 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
     instr_id = ready_ops.front();
     ready_ops.pop_front();
     auto& instr_node = vec_instruction_.at(instr_id);
-    VLOG(5) << __func__ << " OP id:" << instr_node.Id()
-            << " name:" << instr_node.OpBase()->Type() << " type:"
-            << (instr_node.KernelType() == OpFuncType::kQueueSync
-                    ? "kQueueSync"
-                    : "kQueueAsync")
-            << " runs on " << platform::GetCurrentThreadName();
 
-    auto* op = instr_node.OpBase();
-    platform::RecordEvent instruction_event(
-        op->Type(), platform::TracerEventType::Operator, 1);
-
-    try {
-      interpreter::WaitEvent(instr_node, place_);
-
-      if (!instr_node.IsArtificial()) {
-        RunInstruction(instr_node);
-        CheckGC(instr_node);
-        interpreter::LogDeviceMemoryStats(place_);
-      }
-
-      interpreter::RecordEvent(instr_node, place_);
-    } catch (platform::EnforceNotMet& ex) {
-      framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
-      exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
-    } catch (platform::EOFException&) {
-      exception_holder_.Catch(std::current_exception());
-    } catch (std::exception& ex) {
-      LOG(WARNING) << op->Type() << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
-      exception_holder_.Catch(std::current_exception());
-    } catch (...) {
-      LOG(WARNING) << op->Type() << " raises an unknown exception";
-      exception_holder_.Catch(std::current_exception());
-    }
+    RunInstruction(instr_node);
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";

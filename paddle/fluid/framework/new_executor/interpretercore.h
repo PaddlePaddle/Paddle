@@ -93,6 +93,7 @@ class InterpreterCore {
   void TraceInstructionList(const std::vector<Instruction>& vec_instr);
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
   void RunInstructionAsync(size_t instr_id);
+  void RunInstructionOp(const Instruction& instr_node);
   void RunInstruction(const Instruction& instr_node);
   void RunNextInstructions(const Instruction& instr_id,
                            std::deque<size_t>* reserved_next_ops);
