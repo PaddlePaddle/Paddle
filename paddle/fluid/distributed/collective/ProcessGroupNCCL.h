@@ -34,7 +34,7 @@
 
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/fluid/platform/dynload/rccl.h"
-#else
+#elif PADDLE_WITH_NCCL
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
@@ -76,6 +76,9 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   };
 
  public:
+  static std::shared_ptr<ProcessGroupNCCL> CreateProcessGroupNCCL(
+      const std::shared_ptr<Store>& store, int rank, int size, int gid);
+
   ProcessGroupNCCL(const std::shared_ptr<Store>& store,
                    int rank,
                    int size,
@@ -83,10 +86,10 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
   std::string GetBackendName() const override { return "NCCL"; }
 
-  const phi::DeviceContext& GetDeviceContext(const Place& place) const override;
+  phi::DeviceContext* GetDeviceContext(const Place& place,
+                                       bool use_calc_stream) const override;
 
-  const phi::DeviceContext& GetDeviceContext(
-      const Place& place, bool use_calc_stream) const override;
+  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,
@@ -147,7 +150,7 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
                                            bool sync_op,
                                            bool use_calc_stream) override;
 
-  std::shared_ptr<ProcessGroup::Task> Send(phi::DenseTensor* tensor,
+  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
                                            int dst_rank,
                                            int64_t offset,
                                            int64_t numel,
@@ -207,22 +210,12 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
   void CreateNCCLEnvCache(const Place& place, const std::string& place_key);
 
-  template <typename Fn>
-  std::shared_ptr<ProcessGroupStream::Task> Collective(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      Fn fn,
+  std::shared_ptr<ProcessGroup::Task> RunFnInNCCLEnv(
+      std::function<void(ncclComm_t, gpuStream_t)> fn,
+      const phi::DenseTensor& tensor,
       CommType comm_type,
       bool sync_op,
       bool use_calc_stream);
-
-  template <typename Fn>
-  std::shared_ptr<ProcessGroup::Task> PointToPoint(phi::DenseTensor* tensor,
-                                                   int rank,
-                                                   Fn fn,
-                                                   CommType op_type,
-                                                   bool sync_op,
-                                                   bool use_calc_stream);
 
   void SyncCalcStream(const Place& place);
 

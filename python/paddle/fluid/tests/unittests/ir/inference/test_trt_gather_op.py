@@ -19,6 +19,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
+import paddle
 
 
 class TRTGatherTest1(InferencePassTest):
@@ -27,7 +28,7 @@ class TRTGatherTest1(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name='data', shape=[-1, 128], dtype='float32')
             index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
-            scale_out = fluid.layers.gather(data, index=index)
+            scale_out = paddle.gather(data, index=index)
             out = fluid.layers.softmax(input=scale_out)
 
         self.feeds = {
@@ -66,7 +67,7 @@ class TRTGatherTest2(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name='data', shape=[16, 64], dtype='float32')
             index = fluid.data(name='index', shape=[2], dtype='int32')
-            scale_out = fluid.layers.gather(data, index=index)
+            scale_out = paddle.gather(data, index=index)
             out = fluid.layers.softmax(input=scale_out)
 
         self.feeds = {
