@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import io
 from .spawn import spawn  # noqa: F401
 from .launch.main import launch  # noqa: F401
-
 from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401
 from .parallel import get_world_size  # noqa: F401
@@ -74,6 +74,7 @@ from .sharding import save_group_sharded_model  # noqa: F401
 from . import rpc
 
 __all__ = [  # noqa
+    "io",
     "spawn",
     "launch",
     "scatter",
