@@ -182,7 +182,7 @@ class Conv2DFusionOp : public operators::ConvOp {
     }
     const std::string data_format =
         ctx->Attrs().Get<std::string>("data_format");
-    
+
     if (data_format == "NHWC") {
       int oc = filter_dims[0];
       int kh = filter_dims[1];
