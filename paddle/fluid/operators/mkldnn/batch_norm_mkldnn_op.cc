@@ -24,13 +24,11 @@ namespace operators {
 
 using dnnl::memory;
 using dnnl::primitive;
-using dnnl::reorder;
 using dnnl::stream;
 using paddle::platform::MKLDNNDeviceContext;
-using platform::to_void_cast;
 
 template <typename T>
-class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
+class BatchNormMKLDNNHandler : public phi::funcs::OneDNNHandlerNoCachingT<
                                    T,
                                    dnnl::batch_normalization_forward,
                                    dnnl::batch_normalization_backward> {
@@ -40,9 +38,9 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
                          const Tensor *in_x,
                          const Tensor *scale,
                          const Tensor *out_grad)
-      : platform::MKLDNNHandlerNoCachingT<T,
-                                          dnnl::batch_normalization_forward,
-                                          dnnl::batch_normalization_backward>(
+      : phi::funcs::OneDNNHandlerNoCachingT<T,
+                                            dnnl::batch_normalization_forward,
+                                            dnnl::batch_normalization_backward>(
             mkldnn_engine, ctx.GetPlace()) {
     auto scale_tz = phi::vectorize<int64_t>(scale->dims());
     PADDLE_ENFORCE_EQ(
@@ -98,8 +96,8 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(
       const phi::DenseTensor *mean) {
     const T *mean_data = mean->data<T>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
-                                            to_void_cast<T>(mean_data));
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->mean_desc(), phi::funcs::to_void_cast<T>(mean_data));
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor *mean) {
@@ -112,8 +110,9 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
       const phi::DenseTensor *variance) {
     const T *variance_data = variance->data<T>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
-                                            to_void_cast<T>(variance_data));
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->variance_desc(),
+        phi::funcs::to_void_cast<T>(variance_data));
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
