@@ -23,9 +23,7 @@ import unittest
 
 
 class TestReaderReset(unittest.TestCase):
-
     def prepare_data(self):
-
         def fake_data_generator():
             for n in range(self.total_ins_num):
                 yield np.ones(self.ins_shape) * n, n
@@ -46,15 +44,16 @@ class TestReaderReset(unittest.TestCase):
         startup_prog = fluid.Program()
 
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.layers.data(name='image',
-                                      shape=self.ins_shape,
-                                      dtype='float32')
+            image = fluid.layers.data(
+                name='image', shape=self.ins_shape, dtype='float32'
+            )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             data_reader_handle = fluid.io.PyReader(
                 feed_list=[image, label],
                 capacity=16,
                 iterable=False,
-                use_double_buffer=with_double_buffer)
+                use_double_buffer=with_double_buffer,
+            )
             fetch_list = [image.name, label.name]
 
         place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
@@ -62,10 +61,12 @@ class TestReaderReset(unittest.TestCase):
         exe.run(startup_prog)
 
         data_reader_handle.decorate_sample_list_generator(
-            paddle.batch(self.prepare_data(), batch_size=self.batch_size))
+            paddle.batch(self.prepare_data(), batch_size=self.batch_size)
+        )
 
         train_cp = compiler.CompiledProgram(main_prog).with_data_parallel(
-            places=[place])
+            places=[place]
+        )
 
         batch_id = 0
         pass_count = 0
@@ -73,13 +74,13 @@ class TestReaderReset(unittest.TestCase):
             data_reader_handle.start()
             try:
                 while True:
-                    data_val, label_val = exe.run(train_cp,
-                                                  fetch_list=fetch_list,
-                                                  return_numpy=True)
+                    data_val, label_val = exe.run(
+                        train_cp, fetch_list=fetch_list, return_numpy=True
+                    )
                     ins_num = data_val.shape[0]
-                    broadcasted_label = np.ones((
-                        ins_num, ) + tuple(self.ins_shape)) * label_val.reshape(
-                            (ins_num, 1))
+                    broadcasted_label = np.ones(
+                        (ins_num,) + tuple(self.ins_shape)
+                    ) * label_val.reshape((ins_num, 1))
                     self.assertEqual(data_val.all(), broadcasted_label.all())
                     batch_id += 1
             except fluid.core.EOFException:

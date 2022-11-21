@@ -22,7 +22,11 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 
 def get_outputs(DOut, X, Y):
@@ -34,13 +38,11 @@ def get_outputs(DOut, X, Y):
 
 
 class XPUTestFuseGemmGradOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'fused_gemm_epilogue_grad'
         self.use_dynamic_create_class = False
 
     class TestFuseGemmEpilogueGradOpDXYBias1(XPUOpTest):
-
         def setUp(self):
             paddle.enable_static()
             self.op_type = "fused_gemm_epilogue_grad"
@@ -53,13 +55,14 @@ class XPUTestFuseGemmGradOp(XPUOpTestWrapper):
             self.inputs = {
                 'DOut': np.random.random((8, 128)).astype(self.dtype) - 0.5,
                 'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
-                'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5
+                'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
             }
 
             self.attrs = {"activation": 'none'}
 
-            DX, DY, DBias = get_outputs(self.inputs['DOut'], self.inputs['X'],
-                                        self.inputs['Y'])
+            DX, DY, DBias = get_outputs(
+                self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
+            )
             self.outputs = {'DX': DX, 'DY': DY, 'DBias': DBias}
 
         def test_check_output(self):
@@ -69,48 +72,48 @@ class XPUTestFuseGemmGradOp(XPUOpTestWrapper):
             self.check_output_with_place(core.XPUPlace(0), atol=self.atol)
 
     class TestFuseGemmEpilogueGradOpDXYBias2(XPUOpTest):
-
         def init_data(self):
             self.inputs = {
                 'DOut': np.random.random((8, 128)).astype(self.dtype) - 0.5,
                 'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
-                'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5
+                'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
             }
 
             self.attrs = {"activation": 'none'}
 
-            _, DY, DBias = get_outputs(self.inputs['DOut'], self.inputs['X'],
-                                       self.inputs['Y'])
+            _, DY, DBias = get_outputs(
+                self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
+            )
             self.outputs = {'DY': DY, 'DBias': DBias}
 
     class TestFuseGemmEpilogueGradOpDXYBias3(XPUOpTest):
-
         def init_data(self):
             self.inputs = {
                 'DOut': np.random.random((8, 128)).astype(self.dtype) - 0.5,
                 'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
-                'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5
+                'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
             }
 
             self.attrs = {"activation": 'none'}
 
-            _, DY, _ = get_outputs(self.inputs['DOut'], self.inputs['X'],
-                                   self.inputs['Y'])
+            _, DY, _ = get_outputs(
+                self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
+            )
             self.outputs = {'DY': DY}
 
     class TestFuseGemmEpilogueGradOpDXYBias4(XPUOpTest):
-
         def init_data(self):
             self.inputs = {
                 'DOut': np.random.random((8, 128)).astype(self.dtype) - 0.5,
                 'X': np.random.random((8, 4)).astype(self.dtype) - 0.5,
-                'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5
+                'Y': np.random.random((4, 128)).astype(self.dtype) - 0.5,
             }
 
             self.attrs = {"activation": 'none'}
 
-            DX, DY, _ = get_outputs(self.inputs['DOut'], self.inputs['X'],
-                                    self.inputs['Y'])
+            DX, DY, _ = get_outputs(
+                self.inputs['DOut'], self.inputs['X'], self.inputs['Y']
+            )
             self.outputs = {'DX': DX, 'DY': DY}
 
 

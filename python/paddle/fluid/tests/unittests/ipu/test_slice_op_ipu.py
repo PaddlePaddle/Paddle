@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -66,7 +65,6 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {
             "axes": [0, 1],
@@ -77,7 +75,6 @@ class TestCase1(TestBase):
 
 @unittest.skip('dynamic graph is not support on IPU')
 class TestCase2(TestBase):
-
     def set_data_feed(self):
         x = np.random.uniform(size=[4, 5, 6])
         s = np.array([0, 0, 2])
@@ -85,12 +82,12 @@ class TestCase2(TestBase):
         self.feed_fp32 = {
             "x": x.astype(np.float32),
             "starts": s.astype(np.int32),
-            "ends": e.astype(np.int32)
+            "ends": e.astype(np.int32),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
             "starts": s.astype(np.int32),
-            "ends": e.astype(np.int32)
+            "ends": e.astype(np.int32),
         }
 
     def set_op_attrs(self):

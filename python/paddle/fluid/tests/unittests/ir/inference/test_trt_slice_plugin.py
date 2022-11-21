@@ -21,9 +21,8 @@ from paddle.fluid.core import AnalysisConfig
 import paddle
 
 
-#normal starts && ends
+# normal starts && ends
 class SlicePluginTRTTest(InferencePassTest):
-
     def setUpSliceParams(self):
         self.params_axes = [1, 3]
         self.params_starts = [0, 1]
@@ -31,7 +30,8 @@ class SlicePluginTRTTest(InferencePassTest):
 
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.enable_trt = True
 
     def setUp(self):
@@ -61,51 +61,48 @@ class SlicePluginTRTTest(InferencePassTest):
             self.check_output_with_option(use_gpu[i], atol)
 
 
-#negative starts && ends
+# negative starts && ends
 class SlicePluginTRTTestNegativeStartsAndEnds(SlicePluginTRTTest):
-
     def setUpSliceParams(self):
         self.params_axes = [2, 3]
         self.params_starts = [-3, -2]
         self.params_ends = [-1, 3]
 
 
-#exceeded bound starts && ends
+# exceeded bound starts && ends
 class SlicePluginTRTTestStartsAndEndsBoundCheck(SlicePluginTRTTest):
-
     def setUpSliceParams(self):
         self.params_axes = [2, 3]
         self.params_starts = [-5, -2]
         self.params_ends = [-1, 8]
 
 
-#fp16
+# fp16
 class SlicePluginTRTTestFp16(SlicePluginTRTTest):
-
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False
+        )
         self.enable_trt = True
 
 
 class StaticSlicePluginTRTTestFp16(SlicePluginTRTTest):
-
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Half, True, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, True, False
+        )
         self.enable_trt = True
 
 
 class StaticSlicePluginTRTTestFp32(SlicePluginTRTTest):
-
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, True, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, True, False
+        )
         self.enable_trt = True
 
 
 class SlicePluginTRTTestInt32(SlicePluginTRTTest):
-
     def setUp(self):
         self.setUpSliceParams()
         self.setUpTensorRTParams()
@@ -125,10 +122,10 @@ class SlicePluginTRTTestInt32(SlicePluginTRTTest):
 
 
 class StaticSlicePluginTRTTestInt32(SlicePluginTRTTest):
-
     def setUpTensorRTParams(self):
         self.trt_parameters = SlicePluginTRTTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, True, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, True, False
+        )
         self.enable_trt = True
 
     def setUp(self):
