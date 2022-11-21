@@ -336,6 +336,7 @@ class ClipGradByGloblNormPass(PassBase):
             if op.type == 'sqrt':
                 input_name = op.input("X")[0]
                 input_var = block.vars[input_name]
+                insert_leaf_fill_constant_node = False
                 if paddle.distributed.get_world_size() > 1:
                     offset = 0
                     if input_name in removed_tmp_var:
@@ -358,6 +359,7 @@ class ClipGradByGloblNormPass(PassBase):
                         )
                         offset += 1
                         self.clip_helper._init_dist_attr(fill_constant_op)
+                        insert_leaf_fill_constant_node = True
 
                     allreduce_op = block._insert_op(
                         idx + offset,
@@ -377,7 +379,7 @@ class ClipGradByGloblNormPass(PassBase):
 
                     if (
                         use_standalone_executor
-                        and input_name in removed_tmp_var
+                        and insert_leaf_fill_constant_node
                     ):
 
                         # NOTE add naive deps for global norm sync in graph exe
