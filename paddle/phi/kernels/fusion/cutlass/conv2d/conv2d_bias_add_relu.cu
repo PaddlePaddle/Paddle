@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-#include "conv2d_all.h"
-#include "conv2d_util.h"
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
 #include "cutlass/conv/kernel/default_conv2d_fprop_with_broadcast.h"
 #include "cutlass/cutlass.h"
 #include "cutlass/epilogue/thread/linear_combination_residual_block.h"
-
+#include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_all.h"
+#include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
 
 namespace phi {
 namespace fusion {
@@ -89,7 +88,7 @@ cutlass::Status cutlass_nhwc_conv2d_bias_add_relu(CONV_RESIDUAL_PARAMS) {
   ImplicitGemm implicit_gemm_op;
   size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
   void *workspace;
-  cudaMalloc((void **)&workspace, bytes);
+  cudaMalloc(&workspace, bytes);
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);
   check(status);
@@ -196,9 +195,7 @@ cutlass::Status (*cutlass_conv2d_bias_add_relu_all_func[N])(const half *,
     cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<256, 64, 32>,
                                       cutlass::gemm::GemmShape<64, 64, 32>>,
     cutlass_nhwc_conv2d_bias_add_relu<cutlass::gemm::GemmShape<256, 128, 32>,
-                                      cutlass::gemm::GemmShape<64, 64, 32>>
-
-};
+                                      cutlass::gemm::GemmShape<64, 64, 32>>};
 std::map<std::vector<int>, int> map_problem_conv2d_bias_add_relu;
 
 void cutlass_conv2d_bias_add_relu(CONV_RESIDUAL_PARAMS) {

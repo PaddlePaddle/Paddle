@@ -15,11 +15,11 @@
 
 #include <cutlass/epilogue/thread/linear_combination_bias_relu.h>
 #include <iostream>
-#include "conv2d_all.h"
-#include "conv2d_util.h"
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
 #include "cutlass/conv/kernel/default_conv2d_fprop.h"
 #include "cutlass/cutlass.h"
+#include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_all.h"
+#include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
 
 namespace phi {
 namespace fusion {
@@ -97,7 +97,7 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu(COMMON_CONV_PARAMS) {
   ImplicitGemm implicit_gemm_op;
   size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
   void *workspace;
-  cudaMalloc((void **)&workspace, bytes);
+  cudaMalloc(&workspace, bytes);
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);
   check(status);
