@@ -258,7 +258,11 @@ void UpdateOpDescsByReuse(
         }
       }
 
+      std::vector<std::string> output_var_names;
       for (auto argument : node->Op()->Outputs()) {
+        std::copy(argument.second.begin(),
+                  argument.second.end(),
+                  std::back_inserter(output_var_names));
         for (const auto& x : argument.second) {
           auto name = x;
           if (reuse_table.count(x) && reuse_table.at(x) != x) {
@@ -268,6 +272,7 @@ void UpdateOpDescsByReuse(
           VLOG(4) << node->Name() << " output " << x << " -> " << name;
         }
       }
+      node->Op()->SetAttr("OutputVarNames", std::move(output_var_names));
 
       // modify the graph
       for (auto out_node : node->outputs) {

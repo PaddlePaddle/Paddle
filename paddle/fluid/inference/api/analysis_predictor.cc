@@ -1706,12 +1706,12 @@ bool AnalysisPredictor::ZeroCopyRun() {
   }
 #endif
 
-  executor_->Run();
-  inference::DisplayMemoryInfo(place_, "after run");
-
   if (config_.shape_range_info_collected()) {
     CollectShapeRangeInfo();
   }
+
+  executor_->Run();
+  inference::DisplayMemoryInfo(place_, "after run");
 
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
@@ -1782,46 +1782,74 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
 #endif
   }
 
-  std::vector<std::string> var_names = sub_scope_->LocalVarNames();
-  for (const auto &name : var_names) {
-    auto *var = sub_scope_->GetVar(name);
-    if (!var->IsType<phi::DenseTensor>()) {
+  auto input_names = GetInputNames();
+  for (auto &input_name : input_names) {
+    auto *var = sub_scope_->FindVar(input_name);
+    if (!var || !var->IsType<phi::DenseTensor>()) {
       continue;
     }
-    auto tensor = var->Get<phi::DenseTensor>();
-    framework::DDim dim = tensor.dims();
+    auto dense_tensor = var->Get<phi::DenseTensor>();
+    framework::DDim dim = dense_tensor.dims();
     std::vector<int32_t> shape(dim.size());
-    for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
-    shape_info_[name].emplace_back(shape);
-
-    // We need collect value range for shape tensor for Paddle-TRT's use.
-    // To be noticed, this method to identify all shape tensors is based on
-    // assumption that all shape tensors in the model have numbers <= 7.
-    // This is a simple method to identify all shape tensors with some
-    // mistakes, but it doesn't matter.
-    auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
-    if (tensor.dtype() == paddle::experimental::DataType::INT32 &&
-        is_shape_tensor) {
-      std::vector<int> int32_host(tensor.numel());
-      if (tensor.place() == platform::CPUPlace()) {
-        paddle::memory::Copy(platform::CPUPlace(),
-                             int32_host.data(),
-                             platform::CPUPlace(),
-                             tensor.data<int>(),
-                             tensor.numel() * sizeof(int));
-      } else if (tensor.place() == platform::CUDAPlace()) {
-#if defined(PADDLE_WITH_CUDA)
-        paddle::memory::Copy(platform::CPUPlace(),
-                             int32_host.data(),
-                             platform::CUDAPlace(),
-                             tensor.data<int>(),
-                             tensor.numel() * sizeof(int),
-                             nullptr);
-#endif
-      }
-      shape_tensor_value_[name].emplace_back(int32_host);
+    for (size_t i = 0; i < shape.size(); ++i) {
+      shape[i] = dim[i];
     }
+    this->shape_info_[input_name].emplace_back(shape);
   }
+
+  executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
+    auto output_var_names =
+        op->Attr<std::vector<std::string>>("OutputVarNames");
+    int output_var_names_index = 0;
+    for (auto &output : op->Outputs()) {
+      for (size_t i = 0; i < output.second.size(); ++i) {
+        auto &var_name = output.second[i];
+        auto *var = sub_scope_->FindVar(var_name);
+        if (!var || !var->IsType<phi::DenseTensor>()) {
+          continue;
+        }
+        auto dense_tensor = var->Get<phi::DenseTensor>();
+        framework::DDim dim = dense_tensor.dims();
+        std::vector<int32_t> shape(dim.size());
+        for (size_t i = 0; i < shape.size(); ++i) {
+          shape[i] = dim[i];
+        }
+        this->shape_info_[output_var_names[output_var_names_index]]
+            .emplace_back(shape);
+
+        // We need collect value range for shape tensor for Paddle-TRT's use.
+        // To be noticed, this method to identify all shape tensors is based on
+        // assumption that all shape tensors in the model have numbers <= 7.
+        // This is a simple method to identify all shape tensors with some
+        // mistakes, but it doesn't matter.
+        auto is_shape_tensor =
+            dense_tensor.numel() <= 7 && dense_tensor.numel() >= 1;
+        if (dense_tensor.dtype() == paddle::experimental::DataType::INT32 &&
+            is_shape_tensor) {
+          std::vector<int> int32_host(dense_tensor.numel());
+          if (dense_tensor.place() == platform::CPUPlace()) {
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 int32_host.data(),
+                                 platform::CPUPlace(),
+                                 dense_tensor.data<int>(),
+                                 dense_tensor.numel() * sizeof(int));
+          } else if (dense_tensor.place() == platform::CUDAPlace()) {
+#if defined(PADDLE_WITH_CUDA)
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 int32_host.data(),
+                                 platform::CUDAPlace(),
+                                 dense_tensor.data<int>(),
+                                 dense_tensor.numel() * sizeof(int),
+                                 nullptr);
+#endif
+          }
+          this->shape_tensor_value_[output_var_names[output_var_names_index]]
+              .emplace_back(int32_host);
+        }
+        output_var_names_index++;
+      }
+    }
+  });
 }
 
 void AnalysisPredictor::StatisticShapeRangeInfo() {
@@ -2196,6 +2224,9 @@ void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
   static std::once_flag register_hook_flag;
   std::call_once(register_hook_flag, [this] {
     executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
+      auto output_var_names =
+          op->Attr<std::vector<std::string>>("OutputVarNames");
+      int output_var_names_index = 0;
       for (auto &output : op->Outputs()) {
         for (auto &var_name : output.second) {
           auto *var = this->sub_scope_->FindVar(var_name);
@@ -2204,7 +2235,9 @@ void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
           if (!dense_tensor.initialized()) continue;
           auto tensor = this->GetOutputTensor(var_name);
           for (auto &hookfunc : this->hookfuncs_) {
-            hookfunc(op->Type(), var_name, *tensor);
+            hookfunc(op->Type(),
+                     output_var_names[output_var_names_index++],
+                     *tensor);
           }
         }
       }

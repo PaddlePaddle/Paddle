@@ -82,7 +82,7 @@ class NaiveExecutor {
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   Scope* scope_{nullptr};
 
-  HookFunc hookfunc_{nullptr};
+  std::vector<HookFunc> hookfunc_;
 };
 
 }  // namespace framework

@@ -65,8 +65,10 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
 #endif
-    if (hookfunc_) {
-      hookfunc_(op.get());
+    if (hookfunc_.size()) {
+      for (auto &func : hookfunc_) {
+        func(op.get());
+      }
     }
   }
 #ifdef PADDLE_WITH_INFERENCE_NVTX
@@ -146,7 +148,7 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
 }
 
 void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
-  hookfunc_ = hookfunc;
+  hookfunc_.push_back(hookfunc);
 }
 
 NaiveExecutor::~NaiveExecutor() {
