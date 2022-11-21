@@ -14,7 +14,6 @@
 
 import numpy as np
 
-import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.dygraph import (
