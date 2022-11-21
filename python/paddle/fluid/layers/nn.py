@@ -14,7 +14,6 @@
 """
 All layers just related to the neural network.
 """
-
 import os
 import inspect
 import warnings
@@ -127,7 +126,6 @@ __all__ = [
     'log',
     'crop',
     'crop_tensor',
-    'relu6',
     'pow',
     'hard_sigmoid',
     'prelu',
@@ -9577,52 +9575,6 @@ def pad2d(
         type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs
     )
 
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.relu6")
-def relu6(x, threshold=6.0, name=None):
-    """
-
-    ${comment}
-
-    Args:
-        x(${x_type}): ${x_comment}
-        threshold(float, optional): ${threshold_comment}
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
-
-    Returns:
-        output(${out_type}): ${out_comment}
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            in1 = np.array([[-1,0],[2.5,7.8]])
-            with fluid.dygraph.guard():
-                x1 = fluid.dygraph.to_variable(in1)
-                out1 = fluid.layers.relu6(x=x1, threshold=6.0)
-                print(out1.numpy())
-                # [[0.  0. ]
-                #  [2.5 6. ]]
-    """
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu6')
-
-    helper = LayerHelper('relu6', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='relu6',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={
-            'threshold': threshold,
-            'use_mkldnn': _global_flags()["FLAGS_use_mkldnn"],
-        },
-    )
     return out
 
 
