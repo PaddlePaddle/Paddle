@@ -91,14 +91,15 @@ class SparseAdagradOptimizer {
         optimizer_config.nonclk_coeff * (g_show - g_click) +
         optimizer_config.clk_coeff * g_click;
     float slot = ptr[gpu_accessor_.common_feature_value.SlotIndex()];
-
+    // dual box
+    float scale = (optimizer_config.multi_node) ? 1.0 : g_show;
     update_value_work(
         optimizer_config,
         1,
         ptr + gpu_accessor_.common_feature_value.EmbedWIndex(),
         ptr + gpu_accessor_.common_feature_value.EmbedG2SumIndex(),
         grad + gpu_accessor_.common_push_value.EmbedGIndex(),
-        g_show,
+        scale,
         slot);
 
     int mf_dim = int(ptr[gpu_accessor_.common_feature_value.MfDimIndex()]);
@@ -127,7 +128,7 @@ class SparseAdagradOptimizer {
           ptr + gpu_accessor_.common_feature_value.EmbedxWIndex(),
           ptr + gpu_accessor_.common_feature_value.EmbedxG2SumIndex(),
           grad + gpu_accessor_.common_push_value.EmbedxGIndex(),
-          g_show,
+          scale,
           slot);
     }
   }

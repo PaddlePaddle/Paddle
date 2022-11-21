@@ -1412,12 +1412,14 @@ int GraphDataGenerator::FillWalkBuf() {
   return total_row_ != 0;
 }
 
-void GraphDataGenerator::SetFeedVec(std::vector<LoDTensor *> feed_vec) {
+//void GraphDataGenerator::SetFeedVec(std::vector<LoDTensor *> feed_vec) {
+void GraphDataGenerator::SetFeedVec(std::vector<phi::DenseTensor *> feed_vec) {
   feed_vec_ = feed_vec;
 }
 
 void GraphDataGenerator::AllocResource(int thread_id,
-                                       std::vector<LoDTensor *> feed_vec) {
+                                       std::vector<phi::DenseTensor *> feed_vec) {
+                                       //std::vector<LoDTensor *> feed_vec) {
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   gpuid_ = gpu_graph_ptr->device_id_mapping[thread_id];
   thread_id_ = thread_id;
@@ -1566,7 +1568,7 @@ void GraphDataGenerator::SetConfig(
   train_table_cap_ = graph_config.train_table_cap();
   infer_table_cap_ = graph_config.infer_table_cap();
   epoch_finish_ = false;
-  VLOG(0) << "Confirm GraphConfig, walk_degree : " << walk_degree_
+  VLOG(1) << "Confirm GraphConfig, walk_degree : " << walk_degree_
           << ", walk_len : " << walk_len_ << ", window : " << window_
           << ", once_sample_startid_len : " << once_sample_startid_len_
           << ", sample_times_one_chunk : " << repeat_time_

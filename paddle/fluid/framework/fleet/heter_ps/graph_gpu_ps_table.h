@@ -38,81 +38,31 @@ class GpuPsGraphTable
            type_id * graph_table_num_ + idx;
   }
   GpuPsGraphTable(std::shared_ptr<HeterPsResource> resource,
-                  int topo_aware,
                   int graph_table_num)
       : HeterComm<uint64_t, uint64_t, int, CommonFeatureValueAccessor>(
-            1, resource) {
+            0, resource) {
     load_factor_ = FLAGS_gpugraph_hbm_table_load_factor;
-    VLOG(0) << "load_factor = " << load_factor_;
+    VLOG(0) << "load_factor = " << load_factor_
+            << ", graph_table_num = " << graph_table_num;
 
     rw_lock.reset(new pthread_rwlock_t());
     this->graph_table_num_ = graph_table_num;
     this->feature_table_num_ = 1;
     gpu_num = resource_->total_device();
     memset(global_device_map, -1, sizeof(global_device_map));
-    for (auto &table : tables_) {
-      delete table;
-      table = NULL;
-    }
-    int feature_table_num = 1;
+
     tables_ = std::vector<Table *>(
-        gpu_num * (graph_table_num + feature_table_num), NULL);
+        gpu_num * (graph_table_num_ + feature_table_num_), NULL);
     for (int i = 0; i < gpu_num; i++) {
       global_device_map[resource_->dev_id(i)] = i;
-      for (int j = 0; j < graph_table_num; j++) {
+      for (int j = 0; j < graph_table_num_; j++) {
         gpu_graph_list_.push_back(GpuPsCommGraph());
       }
-      for (int j = 0; j < feature_table_num; j++) {
+      for (int j = 0; j < feature_table_num_; j++) {
         gpu_graph_fea_list_.push_back(GpuPsCommGraphFea());
       }
     }
-
     cpu_table_status = -1;
-    if (topo_aware) {
-      int total_gpu = resource_->total_device();
-      std::map<int, int> device_map;
-      for (int i = 0; i < total_gpu; i++) {
-        device_map[resource_->dev_id(i)] = i;
-        VLOG(1) << " device " << resource_->dev_id(i) << " is stored on " << i;
-      }
-      path_.clear();
-      path_.resize(total_gpu);
-      VLOG(1) << "topo aware overide";
-      for (int i = 0; i < total_gpu; ++i) {
-        path_[i].resize(total_gpu);
-        for (int j = 0; j < total_gpu; ++j) {
-          auto &nodes = path_[i][j].nodes_;
-          nodes.clear();
-          int from = resource_->dev_id(i);
-          int to = resource_->dev_id(j);
-          int transfer_id = i;
-          if (need_transfer(from, to) &&
-              (device_map.find((from + 4) % 8) != device_map.end() ||
-               device_map.find((to + 4) % 8) != device_map.end())) {
-            transfer_id = (device_map.find((from + 4) % 8) != device_map.end())
-                              ? ((from + 4) % 8)
-                              : ((to + 4) % 8);
-            transfer_id = device_map[transfer_id];
-            nodes.push_back(Node());
-            Node &node = nodes.back();
-            node.in_stream = resource_->comm_stream(i, transfer_id);
-            node.out_stream = resource_->comm_stream(transfer_id, i);
-            node.key_storage = NULL;
-            node.val_storage = NULL;
-            node.sync = 0;
-            node.dev_num = transfer_id;
-          }
-          nodes.push_back(Node());
-          Node &node = nodes.back();
-          node.in_stream = resource_->comm_stream(i, transfer_id);
-          node.out_stream = resource_->comm_stream(transfer_id, i);
-          node.key_storage = NULL;
-          node.val_storage = NULL;
-          node.sync = 0;
-          node.dev_num = j;
-        }
-      }
-    }
     device_mutex_.resize(gpu_num);
     for (int i = 0; i < gpu_num; i++) {
       device_mutex_[i] = new std::mutex();

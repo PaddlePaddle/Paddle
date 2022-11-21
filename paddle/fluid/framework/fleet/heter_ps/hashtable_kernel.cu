@@ -93,7 +93,7 @@ __global__ void insert_kernel(Table* table,
     uint64_t offset = uint64_t(start_index + i) * feature_value_size;
     kv.second = (Table::mapped_type)(pool + offset);
     auto it = table->insert(kv, op);
-    assert(it != table->end() && "error: insert fails: table is full");
+    PADDLE_ENFORCE(it != table->end(), "error: insert fails: table is full");
   }
 }
 
@@ -112,14 +112,13 @@ __global__ void search_kernel(Table* table,
 }
 
 template <typename Table, typename GPUAccessor>
-__global__ void dy_mf_search_kernel(Table* table,
+__global__ void dy_mf_search_kernel_fill(Table* table,
                                     const typename Table::key_type* const keys,
                                     char* vals,
                                     size_t len,
                                     size_t pull_feature_value_size,
                                     GPUAccessor gpu_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  // return;
   if (i < len) {
     auto it = table->find(keys[i]);
     if (it != table->end()) {
@@ -127,6 +126,30 @@ __global__ void dy_mf_search_kernel(Table* table,
       float* cur = (float*)(vals + offset);
       float* input = it->second;
       gpu_accessor.PullValueFill(cur, input);
+    } else {
+      float* cur = (float*)(&vals[i * pull_feature_value_size]);
+      gpu_accessor.PullZeroValue(cur);
+    }
+  }
+}
+
+template <typename Table, typename GPUAccessor>
+__global__ void dy_mf_search_kernel(Table* table,
+                                    const typename Table::key_type* const keys,
+                                    char* vals,
+                                    size_t len,
+                                    size_t pull_feature_value_size,
+                                    GPUAccessor gpu_accessor) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    auto it = table->find(keys[i]);
+    if (it != table->end()) {
+      uint64_t offset = i * pull_feature_value_size;
+      float* cur = (float*)(vals + offset);
+      float* input = it->second;
+      gpu_accessor.PullValueFill(cur, input);
+    } else {
+      PADDLE_ENFORCE(false, "warning: pull miss key: %lu", keys[i]);
     }
   }
 }
@@ -162,7 +185,7 @@ __global__ void dy_mf_update_kernel(Table* table,
       float* cur = (float*)(grads + i * grad_value_size);
       sgd.dy_mf_update_value(optimizer_config, (it.getter())->second, cur);
     } else {
-      printf("warning: push miss key: %lu", keys[i]);
+      PADDLE_ENFORCE(false, "warning: push miss key: %lu", keys[i]);
     }
   }
 }
@@ -270,8 +293,14 @@ void HashTable<KeyType, ValType>::get(const KeyType* d_keys,
     return;
   }
   const int grid_size = (len - 1) / BLOCK_SIZE_ + 1;
-  dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
-      container_, d_keys, d_vals, len, pull_feature_value_size_, fv_accessor);
+  // infer need zero fill
+  if (infer_mode_) {
+    dy_mf_search_kernel_fill<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+        container_, d_keys, d_vals, len, pull_feature_value_size_, fv_accessor);
+  } else {
+    dy_mf_search_kernel<<<grid_size, BLOCK_SIZE_, 0, stream>>>(
+        container_, d_keys, d_vals, len, pull_feature_value_size_, fv_accessor);
+  }
 }
 
 template <typename KeyType, typename ValType>

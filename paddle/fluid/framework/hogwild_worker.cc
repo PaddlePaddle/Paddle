@@ -143,6 +143,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   int batch_cnt = 0;
   timeline.Start();
   uint64_t total_inst = 0;
+  bool train_mode = device_reader_->IsTrainMode();
   device_reader_->InitGraphTrainResource();
   while (1) {
     cur_batch = device_reader_->Next();

@@ -122,8 +122,9 @@ template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 void HeterPs<GPUAccessor, GPUOptimizer>::set_nccl_comm_and_size(
     const std::vector<ncclComm_t>& inner_comms,
     const std::vector<ncclComm_t>& inter_comms,
-    int comm_size) {
-  comm_->set_nccl_comm_and_size(inner_comms, inter_comms, comm_size);
+    int comm_size,
+    int rank_id) {
+  comm_->set_nccl_comm_and_size(inner_comms, inter_comms, comm_size, rank_id);
 }
 
 template <typename GPUAccessor, template <typename T> class GPUOptimizer>
