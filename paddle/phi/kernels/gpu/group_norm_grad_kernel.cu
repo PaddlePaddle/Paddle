@@ -268,7 +268,6 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_x,
                          DenseTensor* d_scale,
                          DenseTensor* d_bias) {
-  printf("@@@ cal groupnorm grad \n");
   using AccT = typename kps::details::MPTypeTrait<T>::Type;
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();

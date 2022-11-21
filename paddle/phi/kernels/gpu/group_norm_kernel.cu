@@ -234,20 +234,19 @@ void GroupNormKernel(const Context& dev_ctx,
                    data_layout);
 }
 // TODO[wangbojun] need fix for temp_mean and temp_variance.
-template <typename T>
-void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
-                                               const T* input,
-                                               std::vector<int> input_shape,
-                                               const T* bias,
-                                               const T* scale,
-                                               T* temp_mean,
-                                               T* temp_variance,
-                                               int groups,
-                                               float eps,
-                                               T* output,
-                                               T* mean,
-                                               T* variance,
-                                               const DataLayout data_layout) {
+template <typename T, typename AccT>
+void GroupNormDirectCUDAFunctor<T, AccT>::operator()(gpuStream_t stream,
+                                                     const T* input,
+                                                     std::vector<int> input_shape,
+                                                     const T* bias,
+                                                     const T* scale,
+                                                     AccT* temp_variance,
+                                                     int groups,
+                                                     float eps,
+                                                     T* output,
+                                                     AccT* mean,
+                                                     AccT* variance,
+                                                     const DataLayout data_layout) {
   const auto input_ddim = phi::make_ddim(input_shape);
   const int C =
       (data_layout == DataLayout::kNCHW ? input_ddim[1]
@@ -275,8 +274,7 @@ void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
   dim3 grid(group_size, groups, input_ddim[0]);
   dim3 threads(block_size, 1, 1);
   if (data_layout == DataLayout::kNCHW) {
-    using AccT = typename phi::kps::details::MPTypeTrait<float>::Type;
-    constexpr int vec_size = sizeof(float4) / sizeof(float);
+    constexpr int vec_size = sizeof(float4) / sizeof(T);
     int size = group_size * image_size;  // group element size
     const int max_num_threads = 1024;
     int max_block_size = std::min(size / vec_size, max_num_threads);
@@ -290,14 +288,14 @@ void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
     dim3 blocks(block_size_nchw);
 
     if (size < vec_size * block_size_nchw) {
-      phi::ScalarGetMeanAndVarNCHW<T,T>
+      phi::ScalarGetMeanAndVarNCHW<T,AccT>
           <<<grids, blocks, 0, stream>>>(input, mean, temp_variance, size);
     } else {
       phi::VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
           <<<grids, blocks, 0, stream>>>(input, mean, temp_variance, size);
     }
   } else {
-    phi::GroupNormForwardGetMeanAndVar<T,T>
+    phi::GroupNormForwardGetMeanAndVar<T,AccT>
         <<<grid, threads, 0, stream>>>(input,
                                        input_ddim[0],
                                        C,
@@ -308,24 +306,26 @@ void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                        mean,
                                        temp_variance);
   }
-  GroupNormForward<T,T, 3><<<grid, threads, 0, stream>>>(
-      input,
-      mean,
-      temp_variance,
-      scale,
-      bias,
-      input_ddim[0],
-      C,
-      W,
-      image_size,
-      groups,
-      group_size,
-      eps,
-      output,
-      variance,
-      data_layout);  // for now, we only support nchw for group norm
+  GroupNormForward<T,AccT,3><<<grid,threads,0,stream>>>(                    
+                    input,
+                    mean,
+                    temp_variance,
+                    scale,
+                    bias,
+                    input_ddim[0],
+                    C,
+                    W,
+                    image_size,
+                    groups,
+                    group_size,
+                    static_cast<AccT>(eps),
+                    output,
+                    variance,
+                    data_layout);  
 }
-template class GroupNormDirectCUDAFunctor<float>;
+template class GroupNormDirectCUDAFunctor<float,float>;
+template class GroupNormDirectCUDAFunctor<phi::dtype::float16,float>;
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
