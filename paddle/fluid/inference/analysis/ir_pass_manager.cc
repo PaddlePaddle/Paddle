@@ -254,6 +254,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_xpu", new bool(argument->use_xpu()));
       pass->Set("xpu_l3_workspace_size",
                 new int(argument->xpu_l3_workspace_size()));
+      pass->Set("use_opencl", new bool(argument->use_opencl()));
       pass->Set("cpu_math_library_num_threads",
                 new int(argument->cpu_math_library_num_threads()));
       pass->Set("locked", new bool(argument->xpu_locked()));

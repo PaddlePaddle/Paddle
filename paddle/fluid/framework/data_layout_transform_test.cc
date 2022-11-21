@@ -54,9 +54,8 @@ TEST(DataTransformBf16, GetDataFromTensorDNNL) {
 
   void* in_data =
       paddle::framework::GetDataFromTensor(in, dnnl::memory::data_type::bf16);
-  EXPECT_EQ(
-      in_data,
-      paddle::platform::to_void_cast(in.data<paddle::platform::bfloat16>()));
+  EXPECT_EQ(in_data,
+            phi::funcs::to_void_cast(in.data<paddle::platform::bfloat16>()));
 }
 
 TEST(DataTransformInt32, GetDataFromTensorDNNL) {
@@ -66,6 +65,6 @@ TEST(DataTransformInt32, GetDataFromTensorDNNL) {
 
   void* in_data =
       paddle::framework::GetDataFromTensor(in, dnnl::memory::data_type::s32);
-  EXPECT_EQ(in_data, paddle::platform::to_void_cast(in.data<int32_t>()));
+  EXPECT_EQ(in_data, phi::funcs::to_void_cast(in.data<int32_t>()));
 }
 #endif

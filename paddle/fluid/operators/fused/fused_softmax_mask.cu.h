@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
 namespace paddle {
