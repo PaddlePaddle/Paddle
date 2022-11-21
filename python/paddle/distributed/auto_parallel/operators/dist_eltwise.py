@@ -84,7 +84,6 @@ class DistributedElementwiseImpl0(DistributedOperatorImpl):
         res.append(cost_mapping)
 
         main_block = backward_op.block
-        vars = main_block.vars
         need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
