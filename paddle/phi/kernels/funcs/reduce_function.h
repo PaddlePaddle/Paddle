@@ -33,8 +33,8 @@ namespace cub = hipcub;
 #endif
 
 #ifndef PADDLE_WITH_XPU_KP
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #endif
