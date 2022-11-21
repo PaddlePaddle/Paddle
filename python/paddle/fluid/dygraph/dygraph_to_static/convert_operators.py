@@ -20,7 +20,6 @@ from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
 )
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import Assert, Print
-from paddle.fluid.layers import range as paddle_range
 from paddle.fluid.layers import (
     array_length,
     array_read,
@@ -570,7 +569,7 @@ class VariableTuple:
         self.var = var
         self.len = convert_len(var)
         if isinstance(self.len, Variable):
-            self.rag = paddle_range(start, start + self.len, 1, paddle.int64)
+            self.rag = paddle.arange(start, start + self.len, 1, paddle.int64)
         else:
             self.rag = range(start, start + self.len)
 
@@ -592,11 +591,11 @@ def convert_range(*args):
     has_variable = any(map(lambda x: isinstance(x, Variable), args))
     if has_variable:
         if len(args) == 1:
-            return paddle_range(0, args[0], 1, paddle.int64)
+            return paddle.arange(0, args[0], 1, paddle.int64)
         if len(args) == 2:
-            return paddle_range(args[0], args[1], 1, paddle.int64)
+            return paddle.arange(args[0], args[1], 1, paddle.int64)
         if len(args) == 3:
-            return paddle_range(args[0], args[1], args[2], paddle.int64)
+            return paddle.arange(args[0], args[1], args[2], paddle.int64)
     return range(*args)
 
 

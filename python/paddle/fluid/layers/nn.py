@@ -117,7 +117,6 @@ __all__ = [
     'resize_bilinear',
     'resize_trilinear',
     'resize_nearest',
-    'gather',
     'gather_nd',
     'scatter',
     'scatter_nd_add',
@@ -125,7 +124,6 @@ __all__ = [
     'random_crop',
     'mean_iou',
     'relu',
-    'selu',
     'log',
     'crop',
     'crop_tensor',
@@ -8612,81 +8610,6 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
     return image_resize(input=input, out_shape=out_shape, resample=resample)
 
 
-@deprecated(since="2.0.0", update_to="paddle.gather")
-def gather(input, index, overwrite=True):
-    """
-
-    Output is obtained by gathering entries of the outer-most dimension
-    of X indexed by `index` and concatenate them together.
-
-    .. math::
-
-        Out = X[Index]
-
-
-    .. code-block:: text
-
-
-                Given:
-
-                X = [[1, 2],
-                     [3, 4],
-                     [5, 6]]
-
-                Index = [1, 2]
-
-                Then:
-
-                Out = [[3, 4],
-                       [5, 6]]
-
-    Args:
-        input (Tensor): The source input tensor with rank>=1. Supported data type is
-            int32, int64, float32, float64 and uint8 (only for CPU),
-            float16 (only for GPU).
-        index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
-        overwrite (bool, optional): The mode that updating the grad when has same index.
-            If True, use the overwrite mode to update the grad of the same index,
-            if False, use the accumulate mode to update the grad of the same index.
-            Default value is True.
-
-    Returns:
-        output (Tensor): The output is a tensor with the same rank as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            x = fluid.data(name='x', shape=[-1, 5], dtype='float32')
-            index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
-            output = fluid.layers.gather(x, index)
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.gather(input, index, None, 'overwrite', overwrite)
-
-    check_variable_and_dtype(
-        input,
-        'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
-        'gather',
-    )
-    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
-    helper = LayerHelper('gather', **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="gather",
-        inputs={"X": input, "Index": index},
-        outputs={"Out": out},
-        attrs={'overwrite': overwrite},
-    )
-    return out
-
-
 @deprecated(since="2.0.0", update_to="paddle.gather_nd")
 def gather_nd(input, index, name=None):
     """
@@ -9146,78 +9069,6 @@ def relu(x, name=None):
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out}
-    )
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.selu")
-def selu(x, scale=None, alpha=None, name=None):
-    r"""
-
-    Selu Operator.
-
-    The equation is:
-
-    .. math::
-        selu= \\lambda*
-        \\begin{cases}
-            x                      &\\quad \\text{ if } x>0 \n
-            \\alpha * e^x - \\alpha  &\\quad \\text{ if } x<=0
-        \\end{cases}
-
-
-    The input `X` can carry the LoD (Level of Details) information,
-    or not. And the output shares the LoD information with input `X`.
-
-    Args:
-        x (Variable): The input N-D Tensor.
-        scale(float, optional): lambda in selu activation function,
-            the default value is 1.0507009873554804934193349852946.
-            For more information about this value, please refer
-            to: https://arxiv.org/abs/1706.02515.
-        alpha(float, optional): alpha in selu activation function,
-            the default value is 1.6732632423543772848170429916717.
-            For more information about this value, please refer
-            to: https://arxiv.org/abs/1706.02515.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
-
-
-    Returns:
-        Variable(Tensor|LoDTensor): The output Tensor or LoDTensor with the same shape and LoD information as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            import numpy as np
-            paddle.enable_static()
-
-            inputs = fluid.layers.data(name="x", shape=[2, 2], dtype="float32")
-            output = fluid.layers.selu(inputs)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-
-            img = np.array([[0, 1],[2, 3]]).astype(np.float32)
-
-            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
-            print(res) # [array([[0.      , 1.050701],[2.101402, 3.152103]], dtype=float32)]
-    """
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'selu')
-
-    helper = LayerHelper('selu', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    attrs = {}
-    if scale is not None:
-        attrs["scale"] = scale
-    if alpha is not None:
-        attrs["alpha"] = alpha
-
-    helper.append_op(
-        type="selu", inputs={"X": x}, outputs={"Out": out}, attrs=attrs
     )
     return out
 
