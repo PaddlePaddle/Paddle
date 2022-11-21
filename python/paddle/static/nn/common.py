@@ -197,7 +197,6 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import numpy as np
             import paddle
             paddle.enable_static()
