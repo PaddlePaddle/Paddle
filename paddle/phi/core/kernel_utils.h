@@ -336,4 +336,15 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   };
 };
 
+inline bool recompute_reduce_all(const DenseTensor& x,
+                                 const IntArray& dims,
+                                 bool reduce_all = false) {
+  if (dims.size() == 0 || static_cast<int>(dims.size()) == x.dims().size() ||
+      reduce_all) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 }  // namespace phi
