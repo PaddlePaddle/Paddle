@@ -55,12 +55,12 @@ void CastDataLayout(const Context& dev_ctx,
 template <typename Context>
 void TransferLayoutGeneral(const Context& dev_ctx,
                            const DenseTensor& x,
+                           DataLayout src_layout,
                            DataLayout dst_layout,
-                           DataLayout from_layout,
                            DenseTensor* out) {
   auto src_dim = x.dims();
 
-  auto axis = GetAxis(from_layout, dst_layout);
+  auto axis = GetAxis(src_layout, dst_layout);
 
   std::vector<int64_t> dst_dim;
   dst_dim.resize(axis.size());
@@ -173,8 +173,11 @@ void TransferLayoutKernel(const Context& dev_ctx,
                                 static_cast<DataLayout>(dst_layout),
                                 out);
 #else
-  TransferLayoutGeneral<Context>(
-      dev_ctx, x, static_cast<DataLayout>(dst_layout), static_cast<DataLayout>(src_layout), out);
+  TransferLayoutGeneral<Context>(dev_ctx,
+                                 x,
+                                 static_cast<DataLayout>(dst_layout),
+                                 static_cast<DataLayout>(src_layout),
+                                 out);
 #endif
 }
 
