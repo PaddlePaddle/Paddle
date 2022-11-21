@@ -14,7 +14,6 @@
 
 from . import control_flow
 from . import tensor
-from . import ops
 from . import nn
 import math
 import numpy as np
@@ -535,8 +534,8 @@ class Categorical(Distribution):
         other_logits = other.logits - nn.reduce_max(
             other.logits, dim=-1, keep_dim=True
         )
-        e_logits = ops.exp(logits)
-        other_e_logits = ops.exp(other_logits)
+        e_logits = paddle.exp(logits)
+        other_e_logits = paddle.exp(other_logits)
         z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
         other_z = nn.reduce_sum(other_e_logits, dim=-1, keep_dim=True)
         prob = e_logits / z
@@ -556,7 +555,7 @@ class Categorical(Distribution):
 
         """
         logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
-        e_logits = ops.exp(logits)
+        e_logits = paddle.exp(logits)
         z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
         prob = e_logits / z
         entropy = -1.0 * nn.reduce_sum(

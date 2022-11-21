@@ -99,10 +99,10 @@ class SimpleLSTMRNN(fluid.Layer):
                 i, j, f, o = fluid.layers.split(
                     gate_input, num_or_sections=4, dim=-1
                 )
-                c = pre_cell * fluid.layers.sigmoid(f) + fluid.layers.sigmoid(
-                    i
-                ) * fluid.layers.tanh(j)
-                m = fluid.layers.tanh(c) * fluid.layers.sigmoid(o)
+                c = pre_cell * paddle.nn.functional.sigmoid(
+                    f
+                ) + paddle.nn.functional.sigmoid(i) * paddle.tanh(j)
+                m = paddle.tanh(c) * paddle.nn.functional.sigmoid(o)
                 hidden_array[k] = m
                 cell_array[k] = c
                 step_input = m

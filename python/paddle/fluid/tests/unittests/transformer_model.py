@@ -157,7 +157,7 @@ def multi_head_attention(
         # So, here define the softmax for temporary solution.
 
         def __softmax(x, eps=1e-9):
-            exp_out = layers.exp(x=x)
+            exp_out = paddle.exp(x=x)
             sum_out = layers.reduce_sum(exp_out, dim=-1, keep_dim=False)
             return layers.elementwise_div(x=exp_out, y=sum_out, axis=0)
 

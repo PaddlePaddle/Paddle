@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,14 +15,13 @@ limitations under the License. */
 #pragma once
 #include <limits>
 
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename T>
 struct TolerableValue {
@@ -46,14 +45,15 @@ struct TolerableValue {
 // Also. In standard implementation of cross entropy, other
 // framework not has the ValueClipping.
 template <>
-struct TolerableValue<platform::float16> {
-  HOSTDEVICE platform::float16 operator()(const platform::float16& x) const {
-    if (platform::isfinite(x))
+struct TolerableValue<phi::dtype::float16> {
+  HOSTDEVICE phi::dtype::float16 operator()(
+      const phi::dtype::float16& x) const {
+    if (phi::dtype::isfinite(x))
       return x;
-    else if (x > static_cast<platform::float16>(0))
-      return std::numeric_limits<platform::float16>::max();
+    else if (x > static_cast<phi::dtype::float16>(0))
+      return std::numeric_limits<phi::dtype::float16>::max();
     else
-      return std::numeric_limits<platform::float16>::min();
+      return std::numeric_limits<phi::dtype::float16>::min();
   }
 };
 
@@ -68,6 +68,5 @@ class CrossEntropyFunctor {
                   const int ignore_index,
                   const int axis_dim);
 };
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
