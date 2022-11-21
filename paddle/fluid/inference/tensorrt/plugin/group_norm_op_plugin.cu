@@ -25,7 +25,55 @@ namespace tensorrt {
 namespace plugin {
 using DataLayout = framework::DataLayout;
 
-int GroupNormPlugin::initialize() TRT_NOEXCEPT { return 0; }
+int GroupNormPlugin::initialize() TRT_NOEXCEPT { 
+  
+  if(!with_fp16_){
+  // if use fp32
+    cudaMalloc(&scale_gpu_, sizeof(float)*scale_.size())
+    cudaMalloc(&bias_gpu_, sizeof(float)*bias_.size())
+    cudaMemcpy(scale_gpu_,
+               scale_.date(),
+               scale_.size()*sizeof(float),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(bias_gpu_,
+               bias_.date(),
+               bias_.size()*sizeof(float),
+               cudaMemcpyHostToDevice)
+  } else {
+  // if use fp16
+    std::vector<half> scale_half(scale_.size());
+    std::vector<half> bias_half(bias_.size());
+    for(i=0;i<scale_.size();++i){
+      scale_half[i]=static_cast<half>(scale_[i]);
+    }
+    for(i=0;i<bias_.size();++i){
+      bias_half[i]=static_cast<half>(bias_[i]);
+    }
+    cudaMalloc(&scale_gpu_, sizeof(half)*scale_.size())
+    cudaMalloc(&bias_gpu_, sizeof(half)*bias_.size())
+    cudaMemcpy(scale_gpu_,
+               scale_half.date(),
+               scale_half.size()*sizeof(half),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(bias_gpu_,
+               bias_half.date(),
+               bias_half.size()*sizeof(half),
+               cudaMemcpyHostToDevice);
+  }
+  return 0; 
+}
+
+bool GroupNormPlugin::supportsFormat(
+    nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
+  if (with_fp16_) {
+    return ((type == nvinfer1::DataType::kFLOAT ||
+             type == nvinfer1::DataType::kHALF) &&
+            (format == nvinfer1::PluginFormat::kLINEAR));
+  } else {
+    return ((type == nvinfer1::DataType::kFLOAT) &&
+            (format == nvinfer1::PluginFormat::kLINEAR));
+  }
+}
 
 nvinfer1::Dims GroupNormPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *inputDims, int nbInputs) TRT_NOEXCEPT {
@@ -73,38 +121,24 @@ int GroupNormPlugin::enqueue(int batch_size,
 
   int device_id;
   cudaGetDevice(&device_id);
-  const float *input = static_cast<const float *>(inputs[0]);
-  float *output = static_cast<float *>(outputs[0]);
-
-  scale_t.Resize(phi::make_ddim({C}));
-  bias_t.Resize(phi::make_ddim({C}));
-
-  mean_t.Resize(phi::make_ddim(mean_shape_));
-  variance_t.Resize(phi::make_ddim(variance_shape_));
-  float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  mean_t.Resize(phi::make_ddim(batched_mean_shape));
+  variance_t.Resize(phi::make_ddim(batched_variance_shape));
   float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  float *variance_d =
-      variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-
-  framework::Tensor temp_variance_t;
+  phi::DenseTensor temp_variance_t;
   temp_variance_t.Resize(phi::make_ddim(variance_shape_));
   float *temp_variance_d =
       temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-  cudaMemcpyAsync(scale_d,
-                  scale_.data(),
-                  sizeof(float) * C,
-                  cudaMemcpyHostToDevice,
-                  stream);
-  cudaMemcpyAsync(
-      bias_d, bias_.data(), sizeof(float) * C, cudaMemcpyHostToDevice, stream);
-  phi::GroupNormDirectCUDAFunctor<float> group_norm;
-  group_norm(stream,
+  auto input_type = input_desc[0].type;
+  if (input_type == nvinfer1::DataType::kFLOAT){
+    VLOG(1) << "TRT Plugin DataType selected. GroupNorm-->fp32";
+    const float *input = static_cast<const float *>(inputs[0]);
+    float *output = static_cast<float *>(outputs[0]);
+    phi::GroupNormDirectCUDAFunctor<float> group_norm;
+    group_norm(stream,
              input,
              input_shape,
-             bias_d,
-             scale_d,
-             mean_d,
+             bias_gpu_,
+             scale_gpu_,
              temp_variance_d,
              groups_,
              eps_,
@@ -112,6 +146,27 @@ int GroupNormPlugin::enqueue(int batch_size,
              mean_d,
              variance_d,
              DataLayout::kNCHW);
+  } else if (input_type == nvinfer1::DataType::kHALF){
+    VLOG(1) << "TRT Plugin DataType selected. GroupNorm-->fp16";
+    const half *input = static_cast<const half *>(inputs[0]);
+    half *output = static_cast<half *>(outputs[0]);
+    phi::GroupNormDirectCUDAFunctor<half, float> group_norm;
+    group_norm(stream,
+             input,
+             input_shape,
+             bias_gpu_,
+             scale_gpu_,
+             temp_variance_d,
+             groups_,
+             eps_,
+             output,
+             mean_d,
+             variance_d,
+             DataLayout::kNCHW);
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "The GroupNorm TRT Plugin's input type should be float or half."));
+  }
   return cudaGetLastError() != cudaSuccess;
 }
 nvinfer1::DimsExprs GroupNormPluginDynamic::getOutputDimensions(
@@ -140,8 +195,14 @@ bool GroupNormPluginDynamic::supportsFormatCombination(
                                         nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
-    return (in.type == nvinfer1::DataType::kFLOAT) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
+    if (with_fp16_) {
+      return ((in.type == nvinfer1::DataType::kFLOAT ||
+               in.type == nvinfer1::DataType::kHALF) &&
+              (in.format == nvinfer1::PluginFormat::kLINEAR));
+    } else {
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    }
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
   // output
@@ -159,6 +220,42 @@ nvinfer1::DataType GroupNormPluginDynamic::getOutputDataType(
                         "index value should be 0, but get %d.",
                         index));
   return input_types[0];
+}
+int GroupNormPluginDynamic::initialize() TRT_NOEXCEPT {
+if(!with_fp16_){
+  // if use fp32
+    cudaMalloc(&scale_gpu_, sizeof(float)*scale_.size())
+    cudaMalloc(&bias_gpu_, sizeof(float)*bias_.size())
+    cudaMemcpy(scale_gpu_,
+               scale_.date(),
+               scale_.size()*sizeof(float),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(bias_gpu_,
+               bias_.date(),
+               bias_.size()*sizeof(float),
+               cudaMemcpyHostToDevice)
+  } else {
+  // if use fp16
+    std::vector<half> scale_half(scale_.size());
+    std::vector<half> bias_half(bias_.size());
+    for(i=0;i<scale_.size();++i){
+      scale_half[i]=static_cast<half>(scale_[i]);
+    }
+    for(i=0;i<bias_.size();++i){
+      bias_half[i]=static_cast<half>(bias_[i]);
+    }
+    cudaMalloc(&scale_gpu_, sizeof(half)*scale_.size())
+    cudaMalloc(&bias_gpu_, sizeof(half)*bias_.size())
+    cudaMemcpy(scale_gpu_,
+               scale_half.date(),
+               scale_half.size()*sizeof(half),
+               cudaMemcpyHostToDevice);
+    cudaMemcpy(bias_gpu_,
+               bias_half.date(),
+               bias_half.size()*sizeof(half),
+               cudaMemcpyHostToDevice);
+  }
+  return 0;
 }
 
 int GroupNormPluginDynamic::enqueue(
@@ -205,43 +302,41 @@ int GroupNormPluginDynamic::enqueue(
   int device_id;
   cudaGetDevice(&device_id);
   auto input_type = input_desc[0].type;
+  variance_t.Resize(phi::make_ddim(batched_variance_shape));
+  float *variance_d =
+      variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  phi::DenseTensor temp_variance_t;
+  temp_variance_t.Resize(phi::make_ddim(batched_variance_shape));
+  float *temp_variance_d =
+      temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
+
   if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. GroupNorm-->fp32";
     const float *input = static_cast<const float *>(inputs[0]);
     float *output = static_cast<float *>(outputs[0]);
-    scale_t.Resize(phi::make_ddim({C}));
-    bias_t.Resize(phi::make_ddim({C}));
-
-    mean_t.Resize(phi::make_ddim(batched_mean_shape));
-    variance_t.Resize(phi::make_ddim(batched_variance_shape));
-    float *scale_d =
-        scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    float *variance_d =
-        variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-
-    framework::Tensor temp_variance_t;
-    temp_variance_t.Resize(phi::make_ddim(batched_variance_shape));
-    float *temp_variance_d =
-        temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-    cudaMemcpyAsync(scale_d,
-                    scale_.data(),
-                    sizeof(float) * C,
-                    cudaMemcpyHostToDevice,
-                    stream);
-    cudaMemcpyAsync(bias_d,
-                    bias_.data(),
-                    sizeof(float) * C,
-                    cudaMemcpyHostToDevice,
-                    stream);
-
     phi::GroupNormDirectCUDAFunctor<float> group_norm;
     group_norm(stream,
                input,
                input_shape,
                bias_d,
                scale_d,
+               temp_variance_d,
+               groups,
+               eps,
+               output,
                mean_d,
+               variance_d,
+               DataLayout::kNCHW);
+  } else if (input_type == nvinfer1::DataType::kHALF) {
+    VLOG(1) << "TRT Plugin DataType selected. GroupNorm-->fp16";
+    const half *input = static_cast<const half *>(inputs[0]);
+    half *output = static_cast<half *>(outputs[0]);
+    phi::GroupNormDirectCUDAFunctor<half,float> group_norm;
+    group_norm(stream,
+               input,
+               input_shape,
+               bias_d,
+               scale_d,
                temp_variance_d,
                groups,
                eps,
