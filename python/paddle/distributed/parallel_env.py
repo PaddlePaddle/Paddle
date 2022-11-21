@@ -16,6 +16,7 @@ import os
 import numpy as np
 from collections import OrderedDict
 
+import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid import framework
