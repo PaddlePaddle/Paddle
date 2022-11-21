@@ -332,8 +332,8 @@ def retinanet_target_assign(
 
     cls_logits = paddle.reshape(x=cls_logits, shape=(-1, num_classes))
     bbox_pred = paddle.reshape(x=bbox_pred, shape=(-1, 4))
-    predicted_cls_logits = nn.gather(cls_logits, score_index)
-    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
+    predicted_cls_logits = paddle.gather(cls_logits, score_index)
+    predicted_bbox_pred = paddle.gather(bbox_pred, loc_index)
 
     return (
         predicted_cls_logits,
@@ -514,8 +514,8 @@ def rpn_target_assign(
 
     cls_logits = paddle.reshape(x=cls_logits, shape=(-1, 1))
     bbox_pred = paddle.reshape(x=bbox_pred, shape=(-1, 4))
-    predicted_cls_logits = nn.gather(cls_logits, score_index)
-    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
+    predicted_cls_logits = paddle.gather(cls_logits, score_index)
+    predicted_bbox_pred = paddle.gather(bbox_pred, loc_index)
 
     return (
         predicted_cls_logits,
