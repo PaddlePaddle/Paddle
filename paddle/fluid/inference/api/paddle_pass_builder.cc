@@ -177,6 +177,7 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "fused_multi_transformer_decoder_fuse_qkv_pass",
     "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",
     "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",
+    "fuse_multi_transformer_layer_pass",
     "gpu_cpu_map_matmul_v2_to_mul_pass",
     "gpu_cpu_map_matmul_v2_to_matmul_pass",
     "fc_fuse_pass",
