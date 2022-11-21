@@ -304,6 +304,23 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
   }
 }
 
+#define DEFINE_ONEDNN_ELEMENTWISE_GRAD_KERNEL(name, algorithm) \
+  template <typename T, typename Context>                      \
+  void name##GradKernel(const Context& dev_ctx,                \
+                        const DenseTensor& x,                  \
+                        const DenseTensor& y,                  \
+                        const DenseTensor& dout,               \
+                        int axis,                              \
+                        DenseTensor* dx,                       \
+                        DenseTensor* dy) {                     \
+    ElementwiseGradKernel<T, algorithm>(                       \
+        dev_ctx, x, y, nullptr, dout, axis, dx, dy);           \
+  }
+
+DEFINE_ONEDNN_ELEMENTWISE_GRAD_KERNEL(Add, dnnl::algorithm::binary_add)
+DEFINE_ONEDNN_ELEMENTWISE_GRAD_KERNEL(Subtract, dnnl::algorithm::binary_sub)
+DEFINE_ONEDNN_ELEMENTWISE_GRAD_KERNEL(Multiply, dnnl::algorithm::binary_mul)
+
 template <typename T, typename Context>
 void DivideGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
@@ -317,6 +334,24 @@ void DivideGradKernel(const Context& dev_ctx,
       dev_ctx, x, y, &out, dout, axis, dx, dy);
 }
 }  // namespace phi
+
+PD_REGISTER_KERNEL(
+    add_grad, OneDNN, ONEDNN, phi::AddGradKernel, float, phi::dtype::bfloat16) {
+}
+
+PD_REGISTER_KERNEL(subtract_grad,
+                   OneDNN,
+                   ONEDNN,
+                   phi::SubtractGradKernel,
+                   float,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(multiply_grad,
+                   OneDNN,
+                   ONEDNN,
+                   phi::MultiplyGradKernel,
+                   float,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(divide_grad,
                    OneDNN,
