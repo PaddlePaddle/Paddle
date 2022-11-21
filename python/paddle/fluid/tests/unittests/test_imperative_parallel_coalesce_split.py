@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 from collections import OrderedDict
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.parallel import DataParallel
