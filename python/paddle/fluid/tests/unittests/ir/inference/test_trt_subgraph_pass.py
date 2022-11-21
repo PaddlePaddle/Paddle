@@ -450,33 +450,5 @@ class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):
             )
 
 
-class TensorRTSubgraphPassShuffleChannelTest(InferencePassTest):
-    def setUp(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(
-                name="data", shape=[-1, 6, 64, 64], dtype="float32"
-            )
-            sc_out = fluid.layers.shuffle_channel(data, group=3)
-            out = fluid.layers.batch_norm(sc_out, is_test=True)
-        self.feeds = {
-            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
-        }
-        self.enable_trt = True
-        self.trt_parameters = (
-            TensorRTSubgraphPassShuffleChannelTest.TensorRTParam(
-                1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
-            )
-        )
-        self.fetch_list = [out]
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            self.check_output_with_option(use_gpu)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
-            )
-
-
 if __name__ == "__main__":
     unittest.main()

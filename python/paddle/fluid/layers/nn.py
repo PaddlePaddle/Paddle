@@ -170,7 +170,6 @@ __all__ = [
     'bilinear_tensor_product',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
-    'shuffle_channel',
     'temporal_shift',
     'py_func',
     'psroi_pool',
@@ -12999,81 +12998,6 @@ def get_tensor_from_selected_rows(x, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={},
-    )
-    return out
-
-
-def shuffle_channel(x, group, name=None):
-    """
-    This operator shuffles the channels of input x.
-    It divide the input channels in each group into :attr:`group` subgroups,
-    and obtain a new order by selecting element from every subgroup one by one.
-
-    Please refer to the paper
-    https://arxiv.org/pdf/1707.01083.pdf
-
-    .. code-block:: text
-
-        Given a 4-D tensor input with the shape (N, C, H, W):
-            input.shape = (1, 4, 2, 2)
-            input.data =[[[[0.1, 0.2],
-                           [0.2, 0.3]],
-
-                          [[0.3, 0.4],
-                           [0.4, 0.5]],
-
-                          [[0.5, 0.6],
-                           [0.6, 0.7]],
-
-                          [[0.7, 0.8],
-                           [0.8, 0.9]]]]
-            Given group: 2
-            then we get a 4-D tensor out with the same shape of input:
-            out.shape = (1, 4, 2, 2)
-            out.data = [[[[0.1, 0.2],
-                          [0.2, 0.3]],
-
-                         [[0.5, 0.6],
-                          [0.6, 0.7]],
-
-                         [[0.3, 0.4],
-                          [0.4, 0.5]],
-
-                         [[0.7, 0.8],
-                          [0.8, 0.9]]]]
-
-    Args:
-        x(Variable): The input tensor variable. It should be a 4-D tensor with shape [N, C, H, W]
-        group(int): Indicating the counts of subgroups, It should divide the number of channels.
-
-    Returns:
-        out(Variable): the channels shuffling result is a tensor variable with the
-        same shape and same type as the input.
-
-    Raises:
-        ValueError: If group is not an int type variable.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-            input = fluid.data(name='input', shape=[None,4,2,2], dtype='float32')
-            out = fluid.layers.shuffle_channel(x=input, group=2)
-    """
-    helper = LayerHelper("shuffle_channel", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    if not isinstance(group, int):
-        raise TypeError("group must be int type")
-
-    helper.append_op(
-        type="shuffle_channel",
-        inputs={"X": x},
-        outputs={"Out": out},
-        attrs={"group": group},
     )
     return out
 
