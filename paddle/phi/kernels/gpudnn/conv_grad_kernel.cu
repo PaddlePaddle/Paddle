@@ -455,7 +455,9 @@ void ConvCudnnGradKernel(const Context& ctx,
   // HIP MIOPEN ONLY SUPPORT NCHW format
   auto compute_format = paddle::platform::DataLayout::kNCHW;
 #else
-  const bool compute_in_nhwc = dtype == CUDNN_DATA_HALF && IsVoltaOrLater(ctx);
+  const bool compute_in_nhwc =
+      (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
+      IsVoltaOrLater(ctx);
   auto compute_format = compute_in_nhwc && channel_last
                             ? paddle::platform::DataLayout::kNHWC
                             : paddle::platform::DataLayout::kNCHW;
