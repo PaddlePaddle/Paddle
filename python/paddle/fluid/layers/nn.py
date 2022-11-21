@@ -117,7 +117,6 @@ __all__ = [
     'resize_bilinear',
     'resize_trilinear',
     'resize_nearest',
-    'gather',
     'gather_nd',
     'scatter',
     'scatter_nd_add',
@@ -8610,81 +8609,6 @@ def image_resize_short(input, out_short_len, resample='BILINEAR'):
         + 0.5
     )
     return image_resize(input=input, out_shape=out_shape, resample=resample)
-
-
-@deprecated(since="2.0.0", update_to="paddle.gather")
-def gather(input, index, overwrite=True):
-    """
-
-    Output is obtained by gathering entries of the outer-most dimension
-    of X indexed by `index` and concatenate them together.
-
-    .. math::
-
-        Out = X[Index]
-
-
-    .. code-block:: text
-
-
-                Given:
-
-                X = [[1, 2],
-                     [3, 4],
-                     [5, 6]]
-
-                Index = [1, 2]
-
-                Then:
-
-                Out = [[3, 4],
-                       [5, 6]]
-
-    Args:
-        input (Tensor): The source input tensor with rank>=1. Supported data type is
-            int32, int64, float32, float64 and uint8 (only for CPU),
-            float16 (only for GPU).
-        index (Tensor): The index input tensor with rank=1. Data type is int32 or int64.
-        overwrite (bool, optional): The mode that updating the grad when has same index.
-            If True, use the overwrite mode to update the grad of the same index,
-            if False, use the accumulate mode to update the grad of the same index.
-            Default value is True.
-
-    Returns:
-        output (Tensor): The output is a tensor with the same rank as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            x = fluid.data(name='x', shape=[-1, 5], dtype='float32')
-            index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
-            output = fluid.layers.gather(x, index)
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.gather(input, index, None, 'overwrite', overwrite)
-
-    check_variable_and_dtype(
-        input,
-        'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
-        'gather',
-    )
-    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
-    helper = LayerHelper('gather', **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="gather",
-        inputs={"X": input, "Index": index},
-        outputs={"Out": out},
-        attrs={'overwrite': overwrite},
-    )
-    return out
 
 
 @deprecated(since="2.0.0", update_to="paddle.gather_nd")
