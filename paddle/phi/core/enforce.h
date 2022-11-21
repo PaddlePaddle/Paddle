@@ -62,6 +62,9 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
+#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/core/macros.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
