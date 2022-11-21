@@ -71,7 +71,7 @@ class TensorRTSubgraphPassLeakyReluTest(TensorRTSubgraphPassActivationTest):
 
 class TensorRTSubgraphPassRelu6Test(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.relu6(x)
+        return paddle.nn.functional.relu6(x)
 
 
 class TensorRTSubgraphPassSoftMaxTest(TensorRTSubgraphPassActivationTest):
