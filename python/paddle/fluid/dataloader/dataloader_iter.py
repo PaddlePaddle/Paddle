@@ -605,7 +605,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         array = core.LoDTensorArray()
                         if self._use_shared_memory:
                             for tensor in batch:
-                                array.append(tensor)
+                                array.append(tensor.value().get_tensor())
                         else:
                             # LoDTensor not in shared memory is not
                             # serializable, cannot be create in workers
