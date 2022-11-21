@@ -3588,15 +3588,6 @@ class TestBook(LayerTest):
             output = layers.l2_normalize(x, axis=1)
             return output
 
-    def make_crop(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[3, 5], dtype="float32")
-            y = self._get_data(name='y', shape=[2, 3], dtype="float32")
-            output = layers.crop(x, shape=y)
-            return output
-
     def make_mean_iou(self):
         with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
             x = self._get_data(name='x', shape=[16], dtype='int32')
