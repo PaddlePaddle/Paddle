@@ -11,13 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#pragma once
 #include <cuda_fp16.h>
 #include <iostream>
 #include <map>
 #include <vector>
+
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/device/gemm.h"
+
+#include "cutlass/conv/device/implicit_gemm_convolution.h"
 
 namespace phi {
 namespace fusion {

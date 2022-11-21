@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-#include <cutlass/epilogue/thread/linear_combination_bias_relu.h>
 #include <iostream>
-#include "cutlass/conv/device/implicit_gemm_convolution.h"
 #include "cutlass/conv/kernel/default_conv2d_fprop.h"
-#include "cutlass/cutlass.h"
+#include "cutlass/epilogue/thread/linear_combination_bias_relu.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_all.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
 
