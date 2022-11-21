@@ -135,7 +135,6 @@ __all__ = [
     'unique',
     'unique_with_counts',
     'expand',
-    'expand_as',
     'scale',
     'elementwise_add',
     'elementwise_div',
@@ -9966,94 +9965,6 @@ def expand(x, expand_times, name=None):
     helper.append_op(
         type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs
     )
-    return out
-
-
-@deprecated(since='2.0.0', update_to="paddle.expand_as")
-def expand_as(x, target_tensor, name=None):
-    """
-    :alias_main: paddle.expand_as
-        :alias: paddle.expand_as,paddle.tensor.expand_as,paddle.tensor.manipulation.expand_as
-        :old_api: paddle.fluid.layers.expand_as
-
-    expand_as operator tiles to the input by given expand tensor. You should set expand tensor
-    for each dimension by providing tensor 'target_tensor'. The rank of X
-    should be in [1, 6]. Please note that size of 'target_tensor' must be the same
-    with X's rank. Following is a using case:
-
-
-    .. code-block:: text
-
-        Input(X) is a 3-D tensor with shape [2, 3, 1]:
-
-                [
-                   [[1], [2], [3]],
-                   [[4], [5], [6]]
-                ]
-
-        target_tensor's shape:  [2, 6, 2]
-
-        Output(Out) is a 3-D tensor with shape [2, 6, 2]:
-
-                [
-                    [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
-                    [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
-                ]
-
-
-    Args:
-        x (Variable): A Tensor with dtype float64, float32, int32.
-        A tensor with rank in [1, 6].
-        target_tensor (Variable): A Tensor with dtype float64, float32, int32.
-        target_tensor for expanding to Input(X). Only use target_tensor'shape.
-
-    Returns:
-        Variable: A Tensor with dtype float64, float32, int32.
-        After expanding, size of each dimension of Output(Out) is equal to the size
-        of the corresponding dimension of target_tensor multiplying the corresponding
-        value given by target_tensor.
-
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            import numpy as np
-            paddle.enable_static()
-
-            data = fluid.layers.data(name="data", shape=[-1,10], dtype='float64')
-            target_tensor = fluid.layers.data(
-              name="target_tensor", shape=[-1,20], dtype='float64')
-            result = fluid.layers.expand_as(x=data, target_tensor=target_tensor)
-            use_cuda = False
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            x = np.random.rand(3,10)
-            y = np.random.rand(3,20)
-            output= exe.run(feed={"data":x,"target_tensor":y},fetch_list=[result.name])
-            print(output[0].shape)
-            #(3,20)
-
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.expand_as(x, target_tensor)
-
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64', 'bool'], 'expand_as'
-    )
-    check_variable_and_dtype(
-        target_tensor,
-        'target_tensor',
-        ['float32', 'float64', 'int32', 'int64', 'bool'],
-        'expand_as',
-    )
-    helper = LayerHelper('expand_as', input=x, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    inputs = {'X': x, 'target_tensor': target_tensor}
-    helper.append_op(type='expand_as', inputs=inputs, outputs={'Out': out})
     return out
 
 
