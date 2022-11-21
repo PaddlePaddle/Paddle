@@ -617,5 +617,22 @@ ProcessGroupGloo::createDefaultDevice() {
   return createDeviceForHostname("127.0.0.1");
 }
 
+std::shared_ptr<ProcessGroupGloo> ProcessGroupGloo::CreateProcessGroupGloo(
+    const std::shared_ptr<Store>& store, int rank, int size, int gid) {
+  std::string GLOO_SOCKET_IFNAME_ENV = "GLOO_SOCKET_IFNAME";
+  auto opts = GlooOptions::create();
+  char* ifname = getenv(GLOO_SOCKET_IFNAME_ENV.c_str());
+  if (ifname && strlen(ifname) > 1) {
+    opts->device =
+        ProcessGroupGloo::createDeviceForInterface(std::string(ifname));
+  } else {
+    opts->device = ProcessGroupGloo::createDefaultDevice();
+  }
+  auto process_group =
+      std::make_shared<ProcessGroupGloo>(store, rank, size, gid, opts);
+  ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
+  return process_group;
+}
+
 }  // namespace distributed
 }  // namespace paddle
