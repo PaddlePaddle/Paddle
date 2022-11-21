@@ -110,6 +110,7 @@ struct NormConvolutionArgs {
             stride,
             dilation,
             group));
+
     for (size_t i = 0; i < input_shape.size(); ++i) {
       in_dims.push_back(input_shape[i]);
     }
